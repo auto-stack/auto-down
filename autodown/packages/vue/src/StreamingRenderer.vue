@@ -11,6 +11,7 @@
         :render-batch-delay="8"
         :typewriter="streaming && idx === lastMarkdownIndex"
         :fade="false"
+        :code-block-props="codeBlockProps"
       />
       <component
         v-else-if="segment.type === 'component'"
@@ -42,6 +43,12 @@ const lastMarkdownIndex = computed(() => {
   }
   return -1
 })
+
+const codeBlockProps = {
+  showHeader: true,
+  showCopyButton: true,
+  showExpandButton: true,
+}
 
 const registry: Record<string, any> = {
   table: StreamingTable,
@@ -117,13 +124,50 @@ const registry: Record<string, any> = {
   color: #6b7280;
 }
 
-/* Code blocks */
-.streaming-document :deep(pre) {
+/* Code blocks — window style (CSS-only, works without stream-monaco) */
+.streaming-document :deep(pre[data-language]) {
+  position: relative;
+  margin: 0.75rem 0;
+  padding: 2rem 1rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  overflow-x: auto;
+}
+
+/* Language header bar — rendered via ::before using data-language attr */
+.streaming-document :deep(pre[data-language]:not([data-language="plaintext"]))::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.4rem 0.75rem;
+  background: hsl(220 9% 46% / 0.08);
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 8px 8px 0 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: lowercase;
+  text-align: right;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Plaintext blocks — no header bar, remove extra top padding */
+.streaming-document :deep(pre[data-language="plaintext"]) {
+  padding-top: 0.75rem;
+}
+
+/* Code blocks without a language — simpler style */
+.streaming-document :deep(pre:not([data-language])) {
   margin: 0.75rem 0;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
-  background: hsl(220 9% 46% / 0.06);
+  border-radius: 8px;
   border: 1px solid #e5e7eb;
+  background: #f8f9fa;
   overflow-x: auto;
 }
 
@@ -165,12 +209,6 @@ const registry: Record<string, any> = {
   border-radius: 6px;
   margin: 0.5rem 0;
   display: block;
-}
-
-/* Prevent code block language SVG from flashing at 300x150 before CSS loads */
-.streaming-document :deep(.code-block-header svg) {
-  max-width: 20px;
-  max-height: 20px;
 }
 
 /* Broken image fallback (markstream-vue renders .image-error) */

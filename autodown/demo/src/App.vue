@@ -40,6 +40,38 @@ const foo = 'bar'
 console.log(foo)
 \`\`\`
 
+\`\`\`rust
+fn main() {
+    println!("Hello, world!");
+}
+\`\`\`
+
+\`\`\`python
+def fibonacci(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+\`\`\`
+
+\`\`\`typescript
+interface User {
+  id: number
+  name: string
+  email: string
+}
+\`\`\`
+
+\`\`\`bash
+echo "Hello from bash!"
+curl -s https://api.example.com/data | jq '.results'
+\`\`\`
+
+\`\`\`
+This is plain text code block
+with no language specified
+\`\`\`
+
 - Bullet item one
 - Bullet item two
   - Nested bullet A

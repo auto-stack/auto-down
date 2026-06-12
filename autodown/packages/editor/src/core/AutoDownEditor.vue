@@ -4,6 +4,7 @@
     <BubbleMenuVue v-if="editor" :editor="editor" :link-prompt="linkUrlPrompt" />
     <SlashMenu v-if="editor" :editor="editor" :items="slashItems" />
     <TableMenu v-if="editor" :editor="editor" />
+    <CodeBlockMenu v-if="editor" :editor="editor" />
     <div v-if="showActions" class="autodown-editor-actions">
       <button class="autodown-save-btn" @click="handleSave">
         <Check :size="13" />
@@ -25,6 +26,7 @@ import { appendTableIAL } from '../extensions/tableAttributes'
 import BubbleMenuVue from '../menus/BubbleMenu.vue'
 import SlashMenu, { type SlashItem } from '../menus/SlashMenu.vue'
 import TableMenu from '../menus/TableMenu.vue'
+import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import {
   Heading1,
   Heading2,

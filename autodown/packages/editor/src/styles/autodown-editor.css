@@ -161,8 +161,8 @@
 .autodown-editor-content pre {
   margin: 0.75rem 0;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
-  background: hsl(var(--ad-muted, 220 9% 46%) / 0.06);
+  border-radius: 8px;
+  background: #f8f9fa;
   border: 1px solid var(--ad-border, #e5e7eb);
   overflow-x: auto;
 }
@@ -541,4 +541,123 @@
 .autodown-table-menu-btn.danger:hover {
   background: hsl(var(--ad-error, 0 84% 60%) / 0.08);
   color: hsl(var(--ad-error, 0 84% 60%));
+}
+
+/* ─── Code Block Menu ─── */
+.autodown-codeblock-menu {
+  position: absolute;
+  z-index: 50;
+  background: var(--ad-surface, #ffffff);
+  border: 1px solid var(--ad-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.autodown-codeblock-menu-header {
+  padding: 0.35rem;
+  border-bottom: 1px solid var(--ad-border, #e5e7eb);
+}
+
+.autodown-codeblock-menu-search {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--ad-border, #e5e7eb);
+  border-radius: 4px;
+  font-size: 0.83rem;
+  outline: none;
+  background: transparent;
+  color: var(--ad-fg, #111827);
+  box-sizing: border-box;
+}
+
+.autodown-codeblock-menu-search:focus {
+  border-color: hsl(var(--ad-primary, 220 90% 56%) / 0.5);
+}
+
+.autodown-codeblock-menu-search::placeholder {
+  color: var(--ad-muted, #9ca3af);
+}
+
+.autodown-codeblock-menu-list {
+  overflow-y: auto;
+  padding: 0.2rem;
+  scrollbar-width: thin;
+}
+
+.autodown-codeblock-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ad-fg, #111827);
+  font-size: 0.83rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.autodown-codeblock-menu-item:hover,
+.autodown-codeblock-menu-item.active {
+  background: hsl(var(--ad-primary, 220 90% 56%) / 0.1);
+}
+
+.autodown-codeblock-menu-item.selected {
+  font-weight: 600;
+}
+
+.autodown-codeblock-menu-item-label {
+  flex: 1;
+}
+
+.autodown-codeblock-menu-check {
+  flex-shrink: 0;
+  color: hsl(var(--ad-primary, 220 90% 56%));
+}
+
+.autodown-codeblock-menu-empty {
+  padding: 0.75rem;
+  text-align: center;
+  color: var(--ad-muted, #6b7280);
+  font-size: 0.83rem;
+}
+
+/* ─── Code Block — window style with header (editor) ─── */
+/* The language header is rendered via CSS ::before using a data-language
+   attribute set by the CustomCodeBlock ProseMirror decoration plugin. */
+
+/* Code blocks with language — add top padding for the header bar */
+.autodown-editor-content pre[data-language] {
+  position: relative;
+  padding-top: 2rem;
+}
+
+/* Language header bar */
+.autodown-editor-content pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.4rem 0.75rem;
+  background: hsl(var(--ad-muted, 220 9% 46%) / 0.08);
+  border-bottom: 1px solid var(--ad-border, #e5e7eb);
+  border-radius: 8px 8px 0 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ad-muted, #6b7280);
+  text-transform: lowercase;
+  text-align: right;
+  user-select: none;
+  pointer-events: none;
+  line-height: 1.4;
 }

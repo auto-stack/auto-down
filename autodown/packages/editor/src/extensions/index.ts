@@ -16,6 +16,7 @@ import { CustomTableRow } from './CustomTableRow'
 import { ColumnResizeIndicator } from './ColumnResizeIndicator'
 import { CustomImage } from './CustomImage'
 import { ImageFallback } from './ImageFallback'
+import { CustomCodeBlock } from './CustomCodeBlock'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 
 export interface EditorOptions {
@@ -28,7 +29,9 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       link: false,
+      codeBlock: false,
     }),
+    CustomCodeBlock,
     Placeholder.configure({
       placeholder: options.placeholder ?? "Type '/' for commands…",
     }),

@@ -55,6 +55,36 @@ describe('AutoDown Editor Markdown Round-trip', () => {
     editor.destroy()
   })
 
+  it('round-trips a code block with language', () => {
+    const md = '```rust\nfn main() {\n    println!("Hello");\n}\n```'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain('```rust')
+    expect(result).toContain('fn main()')
+    expect(result).toContain('println!("Hello")')
+    expect(result).toContain('```')
+    editor.destroy()
+  })
+
+  it('round-trips a code block with python language', () => {
+    const md = '```python\ndef hello():\n    print("world")\n```'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain('```python')
+    expect(result).toContain('def hello():')
+    expect(result).toContain('```')
+    editor.destroy()
+  })
+
+  it('round-trips a code block with typescript language', () => {
+    const md = '```typescript\nconst x: number = 1\n```'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain('```typescript')
+    expect(result).toContain('const x: number = 1')
+    editor.destroy()
+  })
+
   it('round-trips a blockquote', () => {
     const md = '> This is a quote'
     const editor = createTestEditor(md)

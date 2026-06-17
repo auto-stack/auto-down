@@ -204,7 +204,9 @@ function findActiveCodeBlock(): HTMLElement | null {
 
 function updatePosition() {
   const { view } = props.editor
-  const editorRect = view.dom.getBoundingClientRect()
+  const editorEl = view.dom.closest('.autodown-editor') as HTMLElement | null
+  if (!editorEl) return
+  const editorRect = editorEl.getBoundingClientRect()
 
   const triggerEl = activeCodeBlock.value ?? findActiveCodeBlock()
   if (!triggerEl) {
@@ -266,6 +268,18 @@ function handleOutsideClick(event: MouseEvent) {
   }
 }
 
+function handleEditorMouseDown(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
+  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
+  if (badge || copyBtn) {
+    // Prevent ProseMirror from moving the selection / scrolling the editor
+    // wrapper on mousedown, so the popup opens for the clicked code block.
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}
+
 function handleEditorClick(event: MouseEvent) {
   const target = event.target as HTMLElement
 
@@ -289,12 +303,20 @@ function handleEditorClick(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('mousedown', handleOutsideClick)
+  props.editor.view.dom.addEventListener('mousedown', handleEditorMouseDown, { capture: true })
   props.editor.view.dom.addEventListener('click', handleEditorClick, { capture: true })
+  // The editor content is scrollable inside `.autodown-editor-content-wrapper`,
+  // so we must reposition the popup when that wrapper scrolls.
+  const wrapper = props.editor.view.dom.closest('.autodown-editor-content-wrapper')
+  wrapper?.addEventListener('scroll', scheduleUpdate, { passive: true })
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleOutsideClick)
+  props.editor.view.dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })
   props.editor.view.dom.removeEventListener('click', handleEditorClick, { capture: true })
+  const wrapper = props.editor.view.dom.closest('.autodown-editor-content-wrapper')
+  wrapper?.removeEventListener('scroll', scheduleUpdate)
 })
 
 defineExpose({

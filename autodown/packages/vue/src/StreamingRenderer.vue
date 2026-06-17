@@ -26,8 +26,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { MarkdownRender } from 'markstream-vue'
+import { common, createLowlight } from 'lowlight'
+import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
 import StreamingTable from './StreamingTable.vue'
+
+const lowlight = createLowlight(common)
 
 const props = defineProps<{
   source: string
@@ -66,6 +70,7 @@ function clearPlaceholders(container: HTMLElement) {
 const mutationObserver = new MutationObserver(() => {
   if (containerRef.value) {
     applyBlockIdsAndPlaceholder(containerRef.value)
+    highlightCodeBlocks(containerRef.value)
   }
 })
 
@@ -142,6 +147,34 @@ async function refresh() {
   await nextTick()
   clearPlaceholders(containerRef.value)
   applyBlockIdsAndPlaceholder(containerRef.value)
+  highlightCodeBlocks(containerRef.value)
+}
+
+/**
+ * Apply lowlight syntax highlighting to code blocks rendered by markstream-vue.
+ * The original `<code>` content is replaced by highlighted tokens whenever a
+ * non-text language is available and registered.
+ */
+function highlightCodeBlocks(container: HTMLElement) {
+  const codeBlocks = Array.from(container.querySelectorAll('pre[data-language] > code'))
+  codeBlocks.forEach((code) => {
+    const pre = code.parentElement as HTMLPreElement
+    const rawLanguage = pre.getAttribute('data-language')
+    const language = rawLanguage === 'plaintext' ? 'text' : rawLanguage
+    if (!language || language === 'text' || code.getAttribute('data-highlighted') === language) return
+    if (!lowlight.registered(language)) return
+
+    const text = code.textContent || ''
+    if (!text) return
+
+    try {
+      const tree = lowlight.highlight(language, text)
+      code.innerHTML = toHtml(tree)
+      code.setAttribute('data-highlighted', language)
+    } catch {
+      // Unknown language or malformed input; leave plain text intact.
+    }
+  })
 }
 
 watch(
@@ -232,7 +265,9 @@ defineExpose({
   color: #6b7280;
 }
 
-:deep(pre[data-language="text"]) {
+/* Plain-text code blocks (markstream-vue defaults missing language to 'plaintext') */
+.streaming-document :deep(pre[data-language="text"]),
+.streaming-document :deep(pre[data-language="plaintext"]) {
   position: relative;
   margin: 0.75rem 0;
   padding: 2rem 1rem 0.75rem;
@@ -244,7 +279,8 @@ defineExpose({
 
 /* Language header bar for text and other languages */
 .streaming-document :deep(pre[data-language="text"])::before,
-.streaming-document :deep(pre[data-language]:not([data-language="text"]))::before {
+.streaming-document :deep(pre[data-language="plaintext"])::before,
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]))::before {
   content: attr(data-language);
   position: absolute;
   top: 0;
@@ -264,8 +300,14 @@ defineExpose({
   pointer-events: none;
 }
 
+/* Hide the language header for text/plaintext so it matches the editor */
+.streaming-document :deep(pre[data-language="text"])::before,
+.streaming-document :deep(pre[data-language="plaintext"])::before {
+  display: none;
+}
+
 /* Code blocks with a real language — window style with header bar */
-.streaming-document :deep(pre[data-language]:not([data-language="text"])) {
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"])) {
   position: relative;
   margin: 0.75rem 0;
   padding: 2rem 1rem 0.75rem;
@@ -293,6 +335,65 @@ defineExpose({
   padding: 0;
   border: none;
   color: #111827;
+}
+
+/* ─── Lowlight syntax highlighting tokens (preview) ───
+   Match the editor's light theme token colors. */
+.streaming-document :deep(pre code .hljs-keyword),
+.streaming-document :deep(pre code .hljs-selector-tag),
+.streaming-document :deep(pre code .hljs-doctag),
+.streaming-document :deep(pre code .hljs-section) {
+  color: #d73a49;
+  font-weight: 600;
+}
+
+.streaming-document :deep(pre code .hljs-title),
+.streaming-document :deep(pre code .hljs-title.function_),
+.streaming-document :deep(pre code .hljs-function .hljs-title) {
+  color: #6f42c1;
+}
+
+.streaming-document :deep(pre code .hljs-string),
+.streaming-document :deep(pre code .hljs-regexp),
+.streaming-document :deep(pre code .hljs-addition) {
+  color: #032f62;
+}
+
+.streaming-document :deep(pre code .hljs-number),
+.streaming-document :deep(pre code .hljs-literal),
+.streaming-document :deep(pre code .hljs-variable),
+.streaming-document :deep(pre code .hljs-template-variable),
+.streaming-document :deep(pre code .hljs-attr),
+.streaming-document :deep(pre code .hljs-attribute) {
+  color: #005cc5;
+}
+
+.streaming-document :deep(pre code .hljs-comment),
+.streaming-document :deep(pre code .hljs-quote),
+.streaming-document :deep(pre code .hljs-deletion) {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.streaming-document :deep(pre code .hljs-meta),
+.streaming-document :deep(pre code .hljs-meta-keyword),
+.streaming-document :deep(pre code .hljs-meta-string) {
+  color: #176f2c;
+}
+
+.streaming-document :deep(pre code .hljs-tag),
+.streaming-document :deep(pre code .hljs-name),
+.streaming-document :deep(pre code .hljs-built_in),
+.streaming-document :deep(pre code .hljs-type) {
+  color: #22863a;
+}
+
+.streaming-document :deep(pre code .hljs-emphasis) {
+  font-style: italic;
+}
+
+.streaming-document :deep(pre code .hljs-strong) {
+  font-weight: 700;
 }
 
 /* Inline code */

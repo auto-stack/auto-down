@@ -24,6 +24,8 @@ export default defineConfig({
         '@autodown/core',
         'markstream-vue',
         'mermaid',
+        'lowlight',
+        'hast-util-to-html',
       ],
       output: {
         globals: {

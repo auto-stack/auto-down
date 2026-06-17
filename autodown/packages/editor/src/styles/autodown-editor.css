@@ -642,8 +642,7 @@
 }
 
 /* Language header bar */
-.autodown-editor-content pre[data-language]::before {
-  content: attr(data-language);
+.autodown-editor-content pre[data-language] .codeblock-language-badge {
   position: absolute;
   top: 0;
   left: 0;
@@ -662,9 +661,16 @@
   cursor: pointer;
   pointer-events: auto;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.autodown-editor-content pre[data-language]::before:hover {
+.autodown-editor-content pre[data-language="text"] .codeblock-language-badge,
+.autodown-editor-content pre[data-language="plaintext"] .codeblock-language-badge {
+  display: none;
+}
+
+.autodown-editor-content pre[data-language] .codeblock-language-badge:hover {
   color: var(--ad-fg, #111827);
 }
 

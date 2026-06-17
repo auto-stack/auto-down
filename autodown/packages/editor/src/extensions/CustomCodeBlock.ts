@@ -4,10 +4,8 @@ import { common, createLowlight } from 'lowlight'
 
 /**
  * CustomCodeBlock — extends Tiptap's CodeBlockLowlight to add a
- * `data-language` attribute on the `<pre>` element and syntax highlighting.
- *
- * The language badge is rendered via CSS ::before pseudo-element
- * (see `autodown-editor.css`).
+ * `data-language` attribute on the `<pre>` element, syntax highlighting,
+ * and a clickable language badge for switching languages.
  */
 const lowlight = createLowlight(common)
 
@@ -55,6 +53,14 @@ export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions
     return [
       'pre',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, extraAttrs),
+      [
+        'div',
+        {
+          class: 'codeblock-language-badge',
+          'data-codeblock-language-badge': language,
+        },
+        language,
+      ],
       [
         'code',
         {

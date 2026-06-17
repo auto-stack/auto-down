@@ -17,10 +17,11 @@
         @keydown.enter.prevent="selectHighlighted"
       />
     </div>
-    <div class="autodown-codeblock-menu-list">
+    <div ref="listRef" class="autodown-codeblock-menu-list" @wheel="handleListWheel">
       <button
         v-for="(lang, idx) in filteredLanguages"
         :key="lang.id"
+        :ref="(el) => setItemRef(el as HTMLElement, idx)"
         class="autodown-codeblock-menu-item"
         :class="{ active: idx === highlightedIndex, selected: lang.id === currentLanguage }"
         @click="selectLanguage(lang.id)"
@@ -53,7 +54,7 @@ interface LanguageOption {
 }
 
 const languages: LanguageOption[] = [
-  { id: 'text', label: 'Plain Text' },
+  { id: 'text', label: 'Text' },
   { id: 'bash', label: 'Bash', aliases: ['sh', 'shell', 'zsh'] },
   { id: 'c', label: 'C' },
   { id: 'cpp', label: 'C++', aliases: ['c++', 'cxx'] },
@@ -85,9 +86,15 @@ const languages: LanguageOption[] = [
 const visible = ref(false)
 const menuRef = ref<HTMLDivElement>()
 const searchRef = ref<HTMLInputElement>()
+const listRef = ref<HTMLDivElement>()
+const itemRefs = ref<HTMLElement[]>([])
 const search = ref('')
 const highlightedIndex = ref(0)
 const { positionStyle, applyPosition } = useMenuBounds(menuRef)
+
+function setItemRef(el: HTMLElement, idx: number) {
+  if (el) itemRefs.value[idx] = el
+}
 
 /** Track the active code block so we can position the menu relative to its badge. */
 const activeCodeBlock = ref<HTMLElement | null>(null)
@@ -115,10 +122,23 @@ function open(target?: HTMLElement) {
   activeCodeBlock.value = target ?? findActiveCodeBlock() ?? null
   visible.value = true
   search.value = ''
-  highlightedIndex.value = 0
+  highlightedIndex.value = Math.max(0, languages.findIndex((l) => l.id === currentLanguage.value))
   nextTick(() => {
     searchRef.value?.focus()
     updatePosition()
+    scrollHighlightedIntoCenter()
+  })
+}
+
+function scrollHighlightedIntoCenter() {
+  nextTick(() => {
+    const list = listRef.value
+    const item = itemRefs.value[highlightedIndex.value]
+    if (!list || !item) return
+    const listRect = list.getBoundingClientRect()
+    const itemRect = item.getBoundingClientRect()
+    const offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2
+    list.scrollTop += offset
   })
 }
 
@@ -137,18 +157,41 @@ function toggle(target?: HTMLElement) {
 function moveDown() {
   if (highlightedIndex.value < filteredLanguages.value.length - 1) {
     highlightedIndex.value++
+    scrollHighlightedIntoCenter()
   }
 }
 
 function moveUp() {
   if (highlightedIndex.value > 0) {
     highlightedIndex.value--
+    scrollHighlightedIntoCenter()
   }
 }
 
 function selectHighlighted() {
+  if (filteredLanguages.value.length === 1) {
+    selectLanguage(filteredLanguages.value[0].id)
+    return
+  }
   const lang = filteredLanguages.value[highlightedIndex.value]
   if (lang) selectLanguage(lang.id)
+}
+
+function handleListWheel(event: WheelEvent) {
+  const list = listRef.value
+  if (!list) return
+  const canScrollDown = list.scrollTop + list.clientHeight < list.scrollHeight
+  const canScrollUp = list.scrollTop > 0
+  const deltaY = event.deltaY
+
+  // Only prevent default if the list can still scroll in the wheel direction
+  const shouldCapture =
+    (deltaY > 0 && canScrollDown) || (deltaY < 0 && canScrollUp)
+
+  if (shouldCapture) {
+    event.preventDefault()
+    list.scrollTop += deltaY
+  }
 }
 
 function findActiveCodeBlock(): HTMLElement | null {
@@ -163,18 +206,26 @@ function updatePosition() {
   const { view } = props.editor
   const editorRect = view.dom.getBoundingClientRect()
 
-  let triggerEl = activeCodeBlock.value
-  if (!triggerEl) triggerEl = findActiveCodeBlock()
+  const triggerEl = activeCodeBlock.value ?? findActiveCodeBlock()
   if (!triggerEl) {
     close()
     return
   }
 
-  const triggerRect = triggerEl.getBoundingClientRect()
+  const badge = triggerEl.querySelector('[data-codeblock-language-badge]') as HTMLElement | null
+  const triggerRect = (badge ?? triggerEl).getBoundingClientRect()
+  const badgeStyle = badge ? getComputedStyle(badge) : null
+  const lineHeight = badgeStyle
+    ? parseInt(badgeStyle.lineHeight, 10) || triggerRect.height
+    : triggerRect.height
+  const verticalPadding = badgeStyle
+    ? parseFloat(badgeStyle.paddingTop) + parseFloat(badgeStyle.paddingBottom)
+    : 0
+  const offset = lineHeight * 2 + verticalPadding
   const trigger: TriggerRect = {
-    top: triggerRect.top - editorRect.top,
+    top: triggerRect.top - editorRect.top + offset,
     left: triggerRect.left - editorRect.left,
-    bottom: triggerRect.bottom - editorRect.top,
+    bottom: triggerRect.bottom - editorRect.top + offset,
     right: triggerRect.right - editorRect.left,
     width: triggerRect.width,
     height: triggerRect.height,
@@ -183,7 +234,7 @@ function updatePosition() {
   applyPosition(
     trigger,
     { width: editorRect.width, height: editorRect.height },
-    { placement: 'bottom-start', gap: 6 }
+    { placement: 'bottom-end', gap: 0 }
   )
 }
 

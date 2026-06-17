@@ -363,7 +363,7 @@ defineExpose({
 
 .streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label) {
   position: relative;
-  margin-right: 40px;
+  margin-right: 20px;
   cursor: default;
   text-transform: lowercase;
 }

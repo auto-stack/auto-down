@@ -675,7 +675,7 @@
 
 .autodown-editor-content pre[data-language] .codeblock-language-label {
   position: relative;
-  margin-right: 40px;
+  margin-right: 20px;
   cursor: pointer;
   text-transform: lowercase;
 }

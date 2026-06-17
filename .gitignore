@@ -45,6 +45,8 @@ coverage/
 # Demo temporary files
 autodown/demo/*.png
 autodown/demo/*.cjs
+autodown/demo/test-results/
+autodown/test-results/
 
 # pnpm store
 .pnpm-store/

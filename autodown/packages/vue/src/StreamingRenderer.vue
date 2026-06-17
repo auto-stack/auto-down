@@ -25,13 +25,16 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { MarkdownRender } from 'markstream-vue'
+import { MarkdownRender, enableKatex, enableMermaid } from 'markstream-vue'
 import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
 import StreamingTable from './StreamingTable.vue'
 
 const lowlight = createLowlight(common)
+
+enableKatex()
+enableMermaid()
 
 const props = defineProps<{
   source: string
@@ -40,8 +43,17 @@ const props = defineProps<{
   placeholderHeight?: number
 }>()
 
-const sourceRef = computed(() => props.source)
+const sourceRef = computed(() => transformDetailsContainers(props.source))
 const { segments } = useStreamingDocument(sourceRef)
+
+function transformDetailsContainers(text: string): string {
+  // Convert :::details Summary\n...\n::: into native <details> HTML so the
+  // preview renderer (markstream-vue) lets the browser handle collapse/expand.
+  return text.replace(
+    /:::details\s+(.*?)\n([\s\S]*?)\n:::/g,
+    '<details>\n<summary>$1</summary>\n$2\n</details>'
+  )
+}
 
 const lastMarkdownIndex = computed(() => {
   for (let i = segments.value.length - 1; i >= 0; i--) {

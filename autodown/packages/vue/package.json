@@ -27,6 +27,7 @@
   "dependencies": {
     "@autodown/core": "workspace:*",
     "hast-util-to-html": "9.0.5",
+    "katex": "^0.16.0",
     "lowlight": "^3.3.0",
     "markstream-vue": "^0.0.14-beta.8",
     "mermaid": "^11.15.0"

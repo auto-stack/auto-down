@@ -17,6 +17,9 @@ import { ColumnResizeIndicator } from './ColumnResizeIndicator'
 import { CustomImage } from './CustomImage'
 import { ImageFallback } from './ImageFallback'
 import { CustomCodeBlock } from './CustomCodeBlock'
+import { CustomCallout } from './CustomCallout'
+import { CustomDetails } from './CustomDetails'
+import { CustomMathBlock } from './CustomMathBlock'
 import { BlockId } from './BlockId'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 
@@ -33,6 +36,9 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
       codeBlock: false,
     }),
     CustomCodeBlock,
+    CustomCallout,
+    CustomDetails,
+    CustomMathBlock,
     BlockId,
     Placeholder.configure({
       placeholder: options.placeholder ?? "Type '/' for commands…",

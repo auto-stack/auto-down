@@ -92,6 +92,45 @@ describe('AutoDown Editor Markdown Round-trip', () => {
     editor.destroy()
   })
 
+  it('round-trips a callout', () => {
+    const md = ':::note Note\nThis is a callout.\n:::'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain(':::note Note')
+    expect(result).toContain('This is a callout.')
+    expect(result).toContain(':::')
+    editor.destroy()
+  })
+
+  it('round-trips a details block', () => {
+    const md = ':::details Click to expand\nHidden content.\n:::'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain(':::details Click to expand')
+    expect(result).toContain('Hidden content.')
+    expect(result).toContain(':::')
+    editor.destroy()
+  })
+
+  it('round-trips a math block', () => {
+    const md = '$$\nE = mc^2\n$$'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain('$$')
+    expect(result).toContain('E = mc^2')
+    editor.destroy()
+  })
+
+  it('round-trips a mermaid code block', () => {
+    const md = '```mermaid\ngraph TD\n  A --> B\n```'
+    const editor = createTestEditor(md)
+    const result = editor.getMarkdown().trim()
+    expect(result).toContain('```mermaid')
+    expect(result).toContain('graph TD')
+    expect(result).toContain('```')
+    editor.destroy()
+  })
+
   it('round-trips a link', () => {
     const md = '[link](https://example.com)'
     const editor = createTestEditor(md)

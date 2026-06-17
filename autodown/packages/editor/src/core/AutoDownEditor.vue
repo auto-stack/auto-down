@@ -41,6 +41,10 @@ import {
   Minus,
   Image,
   Table as TableIcon,
+  AlertCircle,
+  PanelTop,
+  Sigma,
+  Workflow,
   Check,
   X,
 } from 'lucide-vue-next'
@@ -164,6 +168,42 @@ const slashItems: SlashItem[] = [
     searchTerms: ['table'],
     command: ({ editor, range }) =>
       editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
+  {
+    title: 'Callout',
+    description: 'Admonition / callout box',
+    icon: AlertCircle,
+    searchTerms: ['callout', 'admonition', 'warning', 'tip', 'note'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setCallout({ type: 'note', title: 'Note' }).run()
+    },
+  },
+  {
+    title: 'Details',
+    description: 'Collapsible details block',
+    icon: PanelTop,
+    searchTerms: ['details', 'toggle', 'collapse', 'accordion'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setDetails({ summary: 'Details' }).run()
+    },
+  },
+  {
+    title: 'Math',
+    description: 'Block math formula (KaTeX)',
+    icon: Sigma,
+    searchTerms: ['math', 'katex', 'formula', 'equation', 'latex'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setMathBlock().run()
+    },
+  },
+  {
+    title: 'Mermaid',
+    description: 'Mermaid diagram',
+    icon: Workflow,
+    searchTerms: ['mermaid', 'diagram', 'chart', 'flowchart'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'mermaid' }).run()
+    },
   },
 ]
 

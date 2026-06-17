@@ -674,12 +674,30 @@
 }
 
 .autodown-editor-content pre[data-language] .codeblock-language-label {
+  position: relative;
+  margin-right: 40px;
   cursor: pointer;
   text-transform: lowercase;
 }
 
 .autodown-editor-content pre[data-language] .codeblock-language-label:hover {
   color: var(--ad-fg, #111827);
+}
+
+.autodown-editor-content pre[data-language] .codeblock-language-label::after {
+  content: '▼';
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.55rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.autodown-editor-content pre[data-language] .codeblock-language-label:hover::after {
+  opacity: 1;
 }
 
 .autodown-editor-content pre[data-language] .codeblock-copy-btn {

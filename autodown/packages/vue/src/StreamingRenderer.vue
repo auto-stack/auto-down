@@ -73,7 +73,7 @@ const mutationObserver = new MutationObserver(() => {
   if (containerRef.value) {
     applyBlockIdsAndPlaceholder(containerRef.value)
     highlightCodeBlocks(containerRef.value)
-    addCopyButtons(containerRef.value)
+    addCodeBlockHeaders(containerRef.value)
   }
 })
 
@@ -151,27 +151,41 @@ async function refresh() {
   clearPlaceholders(containerRef.value)
   applyBlockIdsAndPlaceholder(containerRef.value)
   highlightCodeBlocks(containerRef.value)
-  addCopyButtons(containerRef.value)
+  addCodeBlockHeaders(containerRef.value)
 }
 
 /**
- * Inject a copy button into code blocks that have a real language header.
+ * Inject a real header bar (language label + copy button) into code blocks
+ * that have a real language. This mirrors the editor's DOM structure so both
+ * sides share the same layout and hover effects.
  */
-function addCopyButtons(container: HTMLElement) {
+function addCodeBlockHeaders(container: HTMLElement) {
   const blocks = Array.from(
     container.querySelectorAll(
-      'pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]):not([data-copy-added])'
+      'pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]):not([data-header-added])'
     )
   )
   blocks.forEach((pre) => {
+    const language = pre.getAttribute('data-language') || ''
+    const badge = document.createElement('div')
+    badge.className = 'codeblock-language-badge'
+    badge.setAttribute('data-codeblock-language-badge', language)
+
+    const label = document.createElement('span')
+    label.className = 'codeblock-language-label'
+    label.textContent = language
+
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.className = 'codeblock-copy-btn'
     btn.setAttribute('data-codeblock-copy-btn', '')
     btn.setAttribute('title', '复制')
     btn.innerHTML = COPY_ICON
-    pre.appendChild(btn)
-    pre.setAttribute('data-copy-added', '')
+
+    badge.appendChild(label)
+    badge.appendChild(btn)
+    pre.appendChild(badge)
+    pre.setAttribute('data-header-added', '')
   })
 }
 
@@ -315,18 +329,24 @@ defineExpose({
   overflow-x: auto;
 }
 
-/* Language header bar for text and other languages */
-.streaming-document :deep(pre[data-language="text"])::before,
-.streaming-document :deep(pre[data-language="plaintext"])::before,
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]))::before {
-  content: attr(data-language);
+/* Hide the pseudo-element header when a real header bar has been injected */
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"])[data-header-added])::before {
+  display: none;
+}
+
+/* Language header bar (injected element) */
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-badge) {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
   height: 1.9rem;
   box-sizing: border-box;
-  padding: 0.35rem 2.1rem 0.35rem 0.75rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
   background: hsl(220 9% 46% / 0.08);
   border-bottom: 1px solid #e5e7eb;
   border-radius: 8px 8px 0 0;
@@ -335,23 +355,41 @@ defineExpose({
   font-weight: 500;
   line-height: 1.5;
   color: #6b7280;
-  text-transform: lowercase;
-  text-align: right;
   user-select: none;
+  pointer-events: auto;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label) {
+  position: relative;
+  margin-right: 40px;
+  cursor: default;
+  text-transform: lowercase;
+}
+
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label::after) {
+  content: '▼';
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.55rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
   pointer-events: none;
 }
 
-/* Hide the language header for text/plaintext so it matches the editor */
-.streaming-document :deep(pre[data-language="text"])::before,
-.streaming-document :deep(pre[data-language="plaintext"])::before {
-  display: none;
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label:hover::after) {
+  opacity: 1;
+}
+
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label:hover) {
+  color: #111827;
 }
 
 /* Copy button for code blocks with a real language */
 .streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-copy-btn) {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -362,11 +400,9 @@ defineExpose({
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: #6b7280;
+  color: inherit;
   cursor: pointer;
   line-height: 1;
-  font-size: 0.9rem;
-  z-index: 1;
 }
 
 .streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-copy-btn:hover) {
@@ -387,6 +423,18 @@ defineExpose({
   -webkit-mask-position: center;
   mask-position: center;
   background-color: currentColor;
+}
+
+/* Plain-text code blocks (markstream-vue defaults missing language to 'plaintext') */
+.streaming-document :deep(pre[data-language="text"]),
+.streaming-document :deep(pre[data-language="plaintext"]) {
+  position: relative;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  overflow-x: auto;
 }
 
 /* Code blocks with a real language — window style with header bar */

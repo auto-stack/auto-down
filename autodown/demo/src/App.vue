@@ -114,6 +114,25 @@ with no language specified
 | Bar  | 2     | Beta  |
 | Baz  | 3     | Gamma |
 
+:::warning Watch out
+This is a **Callout** block. It supports inline formatting and is rendered as an admonition in the preview.
+:::
+
+:::details Click to expand
+This is a **Details** block. The content is collapsed by default and expanded when the summary is clicked.
+:::
+
+$$
+E = mc^2
+$$
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B{Is it?}
+  B -->|Yes| C[OK]
+  B -->|No| D[End]
+\`\`\`
+
 ---
 
 ![A placeholder image](https://placehold.co/400x100/f3f4f6/9ca3af?text=Image)

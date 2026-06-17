@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, type Component } from 'vue'
 import type { Editor, Range } from '@tiptap/core'
+import { useMenuBounds, type TriggerRect } from '../composables/useMenuBounds'
 
 export interface SlashItem {
   title: string
@@ -50,7 +51,7 @@ const query = ref('')
 const range = ref<Range | null>(null)
 const selectedIndex = ref(0)
 const menuRef = ref<HTMLDivElement>()
-const positionStyle = ref<Record<string, string>>({})
+const { positionStyle, applyPosition } = useMenuBounds(menuRef)
 
 const filteredItems = computed(() => {
   const q = query.value.toLowerCase()
@@ -71,10 +72,15 @@ function updatePosition() {
   const editorEl = props.editor.view.dom.closest('.autodown-editor') as HTMLElement | null
   if (!editorEl) return
   const rect = editorEl.getBoundingClientRect()
-  positionStyle.value = {
-    top: `${coords.bottom - rect.top + 8}px`,
-    left: `${coords.left - rect.left}px`,
+  const trigger: TriggerRect = {
+    top: coords.top - rect.top,
+    left: coords.left - rect.left,
+    bottom: coords.bottom - rect.top,
+    right: coords.right - rect.left,
+    width: coords.right - coords.left,
+    height: coords.bottom - coords.top,
   }
+  applyPosition(trigger, { width: rect.width, height: rect.height }, { placement: 'bottom', gap: 8 })
 }
 
 function selectItem(index: number) {

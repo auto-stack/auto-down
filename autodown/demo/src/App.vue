@@ -1,28 +1,53 @@
 <template>
   <div class="app">
     <header class="toolbar">AutoDown v0.1</header>
-    <main class="workspace">
-      <section class="panel left">
-        <AutoDownEditor
-          :content="content"
-          placeholder="Start typing..."
-          class="fill"
-          @save="onSave"
-          @cancel="onCancel"
-          @update="onUpdate"
-        />
-      </section>
-      <section ref="rightPanelRef" class="panel right">
-        <StreamingRenderer :source="content" :streaming="false" class="fill" />
-      </section>
+    <main ref="workspaceRef" class="workspace">
+      <div class="panels">
+        <section class="panel left">
+          <AutoDownEditor
+            ref="editorRef"
+            :content="content"
+            placeholder="Start typing..."
+            class="fill"
+            @save="onSave"
+            @cancel="onCancel"
+            @update="onUpdate"
+          />
+        </section>
+        <section class="panel right">
+          <StreamingRenderer
+            ref="rendererRef"
+            :source="content"
+            :streaming="false"
+            :placeholder-block-id="editingBlock?.id"
+            :placeholder-height="editingBlock?.height"
+            class="fill"
+          />
+        </section>
+      </div>
+      <div
+        class="splitter-hover-zone"
+        @mouseenter="hoveringSplitter = true"
+        @mouseleave="hoveringSplitter = false"
+      />
+      <CustomScrollbar
+        :scroll-top="scrollTop"
+        :scroll-height="scrollHeight"
+        :client-height="clientHeight"
+        :visible="hoveringSplitter"
+        @update:scroll-top="setScrollTop"
+        @hover-change="hoveringScrollbar = $event"
+      />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { AutoDownEditor } from '@autodown/editor'
 import { StreamingRenderer } from '@autodown/vue'
+import CustomScrollbar from './components/CustomScrollbar.vue'
+import { useSyncedScroll } from './composables/useSyncedScroll'
 import { useTableColumnResize } from './composables/useTableColumnResize'
 
 const content = ref(`# Heading One
@@ -106,8 +131,24 @@ function onUpdate(md: string) {
   content.value = md
 }
 
-const rightPanelRef = ref<HTMLElement | null>(null)
-useTableColumnResize(rightPanelRef)
+const workspaceRef = ref<HTMLElement | null>(null)
+const editorRef = ref<InstanceType<typeof AutoDownEditor> | null>(null)
+const rendererRef = ref<InstanceType<typeof StreamingRenderer> | null>(null)
+
+const { scrollTop, scrollHeight, clientHeight, setScrollTop } = useSyncedScroll({
+  workspaceRef,
+  editorRef,
+  rendererRef,
+})
+
+// Reserved state for future block-level inline editing box.
+const editingBlock = ref<{ id: string; height: number } | null>(null)
+
+const hoveringSplitter = ref(false)
+const hoveringScrollbar = ref(false)
+
+const rendererContainerRef = computed(() => rendererRef.value?.containerRef ?? null)
+useTableColumnResize(rendererContainerRef)
 </script>
 
 <style>
@@ -141,36 +182,34 @@ html, body, #app {
 }
 
 .workspace {
-  display: flex;
+  position: relative;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
+}
+
+.panels {
+  display: flex;
+  height: 100%;
+  width: 100%;
 }
 
 .panel {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
 .panel::-webkit-scrollbar {
-  width: 6px;
+  display: none;
 }
 
-.panel::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.panel::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 3px;
-}
-
-.panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+.panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .left {
@@ -182,6 +221,31 @@ html, body, #app {
   border-radius: 0;
 }
 
+.left :deep(.autodown-editor-content-wrapper) {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.left :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
+  display: none;
+}
+
+.right :deep(.streaming-document) {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Create a block formatting context so child margins do not collapse
+     through the top padding of the scrolling container. */
+  display: flow-root;
+}
+
+.right :deep(.streaming-document)::-webkit-scrollbar {
+  display: none;
+}
+
 .right .fill {
   padding: 1rem 1.25rem;
 }
@@ -189,5 +253,35 @@ html, body, #app {
 .fill {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.splitter-hover-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 16px;
+  transform: translateX(-50%);
+  z-index: 11;
+  cursor: default;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.splitter-hover-zone::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.splitter-hover-zone:hover::after {
+  opacity: 1;
 }
 </style>

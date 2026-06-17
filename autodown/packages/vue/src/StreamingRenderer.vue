@@ -1,5 +1,5 @@
 <template>
-  <div class="streaming-document">
+  <div ref="containerRef" class="streaming-document">
     <template v-for="(segment, idx) in segments" :key="segment.type + '-' + idx">
       <MarkdownRender
         v-if="segment.type === 'markdown'"
@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { MarkdownRender } from 'markstream-vue'
 import { useStreamingDocument } from './useStreamingDocument'
 import StreamingTable from './StreamingTable.vue'
@@ -32,6 +32,8 @@ import StreamingTable from './StreamingTable.vue'
 const props = defineProps<{
   source: string
   streaming?: boolean
+  placeholderBlockId?: string
+  placeholderHeight?: number
 }>()
 
 const sourceRef = computed(() => props.source)
@@ -54,6 +56,112 @@ const registry: Record<string, any> = {
   table: StreamingTable,
   // Future: chart: StreamingChart, form: StreamingForm, ...
 }
+
+const containerRef = ref<HTMLElement | null>(null)
+
+function clearPlaceholders(container: HTMLElement) {
+  container.querySelectorAll('.autodown-block-placeholder').forEach((el) => el.remove())
+}
+
+const mutationObserver = new MutationObserver(() => {
+  if (containerRef.value) {
+    applyBlockIdsAndPlaceholder(containerRef.value)
+  }
+})
+
+function getTopLevelBlockType(content: Element): string | null {
+  const child = content.firstElementChild
+  if (!child) return null
+  const tag = child.tagName.toLowerCase()
+  if (['h1', 'h2', 'h3', 'p', 'pre', 'blockquote', 'ul', 'ol', 'hr', 'img', 'table'].includes(tag)) {
+    return tag
+  }
+  if (child.classList.contains('table-node-wrapper')) return 'table'
+  if (child.classList.contains('image-error')) return 'img'
+  return null
+}
+
+function isWrapperBlockType(type: string | null) {
+  return type === 'blockquote' || type === 'ul' || type === 'ol'
+}
+
+function applyBlockIdsAndPlaceholder(container: HTMLElement) {
+  const slots = Array.from(container.querySelectorAll('.node-slot'))
+  const topLevelBlocks: { slot: Element; content: Element; type: string; top: number; height: number }[] = []
+
+  slots.forEach((slot) => {
+    const content = slot.querySelector('.node-content')
+    if (!content) return
+
+    const type = getTopLevelBlockType(content)
+    if (!type) return
+
+    const htmlSlot = slot as HTMLElement
+    const top = htmlSlot.offsetTop
+    const height = htmlSlot.offsetHeight
+
+    // Skip nested slots that fall inside a previously-seen wrapper block
+    // (e.g. list items inside a <ul>/<ol> or paragraphs inside a <blockquote>).
+    const insideWrapper = topLevelBlocks.some((b) => {
+      if (!isWrapperBlockType(b.type)) return false
+      return top >= b.top && top < b.top + b.height
+    })
+    if (insideWrapper) return
+
+    // Skip duplicate slots that share the exact same position as the previous
+    // block (some markstream blocks are rendered twice).
+    const prev = topLevelBlocks[topLevelBlocks.length - 1]
+    if (prev && top === prev.top && height === prev.height) return
+
+    topLevelBlocks.push({ slot, content, type, top, height })
+  })
+
+  topLevelBlocks.forEach(({ content }, index) => {
+    const blockId = `block-${index}`
+    content.setAttribute('data-block-id', blockId)
+    content.setAttribute('data-block-index', String(index))
+  })
+
+  // Placeholder is inserted into the slot that matches the requested block id.
+  if (props.placeholderBlockId != null && props.placeholderHeight != null) {
+    const target = topLevelBlocks[Number(props.placeholderBlockId.replace('block-', ''))]
+    if (target) {
+      const existing = target.slot.querySelector(':scope > .autodown-block-placeholder')
+      if (!existing) {
+        const placeholder = document.createElement('div')
+        placeholder.className = 'autodown-block-placeholder'
+        placeholder.style.height = `${props.placeholderHeight}px`
+        target.slot.insertBefore(placeholder, target.slot.firstChild)
+      }
+    }
+  }
+}
+
+async function refresh() {
+  if (!containerRef.value) return
+  await nextTick()
+  clearPlaceholders(containerRef.value)
+  applyBlockIdsAndPlaceholder(containerRef.value)
+}
+
+watch(
+  () => [segments.value, props.placeholderBlockId, props.placeholderHeight],
+  () => refresh(),
+  { deep: true, flush: 'post' }
+)
+
+onMounted(() => {
+  if (!containerRef.value) return
+  mutationObserver.observe(containerRef.value, { childList: true, subtree: true })
+})
+
+onBeforeUnmount(() => {
+  mutationObserver.disconnect()
+})
+
+defineExpose({
+  containerRef,
+})
 </script>
 
 <style scoped>

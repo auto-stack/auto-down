@@ -46,6 +46,7 @@ import {
   Eraser,
   X,
 } from 'lucide-vue-next'
+import { useMenuBounds, type TriggerRect } from '../composables/useMenuBounds'
 
 const props = defineProps<{
   editor: Editor
@@ -54,7 +55,7 @@ const props = defineProps<{
 
 const visible = ref(false)
 const menuRef = ref<HTMLDivElement>()
-const positionStyle = ref<Record<string, string>>({})
+const { positionStyle, applyPosition } = useMenuBounds(menuRef)
 
 type TableCommand =
   | 'addColumnBefore'
@@ -108,11 +109,15 @@ function updatePosition() {
   const editorRect = view.dom.getBoundingClientRect()
   const tableRect = tableEl.getBoundingClientRect()
 
-  // Position at the top-right of the table, relative to the editor
-  positionStyle.value = {
-    top: `${tableRect.top - editorRect.top - 8}px`,
-    left: `${tableRect.right - editorRect.left - 180}px`,
+  const trigger: TriggerRect = {
+    top: tableRect.top - editorRect.top,
+    left: tableRect.left - editorRect.left,
+    bottom: tableRect.bottom - editorRect.top,
+    right: tableRect.right - editorRect.left,
+    width: tableRect.width,
+    height: tableRect.height,
   }
+  applyPosition(trigger, { width: editorRect.width, height: editorRect.height }, { placement: 'top', gap: 8, align: 'right' })
 }
 
 function checkVisibility() {

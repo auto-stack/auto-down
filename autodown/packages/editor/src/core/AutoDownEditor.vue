@@ -23,6 +23,7 @@ import { computed, watch } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import { useAutoDownEditor } from '../composables/useAutoDownEditor'
 import { appendTableIAL } from '../extensions/tableAttributes'
+import { getBlockMap } from '../extensions/BlockId'
 import BubbleMenuVue from '../menus/BubbleMenu.vue'
 import SlashMenu, { type SlashItem } from '../menus/SlashMenu.vue'
 import TableMenu from '../menus/TableMenu.vue'
@@ -206,5 +207,6 @@ function handleSave() {
 defineExpose({
   editor,
   handleSave,
+  getBlockMap: () => getBlockMap(editor.value),
 })
 </script>

@@ -40,6 +40,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { Check } from 'lucide-vue-next'
+import { useMenuBounds, type TriggerRect } from '../composables/useMenuBounds'
 
 const props = defineProps<{
   editor: Editor
@@ -86,7 +87,7 @@ const menuRef = ref<HTMLDivElement>()
 const searchRef = ref<HTMLInputElement>()
 const search = ref('')
 const highlightedIndex = ref(0)
-const positionStyle = ref<Record<string, string>>({})
+const { positionStyle, applyPosition } = useMenuBounds(menuRef)
 
 const currentLanguage = computed(() => {
   const attrs = props.editor.getAttributes('codeBlock')
@@ -168,10 +169,15 @@ function updatePosition() {
   const editorRect = view.dom.getBoundingClientRect()
   const codeRect = codeBlockEl.getBoundingClientRect()
 
-  positionStyle.value = {
-    top: `${codeRect.top - editorRect.top - 36}px`,
-    left: `${codeRect.left - editorRect.left}px`,
+  const trigger: TriggerRect = {
+    top: codeRect.top - editorRect.top,
+    left: codeRect.left - editorRect.left,
+    bottom: codeRect.bottom - editorRect.top,
+    right: codeRect.right - editorRect.left,
+    width: codeRect.width,
+    height: codeRect.height,
   }
+  applyPosition(trigger, { width: editorRect.width, height: editorRect.height }, { placement: 'top', gap: 8 })
 }
 
 function checkVisibility() {

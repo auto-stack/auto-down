@@ -223,7 +223,10 @@ function updatePosition() {
   const verticalPadding = badgeStyle
     ? parseFloat(badgeStyle.paddingTop) + parseFloat(badgeStyle.paddingBottom)
     : 0
-  const offset = lineHeight * 2 + verticalPadding
+  // Position the menu just below the language badge (header bar). A small
+  // fixed gap of 6px is enough visual separation; larger offsets made the
+  // menu land near the bottom of short code blocks.
+  const offset = 6
   const trigger: TriggerRect = {
     top: triggerRect.top - editorRect.top + offset,
     left: triggerRect.left - editorRect.left,

@@ -4,10 +4,10 @@ import { common, createLowlight } from 'lowlight'
 
 /**
  * Copy icon used for the code-block copy button.
- * Rendered as a Unicode character so it works reliably inside ProseMirror.
+ * Rendered as an empty span styled with a mask-image SVG.
  */
 function copyIcon() {
-  return ['span', { class: 'codeblock-copy-icon' }, '⧉']
+  return ['span', { class: 'codeblock-copy-icon' }]
 }
 
 /**

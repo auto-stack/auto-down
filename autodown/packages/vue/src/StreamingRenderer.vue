@@ -67,7 +67,7 @@ function clearPlaceholders(container: HTMLElement) {
   container.querySelectorAll('.autodown-block-placeholder').forEach((el) => el.remove())
 }
 
-const COPY_ICON = '⧉'
+const COPY_ICON = '<span class="codeblock-copy-icon"></span>'
 
 const mutationObserver = new MutationObserver(() => {
   if (containerRef.value) {
@@ -169,7 +169,7 @@ function addCopyButtons(container: HTMLElement) {
     btn.className = 'codeblock-copy-btn'
     btn.setAttribute('data-codeblock-copy-btn', '')
     btn.setAttribute('title', '复制')
-    btn.textContent = COPY_ICON
+    btn.innerHTML = COPY_ICON
     pre.appendChild(btn)
     pre.setAttribute('data-copy-added', '')
   })
@@ -375,10 +375,18 @@ defineExpose({
 }
 
 .streaming-document :deep(pre[data-language] .codeblock-copy-icon) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iOSIgeT0iOSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEzIiByeD0iMiIgcnk9IjIiLz48cGF0aCBkPSJNNSAxNUg0YTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDlhMiAyIDAgMCAxIDIgMnYxIi8+PC9zdmc+");
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iOSIgeT0iOSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEzIiByeD0iMiIgcnk9IjIiLz48cGF0aCBkPSJNNSAxNUg0YTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDlhMiAyIDAgMCAxIDIgMnYxIi8+PC9zdmc+");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: currentColor;
 }
 
 /* Code blocks with a real language — window style with header bar */

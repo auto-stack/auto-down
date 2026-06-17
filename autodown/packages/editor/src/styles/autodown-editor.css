@@ -634,14 +634,19 @@
 /* The language header is rendered via CSS ::before using a data-language
    attribute set by the CustomCodeBlock ProseMirror decoration plugin. */
 
-/* Code blocks with language — add top padding for the header bar */
-.autodown-editor-content pre[data-language] {
+/* Plain text code blocks — no header bar */
+.autodown-editor-content pre[data-language="text"] {
+  padding-top: 0.75rem;
+}
+
+/* Code blocks with a real language — add top padding for the header bar */
+.autodown-editor-content pre[data-language]:not([data-language="text"]) {
   position: relative;
   padding-top: 2rem;
 }
 
 /* Language header bar */
-.autodown-editor-content pre[data-language]::before {
+.autodown-editor-content pre[data-language]:not([data-language="text"])::before {
   content: attr(data-language);
   position: absolute;
   top: 0;
@@ -663,7 +668,7 @@
   line-height: 1.4;
 }
 
-.autodown-editor-content pre[data-language]::before:hover {
+.autodown-editor-content pre[data-language]:not([data-language="text"])::before:hover {
   color: var(--ad-fg, #111827);
 }
 

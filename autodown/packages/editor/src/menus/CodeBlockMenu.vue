@@ -53,7 +53,7 @@ interface LanguageOption {
 }
 
 const languages: LanguageOption[] = [
-  { id: '', label: 'Plain Text' },
+  { id: 'text', label: 'Plain Text' },
   { id: 'bash', label: 'Bash', aliases: ['sh', 'shell', 'zsh'] },
   { id: 'c', label: 'C' },
   { id: 'cpp', label: 'C++', aliases: ['c++', 'cxx'] },
@@ -107,11 +107,7 @@ const filteredLanguages = computed(() => {
 })
 
 function selectLanguage(langId: string) {
-  if (langId) {
-    props.editor.chain().focus().setCodeBlock({ language: langId }).run()
-  } else {
-    props.editor.chain().focus().setCodeBlock().run()
-  }
+  props.editor.chain().focus().setCodeBlock({ language: langId }).run()
   close()
 }
 

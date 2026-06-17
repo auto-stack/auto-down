@@ -130,7 +130,7 @@ const slashItems: SlashItem[] = [
     icon: Code,
     searchTerms: ['code'],
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).setCodeBlock({ language: '' }).run()
+      editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'text' }).run()
     },
   },
   {

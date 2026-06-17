@@ -16,7 +16,7 @@ export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions
     return {
       ...this.parent?.(),
       lowlight,
-      defaultLanguage: 'plaintext',
+      defaultLanguage: 'text',
       languageClassPrefix: 'language-',
       exitOnTripleEnter: true,
       exitOnArrowDown: true,
@@ -29,14 +29,14 @@ export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions
   addAttributes() {
     return {
       language: {
-        default: 'plaintext',
+        default: 'text',
         parseHTML: (element) => {
           const cls = element.getAttribute('class')
           const match = cls?.match(/language-(\S+)/)
-          return match ? match[1] : 'plaintext'
+          return match ? match[1] : 'text'
         },
         renderHTML: (attributes) => {
-          const language = attributes.language || 'plaintext'
+          const language = attributes.language || 'text'
           return {
             'data-language': language,
             class: `language-${language}`,
@@ -47,7 +47,7 @@ export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const language = (node.attrs.language as string) || 'plaintext'
+    const language = (node.attrs.language as string) || 'text'
     const extraAttrs = language
       ? { 'data-language': language }
       : {}

@@ -17,7 +17,7 @@
         @keydown.enter.prevent="selectHighlighted"
       />
     </div>
-    <div ref="listRef" class="autodown-codeblock-menu-list" @wheel="handleListWheel">
+    <div ref="listRef" class="autodown-codeblock-menu-list">
       <button
         v-for="(lang, idx) in filteredLanguages"
         :key="lang.id"
@@ -177,22 +177,7 @@ function selectHighlighted() {
   if (lang) selectLanguage(lang.id)
 }
 
-function handleListWheel(event: WheelEvent) {
-  const list = listRef.value
-  if (!list) return
-  const canScrollDown = list.scrollTop + list.clientHeight < list.scrollHeight
-  const canScrollUp = list.scrollTop > 0
-  const deltaY = event.deltaY
 
-  // Only prevent default if the list can still scroll in the wheel direction
-  const shouldCapture =
-    (deltaY > 0 && canScrollDown) || (deltaY < 0 && canScrollUp)
-
-  if (shouldCapture) {
-    event.preventDefault()
-    list.scrollTop += deltaY
-  }
-}
 
 function findActiveCodeBlock(): HTMLElement | null {
   const { view } = props.editor
@@ -271,6 +256,40 @@ function handleOutsideClick(event: MouseEvent) {
   }
 }
 
+/**
+ * Lock page/workspace scrolling while the language menu is open.
+ * Wheel events are captured at the document level so that external scroll
+ * containers (e.g. the demo's synced workspace) cannot scroll. If the wheel
+ * happens over the menu's language list, we scroll that list instead.
+ */
+function handleGlobalWheel(event: WheelEvent) {
+  if (!visible.value) return
+
+  const menu = menuRef.value
+  if (menu && menu.contains(event.target as Node)) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const list = listRef.value
+    if (!list) return
+    const canScrollDown = list.scrollTop + list.clientHeight < list.scrollHeight
+    const canScrollUp = list.scrollTop > 0
+    const deltaY = event.deltaY
+
+    // Only apply the wheel delta when the list can actually move in that
+    // direction; otherwise the list stays at its boundary and the page does
+    // not scroll behind it.
+    if ((deltaY > 0 && canScrollDown) || (deltaY < 0 && canScrollUp)) {
+      list.scrollTop += deltaY
+    }
+    return
+  }
+
+  // Outside the menu: suppress all wheel scrolling until the menu is closed.
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 function handleEditorMouseDown(event: MouseEvent) {
   const target = event.target as HTMLElement
   const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
@@ -306,6 +325,7 @@ function handleEditorClick(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('mousedown', handleOutsideClick)
+  document.addEventListener('wheel', handleGlobalWheel, { passive: false, capture: true })
   props.editor.view.dom.addEventListener('mousedown', handleEditorMouseDown, { capture: true })
   props.editor.view.dom.addEventListener('click', handleEditorClick, { capture: true })
   // The editor content is scrollable inside `.autodown-editor-content-wrapper`,
@@ -316,6 +336,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleOutsideClick)
+  document.removeEventListener('wheel', handleGlobalWheel, { capture: true })
   props.editor.view.dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })
   props.editor.view.dom.removeEventListener('click', handleEditorClick, { capture: true })
   const wrapper = props.editor.view.dom.closest('.autodown-editor-content-wrapper')

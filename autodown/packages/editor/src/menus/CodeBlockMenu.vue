@@ -268,6 +268,16 @@ function handleOutsideClick(event: MouseEvent) {
 
 function handleEditorClick(event: MouseEvent) {
   const target = event.target as HTMLElement
+
+  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
+  if (copyBtn) {
+    event.preventDefault()
+    event.stopPropagation()
+    const code = copyBtn.closest('pre')?.querySelector('code')?.textContent ?? ''
+    navigator.clipboard.writeText(code)
+    return
+  }
+
   const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
   if (badge) {
     event.preventDefault()

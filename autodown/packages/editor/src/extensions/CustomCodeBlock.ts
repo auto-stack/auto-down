@@ -3,9 +3,17 @@ import { CodeBlockLowlight, type CodeBlockLowlightOptions } from '@tiptap/extens
 import { common, createLowlight } from 'lowlight'
 
 /**
+ * Copy icon used for the code-block copy button.
+ * Rendered as a Unicode character so it works reliably inside ProseMirror.
+ */
+function copyIcon() {
+  return ['span', { class: 'codeblock-copy-icon' }, '⧉']
+}
+
+/**
  * CustomCodeBlock — extends Tiptap's CodeBlockLowlight to add a
  * `data-language` attribute on the `<pre>` element, syntax highlighting,
- * and a clickable language badge for switching languages.
+ * and a header bar with a clickable language badge and copy button.
  */
 const lowlight = createLowlight(common)
 
@@ -59,7 +67,21 @@ export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions
           class: 'codeblock-language-badge',
           'data-codeblock-language-badge': language,
         },
-        language,
+        [
+          'span',
+          { class: 'codeblock-language-label' },
+          language,
+        ],
+        [
+          'button',
+          {
+            class: 'codeblock-copy-btn',
+            'data-codeblock-copy-btn': '',
+            type: 'button',
+            title: '复制',
+          },
+          copyIcon(),
+        ],
       ],
       [
         'code',

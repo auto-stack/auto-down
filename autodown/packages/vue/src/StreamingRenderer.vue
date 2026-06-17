@@ -67,10 +67,13 @@ function clearPlaceholders(container: HTMLElement) {
   container.querySelectorAll('.autodown-block-placeholder').forEach((el) => el.remove())
 }
 
+const COPY_ICON = '⧉'
+
 const mutationObserver = new MutationObserver(() => {
   if (containerRef.value) {
     applyBlockIdsAndPlaceholder(containerRef.value)
     highlightCodeBlocks(containerRef.value)
+    addCopyButtons(containerRef.value)
   }
 })
 
@@ -148,6 +151,39 @@ async function refresh() {
   clearPlaceholders(containerRef.value)
   applyBlockIdsAndPlaceholder(containerRef.value)
   highlightCodeBlocks(containerRef.value)
+  addCopyButtons(containerRef.value)
+}
+
+/**
+ * Inject a copy button into code blocks that have a real language header.
+ */
+function addCopyButtons(container: HTMLElement) {
+  const blocks = Array.from(
+    container.querySelectorAll(
+      'pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]):not([data-copy-added])'
+    )
+  )
+  blocks.forEach((pre) => {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'codeblock-copy-btn'
+    btn.setAttribute('data-codeblock-copy-btn', '')
+    btn.setAttribute('title', '复制')
+    btn.textContent = COPY_ICON
+    pre.appendChild(btn)
+    pre.setAttribute('data-copy-added', '')
+  })
+}
+
+function handleContainerClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
+  if (!copyBtn || !containerRef.value) return
+  const pre = copyBtn.closest('pre')
+  const code = pre?.querySelector('code')?.textContent ?? ''
+  event.preventDefault()
+  event.stopPropagation()
+  navigator.clipboard.writeText(code)
 }
 
 /**
@@ -186,10 +222,12 @@ watch(
 onMounted(() => {
   if (!containerRef.value) return
   mutationObserver.observe(containerRef.value, { childList: true, subtree: true })
+  containerRef.value.addEventListener('click', handleContainerClick, { capture: true })
 })
 
 onBeforeUnmount(() => {
   mutationObserver.disconnect()
+  containerRef.value?.removeEventListener('click', handleContainerClick, { capture: true })
 })
 
 defineExpose({
@@ -286,13 +324,16 @@ defineExpose({
   top: 0;
   left: 0;
   right: 0;
-  padding: 0.4rem 0.75rem;
+  height: 1.9rem;
+  box-sizing: border-box;
+  padding: 0.35rem 2.1rem 0.35rem 0.75rem;
   background: hsl(220 9% 46% / 0.08);
   border-bottom: 1px solid #e5e7eb;
   border-radius: 8px 8px 0 0;
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 0.8rem;
   font-weight: 500;
+  line-height: 1.5;
   color: #6b7280;
   text-transform: lowercase;
   text-align: right;
@@ -304,6 +345,40 @@ defineExpose({
 .streaming-document :deep(pre[data-language="text"])::before,
 .streaming-document :deep(pre[data-language="plaintext"])::before {
   display: none;
+}
+
+/* Copy button for code blocks with a real language */
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-copy-btn) {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 0.9rem;
+  z-index: 1;
+}
+
+.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-copy-btn:hover) {
+  background: hsl(220 9% 46% / 0.14);
+  color: #111827;
+}
+
+.streaming-document :deep(pre[data-language] .codeblock-copy-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 /* Code blocks with a real language — window style with header bar */

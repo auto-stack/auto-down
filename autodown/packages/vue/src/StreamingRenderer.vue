@@ -233,16 +233,6 @@ defineExpose({
 }
 
 :deep(pre[data-language="text"]) {
-  margin: 0.75rem 0;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f8f9fa;
-  overflow-x: auto;
-}
-
-/* Code blocks with a real language — window style with header bar */
-.streaming-document :deep(pre[data-language]:not([data-language="text"])) {
   position: relative;
   margin: 0.75rem 0;
   padding: 2rem 1rem 0.75rem;
@@ -252,7 +242,8 @@ defineExpose({
   overflow-x: auto;
 }
 
-/* Language header bar — rendered via ::before using data-language attr */
+/* Language header bar for text and other languages */
+.streaming-document :deep(pre[data-language="text"])::before,
 .streaming-document :deep(pre[data-language]:not([data-language="text"]))::before {
   content: attr(data-language);
   position: absolute;
@@ -271,6 +262,17 @@ defineExpose({
   text-align: right;
   user-select: none;
   pointer-events: none;
+}
+
+/* Code blocks with a real language — window style with header bar */
+.streaming-document :deep(pre[data-language]:not([data-language="text"])) {
+  position: relative;
+  margin: 0.75rem 0;
+  padding: 2rem 1rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  overflow-x: auto;
 }
 
 /* Code blocks without a language — treated as plain text */

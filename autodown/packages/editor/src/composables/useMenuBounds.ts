@@ -19,10 +19,19 @@ export interface TriggerRect {
   height: number
 }
 
+export type MenuPlacement = 'bottom' | 'top' | 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end'
+
 export interface MenuBoundsOptions {
-  placement?: 'bottom' | 'top'
+  placement?: MenuPlacement
   gap?: number
   align?: 'left' | 'right'
+}
+
+function normalizePlacement(placement: MenuPlacement): { vertical: 'bottom' | 'top'; horizontal: 'left' | 'right' } {
+  if (placement.startsWith('bottom')) {
+    return { vertical: 'bottom', horizontal: placement.endsWith('end') ? 'right' : 'left' }
+  }
+  return { vertical: 'top', horizontal: placement.endsWith('end') ? 'right' : 'left' }
 }
 
 export function computeMenuPosition(
@@ -30,13 +39,14 @@ export function computeMenuPosition(
   menuWidth: number,
   menuHeight: number,
   container: ContainerRect,
-  placement: 'bottom' | 'top' = 'bottom',
+  placement: MenuPlacement = 'bottom',
   gap = 8,
   align: 'left' | 'right' = 'left'
 ): MenuPosition {
+  const { vertical, horizontal } = normalizePlacement(placement)
   let top: number
 
-  if (placement === 'bottom') {
+  if (vertical === 'bottom') {
     top = trigger.bottom + gap
     if (top + menuHeight > container.height) {
       const flippedTop = trigger.top - menuHeight - gap
@@ -58,7 +68,9 @@ export function computeMenuPosition(
     }
   }
 
-  let left = align === 'right' ? trigger.right - menuWidth : trigger.left
+  let left = horizontal === 'right' || align === 'right'
+    ? trigger.right - menuWidth
+    : trigger.left
   if (left + menuWidth > container.width) {
     left = Math.max(0, container.width - menuWidth)
   }

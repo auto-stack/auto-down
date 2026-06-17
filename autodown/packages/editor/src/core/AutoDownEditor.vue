@@ -129,7 +129,9 @@ const slashItems: SlashItem[] = [
     description: 'Code snippet',
     icon: Code,
     searchTerms: ['code'],
-    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCodeBlock().run(),
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setCodeBlock({ language: '' }).run()
+    },
   },
   {
     title: 'Quote',

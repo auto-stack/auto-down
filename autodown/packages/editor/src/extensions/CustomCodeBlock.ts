@@ -1,20 +1,53 @@
 import { mergeAttributes } from '@tiptap/core'
-import { CodeBlock } from '@tiptap/extension-code-block'
+import { CodeBlockLowlight, type CodeBlockLowlightOptions } from '@tiptap/extension-code-block-lowlight'
+import { common, createLowlight } from 'lowlight'
 
 /**
- * CustomCodeBlock — extends tiptap's built-in CodeBlock to add a
- * `data-language` attribute on the `<pre>` element.
+ * CustomCodeBlock — extends Tiptap's CodeBlockLowlight to add a
+ * `data-language` attribute on the `<pre>` element and syntax highlighting.
  *
- * This is purely a render-time change — no ProseMirror plugins, no
- * decorations, no DOM mutations. The language badge is rendered via
- * CSS ::before pseudo-element (see `autodown-editor.css`).
- *
- * This avoids the performance issues that come with decoration plugins
- * which recalculate on every state change.
+ * The language badge is rendered via CSS ::before pseudo-element
+ * (see `autodown-editor.css`).
  */
-export const CustomCodeBlock = CodeBlock.extend({
+const lowlight = createLowlight(common)
+
+export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      lowlight,
+      defaultLanguage: 'plaintext',
+      languageClassPrefix: 'language-',
+      exitOnTripleEnter: true,
+      exitOnArrowDown: true,
+      enableTabIndentation: false,
+      tabSize: 4,
+      HTMLAttributes: {},
+    }
+  },
+
+  addAttributes() {
+    return {
+      language: {
+        default: 'plaintext',
+        parseHTML: (element) => {
+          const cls = element.getAttribute('class')
+          const match = cls?.match(/language-(\S+)/)
+          return match ? match[1] : 'plaintext'
+        },
+        renderHTML: (attributes) => {
+          const language = attributes.language || 'plaintext'
+          return {
+            'data-language': language,
+            class: `language-${language}`,
+          }
+        },
+      },
+    }
+  },
+
   renderHTML({ node, HTMLAttributes }) {
-    const language = (node.attrs.language as string) || ''
+    const language = (node.attrs.language as string) || 'plaintext'
     const extraAttrs = language
       ? { 'data-language': language }
       : {}

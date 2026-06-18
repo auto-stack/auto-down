@@ -86,6 +86,7 @@ const mutationObserver = new MutationObserver(() => {
     applyBlockIdsAndPlaceholder(containerRef.value)
     highlightCodeBlocks(containerRef.value)
     addCodeBlockHeaders(containerRef.value)
+    wrapDetailsContent(containerRef.value)
   }
 })
 
@@ -164,6 +165,7 @@ async function refresh() {
   applyBlockIdsAndPlaceholder(containerRef.value)
   highlightCodeBlocks(containerRef.value)
   addCodeBlockHeaders(containerRef.value)
+  wrapDetailsContent(containerRef.value)
 }
 
 /**
@@ -196,6 +198,30 @@ function addCodeBlockHeaders(container: HTMLElement) {
     badge.appendChild(btn)
     pre.appendChild(badge)
     pre.setAttribute('data-header-added', '')
+  })
+}
+
+/**
+ * Wrap the body of each native <details> element (everything except <summary>)
+ * in a .details-content container so we can apply consistent padding and
+ * margins without affecting the summary row.
+ */
+function wrapDetailsContent(container: HTMLElement) {
+  const detailsBlocks = Array.from(
+    container.querySelectorAll('details:not([data-details-wrapped])')
+  )
+  detailsBlocks.forEach((details) => {
+    const children = Array.from(details.children).filter((child) => {
+      const tag = child.tagName.toLowerCase()
+      return tag !== 'summary' && tag !== 'details' && !child.classList.contains('details-content')
+    })
+    if (children.length === 0) return
+
+    const wrapper = document.createElement('div')
+    wrapper.className = 'details-content'
+    children.forEach((child) => wrapper.appendChild(child))
+    details.appendChild(wrapper)
+    details.setAttribute('data-details-wrapped', '')
   })
 }
 
@@ -462,9 +488,23 @@ defineExpose({
   transform: rotate(90deg);
 }
 
-.streaming-document :deep(details > .markdown-renderer) {
+.streaming-document :deep(details .details-content) {
+  display: block;
   padding: 0.75rem 0.75rem 0.75rem 2rem;
   background: hsl(220 9% 46% / 0.02);
+}
+
+.streaming-document :deep(details .details-content) > :first-child {
+  margin-top: 0 !important;
+}
+
+.streaming-document :deep(details .details-content) > :last-child {
+  margin-bottom: 0 !important;
+}
+
+.streaming-document :deep(details .details-content) p,
+.streaming-document :deep(details .details-content) .paragraph-node {
+  margin: 0.5rem 0 !important;
 }
 
 /* Plain-text code blocks (markstream-vue defaults missing language to 'plaintext') */

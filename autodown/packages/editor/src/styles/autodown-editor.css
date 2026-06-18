@@ -879,6 +879,12 @@
   display: none;
 }
 
+/* Plain text blocks don't need the header row space */
+.autodown-editor-content pre[data-language="text"],
+.autodown-editor-content pre[data-language="plaintext"] {
+  padding-top: 0.75rem;
+}
+
 .autodown-editor-content pre[data-language] .codeblock-language-label {
   position: relative;
   margin-right: 20px;

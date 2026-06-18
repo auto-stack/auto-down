@@ -167,15 +167,13 @@ async function refresh() {
 }
 
 /**
- * Inject a real header bar (language label + copy button) into code blocks
- * that have a real language. This mirrors the editor's DOM structure so both
- * sides share the same layout and hover effects.
+ * Inject a real header bar (language label + copy button) into code blocks.
+ * This mirrors the editor's DOM structure so both sides share the same layout
+ * and hover effects.
  */
 function addCodeBlockHeaders(container: HTMLElement) {
   const blocks = Array.from(
-    container.querySelectorAll(
-      'pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]):not([data-header-added])'
-    )
+    container.querySelectorAll('pre[data-language]:not([data-header-added])')
   )
   blocks.forEach((pre) => {
     const language = pre.getAttribute('data-language') || ''
@@ -424,12 +422,12 @@ defineExpose({
 }
 
 /* Hide the pseudo-element header when a real header bar has been injected */
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"])[data-header-added])::before {
+.streaming-document :deep(pre[data-language][data-header-added])::before {
   display: none;
 }
 
 /* Language header bar (injected element) */
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-badge) {
+.streaming-document :deep(pre[data-language] .codeblock-language-badge) {
   position: absolute;
   top: 0;
   left: 0;
@@ -455,14 +453,14 @@ defineExpose({
   overflow: hidden;
 }
 
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label) {
+.streaming-document :deep(pre[data-language] .codeblock-language-label) {
   position: relative;
   margin-right: 20px;
   cursor: default;
   text-transform: lowercase;
 }
 
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label::after) {
+.streaming-document :deep(pre[data-language] .codeblock-language-label::after) {
   content: '▼';
   position: absolute;
   right: -16px;
@@ -474,16 +472,16 @@ defineExpose({
   pointer-events: none;
 }
 
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label:hover::after) {
+.streaming-document :deep(pre[data-language] .codeblock-language-label:hover::after) {
   opacity: 1;
 }
 
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-language-label:hover) {
+.streaming-document :deep(pre[data-language] .codeblock-language-label:hover) {
   color: #111827;
 }
 
-/* Copy button for code blocks with a real language */
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-copy-btn) {
+/* Copy button for code blocks */
+.streaming-document :deep(pre[data-language] .codeblock-copy-btn) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -499,7 +497,7 @@ defineExpose({
   line-height: 1;
 }
 
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"]) .codeblock-copy-btn:hover) {
+.streaming-document :deep(pre[data-language] .codeblock-copy-btn:hover) {
   background: hsl(220 9% 46% / 0.14);
   color: #111827;
 }
@@ -519,20 +517,8 @@ defineExpose({
   background-color: currentColor;
 }
 
-/* Plain-text code blocks (markstream-vue defaults missing language to 'plaintext') */
-.streaming-document :deep(pre[data-language="text"]),
-.streaming-document :deep(pre[data-language="plaintext"]) {
-  position: relative;
-  margin: 0.75rem 0;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f8f9fa;
-  overflow-x: auto;
-}
-
-/* Code blocks with a real language — window style with header bar */
-.streaming-document :deep(pre[data-language]:not([data-language="text"]):not([data-language="plaintext"])) {
+/* Code blocks — window style with header bar */
+.streaming-document :deep(pre[data-language]) {
   position: relative;
   margin: 0.75rem 0;
   padding: 2rem 1rem 0.75rem;

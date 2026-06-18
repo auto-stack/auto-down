@@ -261,89 +261,6 @@ defineExpose({
 })
 </script>
 
-<style>
-/* Override markstream-vue admonition styles to match the editor callout design. */
-.streaming-document :deep(.admonition) {
-  margin: 0.75rem 0 !important;
-  border-radius: 12px !important;
-  padding: 0.65rem 0.9rem 0.75rem !important;
-}
-
-.streaming-document :deep(.admonition-legend) {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0.75rem !important;
-  transform: translateY(-50%) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.35rem !important;
-  padding: 0 0.5rem !important;
-  background: var(--ad-surface, #ffffff) !important;
-  font-size: 0.8125rem !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-}
-
-.streaming-document :deep(.admonition-icon) {
-  width: 1rem !important;
-  height: 1rem !important;
-}
-
-.streaming-document :deep(.admonition-content) {
-  padding-top: 0.4rem !important;
-  color: #111827 !important;
-}
-
-.streaming-document :deep(.admonition-content) > .markdown-renderer > *:first-child {
-  margin-top: 0 !important;
-}
-
-.streaming-document :deep(.admonition-content) > .markdown-renderer > *:last-child {
-  margin-bottom: 0 !important;
-}
-
-/* Type-specific colors matching the editor */
-.streaming-document :deep(.admonition-note) {
-  background: #eff6ff !important;
-  border-color: #bfdbfe !important;
-}
-.streaming-document :deep(.admonition-note) .admonition-legend {
-  color: #2563eb !important;
-}
-.streaming-document :deep(.admonition-info) {
-  background: #f0f9ff !important;
-  border-color: #7dd3fc !important;
-}
-.streaming-document :deep(.admonition-info) .admonition-legend {
-  color: #0284c7 !important;
-}
-.streaming-document :deep(.admonition-tip) {
-  background: #f0fdf4 !important;
-  border-color: #86efac !important;
-}
-.streaming-document :deep(.admonition-tip) .admonition-legend {
-  color: #16a34a !important;
-}
-.streaming-document :deep(.admonition-warning),
-.streaming-document :deep(.admonition-caution) {
-  background: #fffbeb !important;
-  border-color: #fcd34d !important;
-}
-.streaming-document :deep(.admonition-warning) .admonition-legend,
-.streaming-document :deep(.admonition-caution) .admonition-legend {
-  color: #d97706 !important;
-}
-.streaming-document :deep(.admonition-danger),
-.streaming-document :deep(.admonition-error) {
-  background: #fef2f2 !important;
-  border-color: #fca5a5 !important;
-}
-.streaming-document :deep(.admonition-danger) .admonition-legend,
-.streaming-document :deep(.admonition-error) .admonition-legend {
-  color: #dc2626 !important;
-}
-</style>
-
 <style scoped>
 /* Segment spacing */
 .streaming-document > * + * {
@@ -410,6 +327,88 @@ defineExpose({
   padding-left: 1rem;
   border-left: 3px solid #e5e7eb;
   color: #6b7280;
+}
+
+/* Admonition / Callout — override markstream-vue defaults to match editor */
+.streaming-document :deep(.admonition) {
+  position: relative !important;
+  margin: 1rem 0 !important;
+  border-radius: 12px !important;
+  padding: 0.8rem 0.9rem !important;
+  overflow: visible !important;
+}
+
+.streaming-document :deep(.admonition-legend) {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0.75rem !important;
+  transform: translateY(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0 0.5rem !important;
+  background: var(--ad-surface, #ffffff) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+}
+
+.streaming-document :deep(.admonition-icon) {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.streaming-document :deep(.admonition-content) {
+  padding: 0 !important;
+  color: #111827 !important;
+}
+
+.streaming-document :deep(.admonition-content) > .markdown-renderer > *:first-child {
+  margin-top: 0 !important;
+}
+
+.streaming-document :deep(.admonition-content) > .markdown-renderer > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+.streaming-document :deep(.admonition-note) {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+.streaming-document :deep(.admonition-note) .admonition-legend {
+  color: #2563eb !important;
+}
+.streaming-document :deep(.admonition-info) {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+}
+.streaming-document :deep(.admonition-info) .admonition-legend {
+  color: #0284c7 !important;
+}
+.streaming-document :deep(.admonition-tip) {
+  background: #f0fdf4 !important;
+  border-color: #86efac !important;
+}
+.streaming-document :deep(.admonition-tip) .admonition-legend {
+  color: #16a34a !important;
+}
+.streaming-document :deep(.admonition-warning),
+.streaming-document :deep(.admonition-caution) {
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+.streaming-document :deep(.admonition-warning) .admonition-legend,
+.streaming-document :deep(.admonition-caution) .admonition-legend {
+  color: #d97706 !important;
+}
+.streaming-document :deep(.admonition-danger),
+.streaming-document :deep(.admonition-error) {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+.streaming-document :deep(.admonition-danger) .admonition-legend,
+.streaming-document :deep(.admonition-error) .admonition-legend {
+  color: #dc2626 !important;
 }
 
 /* Plain-text code blocks (markstream-vue defaults missing language to 'plaintext') */

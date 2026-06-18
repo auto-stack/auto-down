@@ -623,14 +623,6 @@
   color: var(--ad-fg, #111827);
 }
 
-.autodown-editor-content .autodown-callout-content > *:first-child {
-  margin-top: 0;
-}
-
-.autodown-editor-content .autodown-callout-content > *:last-child {
-  margin-bottom: 0;
-}
-
 /* Type accents */
 .autodown-editor-content .autodown-callout-note {
   background: #eff6ff;

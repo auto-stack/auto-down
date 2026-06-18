@@ -114,8 +114,16 @@ with no language specified
 | Bar  | 2     | Beta  |
 | Baz  | 3     | Gamma |
 
-:::warning Watch out
-This is a **Callout** block. It supports inline formatting and is rendered as an admonition in the preview.
+:::warning Warning
+This is a **warning** callout. It uses a light yellow background and an amber title/icon.
+:::
+
+:::info Info
+This is an **info** callout. It uses a light blue background and a sky-blue title/icon.
+:::
+
+:::error Error
+This is an **error** callout. It uses a light red background and a red title/icon.
 :::
 
 :::details Click to expand

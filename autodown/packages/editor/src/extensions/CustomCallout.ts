@@ -81,7 +81,7 @@ export const CustomCallout = Node.create({
           'data-callout-header': '',
           'data-callout-type': type,
         },
-        ['span', { class: 'autodown-callout-icon' }, calloutIcon(type)],
+        ['span', { class: `autodown-callout-icon autodown-callout-icon-${type}` }],
         ['span', { class: 'autodown-callout-title' }, title],
       ],
       ['div', { class: 'autodown-callout-content' }, 0],
@@ -177,21 +177,4 @@ declare module '@tiptap/core' {
       toggleCallout: (attributes?: { type?: CalloutType; title?: string }) => ReturnType
     }
   }
-}
-
-/**
- * Minimal callout icon rendered as a text symbol. Avoids an SVG dependency in
- * ProseMirror node views (mirrors the copy-icon strategy used by CustomCodeBlock).
- */
-function calloutIcon(type: string): string {
-  const icons: Record<string, string> = {
-    note: '📝',
-    info: 'ℹ️',
-    tip: '💡',
-    warning: '⚠️',
-    caution: '⚠️',
-    danger: '🛑',
-    error: '❌',
-  }
-  return icons[type] || icons.note
 }

@@ -1,11 +1,18 @@
 <template>
   <NodeViewWrapper class="autodown-details" :data-open="isOpen">
-    <div class="autodown-details-summary" @click="toggleOpen">
-      <span class="autodown-details-marker" aria-hidden="true">{{ isOpen ? '▼' : '▶' }}</span>
+    <div class="autodown-details-summary">
+      <span
+        class="autodown-details-marker"
+        aria-hidden="true"
+        title="点击展开详细内容"
+        @click.stop="toggleOpen"
+      >
+        {{ isOpen ? '▼' : '▶' }}
+      </span>
       <span
         v-if="!editingSummary"
         class="autodown-details-summary-text"
-        @click.stop="startEditingSummary"
+        @click.stop="toggleOpen"
       >
         {{ summary }}
       </span>
@@ -20,6 +27,19 @@
         @keydown.esc.prevent="cancelSummary"
         @click.stop
       />
+      <button
+        v-if="!editingSummary"
+        type="button"
+        class="autodown-details-edit-btn"
+        aria-label="编辑摘要"
+        title="编辑摘要"
+        @click.stop="startEditingSummary"
+      >
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
+      </button>
     </div>
     <NodeViewContent
       v-show="isOpen"

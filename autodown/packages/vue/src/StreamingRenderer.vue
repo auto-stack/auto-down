@@ -718,6 +718,126 @@ defineExpose({
   margin: 0 !important;
 }
 
+/* Mermaid blocks — markstream-vue uses Tailwind utility classes that are not
+   available in this project, so we provide explicit fallback styles. */
+.streaming-document :deep(.mermaid-block-container) {
+  margin: 0.75rem 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.streaming-document :deep(.mermaid-block-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 1.9rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+  background: hsl(220 9% 46% / 0.08);
+  border-bottom: 1px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.streaming-document :deep(.mermaid-block-header) > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.streaming-document :deep(.mermaid-label-text) {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: lowercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.streaming-document :deep(.mermaid-mode-toggle-group),
+.streaming-document :deep(.mermaid-header-actions) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.streaming-document :deep(.mermaid-mode-btn),
+.streaming-document :deep(.mermaid-action-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.streaming-document :deep(.mermaid-mode-btn.is-active),
+.streaming-document :deep(.mermaid-mode-btn:hover),
+.streaming-document :deep(.mermaid-action-btn:hover) {
+  background: hsl(220 9% 46% / 0.14);
+  color: #111827;
+}
+
+.streaming-document :deep(.mermaid-block-header .action-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+
+.streaming-document :deep(.mermaid-block-container) > div:not(.mermaid-block-header) .relative {
+  position: relative;
+}
+
+.streaming-document :deep(.mermaid-block-container) > div:not(.mermaid-block-header) .absolute.top-2.right-2 {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
+}
+
+.streaming-document :deep(.mermaid-block-container) > div:not(.mermaid-block-header) .absolute.top-2.right-2 > .flex {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.streaming-document :deep(.mermaid-preview-area) {
+  max-height: 320px;
+  overflow: auto;
+  background: #ffffff;
+}
+
+.streaming-document :deep(.mermaid-source-panel) {
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+}
+
+.streaming-document :deep(.mermaid-source-code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: #111827;
+}
+
 /* Inline code */
 .streaming-document :deep(code) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

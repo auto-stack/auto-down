@@ -409,6 +409,64 @@ defineExpose({
   color: #dc2626 !important;
 }
 
+/* Details / Summary — keep native <details> but style consistently */
+.streaming-document :deep(details) {
+  margin: 0.75rem 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.streaming-document :deep(details summary) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: hsl(220 9% 46% / 0.06);
+  border-bottom: 1px solid transparent;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #111827;
+  user-select: none;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.streaming-document :deep(details summary::-webkit-details-marker) {
+  display: none;
+}
+
+.streaming-document :deep(details[open] summary) {
+  border-bottom-color: #e5e7eb;
+}
+
+.streaming-document :deep(details summary:hover) {
+  background: hsl(220 9% 46% / 0.1);
+}
+
+.streaming-document :deep(details summary::before) {
+  content: '▶';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.7rem;
+  color: #6b7280;
+  transition: transform 0.15s ease;
+}
+
+.streaming-document :deep(details[open] summary::before) {
+  transform: rotate(90deg);
+}
+
+.streaming-document :deep(details > .markdown-renderer) {
+  padding: 0.75rem 0.75rem 0.75rem 2rem;
+  background: hsl(220 9% 46% / 0.02);
+}
+
 /* Plain-text code blocks (markstream-vue defaults missing language to 'plaintext') */
 .streaming-document :deep(pre[data-language="text"]),
 .streaming-document :deep(pre[data-language="plaintext"]) {

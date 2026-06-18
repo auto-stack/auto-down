@@ -1,4 +1,6 @@
 import { mergeAttributes, Node, type CommandProps } from '@tiptap/core'
+import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import DetailsNodeView from '../node-views/DetailsNodeView.vue'
 
 /**
  * CustomDetails — block-level collapsible details/summary.
@@ -8,9 +10,8 @@ import { mergeAttributes, Node, type CommandProps } from '@tiptap/core'
  *   Hidden content goes here.
  *   :::
  *
- * The first line after `:::details` becomes the summary text. In the preview
- * renderer this container is translated to native `<details>` / `<summary>`
- * HTML so browsers handle expansion/collapse.
+ * Both editor and preview render as a custom details/summary component.
+ * Default state is collapsed (open: false).
  */
 export const CustomDetails = Node.create({
   name: 'details',
@@ -23,12 +24,19 @@ export const CustomDetails = Node.create({
       summary: {
         default: 'Details',
         parseHTML: (element) => {
-          const summaryEl = element.querySelector('summary')
-          return summaryEl?.textContent || element.getAttribute('data-summary') || 'Details'
+          const summaryEl = element.querySelector('summary, .autodown-details-summary-text')
+          return summaryEl?.textContent?.trim() || element.getAttribute('data-summary') || 'Details'
         },
         renderHTML: (attributes) => {
           const value = (attributes.summary as string) || 'Details'
           return { 'data-summary': value }
+        },
+      },
+      open: {
+        default: false,
+        parseHTML: (element) => element.hasAttribute('open') || element.getAttribute('data-open') === 'true',
+        renderHTML: (attributes) => {
+          return (attributes.open as boolean) ? { 'data-open': 'true', open: '' } : { 'data-open': 'false' }
         },
       },
     }
@@ -44,7 +52,8 @@ export const CustomDetails = Node.create({
         getAttrs: (element) => {
           const summary = element.querySelector('summary')
           return {
-            summary: summary?.textContent || 'Details',
+            summary: summary?.textContent?.trim() || 'Details',
+            open: element.hasAttribute('open'),
           }
         },
       },
@@ -53,24 +62,27 @@ export const CustomDetails = Node.create({
 
   renderHTML({ node, HTMLAttributes }) {
     const summary = (node.attrs.summary as string) || 'Details'
+    const open = Boolean(node.attrs.open)
 
     return [
       'div',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
         'data-details': '',
+        'data-open': open ? 'true' : 'false',
         class: 'autodown-details',
       }),
       [
         'div',
-        {
-          class: 'autodown-details-header',
-          'data-details-header': '',
-        },
-        ['span', { class: 'autodown-details-marker' }, '▶'],
-        ['span', { class: 'autodown-details-summary' }, summary],
+        { class: 'autodown-details-summary', 'data-details-summary': '' },
+        ['span', { class: 'autodown-details-marker', 'aria-hidden': 'true' }, open ? '▼' : '▶'],
+        ['span', { class: 'autodown-details-summary-text' }, summary],
       ],
-      ['div', { class: 'autodown-details-content' }, 0],
+      ['div', { class: 'autodown-details-content', 'data-details-content': '' }, 0],
     ]
+  },
+
+  addNodeView() {
+    return VueNodeViewRenderer(DetailsNodeView as any)
   },
 
   markdownTokenName: 'details',
@@ -80,6 +92,7 @@ export const CustomDetails = Node.create({
       'details',
       {
         summary: (token.summary as string) || 'Details',
+        open: false,
       },
       helpers.parseChildren((token.tokens as Array<{ type: string; [key: string]: any }>) || [])
     )
@@ -126,13 +139,14 @@ export const CustomDetails = Node.create({
   addCommands() {
     return {
       setDetails:
-        (attributes: { summary?: string } = {}) =>
+        (attributes: { summary?: string; open?: boolean } = {}) =>
         ({ commands }: CommandProps) => {
           const summary = attributes.summary ?? 'Details'
-          return commands.setNode(this.name, { summary })
+          const open = attributes.open ?? false
+          return commands.setNode(this.name, { summary, open })
         },
       toggleDetails:
-        (attributes: { summary?: string } = {}) =>
+        (attributes: { summary?: string; open?: boolean } = {}) =>
         ({ commands }: CommandProps) => {
           return commands.toggleNode(this.name, 'paragraph', attributes)
         },
@@ -146,11 +160,11 @@ declare module '@tiptap/core' {
       /**
        * Set the current block to a details/summary block.
        */
-      setDetails: (attributes?: { summary?: string }) => ReturnType
+      setDetails: (attributes?: { summary?: string; open?: boolean }) => ReturnType
       /**
        * Toggle the current block between details and paragraph.
        */
-      toggleDetails: (attributes?: { summary?: string }) => ReturnType
+      toggleDetails: (attributes?: { summary?: string; open?: boolean }) => ReturnType
     }
   }
 }

@@ -551,6 +551,7 @@
   border-radius: 12px;
   background: #ffffff;
   overflow: visible;
+  padding: 1.1rem 1rem 1rem;
 }
 
 .autodown-editor-content .autodown-callout-header {
@@ -618,7 +619,7 @@
 }
 
 .autodown-editor-content .autodown-callout-content {
-  padding: 1.1rem 1rem 1rem;
+  padding: 0;
   color: var(--ad-fg, #111827);
 }
 

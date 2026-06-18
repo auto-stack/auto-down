@@ -334,7 +334,7 @@ defineExpose({
   position: relative !important;
   margin: 1rem 0 !important;
   border-radius: 12px !important;
-  padding: 0.8rem 0.9rem !important;
+  padding: 0.95rem 0.9rem 0.8rem !important;
   overflow: visible !important;
 }
 

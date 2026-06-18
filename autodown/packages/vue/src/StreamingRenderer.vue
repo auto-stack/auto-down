@@ -705,6 +705,19 @@ defineExpose({
   font-weight: 700;
 }
 
+/* Math blocks — reserve the same vertical space as the editor's bordered block */
+.streaming-document :deep(.math-block) {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.streaming-document :deep(.math-block .katex-display) {
+  margin: 0 !important;
+}
+
 /* Inline code */
 .streaming-document :deep(code) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

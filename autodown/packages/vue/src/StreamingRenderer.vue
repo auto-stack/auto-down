@@ -270,25 +270,27 @@ defineExpose({
 }
 
 .streaming-document :deep(.admonition-legend) {
-  position: static !important;
-  transform: none !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0.75rem !important;
+  transform: translateY(-50%) !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.4rem !important;
-  padding: 0 !important;
-  background: transparent !important;
-  font-size: 0.9rem !important;
+  gap: 0.35rem !important;
+  padding: 0 0.5rem !important;
+  background: var(--ad-surface, #ffffff) !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
-  line-height: 1.4 !important;
+  line-height: 1 !important;
 }
 
 .streaming-document :deep(.admonition-icon) {
-  width: 1.1rem !important;
-  height: 1.1rem !important;
+  width: 1rem !important;
+  height: 1rem !important;
 }
 
 .streaming-document :deep(.admonition-content) {
-  padding-top: 0.25rem !important;
+  padding-top: 0.4rem !important;
   color: #111827 !important;
 }
 

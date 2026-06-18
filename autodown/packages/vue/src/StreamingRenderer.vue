@@ -334,7 +334,7 @@ defineExpose({
   position: relative !important;
   margin: 1rem 0 !important;
   border-radius: 12px !important;
-  padding: 0.95rem 0.9rem 0.8rem !important;
+  padding: 1.1rem 1rem 1rem !important;
   overflow: visible !important;
 }
 
@@ -373,21 +373,21 @@ defineExpose({
 
 .streaming-document :deep(.admonition-note) {
   background: #eff6ff !important;
-  border-color: #bfdbfe !important;
+  border: 1px solid #bfdbfe !important;
 }
 .streaming-document :deep(.admonition-note) .admonition-legend {
   color: #2563eb !important;
 }
 .streaming-document :deep(.admonition-info) {
   background: #f0f9ff !important;
-  border-color: #7dd3fc !important;
+  border: 1px solid #7dd3fc !important;
 }
 .streaming-document :deep(.admonition-info) .admonition-legend {
   color: #0284c7 !important;
 }
 .streaming-document :deep(.admonition-tip) {
   background: #f0fdf4 !important;
-  border-color: #86efac !important;
+  border: 1px solid #86efac !important;
 }
 .streaming-document :deep(.admonition-tip) .admonition-legend {
   color: #16a34a !important;
@@ -395,7 +395,7 @@ defineExpose({
 .streaming-document :deep(.admonition-warning),
 .streaming-document :deep(.admonition-caution) {
   background: #fffbeb !important;
-  border-color: #fcd34d !important;
+  border: 1px solid #fcd34d !important;
 }
 .streaming-document :deep(.admonition-warning) .admonition-legend,
 .streaming-document :deep(.admonition-caution) .admonition-legend {
@@ -404,7 +404,7 @@ defineExpose({
 .streaming-document :deep(.admonition-danger),
 .streaming-document :deep(.admonition-error) {
   background: #fef2f2 !important;
-  border-color: #fca5a5 !important;
+  border: 1px solid #fca5a5 !important;
 }
 .streaming-document :deep(.admonition-danger) .admonition-legend,
 .streaming-document :deep(.admonition-error) .admonition-legend {

@@ -18,6 +18,7 @@ interface MeasuredBlock {
   id: string
   top: number
   height: number
+  el: HTMLElement
 }
 
 function normalizeBlocks(blocks: MeasuredBlock[]): MeasuredBlock[] {
@@ -35,6 +36,7 @@ function measureRightBlocks(container: HTMLElement): MeasuredBlock[] {
       id: htmlEl.getAttribute('data-block-id')!,
       top: rect.top - containerRect.top,
       height: htmlEl.offsetHeight,
+      el: htmlEl,
     }
   })
   return normalizeBlocks(blocks)
@@ -79,6 +81,78 @@ function computeScrollTopFromSource(
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
+}
+
+let spacerStyleEl: HTMLStyleElement | null = null
+let measuring = false
+
+function clearBlockSpacers() {
+  if (spacerStyleEl) {
+    spacerStyleEl.textContent = ''
+  }
+}
+
+/**
+ * Add bottom margin to the shorter side of each matched block pair so that
+ * subsequent blocks start at the same vertical position on both sides. This
+ * keeps block-level scroll sync aligned without requiring identical content
+ * heights. We use a dynamic stylesheet because ProseMirror may overwrite inline
+ * styles on editor block nodes.
+ */
+function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlock[]) {
+  if (!spacerStyleEl) {
+    spacerStyleEl = document.createElement('style')
+    spacerStyleEl.id = 'autodown-block-spacers'
+    document.head.appendChild(spacerStyleEl)
+  }
+  spacerStyleEl.textContent = ''
+
+  const rightIndexById = new Map(rightBlocks.map((b, idx) => [b.id, idx]))
+  const rules: string[] = []
+
+  for (let i = 0; i < leftBlocks.length; i++) {
+    const left = leftBlocks[i]
+    const rightIdx = rightIndexById.get(left.id)
+    if (rightIdx === undefined) continue
+
+    const right = rightBlocks[rightIdx]
+    const leftNext = leftBlocks[i + 1]
+    const rightNext = rightBlocks[rightIdx + 1]
+
+    // Use the distance to the next block as the effective height on the right
+    // side so that margins/gaps are accounted for. The left side gets an
+    // explicit margin-bottom, and the next block's margin-top is zeroed to
+    // avoid margin collapse swallowing the spacer.
+    const leftEff = leftNext ? leftNext.top - left.top : left.height
+    const rightEff = rightNext ? rightNext.top - right.top : right.height
+    const diff = rightEff - leftEff
+
+    if (Math.abs(diff) < 1) continue
+
+    if (diff > 0) {
+      rules.push(
+        `.autodown-editor-content [data-block-id="${left.id}"] { margin-bottom: ${diff}px !important; }`
+      )
+      if (leftNext) {
+        rules.push(
+          `.autodown-editor-content [data-block-id="${left.id}"] + [data-block-id] { margin-top: 0 !important; }`
+        )
+      }
+    } else {
+      rules.push(
+        `.streaming-document [data-block-id="${right.id}"] { margin-bottom: ${-diff}px !important; }`
+      )
+      if (rightNext) {
+        rules.push(
+          `.streaming-document [data-block-id="${right.id}"] + [data-block-id] { margin-top: 0 !important; }`
+        )
+      }
+    }
+  }
+
+  if (rules.length > 0) {
+    spacerStyleEl.textContent = rules.join('\n')
+  }
 }
 
 export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState {
@@ -156,15 +230,24 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
   }
 
   function measure() {
+    if (measuring) return
+    measuring = true
+
     const editor = options.editorRef.value
     const renderer = options.rendererRef.value
-    if (!editor || !renderer?.containerRef) return
+    if (!editor || !renderer?.containerRef) {
+      measuring = false
+      return
+    }
 
     observeElements()
 
     const leftEl = editor.getBlockMap()[0]?.el?.closest('.autodown-editor-content-wrapper') as HTMLElement | undefined
     const rightEl = renderer.containerRef
-    if (!leftEl || !rightEl) return
+    if (!leftEl || !rightEl) {
+      measuring = false
+      return
+    }
 
     if (observedActionsEl) {
       const height = observedActionsEl.getBoundingClientRect().height
@@ -179,7 +262,33 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
     }
 
     clientHeight.value = leftEl.clientHeight
-    leftScrollHeight.value = leftEl.scrollHeight
+
+    // Remove previously injected per-block spacers before measuring so we never
+    // double-count them when computing new spacers.
+    clearBlockSpacers()
+
+    const naturalLeftBlocks = normalizeBlocks(
+      editor
+        .getBlockMap()
+        .filter((b) => b.el !== null)
+        .map((b) => ({ id: b.id, top: b.top, height: b.height, el: b.el! })) as MeasuredBlock[]
+    )
+    const naturalRightBlocks = measureRightBlocks(renderer.containerRef)
+
+    // Insert per-block spacers on the shorter side so each matching block pair
+    // starts at the same vertical position, keeping the two panes aligned even
+    // when a rendered block is much taller than its source counterpart.
+    applyBlockSpacers(naturalLeftBlocks, naturalRightBlocks)
+
+    // Re-measure after spacers have shifted subsequent blocks; these are the
+    // positions used for scroll mapping.
+    leftBlocks.value = normalizeBlocks(
+      editor
+        .getBlockMap()
+        .filter((b) => b.el !== null)
+        .map((b) => ({ id: b.id, top: b.top, height: b.height, el: b.el! })) as MeasuredBlock[]
+    )
+    rightBlocks.value = measureRightBlocks(renderer.containerRef)
 
     // Add an invisible spacer on the shorter side so both containers have the
     // same total scroll range. Reset it first so the diff is calculated from
@@ -192,16 +301,13 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
       rightEl.appendChild(spacer)
     }
     spacer.style.height = '0px'
+    leftScrollHeight.value = leftEl.scrollHeight
     const diff = leftEl.scrollHeight - rightEl.scrollHeight
     if (diff > 0) {
       spacer.style.height = `${diff}px`
     }
     rightScrollHeight.value = rightEl.scrollHeight
-
-    leftBlocks.value = normalizeBlocks(
-      editor.getBlockMap().map((b) => ({ id: b.id, top: b.top, height: b.height }))
-    )
-    rightBlocks.value = measureRightBlocks(renderer.containerRef)
+    measuring = false
   }
 
   function syncContainers() {

@@ -65,7 +65,13 @@ function computeScrollTopFromSource(
   const pos = findBlockPosition(sourceBlocks, sourceScrollTop)
   if (!pos || targetBlocks.length === 0) return sourceScrollTop
 
-  const targetBlock = targetBlocks[pos.index]
+  const sourceBlock = sourceBlocks[pos.index]
+  // Prefer matching by block ID so missing or differently-rendered blocks
+  // (e.g. a failed image) do not throw the whole mapping out of alignment.
+  let targetBlock = targetBlocks.find((b) => b.id === sourceBlock?.id)
+  if (!targetBlock) {
+    targetBlock = targetBlocks[pos.index]
+  }
   if (!targetBlock) return sourceScrollTop
 
   return targetBlock.top + targetBlock.height * pos.ratio

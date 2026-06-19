@@ -99,16 +99,34 @@ function getTopLevelBlockType(content: Element): string | null {
   }
   if (child.classList.contains('table-node-wrapper')) return 'table'
   if (child.classList.contains('image-error')) return 'img'
+  if (child.classList.contains('autodown-image-wrapper')) return 'img'
+  if (child.querySelector('.image-node-container, .image-node__img')) return 'img'
+  if (child.classList.contains('autodown-callout') || child.classList.contains('admonition')) return 'callout'
+  if (child.classList.contains('autodown-details') || child.classList.contains('html-block-node')) return 'details'
+  if (child.classList.contains('autodown-math-block') || child.classList.contains('math-block')) return 'math'
+  if (child.classList.contains('mermaid-block-container')) return 'mermaid'
   return null
 }
 
 function isWrapperBlockType(type: string | null) {
-  return type === 'blockquote' || type === 'ul' || type === 'ol'
+  return type === 'blockquote' || type === 'ul' || type === 'ol' || type === 'callout' || type === 'details'
 }
 
 function applyBlockIdsAndPlaceholder(container: HTMLElement) {
   const slots = Array.from(container.querySelectorAll('.node-slot'))
   const topLevelBlocks: { slot: Element; content: Element; type: string; top: number; height: number }[] = []
+
+  // Clear previously assigned block IDs so that nested content from earlier
+  // runs does not leak into the block map used by scroll sync.
+  slots.forEach((slot) => {
+    const content = slot.querySelector('.node-content')
+    if (content) {
+      content.removeAttribute('data-block-id')
+      content.removeAttribute('data-block-index')
+    }
+  })
+
+  const containerRect = container.getBoundingClientRect()
 
   slots.forEach((slot) => {
     const content = slot.querySelector('.node-content')
@@ -118,8 +136,9 @@ function applyBlockIdsAndPlaceholder(container: HTMLElement) {
     if (!type) return
 
     const htmlSlot = slot as HTMLElement
-    const top = htmlSlot.offsetTop
-    const height = htmlSlot.offsetHeight
+    const rect = htmlSlot.getBoundingClientRect()
+    const top = rect.top - containerRect.top
+    const height = rect.height
 
     // Skip nested slots that fall inside a previously-seen wrapper block
     // (e.g. list items inside a <ul>/<ol> or paragraphs inside a <blockquote>).

@@ -42,6 +42,21 @@ function measureRightBlocks(container: HTMLElement): MeasuredBlock[] {
   return normalizeBlocks(blocks)
 }
 
+function measureLeftBlocks(wrapper: HTMLElement): MeasuredBlock[] {
+  const wrapperRect = wrapper.getBoundingClientRect()
+  const blocks = Array.from(wrapper.querySelectorAll('.autodown-editor-content [data-block-id]')).map((el) => {
+    const htmlEl = el as HTMLElement
+    const rect = htmlEl.getBoundingClientRect()
+    return {
+      id: htmlEl.getAttribute('data-block-id')!,
+      top: rect.top - wrapperRect.top,
+      height: htmlEl.offsetHeight,
+      el: htmlEl,
+    }
+  })
+  return normalizeBlocks(blocks)
+}
+
 function findBlockPosition(blocks: MeasuredBlock[], scrollTop: number) {
   if (blocks.length === 0) return null
   for (let i = 0; i < blocks.length; i++) {
@@ -267,12 +282,7 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
     // double-count them when computing new spacers.
     clearBlockSpacers()
 
-    const naturalLeftBlocks = normalizeBlocks(
-      editor
-        .getBlockMap()
-        .filter((b) => b.el !== null)
-        .map((b) => ({ id: b.id, top: b.top, height: b.height, el: b.el! })) as MeasuredBlock[]
-    )
+    const naturalLeftBlocks = measureLeftBlocks(leftEl)
     const naturalRightBlocks = measureRightBlocks(renderer.containerRef)
 
     // Insert per-block spacers on the shorter side so each matching block pair
@@ -282,12 +292,7 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
 
     // Re-measure after spacers have shifted subsequent blocks; these are the
     // positions used for scroll mapping.
-    leftBlocks.value = normalizeBlocks(
-      editor
-        .getBlockMap()
-        .filter((b) => b.el !== null)
-        .map((b) => ({ id: b.id, top: b.top, height: b.height, el: b.el! })) as MeasuredBlock[]
-    )
+    leftBlocks.value = measureLeftBlocks(leftEl)
     rightBlocks.value = measureRightBlocks(renderer.containerRef)
 
     // Add an invisible spacer on the shorter side so both containers have the

@@ -90,7 +90,7 @@ const mutationObserver = new MutationObserver(() => {
   }
 })
 
-function getTopLevelBlockType(content: Element): string | null {
+function getTopLevelBlockType(content: Element, nodeType: string | null): string | null {
   const child = content.firstElementChild
   if (!child) return null
   const tag = child.tagName.toLowerCase()
@@ -105,11 +105,20 @@ function getTopLevelBlockType(content: Element): string | null {
   if (child.classList.contains('autodown-details') || child.classList.contains('html-block-node')) return 'details'
   if (child.classList.contains('autodown-math-block') || child.classList.contains('math-block')) return 'math'
   if (child.classList.contains('mermaid-block-container')) return 'mermaid'
+  // Fallback to markstream's node type so newly-added component blocks are
+  // treated as top-level blocks without needing an explicit class list.
+  if (nodeType && nodeType !== 'text') return nodeType
   return null
 }
 
 function isWrapperBlockType(type: string | null) {
-  return type === 'blockquote' || type === 'ul' || type === 'ol' || type === 'callout' || type === 'details'
+  return (
+    type === 'blockquote' ||
+    type === 'ul' ||
+    type === 'ol' ||
+    type === 'callout' ||
+    type === 'admonition'
+  )
 }
 
 function applyBlockIdsAndPlaceholder(container: HTMLElement) {
@@ -132,7 +141,8 @@ function applyBlockIdsAndPlaceholder(container: HTMLElement) {
     const content = slot.querySelector('.node-content')
     if (!content) return
 
-    const type = getTopLevelBlockType(content)
+    const nodeType = slot.getAttribute('data-node-type')
+    const type = getTopLevelBlockType(content, nodeType)
     if (!type) return
 
     const htmlSlot = slot as HTMLElement

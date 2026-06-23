@@ -99,7 +99,15 @@ function setItemRef(el: HTMLElement, idx: number) {
 /** Track the active code block so we can position the menu relative to its badge. */
 const activeCodeBlock = ref<HTMLElement | null>(null)
 
+/**
+ * When the menu is opened by clicking a specific block header, the editor
+ * selection may still point at a previously focused block. We capture the
+ * clicked block's language so the popup highlights the correct item.
+ */
+const forcedLanguage = ref<string | null>(null)
+
 const currentLanguage = computed(() => {
+  if (forcedLanguage.value) return forcedLanguage.value
   const attrs = props.editor.getAttributes('codeBlock')
   return (attrs.language as string) ?? ''
 })
@@ -120,6 +128,7 @@ function selectLanguage(langId: string) {
 
 function open(target?: HTMLElement) {
   activeCodeBlock.value = target ?? findActiveCodeBlock() ?? null
+  forcedLanguage.value = activeCodeBlock.value?.getAttribute('data-language') ?? null
   visible.value = true
   search.value = ''
   highlightedIndex.value = Math.max(0, languages.findIndex((l) => l.id === currentLanguage.value))
@@ -147,6 +156,7 @@ function close() {
   search.value = ''
   highlightedIndex.value = 0
   activeCodeBlock.value = null
+  forcedLanguage.value = null
 }
 
 function toggle(target?: HTMLElement) {

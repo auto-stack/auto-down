@@ -106,7 +106,27 @@ type === 'admonition'
 
 ---
 
-## 4. 快速验证
+## 4. 插入新块
+
+### 4.1 双击 Enter 退出块
+
+在任意块末尾连续按两次 Enter 会退出当前块并在下方创建新段落：
+
+- **代码块 / 数学块**：第一次 Enter 在块尾插入换行，第二次 Enter 退出块。
+- **Callout / Details / Blockquote**：第一次 Enter 在块内创建空段落，第二次 Enter 把空段落抬出 wrapper。
+- **普通段落**：保持默认行为，继续创建新段落。
+
+实现位于 `packages/editor/src/extensions/custom-keymap.ts`。
+
+### 4.2 块边界 (+) 插入控件
+
+鼠标悬停在两个顶层块之间的边界时会显示一条细线和左侧的 `+` 按钮，点击即可在下方块之前插入一个新段落。
+
+实现位于 `packages/editor/src/extensions/BlockInsertHandle.ts`，它通过 ProseMirror widget decoration 在每个顶层块后面渲染一个 `.autodown-block-boundary` 控件。
+
+---
+
+## 5. 快速验证
 
 启动 demo 后，在控制台运行：
 
@@ -130,7 +150,7 @@ console.table(pairs)
 
 ---
 
-## 5. 总结
+## 6. 总结
 
 | 场景 | 是否能自动对齐 | 需要做的事 |
 |------|--------------|-----------|

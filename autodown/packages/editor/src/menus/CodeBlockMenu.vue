@@ -184,7 +184,11 @@ function findActiveCodeBlock(): HTMLElement | null {
   const { selection } = view.state
   const el = view.nodeDOM(selection.from) as HTMLElement | null
   if (!el) return null
-  return el.closest?.('pre[data-language]') ?? null
+  return (
+    (el.closest?.('pre[data-language]') as HTMLElement | null) ??
+    (el.closest?.('.autodown-codeblock-node') as HTMLElement | null) ??
+    null
+  )
 }
 
 function updatePosition() {
@@ -294,7 +298,9 @@ function handleEditorMouseDown(event: MouseEvent) {
   const target = event.target as HTMLElement
   const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
   const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
-  if (badge || copyBtn) {
+  const expandBtn = target.closest?.('[data-codeblock-expand-btn]') as HTMLElement | null
+  const moreBtn = target.closest?.('[data-codeblock-more-btn]') as HTMLElement | null
+  if (badge || copyBtn || expandBtn || moreBtn) {
     // Prevent ProseMirror from moving the selection / scrolling the editor
     // wrapper on mousedown, so the popup opens for the clicked code block.
     event.preventDefault()
@@ -314,11 +320,25 @@ function handleEditorClick(event: MouseEvent) {
     return
   }
 
-  const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
-  if (badge) {
+  const expandBtn = target.closest?.('[data-codeblock-expand-btn]') as HTMLElement | null
+  if (expandBtn) {
     event.preventDefault()
     event.stopPropagation()
-    open(badge.closest('pre') as HTMLElement | undefined)
+    expandBtn.closest('pre')?.classList.toggle('is-collapsed')
+    return
+  }
+
+  const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
+  const moreBtn = target.closest?.('[data-codeblock-more-btn]') as HTMLElement | null
+  if (badge || moreBtn) {
+    event.preventDefault()
+    event.stopPropagation()
+    const trigger = (badge ?? moreBtn) as HTMLElement
+    open(
+      (trigger.closest('pre') as HTMLElement | null) ??
+        (trigger.closest('.autodown-codeblock-node') as HTMLElement | null) ??
+        undefined
+    )
     return
   }
 }

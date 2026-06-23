@@ -884,71 +884,75 @@
 }
 
 /* ─── Code Block — window style with header (editor) ─── */
-/* The language header is rendered via CSS ::before using a data-language
-   attribute set by the CustomCodeBlock ProseMirror decoration plugin. */
 
-
-/* Code blocks with language — add top padding for the header bar */
 .autodown-editor-content pre[data-language] {
   position: relative;
-  padding-top: 2rem;
+  padding-top: 36px;
+  border: 1px solid var(--ad-border, #e5e7eb);
+  border-radius: 8px;
+  background: #f9fafb;
+  overflow: hidden;
 }
 
-/* Language header bar */
-.autodown-editor-content pre[data-language] .codeblock-language-badge {
+.autodown-editor-content pre[data-language] .code-block-header {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  height: 1.9rem;
-  box-sizing: border-box;
-  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
-  background: hsl(var(--ad-muted, 220 9% 46%) / 0.08);
-  border-bottom: 1px solid var(--ad-border, #e5e7eb);
-  border-radius: 8px 8px 0 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 0.8rem;
-  font-weight: 500;
-  line-height: 1.5;
-  color: var(--ad-muted, #6b7280);
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  background: #e5e7eb;
+  border-bottom: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 0.85rem;
   user-select: none;
-  pointer-events: auto;
-  white-space: nowrap;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-language-label {
-  position: relative;
-  margin-right: 20px;
+.autodown-editor-content pre[data-language] .code-header-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   cursor: pointer;
-  text-transform: lowercase;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-language-label:hover {
-  color: var(--ad-fg, #111827);
+.autodown-editor-content pre[data-language] .icon-slot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-language-label::after {
-  content: '▼';
-  position: absolute;
-  right: -16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.55rem;
+.autodown-editor-content pre[data-language] .code-header-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.autodown-editor-content pre[data-language] .code-header-title {
+  line-height: 1;
+}
+
+.autodown-editor-content pre[data-language] .code-header-edit-icon {
   opacity: 0;
   transition: opacity 0.15s ease;
-  pointer-events: none;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-language-label:hover::after {
+.autodown-editor-content pre[data-language] .code-header-main:hover .code-header-edit-icon {
   opacity: 1;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-copy-btn {
+.autodown-editor-content pre[data-language] .code-block-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.autodown-editor-content pre[data-language] .code-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -962,27 +966,29 @@
   color: inherit;
   cursor: pointer;
   line-height: 1;
-  font-size: 0.9rem;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-copy-btn:hover {
-  background: hsl(var(--ad-muted, 220 9% 46%) / 0.14);
-  color: var(--ad-fg, #111827);
+.autodown-editor-content pre[data-language] .code-action-btn:hover {
+  background: hsl(220 9% 46% / 0.14);
+  color: #111827;
 }
 
-.autodown-editor-content pre[data-language] .codeblock-copy-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iOSIgeT0iOSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEzIiByeD0iMiIgcnk9IjIiLz48cGF0aCBkPSJNNSAxNUg0YTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDlhMiAyIDAgMCAxIDIgMnYxIi8+PC9zdmc+");
-  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iOSIgeT0iOSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEzIiByeD0iMiIgcnk9IjIiLz48cGF0aCBkPSJNNSAxNUg0YTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDlhMiAyIDAgMCAxIDIgMnYxIi8+PC9zdmc+");
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  background-color: currentColor;
+.autodown-editor-content pre[data-language] .code-action-expand img {
+  transition: transform 0.15s ease;
+}
+
+.autodown-editor-content pre[data-language].is-collapsed .code-action-expand img {
+  transform: rotate(180deg);
+}
+
+.autodown-editor-content pre[data-language] code {
+  display: block;
+  background: #f9fafb;
+}
+
+.autodown-editor-content pre[data-language].is-collapsed code {
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 /* ─── Lowlight syntax highlighting tokens (editor) ───

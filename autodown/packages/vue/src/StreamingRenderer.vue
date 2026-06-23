@@ -931,6 +931,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  flex-direction: row-reverse;
 }
 
 .streaming-document :deep(.code-block-header button) {

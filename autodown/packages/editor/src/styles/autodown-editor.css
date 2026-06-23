@@ -1043,3 +1043,54 @@
 .autodown-editor-content pre code .hljs-strong {
   font-weight: 700;
 }
+
+
+/* Block boundary insert handle */
+.autodown-editor-content .autodown-block-boundary {
+  position: relative;
+  height: 14px;
+  margin: -7px 0;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.autodown-editor-content .autodown-block-boundary-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: hsl(var(--ad-primary, 220 90% 56%) / 0.5);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.autodown-editor-content .autodown-block-boundary-plus {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: hsl(var(--ad-primary, 220 90% 56%));
+  color: #ffffff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.autodown-editor-content .autodown-block-boundary:hover .autodown-block-boundary-line,
+.autodown-editor-content .autodown-block-boundary:hover .autodown-block-boundary-plus {
+  opacity: 1;
+}
+
+.autodown-editor-content .autodown-block-boundary-plus:hover {
+  background: hsl(var(--ad-primary, 220 90% 56%) / 0.85);
+}

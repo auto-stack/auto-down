@@ -24,7 +24,7 @@ export const CustomCodeBlock = CodeBlockLowlight.extend<CodeBlockLowlightOptions
       lowlight,
       defaultLanguage: 'text',
       languageClassPrefix: 'language-',
-      exitOnTripleEnter: true,
+      exitOnTripleEnter: false,
       exitOnArrowDown: true,
       enableTabIndentation: false,
       tabSize: 4,

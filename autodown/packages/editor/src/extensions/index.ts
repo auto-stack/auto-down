@@ -21,6 +21,7 @@ import { CustomCallout } from './CustomCallout'
 import { CustomDetails } from './CustomDetails'
 import { CustomMathBlock } from './CustomMathBlock'
 import { BlockId } from './BlockId'
+import { BlockInsertHandle } from './BlockInsertHandle'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 
 export interface EditorOptions {
@@ -40,6 +41,7 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     CustomDetails,
     CustomMathBlock,
     BlockId,
+    BlockInsertHandle,
     Placeholder.configure({
       placeholder: options.placeholder ?? "Type '/' for commands…",
     }),

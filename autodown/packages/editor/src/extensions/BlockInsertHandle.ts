@@ -41,16 +41,29 @@ function buildDecorations(doc: Parameters<typeof DecorationSet.create>[0], edito
   doc.forEach((node, offset) => {
     const pos = offset + 1
     const endPos = pos + node.nodeSize
-    // Add a handle between top-level blocks, but not after the last block.
+    // Add a handle at the bottom boundary of each top-level block. Place the
+    // widget just inside the block's closing token so it becomes the last child
+    // of the block's DOM wrapper; hovering near the block's bottom edge reveals
+    // the handle and clicking it inserts a new paragraph below that block.
     if (node.isBlock && endPos < docSize) {
+      const widgetPos = pos + node.nodeSize - 1
       decorations.push(
-        Decoration.widget(endPos, () => createBoundaryWidget(editor, endPos), {
+        Decoration.widget(widgetPos, () => createBoundaryWidget(editor, endPos), {
           side: 1,
           key: `boundary-${offset}`,
         })
       )
     }
   })
+  // Also allow inserting a new paragraph after the last block.
+  if (docSize > 0) {
+    decorations.push(
+      Decoration.widget(docSize, () => createBoundaryWidget(editor, docSize), {
+        side: 1,
+        key: 'boundary-end',
+      })
+    )
+  }
   return DecorationSet.create(doc, decorations)
 }
 

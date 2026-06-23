@@ -1052,8 +1052,9 @@
 
 
 /* Block boundary insert handle
-   The container itself takes up no layout space so it never affects block
-   alignment. The visible strip is rendered absolutely around the boundary. */
+   The widget sits between top-level blocks. The hover area is anchored upward
+   so that hovering near the bottom edge of a block reveals the handle, and
+   clicking it inserts a new paragraph below that block. */
 .autodown-editor-content .autodown-block-boundary {
   position: relative;
   height: 0;
@@ -1065,12 +1066,13 @@
 .autodown-editor-content .autodown-block-boundary::after {
   content: '';
   position: absolute;
-  top: -7px;
+  top: -20px;
   left: 0;
   right: 0;
-  height: 14px;
+  height: 28px;
   pointer-events: auto;
   cursor: pointer;
+  z-index: 1;
 }
 
 .autodown-editor-content .autodown-block-boundary-line {
@@ -1095,6 +1097,7 @@
   position: absolute;
   top: -8px;
   left: 0;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -893,19 +893,57 @@ defineExpose({
   border: 1px solid #e5e7eb !important;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6 !important;
+  background: #f9fafb !important;
 }
 
-.streaming-document :deep(.code-block-header),
 .streaming-document :deep(.code-editor-container.is-hidden) {
   display: none !important;
 }
 
-.streaming-document :deep(pre[data-language]) {
-  position: relative;
-  padding: 0.75em 1em !important;
-  margin: 0;
+/* Use markstream's own header bar, but give it concrete layout/size because
+   Tailwind utility classes are not present. */
+.streaming-document :deep(.code-block-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  background: #e5e7eb;
+  border-bottom: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 0.85rem;
+}
+
+.streaming-document :deep(.code-block-header svg) {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.streaming-document :deep(.code-block-header .code-header-main) {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.streaming-document :deep(.code-block-header button) {
   background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  color: inherit;
+}
+
+/* Our own injected badge duplicates the header info, so hide it in preview. */
+.streaming-document :deep(pre[data-language] .codeblock-language-badge) {
+  display: none;
+}
+
+.streaming-document :deep(pre[data-language]) {
+  padding: 0.85em 1em !important;
+  margin: 0;
+  background: #f9fafb;
   border: none !important;
 }
 

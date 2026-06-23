@@ -927,12 +927,26 @@ defineExpose({
   gap: 0.4rem;
 }
 
+.streaming-document :deep(.code-block-header > .flex) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .streaming-document :deep(.code-block-header button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0.2rem;
   color: inherit;
+}
+
+.streaming-document :deep(.code-block-header button svg) {
+  width: 16px;
+  height: 16px;
 }
 
 /* Our own injected badge duplicates the header info, so hide it in preview. */

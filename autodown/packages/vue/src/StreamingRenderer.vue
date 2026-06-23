@@ -166,10 +166,11 @@ function applyBlockIdsAndPlaceholder(container: HTMLElement) {
     topLevelBlocks.push({ slot, content, type, top, height })
   })
 
-  topLevelBlocks.forEach(({ content }, index) => {
+  topLevelBlocks.forEach(({ slot, content }, index) => {
     const blockId = `block-${index}`
     content.setAttribute('data-block-id', blockId)
     content.setAttribute('data-block-index', String(index))
+    slot.setAttribute('data-block-slot-id', blockId)
   })
 
   // Placeholder is inserted into the slot that matches the requested block id.
@@ -318,6 +319,17 @@ defineExpose({
 /* Segment spacing */
 .streaming-document > * + * {
   margin-top: 0.75rem;
+}
+
+/* Scroll sync controls the gap between slots via margin-bottom. Zero the
+   leading/trailing margins of the rendered node's children so they cannot
+   collapse with adjacent slots and throw off the measurement. The first slot
+   keeps its top margin so the first block aligns with the editor. */
+.streaming-document :deep(.node-slot:not(:first-of-type) > .node-content > *:first-child) {
+  margin-top: 0 !important;
+}
+.streaming-document :deep(.node-slot:not(:last-of-type) > .node-content > *:last-child) {
+  margin-bottom: 0 !important;
 }
 
 /* ---------- Base typography (match @autodown/editor) ---------- */

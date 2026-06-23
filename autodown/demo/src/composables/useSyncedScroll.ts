@@ -29,11 +29,11 @@ function normalizeBlocks(blocks: MeasuredBlock[]): MeasuredBlock[] {
 
 function measureRightBlocks(container: HTMLElement): MeasuredBlock[] {
   const containerRect = container.getBoundingClientRect()
-  const blocks = Array.from(container.querySelectorAll('[data-block-id]')).map((el) => {
+  const blocks = Array.from(container.querySelectorAll('.node-slot[data-block-slot-id]')).map((el) => {
     const htmlEl = el as HTMLElement
     const rect = htmlEl.getBoundingClientRect()
     return {
-      id: htmlEl.getAttribute('data-block-id')!,
+      id: htmlEl.getAttribute('data-block-slot-id')!,
       top: rect.top - containerRect.top,
       height: htmlEl.offsetHeight,
       el: htmlEl,
@@ -100,6 +100,7 @@ function clamp(value: number, min: number, max: number) {
 
 let spacerStyleEl: HTMLStyleElement | null = null
 let measuring = false
+let blockResizeObserver: ResizeObserver | null = null
 
 function clearBlockSpacers() {
   if (spacerStyleEl) {
@@ -107,12 +108,15 @@ function clearBlockSpacers() {
   }
 }
 
+const MIN_BLOCK_GAP = 16
+
 /**
- * Add bottom margin to the shorter side of each matched block pair so that
- * subsequent blocks start at the same vertical position on both sides. This
- * keeps block-level scroll sync aligned without requiring identical content
- * heights. We use a dynamic stylesheet because ProseMirror may overwrite inline
- * styles on editor block nodes.
+ * Ensure every matched block pair is followed by at least MIN_BLOCK_GAP, and
+ * add extra bottom margin to the shorter side so that subsequent blocks start
+ * at the same vertical position on both sides. This keeps block-level scroll
+ * sync aligned without requiring identical content heights, while guaranteeing
+ * a consistent minimum visual gap between blocks. We use a dynamic stylesheet
+ * because ProseMirror may overwrite inline styles on editor block nodes.
  */
 function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlock[]) {
   if (!spacerStyleEl) {
@@ -134,34 +138,42 @@ function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlo
     const leftNext = leftBlocks[i + 1]
     const rightNext = rightBlocks[rightIdx + 1]
 
-    // Use the distance to the next block as the effective height on the right
-    // side so that margins/gaps are accounted for. The left side gets an
-    // explicit margin-bottom, and the next block's margin-top is zeroed to
-    // avoid margin collapse swallowing the spacer.
-    const leftEff = leftNext ? leftNext.top - left.top : left.height
-    const rightEff = rightNext ? rightNext.top - right.top : right.height
-    const diff = rightEff - leftEff
-
-    if (Math.abs(diff) < 1) continue
-
-    if (diff > 0) {
-      rules.push(
-        `.autodown-editor-content [data-block-id="${left.id}"] { margin-bottom: ${diff}px !important; }`
-      )
-      if (leftNext) {
+    // Align the very first matched pair. The editor's first block may have a
+    // top margin (e.g. H1) while the preview slot may not, so use viewport
+    // coordinates to compute the actual first-block vertical offset.
+    if (i === 0) {
+      // normalizeBlocks() resets the first block top to 0, so use viewport
+      // coordinates to compute the actual first-block vertical offset.
+      const topOffset = left.el.getBoundingClientRect().top - right.el.getBoundingClientRect().top
+      if (Math.abs(topOffset) > 0.5) {
         rules.push(
-          `.autodown-editor-content [data-block-id="${left.id}"] + [data-block-id] { margin-top: 0 !important; }`
+          `.streaming-document .node-slot[data-block-slot-id="${right.id}"] { margin-top: ${topOffset}px !important; }`
         )
       }
-    } else {
+    }
+
+    // The distance from one block top to the next should be the same on both
+    // sides: the taller block's height plus a guaranteed minimum gap. We zero
+    // the next block's margin-top so this bottom margin is the only thing that
+    // controls the gap.
+    const commonDistance = Math.max(left.height, right.height) + MIN_BLOCK_GAP
+    const leftMarginBottom = commonDistance - left.height
+    const rightMarginBottom = commonDistance - right.height
+
+    rules.push(
+      `.autodown-editor-content [data-block-id="${left.id}"] { margin-bottom: ${leftMarginBottom}px !important; }`,
+      `.streaming-document .node-slot[data-block-slot-id="${right.id}"] { margin-bottom: ${rightMarginBottom}px !important; }`
+    )
+
+    if (leftNext) {
       rules.push(
-        `.streaming-document [data-block-id="${right.id}"] { margin-bottom: ${-diff}px !important; }`
+        `.autodown-editor-content [data-block-id="${left.id}"] + [data-block-id] { margin-top: 0 !important; }`
       )
-      if (rightNext) {
-        rules.push(
-          `.streaming-document [data-block-id="${right.id}"] + [data-block-id] { margin-top: 0 !important; }`
-        )
-      }
+    }
+    if (rightNext) {
+      rules.push(
+        `.streaming-document .node-slot[data-block-slot-id="${right.id}"] + .node-slot { margin-top: 0 !important; }`
+      )
     }
   }
 
@@ -242,6 +254,15 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
       actionsResizeObserver.observe(actionsEl)
       observedActionsEl = actionsEl
     }
+
+    if (!blockResizeObserver) {
+      blockResizeObserver = new ResizeObserver(() => {
+        measure()
+        syncContainers()
+      })
+    }
+    if (leftEl !== observedLeftEl) blockResizeObserver.observe(leftEl)
+    if (rightEl !== observedRightEl) blockResizeObserver.observe(rightEl)
   }
 
   function measure() {
@@ -378,6 +399,8 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       actionsResizeObserver.disconnect()
+      blockResizeObserver?.disconnect()
+      blockResizeObserver = null
       workspace.removeEventListener('wheel', onWheel, true)
       observedLeftEl = null
       observedRightEl = null

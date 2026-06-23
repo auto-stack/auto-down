@@ -931,7 +931,19 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  flex-direction: row-reverse;
+}
+
+/* Reorder actions: expand (chevron) -> copy -> three-dots menu */
+.streaming-document :deep(.code-block-header > .flex > :nth-child(1)) {
+  order: 2;
+}
+
+.streaming-document :deep(.code-block-header > .flex > :nth-child(2)) {
+  order: 1;
+}
+
+.streaming-document :deep(.code-block-header > .flex > :nth-child(3)) {
+  order: 3;
 }
 
 .streaming-document :deep(.code-block-header button) {

@@ -939,6 +939,21 @@ defineExpose({
   gap: 0.4rem;
 }
 
+.streaming-document :deep(.code-block-header .icon-slot) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.streaming-document :deep(.code-block-header .icon-slot svg) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .streaming-document :deep(.code-block-header > .flex) {
   display: flex;
   align-items: center;

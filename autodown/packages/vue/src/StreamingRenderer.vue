@@ -888,6 +888,25 @@ defineExpose({
   opacity: 0.8;
 }
 
+/* Override markstream-vue code block chrome (Tailwind classes are not available here) */
+.streaming-document :deep(.code-block-container) {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.streaming-document :deep(.code-block-header) {
+  display: none;
+}
+
+.streaming-document :deep(pre[data-language]) {
+  position: relative;
+  padding: 1em !important;
+  margin: 0;
+  background: transparent;
+}
+
 /* Images */
 .streaming-document :deep(img) {
   max-width: 100%;

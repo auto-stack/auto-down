@@ -890,21 +890,23 @@ defineExpose({
 
 /* Override markstream-vue code block chrome (Tailwind classes are not available here) */
 .streaming-document :deep(.code-block-container) {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e5e7eb !important;
   border-radius: 8px;
   overflow: hidden;
-  background: #f9fafb;
+  background: #f3f4f6 !important;
 }
 
-.streaming-document :deep(.code-block-header) {
-  display: none;
+.streaming-document :deep(.code-block-header),
+.streaming-document :deep(.code-editor-container.is-hidden) {
+  display: none !important;
 }
 
 .streaming-document :deep(pre[data-language]) {
   position: relative;
-  padding: 1em !important;
+  padding: 0.75em 1em !important;
   margin: 0;
   background: transparent;
+  border: none !important;
 }
 
 /* Images */

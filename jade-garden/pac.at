@@ -1,0 +1,7 @@
+name: "jade-garden"
+version: "0.1.0"
+scene: "workspace"
+
+description: "Jade Garden — An Obsidian-like AutoDown knowledge base editor"
+
+members: ["front"]

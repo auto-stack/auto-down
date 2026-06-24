@@ -1,0 +1,11 @@
+name: "jade-garden-back"
+version: "0.1.0"
+
+// Native code scene generates Rust.
+scene: "default"
+
+// Rust backend: axum HTTP server + optional Tauri commands.
+backend: "rust"
+
+// Entry point for API definitions.
+entry: "api.at"

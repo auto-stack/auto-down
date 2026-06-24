@@ -1,0 +1,6 @@
+// jade-garden/back/service.at
+// Shared utilities for the Jade Garden backend.
+
+pub fn hello() str {
+    return "Hello from Jade Garden service"
+}

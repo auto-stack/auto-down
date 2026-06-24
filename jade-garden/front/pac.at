@@ -1,0 +1,10 @@
+name: "jade-garden-front"
+version: "0.1.0"
+scene: "ui"
+
+// Default: Vue SPA with Rust HTTP backend.
+backend: "vue"
+
+// Import shared API definitions from the backend.
+// This generates a type-safe TypeScript client under dist/src/lib/api.ts
+api: "../back/api.at"

@@ -1,0 +1,8 @@
+// jade-garden/back/db.at
+// Placeholder for file-system persistence and indexing logic.
+// In the MVP this will read/write .ad files from the opened vault directory.
+
+pub fn workspace_root() str {
+    // TODO: return the currently opened workspace path.
+    return "."
+}

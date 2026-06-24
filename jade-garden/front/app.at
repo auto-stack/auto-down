@@ -1,0 +1,36 @@
+use back.api: status
+
+widget App {
+    msg Msg { LoadStatus }
+
+    model {
+        var statusText str = "Click the button to check backend status"
+        var loading bool = false
+    }
+
+    view {
+        col {
+            h1 "Jade Garden" { style: "text-2xl font-bold text-emerald-700" }
+            p "An Obsidian-like AutoDown knowledge base editor" { style: "text-gray-500 mb-4" }
+            button "Check Backend" {
+                onclick: .LoadStatus
+                style: "mb-4"
+            }
+            if .loading {
+                p "Loading..." { style: "text-gray-400" }
+            } else {
+                p .statusText { style: "text-gray-800" }
+            }
+            style: "p-8 gap-4"
+        }
+    }
+
+    on {
+        .LoadStatus -> {
+            .loading = true
+            let items = status()
+            .statusText = items[0].message
+            .loading = false
+        }
+    }
+}

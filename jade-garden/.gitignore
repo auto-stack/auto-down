@@ -1,0 +1,30 @@
+# Generated directories
+gen/
+vue/
+rust/
+dist/
+build/
+
+# Runtime logs
+auto-run.log
+*.log
+
+# Node
+node_modules/
+
+# Rust
+target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Auto
+.am/
+.auto/

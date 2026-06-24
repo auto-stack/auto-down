@@ -1,0 +1,18 @@
+// jade-garden/back/api.at
+// Shared API interface between the Rust backend and the Vue frontend.
+// The #[api] annotations are used to generate both HTTP routes and
+// type-safe TypeScript clients.
+
+/// A simple status response used to verify the backend is alive.
+pub type Status = {
+    ok bool
+    message str
+}
+
+/// Returns the current application status.
+#[api(method = "GET", path = "/api/status")]
+pub fn status() []Status {
+    return [
+        Status { ok: true, message: "Jade Garden backend is running" }
+    ]
+}

@@ -121,7 +121,7 @@ pub async fn create_file(
         .await
         .ok();
     Ok(Json(FileNode {
-        name: target.file_stem().unwrap_or_default().to_string_lossy().to_string(),
+        name: target.file_name().unwrap_or_default().to_string_lossy().to_string(),
         path: req.path,
         is_dir: req.is_dir,
         children: Vec::new(),

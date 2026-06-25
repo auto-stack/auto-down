@@ -56,6 +56,11 @@ export const useTabsStore = defineStore('tabs', () => {
   function close(path: string) {
     const idx = tabs.value.findIndex(t => t.path === path)
     if (idx === -1) return
+    const tab = tabs.value[idx]
+    if (tab.dirty) {
+      const ok = confirm(`Close "${tab.title}" without saving?`)
+      if (!ok) return
+    }
     tabs.value.splice(idx, 1)
     if (activePath.value === path) {
       activePath.value = tabs.value[Math.min(idx, tabs.value.length - 1)]?.path || null

@@ -40,6 +40,17 @@ impl AppState {
         }
     }
 
+    #[cfg(test)]
+    pub fn with_workspace_root(root: PathBuf) -> Self {
+        Self {
+            config_path: PathBuf::from("."),
+            config: Mutex::new(Config {
+                workspace_root: Some(root),
+            }),
+            index: RwLock::new(LinkIndex::default()),
+        }
+    }
+
     fn default_config_path() -> PathBuf {
         // Store config next to the executable / in the crate root during dev.
         std::env::current_exe()

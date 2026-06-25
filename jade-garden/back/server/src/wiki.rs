@@ -77,3 +77,34 @@ fn join_ad(frontmatter: &Value, body: &str) -> Result<String, String> {
         .map_err(|e| format!("Failed to serialize frontmatter: {e}"))?;
     Ok(format!("---\n{}---\n\n{}", yaml_text, body.trim_start()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn split_ad_with_frontmatter() {
+        let text = "---\ntitle: Foo\n---\n\n# Body\n";
+        let (fm, body) = split_ad(text).unwrap();
+        assert_eq!(fm["title"], "Foo");
+        assert_eq!(body, "# Body\n");
+    }
+
+    #[test]
+    fn split_ad_without_frontmatter() {
+        let text = "# Body\n\nparagraph\n";
+        let (fm, body) = split_ad(text).unwrap();
+        assert!(fm.as_object().unwrap().is_empty());
+        assert_eq!(body, text);
+    }
+
+    #[test]
+    fn join_ad_roundtrip() {
+        let mut fm = serde_json::Map::new();
+        fm.insert("title".to_string(), Value::String("Foo".to_string()));
+        let text = join_ad(&Value::Object(fm), "# Body\n").unwrap();
+        assert!(text.starts_with("---\n"));
+        assert!(text.contains("title: Foo"));
+        assert!(text.ends_with("# Body\n"));
+    }
+}

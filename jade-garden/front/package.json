@@ -12,6 +12,7 @@
     "@autodown/editor": "link:../../autodown/packages/editor",
     "@autodown/vue": "link:../../autodown/packages/vue",
     "@vueuse/core": "^10.7.0",
+    "pinia": "^2.1.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "embla-carousel-vue": "^8.5.1",

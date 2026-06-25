@@ -42,6 +42,9 @@ coverage/
 .turbo/
 .vitest/
 
+# Local runtime / test data
+/tmp/
+
 # Demo temporary files
 autodown/demo/*.png
 autodown/demo/*.cjs

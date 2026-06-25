@@ -1,0 +1,30 @@
+---
+status: active
+summary: 分布式系统中的 CAP 定理简介
+tags:
+- distributed-systems
+- theory
+title: CAP 定理
+updated_at: 2026-06-25T18:17:27
+---
+
+# CAP 定理
+
+CAP 定理指出，分布式系统最多只能同时满足以下三项中的两项：
+
+## 一致性（Consistency） {#block-consistency}
+
+所有节点在同一时间看到的数据是一致的。
+
+## 可用性（Availability） {#block-availability}
+
+每个请求都能在有限时间内收到非错误的响应。
+
+## 分区容错性（Partition Tolerance） {#block-partition}
+
+系统在遇到网络分区时仍能继续运行。
+
+## 相关链接
+
+- [[Hello World]]
+- [[Projects]]

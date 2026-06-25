@@ -1,0 +1,22 @@
+---
+title: 首页
+tags:
+  - index
+  - jade-garden
+status: active
+summary: Jade Garden 测试知识库首页
+updated_at: 2026-06-16T07:00:00Z
+---
+# 首页
+
+欢迎来到 Jade Garden 测试知识库。
+
+这里是一个类 Obsidian 的 AutoDown 编辑器，支持实时双栏编辑、WikiLink 跳转、反向链接等功能。
+
+## 快速开始
+
+- [[Hello World]] — 基础语法示例
+- [[CAP 定理]] — 包含标题大纲和块级链接
+- [[Projects]] — 项目与任务链接示例
+
+> 提示：点击预览区中的 `[[页面名]]` 即可跳转；红色虚线链接表示悬空页面，点击可新建。

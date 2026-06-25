@@ -1,0 +1,34 @@
+---
+title: Hello World
+tags:
+  - demo
+status: draft
+summary: 最基础的 AutoDown 文档示例
+updated_at: 2026-06-16T07:00:00Z
+---
+# Hello World
+
+这是一段示例文本，包含 **粗体**、*斜体* 和 `行内代码`。
+
+## 列表
+
+- 项目一
+- 项目二
+  - 子项目 A
+  - 子项目 B
+
+## 任务列表
+
+- [x] 创建知识库
+- [ ] 学习 AutoDown 语法
+- [ ] 探索 [[CAP 定理]]
+
+## 代码块
+
+```rust
+fn main() {
+    println!("Hello, Jade Garden!");
+}
+```
+
+返回 [[首页]]。

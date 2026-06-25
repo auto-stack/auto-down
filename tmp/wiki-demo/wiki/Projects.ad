@@ -1,0 +1,25 @@
+---
+title: Projects
+tags:
+  - project-management
+status: active
+summary: 项目总览与任务追踪
+updated_at: 2026-06-16T07:00:00Z
+---
+# Projects
+
+当前进行中的项目：
+
+## 项目 A
+
+- 负责人：张三
+- 状态：进行中
+- 相关任务：[[Tasks#block-project-a]]
+
+## 项目 B
+
+- 负责人：李四
+- 状态：待启动
+- 相关任务：[[Tasks#block-project-b]]
+
+返回 [[首页]]。

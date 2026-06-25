@@ -1,0 +1,25 @@
+---
+title: Tasks
+tags:
+  - tasks
+status: active
+summary: 任务清单
+updated_at: 2026-06-16T07:00:00Z
+---
+# Tasks
+
+## 项目 A 任务 {#block-project-a}
+
+- [x] 需求分析
+- [ ] 接口设计
+- [ ] 代码实现
+
+## 项目 B 任务 {#block-project-b}
+
+- [ ] 方案调研
+- [ ] 原型设计
+
+## 其他
+
+- [[Hello World]]
+- [[CAP 定理#block-consistency]]

@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { FolderTree, Search, Clock } from 'lucide-vue-next'
+import { FolderTree, Search, Clock, Sun, Moon } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useThemeStore } from '@/stores/theme'
 import type { LeftPanel } from '@/stores/sidebar'
 
 const sidebar = useSidebarStore()
+const theme = useThemeStore()
 
 const items: { panel: LeftPanel; icon: any; label: string }[] = [
   { panel: 'files', icon: FolderTree, label: 'Files' },
@@ -27,6 +29,16 @@ function select(panel: LeftPanel) {
       @click="select(item.panel)"
     >
       <component :is="item.icon" class="h-5 w-5" />
+    </button>
+
+    <div class="flex-1" />
+
+    <button
+      :title="theme.theme === 'dark' ? 'Switch to light' : 'Switch to dark'"
+      class="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      @click="theme.toggle()"
+    >
+      <component :is="theme.theme === 'dark' ? Sun : Moon" class="h-5 w-5" />
     </button>
   </nav>
 </template>

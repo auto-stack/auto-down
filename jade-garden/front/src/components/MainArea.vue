@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
+import EditorTab from './EditorTab.vue'
 
 const tabs = useTabsStore()
 </script>
@@ -27,11 +28,12 @@ const tabs = useTabsStore()
           />
         </button>
       </div>
-      <div class="flex-1 overflow-auto p-4">
-        <div v-if="tabs.activeTab" class="text-sm text-muted-foreground">
-          Open: <span class="font-medium text-foreground">{{ tabs.activeTab.path }}</span>
-          <p class="mt-2">Editor will be integrated in Phase 4.</p>
-        </div>
+      <div class="relative flex flex-1 overflow-hidden">
+        <EditorTab
+          v-if="tabs.activeTab"
+          :key="tabs.activeTab.path"
+          :path="tabs.activeTab.path"
+        />
       </div>
     </template>
   </main>

@@ -1,10 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { readWiki, writeWiki, type WikiDoc } from '@/lib/api'
 
 export interface Tab {
   path: string
   title: string
+  body: string
+  frontmatter: Record<string, any>
   dirty?: boolean
+  loaded?: boolean
+  saving?: boolean
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -13,17 +18,39 @@ export const useTabsStore = defineStore('tabs', () => {
 
   const activeTab = computed(() => tabs.value.find(t => t.path === activePath.value) || null)
 
-  function open(path: string, title?: string) {
+  async function open(path: string, title?: string) {
     const existing = tabs.value.find(t => t.path === path)
     if (existing) {
       activePath.value = path
+      if (!existing.loaded) await load(path)
       return
     }
     tabs.value.push({
       path,
       title: title || path.replace(/\.ad$/, ''),
+      body: '',
+      frontmatter: {},
+      dirty: false,
+      loaded: false,
+      saving: false,
     })
     activePath.value = path
+    await load(path)
+  }
+
+  async function load(path: string) {
+    const tab = tabs.value.find(t => t.path === path)
+    if (!tab) return
+    try {
+      const doc: WikiDoc = await readWiki(path)
+      tab.body = doc.body
+      tab.frontmatter = doc.frontmatter || {}
+      tab.title = doc.frontmatter?.title || tab.title
+      tab.loaded = true
+    } catch (e) {
+      tab.loaded = true
+      console.error('Failed to load wiki doc', e)
+    }
   }
 
   function close(path: string) {
@@ -40,5 +67,25 @@ export const useTabsStore = defineStore('tabs', () => {
     if (tab) tab.dirty = dirty
   }
 
-  return { tabs, activePath, activeTab, open, close, setDirty }
+  function setBody(path: string, body: string) {
+    const tab = tabs.value.find(t => t.path === path)
+    if (!tab || tab.body === body) return
+    tab.body = body
+    tab.dirty = true
+  }
+
+  async function save(path: string) {
+    const tab = tabs.value.find(t => t.path === path)
+    if (!tab || !tab.loaded) return
+    tab.saving = true
+    try {
+      const saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: tab.body })
+      tab.frontmatter = saved.frontmatter || {}
+      tab.dirty = false
+    } finally {
+      tab.saving = false
+    }
+  }
+
+  return { tabs, activePath, activeTab, open, close, load, setDirty, setBody, save }
 })

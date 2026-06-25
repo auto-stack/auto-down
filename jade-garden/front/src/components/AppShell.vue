@@ -5,6 +5,7 @@ import { useFileTreeStore } from '@/stores/fileTree'
 import Ribbon from './Ribbon.vue'
 import LeftSidebar from './LeftSidebar.vue'
 import MainArea from './MainArea.vue'
+import RightSidebar from './RightSidebar.vue'
 import StatusBar from './StatusBar.vue'
 import WorkspaceOpener from './WorkspaceOpener.vue'
 
@@ -28,6 +29,7 @@ onMounted(async () => {
         <WorkspaceOpener v-if="!workspace.root" />
         <MainArea v-else />
       </div>
+      <RightSidebar />
     </div>
     <StatusBar />
   </div>

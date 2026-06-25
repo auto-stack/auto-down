@@ -5,6 +5,10 @@ rust/
 dist/
 build/
 
+# Local test data / runtime config
+test-wiki/
+jade-garden-config.json
+
 # Runtime logs
 auto-run.log
 *.log

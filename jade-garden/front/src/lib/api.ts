@@ -81,3 +81,39 @@ export async function writeWiki(path: string, doc: WikiDoc): Promise<WikiDoc> {
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
+
+export interface Backlink {
+  source_title: string
+  source_path: string
+  context: string
+}
+
+export interface Outlink {
+  target_title: string
+  target_path?: string
+  exists: boolean
+  block_id?: string
+}
+
+export interface LinksResponse<T> {
+  title: string
+  links: T[]
+}
+
+export async function getBacklinks(title: string): Promise<LinksResponse<Backlink>> {
+  const res = await fetch(`/api/backlinks/${encodeURIComponent(title)}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function getOutlinks(title: string): Promise<LinksResponse<Outlink>> {
+  const res = await fetch(`/api/outlinks/${encodeURIComponent(title)}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function createWikiPage(title: string): Promise<string> {
+  const path = `${title.replace(/[\\/:*?"<>|]/g, '-').trim()}.ad`
+  await createFile(path, false)
+  return path
+}

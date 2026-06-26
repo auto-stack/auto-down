@@ -22,6 +22,7 @@ import { CustomDetails } from './CustomDetails'
 import { CustomMathBlock } from './CustomMathBlock'
 import { BlockId } from './BlockId'
 import { BlockInsertHandle } from './BlockInsertHandle'
+import { WikiLink } from './WikiLink'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 
 export interface EditorOptions {
@@ -42,6 +43,7 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     CustomMathBlock,
     BlockId,
     BlockInsertHandle,
+    WikiLink,
     Placeholder.configure({
       placeholder: options.placeholder ?? "Type '/' for commands…",
     }),

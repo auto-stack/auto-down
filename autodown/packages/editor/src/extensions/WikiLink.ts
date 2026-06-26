@@ -1,0 +1,124 @@
+import { mergeAttributes, Node } from '@tiptap/core'
+import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import WikiLinkNodeView from '../node-views/WikiLinkNodeView.vue'
+
+const WIKI_LINK_RE = /^\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]/
+
+export interface WikiLinkAttrs {
+  raw: string
+  title: string
+  blockId?: string
+}
+
+function parseRaw(raw: string): WikiLinkAttrs {
+  const match = raw.match(/^\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]/)
+  if (!match) {
+    return { raw, title: raw }
+  }
+  return {
+    raw,
+    title: match[1].trim(),
+    blockId: match[2]?.trim(),
+  }
+}
+
+export const WikiLink = Node.create({
+  name: 'wikiLink',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      raw: {
+        default: '[[Untitled]]',
+        parseHTML: (element) => element.getAttribute('data-raw') || element.textContent || '[[Untitled]]',
+        renderHTML: (attributes) => ({ 'data-raw': attributes.raw as string }),
+      },
+      title: {
+        default: 'Untitled',
+        parseHTML: (element) => element.getAttribute('data-title') || element.textContent || 'Untitled',
+        renderHTML: (attributes) => ({ 'data-title': attributes.title as string }),
+      },
+      blockId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-block-id') || null,
+        renderHTML: (attributes) => {
+          const value = attributes.blockId as string | null | undefined
+          return value ? { 'data-block-id': value } : {}
+        },
+      },
+    }
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-wikilink]',
+        getAttrs: (element) => {
+          const raw = element.getAttribute('data-raw') || element.textContent || '[[Untitled]]'
+          const parsed = parseRaw(raw)
+          return { raw: parsed.raw, title: parsed.title, blockId: parsed.blockId }
+        },
+      },
+    ]
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    const attrs = node.attrs as WikiLinkAttrs
+    const label = attrs.blockId ? `${attrs.title}#${attrs.blockId}` : attrs.title
+    return [
+      'span',
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+        'data-wikilink': '',
+        'data-raw': attrs.raw,
+        'data-title': attrs.title,
+        class: 'autodown-wikilink',
+      }),
+      label,
+    ]
+  },
+
+  addNodeView() {
+    return VueNodeViewRenderer(WikiLinkNodeView as any)
+  },
+
+  markdownTokenName: 'wikiLink',
+
+  parseMarkdown(token) {
+    return {
+      type: this.name,
+      attrs: {
+        raw: token.raw as string,
+        title: token.title as string,
+        blockId: (token.blockId as string) || null,
+      },
+    }
+  },
+
+  renderMarkdown(node) {
+    return (node.attrs?.raw as string) || '[[Untitled]]'
+  },
+
+  markdownTokenizer: {
+    name: 'wikiLink',
+    level: 'inline',
+    start(src) {
+      return src.match(/\[\[/) ? 0 : -1
+    },
+    tokenize(src) {
+      const match = src.match(WIKI_LINK_RE)
+      if (!match) return undefined
+      const raw = match[0]
+      const title = match[1].trim()
+      const blockId = match[2]?.trim()
+      return {
+        type: 'wikiLink',
+        raw,
+        title,
+        blockId,
+      }
+    },
+  },
+})

@@ -106,10 +106,7 @@ async function confirmCreatePage() {
 </script>
 
 <template>
-  <div v-if="!tab?.loaded" class="flex h-full items-center justify-center text-muted-foreground">
-    Loading…
-  </div>
-  <div v-else class="editor-workspace">
+  <div class="editor-workspace">
     <section class="editor-panel editor-panel-left">
       <AutoDownEditor
         :content="body"
@@ -127,6 +124,13 @@ async function confirmCreatePage() {
         class="h-full"
       />
     </section>
+
+    <div
+      v-show="!tab?.loaded"
+      class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground"
+    >
+      Loading…
+    </div>
 
     <CreatePagePrompt
       :open="pendingWikiLink !== null"

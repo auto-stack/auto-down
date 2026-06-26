@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { useTabsStore } from '@/stores/tabs'
@@ -11,6 +11,12 @@ const props = defineProps<{
 const tabs = useTabsStore()
 const tab = computed(() => tabs.tabs.find(t => t.path === props.path))
 const body = computed(() => tab.value?.body ?? '')
+
+watch(() => props.path, () => {
+  if (tab.value && !tab.value.loaded) {
+    tabs.load(props.path)
+  }
+}, { immediate: true })
 
 const debouncedSave = useDebounceFn(() => {
   if (tab.value?.dirty) tabs.save(props.path)

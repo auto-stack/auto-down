@@ -2,7 +2,16 @@ import { mergeAttributes, Node } from '@tiptap/core'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import WikiLinkNodeView from '../node-views/WikiLinkNodeView.vue'
 
-const WIKI_LINK_RE = /^\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]/
+const WIKI_LINK_RE = /\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]/g
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
 
 export interface WikiLinkAttrs {
   raw: string
@@ -20,6 +29,16 @@ function parseRaw(raw: string): WikiLinkAttrs {
     title: match[1].trim(),
     blockId: match[2]?.trim(),
   }
+}
+
+export function wikiLinkToHtml(md: string): string {
+  return md.replace(WIKI_LINK_RE, (raw, titleRaw, blockIdRaw) => {
+    const title = titleRaw.trim()
+    const blockId = blockIdRaw?.trim()
+    const label = blockId ? `${title}#${blockId}` : title
+    const blockAttr = blockId ? ` data-block-id="${escapeHtml(blockId)}"` : ''
+    return `<span data-wikilink data-raw="${escapeHtml(raw)}" data-title="${escapeHtml(title)}"${blockAttr}>${escapeHtml(label)}</span>`
+  })
 }
 
 export const WikiLink = Node.create({
@@ -106,7 +125,7 @@ export const WikiLink = Node.create({
       return idx === -1 ? -1 : idx
     },
     tokenize(src) {
-      const match = src.match(WIKI_LINK_RE)
+      const match = src.match(/^\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]/)
       if (!match) return undefined
       const raw = match[0]
       const title = match[1].trim()

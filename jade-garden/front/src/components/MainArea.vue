@@ -42,7 +42,6 @@ function onSwitch(path: string) {
       <div class="relative flex flex-1 overflow-hidden">
         <EditorTab
           v-if="tabs.activeTab"
-          :key="tabs.activeTab.path"
           :path="tabs.activeTab.path"
         />
       </div>

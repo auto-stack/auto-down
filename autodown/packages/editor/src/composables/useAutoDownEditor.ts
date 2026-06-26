@@ -5,7 +5,6 @@ import type { EditorOptions as AutoDownEditorOptions } from '../extensions'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 import { preprocessMarkdown } from '@autodown/core'
 import { applyTableAttrs } from '../extensions/tableAttributes'
-import { wikiLinkToHtml } from '../extensions/WikiLink'
 
 export interface UseAutoDownEditorOptions {
   content: string
@@ -26,13 +25,12 @@ export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
   }
   const extensions = createExtensions(extOptions)
 
-  // Preprocess Markdown to extract table IAL attributes and convert wikilinks to HTML.
+  // Preprocess Markdown to extract table IAL attributes before parsing
   const { md: cleanContent, tableAttrs } = preprocessMarkdown(options.content)
-  const contentWithWiki = wikiLinkToHtml(cleanContent)
 
   return useEditor({
     extensions,
-    content: contentWithWiki,
+    content: cleanContent,
     contentType: 'markdown',
     editable: options.editable ?? true,
     autofocus: options.autofocus ?? false,

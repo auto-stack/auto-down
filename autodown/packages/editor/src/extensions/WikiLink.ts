@@ -106,7 +106,7 @@ export const WikiLink = Node.create({
   markdownTokenName: 'wikiLink',
 
   parseMarkdown(token, helpers) {
-    return helpers.createNode(this.name as string, {
+    return helpers.createNode('wikiLink', {
       raw: token.raw as string,
       title: token.title as string,
       blockId: token.blockId || null,

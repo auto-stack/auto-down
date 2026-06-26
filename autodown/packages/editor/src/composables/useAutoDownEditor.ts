@@ -16,12 +16,14 @@ export interface UseAutoDownEditorOptions {
   onBlur?: (editor: Editor) => void
   onFocus?: (editor: Editor) => void
   onLinkClick?: (id: string) => void
+  onOpenWikiLink?: (title: string, blockId?: string | null) => void
 }
 
 export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
   const extOptions: AutoDownEditorOptions = {
     placeholder: options.placeholder,
     slashItems: options.slashItems,
+    openWikiLink: options.onOpenWikiLink,
   }
   const extensions = createExtensions(extOptions)
 

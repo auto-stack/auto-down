@@ -28,6 +28,7 @@ import type { SlashItem } from '../menus/SlashMenu.vue'
 export interface EditorOptions {
   placeholder?: string
   slashItems?: SlashItem[]
+  openWikiLink?: (title: string, blockId?: string | null) => void
 }
 
 export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
@@ -43,7 +44,9 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     CustomMathBlock,
     BlockId,
     BlockInsertHandle,
-    WikiLink,
+    WikiLink.configure({
+      openWikiLink: options.openWikiLink,
+    }),
     Placeholder.configure({
       placeholder: options.placeholder ?? "Type '/' for commands…",
     }),

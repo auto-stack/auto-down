@@ -47,6 +47,16 @@ function startEdit() {
   })
 }
 
+function openLink() {
+  const handler = (props.extension.options as any)?.openWikiLink
+  if (typeof handler === 'function') {
+    handler(attrs.value.title, attrs.value.blockId || null)
+  } else {
+    // Fallback: start editing when no opener is provided.
+    startEdit()
+  }
+}
+
 function commit() {
   const value = inputValue.value.trim()
   if (!value) {
@@ -91,10 +101,18 @@ watch(() => attrs.value.raw, (newRaw) => {
     :class="{ 'is-editing': editing }"
   >
     <template v-if="!editing">
-      <span class="autodown-wikilink-label" @click.stop="startEdit">
+      <span
+        class="autodown-wikilink-label"
+        :title="`Open ${displayLabel}`"
+        @click.stop="openLink"
+      >
         {{ displayLabel }}
       </span>
-      <span class="autodown-wikilink-edit" @click.stop="startEdit">
+      <span
+        class="autodown-wikilink-edit"
+        title="Edit link"
+        @click.stop="startEdit"
+      >
         <Pencil class="h-3 w-3" />
       </span>
     </template>

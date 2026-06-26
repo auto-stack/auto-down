@@ -1,4 +1,5 @@
 import { mergeAttributes, Node } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import WikiLinkNodeView from '../node-views/WikiLinkNodeView.vue'
 
@@ -41,12 +42,23 @@ export function wikiLinkToHtml(md: string): string {
   })
 }
 
-export const WikiLink = Node.create({
+export interface WikiLinkOptions {
+  openWikiLink?: (title: string, blockId?: string | null) => void
+  HTMLAttributes?: Record<string, any>
+}
+
+export const WikiLink = Node.create<WikiLinkOptions>({
   name: 'wikiLink',
   group: 'inline',
   inline: true,
   atom: true,
   selectable: true,
+
+  addOptions() {
+    return {
+      openWikiLink: undefined,
+    }
+  },
 
   addAttributes() {
     return {
@@ -89,7 +101,7 @@ export const WikiLink = Node.create({
     const label = attrs.blockId ? `${attrs.title}#${attrs.blockId}` : attrs.title
     return [
       'span',
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+      mergeAttributes(this.options.HTMLAttributes ?? {}, HTMLAttributes, {
         'data-wikilink': '',
         'data-raw': attrs.raw,
         'data-title': attrs.title,
@@ -101,6 +113,56 @@ export const WikiLink = Node.create({
 
   addNodeView() {
     return VueNodeViewRenderer(WikiLinkNodeView as any)
+  },
+
+  addProseMirrorPlugins() {
+    const nodeType = this.type
+    const regex = /\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]/g
+    return [
+      new Plugin({
+        key: new PluginKey('wikiLinkAutoConvert'),
+        appendTransaction: (transactions, _oldState, newState) => {
+          if (!transactions.some((tr) => tr.docChanged)) return null
+
+          let tr = newState.tr
+          let modified = false
+          const matches: { from: number; to: number; attrs: { raw: string; title: string; blockId: string | null } }[] = []
+
+          newState.doc.descendants((node, pos) => {
+            if (!node.isText) return true
+            if (node.marks.length > 0) return false
+            // Skip text inside code blocks to avoid converting literal [[...]] there.
+            const parent = newState.doc.resolve(pos).parent
+            if (parent.type.name === 'codeBlock') return false
+
+            const text = node.text || ''
+            let match: RegExpExecArray | null
+            regex.lastIndex = 0
+            while ((match = regex.exec(text)) !== null) {
+              matches.push({
+                from: pos + match.index,
+                to: pos + match.index + match[0].length,
+                attrs: {
+                  raw: match[0],
+                  title: match[1].trim(),
+                  blockId: match[2]?.trim() || null,
+                },
+              })
+            }
+            return false
+          })
+
+          // Process from end to start so positions remain valid.
+          for (let i = matches.length - 1; i >= 0; i -= 1) {
+            const { from, to, attrs } = matches[i]
+            tr = tr.replaceWith(from, to, nodeType.create(attrs))
+            modified = true
+          }
+
+          return modified ? tr : null
+        },
+      }),
+    ]
   },
 
   markdownTokenName: 'wikiLink',

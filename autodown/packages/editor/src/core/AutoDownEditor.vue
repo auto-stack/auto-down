@@ -59,6 +59,7 @@ const props = withDefaults(defineProps<{
   cancelLabel?: string
   imageUrlPrompt?: string
   linkUrlPrompt?: string
+  onOpenWikiLink?: (title: string, blockId?: string | null) => void
 }>(), {
   canEdit: true,
   autofocus: false,
@@ -76,6 +77,7 @@ const emit = defineEmits<{
   blur: []
   focus: []
   'link-click': [id: string]
+  'open-wiki-link': [title: string, blockId?: string | null]
 }>()
 
 const slashItems: SlashItem[] = [
@@ -224,6 +226,10 @@ const editor = useAutoDownEditor({
   },
   onLinkClick: (id: string) => {
     emit('link-click', id)
+  },
+  onOpenWikiLink: (title: string, blockId?: string | null) => {
+    emit('open-wiki-link', title, blockId)
+    props.onOpenWikiLink?.(title, blockId)
   },
 })
 

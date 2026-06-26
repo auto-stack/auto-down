@@ -367,10 +367,14 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleOutsideClick)
   document.removeEventListener('wheel', handleGlobalWheel, { capture: true })
-  props.editor.view.dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })
-  props.editor.view.dom.removeEventListener('click', handleEditorClick, { capture: true })
-  const wrapper = props.editor.view.dom.closest('.autodown-editor-content-wrapper')
-  wrapper?.removeEventListener('scroll', scheduleUpdate)
+  // The editor may already be destroyed by the time this menu unmounts.
+  const dom = props.editor.view?.dom
+  if (dom) {
+    dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })
+    dom.removeEventListener('click', handleEditorClick, { capture: true })
+    const wrapper = dom.closest('.autodown-editor-content-wrapper')
+    wrapper?.removeEventListener('scroll', scheduleUpdate)
+  }
 })
 
 defineExpose({

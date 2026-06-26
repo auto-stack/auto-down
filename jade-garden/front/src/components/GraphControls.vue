@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, SlidersHorizontal, Palette, Magnet } from 'lucide-vue-next'
+import { Search, SlidersHorizontal, Palette, Magnet, Focus } from 'lucide-vue-next'
 import { useGraphStore } from '@/stores/graph'
 
 const graph = useGraphStore()
@@ -40,6 +40,28 @@ function reset() {
         placeholder="搜索节点…"
         class="graph-input"
       />
+    </div>
+
+    <div v-if="graph.centerPath" class="section">
+      <div class="section-title">
+        <Focus class="h-3.5 w-3.5" />
+        <span>局部图谱</span>
+      </div>
+      <div class="text-xs text-muted-foreground truncate">
+        中心：{{ graph.centerPath.replace(/\.ad$/, '') }}
+      </div>
+      <label class="slider-row">
+        <span>深度</span>
+        <input
+          v-model.number="graph.depth"
+          type="range"
+          min="1"
+          max="3"
+          step="1"
+        />
+        <span class="value">{{ graph.depth }}</span>
+      </label>
+      <button class="graph-btn" @click="graph.showGlobal()">返回全局</button>
     </div>
 
     <div class="section">

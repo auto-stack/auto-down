@@ -49,6 +49,8 @@ export const useGraphStore = defineStore('graph', () => {
   const settings = ref<GraphSettings>(loadSettings())
   const searchQuery = ref('')
   const viewMode = ref<'editor' | 'graph'>('editor')
+  const centerPath = ref<string | null>(null)
+  const depth = ref(1)
 
   async function load() {
     loading.value = true
@@ -76,6 +78,16 @@ export const useGraphStore = defineStore('graph', () => {
     viewMode.value = viewMode.value === 'editor' ? 'graph' : 'editor'
   }
 
+  function openLocal(path: string, d = 1) {
+    centerPath.value = path
+    depth.value = d
+    viewMode.value = 'graph'
+  }
+
+  function showGlobal() {
+    centerPath.value = null
+  }
+
   return {
     nodes,
     edges,
@@ -84,8 +96,12 @@ export const useGraphStore = defineStore('graph', () => {
     settings,
     searchQuery,
     viewMode,
+    centerPath,
+    depth,
     load,
     saveSettings,
     toggleView,
+    openLocal,
+    showGlobal,
   }
 })

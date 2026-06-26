@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { X } from 'lucide-vue-next'
+import { X, Focus } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
 import { useGraphStore } from '@/stores/graph'
 import EditorTab from './EditorTab.vue'
@@ -7,6 +7,12 @@ import GraphPage from './GraphPage.vue'
 
 const tabs = useTabsStore()
 const graph = useGraphStore()
+
+function openLocalGraph() {
+  const path = tabs.activeTab?.path
+  if (!path) return
+  graph.openLocal(path, 1)
+}
 
 function onClose(path: string) {
   tabs.close(path)
@@ -45,16 +51,31 @@ function onSwitch(path: string) {
           <X class="h-3 w-3" />
         </span>
       </button>
+      <div class="mx-1 h-4 w-px bg-border" />
+      <button
+        type="button"
+        title="局部图谱"
+        class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        @click="openLocalGraph"
+      >
+        <Focus class="h-3.5 w-3.5" />
+        <span>局部</span>
+      </button>
     </div>
 
     <div class="relative flex flex-1 overflow-hidden">
-      <GraphPage v-if="graph.viewMode === 'graph'" />
+      <!-- Keep EditorTab mounted while in graph view to avoid destroying/re-creating the Tiptap editor. -->
       <EditorTab
-        v-else-if="tabs.activeTab"
+        v-show="graph.viewMode === 'editor'"
+        v-if="tabs.activeTab"
         :path="tabs.activeTab.path"
       />
+      <GraphPage
+        v-if="graph.viewMode === 'graph'"
+        class="absolute inset-0 z-10"
+      />
       <div
-        v-else
+        v-if="!tabs.activeTab && graph.viewMode !== 'graph'"
         class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"
       >
         <div class="rounded-full bg-accent p-3">

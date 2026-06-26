@@ -29,10 +29,15 @@ pub struct AppState {
 impl AppState {
     pub fn load_or_default() -> Self {
         let config_path = Self::default_config_path();
-        let config = std::fs::read_to_string(&config_path)
+        let mut config: Config = std::fs::read_to_string(&config_path)
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default();
+        if config.workspace_root.is_none() {
+            if let Ok(default_root) = std::env::var("JADE_GARDEN_DEFAULT_WORKSPACE") {
+                config.workspace_root = Some(PathBuf::from(default_root));
+            }
+        }
         Self {
             config_path,
             config: Mutex::new(config),
@@ -78,6 +83,13 @@ impl AppState {
 
     pub fn wiki_dir(&self) -> Option<PathBuf> {
         self.workspace_root().map(|r| r.join("wiki"))
+    }
+
+    pub fn ensure_wiki_dir(&self) -> std::io::Result<()> {
+        if let Some(wiki) = self.wiki_dir() {
+            std::fs::create_dir_all(&wiki)?;
+        }
+        Ok(())
     }
 
     pub fn read_index<R>(&self, f: impl FnOnce(&LinkIndex) -> R) -> R {

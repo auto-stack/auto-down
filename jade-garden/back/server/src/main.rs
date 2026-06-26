@@ -21,9 +21,11 @@ async fn main() {
 
     let state = Arc::new(AppState::load_or_default());
 
-    // Initial index build if a workspace is already open.
+    // Ensure wiki directory exists and build initial link index if a workspace is open.
     if let Some(root) = state.workspace_root() {
-        if let Err(e) = links::rebuild_index(state.clone()).await {
+        if let Err(e) = state.ensure_wiki_dir() {
+            warn!("Failed to create wiki directory: {e}");
+        } else if let Err(e) = links::rebuild_index(state.clone()).await {
             warn!("Failed to build initial link index: {e}");
         } else {
             info!("Initial link index built for {}", root.display());

@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useDebounceFn, onKeyStroke } from '@vueuse/core'
+import { computed, ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { StreamingRenderer } from '@autodown/vue'
 import { useTabsStore } from '@/stores/tabs'
 import { useFileTreeStore } from '@/stores/fileTree'
-import { transformWikiLinks, wikiTitleToPath, parseWikiLinks } from '@/lib/wikiLink'
+import { transformWikiLinks, wikiTitleToPath } from '@/lib/wikiLink'
 import { createWikiPage } from '@/lib/api'
-import { useSyncedScroll } from '@/composables/useSyncedScroll'
 import CreatePagePrompt from './CreatePagePrompt.vue'
 
 const props = defineProps<{
@@ -17,17 +16,6 @@ const props = defineProps<{
 const tabs = useTabsStore()
 const fileTree = useFileTreeStore()
 const tab = computed(() => tabs.tabs.find(t => t.path === props.path))
-
-const workspaceRef = ref<HTMLElement | null>(null)
-const editorRef = ref<InstanceType<typeof AutoDownEditor> | null>(null)
-const rendererRef = ref<InstanceType<typeof StreamingRenderer> | null>(null)
-const rightPanelRef = ref<HTMLElement | null>(null)
-
-useSyncedScroll({
-  workspaceRef,
-  editorRef,
-  rendererRef,
-})
 
 const body = computed(() => tab.value?.body ?? '')
 
@@ -61,18 +49,6 @@ function onUpdate(md: string) {
   debouncedSave()
 }
 
-function onSave(md: string) {
-  tabs.setBody(props.path, md)
-  tabs.save(props.path)
-}
-
-onKeyStroke('s', (e) => {
-  if ((e.ctrlKey || e.metaKey) && tab.value?.dirty) {
-    e.preventDefault()
-    tabs.save(props.path)
-  }
-})
-
 watch(() => props.path, () => {
   if (tab.value && !tab.value.loaded) tabs.load(props.path)
 }, { immediate: true })
@@ -96,7 +72,6 @@ async function openWikiLink(title: string, blockId?: string) {
   const path = wikiTitleToPath(title)
   await tabs.open(path, title)
   if (blockId) {
-    // Scroll to block in preview is handled by StreamingRenderer's data-block-id.
     // TODO: scroll editor/preview to block id.
     console.log('scroll to', blockId)
   }
@@ -128,39 +103,30 @@ async function confirmCreatePage() {
     pendingWikiLink.value = null
   }
 }
-
-onMounted(() => {
-  if (!tab.value?.loaded) tabs.load(props.path)
-})
 </script>
 
 <template>
   <div v-if="!tab?.loaded" class="flex h-full items-center justify-center text-muted-foreground">
     Loading…
   </div>
-  <div v-else ref="workspaceRef" class="editor-workspace">
-    <div class="editor-panels">
-      <section class="editor-panel editor-panel-left">
-        <AutoDownEditor
-          ref="editorRef"
-          :content="body"
-          placeholder="Start typing..."
-          :show-actions="false"
-          class="h-full"
-          @update="onUpdate"
-          @save="onSave"
-        />
-      </section>
-      <div class="editor-divider" />
-      <section ref="rightPanelRef" class="editor-panel editor-panel-right" @click="onPreviewClick">
-        <StreamingRenderer
-          ref="rendererRef"
-          :source="previewSource"
-          :streaming="false"
-          class="h-full"
-        />
-      </section>
-    </div>
+  <div v-else class="editor-workspace">
+    <section class="editor-panel editor-panel-left">
+      <AutoDownEditor
+        :content="body"
+        placeholder="Start typing..."
+        :show-actions="false"
+        class="h-full"
+        @update="onUpdate"
+      />
+    </section>
+    <div class="editor-divider" />
+    <section class="editor-panel editor-panel-right" @click="onPreviewClick">
+      <StreamingRenderer
+        :source="previewSource"
+        :streaming="false"
+        class="h-full"
+      />
+    </section>
 
     <CreatePagePrompt
       :open="pendingWikiLink !== null"
@@ -173,16 +139,12 @@ onMounted(() => {
 
 <style scoped>
 .editor-workspace {
-  position: relative;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-}
-
-.editor-panels {
   display: flex;
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 .editor-panel {
@@ -198,30 +160,20 @@ onMounted(() => {
   border: none;
   border-radius: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-panel-left :deep(.autodown-editor-content-wrapper) {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.editor-panel-left :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
-  display: none;
 }
 
 .editor-panel-right :deep(.streaming-document) {
   height: 100%;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   padding: 1rem 1.25rem;
-  display: flow-root;
-}
-
-.editor-panel-right :deep(.streaming-document)::-webkit-scrollbar {
-  display: none;
 }
 
 .editor-divider {

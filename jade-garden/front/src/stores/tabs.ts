@@ -6,6 +6,7 @@ export interface Tab {
   path: string
   title: string
   body: string
+  originalBody: string
   frontmatter: Record<string, any>
   dirty?: boolean
   loaded?: boolean
@@ -29,6 +30,7 @@ export const useTabsStore = defineStore('tabs', () => {
       path,
       title: title || path.replace(/\.ad$/, ''),
       body: '',
+      originalBody: '',
       frontmatter: {},
       dirty: false,
       loaded: false,
@@ -40,15 +42,19 @@ export const useTabsStore = defineStore('tabs', () => {
 
   async function load(path: string) {
     const tab = tabs.value.find(t => t.path === path)
-    if (!tab) return
+    if (!tab || tab.loaded) return
     try {
       const doc: WikiDoc = await readWiki(path)
       tab.body = doc.body
+      tab.originalBody = doc.body
       tab.frontmatter = doc.frontmatter || {}
       tab.title = doc.frontmatter?.title || tab.title
+      tab.dirty = false
       tab.loaded = true
     } catch (e) {
       tab.loaded = true
+      tab.originalBody = tab.body
+      tab.dirty = false
       console.error('Failed to load wiki doc', e)
     }
   }
@@ -67,16 +73,11 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
-  function setDirty(path: string, dirty: boolean) {
-    const tab = tabs.value.find(t => t.path === path)
-    if (tab) tab.dirty = dirty
-  }
-
   function setBody(path: string, body: string) {
     const tab = tabs.value.find(t => t.path === path)
     if (!tab || tab.body === body) return
     tab.body = body
-    tab.dirty = true
+    tab.dirty = tab.body !== tab.originalBody
   }
 
   async function save(path: string) {
@@ -86,11 +87,12 @@ export const useTabsStore = defineStore('tabs', () => {
     try {
       const saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: tab.body })
       tab.frontmatter = saved.frontmatter || {}
+      tab.originalBody = tab.body
       tab.dirty = false
     } finally {
       tab.saving = false
     }
   }
 
-  return { tabs, activePath, activeTab, open, close, load, setDirty, setBody, save }
+  return { tabs, activePath, activeTab, open, close, load, setBody, save }
 })

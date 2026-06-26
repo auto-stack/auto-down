@@ -55,6 +55,7 @@ async fn main() {
         // Links
         .route("/api/backlinks/{title}", get(links::get_backlinks))
         .route("/api/outlinks/{title}", get(links::get_outlinks))
+        .route("/api/graph", get(links::get_graph))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)

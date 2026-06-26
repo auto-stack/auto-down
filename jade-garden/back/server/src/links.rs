@@ -30,6 +30,28 @@ pub struct LinksResponse<T> {
     pub links: Vec<T>,
 }
 
+#[derive(Serialize, Clone, Debug)]
+pub struct GraphNode {
+    pub id: String,
+    pub label: String,
+    pub path: String,
+    pub exists: bool,
+    pub degree: usize,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct GraphEdge {
+    pub source: String,
+    pub target: String,
+    pub block_id: Option<String>,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct GraphData {
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
+}
+
 pub async fn get_outlinks(
     State(state): State<Arc<AppState>>,
     Path(title): Path<String>,
@@ -54,6 +76,72 @@ pub async fn get_backlinks(
             .unwrap_or_default()
     });
     Json(LinksResponse { title, links })
+}
+
+pub async fn get_graph(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<GraphData>, String> {
+    let wiki = state.wiki_dir().ok_or("No workspace open")?;
+    let data = state.read_index(|idx| build_graph_data(idx, &wiki));
+    Ok(Json(data))
+}
+
+fn build_graph_data(idx: &crate::state::LinkIndex, wiki: &std::path::Path) -> GraphData {
+    use std::collections::HashMap;
+
+    fn rel_path(wiki: &std::path::Path, path: &std::path::Path) -> String {
+        path.strip_prefix(wiki)
+            .unwrap_or(path)
+            .to_string_lossy()
+            .replace('\\', "/")
+    }
+
+    let mut nodes: HashMap<String, GraphNode> = HashMap::new();
+    let mut edges: Vec<GraphEdge> = Vec::new();
+
+    // Add all existing pages as nodes.
+    for (title, path) in &idx.title_to_path {
+        let path_str = rel_path(wiki, path);
+        nodes.entry(path_str.clone()).or_insert(GraphNode {
+            id: path_str.clone(),
+            label: title.clone(),
+            path: path_str.clone(),
+            exists: true,
+            degree: 0,
+        });
+    }
+
+    // Build edges from outlinks; target must exist to keep the MVP graph clean.
+    for (source_title, outlinks) in &idx.outlinks {
+        let Some(source_path) = idx.title_to_path.get(source_title) else {
+            continue;
+        };
+        let source_id = rel_path(wiki, source_path);
+        for link in outlinks {
+            let Some(target_id) = link.target_path.clone() else {
+                continue;
+            };
+            // Ensure both source and target nodes exist.
+            if !nodes.contains_key(&target_id) {
+                continue;
+            }
+            edges.push(GraphEdge {
+                source: source_id.clone(),
+                target: target_id.clone(),
+                block_id: link.block_id.clone(),
+            });
+            if let Some(n) = nodes.get_mut(&source_id) {
+                n.degree += 1;
+            }
+            if let Some(n) = nodes.get_mut(&target_id) {
+                n.degree += 1;
+            }
+        }
+    }
+
+    let mut nodes: Vec<GraphNode> = nodes.into_values().collect();
+    nodes.sort_by(|a, b| a.id.cmp(&b.id));
+    GraphData { nodes, edges }
 }
 
 /// Rebuild the entire link index from the current workspace.

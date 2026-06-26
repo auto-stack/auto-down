@@ -95,9 +95,34 @@ export interface Outlink {
   block_id?: string
 }
 
+export interface GraphNode {
+  id: string
+  label: string
+  path: string
+  exists: boolean
+  degree: number
+}
+
+export interface GraphEdge {
+  source: string
+  target: string
+  block_id?: string
+}
+
+export interface GraphData {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
 export interface LinksResponse<T> {
   title: string
   links: T[]
+}
+
+export async function getGraph(): Promise<GraphData> {
+  const res = await fetch('/api/graph')
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
 }
 
 export async function getBacklinks(title: string): Promise<LinksResponse<Backlink>> {

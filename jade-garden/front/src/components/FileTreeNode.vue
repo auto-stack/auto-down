@@ -25,19 +25,27 @@ function toggle() {
 <template>
   <div>
     <div
-      class="flex cursor-pointer items-center gap-1 py-1 pr-2 text-sm hover:bg-accent/50"
-      :class="{ 'bg-accent/80 text-accent-foreground': isActive }"
-      :style="{ paddingLeft: `${level * 12 + 8}px` }"
+      class="group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors"
+      :class="[
+        isActive
+          ? 'bg-primary/10 text-primary'
+          : 'text-foreground hover:bg-accent hover:text-foreground',
+      ]"
+      :style="{ marginLeft: `${level * 12}px`, marginRight: '6px' }"
       @click="toggle"
     >
-      <span class="flex h-4 w-4 items-center justify-center text-muted-foreground">
-        <ChevronRight v-if="node.is_dir && !isExpanded" class="h-4 w-4" />
-        <ChevronDown v-else-if="node.is_dir && isExpanded" class="h-4 w-4" />
+      <span class="flex h-4 w-4 items-center justify-center text-muted-foreground/70">
+        <ChevronRight v-if="node.is_dir && !isExpanded" class="h-3.5 w-3.5" />
+        <ChevronDown v-else-if="node.is_dir && isExpanded" class="h-3.5 w-3.5" />
       </span>
       <component
         :is="node.is_dir ? (isExpanded ? FolderOpen : Folder) : FileText"
-        class="h-4 w-4 shrink-0"
-        :class="node.is_dir ? 'text-muted-foreground' : 'text-emerald-600'"
+        class="h-3.5 w-3.5 shrink-0"
+        :class="[
+          node.is_dir
+            ? 'text-muted-foreground/70'
+            : isActive ? 'text-primary' : 'text-muted-foreground',
+        ]"
       />
       <span class="truncate">{{ node.name }}</span>
     </div>

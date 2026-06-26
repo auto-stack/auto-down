@@ -25,7 +25,7 @@ const linkCount = computed(() => (body.value.match(/\[\[/g) || []).length)
 const saving = computed(() => tabs.activeTab?.saving)
 const dirty = computed(() => tabs.activeTab?.dirty)
 const saveLabel = computed(() => {
-  if (saving.value) return 'Saving...'
+  if (saving.value) return 'Saving…'
   if (dirty.value) return 'Unsaved'
   return 'Saved'
 })
@@ -55,14 +55,15 @@ watch(() => tabs.activeTab?.path, fetchBacklinks, { immediate: true })
 </script>
 
 <template>
-  <footer class="flex h-7 items-center justify-between border-t bg-card px-3 text-xs text-muted-foreground">
+  <footer class="flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[11px] text-muted-foreground">
     <div class="flex items-center gap-3">
       <span class="truncate max-w-[240px]" :title="workspace.root ?? undefined">
         {{ workspaceName }}
       </span>
     </div>
-    <div class="flex items-center gap-4">
-      <span :class="dirty ? 'text-amber-500' : 'text-muted-foreground'">{{ saveLabel }}</span>
+    <div class="flex items-center gap-3">
+      <span :class="dirty ? 'text-amber-500' : ''">{{ saveLabel }}</span>
+      <span class="text-border">|</span>
       <span>{{ backlinkCount }} backlink{{ backlinkCount === 1 ? '' : 's' }}</span>
       <span>{{ wordCount }} words</span>
       <span>{{ charCount }} chars</span>

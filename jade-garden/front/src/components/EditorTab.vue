@@ -163,6 +163,7 @@ async function confirmCreatePage() {
 .editor-panel-left :deep(.autodown-editor) {
   border: none;
   border-radius: 0;
+  background: transparent;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -172,13 +173,29 @@ async function confirmCreatePage() {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 0.75rem 1rem;
 }
 
 .editor-panel-right :deep(.streaming-document) {
   height: 100%;
   overflow-y: auto;
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
 }
+
+.editor-panel-right :deep(.streaming-document h1),
+.editor-panel-right :deep(.streaming-document h2),
+.editor-panel-right :deep(.streaming-document h3) {
+  font-weight: 700;
+  line-height: 1.3;
+  color: hsl(var(--foreground));
+}
+
+.editor-panel-right :deep(.streaming-document h1) { font-size: 1.58rem; margin: 1.25rem 0 0.5rem; }
+.editor-panel-right :deep(.streaming-document h2) { font-size: 1.33rem; margin: 1.25rem 0 0.5rem; }
+.editor-panel-right :deep(.streaming-document h3) { font-size: 1.18rem; margin: 1.25rem 0 0.5rem; }
 
 .editor-divider {
   width: 1px;
@@ -189,13 +206,13 @@ async function confirmCreatePage() {
 
 <style>
 .wikilink {
-  color: hsl(220 90% 56%);
+  color: hsl(var(--primary));
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
 }
 .wikilink.dangling {
-  color: hsl(0 70% 50%);
+  color: hsl(var(--destructive));
   text-decoration-style: dashed;
 }
 .wikilink:hover {

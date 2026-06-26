@@ -20,14 +20,22 @@ async function createFolder() {
 
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex items-center justify-between border-b px-3 py-2">
-      <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Files</span>
-      <div class="flex gap-1">
-        <button title="New file" class="rounded p-1 hover:bg-accent" @click="createFile">
-          <Plus class="h-4 w-4" />
+    <div class="flex h-[var(--header-height)] shrink-0 items-center justify-between border-b px-3">
+      <span class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Files</span>
+      <div class="flex items-center gap-0.5">
+        <button
+          title="New file"
+          class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          @click="createFile"
+        >
+          <Plus class="h-3.5 w-3.5" />
         </button>
-        <button title="New folder" class="rounded p-1 hover:bg-accent" @click="createFolder">
-          <FolderPlus class="h-4 w-4" />
+        <button
+          title="New folder"
+          class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          @click="createFolder"
+        >
+          <FolderPlus class="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

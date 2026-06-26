@@ -31,10 +31,8 @@ function onPickerChange(event: Event) {
   if (!files || files.length === 0) return
 
   const first = files[0]
-  // Desktop wrappers (Tauri/Electron) expose the absolute file path.
   const absPath = (first as any).path as string | undefined
   if (absPath) {
-    // The selected directory is the parent of the first file.
     const lastSep = absPath.replace(/\\/g, '/').lastIndexOf('/')
     if (lastSep > 0) {
       path.value = absPath.slice(0, lastSep)
@@ -43,7 +41,6 @@ function onPickerChange(event: Event) {
     }
   }
 
-  // Fallback: use the root directory name from the relative path.
   const rel = first.webkitRelativePath || ''
   const rootName = rel.split('/')[0]
   if (rootName) {
@@ -53,45 +50,53 @@ function onPickerChange(event: Event) {
 </script>
 
 <template>
-  <div class="flex h-full flex-col items-center justify-center p-8 text-center">
-    <h1 class="mb-2 text-3xl font-bold text-emerald-600">Jade Garden</h1>
-    <p class="mb-8 text-muted-foreground">An Obsidian-like AutoDown knowledge base editor</p>
+  <div class="flex h-full items-center justify-center bg-background p-6">
+    <div class="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
+      <div class="mb-6 text-center">
+        <div class="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-foreground">Jade Garden</h1>
+        <p class="mt-1 text-sm text-muted-foreground">A clean knowledge base editor for AutoDown</p>
+      </div>
 
-    <div class="flex w-full max-w-md gap-2">
-      <button
-        type="button"
-        title="Choose folder"
-        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-        @click="chooseDirectory"
-      >
-        <FolderOpen class="h-5 w-5" />
-      </button>
-      <input
-        ref="pickerRef"
-        type="file"
-        webkitdirectory
-        directory
-        class="hidden"
-        @change="onPickerChange"
-      >
-      <input
-        v-model="path"
-        type="text"
-        placeholder="Paste a wiki directory path, e.g. D:/notes/my-wiki"
-        class="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-        @keydown.enter="open"
-      />
-      <button
-        class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        :disabled="busy"
-        @click="open"
-      >
-        Open
-      </button>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          title="Choose folder"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          @click="chooseDirectory"
+        >
+          <FolderOpen class="h-5 w-5" />
+        </button>
+        <input
+          ref="pickerRef"
+          type="file"
+          webkitdirectory
+          directory
+          class="hidden"
+          @change="onPickerChange"
+        >
+        <input
+          v-model="path"
+          type="text"
+          placeholder="Paste a wiki directory path..."
+          class="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-primary/30 transition-shadow focus:ring-2"
+          @keydown.enter="open"
+        >
+        <button
+          class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          :disabled="busy"
+          @click="open"
+        >
+          Open
+        </button>
+      </div>
+
+      <p v-if="workspace.error" class="mt-3 text-center text-xs text-destructive">{{ workspace.error }}</p>
+      <p class="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+        点击文件夹图标可选择目录。浏览器安全限制下可能无法获取绝对路径，此时请手动补全完整路径。
+      </p>
     </div>
-    <p v-if="workspace.error" class="mt-3 text-sm text-destructive">{{ workspace.error }}</p>
-    <p class="mt-2 max-w-md text-xs text-muted-foreground">
-      点击左侧文件夹图标可选择目录。浏览器安全限制下可能无法获取绝对路径，此时请手动在输入框中补全完整路径后打开。
-    </p>
   </div>
 </template>

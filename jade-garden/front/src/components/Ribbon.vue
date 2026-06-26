@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { FolderTree, Search, Clock, Sun, Moon } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { FolderTree, Search, Clock, Palette } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
-import { useThemeStore } from '@/stores/theme'
 import type { LeftPanel } from '@/stores/sidebar'
+import ThemePopover from './ThemePopover.vue'
 
 const sidebar = useSidebarStore()
-const theme = useThemeStore()
+const themeOpen = ref(false)
 
 const items: { panel: LeftPanel; icon: any; label: string }[] = [
   { panel: 'files', icon: FolderTree, label: 'Files' },
@@ -19,26 +20,35 @@ function select(panel: LeftPanel) {
 </script>
 
 <template>
-  <nav class="flex w-12 flex-col items-center gap-2 border-r bg-card py-3">
+  <nav class="flex w-11 flex-col items-center gap-1 border-r bg-card py-2">
     <button
       v-for="item in items"
       :key="item.panel"
+      type="button"
       :title="item.label"
-      class="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      :class="{ 'bg-accent text-foreground': sidebar.leftPanel === item.panel && sidebar.leftOpen }"
+      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': sidebar.leftPanel === item.panel && sidebar.leftOpen }"
       @click="select(item.panel)"
     >
-      <component :is="item.icon" class="h-5 w-5" />
+      <component :is="item.icon" class="h-[18px] w-[18px]" />
+      <span
+        v-if="sidebar.leftPanel === item.panel && sidebar.leftOpen"
+        class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
+      />
     </button>
 
     <div class="flex-1" />
 
     <button
-      :title="theme.theme === 'dark' ? 'Switch to light' : 'Switch to dark'"
-      class="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      @click="theme.toggle()"
+      type="button"
+      title="Theme"
+      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      :class="{ 'text-primary bg-primary/10': themeOpen }"
+      @click="themeOpen = !themeOpen"
     >
-      <component :is="theme.theme === 'dark' ? Sun : Moon" class="h-5 w-5" />
+      <Palette class="h-[18px] w-[18px]" />
     </button>
+
+    <ThemePopover :open="themeOpen" @close="themeOpen = false" />
   </nav>
 </template>

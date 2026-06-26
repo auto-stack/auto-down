@@ -11,13 +11,13 @@ const entries = computed(() => {
 </script>
 
 <template>
-  <div>
-    <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Properties</h4>
+  <div class="rounded-lg border bg-background/50 p-2.5">
+    <h4 class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Properties</h4>
     <table v-if="entries.length" class="w-full text-xs">
       <tbody>
-        <tr v-for="[key, value] in entries" :key="key" class="border-b last:border-0">
+        <tr v-for="[key, value] in entries" :key="key" class="border-b border-border/50 last:border-0">
           <td class="py-1 pr-2 font-medium text-muted-foreground">{{ key }}</td>
-          <td class="py-1 text-foreground">{{ Array.isArray(value) ? value.join(', ') : String(value) }}</td>
+          <td class="py-1 text-foreground/90">{{ Array.isArray(value) ? value.join(', ') : String(value) }}</td>
         </tr>
       </tbody>
     </table>

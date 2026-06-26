@@ -6,7 +6,7 @@ import PropertiesPanel from './PropertiesPanel.vue'
 </script>
 
 <template>
-  <aside class="flex w-72 flex-col gap-4 overflow-y-auto border-l bg-card p-3 text-sm">
+  <aside class="flex w-64 flex-col gap-3 overflow-y-auto border-l bg-card p-3 text-sm">
     <OutlinePanel />
     <BacklinksPanel />
     <OutgoingLinksPanel />

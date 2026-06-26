@@ -86,15 +86,12 @@ export const WikiLink = Node.create({
 
   markdownTokenName: 'wikiLink',
 
-  parseMarkdown(token) {
-    return {
-      type: this.name,
-      attrs: {
-        raw: token.raw as string,
-        title: token.title as string,
-        blockId: (token.blockId as string) || null,
-      },
-    }
+  parseMarkdown(token, helpers) {
+    return helpers.createNode(this.name as string, {
+      raw: token.raw as string,
+      title: token.title as string,
+      blockId: token.blockId || null,
+    })
   },
 
   renderMarkdown(node) {
@@ -105,7 +102,8 @@ export const WikiLink = Node.create({
     name: 'wikiLink',
     level: 'inline',
     start(src) {
-      return src.match(/\[\[/) ? 0 : -1
+      const idx = src.indexOf('[[')
+      return idx === -1 ? -1 : idx
     },
     tokenize(src) {
       const match = src.match(WIKI_LINK_RE)

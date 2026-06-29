@@ -2,21 +2,27 @@
 import { ref } from 'vue'
 import { FolderTree, Search, Clock, Palette, Network } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useGraphStore } from '@/stores/graph'
 import type { LeftPanel } from '@/stores/sidebar'
 import ThemePopover from './ThemePopover.vue'
 
 const sidebar = useSidebarStore()
+const graph = useGraphStore()
 const themeOpen = ref(false)
 
 const items: { panel: LeftPanel; icon: any; label: string }[] = [
   { panel: 'files', icon: FolderTree, label: 'Files' },
   { panel: 'search', icon: Search, label: 'Search' },
   { panel: 'recent', icon: Clock, label: 'Recent' },
-  { panel: 'graph', icon: Network, label: '图谱' },
 ]
 
 function select(panel: LeftPanel) {
   sidebar.setLeftPanel(panel)
+}
+
+function openGlobalGraph() {
+  graph.showGlobal()
+  graph.viewMode = 'graph'
 }
 </script>
 
@@ -39,6 +45,20 @@ function select(panel: LeftPanel) {
     </button>
 
     <div class="flex-1" />
+
+    <button
+      type="button"
+      title="全局图谱"
+      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph.viewMode === 'graph' }"
+      @click="openGlobalGraph"
+    >
+      <Network class="h-[18px] w-[18px]" />
+      <span
+        v-if="graph.viewMode === 'graph'"
+        class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
+      />
+    </button>
 
     <button
       type="button"

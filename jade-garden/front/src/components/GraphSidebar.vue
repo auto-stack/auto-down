@@ -41,6 +41,7 @@ function openGlobal() {
 
     <div class="flex-1 overflow-y-auto p-3">
       <button
+        v-if="graph.viewMode !== 'graph'"
         type="button"
         class="open-graph-btn"
         @click="openGlobal"
@@ -49,7 +50,7 @@ function openGlobal() {
         <span>打开全局图谱</span>
       </button>
 
-      <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+      <div :class="graph.viewMode === 'graph' ? 'mt-0' : 'mt-4'" class="grid grid-cols-2 gap-2 text-xs">
         <div class="stat-card">
           <span class="stat-label">页面</span>
           <span class="stat-value">{{ stats.total }}</span>

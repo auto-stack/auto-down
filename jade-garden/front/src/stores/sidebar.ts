@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type LeftPanel = 'files' | 'search' | 'recent'
+export type LeftPanel = 'files' | 'search' | 'recent' | 'graph'
 
 export const useSidebarStore = defineStore('sidebar', () => {
   const leftOpen = ref(true)

@@ -91,6 +91,7 @@ const itemRefs = ref<HTMLElement[]>([])
 const search = ref('')
 const highlightedIndex = ref(0)
 const { positionStyle, applyPosition } = useMenuBounds(menuRef)
+let editorEl: HTMLElement | null = null
 
 function setItemRef(el: HTMLElement, idx: number) {
   if (el) itemRefs.value[idx] = el
@@ -203,7 +204,10 @@ function findActiveCodeBlock(): HTMLElement | null {
 
 function updatePosition() {
   const { view } = props.editor
-  const editorEl = view.dom.closest('.autodown-editor') as HTMLElement | null
+  const dom = props.editor.view?.dom
+  if (dom) {
+    editorEl = dom.closest('.autodown-editor') as HTMLElement | null
+  }
   if (!editorEl) return
   const editorRect = editorEl.getBoundingClientRect()
 
@@ -365,9 +369,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousedown', handleOutsideClick)
-  document.removeEventListener('wheel', handleGlobalWheel, { capture: true })
-  // The editor may already be destroyed by the time this menu unmounts.
   const dom = props.editor.view?.dom
   if (dom) {
     dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })
@@ -375,6 +376,8 @@ onUnmounted(() => {
     const wrapper = dom.closest('.autodown-editor-content-wrapper')
     wrapper?.removeEventListener('scroll', scheduleUpdate)
   }
+  document.removeEventListener('mousedown', handleOutsideClick)
+  document.removeEventListener('wheel', handleGlobalWheel, { capture: true })
 })
 
 defineExpose({

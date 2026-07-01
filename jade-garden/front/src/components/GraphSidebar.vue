@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { Network, Globe } from 'lucide-vue-next'
+import { Network } from 'lucide-vue-next'
 import { useGraphStore } from '@/stores/graph'
-import { useSidebarStore } from '@/stores/sidebar'
+import { useTabsStore } from '@/stores/tabs'
 
 const graph = useGraphStore()
-const sidebar = useSidebarStore()
+const tabs = useTabsStore()
 
 onMounted(() => {
   if (graph.nodes.length === 0 && !graph.loading) {
@@ -24,12 +24,6 @@ const stats = computed(() => {
 const topNodes = computed(() => {
   return [...graph.nodes].sort((a, b) => b.degree - a.degree).slice(0, 15)
 })
-
-function openGlobal() {
-  graph.showGlobal()
-  graph.viewMode = 'graph'
-  sidebar.leftOpen = false
-}
 </script>
 
 <template>
@@ -40,17 +34,7 @@ function openGlobal() {
     </div>
 
     <div class="flex-1 overflow-y-auto p-3">
-      <button
-        v-if="graph.viewMode !== 'graph'"
-        type="button"
-        class="open-graph-btn"
-        @click="openGlobal"
-      >
-        <Globe class="h-4 w-4" />
-        <span>打开全局图谱</span>
-      </button>
-
-      <div :class="graph.viewMode === 'graph' ? 'mt-0' : 'mt-4'" class="grid grid-cols-2 gap-2 text-xs">
+      <div class="grid grid-cols-2 gap-2 text-xs">
         <div class="stat-card">
           <span class="stat-label">页面</span>
           <span class="stat-value">{{ stats.total }}</span>
@@ -78,7 +62,8 @@ function openGlobal() {
           <li
             v-for="node in topNodes"
             :key="node.id"
-            class="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-accent"
+            class="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-accent cursor-pointer"
+            @click="tabs.open(node.path, node.label)"
           >
             <span class="truncate">{{ node.label || node.id }}</span>
             <span class="shrink-0 text-[10px] text-muted-foreground">{{ node.degree }}</span>

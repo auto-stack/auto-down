@@ -77,6 +77,7 @@ async function onOpenWikiLink(title: string, blockId?: string | null) {
 
 <template>
   <div class="editor-workspace">
+    <!-- Only mount the editor for the active document tab to avoid Tiptap unmount issues. -->
     <AutoDownEditor
       :content="body"
       placeholder="Start typing..."

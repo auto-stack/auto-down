@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Maximize, RefreshCw, Focus, Globe, X } from 'lucide-vue-next'
+import { Maximize, RefreshCw, Globe } from 'lucide-vue-next'
 import GraphView from './GraphView.vue'
 import GraphControls from './GraphControls.vue'
 import { useGraphStore } from '@/stores/graph'
 import { useTabsStore } from '@/stores/tabs'
 import type { GraphNode, GraphEdge } from '@/lib/api'
+
+const props = defineProps<{
+  centerPath?: string | null
+  depth?: number
+}>()
 
 const graph = useGraphStore()
 const tabs = useTabsStore()
@@ -15,19 +20,21 @@ onMounted(() => {
   graph.load()
 })
 
-const isLocal = computed(() => !!graph.centerPath)
+const isLocal = computed(() => !!props.centerPath)
 
 const localNodeIds = computed(() => {
-  if (!graph.centerPath) return new Set<string>()
+  const center = props.centerPath
+  if (!center) return new Set<string>()
   const ids = new Set<string>()
   const visited = new Set<string>()
-  const queue: [string, number][] = [[graph.centerPath, 0]]
+  const queue: [string, number][] = [[center, 0]]
+  const maxDepth = props.depth ?? 1
   while (queue.length > 0) {
     const [id, d] = queue.shift()!
     if (visited.has(id)) continue
     visited.add(id)
     ids.add(id)
-    if (d >= graph.depth) continue
+    if (d >= maxDepth) continue
     for (const e of graph.edges) {
       if (e.source === id && !visited.has(e.target)) {
         queue.push([e.target, d + 1])
@@ -52,14 +59,18 @@ const visibleEdges = computed<GraphEdge[]>(() => {
 })
 
 const centerTitle = computed(() => {
-  if (!graph.centerPath) return ''
-  const node = graph.nodes.find((n) => n.id === graph.centerPath)
-  return node?.label || graph.centerPath.replace(/\.ad$/, '')
+  if (!props.centerPath) return ''
+  const node = graph.nodes.find((n) => n.id === props.centerPath)
+  return node?.label || props.centerPath.replace(/\.ad$/, '')
 })
 
 function openPage(path: string) {
   tabs.open(path)
-  graph.viewMode = 'editor'
+}
+
+function switchToGlobal() {
+  const globalPath = '__graph__'
+  tabs.openGraph()
 }
 </script>
 
@@ -78,7 +89,7 @@ function openPage(path: string) {
           type="button"
           class="graph-tool-btn"
           title="返回全局图谱"
-          @click="graph.showGlobal()"
+          @click="switchToGlobal"
         >
           <Globe class="h-3.5 w-3.5" />
         </button>

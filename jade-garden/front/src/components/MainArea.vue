@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { X, Focus } from 'lucide-vue-next'
+import { X, Focus, Network } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
-import { useGraphStore } from '@/stores/graph'
 import EditorTab from './EditorTab.vue'
 import GraphPage from './GraphPage.vue'
 
 const tabs = useTabsStore()
-const graph = useGraphStore()
 
 function openLocalGraph() {
   const path = tabs.activeTab?.path
   if (!path) return
-  graph.openLocal(path, 1)
+  tabs.openGraph(path, 1)
+}
+
+function openGlobalGraph() {
+  tabs.openGraph()
 }
 
 function onClose(path: string) {
@@ -21,6 +23,8 @@ function onClose(path: string) {
 function onSwitch(path: string) {
   tabs.activePath = path
 }
+
+const activeTab = tabs.activeTab
 </script>
 
 <template>
@@ -41,6 +45,7 @@ function onSwitch(path: string) {
         ]"
         @click="onSwitch(tab.path)"
       >
+        <Network v-if="tab.isGraph" class="h-3.5 w-3.5" />
         <span class="truncate">{{ tab.title }}</span>
         <span v-if="tab.dirty" class="text-[9px] leading-none">●</span>
         <span
@@ -54,6 +59,15 @@ function onSwitch(path: string) {
       <div class="mx-1 h-4 w-px bg-border" />
       <button
         type="button"
+        title="全局图谱"
+        class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        @click="openGlobalGraph"
+      >
+        <Network class="h-3.5 w-3.5" />
+        <span>图谱</span>
+      </button>
+      <button
+        type="button"
         title="局部图谱"
         class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         @click="openLocalGraph"
@@ -64,18 +78,19 @@ function onSwitch(path: string) {
     </div>
 
     <div class="relative flex flex-1 overflow-hidden">
-      <!-- Keep EditorTab mounted while in graph view to avoid destroying/re-creating the Tiptap editor. -->
+      <GraphPage
+        v-if="tabs.activeTab?.isGraph"
+        :center-path="tabs.activeTab.graphCenterPath"
+        :depth="tabs.activeTab.graphDepth || 1"
+        :key="tabs.activeTab.path"
+      />
       <EditorTab
-        v-show="graph.viewMode === 'editor'"
-        v-if="tabs.activeTab"
+        v-else-if="tabs.activeTab"
+        :key="tabs.activeTab.path"
         :path="tabs.activeTab.path"
       />
-      <GraphPage
-        v-if="graph.viewMode === 'graph'"
-        class="absolute inset-0 z-10"
-      />
       <div
-        v-if="!tabs.activeTab && graph.viewMode !== 'graph'"
+        v-else
         class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"
       >
         <div class="rounded-full bg-accent p-3">

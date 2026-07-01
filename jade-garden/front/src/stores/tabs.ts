@@ -11,6 +11,9 @@ export interface Tab {
   dirty?: boolean
   loaded?: boolean
   saving?: boolean
+  isGraph?: boolean
+  graphCenterPath?: string | null
+  graphDepth?: number
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -23,7 +26,7 @@ export const useTabsStore = defineStore('tabs', () => {
     const existing = tabs.value.find(t => t.path === path)
     if (existing) {
       activePath.value = path
-      if (!existing.loaded) await load(path)
+      if (!existing.loaded && !existing.isGraph) await load(path)
       return
     }
     tabs.value.push({
@@ -38,6 +41,30 @@ export const useTabsStore = defineStore('tabs', () => {
     })
     activePath.value = path
     await load(path)
+  }
+
+  async function openGraph(centerPath?: string | null, depth = 1) {
+    const path = centerPath ? `__graph__:${centerPath}` : '__graph__'
+    const title = centerPath ? `局部图谱：${centerPath.replace(/\.ad$/, '')}` : '全局图谱'
+    const existing = tabs.value.find(t => t.path === path)
+    if (existing) {
+      activePath.value = path
+      return
+    }
+    tabs.value.push({
+      path,
+      title,
+      body: '',
+      originalBody: '',
+      frontmatter: {},
+      dirty: false,
+      loaded: true,
+      saving: false,
+      isGraph: true,
+      graphCenterPath: centerPath || null,
+      graphDepth: depth,
+    })
+    activePath.value = path
   }
 
   async function load(path: string) {
@@ -63,7 +90,7 @@ export const useTabsStore = defineStore('tabs', () => {
     const idx = tabs.value.findIndex(t => t.path === path)
     if (idx === -1) return
     const tab = tabs.value[idx]
-    if (tab.dirty) {
+    if (tab.dirty && !tab.isGraph) {
       const ok = confirm(`Close "${tab.title}" without saving?`)
       if (!ok) return
     }
@@ -94,5 +121,5 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
-  return { tabs, activePath, activeTab, open, close, load, setBody, save }
+  return { tabs, activePath, activeTab, open, openGraph, close, load, setBody, save }
 })

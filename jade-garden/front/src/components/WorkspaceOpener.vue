@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { FolderOpen } from 'lucide-vue-next'
+import { FolderOpen, Info } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useFileTreeStore } from '@/stores/fileTree'
 
@@ -8,11 +8,12 @@ const workspace = useWorkspaceStore()
 const fileTree = useFileTreeStore()
 const path = ref('')
 const busy = ref(false)
-const pickerRef = ref<HTMLInputElement | null>(null)
+const pathInput = ref<HTMLInputElement | null>(null)
 
 async function open() {
   if (!path.value.trim()) return
   busy.value = true
+  workspace.error = null
   try {
     await workspace.open(path.value.trim())
     await fileTree.load()
@@ -21,30 +22,23 @@ async function open() {
   }
 }
 
-function chooseDirectory() {
-  pickerRef.value?.click()
-}
+async function chooseDirectory() {
+  const showDirectoryPicker = (window as any).showDirectoryPicker as
+    | (() => Promise<{ name: string }>)
+    | undefined
 
-function onPickerChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const files = input.files
-  if (!files || files.length === 0) return
-
-  const first = files[0]
-  const absPath = (first as any).path as string | undefined
-  if (absPath) {
-    const lastSep = absPath.replace(/\\/g, '/').lastIndexOf('/')
-    if (lastSep > 0) {
-      path.value = absPath.slice(0, lastSep)
-      open()
-      return
-    }
+  if (!showDirectoryPicker) {
+    pathInput.value?.focus()
+    pathInput.value?.select()
+    return
   }
 
-  const rel = first.webkitRelativePath || ''
-  const rootName = rel.split('/')[0]
-  if (rootName) {
-    path.value = rootName
+  try {
+    const handle = await showDirectoryPicker()
+    path.value = handle.name
+    pathInput.value?.focus()
+  } catch {
+    // User cancelled the picker.
   }
 }
 </script>
@@ -63,24 +57,17 @@ function onPickerChange(event: Event) {
       <div class="flex gap-2">
         <button
           type="button"
-          title="Choose folder"
+          title="选择文件夹"
           class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           @click="chooseDirectory"
         >
           <FolderOpen class="h-5 w-5" />
         </button>
         <input
-          ref="pickerRef"
-          type="file"
-          webkitdirectory
-          directory
-          class="hidden"
-          @change="onPickerChange"
-        >
-        <input
+          ref="pathInput"
           v-model="path"
           type="text"
-          placeholder="Paste a wiki directory path..."
+          placeholder="粘贴完整目录路径，例如 D:\\wiki\\demo"
           class="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-primary/30 transition-shadow focus:ring-2"
           @keydown.enter="open"
         >
@@ -94,9 +81,13 @@ function onPickerChange(event: Event) {
       </div>
 
       <p v-if="workspace.error" class="mt-3 text-center text-xs text-destructive">{{ workspace.error }}</p>
-      <p class="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
-        点击文件夹图标可选择目录。浏览器安全限制下可能无法获取绝对路径，此时请手动补全完整路径。
-      </p>
+
+      <div class="mt-4 flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <Info class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div class="leading-relaxed">
+          浏览器安全限制下无法直接获取本地文件夹的绝对路径。建议直接在上面的输入框中粘贴完整的工程目录路径；点击文件夹图标可浏览并自动填充目录名，随后请补全完整路径。
+        </div>
+      </div>
     </div>
   </div>
 </template>

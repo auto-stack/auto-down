@@ -20,12 +20,8 @@ const activeGraphTab = computed(() =>
 
 function openLocalGraph() {
   const path = tabs.activeTab?.path
-  if (!path) return
+  if (!path || tabs.activeTab?.isGraph) return
   tabs.openGraph(path, 1)
-}
-
-function openGlobalGraph() {
-  tabs.openGraph()
 }
 
 function onClose(path: string) {
@@ -68,22 +64,14 @@ function onSwitch(path: string) {
       </button>
       <div class="mx-1 h-4 w-px bg-border" />
       <button
+        v-if="tabs.activeTab && !tabs.activeTab.isGraph"
         type="button"
-        title="全局图谱"
-        class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        @click="openGlobalGraph"
-      >
-        <Network class="h-3.5 w-3.5" />
-        <span>图谱</span>
-      </button>
-      <button
-        type="button"
-        title="局部图谱"
+        title="当前文档的局部图谱"
         class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         @click="openLocalGraph"
       >
         <Focus class="h-3.5 w-3.5" />
-        <span>局部</span>
+        <span>局部图谱</span>
       </button>
     </div>
 

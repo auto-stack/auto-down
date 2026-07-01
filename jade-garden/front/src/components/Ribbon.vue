@@ -47,8 +47,6 @@ function active(item: typeof items[number]): boolean {
       />
     </button>
 
-    <div class="flex-1" />
-
     <button
       type="button"
       title="全局图谱"
@@ -62,6 +60,8 @@ function active(item: typeof items[number]): boolean {
         class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
       />
     </button>
+
+    <div class="flex-1" />
 
     <button
       type="button"

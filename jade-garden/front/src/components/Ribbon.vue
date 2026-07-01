@@ -10,19 +10,29 @@ const sidebar = useSidebarStore()
 const graph = useGraphStore()
 const themeOpen = ref(false)
 
-const items: { panel: LeftPanel; icon: any; label: string }[] = [
+const items: { panel: LeftPanel | 'graph'; icon: any; label: string; action?: () => void }[] = [
   { panel: 'files', icon: FolderTree, label: 'Files' },
   { panel: 'search', icon: Search, label: 'Search' },
   { panel: 'recent', icon: Clock, label: 'Recent' },
+  { panel: 'graph', icon: Network, label: '全局图谱', action: openGlobalGraph },
 ]
 
-function select(panel: LeftPanel) {
-  sidebar.setLeftPanel(panel)
+function select(item: typeof items[number]) {
+  if (item.action) {
+    item.action()
+    return
+  }
+  sidebar.setLeftPanel(item.panel as LeftPanel)
 }
 
 function openGlobalGraph() {
   graph.showGlobal()
   graph.viewMode = 'graph'
+}
+
+function active(item: typeof items[number]): boolean {
+  if (item.panel === 'graph') return graph.viewMode === 'graph'
+  return sidebar.leftPanel === item.panel && sidebar.leftOpen
 }
 </script>
 
@@ -34,31 +44,17 @@ function openGlobalGraph() {
       type="button"
       :title="item.label"
       class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': sidebar.leftPanel === item.panel && sidebar.leftOpen }"
-      @click="select(item.panel)"
+      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': active(item) }"
+      @click="select(item)"
     >
       <component :is="item.icon" class="h-[18px] w-[18px]" />
       <span
-        v-if="sidebar.leftPanel === item.panel && sidebar.leftOpen"
+        v-if="active(item)"
         class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
       />
     </button>
 
     <div class="flex-1" />
-
-    <button
-      type="button"
-      title="全局图谱"
-      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph.viewMode === 'graph' }"
-      @click="openGlobalGraph"
-    >
-      <Network class="h-[18px] w-[18px]" />
-      <span
-        v-if="graph.viewMode === 'graph'"
-        class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
-      />
-    </button>
 
     <button
       type="button"

@@ -1,10 +1,22 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { X, Focus, Network } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
 import EditorTab from './EditorTab.vue'
 import GraphPage from './GraphPage.vue'
 
 const tabs = useTabsStore()
+
+// Every document tab stays mounted; visibility is toggled with v-show so that
+// switching tabs never destroys/recreates a Tiptap editor (which caused the
+// "editor view is not available" error and blank second tabs).
+const editorTabs = computed(() => tabs.tabs.filter(t => !t.isGraph))
+
+// The graph tab is mounted only while active because Cytoscape needs a visible,
+// sized container to lay out; mounting it hidden would render a blank graph.
+const activeGraphTab = computed(() =>
+  tabs.activeTab?.isGraph ? tabs.activeTab : null,
+)
 
 function openLocalGraph() {
   const path = tabs.activeTab?.path
@@ -23,8 +35,6 @@ function onClose(path: string) {
 function onSwitch(path: string) {
   tabs.activePath = path
 }
-
-const activeTab = tabs.activeTab
 </script>
 
 <template>
@@ -78,19 +88,24 @@ const activeTab = tabs.activeTab
     </div>
 
     <div class="relative flex flex-1 overflow-hidden">
-      <GraphPage
-        v-if="tabs.activeTab?.isGraph"
-        :center-path="tabs.activeTab.graphCenterPath"
-        :depth="tabs.activeTab.graphDepth || 1"
-        :key="tabs.activeTab.path"
-      />
+      <!-- Keep all editor tabs mounted; only the active one is visible. -->
       <EditorTab
-        v-else-if="tabs.activeTab"
-        :key="tabs.activeTab.path"
-        :path="tabs.activeTab.path"
+        v-for="tab in editorTabs"
+        v-show="tabs.activePath === tab.path"
+        :key="tab.path"
+        :path="tab.path"
+        class="absolute inset-0"
+      />
+      <!-- Graph tab is mounted on demand so Cytoscape gets a sized container. -->
+      <GraphPage
+        v-if="activeGraphTab"
+        :key="activeGraphTab.path"
+        :center-path="activeGraphTab.graphCenterPath"
+        :depth="activeGraphTab.graphDepth || 1"
+        class="absolute inset-0"
       />
       <div
-        v-else
+        v-if="tabs.tabs.length === 0"
         class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"
       >
         <div class="rounded-full bg-accent p-3">

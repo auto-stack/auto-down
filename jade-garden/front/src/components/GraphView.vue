@@ -190,7 +190,10 @@ function runLayout() {
     edgeElasticity: props.settings.attraction,
     gravity: props.settings.gravity,
     numIter: 2500,
-    randomize: false,
+    // Seed with random positions. Without this fcose's spectral step starts
+    // from the nodes' initial coordinates (all at the origin) and collapses
+    // them onto a single diagonal line instead of spreading them out.
+    randomize: true,
     tile: true,
     tilingPaddingVertical: 20,
     tilingPaddingHorizontal: 20,
@@ -207,7 +210,10 @@ function initCy() {
     minZoom: 0.05,
     maxZoom: 3,
     wheelSensitivity: 0.2,
-    layout: { name: 'fcose' } as any,
+    // No auto-layout here: we call runLayout() explicitly below. Running an
+    // fcose layout in the constructor and then again in runLayout() races —
+    // the second layout starts before the first has positioned the nodes.
+    layout: { name: 'preset' } as any,
   })
 
   cy.on('tap', 'node', (evt) => {

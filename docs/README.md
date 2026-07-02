@@ -12,6 +12,8 @@
 | [04-auto-ai-integration.md](./04-auto-ai-integration.md) | 与 `auto-ai` 生态的集成方式 |
 | [05-indexing-research.md](./05-indexing-research.md) | 向量索引与图索引调研 |
 | [06-roadmap.md](./06-roadmap.md) | 分阶段实施路线图 |
+| [07-jade-garden-mvp-design.md](./07-jade-garden-mvp-design.md) | Jade Garden MVP 设计 |
+| [08-logseq-obsidian-feature-research.md](./08-logseq-obsidian-feature-research.md) | Logseq/Obsidian 功能调研与 jade-garden 差距分析 |
 
 ## 关键决策
 

@@ -114,7 +114,7 @@ export const useTabsStore = defineStore('tabs', () => {
     if (!tab || !tab.loaded) return
     tab.saving = true
     try {
-      const bodyWithAnchors = ensureBlockAnchors(tab.body)
+      const bodyWithAnchors = ensureBlockAnchors(tab.body, tab.originalBody)
       const saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: bodyWithAnchors })
       tab.frontmatter = saved.frontmatter || {}
       tab.body = saved.body

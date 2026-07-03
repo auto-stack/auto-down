@@ -14,10 +14,10 @@ const headings = computed(() => blocks.activeBlocks.filter((b) => b.kind === 'he
         v-for="h in headings"
         :key="h.lineStart"
         class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-        :style="{ paddingLeft: `${(Number(h.content.match(/^#{1,6}/)?.[0].length ?? 1) - 1) * 0.6 + 0.375}rem` }"
+        :style="{ paddingLeft: `${((h.level ?? 1) - 1) * 0.6 + 0.375}rem` }"
         :title="h.content"
       >
-        {{ h.content.replace(/^#+\s+/, '') }}
+        {{ h.content }}
       </li>
     </ul>
     <p v-else class="text-xs text-muted-foreground">No headings.</p>

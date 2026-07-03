@@ -17,6 +17,7 @@ export interface ParsedBlock {
   content: string
   lineStart: number
   lineEnd: number
+  level?: number
 }
 
 const ANCHOR_SUFFIX_RE = /\s+\^([a-zA-Z0-9_-]+)\s*$/
@@ -52,6 +53,7 @@ function parseHeading(line: string, lineIdx: number): ParsedBlock | undefined {
     kind: 'heading',
     content,
     blockId,
+    level: match[1].length,
     lineStart: lineIdx,
     lineEnd: lineIdx + 1,
   }
@@ -237,14 +239,24 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** Append persistent `^id` anchors to every anchor-able block that does not already have one. */
-export function ensureBlockAnchors(body: string): string {
+/** Append persistent `^id` anchors to every anchor-able block that does not already have one.
+ *  When `previousBody` is supplied, ids for blocks whose kind+content are unchanged are
+ *  reused; otherwise a new id is generated. */
+export function ensureBlockAnchors(body: string, previousBody?: string): string {
   const lines = body.split('\n')
   const blocks = parseBlocks(body)
+  const previousBlocks = previousBody ? parseBlocks(previousBody) : []
+  const idByContent = new Map<string, string>()
+  for (const pb of previousBlocks) {
+    if (!pb.blockId) continue
+    idByContent.set(`${pb.kind}:${pb.content}`, pb.blockId)
+  }
   for (const block of blocks) {
     if (block.blockId || !ANCHORABLE_KINDS.has(block.kind)) continue
+    const key = `${block.kind}:${block.content}`
+    const id = idByContent.get(key) || generateBlockId()
     const idx = Math.min(block.lineEnd - 1, lines.length - 1)
-    lines[idx] = `${lines[idx]} ^${generateBlockId()}`
+    lines[idx] = `${lines[idx]} ^${id}`
   }
   return lines.join('\n')
 }

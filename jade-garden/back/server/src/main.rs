@@ -1,5 +1,8 @@
+mod block;
 mod files;
+mod index;
 mod links;
+mod parser;
 mod state;
 mod wiki;
 mod workspace;

@@ -1,29 +1,19 @@
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
     sync::{Mutex, RwLock},
 };
 
-use serde::{Deserialize, Serialize};
+use crate::index::Index;
 
-use crate::links::{Backlink, Outlink};
-
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub workspace_root: Option<PathBuf>,
-}
-
-#[derive(Debug, Default)]
-pub struct LinkIndex {
-    pub title_to_path: HashMap<String, PathBuf>,
-    pub outlinks: HashMap<String, Vec<Outlink>>,
-    pub backlinks: HashMap<String, Vec<Backlink>>,
 }
 
 pub struct AppState {
     config_path: PathBuf,
     config: Mutex<Config>,
-    index: RwLock<LinkIndex>,
+    index: RwLock<Option<Index>>,
 }
 
 impl AppState {
@@ -38,22 +28,26 @@ impl AppState {
                 config.workspace_root = Some(PathBuf::from(default_root));
             }
         }
-        Self {
+        let state = Self {
             config_path,
             config: Mutex::new(config),
-            index: RwLock::new(LinkIndex::default()),
-        }
+            index: RwLock::new(None),
+        };
+        state.open_index();
+        state
     }
 
     #[cfg(test)]
     pub fn with_workspace_root(root: PathBuf) -> Self {
-        Self {
+        let state = Self {
             config_path: PathBuf::from("."),
             config: Mutex::new(Config {
                 workspace_root: Some(root),
             }),
-            index: RwLock::new(LinkIndex::default()),
-        }
+            index: RwLock::new(None),
+        };
+        state.open_index();
+        state
     }
 
     fn default_config_path() -> PathBuf {
@@ -75,14 +69,21 @@ impl AppState {
         self.config.lock().unwrap().workspace_root.clone()
     }
 
-    pub fn set_workspace_root(&self, root: PathBuf) -> std::io::Result<()> {
+    pub fn set_workspace_root(&self,
+        root: PathBuf) -> std::io::Result<()> {
         let canonical = root.canonicalize().unwrap_or(root);
         self.config.lock().unwrap().workspace_root = Some(canonical);
-        self.save_config()
+        self.save_config()?;
+        self.open_index();
+        Ok(())
     }
 
     pub fn wiki_dir(&self) -> Option<PathBuf> {
         self.workspace_root().map(|r| r.join("wiki"))
+    }
+
+    pub fn index_path(&self) -> Option<PathBuf> {
+        self.workspace_root().map(|r| r.join("jade-garden-index.sqlite"))
     }
 
     pub fn ensure_wiki_dir(&self) -> std::io::Result<()> {
@@ -92,16 +93,29 @@ impl AppState {
         Ok(())
     }
 
-    pub fn read_index<R>(&self, f: impl FnOnce(&LinkIndex) -> R) -> R {
-        f(&*self.index.read().unwrap())
+    /// Open (or re-open) the SQLite index for the current workspace.
+    fn open_index(&self) {
+        let mut guard = self.index.write().unwrap();
+        *guard = self.index_path().and_then(|p| Index::open(&p).ok());
     }
 
-    pub fn write_index<R>(&self, f: impl FnOnce(&mut LinkIndex) -> R) -> R {
-        f(&mut *self.index.write().unwrap())
+    pub fn with_index<R>(&self,
+        f: impl FnOnce(&Index) -> R) -> Option<R> {
+        self.index.read().unwrap().as_ref().map(f)
+    }
+
+    pub fn with_index_mut<R>(&self,
+        f: impl FnOnce(&mut Index) -> R) -> Option<R> {
+        self.index.write().unwrap().as_mut().map(f)
+    }
+
+    pub fn set_index(&self, index: Index) {
+        *self.index.write().unwrap() = Some(index);
     }
 
     /// Validate that `rel_path` stays inside the wiki directory.
-    pub fn resolve_wiki_path(&self, rel_path: &str) -> Option<PathBuf> {
+    pub fn resolve_wiki_path(&self,
+        rel_path: &str) -> Option<PathBuf> {
         let wiki = self.wiki_dir()?;
         let cleaned = rel_path.trim_start_matches('/');
         let target = wiki.join(cleaned);

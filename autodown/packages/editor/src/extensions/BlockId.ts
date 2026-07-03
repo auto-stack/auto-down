@@ -14,13 +14,24 @@ export interface BlockInfo {
   height: number
 }
 
+function extractAnchorFromText(text: string): string | undefined {
+  const trimmed = text.trimEnd()
+  const match = /\s+\^([a-zA-Z0-9_-]+)\s*$/.exec(trimmed)
+  return match ? match[1] : undefined
+}
+
+function resolveBlockId(node: any, index: number): string {
+  const anchor = extractAnchorFromText(node.textContent || '')
+  return anchor || `${BLOCK_ID_PREFIX}${index}`
+}
+
 function buildDecorations(doc: any) {
   const decorations: Decoration[] = []
 
   doc.forEach((node: any, offset: number, index: number) => {
     const from = offset
     const to = offset + node.nodeSize
-    const id = `${BLOCK_ID_PREFIX}${index}`
+    const id = resolveBlockId(node, index)
     decorations.push(
       Decoration.node(from, to, {
         'data-block-id': id,
@@ -70,12 +81,16 @@ export function getBlockMap(editor: Editor | undefined): BlockInfo[] {
 
   doc.forEach((node, offset, index) => {
     const pos = offset + 1
+    const id = resolveBlockId(node, index)
     const el = view.nodeDOM(pos)
-    const htmlEl = el instanceof HTMLElement ? el : wrapper?.querySelector(`[data-block-id="${BLOCK_ID_PREFIX}${index}"]`) as HTMLElement | null
+    const htmlEl = el instanceof HTMLElement
+      ? el
+      : wrapper?.querySelector(`[data-block-id="${id}"]`) as HTMLElement | null
+      ?? wrapper?.querySelector(`[data-block-id="${BLOCK_ID_PREFIX}${index}"]`) as HTMLElement | null
     const elRect = htmlEl?.getBoundingClientRect()
 
     map.push({
-      id: `${BLOCK_ID_PREFIX}${index}`,
+      id,
       index,
       pos,
       el: htmlEl,

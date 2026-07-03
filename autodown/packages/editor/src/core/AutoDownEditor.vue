@@ -235,11 +235,21 @@ const editor = useAutoDownEditor({
 
 const focused = computed(() => editor.value?.isFocused ?? false)
 
+function normalizeAnchors(md: string): string {
+  return md
+    .split('\n')
+    .map((line) => line.replace(/\s+\^[a-zA-Z0-9_-]+\s*$/, ''))
+    .join('\n')
+}
+
 watch(
   () => props.content,
   (newContent) => {
-    if (editor.value && editor.value.getMarkdown() !== newContent) {
-      editor.value.commands.setContent(newContent, { emitUpdate: false, contentType: 'markdown' })
+    if (editor.value) {
+      const current = editor.value.getMarkdown()
+      if (normalizeAnchors(current) !== normalizeAnchors(newContent)) {
+        editor.value.commands.setContent(newContent, { emitUpdate: false, contentType: 'markdown' })
+      }
     }
   }
 )

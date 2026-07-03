@@ -116,10 +116,8 @@ pub async fn create_file(
         }
         let default = default_ad_content(&target);
         std::fs::write(&target, default).map_err(|e| format!("Failed to create file: {e}"))?;
+        crate::links::index_file(&state, &target).ok();
     }
-    crate::links::rebuild_index(state.clone())
-        .await
-        .ok();
     Ok(Json(FileNode {
         name: target.file_name().unwrap_or_default().to_string_lossy().to_string(),
         path: req.path,
@@ -147,9 +145,7 @@ pub async fn rename_file(
     let old = state.resolve_wiki_path(&req.old_path).ok_or("Invalid old path")?;
     let new = state.resolve_wiki_path(&req.new_path).ok_or("Invalid new path")?;
     std::fs::rename(&old, &new).map_err(|e| format!("Failed to rename: {e}"))?;
-    crate::links::rebuild_index(state.clone())
-        .await
-        .ok();
+    crate::links::rename_file(&state, &old, &new).ok();
     Ok(Json(()))
 }
 
@@ -163,9 +159,7 @@ pub async fn delete_file(
     } else {
         std::fs::remove_file(&target).map_err(|e| format!("Failed to delete file: {e}"))?;
     }
-    crate::links::rebuild_index(state.clone())
-        .await
-        .ok();
+    crate::links::remove_file(&state, &target).ok();
     Ok(Json(()))
 }
 

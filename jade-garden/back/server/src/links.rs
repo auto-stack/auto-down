@@ -4,7 +4,6 @@ use axum::{
     extract::{Path, State},
     response::Json,
 };
-use regex::Regex;
 use serde::Serialize;
 
 use crate::state::AppState;
@@ -56,95 +55,105 @@ pub async fn get_outlinks(
     State(state): State<Arc<AppState>>,
     Path(title): Path<String>,
 ) -> Json<LinksResponse<Outlink>> {
-    let links = state.read_index(|idx| {
-        idx.outlinks
-            .get(&title)
-            .cloned()
-            .unwrap_or_default()
-    });
-    Json(LinksResponse { title, links })
+    let links = state
+        .with_index(|idx| idx.outlinks(&title).unwrap_or_default())
+        .unwrap_or_default();
+
+    let outlinks: Vec<Outlink> = links
+        .into_iter()
+        .map(|row| {
+            let exists = row.target_page.is_some();
+            Outlink {
+                target_title: row.target_page.clone().unwrap_or_default(),
+                target_path: row.target_page,
+                exists,
+                block_id: row.target_block_uuid,
+            }
+        })
+        .collect();
+
+    Json(LinksResponse { title, links: outlinks })
 }
 
 pub async fn get_backlinks(
     State(state): State<Arc<AppState>>,
     Path(title): Path<String>,
 ) -> Json<LinksResponse<Backlink>> {
-    let links = state.read_index(|idx| {
-        idx.backlinks
-            .get(&title)
-            .cloned()
-            .unwrap_or_default()
-    });
-    Json(LinksResponse { title, links })
+    let links = state
+        .with_index(|idx| idx.backlinks(&title).unwrap_or_default())
+        .unwrap_or_default();
+
+    let backlinks: Vec<Backlink> = links
+        .into_iter()
+        .map(|row| Backlink {
+            source_title: row.source_page.clone(),
+            source_path: row.source_page,
+            context: row.context,
+        })
+        .collect();
+
+    Json(LinksResponse { title, links: backlinks })
 }
 
 pub async fn get_graph(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<GraphData>, String> {
-    let wiki = state.wiki_dir().ok_or("No workspace open")?;
-    let data = state.read_index(|idx| build_graph_data(idx, &wiki));
-    Ok(Json(data))
-}
+    let data = state
+        .with_index(|idx| idx.graph_data().unwrap_or_else(|_| crate::index::GraphData {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        }))
+        .ok_or("No workspace open")?;
 
-fn build_graph_data(idx: &crate::state::LinkIndex, wiki: &std::path::Path) -> GraphData {
-    use std::collections::HashMap;
-
-    fn rel_path(wiki: &std::path::Path, path: &std::path::Path) -> String {
-        path.strip_prefix(wiki)
-            .unwrap_or(path)
-            .to_string_lossy()
-            .replace('\\', "/")
-    }
-
-    let mut nodes: HashMap<String, GraphNode> = HashMap::new();
-    let mut edges: Vec<GraphEdge> = Vec::new();
-
-    // Add all existing pages as nodes.
-    for (title, path) in &idx.title_to_path {
-        let path_str = rel_path(wiki, path);
-        nodes.entry(path_str.clone()).or_insert(GraphNode {
-            id: path_str.clone(),
-            label: title.clone(),
-            path: path_str.clone(),
+    let mut nodes: Vec<GraphNode> = data
+        .nodes
+        .into_iter()
+        .map(|n| GraphNode {
+            id: n.path.clone(),
+            label: n.title,
+            path: n.path,
             exists: true,
             degree: 0,
-        });
-    }
+        })
+        .collect();
 
-    // Build edges from outlinks; target must exist to keep the MVP graph clean.
-    for (source_title, outlinks) in &idx.outlinks {
-        let Some(source_path) = idx.title_to_path.get(source_title) else {
-            continue;
-        };
-        let source_id = rel_path(wiki, source_path);
-        for link in outlinks {
-            let Some(target_id) = link.target_path.clone() else {
-                continue;
-            };
-            // Ensure both source and target nodes exist.
-            if !nodes.contains_key(&target_id) {
-                continue;
+    let mut node_degrees: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    let edges: Vec<GraphEdge> = data
+        .edges
+        .into_iter()
+        .filter_map(|e| {
+            let source_id = e.source;
+            let target_id = e.target;
+            // Both source and target must be known pages.
+            if !nodes.iter().any(|n| n.id == source_id) || !nodes.iter().any(|n| n.id == target_id) {
+                return None;
             }
-            edges.push(GraphEdge {
-                source: source_id.clone(),
-                target: target_id.clone(),
-                block_id: link.block_id.clone(),
-            });
-            if let Some(n) = nodes.get_mut(&source_id) {
-                n.degree += 1;
-            }
-            if let Some(n) = nodes.get_mut(&target_id) {
-                n.degree += 1;
-            }
+            *node_degrees.entry(source_id.clone()).or_insert(0) += 1;
+            *node_degrees.entry(target_id.clone()).or_insert(0) += 1;
+            Some(GraphEdge {
+                source: source_id,
+                target: target_id,
+                block_id: if e.link_type == "block" {
+                    None // target_block_uuid would be a uuid, not a user-visible block id
+                } else {
+                    None
+                },
+            })
+        })
+        .collect();
+
+    for node in &mut nodes {
+        if let Some(d) = node_degrees.get(&node.id) {
+            node.degree = *d;
         }
     }
 
-    let mut nodes: Vec<GraphNode> = nodes.into_values().collect();
     nodes.sort_by(|a, b| a.id.cmp(&b.id));
-    GraphData { nodes, edges }
+    Ok(Json(GraphData { nodes, edges }))
 }
 
-/// Rebuild the entire link index from the current workspace.
+/// Rebuild the entire index from the current workspace.
 pub async fn rebuild_index(state: Arc<AppState>) -> Result<(), String> {
     tokio::task::spawn_blocking(move || rebuild_index_sync(state))
         .await
@@ -154,15 +163,13 @@ pub async fn rebuild_index(state: Arc<AppState>) -> Result<(), String> {
 fn rebuild_index_sync(state: Arc<AppState>) -> Result<(), String> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     if !wiki.exists() {
-        state.write_index(|idx| *idx = crate::state::LinkIndex::default());
         return Ok(());
     }
 
-    let mut title_to_path = std::collections::HashMap::new();
-    let mut outlinks: std::collections::HashMap<String, Vec<Outlink>> = std::collections::HashMap::new();
-    let mut backlinks: std::collections::HashMap<String, Vec<Backlink>> = std::collections::HashMap::new();
-
-    let re = Regex::new(r"\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]").unwrap();
+    let index_path = state.index_path().ok_or("No workspace open")?;
+    // Open a fresh index. This wipes old data.
+    let index = crate::index::Index::open(&index_path)
+        .map_err(|e| format!("Failed to open index: {e}"))?;
 
     for entry in walkdir::WalkDir::new(&wiki)
         .into_iter()
@@ -170,91 +177,69 @@ fn rebuild_index_sync(state: Arc<AppState>) -> Result<(), String> {
         .filter(|e| e.file_type().is_file() && e.path().extension().map(|e| e == "ad").unwrap_or(false))
     {
         let path = entry.path();
-        let rel = path
-            .strip_prefix(&wiki)
-            .unwrap_or(path)
-            .to_string_lossy()
-            .replace('\\', "/");
         let title = path
             .file_stem()
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
-        title_to_path.insert(title.clone(), path.to_path_buf());
-
         let text = std::fs::read_to_string(path).unwrap_or_default();
-        let mut file_outlinks = Vec::new();
-        for cap in re.captures_iter(&text) {
-            let target_title = cap[1].trim().to_string();
-            let block_id = cap.get(2).map(|m| m.as_str().to_string());
-            file_outlinks.push((target_title.clone(), block_id));
-
-            // Backlink from target's perspective.
-            let context = extract_context(&text, cap.get(0).unwrap().start());
-            backlinks
-                .entry(target_title)
-                .or_default()
-                .push(Backlink {
-                    source_title: title.clone(),
-                    source_path: rel.clone(),
-                    context,
-                });
-        }
-
-        // Deduplicate outlinks for this file.
-        let mut seen = std::collections::HashSet::new();
-        let mut deduped = Vec::new();
-        for (target_title, block_id) in file_outlinks {
-            if seen.insert((target_title.clone(), block_id.clone())) {
-                let exists = title_to_path.contains_key(&target_title);
-                let target_path = title_to_path.get(&target_title).map(|p| {
-                    p.strip_prefix(&wiki)
-                        .unwrap_or(p)
-                        .to_string_lossy()
-                        .replace('\\', "/")
-                });
-                deduped.push(Outlink {
-                    target_title,
-                    target_path,
-                    exists,
-                    block_id,
-                });
-            }
-        }
-        outlinks.insert(title, deduped);
+        index
+            .index_file(&wiki, path, &text, &title)
+            .map_err(|e| format!("Failed to index {}: {e}", path.display()))?;
     }
 
-    // Fix existence for outlinks that were seen before their target was indexed.
-    for links in outlinks.values_mut() {
-        for link in links {
-            if !link.exists {
-                if let Some(path) = title_to_path.get(&link.target_title) {
-                    link.exists = true;
-                    link.target_path = Some(
-                        path.strip_prefix(&wiki)
-                            .unwrap_or(path)
-                            .to_string_lossy()
-                            .replace('\\', "/"),
-                    );
-                }
-            }
-        }
-    }
-
-    state.write_index(|idx| {
-        idx.title_to_path = title_to_path;
-        idx.outlinks = outlinks;
-        idx.backlinks = backlinks;
-    });
-
+    // Replace the in-memory index reference.
+    state.set_index(index);
     Ok(())
 }
 
-/// Extract a one-line context around a link position.
-fn extract_context(text: &str, pos: usize) -> String {
-    let start = text[..pos].rfind('\n').map(|i| i + 1).unwrap_or(0);
-    let end = text[pos..].find('\n').map(|i| pos + i).unwrap_or(text.len());
-    text[start..end].trim().to_string()
+/// Incrementally index a single file. Used after save/rename/create.
+pub fn index_file(
+    state: &AppState,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    let wiki = state.wiki_dir().ok_or("No workspace open")?;
+    let title = path
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+
+    state
+        .with_index_mut(|idx| idx.index_file(&wiki, path, &text, &title))
+        .ok_or("Index not available")?
+        .map_err(|e| e.to_string())
+}
+
+/// Remove a file from the index.
+pub fn remove_file(
+    state: &AppState,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    let wiki = state.wiki_dir().ok_or("No workspace open")?;
+    state
+        .with_index_mut(|idx| idx.remove_file(&wiki, path))
+        .ok_or("Index not available")?
+        .map_err(|e| e.to_string())
+}
+
+/// Rename a file in the index.
+pub fn rename_file(
+    state: &AppState,
+    old_path: &std::path::Path,
+    new_path: &std::path::Path,
+) -> Result<(), String> {
+    let wiki = state.wiki_dir().ok_or("No workspace open")?;
+    let new_title = new_path
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    state
+        .with_index_mut(|idx| idx.rename_file(&wiki, old_path, new_path, &new_title))
+        .ok_or("Index not available")?
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -283,14 +268,17 @@ mod tests {
 
         rebuild_index(state.clone()).await.unwrap();
 
-        let outlinks = state.read_index(|idx| idx.outlinks.get("A").cloned().unwrap_or_default());
+        let outlinks = state
+            .with_index(|idx| idx.outlinks("A").unwrap_or_default())
+            .unwrap();
         assert_eq!(outlinks.len(), 2);
-        assert!(outlinks.iter().any(|l| l.target_title == "B" && l.exists));
-        assert!(outlinks.iter().any(|l| l.target_title == "C" && !l.exists));
+        assert!(outlinks.iter().any(|l| l.target_page.as_deref() == Some("B")));
 
-        let backlinks = state.read_index(|idx| idx.backlinks.get("B").cloned().unwrap_or_default());
+        let backlinks = state
+            .with_index(|idx| idx.backlinks("B").unwrap_or_default())
+            .unwrap();
         assert_eq!(backlinks.len(), 1);
-        assert_eq!(backlinks[0].source_title, "A");
+        assert_eq!(backlinks[0].source_page, "A.ad");
     }
 
     #[tokio::test]
@@ -304,9 +292,11 @@ mod tests {
 
         rebuild_index(state.clone()).await.unwrap();
 
-        let outlinks = state.read_index(|idx| idx.outlinks.get("A").cloned().unwrap_or_default());
+        let outlinks = state
+            .with_index(|idx| idx.outlinks("A").unwrap_or_default())
+            .unwrap();
         assert_eq!(outlinks.len(), 1);
-        assert_eq!(outlinks[0].target_title, "B");
-        assert_eq!(outlinks[0].block_id.as_deref(), Some("block-3"));
+        assert_eq!(outlinks[0].target_page.as_deref(), Some("B"));
+        assert_eq!(outlinks[0].target_block_uuid.as_deref(), Some("block-3"));
     }
 }

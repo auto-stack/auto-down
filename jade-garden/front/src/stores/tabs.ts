@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { readWiki, writeWiki, type WikiDoc } from '@/lib/api'
 
+import { ensureBlockAnchors } from '@/lib/blockParser'
+
 export interface Tab {
   path: string
   title: string
@@ -108,13 +110,15 @@ export const useTabsStore = defineStore('tabs', () => {
   }
 
   async function save(path: string) {
-    const tab = tabs.value.find(t => t.path === path)
+    const tab = tabs.value.find((t) => t.path === path)
     if (!tab || !tab.loaded) return
     tab.saving = true
     try {
-      const saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: tab.body })
+      const bodyWithAnchors = ensureBlockAnchors(tab.body)
+      const saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: bodyWithAnchors })
       tab.frontmatter = saved.frontmatter || {}
-      tab.originalBody = tab.body
+      tab.body = saved.body
+      tab.originalBody = saved.body
       tab.dirty = false
     } finally {
       tab.saving = false

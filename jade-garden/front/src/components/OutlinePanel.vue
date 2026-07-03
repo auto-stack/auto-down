@@ -1,26 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useTabsStore } from '@/stores/tabs'
+import { useBlocksStore } from '@/stores/blocks'
 
-interface Heading {
-  level: number
-  text: string
-  line: number
-}
-
-function parseHeadings(body: string): Heading[] {
-  const headings: Heading[] = []
-  const lines = body.split('\n')
-  lines.forEach((line, idx) => {
-    const match = line.match(/^(#{1,6})\s+(.*)$/)
-    if (!match) return
-    headings.push({ level: match[1].length, text: match[2].trim(), line: idx })
-  })
-  return headings
-}
-
-const tabs = useTabsStore()
-const headings = computed(() => parseHeadings(tabs.activeTab?.body ?? ''))
+const blocks = useBlocksStore()
+const headings = computed(() => blocks.activeBlocks.filter((b) => b.kind === 'heading'))
 </script>
 
 <template>
@@ -29,12 +12,12 @@ const headings = computed(() => parseHeadings(tabs.activeTab?.body ?? ''))
     <ul v-if="headings.length" class="space-y-0.5">
       <li
         v-for="h in headings"
-        :key="h.line"
+        :key="h.lineStart"
         class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-        :style="{ paddingLeft: `${(h.level - 1) * 0.6 + 0.375}rem` }"
-        :title="h.text"
+        :style="{ paddingLeft: `${(Number(h.content.match(/^#{1,6}/)?.[0].length ?? 1) - 1) * 0.6 + 0.375}rem` }"
+        :title="h.content"
       >
-        {{ h.text }}
+        {{ h.content.replace(/^#+\s+/, '') }}
       </li>
     </ul>
     <p v-else class="text-xs text-muted-foreground">No headings.</p>

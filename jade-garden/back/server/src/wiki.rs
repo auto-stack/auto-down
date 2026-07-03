@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::state::AppState;
+use crate::links;
 
 #[derive(Serialize, Deserialize)]
 pub struct WikiDoc {
@@ -47,9 +48,8 @@ pub async fn write_wiki(
     let text = join_ad(&frontmatter, &doc.body)?;
     std::fs::write(&target, text).map_err(|e| format!("Failed to write file: {e}"))?;
 
-    crate::links::rebuild_index(state.clone())
-        .await
-        .ok();
+    // Incrementally update the search/link index for this file.
+    links::index_file(&state, &target).ok();
 
     Ok(Json(WikiDoc { frontmatter, body: doc.body }))
 }

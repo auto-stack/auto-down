@@ -18,6 +18,24 @@ export function parseWikiLinks(text: string): WikiLink[] {
   return links
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 40)
+    .replace(/-+$/, '')
+}
+
+function encodeBlockId(blockId: string): string {
+  // If the blockId contains spaces, treat it as a heading text and slugify it.
+  if (/\s/.test(blockId)) {
+    return slugify(blockId)
+  }
+  return encodeURIComponent(blockId)
+}
+
 export function transformWikiLinks(
   text: string,
   exists: (title: string) => boolean
@@ -26,9 +44,10 @@ export function transformWikiLinks(
     const title = titleRaw.trim()
     const blockId = blockIdRaw?.trim()
     const isDangling = !exists(title)
-    const hash = blockId ? `#${encodeURIComponent(blockId)}` : ''
+    const hash = blockId ? `#${encodeBlockId(blockId)}` : ''
+    const displayBlockId = blockId ? `#${blockId}` : ''
     const cls = isDangling ? 'wikilink dangling' : 'wikilink'
-    return `<a class="${cls}" href="wiki://${encodeURIComponent(title)}${hash}">${title}${blockId ? `#${blockId}` : ''}</a>`
+    return `<a class="${cls}" href="wiki://${encodeURIComponent(title)}${hash}">${title}${displayBlockId}</a>`
   })
 }
 
@@ -39,4 +58,8 @@ export function wikiTitleToPath(title: string): string {
     .replace(/\s+/g, ' ')
     .trim()
   return `${safe}.ad`
+}
+
+export function headingTextToBlockId(text: string): string {
+  return slugify(text)
 }

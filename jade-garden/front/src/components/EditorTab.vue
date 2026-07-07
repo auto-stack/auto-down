@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { useTabsStore } from '@/stores/tabs'
 import { useFileTreeStore } from '@/stores/fileTree'
 import { createWikiPage } from '@/lib/api'
+import { headingTextToBlockId } from '@/lib/wikiLink'
 
 const props = defineProps<{
   path: string
@@ -14,6 +15,7 @@ const tabs = useTabsStore()
 const fileTree = useFileTreeStore()
 const tab = computed(() => tabs.tabs.find(t => t.path === props.path))
 const body = computed(() => tab.value?.body ?? '')
+const editorRef = ref<InstanceType<typeof AutoDownEditor> | null>(null)
 
 watch(() => props.path, () => {
   if (tab.value && !tab.value.loaded) {
@@ -30,13 +32,20 @@ function onUpdate(md: string) {
   debouncedSave()
 }
 
+function scrollToBlockId(id: string) {
+  const wrapper = editorRef.value?.$el?.querySelector('.autodown-editor-content-wrapper')
+  if (!wrapper) return
+  const el = wrapper.querySelector(`[data-block-id="${id}"]`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 async function onOpenWikiLink(title: string, blockId?: string | null) {
-  // Ensure the file tree is loaded so we can resolve existing pages.
   if (!fileTree.files.length && !fileTree.loading) {
     await fileTree.load()
   }
 
-  // Resolve title to an existing .ad file path (case-insensitive, based on file stem).
   const targetName = `${title}.ad`
   let targetPath: string | undefined
 
@@ -68,17 +77,33 @@ async function onOpenWikiLink(title: string, blockId?: string | null) {
   }
 
   await tabs.open(targetPath, title)
-  // TODO: scroll to blockId after the new tab finishes rendering.
   if (blockId) {
-    console.log('jump to block', blockId)
+    const id = /\s/.test(blockId) ? headingTextToBlockId(blockId) : blockId
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('jade-scroll-to-block', { detail: { path: targetPath, id } }))
+    }, 150)
   }
 }
+
+function onScrollToBlock(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail.path !== props.path) return
+  scrollToBlockId(detail.id)
+}
+
+onMounted(() => {
+  window.addEventListener('jade-scroll-to-block', onScrollToBlock)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('jade-scroll-to-block', onScrollToBlock)
+})
 </script>
 
 <template>
   <div class="editor-workspace">
-    <!-- Only mount the editor for the active document tab to avoid Tiptap unmount issues. -->
     <AutoDownEditor
+      ref="editorRef"
       :content="body"
       placeholder="Start typing..."
       :show-actions="false"

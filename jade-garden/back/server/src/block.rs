@@ -81,6 +81,7 @@ impl ParsedPage {
 /// Generate a short readable block id. We keep it Obsidian-style: lowercase,
 /// alphanumeric + hyphen, 8–16 chars. The caller must ensure uniqueness within
 /// the page.
+#[allow(dead_code)]
 pub fn generate_block_id() -> String {
     use rand::Rng;
     let mut rng = rand::rng();

@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useBlocksStore } from '@/stores/blocks'
+import { useTabsStore } from '@/stores/tabs'
+import { headingTextToBlockId } from '@/lib/wikiLink'
 
 const blocks = useBlocksStore()
+const tabs = useTabsStore()
 const headings = computed(() => blocks.activeBlocks.filter((b) => b.kind === 'heading'))
+
+function scrollToHeading(content: string) {
+  const id = headingTextToBlockId(content)
+  const tab = tabs.activeTab
+  if (!tab) return
+  window.dispatchEvent(new CustomEvent('jade-scroll-to-block', { detail: { path: tab.path, id } }))
+}
 </script>
 
 <template>
@@ -16,6 +26,7 @@ const headings = computed(() => blocks.activeBlocks.filter((b) => b.kind === 'he
         class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
         :style="{ paddingLeft: `${((h.level ?? 1) - 1) * 0.6 + 0.375}rem` }"
         :title="h.content"
+        @click="scrollToHeading(h.content)"
       >
         {{ h.content }}
       </li>

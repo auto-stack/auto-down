@@ -137,6 +137,43 @@ export async function getOutlinks(title: string): Promise<LinksResponse<Outlink>
   return res.json()
 }
 
+export interface SearchResult {
+  type: 'Page' | 'Block'
+  path?: string
+  title?: string
+  uuid?: string
+  page_path?: string
+  block_id?: string
+  content?: string
+  snippet?: string | null
+}
+
+export interface SearchResponse {
+  query: string
+  results: SearchResult[]
+}
+
+export async function search(query: string, limit = 20): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  const res = await fetch(`/api/search?${params}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function searchPages(query: string, limit = 20): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  const res = await fetch(`/api/search/pages?${params}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function searchBlocks(query: string, limit = 20): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  const res = await fetch(`/api/search/blocks?${params}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
 export async function createWikiPage(title: string): Promise<string> {
   const path = `${title.replace(/[\\/:*?"<>|]/g, '-').trim()}.ad`
   await createFile(path, false)

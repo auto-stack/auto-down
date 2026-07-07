@@ -33,6 +33,13 @@ export const useFileTreeStore = defineStore('fileTree', () => {
     await load()
   }
 
+  async function duplicateFile(sourcePath: string, targetPath: string) {
+    const source = await api.readWiki(sourcePath)
+    await api.createFile(targetPath, false)
+    await api.writeWiki(targetPath, source)
+    await load()
+  }
+
   async function renameFile(oldPath: string, newPath: string) {
     await api.renameFile(oldPath, newPath)
     await load()
@@ -43,5 +50,5 @@ export const useFileTreeStore = defineStore('fileTree', () => {
     await load()
   }
 
-  return { files, expanded, loading, error, load, toggle, createFile, renameFile, deleteFile }
+  return { files, expanded, loading, error, load, toggle, createFile, duplicateFile, renameFile, deleteFile }
 })

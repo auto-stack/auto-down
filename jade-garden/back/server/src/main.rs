@@ -3,6 +3,7 @@ mod files;
 mod index;
 mod links;
 mod parser;
+mod search;
 mod state;
 mod wiki;
 mod workspace;
@@ -59,6 +60,10 @@ async fn main() {
         .route("/api/backlinks/{title}", get(links::get_backlinks))
         .route("/api/outlinks/{title}", get(links::get_outlinks))
         .route("/api/graph", get(links::get_graph))
+        // Search
+        .route("/api/search", get(search::search))
+        .route("/api/search/pages", get(search::search_pages))
+        .route("/api/search/blocks", get(search::search_blocks))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)

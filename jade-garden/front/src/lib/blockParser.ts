@@ -228,6 +228,28 @@ const ANCHORABLE_KINDS = new Set<BlockKind>([
   'blockquote',
 ])
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 40)
+    .replace(/-+$/, '')
+}
+
+function generateHeadingId(content: string, used: Set<string>): string {
+  let slug = slugify(content)
+  if (!slug) slug = 'heading'
+  let candidate = slug
+  let i = 1
+  while (used.has(candidate)) {
+    candidate = `${slug}-${i}`
+    i += 1
+  }
+  return candidate
+}
+
 function generateBlockId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
@@ -240,6 +262,7 @@ function escapeRegExp(s: string): string {
 }
 
 /** Append persistent `^id` anchors to every anchor-able block that does not already have one.
+ *  Headings get readable slug ids so `[[Page#Heading Text]]` links work out of the box.
  *  When `previousBody` is supplied, ids for blocks whose kind+content are unchanged are
  *  reused; otherwise a new id is generated. */
 export function ensureBlockAnchors(body: string, previousBody?: string): string {
@@ -251,10 +274,13 @@ export function ensureBlockAnchors(body: string, previousBody?: string): string 
     if (!pb.blockId) continue
     idByContent.set(`${pb.kind}:${pb.content}`, pb.blockId)
   }
+  const usedIds = new Set(blocks.map((b) => b.blockId).filter(Boolean) as string[])
   for (const block of blocks) {
     if (block.blockId || !ANCHORABLE_KINDS.has(block.kind)) continue
     const key = `${block.kind}:${block.content}`
-    const id = idByContent.get(key) || generateBlockId()
+    const id = idByContent.get(key)
+      || (block.kind === 'heading' ? generateHeadingId(block.content, usedIds) : generateBlockId())
+    usedIds.add(id)
     const idx = Math.min(block.lineEnd - 1, lines.length - 1)
     lines[idx] = `${lines[idx]} ^${id}`
   }

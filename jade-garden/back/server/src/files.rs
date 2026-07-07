@@ -54,15 +54,14 @@ pub async fn list_files(
     }
 
     if q.recursive {
-        let mut nodes = Vec::new();
-        collect_recursive(&base, &wiki, &mut nodes)?;
+        let nodes = collect_recursive_nested(&base, &wiki).map_err(|e| format!("Failed to read directory: {e}"))?;
         Ok(Json(nodes))
     } else {
         let mut entries: Vec<_> = std::fs::read_dir(&base)
             .map_err(|e| format!("Failed to read directory: {e}"))?
             .filter_map(|e| e.ok())
             .collect();
-        entries.sort_by_key(|e| e.file_name());
+        entries.sort_by_key(|e| (e.file_type().map(|t| !t.is_dir()).unwrap_or(true), e.file_name()));
 
         let nodes = entries
             .into_iter()
@@ -72,6 +71,22 @@ pub async fn list_files(
     }
 }
 
+fn collect_recursive_nested(dir: &std::path::Path, wiki: &std::path::Path) -> Result<Vec<FileNode>, std::io::Error> {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?.filter_map(|e| e.ok()).collect();
+    entries.sort_by_key(|e| (e.file_type().map(|t| !t.is_dir()).unwrap_or(true), e.file_name()));
+
+    let mut nodes = Vec::new();
+    for entry in entries {
+        let mut node = file_node_from_entry(&entry, wiki);
+        if node.is_dir {
+            node.children = collect_recursive_nested(&entry.path(), wiki)?;
+        }
+        nodes.push(node);
+    }
+    Ok(nodes)
+}
+
+#[allow(dead_code)]
 fn collect_recursive(dir: &std::path::Path, wiki: &std::path::Path, out: &mut Vec<FileNode>) -> Result<(), String> {
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| format!("Failed to read directory: {e}"))?

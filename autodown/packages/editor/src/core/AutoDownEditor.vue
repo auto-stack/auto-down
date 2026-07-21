@@ -254,6 +254,18 @@ watch(
   }
 )
 
+// Plan 360: react to canEdit changes so a single editor instance can toggle
+// between read-only and editable without remounting (avoids Tiptap view.dom
+// errors that occur when two editor instances are swapped via v-if).
+watch(
+  () => props.canEdit,
+  (editable) => {
+    if (editor.value) {
+      editor.value.setEditable(editable)
+    }
+  }
+)
+
 function handleSave() {
   if (editor.value) {
     const md = editor.value.getMarkdown()

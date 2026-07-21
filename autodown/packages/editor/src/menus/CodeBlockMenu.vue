@@ -369,6 +369,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Guard against editor already destroyed (Tiptap throws when accessing
+  // .view on a destroyed editor). This happens when the parent AutoDownEditor
+  // is unmounted and its child menus clean up in the same flush cycle.
+  if (props.editor.isDestroyed) return
   const dom = props.editor.view?.dom
   if (dom) {
     dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })

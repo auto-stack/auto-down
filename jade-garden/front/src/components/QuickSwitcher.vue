@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { onKeyStroke } from '@vueuse/core'
 import { useFileTreeStore } from '@/stores/fileTree'
 import { useTabsStore } from '@/stores/tabs'
@@ -65,6 +65,18 @@ onKeyStroke('o', (e) => {
 
 onKeyStroke('Escape', () => {
   open.value = false
+})
+
+function onExternalOpen() {
+  open.value = true
+}
+
+onMounted(() => {
+  window.addEventListener('jade-open-quick-switcher', onExternalOpen)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('jade-open-quick-switcher', onExternalOpen)
 })
 
 function onKeydown(e: KeyboardEvent) {

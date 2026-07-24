@@ -9,6 +9,7 @@ import MainArea from './MainArea.vue'
 import RightSidebar from './RightSidebar.vue'
 import StatusBar from './StatusBar.vue'
 import QuickSwitcher from './QuickSwitcher.vue'
+import CommandPalette from './CommandPalette.vue'
 import WorkspaceOpener from './WorkspaceOpener.vue'
 
 const workspace = useWorkspaceStore()
@@ -37,5 +38,6 @@ onMounted(async () => {
     </div>
     <StatusBar />
     <QuickSwitcher />
+    <CommandPalette />
   </div>
 </template>

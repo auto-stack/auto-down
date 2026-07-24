@@ -63,6 +63,7 @@ const props = withDefaults(defineProps<{
   pageTitle?: string
   onOpenWikiLink?: (title: string, blockId?: string | null) => void
   loadBlock?: (id: string) => Promise<any | null>
+  extraSlashItems?: SlashItem[]
 }>(), {
   canEdit: true,
   autofocus: false,
@@ -83,7 +84,7 @@ const emit = defineEmits<{
   'open-wiki-link': [title: string, blockId?: string | null]
 }>()
 
-const slashItems: SlashItem[] = [
+const baseSlashItems: SlashItem[] = [
   {
     title: 'Text',
     description: 'Plain text',
@@ -226,6 +227,8 @@ const slashItems: SlashItem[] = [
     },
   },
 ]
+
+const slashItems: SlashItem[] = [...baseSlashItems, ...(props.extraSlashItems ?? [])]
 
 function getCurrentBlockId(editor: any): string | null {
   if (!editor.view) return null

@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X, Focus, Network } from 'lucide-vue-next'
+import { X, Focus, Network, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
+import { useFileTreeStore } from '@/stores/fileTree'
+import { openDailyNote, openAdjacentDailyNote, todayDate, parseDailyDateFromPath, getDailyNoteTitle } from '@/lib/dailyNote'
 import EditorTab from './EditorTab.vue'
 import GraphPage from './GraphPage.vue'
 
 const tabs = useTabsStore()
+const fileTree = useFileTreeStore()
+
+const activeDailyDate = computed(() => {
+  const path = tabs.activeTab?.path
+  return path ? parseDailyDateFromPath(path) : null
+})
 
 // Every document tab stays mounted; visibility is toggled with v-show so that
 // switching tabs never destroys/recreates a Tiptap editor (which caused the
@@ -30,6 +38,16 @@ function onClose(path: string) {
 
 function onSwitch(path: string) {
   tabs.activePath = path
+}
+
+async function openToday() {
+  await openDailyNote(todayDate(), tabs, fileTree)
+}
+
+function navigateDaily(direction: -1 | 1) {
+  const path = tabs.activeTab?.path
+  if (!path) return
+  openAdjacentDailyNote(direction, path, tabs, fileTree)
 }
 </script>
 
@@ -73,6 +91,37 @@ function onSwitch(path: string) {
         <Focus class="h-3.5 w-3.5" />
         <span>局部图谱</span>
       </button>
+      <button
+        type="button"
+        title="今日笔记"
+        class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        @click="openToday"
+      >
+        <CalendarDays class="h-3.5 w-3.5" />
+        <span>今日笔记</span>
+      </button>
+      <div
+        v-if="activeDailyDate"
+        class="flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground"
+      >
+        <button
+          type="button"
+          title="前一天"
+          class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground"
+          @click="navigateDaily(-1)"
+        >
+          <ChevronLeft class="h-3.5 w-3.5" />
+        </button>
+        <span class="px-1">{{ getDailyNoteTitle(activeDailyDate) }}</span>
+        <button
+          type="button"
+          title="后一天"
+          class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground"
+          @click="navigateDaily(1)"
+        >
+          <ChevronRight class="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
 
     <div class="relative flex flex-1 overflow-hidden">

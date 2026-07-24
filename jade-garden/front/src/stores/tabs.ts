@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { readWiki, writeWiki, type WikiDoc } from '@/lib/api'
+import { useRecentFilesStore } from '@/stores/recentFiles'
 
 import { ensureBlockAnchors } from '@/lib/blockParser'
 
@@ -43,6 +44,8 @@ export const useTabsStore = defineStore('tabs', () => {
     })
     activePath.value = path
     await load(path)
+    const recent = useRecentFilesStore()
+    recent.record(path, title || path.replace(/\.ad$/, ''))
   }
 
   async function openGraph(centerPath?: string | null, depth = 1) {

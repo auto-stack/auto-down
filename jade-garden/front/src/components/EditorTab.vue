@@ -3,9 +3,10 @@ import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { useTabsStore } from '@/stores/tabs'
 import { useFileTreeStore } from '@/stores/fileTree'
-import { createWikiPage, getBlock } from '@/lib/api'
+import { createWikiPage, getBlock, readWiki } from '@/lib/api'
 import { headingTextToBlockId } from '@/lib/wikiLink'
-import { Link2 } from 'lucide-vue-next'
+import { findTemplates, stripFrontmatter, expandTemplate } from '@/lib/templates'
+import { Link2, FileText } from 'lucide-vue-next'
 
 const props = defineProps<{
   path: string
@@ -55,6 +56,32 @@ async function loadBlock(id: string) {
   const res = await getBlock(id)
   return res.block || null
 }
+
+const extraSlashItems = [
+  {
+    title: 'Template',
+    description: 'Insert a template from templates/',
+    icon: FileText,
+    searchTerms: ['template', 'tpl'],
+    command: async ({ editor, range }: any) => {
+      const templates = findTemplates(fileTree.files)
+      const names = templates.map((t) => t.name).join(', ') || 'none'
+      const defaultName = templates[0]?.name ?? ''
+      const name = window.prompt(`Template name (${names}):`, defaultName)
+      if (!name) return
+      const tpl = templates.find((t) => t.name.toLowerCase() === name.toLowerCase())
+      let raw = ''
+      if (tpl) {
+        const doc = await readWiki(tpl.path)
+        raw = stripFrontmatter(doc.body)
+      } else {
+        raw = `- ## Notes\n- <% today %>`
+      }
+      const expanded = expandTemplate(raw, { currentPageTitle: tab.value?.title, now: new Date() })
+      editor.chain().focus().deleteRange(range).insertContent(expanded).run()
+    },
+  },
+]
 
 async function onOpenWikiLink(title: string, blockId?: string | null) {
   if (!fileTree.files.length && !fileTree.loading) {
@@ -175,6 +202,7 @@ onUnmounted(() => {
       :content="body"
       :page-title="tab?.title"
       :load-block="loadBlock"
+      :extra-slash-items="extraSlashItems"
       placeholder="Start typing..."
       :show-actions="false"
       class="h-full w-full"

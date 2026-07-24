@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { FolderTree, Search, Clock, Palette, Network } from 'lucide-vue-next'
+import { FolderTree, Search, Clock, Palette, Network, CalendarDays } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useTabsStore } from '@/stores/tabs'
+import { useFileTreeStore } from '@/stores/fileTree'
+import { openDailyNote, todayDate } from '@/lib/dailyNote'
 import type { LeftPanel } from '@/stores/sidebar'
 import ThemePopover from './ThemePopover.vue'
 
 const sidebar = useSidebarStore()
 const tabs = useTabsStore()
+const fileTree = useFileTreeStore()
 const themeOpen = ref(false)
+
+async function openToday() {
+  await openDailyNote(todayDate(), tabs, fileTree)
+}
 
 const items: { panel: LeftPanel; icon: any; label: string }[] = [
   { panel: 'files', icon: FolderTree, label: 'Files' },
@@ -59,6 +66,15 @@ function active(item: typeof items[number]): boolean {
         v-if="tabs.activeTab?.isGraph && !tabs.activeTab?.graphCenterPath"
         class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
       />
+    </button>
+
+    <button
+      type="button"
+      title="今日笔记"
+      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      @click="openToday"
+    >
+      <CalendarDays class="h-[18px] w-[18px]" />
     </button>
 
     <div class="flex-1" />

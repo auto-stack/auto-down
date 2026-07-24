@@ -1,11 +1,11 @@
-<script setup lang="ts">
 import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { useTabsStore } from '@/stores/tabs'
 import { useFileTreeStore } from '@/stores/fileTree'
-import { createWikiPage } from '@/lib/api'
+import { createWikiPage, getBlock } from '@/lib/api'
 import { headingTextToBlockId } from '@/lib/wikiLink'
+import { Link2 } from 'lucide-vue-next'
 
 const props = defineProps<{
   path: string
@@ -16,6 +16,9 @@ const fileTree = useFileTreeStore()
 const tab = computed(() => tabs.tabs.find(t => t.path === props.path))
 const body = computed(() => tab.value?.body ?? '')
 const editorRef = ref<InstanceType<typeof AutoDownEditor> | null>(null)
+
+const hoverBlock = ref<{ id: string; top: number; left: number } | null>(null)
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(() => props.path, () => {
   if (tab.value && !tab.value.loaded) {
@@ -39,6 +42,18 @@ function scrollToBlockId(id: string) {
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+}
+
+function normalizeBlockId(blockId: string): string {
+  let id = blockId.trim()
+  if (id.startsWith('^')) id = id.slice(1)
+  if (/\s/.test(id)) id = headingTextToBlockId(id)
+  return id
+}
+
+async function loadBlock(id: string) {
+  const res = await getBlock(id)
+  return res.block || null
 }
 
 async function onOpenWikiLink(title: string, blockId?: string | null) {
@@ -78,7 +93,7 @@ async function onOpenWikiLink(title: string, blockId?: string | null) {
 
   await tabs.open(targetPath, title)
   if (blockId) {
-    const id = /\s/.test(blockId) ? headingTextToBlockId(blockId) : blockId
+    const id = normalizeBlockId(blockId)
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('jade-scroll-to-block', { detail: { path: targetPath, id } }))
     }, 150)
@@ -91,12 +106,65 @@ function onScrollToBlock(e: Event) {
   scrollToBlockId(detail.id)
 }
 
+function getEditorWrapper(): HTMLElement | null {
+  return editorRef.value?.$el?.querySelector('.autodown-editor-content-wrapper') ?? null
+}
+
+function findBlockElement(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof HTMLElement)) return null
+  return target.closest('[data-block-id]') as HTMLElement | null
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (hoverTimer) clearTimeout(hoverTimer)
+  const target = e.target as HTMLElement
+  const blockEl = findBlockElement(target)
+  if (!blockEl) {
+    hoverBlock.value = null
+    return
+  }
+  const id = blockEl.getAttribute('data-block-id')
+  if (!id) {
+    hoverBlock.value = null
+    return
+  }
+  const rect = blockEl.getBoundingClientRect()
+  hoverBlock.value = { id, top: rect.top, left: rect.right }
+}
+
+function onMouseLeave() {
+  if (hoverTimer) clearTimeout(hoverTimer)
+  hoverTimer = setTimeout(() => {
+    hoverBlock.value = null
+  }, 300)
+}
+
+function copyBlockLink() {
+  const id = hoverBlock.value?.id
+  const title = tab.value?.title
+  if (!id || !title) return
+  const link = `[[${title}#^${id}]]`
+  navigator.clipboard.writeText(link).catch(() => {})
+  hoverBlock.value = null
+}
+
 onMounted(() => {
   window.addEventListener('jade-scroll-to-block', onScrollToBlock)
+  const wrapper = getEditorWrapper()
+  if (wrapper) {
+    wrapper.addEventListener('mousemove', onMouseMove)
+    wrapper.addEventListener('mouseleave', onMouseLeave)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('jade-scroll-to-block', onScrollToBlock)
+  if (hoverTimer) clearTimeout(hoverTimer)
+  const wrapper = getEditorWrapper()
+  if (wrapper) {
+    wrapper.removeEventListener('mousemove', onMouseMove)
+    wrapper.removeEventListener('mouseleave', onMouseLeave)
+  }
 })
 </script>
 
@@ -105,6 +173,8 @@ onUnmounted(() => {
     <AutoDownEditor
       ref="editorRef"
       :content="body"
+      :page-title="tab?.title"
+      :load-block="loadBlock"
       placeholder="Start typing..."
       :show-actions="false"
       class="h-full w-full"
@@ -117,6 +187,19 @@ onUnmounted(() => {
     >
       Loading…
     </div>
+    <teleport to="body">
+      <button
+        v-if="hoverBlock"
+        type="button"
+        class="fixed z-50 flex h-6 items-center gap-1 rounded border bg-popover px-1.5 text-[11px] text-foreground shadow-md hover:bg-accent"
+        :style="{ top: `${hoverBlock.top}px`, left: `${hoverBlock.left}px` }"
+        title="Copy block link"
+        @click="copyBlockLink"
+      >
+        <Link2 class="h-3 w-3" />
+        link
+      </button>
+    </teleport>
   </div>
 </template>
 

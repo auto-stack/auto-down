@@ -174,6 +174,41 @@ export async function searchBlocks(query: string, limit = 20): Promise<SearchRes
   return res.json()
 }
 
+export interface UnlinkedRef {
+  page_path: string
+  block_uuid?: string
+  context: string
+  matched_text: string
+}
+
+export interface UnlinkedRefsResponse {
+  title: string
+  refs: UnlinkedRef[]
+}
+
+export async function getUnlinkedRefs(title: string): Promise<UnlinkedRefsResponse> {
+  const res = await fetch(`/api/unlinked/${encodeURIComponent(title)}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function getBlock(id: string): Promise<{ found: boolean; block?: BlockInfo }> {
+  const res = await fetch(`/api/blocks/${encodeURIComponent(id)}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export interface BlockInfo {
+  uuid: string
+  page_path: string
+  block_id?: string
+  kind: string
+  content: string
+  properties: Record<string, any>
+  line_start: number
+  line_end: number
+}
+
 export async function createWikiPage(title: string): Promise<string> {
   const path = `${title.replace(/[\\/:*?"<>|]/g, '-').trim()}.ad`
   await createFile(path, false)

@@ -23,12 +23,14 @@ import { CustomMathBlock } from './CustomMathBlock'
 import { BlockId } from './BlockId'
 import { BlockInsertHandle } from './BlockInsertHandle'
 import { WikiLink } from './WikiLink'
+import { BlockEmbed } from './BlockEmbed'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 
 export interface EditorOptions {
   placeholder?: string
   slashItems?: SlashItem[]
   openWikiLink?: (title: string, blockId?: string | null) => void
+  loadBlock?: (id: string) => Promise<any | null>
 }
 
 export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
@@ -46,6 +48,9 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     BlockInsertHandle,
     WikiLink.configure({
       openWikiLink: options.openWikiLink,
+    }),
+    BlockEmbed.configure({
+      loadBlock: options.loadBlock,
     }),
     Placeholder.configure({
       placeholder: options.placeholder ?? "Type '/' for commands…",

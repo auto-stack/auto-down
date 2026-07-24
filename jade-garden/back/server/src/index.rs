@@ -324,6 +324,41 @@ impl Index {
         Self::resolve_page_path(&conn, title)
     }
 
+    pub fn page_aliases(&self, page_path: &str) -> Result<Vec<String>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT tag_name FROM tags WHERE page_path = ?1 AND block_uuid IS NULL",
+        )?;
+        let rows = stmt.query_map([page_path], |row| row.get::<_, String>(0))?;
+        rows.collect()
+    }
+
+    pub fn unlinked_references(
+        &self,
+        names: &[String],
+    ) -> Result<Vec<crate::unlinked::UnlinkedRef>, rusqlite::Error> {
+        use crate::unlinked::find_unlinked_references;
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT uuid, page_path, content FROM blocks")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+        })?;
+
+        let mut refs = Vec::new();
+        for row in rows {
+            let (uuid, page_path, content) = row?;
+            for (matched, context) in find_unlinked_references(&content, names) {
+                refs.push(crate::unlinked::UnlinkedRef {
+                    page_path: page_path.clone(),
+                    block_uuid: Some(uuid.clone()),
+                    context,
+                    matched_text: matched,
+                });
+            }
+        }
+        Ok(refs)
+    }
+
     #[allow(dead_code)]
     pub fn block_by_id(
         &self,
@@ -349,6 +384,55 @@ impl Index {
             "SELECT uuid, page_path, block_id, kind, content, properties, line_start, line_end
              FROM blocks WHERE uuid = ?1",
             [uuid],
+            |row| row_to_block(row),
+        )
+        .optional()
+    }
+
+    /// Find a block by its UUID or by its (page_path, block_id) pair.
+    /// The `id` may be either a UUID or a `^id` string.
+    pub fn find_block(
+        &self,
+        id: &str,
+    ) -> Result<Option<BlockRow>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        // Try UUID first.
+        if let Some(row) = conn
+            .query_row(
+                "SELECT uuid, page_path, block_id, kind, content, properties, line_start, line_end
+                 FROM blocks WHERE uuid = ?1",
+                [id],
+                |row| row_to_block(row),
+            )
+            .optional()?
+        {
+            return Ok(Some(row));
+        }
+        // Fall back to block_id (Obsidian-style ^id).
+        conn.query_row(
+            "SELECT uuid, page_path, block_id, kind, content, properties, line_start, line_end
+             FROM blocks WHERE block_id = ?1 LIMIT 1",
+            [id],
+            |row| row_to_block(row),
+        )
+        .optional()
+    }
+
+    /// Find a block by page title and block id/anchor.
+    pub fn find_block_in_page(
+        &self,
+        page_title: &str,
+        block_id: &str,
+    ) -> Result<Option<BlockRow>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let page_path = match Self::resolve_page_path(&conn, page_title)? {
+            Some(p) => p,
+            None => return Ok(None),
+        };
+        conn.query_row(
+            "SELECT uuid, page_path, block_id, kind, content, properties, line_start, line_end
+             FROM blocks WHERE page_path = ?1 AND block_id = ?2",
+            params![page_path, block_id],
             |row| row_to_block(row),
         )
         .optional()

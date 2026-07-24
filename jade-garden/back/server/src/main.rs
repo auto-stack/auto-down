@@ -1,10 +1,12 @@
 mod block;
+mod blocks;
 mod files;
 mod index;
 mod links;
 mod parser;
 mod search;
 mod state;
+mod unlinked;
 mod wiki;
 mod workspace;
 
@@ -64,6 +66,11 @@ async fn main() {
         .route("/api/search", get(search::search))
         .route("/api/search/pages", get(search::search_pages))
         .route("/api/search/blocks", get(search::search_blocks))
+        // Blocks
+        .route("/api/blocks/{id}", get(blocks::get_block))
+        .route("/api/blocks/{title}/{id}", get(blocks::get_block_in_page))
+        // Unlinked references
+        .route("/api/unlinked/{title}", get(unlinked::get_unlinked_refs))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)

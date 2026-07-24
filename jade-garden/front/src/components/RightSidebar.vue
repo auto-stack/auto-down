@@ -6,6 +6,7 @@ import OutgoingLinksPanel from './OutgoingLinksPanel.vue'
 import OutlinePanel from './OutlinePanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import GraphSidebar from './GraphSidebar.vue'
+import UnlinkedReferencesPanel from './UnlinkedReferencesPanel.vue'
 
 const tabs = useTabsStore()
 const isGraph = computed(() => tabs.activeTab?.isGraph ?? false)
@@ -20,6 +21,7 @@ const isGraph = computed(() => tabs.activeTab?.isGraph ?? false)
       <OutlinePanel />
       <BacklinksPanel />
       <OutgoingLinksPanel />
+      <UnlinkedReferencesPanel />
       <PropertiesPanel />
     </template>
   </aside>

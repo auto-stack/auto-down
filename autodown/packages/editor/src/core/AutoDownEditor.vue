@@ -47,6 +47,7 @@ import {
   Workflow,
   Check,
   X,
+  Link,
 } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{
@@ -59,7 +60,9 @@ const props = withDefaults(defineProps<{
   cancelLabel?: string
   imageUrlPrompt?: string
   linkUrlPrompt?: string
+  pageTitle?: string
   onOpenWikiLink?: (title: string, blockId?: string | null) => void
+  loadBlock?: (id: string) => Promise<any | null>
 }>(), {
   canEdit: true,
   autofocus: false,
@@ -207,7 +210,33 @@ const slashItems: SlashItem[] = [
       editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'mermaid' }).run()
     },
   },
+  {
+    title: 'Block link',
+    description: 'Copy link to current block',
+    icon: Link,
+    searchTerms: ['block link', 'anchor', 'copy link'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      const title = props.pageTitle
+      const id = getCurrentBlockId(editor)
+      if (title && id) {
+        const link = `[[${title}#^${id}]]`
+        navigator.clipboard.writeText(link).catch(() => {})
+      }
+    },
+  },
 ]
+
+function getCurrentBlockId(editor: any): string | null {
+  if (!editor.view) return null
+  const { from } = editor.state.selection
+  const domPos = editor.view.domAtPos(from)
+  let el = domPos.node
+  if (el.nodeType === Node.TEXT_NODE) el = el.parentElement
+  if (!(el instanceof HTMLElement)) return null
+  const blockEl = el.closest('[data-block-id]') as HTMLElement | null
+  return blockEl?.getAttribute('data-block-id') || null
+}
 
 const editor = useAutoDownEditor({
   content: props.content,
@@ -215,6 +244,7 @@ const editor = useAutoDownEditor({
   editable: props.canEdit,
   autofocus: props.autofocus ?? false,
   slashItems,
+  loadBlock: props.loadBlock,
   onUpdate: (editorInstance) => {
     emit('update', editorInstance.getMarkdown())
   },

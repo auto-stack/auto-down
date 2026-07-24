@@ -17,6 +17,7 @@ export interface UseAutoDownEditorOptions {
   onFocus?: (editor: Editor) => void
   onLinkClick?: (id: string) => void
   onOpenWikiLink?: (title: string, blockId?: string | null) => void
+  loadBlock?: (id: string) => Promise<any | null>
 }
 
 export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
@@ -24,6 +25,7 @@ export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
     placeholder: options.placeholder,
     slashItems: options.slashItems,
     openWikiLink: options.onOpenWikiLink,
+    loadBlock: options.loadBlock,
   }
   const extensions = createExtensions(extOptions)
 

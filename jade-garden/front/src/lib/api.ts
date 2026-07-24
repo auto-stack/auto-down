@@ -275,3 +275,40 @@ export async function runQuery(q: string): Promise<QueryResponse> {
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
+
+export interface Card {
+  page_path: string
+  block_id: string
+  uuid: string
+  raw: string
+  question: string
+  answer: string
+  deck?: string
+  ease_factor: number
+  repeats: number
+  last_interval: number
+  next_schedule?: string
+  last_score?: number
+  last_reviewed?: string
+}
+
+export interface CardsResponse {
+  cards: Card[]
+}
+
+export async function getDueCards(limit = 50): Promise<CardsResponse> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  const res = await fetch(`/api/cards/due?${params}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function reviewCard(pagePath: string, blockId: string, grade: number): Promise<{ card: Card }> {
+  const res = await fetch('/api/cards/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page_path: pagePath, block_id: blockId, grade }),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}

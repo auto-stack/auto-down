@@ -7,6 +7,7 @@ mod links;
 mod parser;
 mod query;
 mod search;
+mod srs;
 mod state;
 mod tasks;
 mod unlinked;
@@ -74,6 +75,9 @@ async fn main() {
         .route("/api/tasks", get(tasks::get_tasks))
         .route("/api/agenda", get(tasks::get_agenda))
         .route("/api/query", get(query::query))
+        // SRS / Flashcards
+        .route("/api/cards/due", get(srs::get_due_cards))
+        .route("/api/cards/review", post(srs::review_card))
         // Blocks
         .route("/api/blocks/{id}", get(blocks::get_block))
         .route("/api/blocks/{title}/{id}", get(blocks::get_block_in_page))

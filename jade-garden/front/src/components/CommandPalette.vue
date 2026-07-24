@@ -10,6 +10,7 @@ import {
   PanelRight,
   FileSearch,
   Clock,
+  Brain,
   type LucideIcon,
 } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
@@ -102,6 +103,14 @@ const commands = computed<CommandItem[]>(() => {
       subtitle: 'Quick switcher (Ctrl+O)',
       icon: FileSearch,
       action: () => window.dispatchEvent(new CustomEvent('jade-open-quick-switcher')),
+    },
+    {
+      id: 'review-flashcards',
+      type: 'command',
+      title: 'Review flashcards',
+      subtitle: 'SRS due cards',
+      icon: Brain,
+      action: () => window.dispatchEvent(new CustomEvent('jade-open-flashcards')),
     },
   ]
   return list

@@ -26,6 +26,8 @@ const menuY = ref(0)
 function toggle() {
   if (props.node.is_dir) {
     fileTree.toggle(props.node.path)
+  } else if (props.node.path.toLowerCase().endsWith('.canvas')) {
+    tabs.openWhiteboard(props.node.path, props.node.name.replace(/\.canvas$/, ''))
   } else {
     tabs.open(props.node.path, props.node.name.replace(/\.ad$/, ''))
   }

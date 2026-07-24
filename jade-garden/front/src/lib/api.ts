@@ -312,3 +312,52 @@ export async function reviewCard(pagePath: string, blockId: string, grade: numbe
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
+
+export async function exportMarkdown(): Promise<Blob> {
+  const res = await fetch('/api/export/markdown')
+  if (!res.ok) throw new Error(await res.text())
+  return res.blob()
+}
+
+
+export async function importMarkdown(zipFile: File): Promise<{ imported: number }> {
+  const formData = new FormData()
+  formData.append('archive', zipFile)
+  const res = await fetch('/api/import/markdown', {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export interface WhiteboardShape {
+  id: string
+  kind: string
+  x: number
+  y: number
+  width: number
+  height: number
+  label: string
+  target?: string
+}
+
+export interface WhiteboardDoc {
+  shapes: WhiteboardShape[]
+}
+
+export async function readWhiteboard(path: string): Promise<WhiteboardDoc> {
+  const res = await fetch(`/api/whiteboard/${encodeURIComponent(path)}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function writeWhiteboard(path: string, doc: WhiteboardDoc): Promise<WhiteboardDoc> {
+  const res = await fetch(`/api/whiteboard/${encodeURIComponent(path)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(doc),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}

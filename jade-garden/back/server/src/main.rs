@@ -2,6 +2,7 @@ mod assets;
 mod block;
 mod blocks;
 mod files;
+mod import_export;
 mod index;
 mod links;
 mod parser;
@@ -9,8 +10,10 @@ mod query;
 mod search;
 mod srs;
 mod state;
+mod sync;
 mod tasks;
 mod unlinked;
+mod whiteboard;
 mod wiki;
 mod workspace;
 
@@ -78,6 +81,14 @@ async fn main() {
         // SRS / Flashcards
         .route("/api/cards/due", get(srs::get_due_cards))
         .route("/api/cards/review", post(srs::review_card))
+        // Import / Export
+        .route("/api/export/markdown", get(import_export::export_markdown))
+        .route("/api/import/markdown", post(import_export::import_markdown))
+        // Sync
+        .route("/api/sync/status", get(sync::sync_status))
+        // Whiteboards
+        .route("/api/whiteboard/{*path}", get(whiteboard::read_whiteboard))
+        .route("/api/whiteboard/{*path}", post(whiteboard::write_whiteboard))
         // Blocks
         .route("/api/blocks/{id}", get(blocks::get_block))
         .route("/api/blocks/{title}/{id}", get(blocks::get_block_in_page))

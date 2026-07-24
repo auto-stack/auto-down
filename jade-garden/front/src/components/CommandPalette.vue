@@ -11,6 +11,8 @@ import {
   FileSearch,
   Clock,
   Brain,
+  Download,
+  Upload,
   type LucideIcon,
 } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
@@ -20,6 +22,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useRecentFilesStore } from '@/stores/recentFiles'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { openDailyNote, todayDate } from '@/lib/dailyNote'
+import { exportMarkdown, importMarkdown } from '@/lib/api'
 import type { RecentFile } from '@/stores/recentFiles'
 
 interface CommandItem {
@@ -53,6 +56,27 @@ const sidebar = useSidebarStore()
 const theme = useThemeStore()
 const recent = useRecentFilesStore()
 const workspace = useWorkspaceStore()
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function pickFile(accept: string): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = accept
+    input.onchange = () => {
+      resolve(input.files?.[0] || null)
+    }
+    input.click()
+  })
+}
 
 const commands = computed<CommandItem[]>(() => {
   const list: CommandItem[] = [
@@ -111,6 +135,31 @@ const commands = computed<CommandItem[]>(() => {
       subtitle: 'SRS due cards',
       icon: Brain,
       action: () => window.dispatchEvent(new CustomEvent('jade-open-flashcards')),
+    },
+    {
+      id: 'export-markdown',
+      type: 'command',
+      title: 'Export Markdown',
+      subtitle: 'Download workspace as zip of .md files',
+      icon: Download,
+      action: async () => {
+        const blob = await exportMarkdown()
+        downloadBlob(blob, 'jade-garden-export.zip')
+      },
+    },
+    {
+      id: 'import-markdown',
+      type: 'command',
+      title: 'Import Markdown',
+      subtitle: 'Upload a zip of .md files',
+      icon: Upload,
+      action: async () => {
+        const file = await pickFile('.zip')
+        if (!file) return
+        const res = await importMarkdown(file)
+        alert(`Imported ${res.imported} files`)
+        await fileTree.load()
+      },
     },
   ]
   return list

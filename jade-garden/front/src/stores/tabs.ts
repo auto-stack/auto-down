@@ -17,6 +17,7 @@ export interface Tab {
   isGraph?: boolean
   graphCenterPath?: string | null
   graphDepth?: number
+  isWhiteboard?: boolean
 }
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -68,6 +69,26 @@ export const useTabsStore = defineStore('tabs', () => {
       isGraph: true,
       graphCenterPath: centerPath || null,
       graphDepth: depth,
+    })
+    activePath.value = path
+  }
+
+  async function openWhiteboard(path: string, title?: string) {
+    const existing = tabs.value.find(t => t.path === path)
+    if (existing) {
+      activePath.value = path
+      return
+    }
+    tabs.value.push({
+      path,
+      title: title || path.replace(/\.canvas$/, ''),
+      body: '',
+      originalBody: '',
+      frontmatter: {},
+      dirty: false,
+      loaded: true,
+      saving: false,
+      isWhiteboard: true,
     })
     activePath.value = path
   }
@@ -128,5 +149,5 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
-  return { tabs, activePath, activeTab, open, openGraph, close, load, setBody, save }
+  return { tabs, activePath, activeTab, open, openGraph, openWhiteboard, close, load, setBody, save }
 })

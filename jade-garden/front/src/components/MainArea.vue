@@ -6,6 +6,7 @@ import { useFileTreeStore } from '@/stores/fileTree'
 import { openDailyNote, openAdjacentDailyNote, todayDate, parseDailyDateFromPath, getDailyNoteTitle } from '@/lib/dailyNote'
 import EditorTab from './EditorTab.vue'
 import GraphPage from './GraphPage.vue'
+import WhiteboardPage from './WhiteboardPage.vue'
 
 const tabs = useTabsStore()
 const fileTree = useFileTreeStore()
@@ -24,6 +25,10 @@ const editorTabs = computed(() => tabs.tabs.filter(t => !t.isGraph))
 // sized container to lay out; mounting it hidden would render a blank graph.
 const activeGraphTab = computed(() =>
   tabs.activeTab?.isGraph ? tabs.activeTab : null,
+)
+
+const activeWhiteboardTab = computed(() =>
+  tabs.activeTab?.isWhiteboard ? tabs.activeTab : null,
 )
 
 function openLocalGraph() {
@@ -139,6 +144,12 @@ function navigateDaily(direction: -1 | 1) {
         :key="activeGraphTab.path"
         :center-path="activeGraphTab.graphCenterPath"
         :depth="activeGraphTab.graphDepth || 1"
+        class="absolute inset-0"
+      />
+      <WhiteboardPage
+        v-if="activeWhiteboardTab"
+        :key="activeWhiteboardTab.path"
+        :path="activeWhiteboardTab.path"
         class="absolute inset-0"
       />
       <div

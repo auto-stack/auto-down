@@ -9,6 +9,20 @@
 ## Goal
 Deliver a sequence of milestones that turns Jade Garden from a "single WYSIWYG editor with backlinks and a graph" into a capable Obsidian-class local knowledge base, using Logseq 0.10.15 as the open-source reference.
 
+## Current status
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| M0 — Block model + SQLite index | Done | Backend block/index architecture implemented. |
+| M1 — Search, file tree, editable properties | Done | FTS, nested tree, properties panel integrated. |
+| M2 — Block references and embeds | Done | `[[Page#^id]]`, block embeds, unlinked refs supported. |
+| M3 — Daily notes, templates, command palette, recent files | Done | Daily notes, templates, command palette, recent files. |
+| M4 — Rich content parity | Done | KaTeX, Mermaid, H4–H6, footnotes, asset drag/drop. |
+| M5 — Tasks, scheduling, queries | Done | Task markers, scheduled/deadline, agenda, `{{query}}`. |
+| M6 — Flashcards / SRS | Done | `#card` syntax, SM-5 scheduler, review UI. |
+| M7 — Whiteboards, plugins, sync/publish | Done | Whiteboards, plugin architecture, import/export, sync placeholder. |
+
+This plan is considered complete as of tag `jade-garden-v0.2`.
+
 ## Architectural pre-requisite (Milestone 0)
 Before any advanced feature, we need a unified **Block Model** on both backend and frontend.
 

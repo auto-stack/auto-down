@@ -1,3 +1,4 @@
+<script setup lang="ts">
 import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'

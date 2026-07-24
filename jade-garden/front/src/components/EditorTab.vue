@@ -3,7 +3,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { useTabsStore } from '@/stores/tabs'
 import { useFileTreeStore } from '@/stores/fileTree'
-import { createWikiPage, getBlock, readWiki } from '@/lib/api'
+import { createWikiPage, getBlock, readWiki, uploadAsset } from '@/lib/api'
 import { headingTextToBlockId } from '@/lib/wikiLink'
 import { findTemplates, stripFrontmatter, expandTemplate } from '@/lib/templates'
 import { Link2, FileText } from 'lucide-vue-next'
@@ -55,6 +55,10 @@ function normalizeBlockId(blockId: string): string {
 async function loadBlock(id: string) {
   const res = await getBlock(id)
   return res.block || null
+}
+
+async function onAssetUpload(file: File): Promise<string> {
+  return uploadAsset(file)
 }
 
 const extraSlashItems = [
@@ -203,6 +207,7 @@ onUnmounted(() => {
       :page-title="tab?.title"
       :load-block="loadBlock"
       :extra-slash-items="extraSlashItems"
+      :on-asset-upload="onAssetUpload"
       placeholder="Start typing..."
       :show-actions="false"
       class="h-full w-full"

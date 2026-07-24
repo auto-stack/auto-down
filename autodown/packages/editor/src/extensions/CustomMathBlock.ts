@@ -1,4 +1,6 @@
 import { mergeAttributes, Node, textblockTypeInputRule, type CommandProps } from '@tiptap/core'
+import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import MathBlockNodeView from '../node-views/MathBlockNodeView.vue'
 
 /**
  * CustomMathBlock — block-level KaTeX math formula.
@@ -77,6 +79,10 @@ export const CustomMathBlock = Node.create({
         text,
       }
     },
+  },
+
+  addNodeView() {
+    return VueNodeViewRenderer(MathBlockNodeView as any)
   },
 
   addInputRules() {

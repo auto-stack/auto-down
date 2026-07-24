@@ -1,3 +1,4 @@
+mod assets;
 mod block;
 mod blocks;
 mod files;
@@ -55,6 +56,7 @@ async fn main() {
         .route("/api/files/create", post(files::create_file))
         .route("/api/files/rename", post(files::rename_file))
         .route("/api/files/delete", post(files::delete_file))
+        .route("/api/assets/upload", post(assets::upload_asset))
         // Wiki docs
         .route("/api/wiki/{*path}", get(wiki::read_wiki))
         .route("/api/wiki/{*path}", post(wiki::write_wiki))

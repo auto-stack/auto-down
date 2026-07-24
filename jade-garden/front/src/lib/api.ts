@@ -214,3 +214,15 @@ export async function createWikiPage(title: string): Promise<string> {
   await createFile(path, false)
   return path
 }
+
+export async function uploadAsset(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/assets/upload', {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) throw new Error(await res.text())
+  const data = await res.json()
+  return data.path as string
+}

@@ -18,6 +18,7 @@ export interface UseAutoDownEditorOptions {
   onLinkClick?: (id: string) => void
   onOpenWikiLink?: (title: string, blockId?: string | null) => void
   loadBlock?: (id: string) => Promise<any | null>
+  onAssetUpload?: (file: File) => Promise<string>
 }
 
 export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
@@ -55,6 +56,44 @@ export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
         return false
       },
       handleDOMEvents: {
+        drop(view, event) {
+          const upload = options.onAssetUpload
+          if (!upload) return false
+          const dragEvent = event as DragEvent
+          const files = dragEvent.dataTransfer?.files
+          if (!files || files.length === 0) return false
+          dragEvent.preventDefault()
+
+          const coords = { left: dragEvent.clientX, top: dragEvent.clientY }
+          const pos = view.posAtCoords(coords)?.pos
+          if (pos == null) return false
+
+          ;(async () => {
+            const inserts: string[] = []
+            for (const file of Array.from(files)) {
+              if (!file.type.startsWith('image/')) continue
+              try {
+                const path = await upload(file)
+                inserts.push(`![${file.name}](${path})`)
+              } catch (e) {
+                console.error('Asset upload failed', e)
+              }
+            }
+            if (inserts.length > 0) {
+              view.dispatch(view.state.tr.insertText(inserts.join('\n\n'), pos))
+            }
+          })()
+
+          return true
+        },
+        dragover(_view, event) {
+          const dragEvent = event as DragEvent
+          if (dragEvent.dataTransfer?.types.includes('Files')) {
+            dragEvent.preventDefault()
+            return true
+          }
+          return false
+        },
         dblclick(view, event) {
           const target = event.target as HTMLElement
           const cellEl = target.closest('td, th') as HTMLElement | null

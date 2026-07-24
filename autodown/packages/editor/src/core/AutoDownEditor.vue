@@ -32,6 +32,9 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   Text,
   List,
   ListOrdered,
@@ -49,6 +52,7 @@ import {
   X,
   Link,
 } from 'lucide-vue-next'
+import 'katex/dist/katex.min.css'
 
 const props = withDefaults(defineProps<{
   content: string
@@ -64,6 +68,7 @@ const props = withDefaults(defineProps<{
   onOpenWikiLink?: (title: string, blockId?: string | null) => void
   loadBlock?: (id: string) => Promise<any | null>
   extraSlashItems?: SlashItem[]
+  onAssetUpload?: (file: File) => Promise<string>
 }>(), {
   canEdit: true,
   autofocus: false,
@@ -112,6 +117,27 @@ const baseSlashItems: SlashItem[] = [
     icon: Heading3,
     searchTerms: ['h3'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run(),
+  },
+  {
+    title: 'Heading 4',
+    description: 'Fourth level heading',
+    icon: Heading4,
+    searchTerms: ['h4'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 4 }).run(),
+  },
+  {
+    title: 'Heading 5',
+    description: 'Fifth level heading',
+    icon: Heading5,
+    searchTerms: ['h5'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 5 }).run(),
+  },
+  {
+    title: 'Heading 6',
+    description: 'Sixth level heading',
+    icon: Heading6,
+    searchTerms: ['h6'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 6 }).run(),
   },
   {
     title: 'Bullet List',
@@ -208,7 +234,7 @@ const baseSlashItems: SlashItem[] = [
     icon: Workflow,
     searchTerms: ['mermaid', 'diagram', 'chart', 'flowchart'],
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'mermaid' }).run()
+      editor.chain().focus().deleteRange(range).setMermaidBlock().run()
     },
   },
   {
@@ -248,6 +274,7 @@ const editor = useAutoDownEditor({
   autofocus: props.autofocus ?? false,
   slashItems,
   loadBlock: props.loadBlock,
+  onAssetUpload: props.onAssetUpload,
   onUpdate: (editorInstance) => {
     emit('update', editorInstance.getMarkdown())
   },

@@ -20,6 +20,9 @@ import { CustomCodeBlock } from './CustomCodeBlock'
 import { CustomCallout } from './CustomCallout'
 import { CustomDetails } from './CustomDetails'
 import { CustomMathBlock } from './CustomMathBlock'
+import { MathInline } from './MathInline'
+import { MermaidBlock } from './MermaidBlock'
+import { FootnoteRef, FootnoteDef } from './Footnote'
 import { BlockId } from './BlockId'
 import { BlockInsertHandle } from './BlockInsertHandle'
 import { WikiLink } from './WikiLink'
@@ -36,7 +39,7 @@ export interface EditorOptions {
 export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
   return [
     StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: false,
       codeBlock: false,
     }),
@@ -44,6 +47,10 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     CustomCallout,
     CustomDetails,
     CustomMathBlock,
+    MathInline,
+    MermaidBlock,
+    FootnoteRef,
+    FootnoteDef,
     BlockId,
     BlockInsertHandle,
     WikiLink.configure({

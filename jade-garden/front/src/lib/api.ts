@@ -226,3 +226,52 @@ export async function uploadAsset(file: File): Promise<string> {
   const data = await res.json()
   return data.path as string
 }
+
+export interface TaskItem {
+  page_path: string
+  title: string
+  line: number
+  raw: string
+  marker: string
+  priority?: string
+  content: string
+  scheduled?: string
+  deadline?: string
+}
+
+export interface TasksResponse {
+  tasks: TaskItem[]
+}
+
+export async function getTasks(): Promise<TasksResponse> {
+  const res = await fetch('/api/tasks')
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export interface AgendaGroup {
+  date: string
+  tasks: TaskItem[]
+}
+
+export interface AgendaResponse {
+  groups: AgendaGroup[]
+}
+
+export async function getAgenda(days = 14): Promise<AgendaResponse> {
+  const params = new URLSearchParams({ days: String(days) })
+  const res = await fetch(`/api/agenda?${params}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export interface QueryResponse {
+  results: TaskItem[]
+}
+
+export async function runQuery(q: string): Promise<QueryResponse> {
+  const params = new URLSearchParams({ q })
+  const res = await fetch(`/api/query?${params}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}

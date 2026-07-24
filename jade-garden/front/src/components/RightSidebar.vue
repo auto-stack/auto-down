@@ -7,6 +7,7 @@ import OutlinePanel from './OutlinePanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import GraphSidebar from './GraphSidebar.vue'
 import UnlinkedReferencesPanel from './UnlinkedReferencesPanel.vue'
+import AgendaPanel from './AgendaPanel.vue'
 
 const tabs = useTabsStore()
 const isGraph = computed(() => tabs.activeTab?.isGraph ?? false)
@@ -18,6 +19,7 @@ const isGraph = computed(() => tabs.activeTab?.isGraph ?? false)
       <GraphSidebar />
     </template>
     <template v-else>
+      <AgendaPanel />
       <OutlinePanel />
       <BacklinksPanel />
       <OutgoingLinksPanel />

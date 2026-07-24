@@ -23,6 +23,7 @@ import { CustomMathBlock } from './CustomMathBlock'
 import { MathInline } from './MathInline'
 import { MermaidBlock } from './MermaidBlock'
 import { FootnoteRef, FootnoteDef } from './Footnote'
+import { QueryBlock } from './QueryBlock'
 import { BlockId } from './BlockId'
 import { BlockInsertHandle } from './BlockInsertHandle'
 import { WikiLink } from './WikiLink'
@@ -34,6 +35,7 @@ export interface EditorOptions {
   slashItems?: SlashItem[]
   openWikiLink?: (title: string, blockId?: string | null) => void
   loadBlock?: (id: string) => Promise<any | null>
+  runQuery?: (q: string) => Promise<any>
 }
 
 export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
@@ -51,6 +53,9 @@ export function createExtensions(options: EditorOptions = {}): AnyExtension[] {
     MermaidBlock,
     FootnoteRef,
     FootnoteDef,
+    QueryBlock.configure({
+      runQuery: options.runQuery,
+    }),
     BlockId,
     BlockInsertHandle,
     WikiLink.configure({

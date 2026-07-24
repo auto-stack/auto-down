@@ -5,8 +5,10 @@ mod files;
 mod index;
 mod links;
 mod parser;
+mod query;
 mod search;
 mod state;
+mod tasks;
 mod unlinked;
 mod wiki;
 mod workspace;
@@ -68,6 +70,10 @@ async fn main() {
         .route("/api/search", get(search::search))
         .route("/api/search/pages", get(search::search_pages))
         .route("/api/search/blocks", get(search::search_blocks))
+        // Tasks / Agenda
+        .route("/api/tasks", get(tasks::get_tasks))
+        .route("/api/agenda", get(tasks::get_agenda))
+        .route("/api/query", get(query::query))
         // Blocks
         .route("/api/blocks/{id}", get(blocks::get_block))
         .route("/api/blocks/{title}/{id}", get(blocks::get_block_in_page))

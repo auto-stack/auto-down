@@ -3,7 +3,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { AutoDownEditor } from '@autodown/editor'
 import { useTabsStore } from '@/stores/tabs'
 import { useFileTreeStore } from '@/stores/fileTree'
-import { createWikiPage, getBlock, readWiki, uploadAsset } from '@/lib/api'
+import { createWikiPage, getBlock, readWiki, uploadAsset, runQuery } from '@/lib/api'
 import { headingTextToBlockId } from '@/lib/wikiLink'
 import { findTemplates, stripFrontmatter, expandTemplate } from '@/lib/templates'
 import { Link2, FileText } from 'lucide-vue-next'
@@ -59,6 +59,10 @@ async function loadBlock(id: string) {
 
 async function onAssetUpload(file: File): Promise<string> {
   return uploadAsset(file)
+}
+
+async function onRunQuery(q: string) {
+  return runQuery(q)
 }
 
 const extraSlashItems = [
@@ -208,6 +212,7 @@ onUnmounted(() => {
       :load-block="loadBlock"
       :extra-slash-items="extraSlashItems"
       :on-asset-upload="onAssetUpload"
+      :run-query="onRunQuery"
       placeholder="Start typing..."
       :show-actions="false"
       class="h-full w-full"

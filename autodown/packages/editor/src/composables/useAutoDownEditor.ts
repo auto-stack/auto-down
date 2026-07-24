@@ -5,6 +5,7 @@ import type { EditorOptions as AutoDownEditorOptions } from '../extensions'
 import type { SlashItem } from '../menus/SlashMenu.vue'
 import { preprocessMarkdown } from '@autodown/core'
 import { applyTableAttrs } from '../extensions/tableAttributes'
+import { cycleTaskMarker, type TaskWorkflow } from '../utils/tasks'
 
 export interface UseAutoDownEditorOptions {
   content: string
@@ -19,6 +20,8 @@ export interface UseAutoDownEditorOptions {
   onOpenWikiLink?: (title: string, blockId?: string | null) => void
   loadBlock?: (id: string) => Promise<any | null>
   onAssetUpload?: (file: File) => Promise<string>
+  taskWorkflow?: TaskWorkflow
+  runQuery?: (q: string) => Promise<any>
 }
 
 export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
@@ -27,13 +30,14 @@ export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
     slashItems: options.slashItems,
     openWikiLink: options.onOpenWikiLink,
     loadBlock: options.loadBlock,
+    runQuery: options.runQuery,
   }
   const extensions = createExtensions(extOptions)
 
   // Preprocess Markdown to extract table IAL attributes before parsing
   const { md: cleanContent, tableAttrs } = preprocessMarkdown(options.content)
 
-  return useEditor({
+  const editorRef = useEditor({
     extensions,
     content: cleanContent,
     contentType: 'markdown',
@@ -42,6 +46,24 @@ export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
     editorProps: {
       attributes: {
         class: 'autodown-editor-content',
+      },
+      handleKeyDown(_view, event) {
+        const isModEnter = (event.ctrlKey || event.metaKey) && event.key === 'Enter'
+        if (!isModEnter) return false
+        const editor = editorRef.value
+        if (!editor) return false
+        const { state } = editor
+        const { head } = state.selection
+        const textBefore = state.doc.textBetween(0, head, '\n')
+        const lineIdx = textBefore.split('\n').length - 1
+        const workflow = options.taskWorkflow ?? 'todo'
+        const lines = state.doc.textContent.split('\n')
+        const newLines = cycleTaskMarker(lines, lineIdx, workflow)
+        if (newLines[lineIdx] === lines[lineIdx]) return false
+        event.preventDefault()
+        const newMarkdown = newLines.join('\n')
+        editor.commands.setContent(newMarkdown, { emitUpdate: false })
+        return true
       },
       handleClickOn: (view, pos, node, nodePos, event) => {
         const target = event.target as HTMLElement
@@ -166,4 +188,6 @@ export function useAutoDownEditor(options: UseAutoDownEditorOptions) {
       options.onFocus?.(editor)
     },
   })
+
+  return editorRef
 }

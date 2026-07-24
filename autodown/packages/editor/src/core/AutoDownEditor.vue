@@ -51,6 +51,13 @@ import {
   Check,
   X,
   Link,
+  Search,
+  Square,
+  CircleDot,
+  CheckCircle2,
+  Clock,
+  Timer,
+  ArrowUp,
 } from 'lucide-vue-next'
 import 'katex/dist/katex.min.css'
 
@@ -69,6 +76,8 @@ const props = withDefaults(defineProps<{
   loadBlock?: (id: string) => Promise<any | null>
   extraSlashItems?: SlashItem[]
   onAssetUpload?: (file: File) => Promise<string>
+  taskWorkflow?: 'todo' | 'now'
+  runQuery?: (q: string) => Promise<any>
 }>(), {
   canEdit: true,
   autofocus: false,
@@ -238,6 +247,74 @@ const baseSlashItems: SlashItem[] = [
     },
   },
   {
+    title: 'TODO',
+    description: 'Insert a TODO task',
+    icon: Square,
+    searchTerms: ['todo', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- TODO ').run(),
+  },
+  {
+    title: 'DOING',
+    description: 'Insert a DOING task',
+    icon: CircleDot,
+    searchTerms: ['doing', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- DOING ').run(),
+  },
+  {
+    title: 'DONE',
+    description: 'Insert a DONE task',
+    icon: CheckCircle2,
+    searchTerms: ['done', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- DONE ').run(),
+  },
+  {
+    title: 'NOW',
+    description: 'Insert a NOW task',
+    icon: Clock,
+    searchTerms: ['now', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- NOW ').run(),
+  },
+  {
+    title: 'LATER',
+    description: 'Insert a LATER task',
+    icon: Timer,
+    searchTerms: ['later', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- LATER ').run(),
+  },
+  {
+    title: 'Priority A',
+    description: 'Insert [#A] priority',
+    icon: ArrowUp,
+    searchTerms: ['priority', 'A'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#A] ').run(),
+  },
+  {
+    title: 'Priority B',
+    description: 'Insert [#B] priority',
+    icon: ArrowUp,
+    searchTerms: ['priority', 'B'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#B] ').run(),
+  },
+  {
+    title: 'Priority C',
+    description: 'Insert [#C] priority',
+    icon: ArrowUp,
+    searchTerms: ['priority', 'C'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#C] ').run(),
+  },
+  {
+    title: 'Query',
+    description: 'Insert a query macro',
+    icon: Search,
+    searchTerms: ['query', 'macro'],
+    command: ({ editor, range }) => {
+      const q = window.prompt('Query (e.g. (task TODO DOING))', '(task TODO)')
+      if (q) {
+        editor.chain().focus().deleteRange(range).insertContent(`{{query ${q}}}`).run()
+      }
+    },
+  },
+  {
     title: 'Block link',
     description: 'Copy link to current block',
     icon: Link,
@@ -275,6 +352,8 @@ const editor = useAutoDownEditor({
   slashItems,
   loadBlock: props.loadBlock,
   onAssetUpload: props.onAssetUpload,
+  taskWorkflow: props.taskWorkflow,
+  runQuery: props.runQuery,
   onUpdate: (editorInstance) => {
     emit('update', editorInstance.getMarkdown())
   },

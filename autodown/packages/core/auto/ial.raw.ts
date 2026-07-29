@@ -1,14 +1,11 @@
-/**
- * AutoDown Core — Shared types and IAL (Inline Attribute List) utilities.
- *
- * GENERATED FILE — do not edit by hand.
- * Source: auto/ial.at (Auto language). Regenerate with: pnpm gen
- * (see auto/README.md for the pipeline and the applied post-fixes)
- */
+class TableAttr {
+    cols: number | null[];
+    rows: number | null[];
 
-export interface TableAttr {
-    cols: (number | null)[];
-    rows: (number | null)[];
+    constructor(cols: number | null[], rows: number | null[]) {
+        this.cols = cols;
+        this.rows = rows;
+    }
 }
 
 function parseValue(s: string): number | null {
@@ -23,40 +20,40 @@ function parseValue(s: string): number | null {
     return num;
 }
 
-function parseArray(s: string): (number | null)[] {
+function parseArray(s: string): number | null[] {
     return s.split(",").map((v) => parseValue(v));
 }
 
-function parseRows(s: string): (number | null)[] {
+function parseRows(s: string): number | null[] {
     if (s == null || s == "") {
         return [];
     }
     return parseArray(s);
 }
 
-export function formatValue(v: number | null): string {
+function formatValue(v: number | null): string {
     if (v == null) {
         return "\"auto\"";
     }
     return String(v);
 }
 
-export function formatArray(arr: (number | null)[]): string {
+function formatArray(arr: number | null[]): string {
     return arr.map((v) => formatValue(v)).join(",");
 }
 
-export function hasAnyValue(arr: (number | null)[]): boolean {
+function hasAnyValue(arr: number | null[]): boolean {
     return arr.some((v) => v != null);
 }
 
-export function preprocessMarkdown(md: string): { md: string; tableAttrs: TableAttr[] } {
-    const tableAttrs: TableAttr[] = [];
+function preprocessMarkdown(md: string): any {
+    let tableAttrs = [];
     const re = RegExp("(\\|[^\\n]*\\|[ \\t]*\\n\\|[-:\\| \\t]+\\|[ \\t]*\\n(?:\\|[^\\n]*\\|[ \\t]*\\n)+)\\{cols:\\[(.*?)\\](?:,\\s*rows:\\[(.*?)\\])?\\}[ \\t]*(?:\\n|$)", "g");
     const cleaned = md.replace(re, (m, tableBody, colsStr, rowsStr) => {tableAttrs.push({ cols: parseArray(colsStr), rows: parseRows(rowsStr) });return tableBody;});
     return { md: cleaned, tableAttrs: tableAttrs };
 }
 
-export function buildIAL(colwidth: (number | null)[], rowheight: (number | null)[]): string | null {
+function buildIAL(colwidth: number | null[], rowheight: number | null[]): string | null {
     const hasCols = hasAnyValue(colwidth);
     const hasRows = hasAnyValue(rowheight);
     if (!hasCols && !hasRows) {
@@ -72,3 +69,23 @@ export function buildIAL(colwidth: (number | null)[], rowheight: (number | null)
     return "{" + parts.join(", ") + "}\n";
 }
 
+function main(): void {
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+}
+
+main();

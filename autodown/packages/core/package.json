@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "gen": "node auto/gen.mjs",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src"
   },

@@ -1,0 +1,67 @@
+// AutoDown Core — IAL (Inline Attribute List) utilities, written in Auto.
+//
+// Transpile to TypeScript:
+//   auto trans --path auto/ial.at ts
+// (or run `pnpm gen`, which also applies the documented post-fixes — see auto/README.md)
+//
+// Notes on Auto constructs used here:
+// - `int?`          -> `number | null` in TS
+// - `List<int?>`    -> `number | null[]` in TS (a2ts precedence bug, post-fixed to `(number | null)[]`)
+// - `RegExp(p, f)`  -> passed through as a plain JS `RegExp(p, f)` call (a2ts has no regex literals)
+// - `parseInt`/`isNaN` -> passed through as JS builtins
+// - untyped lambda params -> no TS annotation, inferred from `String.replace` contextual type
+
+type TableAttr {
+    cols List<int?>
+    rows List<int?>
+}
+
+fn parseValue(s str) int? {
+    let trimmed = s.trim().replace(RegExp("^[\"']|[\"']$", "g"), "")
+    if trimmed == "auto" { return None }
+    let num = parseInt(trimmed, 10)
+    if isNaN(num) { return None }
+    return Some(num)
+}
+
+fn parseArray(s str) List<int?> {
+    return s.split(",").map(v => parseValue(v))
+}
+
+fn parseRows(s str) List<int?> {
+    if s == None || s == "" { return [] }
+    return parseArray(s)
+}
+
+fn formatValue(v int?) str {
+    if v == None { return "\"auto\"" }
+    return v.to(str)
+}
+
+fn formatArray(arr List<int?>) str {
+    return arr.map(v => formatValue(v)).join(",")
+}
+
+fn hasAnyValue(arr List<int?>) bool {
+    return arr.some(v => v != None)
+}
+
+fn preprocessMarkdown(md str) any {
+    var tableAttrs = []
+    let re = RegExp("(\\|[^\\n]*\\|[ \\t]*\\n\\|[-:\\| \\t]+\\|[ \\t]*\\n(?:\\|[^\\n]*\\|[ \\t]*\\n)+)\\{cols:\\[(.*?)\\](?:,\\s*rows:\\[(.*?)\\])?\\}[ \\t]*(?:\\n|$)", "g")
+    let cleaned = md.replace(re, (m, tableBody, colsStr, rowsStr) => {
+        tableAttrs.push({cols: parseArray(colsStr), rows: parseRows(rowsStr)})
+        return tableBody
+    })
+    return {md: cleaned, tableAttrs: tableAttrs}
+}
+
+fn buildIAL(colwidth List<int?>, rowheight List<int?>) str? {
+    let hasCols = hasAnyValue(colwidth)
+    let hasRows = hasAnyValue(rowheight)
+    if !hasCols && !hasRows { return None }
+    var parts = []
+    if hasCols { parts.push(`cols:[${formatArray(colwidth)}]`) }
+    if hasRows { parts.push(`rows:[${formatArray(rowheight)}]`) }
+    return Some("{" + parts.join(", ") + "}\n")
+}

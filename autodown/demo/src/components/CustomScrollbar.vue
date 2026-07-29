@@ -1,146 +1,179 @@
-<template>
-  <div
-    ref="trackRef"
-    class="custom-scrollbar"
-    :class="{ 'is-dragging': dragging, 'is-visible': isVisible }"
-    @mousedown="onTrackMouseDown"
-    @mouseenter="onMouseEnter"
-    @mouseleave="onMouseLeave"
-  >
-    <div
-      class="custom-scrollbar-thumb"
-      :style="thumbStyle"
-      @mousedown.stop="onThumbMouseDown"
-    />
-  </div>
-</template>
-
+<!-- CustomScrollbar component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const dragging = ref<number>(0)
+const hovering = ref<number>(0)
+const drag_start = ref<number>(0)
+const scroll_start = ref<number>(0)
+const thumb_h = ref<number>(32)
+
+const trackEl = ref<HTMLElement | null>(null)
+const thumbEl = ref<HTMLElement | null>(null)
 
 const props = defineProps<{
   scrollTop: number
   scrollHeight: number
   clientHeight: number
-  visible?: boolean
+  visible: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:scrollTop': [value: number]
-  'hover-change': [value: boolean]
+  UpdateScrollTop: [number]
+  HoverChange: [number]
+  TrackDown: [any]
+  StartDrag: [any]
+  DragMove: [any]
+  EndDrag: []
+  ScrollSync: []
+  SyncThumb: []
 }>()
 
-const trackRef = ref<HTMLElement | null>(null)
-const dragging = ref(false)
-const hovering = ref(false)
+function StartDrag(e: any): void {
+  dragging.value = 1;
+  drag_start.value = e.clientY;
+  scroll_start.value = props.scrollTop;
 
-const isVisible = computed(() => props.visible || hovering.value || dragging.value)
+  emit('StartDrag', e)
+}
 
-const thumbHeight = computed(() => {
-  if (props.scrollHeight <= props.clientHeight) return 0
-  const ratio = props.clientHeight / props.scrollHeight
-  const minHeight = 32
-  return Math.max(minHeight, ratio * props.clientHeight)
+function ScrollSync(): void {
+  let _ = SyncThumb();
+
+  emit('ScrollSync')
+}
+
+function TrackDown(e: any): void {
+  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
+  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
+  let rel_y = e.clientY - rect.top - thumb_h.value / 2;
+  let ratio = rel_y / track_avail;
+  if (ratio < 0) {ratio = 0;
+  }if (ratio > 1) {ratio = 1;
+  }let max_scroll = props.scrollHeight - props.clientHeight;
+  let _ = UpdateScrollTop(ratio * max_scroll);
+  }}}
+
+  emit('TrackDown', e)
+}
+
+function UpdateScrollTop(v: any): void {
+  let _ = v;
+
+  emit('UpdateScrollTop', v)
+}
+
+function HoverChange(v: any): void {
+  hovering.value = v;
+  let _ = SyncThumb();
+
+  emit('HoverChange', v)
+}
+
+function EndDrag(): void {
+  dragging.value = 0;
+
+  emit('EndDrag')
+}
+
+function SyncThumb(): void {
+  if (props.scrollHeight > props.clientHeight) {let h = props.clientHeight / props.scrollHeight * props.clientHeight;
+  if (h < 32) {h = 32;
+  }thumb_h.value = h;
+  let max_scroll = props.scrollHeight - props.clientHeight;
+  let track_avail = props.clientHeight - h;
+  let thumb_t = 0;
+  if (max_scroll > 0) {if (track_avail > 0) {thumb_t = props.scrollTop / max_scroll * track_avail;
+  }}thumbEl.value!.style.height = `${h}px`;
+  thumbEl.value!.style.transform = `translateY(${thumb_t}px)`;
+  } else {thumb_h.value = 0;
+  thumbEl.value!.style.height = '0px';
+  thumbEl.value!.style.transform = 'translateY(0px)';
+  }
+
+  emit('SyncThumb')
+}
+
+function DragMove(e: any): void {
+  if (dragging.value == 1) {let track_avail = props.clientHeight - thumb_h.value;
+  if (track_avail > 0) {let max_scroll = props.scrollHeight - props.clientHeight;
+  let delta = e.clientY - drag_start.value;
+  let ratio = delta / track_avail;
+  let v = scroll_start.value + ratio * max_scroll;
+  if (v < 0) {v = 0;
+  }if (v > max_scroll) {v = max_scroll;
+  }let _ = UpdateScrollTop(v);
+  }}
+
+  emit('DragMove', e)
+}
+
+onMounted(() => {
+  let _ = SyncThumb();
 })
 
-const thumbTop = computed(() => {
-  if (props.scrollHeight <= props.clientHeight) return 0
-  const maxScroll = props.scrollHeight - props.clientHeight
-  const trackAvailable = props.clientHeight - thumbHeight.value
-  if (maxScroll <= 0 || trackAvailable <= 0) return 0
-  return (props.scrollTop / maxScroll) * trackAvailable
+function __auto_gl_mousemove_DragMove(e: any) {
+  DragMove(e)
+}
+
+onMounted(() => {
+  window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
+  window.addEventListener('mouseup', EndDrag)
+  window.addEventListener('scroll', ScrollSync, { capture: true })
 })
 
-const thumbStyle = computed(() => ({
-  height: `${thumbHeight.value}px`,
-  transform: `translateY(${thumbTop.value}px)`,
-}))
+onUnmounted(() => {
+  window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
+  window.removeEventListener('mouseup', EndDrag)
+  window.removeEventListener('scroll', ScrollSync, { capture: true })
+})
 
-function setScrollTopFromY(y: number) {
-  const track = trackRef.value
-  if (!track || props.scrollHeight <= props.clientHeight) return
-  const rect = track.getBoundingClientRect()
-  const trackAvailable = props.clientHeight - thumbHeight.value
-  if (trackAvailable <= 0) return
-  const relativeY = y - rect.top - thumbHeight.value / 2
-  const ratio = Math.max(0, Math.min(1, relativeY / trackAvailable))
-  const maxScroll = props.scrollHeight - props.clientHeight
-  emit('update:scrollTop', ratio * maxScroll)
-}
 
-function onTrackMouseDown(event: MouseEvent) {
-  if (event.target === event.currentTarget) {
-    setScrollTopFromY(event.clientY)
-  }
-}
-
-function onThumbMouseDown(event: MouseEvent) {
-  dragging.value = true
-  const startY = event.clientY
-  const startScrollTop = props.scrollTop
-
-  function onMouseMove(e: MouseEvent) {
-    const track = trackRef.value
-    if (!track) return
-    const deltaY = e.clientY - startY
-    const trackAvailable = props.clientHeight - thumbHeight.value
-    if (trackAvailable <= 0) return
-    const maxScroll = props.scrollHeight - props.clientHeight
-    const ratio = deltaY / trackAvailable
-    emit('update:scrollTop', Math.max(0, Math.min(maxScroll, startScrollTop + ratio * maxScroll)))
-  }
-
-  function onMouseUp() {
-    dragging.value = false
-    window.removeEventListener('mousemove', onMouseMove)
-    window.removeEventListener('mouseup', onMouseUp)
-  }
-
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
-}
-
-function onMouseEnter() {
-  hovering.value = true
-  emit('hover-change', true)
-}
-
-function onMouseLeave() {
-  hovering.value = false
-  emit('hover-change', false)
-}
 </script>
 
-<style scoped>
-.custom-scrollbar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 10px;
-  background: transparent;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  z-index: 10;
-  pointer-events: auto;
-}
+<template>
+    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @scroll="UpdateScrollTop" @mousedown="TrackDown($event)" @mouseenter="HoverChange(1)" @mouseleave="HoverChange(0)">
+      <div class="custom-scrollbar-thumb" ref="thumbEl" @mousedown.stop="StartDrag($event)" @scroll="SyncThumb" />
+    </div>
 
-.custom-scrollbar.is-visible,
-.custom-scrollbar.is-dragging {
-  opacity: 1;
-}
+</template>
 
-.custom-scrollbar-thumb {
-  width: 8px;
-  margin-left: 1px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-  will-change: transform;
-}
+<style>
+/* Component styles */
 
-.custom-scrollbar:hover .custom-scrollbar-thumb,
-.custom-scrollbar.is-dragging .custom-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.55);
-}
 </style>
+
+<style scoped>
+
+        .custom-scrollbar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 10px;
+            background: transparent;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .custom-scrollbar.visible,
+        .custom-scrollbar.dragging {
+            opacity: 1;
+        }
+
+        .custom-scrollbar-thumb {
+            width: 8px;
+            margin-left: 1px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            will-change: transform;
+        }
+
+        .custom-scrollbar:hover .custom-scrollbar-thumb,
+        .custom-scrollbar.dragging .custom-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.55);
+        }
+    </style>

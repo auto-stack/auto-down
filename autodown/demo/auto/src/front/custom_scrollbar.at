@@ -1,0 +1,191 @@
+// custom_scrollbar.at — CustomScrollbar widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// demo/src/components/CustomScrollbar.vue. Regenerate with:
+//
+//   cd autodown/demo/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   cp gen/front/vue/src/components/CustomScrollbar.vue ../src/components/CustomScrollbar.vue
+//
+// See README.md for the interface differences vs the original SFC.
+
+widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool) {
+    msg Msg {
+        Init,
+        UpdateScrollTop(f64),
+        HoverChange(int),
+        TrackDown,
+        StartDrag,
+        DragMove,
+        EndDrag,
+        ScrollSync,
+        SyncThumb
+    }
+
+    model {
+        var dragging int = 0
+        var hovering int = 0
+        var drag_start f64 = 0
+        var scroll_start f64 = 0
+        var thumb_h f64 = 32
+    }
+
+    view {
+        div {
+            ref: "trackEl",
+            class: "custom-scrollbar",
+            style: { visible: props.visible || .hovering == 1 || .dragging == 1, dragging: .dragging == 1 },
+            onmousedown: .TrackDown($event),
+            onmouseenter: .HoverChange(1),
+            onmouseleave: .HoverChange(0),
+            onmousemove.window: .DragMove($event),
+            onmouseup.window: .EndDrag,
+            onscroll.window.capture: .ScrollSync,
+            // Inert binding: the track never scrolls, so this never fires.
+            // It registers UpdateScrollTop as a used handler so the generator
+            // emits the function + defineEmits declaration.
+            onscroll: .UpdateScrollTop
+
+            div {
+                ref: "thumbEl",
+                class: "custom-scrollbar-thumb",
+                onmousedown.stop: .StartDrag($event),
+                // Inert binding (the thumb never scrolls): registers
+                // SyncThumb as a used handler so the generator emits it.
+                onscroll: .SyncThumb
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            let _ = .SyncThumb()
+        }
+
+        // Central geometry refresh: recompute thumb height/position from the
+        // current props and write them imperatively to the thumb element.
+        // Called on mount, on window scroll (capture), on hover and on drag.
+        .SyncThumb -> {
+            if .scrollHeight > .clientHeight {
+                var h = .clientHeight / .scrollHeight * .clientHeight
+                if h < 32 {
+                    h = 32
+                }
+                .thumb_h = h
+                let max_scroll = .scrollHeight - .clientHeight
+                let track_avail = .clientHeight - h
+                var thumb_t = 0
+                if max_scroll > 0 {
+                    if track_avail > 0 {
+                        thumb_t = .scrollTop / max_scroll * track_avail
+                    }
+                }
+                .thumbEl.style.height = f"${h}px"
+                .thumbEl.style.transform = f"translateY(${thumb_t}px)"
+            } else {
+                .thumb_h = 0
+                .thumbEl.style.height = "0px"
+                .thumbEl.style.transform = "translateY(0px)"
+            }
+        }
+
+        .ScrollSync -> {
+            let _ = .SyncThumb()
+        }
+
+        // Emit-only msg: the body is a no-op, the generator appends
+        // emit('UpdateScrollTop', v) after the body.
+        .UpdateScrollTop(v) -> {
+            let _ = v
+        }
+
+        .HoverChange(v) -> {
+            .hovering = v
+            let _ = .SyncThumb()
+        }
+
+        .TrackDown(e) -> {
+            if e.target == e.currentTarget {
+                if .scrollHeight > .clientHeight {
+                    let track_avail = .clientHeight - .thumb_h
+                    if track_avail > 0 {
+                        let rect = .trackEl.getBoundingClientRect()
+                        let rel_y = e.clientY - rect.top - .thumb_h / 2
+                        var ratio = rel_y / track_avail
+                        if ratio < 0 {
+                            ratio = 0
+                        }
+                        if ratio > 1 {
+                            ratio = 1
+                        }
+                        let max_scroll = .scrollHeight - .clientHeight
+                        let _ = .UpdateScrollTop(ratio * max_scroll)
+                    }
+                }
+            }
+        }
+
+        .StartDrag(e) -> {
+            .dragging = 1
+            .drag_start = e.clientY
+            .scroll_start = .scrollTop
+        }
+
+        .DragMove(e) -> {
+            if .dragging == 1 {
+                let track_avail = .clientHeight - .thumb_h
+                if track_avail > 0 {
+                    let max_scroll = .scrollHeight - .clientHeight
+                    let delta = e.clientY - .drag_start
+                    let ratio = delta / track_avail
+                    var v = .scroll_start + ratio * max_scroll
+                    if v < 0 {
+                        v = 0
+                    }
+                    if v > max_scroll {
+                        v = max_scroll
+                    }
+                    let _ = .UpdateScrollTop(v)
+                }
+            }
+        }
+
+        .EndDrag -> {
+            .dragging = 0
+        }
+    }
+
+    style {
+        .custom-scrollbar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 10px;
+            background: transparent;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .custom-scrollbar.visible,
+        .custom-scrollbar.dragging {
+            opacity: 1;
+        }
+
+        .custom-scrollbar-thumb {
+            width: 8px;
+            margin-left: 1px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            will-change: transform;
+        }
+
+        .custom-scrollbar:hover .custom-scrollbar-thumb,
+        .custom-scrollbar.dragging .custom-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.55);
+        }
+    }
+}

@@ -1,0 +1,28 @@
+root {
+    version: "1.0.0"
+    all_incs: [
+        
+    ]
+    deps: [
+        
+    ]
+    devices: [
+        
+    ]
+    libs: [
+        
+    ]
+    apps: [
+        
+    ]
+    files: [
+        
+    ]
+    name: "demo-widgets"
+    scene: "ui"
+    render: "vue"
+    defines: [
+        
+    ]
+    relative_path: "/.."
+}

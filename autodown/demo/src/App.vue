@@ -35,8 +35,8 @@
         :scroll-height="scrollHeight"
         :client-height="clientHeight"
         :visible="hoveringSplitter"
-        @update:scroll-top="setScrollTop"
-        @hover-change="hoveringScrollbar = $event"
+        @UpdateScrollTop="setScrollTop"
+        @HoverChange="hoveringScrollbar = $event"
       />
     </main>
   </div>

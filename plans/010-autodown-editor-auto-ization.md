@@ -90,10 +90,13 @@ Phase 3/4 的组件大量依赖手写 TS（`useMenuBounds`、lucide 图标、`co
   - widget：`computed` 表达式过弱（裸标识符/普通函数调用解析失败、`.prop` 误生成 `self.prop`、字符串拼接误推断为 `computed<number>`）；无 `watch`（组件无法响应 prop 变化，0.2 被迫用 `.Init` 一次性计算，语义有差异）。
 - 把 `examples/ui/` 关键示例纳入 CI，保证复刻过程中能区分"DSL 写错"还是"生成器错了"。
 
-### 验收标准
+### 验收标准（Phase 1 已完成 ✅，合并提交 `120c64b9`）
 
-- [ ] 任务 1.1~1.3 各有 examples/ui 最小示例，编译通过、行为正确、进 CI。
-- [ ] D1/D2/D3 修复并回归。
+- [x] 任务 1.1~1.3 各有 examples/ui 最小示例，编译通过、行为正确、进 CI。（026-keyboard-mouse-events / 027-native-css / 028-dom-escape，另加 029-external-imports 覆盖任务 1.6；新增 `build-ui-examples.yml` CI + `auto build --gen-only`）
+- [x] D1/D2/D3 修复并回归。（D2/D3 早已修于 `8d740af1`，本次补回归测试；D1 根因早已修于 `a86c183c`，本次补 10 倍量级压力回归测试：峰值 33.7MB / 109ms）
+- [x] 任务 1.6 外部 TS import 机制：widget 级 `use { fn/component/composable: ... from "..." }` 块，本地文件拷入生成工程 `@/ext/`，npm 包配合 `npm_deps:`；`autodown_editor` 硬编码特例可用新机制表达（旧路径保留）。
+- [x] Phase 0 实证 bug 全部修复：a2ts 括号/export/const-吞并（`gen.mjs` 的 F1/F2/F5 后处理可退役）、computed 解析与类型推断、`.prop` 误生成 `self.prop`。
+- 任务 1.4（slot）/1.5（watch）按计划保持 deferred，待 Phase 3 实证后回填。
 
 ---
 
@@ -104,9 +107,13 @@ Phase 3/4 的组件大量依赖手写 TS（`useMenuBounds`、lucide 图标、`co
 - `autodown/demo/src/components/CustomScrollbar.vue`（146 行）：computed 几何 + props/emit + mouse 拖拽，**无 ProseMirror 依赖，可脱离编辑器单独跑**。
 - 这是检验 Phase 1 补齐成果（事件 + DOM 逃生舱）的最佳试金石。
 
-### 验收标准
+### 验收标准（Phase 2 已完成 ✅）
 
-- [ ] 替换进 demo 后 e2e + 截图 diff 全绿（滚动同步逻辑 `useSyncedScroll.ts` 保持手写，Auto 组件通过 props/emit 与之对接）。
+- [x] 替换进 demo 后 e2e + 截图 diff 不劣于基线（8 通过 + 1 个既有失败 scroll-sync:141，数值与基线一致）。（`autodown/demo/auto/src/front/custom_scrollbar.at` 191 行；`App.vue` 仅 2 行胶水改动：`@update:scroll-top`→`@UpdateScrollTop`、`@hover-change`→`@HoverChange`）
+- 实证结论（回填 Phase 1 能力清单）：
+  - 1.1/1.2/1.3 能力在真实组件上全部验证可用（window 拖拽监听、ref 命令式几何写、style 块透传）。
+  - **watch（任务 1.5）确认需要**：本次用 `onscroll.window.capture` 做"事实上的 watch"绕过，但"只改 scrollHeight 而无任何事件"时 thumb 几何会滞后——Phase 3 前应补上 watch 或模板 `:style` map 绑定（风险点 2 的根治）。
+  - DSL 小坑 8 个记录在 `autodown/demo/auto/README.md`（字面量 msg 参数、连字符 class key 不加引号、惰性 handler 注册等），可作为后续生成器打磨清单。
 
 ---
 

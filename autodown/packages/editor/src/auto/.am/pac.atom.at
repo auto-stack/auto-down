@@ -1,0 +1,28 @@
+root {
+    version: "1.0.0"
+    all_incs: [
+        
+    ]
+    deps: [
+        
+    ]
+    devices: [
+        
+    ]
+    libs: [
+        
+    ]
+    apps: [
+        
+    ]
+    files: [
+        
+    ]
+    render: "vue"
+    scene: "ui"
+    name: "editor-widgets"
+    defines: [
+        
+    ]
+    relative_path: "/.."
+}

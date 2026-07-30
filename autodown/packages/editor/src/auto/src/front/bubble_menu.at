@@ -1,0 +1,84 @@
+// bubble_menu.at — BubbleMenu widget: Auto widget DSL port of the original
+// hand-written src/menus/BubbleMenu.vue. The generated SFC replaces it
+// (see src/auto/README.md). The button definitions (names, tooltips, active
+// flags, actions) live here in the DSL; the hand-written extension
+// utils/bubble_menu_ext.ts keeps only what the DSL genuinely cannot express
+// (see the extension's header comment).
+//
+// Prop types are deliberately wide: `Array<str>` is a generic instance,
+// which the Vue backend maps to TS `any` (bare `any` is rejected by the
+// name checker). The DSL prop type system cannot express Tiptap's Editor
+// or the Partial<Record<...>> tooltips shape; behaviour is unaffected.
+//
+// Idioms forced by real (probe-verified) codegen gaps:
+// - Tooltip defaults use `tips && tips.k || "Default"`: expression
+//   parentheses are dropped by the transpiler, so `(tips || {}).k` is
+//   impossible, and `??` is not supported in computed expressions (the
+//   computed codegen emits `undefined` for NullCoalesce). Difference vs the
+//   original's spread merge + `??`: an explicitly empty-string tooltip or
+//   linkPrompt falls back to the default instead of staying empty.
+// - The link button's action delegates to runBubbleLink: its body needs
+//   if/else + window.prompt, and block-body closures are not supported in
+//   computed expressions (the computed codegen emits `undefined` for a
+//   Block body); expression-body closures like the other buttons' work.
+
+widget BubbleMenu(editor: Array<str>, linkPrompt: str = "Enter URL", tooltips: Array<str> = null) {
+    use {
+        // tiptap's BubbleMenu wrapper, re-exported by the extension (the
+        // gen project resolves a stub — see README).
+        component: TiptapBubbleMenu from "src/front/utils/bubble_menu_ext.ts"
+        fn: bubbleIcon, bubbleShouldShow, runBubbleLink from "src/front/utils/bubble_menu_ext.ts"
+    }
+
+    msg Msg { RunButton }
+
+    model {
+    }
+
+    computed {
+        // The buttons list (the original's `buttons` computed). `active` is
+        // evaluated when the computed runs instead of via per-render
+        // isActive() template closures — equivalent in practice: nothing
+        // reactive re-renders the component while the menu is open (tiptap
+        // state is not Vue-reactive), so the original's closures were also
+        // only ever evaluated at mount.
+        buttons => [
+            { name: "bold", title: .tooltips && .tooltips.bold || "Bold", icon: bubbleIcon("bold"), active: .editor.isActive("bold"), action: () => .editor.chain().focus().toggleBold().run() },
+            { name: "italic", title: .tooltips && .tooltips.italic || "Italic", icon: bubbleIcon("italic"), active: .editor.isActive("italic"), action: () => .editor.chain().focus().toggleItalic().run() },
+            { name: "underline", title: .tooltips && .tooltips.underline || "Underline", icon: bubbleIcon("underline"), active: .editor.isActive("underline"), action: () => .editor.chain().focus().toggleUnderline().run() },
+            { name: "strike", title: .tooltips && .tooltips.strike || "Strikethrough", icon: bubbleIcon("strike"), active: .editor.isActive("strike"), action: () => .editor.chain().focus().toggleStrike().run() },
+            { name: "code", title: .tooltips && .tooltips.code || "Inline Code", icon: bubbleIcon("code"), active: .editor.isActive("code"), action: () => .editor.chain().focus().toggleCode().run() },
+            { name: "link", title: .tooltips && .tooltips.link || "Link", icon: bubbleIcon("link"), active: .editor.isActive("link"), action: () => runBubbleLink(.editor, .linkPrompt) }
+        ]
+    }
+
+    view {
+        if .editor {
+            TiptapBubbleMenu {
+                editor: .editor,
+                options: { placement: "top" },
+                // Dot-prefix on purpose: a bare identifier fails to parse as
+                // a view prop value; `.bubbleShouldShow` parses and the
+                // codegen strips the dot, emitting the imported symbol.
+                shouldShow: .bubbleShouldShow,
+                class: "autodown-bubble-menu",
+
+                for btn in .buttons {
+                    button {
+                        class: "autodown-bubble-btn",
+                        style: { active: btn.active },
+                        title: btn.title,
+                        onclick: .RunButton(btn),
+                        dyn (.btn.icon) { size: 14 }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .RunButton(btn) -> {
+            btn.action()
+        }
+    }
+}

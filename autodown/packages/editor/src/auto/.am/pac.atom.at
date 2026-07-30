@@ -18,9 +18,9 @@ root {
     files: [
         
     ]
-    render: "vue"
-    scene: "ui"
     name: "editor-widgets"
+    scene: "ui"
+    render: "vue"
     defines: [
         
     ]

@@ -1,392 +1,419 @@
-<template>
-  <div
-    v-if="visible"
-    ref="menuRef"
-    class="autodown-codeblock-menu"
-    :style="positionStyle"
-  >
-    <div class="autodown-codeblock-menu-header">
-      <input
-        ref="searchRef"
-        v-model="search"
-        class="autodown-codeblock-menu-search"
-        placeholder="Search language…"
-        @keydown.escape="close"
-        @keydown.down.prevent="moveDown"
-        @keydown.up.prevent="moveUp"
-        @keydown.enter.prevent="selectHighlighted"
-      />
-    </div>
-    <div ref="listRef" class="autodown-codeblock-menu-list">
-      <button
-        v-for="(lang, idx) in filteredLanguages"
-        :key="lang.id"
-        :ref="(el) => setItemRef(el as HTMLElement, idx)"
-        class="autodown-codeblock-menu-item"
-        :class="{ active: idx === highlightedIndex, selected: lang.id === currentLanguage }"
-        @click="selectLanguage(lang.id)"
-        @mouseenter="highlightedIndex = idx"
-      >
-        <span class="autodown-codeblock-menu-item-label">{{ lang.label }}</span>
-        <Check v-if="lang.id === currentLanguage" :size="13" class="autodown-codeblock-menu-check" />
-      </button>
-      <div v-if="filteredLanguages.length === 0" class="autodown-codeblock-menu-empty">
-        No matching languages
-      </div>
-    </div>
-  </div>
-</template>
-
+<!-- CodeBlockMenu component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import type { Editor } from '@tiptap/core'
-import { Check } from 'lucide-vue-next'
-import { useMenuBounds, type TriggerRect } from '../composables/useMenuBounds'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { computeMenuPosition, codeBlockLanguages, codeBlockCheckIcon } from '../auto/src/front/utils/code_block_menu_ext'
+import { nextTick } from 'vue'
+
+
+const visible = ref<boolean>(false)
+const search = ref<string>('')
+const highlighted_index = ref<number>(0)
+const current_language = ref<string>('')
+const pos_top = ref<string>('')
+const pos_left = ref<string>('')
+const pos_visibility = ref<string>('')
+const active_code_block = ref<any>(undefined)
+const editor_el = ref<any>(undefined)
+const editor_dom = ref<any>(undefined)
+const wrapper_el = ref<any>(undefined)
+const raf_id = ref<number>(0)
+const wheel_cb = ref<any>(undefined)
+const dom_mousedown_cb = ref<any>(undefined)
+const dom_click_cb = ref<any>(undefined)
+const scroll_cb = ref<any>(undefined)
+
+const menuEl = ref<HTMLElement | null>(null)
+const searchEl = ref<HTMLElement | null>(null)
+const listEl = ref<HTMLElement | null>(null)
+
+const filtered = computed<any>(() => codeBlockLanguages().filter((lang) => [lang.id, lang.label].concat(lang.aliases).join(' ').toLowerCase().includes(search.value.toLowerCase().trim())))
+const is_empty = computed<boolean>(() => filtered.value.length === 0)
+const check_icon = computed<any>(() => codeBlockCheckIcon())
 
 const props = defineProps<{
-  editor: Editor
+  editor: any
 }>()
 
-interface LanguageOption {
-  id: string
-  label: string
-  aliases?: string[]
+const emit = defineEmits<{
+  SearchInput: [any]
+  MoveDown: []
+  MoveUp: []
+  SelectHighlighted: []
+  SelectItem: [any]
+  HoverItem: [any]
+  Close: []
+  OutsideClick: [any]
+}>()
+
+function SelectItem(lang: any): void {
+  props.editor.chain().focus().setCodeBlock({ language: lang.id }).run();
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+
+  emit('SelectItem', lang)
 }
 
-const languages: LanguageOption[] = [
-  { id: 'text', label: 'Text' },
-  { id: 'bash', label: 'Bash', aliases: ['sh', 'shell', 'zsh'] },
-  { id: 'c', label: 'C' },
-  { id: 'cpp', label: 'C++', aliases: ['c++', 'cxx'] },
-  { id: 'csharp', label: 'C#', aliases: ['c#', 'cs'] },
-  { id: 'css', label: 'CSS' },
-  { id: 'dockerfile', label: 'Dockerfile', aliases: ['docker'] },
-  { id: 'go', label: 'Go', aliases: ['golang'] },
-  { id: 'html', label: 'HTML' },
-  { id: 'java', label: 'Java' },
-  { id: 'javascript', label: 'JavaScript', aliases: ['js'] },
-  { id: 'json', label: 'JSON' },
-  { id: 'kotlin', label: 'Kotlin', aliases: ['kt'] },
-  { id: 'lua', label: 'Lua' },
-  { id: 'markdown', label: 'Markdown', aliases: ['md'] },
-  { id: 'php', label: 'PHP' },
-  { id: 'python', label: 'Python', aliases: ['py'] },
-  { id: 'r', label: 'R' },
-  { id: 'ruby', label: 'Ruby', aliases: ['rb'] },
-  { id: 'rust', label: 'Rust', aliases: ['rs'] },
-  { id: 'scss', label: 'SCSS', aliases: ['sass'] },
-  { id: 'sql', label: 'SQL' },
-  { id: 'swift', label: 'Swift' },
-  { id: 'toml', label: 'TOML' },
-  { id: 'typescript', label: 'TypeScript', aliases: ['ts', 'tsx'] },
-  { id: 'xml', label: 'XML' },
-  { id: 'yaml', label: 'YAML', aliases: ['yml'] },
-]
+function HoverItem(i: any): void {
+  highlighted_index.value = i;
 
-const visible = ref(false)
-const menuRef = ref<HTMLDivElement>()
-const searchRef = ref<HTMLInputElement>()
-const listRef = ref<HTMLDivElement>()
-const itemRefs = ref<HTMLElement[]>([])
-const search = ref('')
-const highlightedIndex = ref(0)
-const { positionStyle, applyPosition } = useMenuBounds(menuRef)
-let editorEl: HTMLElement | null = null
-
-function setItemRef(el: HTMLElement, idx: number) {
-  if (el) itemRefs.value[idx] = el
+  emit('HoverItem', i)
 }
 
-/** Track the active code block so we can position the menu relative to its badge. */
-const activeCodeBlock = ref<HTMLElement | null>(null)
-
-/**
- * When the menu is opened by clicking a specific block header, the editor
- * selection may still point at a previously focused block. We capture the
- * clicked block's language so the popup highlights the correct item.
- */
-const forcedLanguage = ref<string | null>(null)
-
-const currentLanguage = computed(() => {
-  if (forcedLanguage.value) return forcedLanguage.value
-  const attrs = props.editor.getAttributes('codeBlock')
-  return (attrs.language as string) ?? ''
-})
-
-const filteredLanguages = computed(() => {
-  const q = search.value.toLowerCase().trim()
-  if (!q) return languages
-  return languages.filter((lang) => {
-    const haystack = [lang.id, lang.label, ...(lang.aliases ?? [])].join(' ').toLowerCase()
-    return haystack.includes(q)
-  })
-})
-
-function selectLanguage(langId: string) {
-  props.editor.chain().focus().setCodeBlock({ language: langId }).run()
-  close()
-}
-
-function open(target?: HTMLElement) {
-  activeCodeBlock.value = target ?? findActiveCodeBlock() ?? null
-  forcedLanguage.value = activeCodeBlock.value?.getAttribute('data-language') ?? null
-  visible.value = true
-  search.value = ''
-  highlightedIndex.value = Math.max(0, languages.findIndex((l) => l.id === currentLanguage.value))
-  nextTick(() => {
-    searchRef.value?.focus()
-    updatePosition()
-    scrollHighlightedIntoCenter()
-  })
-}
-
-function scrollHighlightedIntoCenter() {
-  nextTick(() => {
-    const list = listRef.value
-    const item = itemRefs.value[highlightedIndex.value]
-    if (!list || !item) return
-    const listRect = list.getBoundingClientRect()
-    const itemRect = item.getBoundingClientRect()
-    const offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2
-    list.scrollTop += offset
-  })
-}
-
-function close() {
-  visible.value = false
-  search.value = ''
-  highlightedIndex.value = 0
-  activeCodeBlock.value = null
-  forcedLanguage.value = null
-}
-
-function toggle(target?: HTMLElement) {
-  if (visible.value) close()
-  else open(target)
-}
-
-function moveDown() {
-  if (highlightedIndex.value < filteredLanguages.value.length - 1) {
-    highlightedIndex.value++
-    scrollHighlightedIntoCenter()
-  }
-}
-
-function moveUp() {
-  if (highlightedIndex.value > 0) {
-    highlightedIndex.value--
-    scrollHighlightedIntoCenter()
-  }
-}
-
-function selectHighlighted() {
-  if (filteredLanguages.value.length === 1) {
-    selectLanguage(filteredLanguages.value[0].id)
-    return
-  }
-  const lang = filteredLanguages.value[highlightedIndex.value]
-  if (lang) selectLanguage(lang.id)
-}
-
-
-
-function findActiveCodeBlock(): HTMLElement | null {
-  const { view } = props.editor
-  const { selection } = view.state
-  const el = view.nodeDOM(selection.from) as HTMLElement | null
-  if (!el) return null
-  return (
-    (el.closest?.('pre[data-language]') as HTMLElement | null) ??
-    (el.closest?.('.autodown-codeblock-node') as HTMLElement | null) ??
-    null
-  )
-}
-
-function updatePosition() {
-  const { view } = props.editor
-  const dom = props.editor.view?.dom
-  if (dom) {
-    editorEl = dom.closest('.autodown-editor') as HTMLElement | null
-  }
-  if (!editorEl) return
-  const editorRect = editorEl.getBoundingClientRect()
-
-  const triggerEl = activeCodeBlock.value ?? findActiveCodeBlock()
-  if (!triggerEl) {
-    close()
-    return
+function MoveUp(): void {
+  if (highlighted_index.value > 0) {highlighted_index.value = highlighted_index.value - 1;
+  nextTick(() => { let s_menu = null;
+  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
+  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
+  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
+  let itemRect = s_item.getBoundingClientRect();
+  let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  s_list.scrollTop = s_list.scrollTop + offset;
+  }} });
   }
 
-  const badge = triggerEl.querySelector('[data-codeblock-language-badge]') as HTMLElement | null
-  const triggerRect = (badge ?? triggerEl).getBoundingClientRect()
-  const badgeStyle = badge ? getComputedStyle(badge) : null
-  const lineHeight = badgeStyle
-    ? parseInt(badgeStyle.lineHeight, 10) || triggerRect.height
-    : triggerRect.height
-  const verticalPadding = badgeStyle
-    ? parseFloat(badgeStyle.paddingTop) + parseFloat(badgeStyle.paddingBottom)
-    : 0
-  // Position the menu just below the language badge (header bar). A small
-  // fixed gap of 6px is enough visual separation; larger offsets made the
-  // menu land near the bottom of short code blocks.
-  const offset = 6
-  const trigger: TriggerRect = {
-    top: triggerRect.top - editorRect.top + offset,
-    left: triggerRect.left - editorRect.left,
-    bottom: triggerRect.bottom - editorRect.top + offset,
-    right: triggerRect.right - editorRect.left,
-    width: triggerRect.width,
-    height: triggerRect.height,
-  }
-
-  applyPosition(
-    trigger,
-    { width: editorRect.width, height: editorRect.height },
-    { placement: 'bottom-end', gap: 0 }
-  )
+  emit('MoveUp')
 }
 
-let rafId: number | null = null
-function scheduleUpdate() {
-  if (rafId) cancelAnimationFrame(rafId)
-  rafId = requestAnimationFrame(() => {
-    if (visible.value) updatePosition()
-    rafId = null
-  })
+function MoveDown(): void {
+  if (highlighted_index.value < filtered.value.length - 1) {highlighted_index.value = highlighted_index.value + 1;
+  nextTick(() => { let s_menu = null;
+  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
+  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
+  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
+  let itemRect = s_item.getBoundingClientRect();
+  let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  s_list.scrollTop = s_list.scrollTop + offset;
+  }} });
+  }
+
+  emit('MoveDown')
 }
 
-watch(
-  () => props.editor?.state.selection,
-  () => {
-    if (visible.value) {
-      // If the user moves the cursor out of a code block, keep the menu open
-      // as long as it is still inside the same code block.
-      scheduleUpdate()
-    }
-  }
-)
+function Close(): void {
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
 
-function handleOutsideClick(event: MouseEvent) {
-  const target = event.target as HTMLElement
-  const menu = menuRef.value
-  if (menu && !menu.contains(target)) {
-    close()
-  }
+  emit('Close')
 }
 
-/**
- * Lock page/workspace scrolling while the language menu is open.
- * Wheel events are captured at the document level so that external scroll
- * containers (e.g. the demo's synced workspace) cannot scroll. If the wheel
- * happens over the menu's language list, we scroll that list instead.
- */
-function handleGlobalWheel(event: WheelEvent) {
-  if (!visible.value) return
-
-  const menu = menuRef.value
-  if (menu && menu.contains(event.target as Node)) {
-    event.preventDefault()
-    event.stopPropagation()
-
-    const list = listRef.value
-    if (!list) return
-    const canScrollDown = list.scrollTop + list.clientHeight < list.scrollHeight
-    const canScrollUp = list.scrollTop > 0
-    const deltaY = event.deltaY
-
-    // Only apply the wheel delta when the list can actually move in that
-    // direction; otherwise the list stays at its boundary and the page does
-    // not scroll behind it.
-    if ((deltaY > 0 && canScrollDown) || (deltaY < 0 && canScrollUp)) {
-      list.scrollTop += deltaY
-    }
-    return
+function SelectHighlighted(): void {
+  if (filtered.value.length == 1) {let only = filtered.value[0];
+  props.editor.chain().focus().setCodeBlock({ language: only.id }).run();
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
   }
+  if (filtered.value.length != 1) {let lang = filtered.value[highlighted_index.value];
+  if (lang != null) {props.editor.chain().focus().setCodeBlock({ language: lang.id }).run();
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+  }}
 
-  // Outside the menu: suppress all wheel scrolling until the menu is closed.
-  event.preventDefault()
-  event.stopPropagation()
+  emit('SelectHighlighted')
 }
 
-function handleEditorMouseDown(event: MouseEvent) {
-  const target = event.target as HTMLElement
-  const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
-  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
-  const expandBtn = target.closest?.('[data-codeblock-expand-btn]') as HTMLElement | null
-  const moreBtn = target.closest?.('[data-codeblock-more-btn]') as HTMLElement | null
-  if (badge || copyBtn || expandBtn || moreBtn) {
-    // Prevent ProseMirror from moving the selection / scrolling the editor
-    // wrapper on mousedown, so the popup opens for the clicked code block.
-    event.preventDefault()
-    event.stopPropagation()
-  }
+function SearchInput(e: any): void {
+  search.value = e.target.value;
+
+  emit('SearchInput', e)
 }
 
-function handleEditorClick(event: MouseEvent) {
-  const target = event.target as HTMLElement
+function OutsideClick(e: any): void {
+  if (visible.value) {let menu = null;
+  if (editor_el.value != null) {menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (menu != null) {if (!menu["contains"](e.target)) {visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+  }}}
 
-  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
-  if (copyBtn) {
-    event.preventDefault()
-    event.stopPropagation()
-    const code = copyBtn.closest('pre')?.querySelector('code')?.textContent ?? ''
-    navigator.clipboard.writeText(code)
-    return
-  }
-
-  const expandBtn = target.closest?.('[data-codeblock-expand-btn]') as HTMLElement | null
-  if (expandBtn) {
-    event.preventDefault()
-    event.stopPropagation()
-    expandBtn.closest('pre')?.classList.toggle('is-collapsed')
-    return
-  }
-
-  const badge = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
-  const moreBtn = target.closest?.('[data-codeblock-more-btn]') as HTMLElement | null
-  if (badge || moreBtn) {
-    event.preventDefault()
-    event.stopPropagation()
-    const trigger = (badge ?? moreBtn) as HTMLElement
-    open(
-      (trigger.closest('pre') as HTMLElement | null) ??
-        (trigger.closest('.autodown-codeblock-node') as HTMLElement | null) ??
-        undefined
-    )
-    return
-  }
+  emit('OutsideClick', e)
 }
 
 onMounted(() => {
-  document.addEventListener('mousedown', handleOutsideClick)
-  document.addEventListener('wheel', handleGlobalWheel, { passive: false, capture: true })
-  props.editor.view.dom.addEventListener('mousedown', handleEditorMouseDown, { capture: true })
-  props.editor.view.dom.addEventListener('click', handleEditorClick, { capture: true })
-  // The editor content is scrollable inside `.autodown-editor-content-wrapper`,
-  // so we must reposition the popup when that wrapper scrolls.
-  const wrapper = props.editor.view.dom.closest('.autodown-editor-content-wrapper')
-  wrapper?.addEventListener('scroll', scheduleUpdate, { passive: true })
+  let dom = props.editor['view'].dom;
+  editor_dom.value = dom;
+  editor_el.value = dom.closest('.autodown-editor');
+  wrapper_el.value = dom.closest('.autodown-editor-content-wrapper');
+
+
+
+
+
+  let schedule = () => { if (raf_id.value != 0) {cancelAnimationFrame(raf_id.value);
+  }raf_id.value = requestAnimationFrame(() => { raf_id.value = 0;
+  if (visible.value) {
+
+
+
+
+
+
+
+  if (editor_el.value != null) {let editorRect = editor_el.value.getBoundingClientRect();
+  let triggerEl = active_code_block.value;
+  if (triggerEl == null) {
+
+  let ed_view = props.editor['view'];
+  let el = ed_view.nodeDOM(ed_view.state.selection.from);
+  if (el != null && el.closest != null) {triggerEl = el.closest('pre[data-language]');
+  if (triggerEl == null) {triggerEl = el.closest('.autodown-codeblock-node');
+  }}}if (triggerEl == null) {
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+  }if (triggerEl != null) {let badge = triggerEl.querySelector('[data-codeblock-language-badge]');
+  let anchor = triggerEl;
+  if (badge != null) {anchor = badge;
+  }let triggerRect = anchor.getBoundingClientRect();
+
+
+  let trigger = { top: triggerRect.top - editorRect.top + 6, left: triggerRect.left - editorRect.left, bottom: triggerRect.bottom - editorRect.top + 6, right: triggerRect.right - editorRect.left, width: triggerRect.width, height: triggerRect.height };
+  let container = { width: editorRect.width, height: editorRect.height };
+  let initial = computeMenuPosition(trigger, 0, 0, container, 'bottom-end', 0);
+  pos_top.value = initial.top + 'px';
+  pos_left.value = initial.left + 'px';
+  pos_visibility.value = 'hidden';
+  nextTick(() => { 
+
+
+
+  let menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  if (menu != null) {let menuRect = menu.getBoundingClientRect();
+  let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, 'bottom-end', 0);
+  pos_top.value = pos_final.top + 'px';
+  pos_left.value = pos_final.left + 'px';
+  pos_visibility.value = 'visible';
+  } });
+  }}} });
+   };
+  scroll_cb.value = schedule;
+
+
+
+
+
+
+
+  let on_wheel = (e: any) => { if (visible.value) {let menu = null;
+  if (editor_el.value != null) {menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (menu != null && menu["contains"](e.target)) {e.preventDefault();
+  e.stopPropagation();
+  let list = menu.querySelector('.autodown-codeblock-menu-list');
+  if (list != null) {let can_down = list.scrollTop + list.clientHeight < list.scrollHeight;
+  let can_up = list.scrollTop > 0;
+
+
+  if (e.deltaY > 0 && can_down) {list.scrollTop = list.scrollTop + e.deltaY;
+  }if (e.deltaY < 0 && can_up) {list.scrollTop = list.scrollTop + e.deltaY;
+  }}}
+
+  if (menu == null) {e.preventDefault();
+  e.stopPropagation();
+  }if (menu != null && !menu["contains"](e.target)) {e.preventDefault();
+  e.stopPropagation();
+  }} };
+  wheel_cb.value = on_wheel;
+  document.addEventListener('wheel', wheel_cb.value, { passive: false, capture: true });
+
+
+
+
+
+
+  let on_mousedown = (e: any) => { let target = e.target;
+  let badge = null;
+  let copy = null;
+  let expand = null;
+  let more = null;
+  if (target.closest != null) {badge = target.closest('[data-codeblock-language-badge]');
+  copy = target.closest('[data-codeblock-copy-btn]');
+  expand = target.closest('[data-codeblock-expand-btn]');
+  more = target.closest('[data-codeblock-more-btn]');
+  }if (badge != null || copy != null || expand != null || more != null) {e.preventDefault();
+  e.stopPropagation();
+  } };
+  dom_mousedown_cb.value = on_mousedown;
+  dom.addEventListener('mousedown', dom_mousedown_cb.value, { capture: true });
+
+
+
+
+  let on_click = (e: any) => { let target = e.target;
+  let copy = null;
+  let expand = null;
+  let badge = null;
+  let more = null;
+  if (target.closest != null) {copy = target.closest('[data-codeblock-copy-btn]');
+  expand = target.closest('[data-codeblock-expand-btn]');
+  badge = target.closest('[data-codeblock-language-badge]');
+  more = target.closest('[data-codeblock-more-btn]');
+  }if (copy != null) {e.preventDefault();
+  e.stopPropagation();
+  let pre = copy.closest('pre');
+  let code = '';
+  if (pre != null) {let codeEl = pre.querySelector('code');
+  if (codeEl != null) {code = codeEl.textContent ?? '';
+  }}navigator.clipboard.writeText(code);
+  }if (copy == null && expand != null) {e.preventDefault();
+  e.stopPropagation();
+  let pre2 = expand.closest('pre');
+  if (pre2 != null) {pre2.classList.toggle('is-collapsed');
+  }}if (copy == null && expand == null) {let trigger = badge;
+  if (trigger == null) {trigger = more;
+  }if (trigger != null) {e.preventDefault();
+  e.stopPropagation();
+
+
+  let block = trigger.closest('pre');
+  if (block == null) {block = trigger.closest('.autodown-codeblock-node');
+  }if (block == null) {
+
+  let ed_view = props.editor['view'];
+  let el = ed_view.nodeDOM(ed_view.state.selection.from);
+  if (el != null && el.closest != null) {block = el.closest('pre[data-language]');
+  if (block == null) {block = el.closest('.autodown-codeblock-node');
+  }}}active_code_block.value = block;
+
+
+
+
+
+
+  current_language.value = '';
+  if (active_code_block.value != null) {current_language.value = active_code_block.value.getAttribute('data-language') ?? '';
+  }if (current_language.value == '') {current_language.value = props.editor.getAttributes('codeBlock').language ?? '';
+  }visible.value = true;
+  search.value = '';
+  let idx = codeBlockLanguages().findIndex((l: any) => l.id == current_language.value);
+  highlighted_index.value = idx;
+  if (idx < 0) {highlighted_index.value = 0;
+  }nextTick(() => { 
+
+  let menu = null;
+  if (editor_el.value != null) {menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (menu != null) {let searchEl = menu.querySelector('.autodown-codeblock-menu-search');
+  if (searchEl != null) {searchEl.focus();
+  }}
+  if (editor_el.value != null) {let editorRect = editor_el.value.getBoundingClientRect();
+  let triggerEl = active_code_block.value;
+  if (triggerEl == null) {let ed_view2 = props.editor['view'];
+  let el2 = ed_view2.nodeDOM(ed_view2.state.selection.from);
+  if (el2 != null && el2.closest != null) {triggerEl = el2.closest('pre[data-language]');
+  if (triggerEl == null) {triggerEl = el2.closest('.autodown-codeblock-node');
+  }}}if (triggerEl == null) {visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+  }if (triggerEl != null) {let badge2 = triggerEl.querySelector('[data-codeblock-language-badge]');
+  let anchor = triggerEl;
+  if (badge2 != null) {anchor = badge2;
+  }let triggerRect = anchor.getBoundingClientRect();
+  let trigger2 = { top: triggerRect.top - editorRect.top + 6, left: triggerRect.left - editorRect.left, bottom: triggerRect.bottom - editorRect.top + 6, right: triggerRect.right - editorRect.left, width: triggerRect.width, height: triggerRect.height };
+  let container = { width: editorRect.width, height: editorRect.height };
+  let initial = computeMenuPosition(trigger2, 0, 0, container, 'bottom-end', 0);
+  pos_top.value = initial.top + 'px';
+  pos_left.value = initial.left + 'px';
+  pos_visibility.value = 'hidden';
+  nextTick(() => { let menu2 = editor_el.value.querySelector('.autodown-codeblock-menu');
+  if (menu2 != null) {let menuRect = menu2.getBoundingClientRect();
+  let pos_final = computeMenuPosition(trigger2, menuRect.width, menuRect.height, container, 'bottom-end', 0);
+  pos_top.value = pos_final.top + 'px';
+  pos_left.value = pos_final.left + 'px';
+  pos_visibility.value = 'visible';
+  } });
+  }}
+
+
+
+  nextTick(() => { let s_menu = null;
+  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
+  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
+  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
+  let itemRect = s_item.getBoundingClientRect();
+  let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  s_list.scrollTop = s_list.scrollTop + offset;
+  }} });
+   });
+  }} };
+  dom_click_cb.value = on_click;
+  dom.addEventListener('click', dom_click_cb.value, { capture: true });
+
+
+
+
+  if (wrapper_el.value != null) {wrapper_el.value.addEventListener('scroll', scroll_cb.value, { passive: true });
+  }
 })
 
 onUnmounted(() => {
-  // Guard against editor already destroyed (Tiptap throws when accessing
-  // .view on a destroyed editor). This happens when the parent AutoDownEditor
-  // is unmounted and its child menus clean up in the same flush cycle.
-  if (props.editor.isDestroyed) return
-  const dom = props.editor.view?.dom
-  if (dom) {
-    dom.removeEventListener('mousedown', handleEditorMouseDown, { capture: true })
-    dom.removeEventListener('click', handleEditorClick, { capture: true })
-    const wrapper = dom.closest('.autodown-editor-content-wrapper')
-    wrapper?.removeEventListener('scroll', scheduleUpdate)
-  }
-  document.removeEventListener('mousedown', handleOutsideClick)
-  document.removeEventListener('wheel', handleGlobalWheel, { capture: true })
+  
+
+
+
+
+document.removeEventListener('wheel', wheel_cb.value, { capture: true });
+if (editor_dom.value != null) {editor_dom.value.removeEventListener('mousedown', dom_mousedown_cb.value, { capture: true });
+editor_dom.value.removeEventListener('click', dom_click_cb.value, { capture: true });
+}
+if (wrapper_el.value != null) {wrapper_el.value.removeEventListener('scroll', scroll_cb.value);
+}
+
 })
 
-defineExpose({
-  open,
-  close,
-  toggle,
+function __auto_gl_mousedown_OutsideClick(e: any) {
+  OutsideClick(e)
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', __auto_gl_mousedown_OutsideClick)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', __auto_gl_mousedown_OutsideClick)
+})
+
+
 </script>
+
+<template>
+    <template v-if="visible">
+      <div class="autodown-codeblock-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
+        <div class="autodown-codeblock-menu-header">
+          <input class="autodown-codeblock-menu-search" ref="searchEl" v-model="search" :placeholder="'Search language…'" @keydown.esc="Close" @keydown.enter.prevent="SelectHighlighted" @keydown.down.prevent="MoveDown" @keydown.up.prevent="MoveUp" />
+        </div>
+        <div class="autodown-codeblock-menu-list" ref="listEl">
+          <button class="autodown-codeblock-menu-item" :class="{ active: i == highlighted_index, selected: lang.id == current_language }" @click="SelectItem(lang)" @mouseenter="HoverItem(i)" v-for="(lang, i) in filtered">
+            <span class="autodown-codeblock-menu-item-label">
+              <span>{{ lang.label }}</span>
+            </span>
+            <template v-if="lang.id == current_language">
+              <component :is="(check_icon) as any" class="autodown-codeblock-menu-check" :size="13" />
+            </template>
+          </button>
+          <template v-if="is_empty">
+            <div class="autodown-codeblock-menu-empty">
+              <span>No matching languages</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+</template>
+
+<style>
+/* Component styles */
+
+</style>

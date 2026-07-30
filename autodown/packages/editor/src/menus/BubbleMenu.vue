@@ -1,128 +1,43 @@
-<template>
-  <BubbleMenu
-    v-if="editor"
-    :editor="editor"
-    :options="{ placement: 'top' }"
-    :should-show="shouldShow"
-    class="autodown-bubble-menu"
-  >
-    <button
-      v-for="btn in buttons"
-      :key="btn.name"
-      class="autodown-bubble-btn"
-      :class="{ active: btn.isActive() }"
-      :title="btn.title"
-      @click="btn.action()"
-    >
-      <component :is="btn.icon" :size="14" />
-    </button>
-  </BubbleMenu>
-</template>
-
+<!-- BubbleMenu component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BubbleMenu } from '@tiptap/vue-3/menus'
-import type { Editor, isNodeSelection } from '@tiptap/core'
-import {
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
-  Link as LinkIcon,
-  Underline,
-  type LucideIcon,
-} from 'lucide-vue-next'
+import { TiptapBubbleMenu } from '../auto/src/front/utils/bubble_menu_ext'
+import { bubbleIcon, bubbleShouldShow, runBubbleLink } from '../auto/src/front/utils/bubble_menu_ext'
+
+
+const buttons = computed<any[]>(() => [{name: 'bold', title: props.tooltips && props.tooltips.bold || 'Bold', icon: bubbleIcon('bold'), active: props.editor.isActive('bold'), action: () => props.editor.chain().focus().toggleBold().run()}, {name: 'italic', title: props.tooltips && props.tooltips.italic || 'Italic', icon: bubbleIcon('italic'), active: props.editor.isActive('italic'), action: () => props.editor.chain().focus().toggleItalic().run()}, {name: 'underline', title: props.tooltips && props.tooltips.underline || 'Underline', icon: bubbleIcon('underline'), active: props.editor.isActive('underline'), action: () => props.editor.chain().focus().toggleUnderline().run()}, {name: 'strike', title: props.tooltips && props.tooltips.strike || 'Strikethrough', icon: bubbleIcon('strike'), active: props.editor.isActive('strike'), action: () => props.editor.chain().focus().toggleStrike().run()}, {name: 'code', title: props.tooltips && props.tooltips.code || 'Inline Code', icon: bubbleIcon('code'), active: props.editor.isActive('code'), action: () => props.editor.chain().focus().toggleCode().run()}, {name: 'link', title: props.tooltips && props.tooltips.link || 'Link', icon: bubbleIcon('link'), active: props.editor.isActive('link'), action: () => runBubbleLink(props.editor, props.linkPrompt)}])
 
 const props = defineProps<{
-  editor: Editor
+  editor: any
   linkPrompt?: string
-  tooltips?: Partial<Record<'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'link', string>>
+  tooltips?: any
 }>()
 
-function shouldShow({ editor, state }: { editor: Editor; state: Editor['state'] }) {
-  const { selection } = state
-  const { empty } = selection
-  // @ts-expect-error isNodeSelection may not be exported directly
-  const isNode = typeof isNodeSelection === 'function' ? isNodeSelection(selection) : false
-  if (!editor.isEditable || empty || isNode || editor.isActive('image')) {
-    return false
-  }
-  return true
+const emit = defineEmits<{
+  RunButton: [any]
+}>()
+
+function RunButton(btn: any): void {
+  btn.action();
+
+  emit('RunButton', btn)
 }
 
-interface BubbleButton {
-  name: string
-  title?: string
-  icon: LucideIcon
-  isActive: () => boolean
-  action: () => void
-}
 
-const defaultTooltips: Record<'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'link', string> = {
-  bold: 'Bold',
-  italic: 'Italic',
-  underline: 'Underline',
-  strike: 'Strikethrough',
-  code: 'Inline Code',
-  link: 'Link',
-}
-
-const buttons = computed<BubbleButton[]>(() => {
-  const e = props.editor
-  if (!e) return []
-  const t = { ...defaultTooltips, ...props.tooltips }
-  return [
-    {
-      name: 'bold',
-      title: t.bold,
-      icon: Bold,
-      isActive: () => e.isActive('bold'),
-      action: () => e.chain().focus().toggleBold().run(),
-    },
-    {
-      name: 'italic',
-      title: t.italic,
-      icon: Italic,
-      isActive: () => e.isActive('italic'),
-      action: () => e.chain().focus().toggleItalic().run(),
-    },
-    {
-      name: 'underline',
-      title: t.underline,
-      icon: Underline,
-      isActive: () => e.isActive('underline'),
-      action: () => e.chain().focus().toggleUnderline().run(),
-    },
-    {
-      name: 'strike',
-      title: t.strike,
-      icon: Strikethrough,
-      isActive: () => e.isActive('strike'),
-      action: () => e.chain().focus().toggleStrike().run(),
-    },
-    {
-      name: 'code',
-      title: t.code,
-      icon: Code,
-      isActive: () => e.isActive('code'),
-      action: () => e.chain().focus().toggleCode().run(),
-    },
-    {
-      name: 'link',
-      title: t.link,
-      icon: LinkIcon,
-      isActive: () => e.isActive('link'),
-      action: () => {
-        if (e.isActive('link')) {
-          e.chain().focus().unsetLink().run()
-        } else {
-          const url = window.prompt(props.linkPrompt ?? 'Enter URL')
-          if (url) {
-            e.chain().focus().setLink({ href: url }).run()
-          }
-        }
-      },
-    },
-  ]
-})
 </script>
+
+<template>
+    <template v-if="editor">
+      <TiptapBubbleMenu :options="{placement: 'top'}" :class="'autodown-bubble-menu'" :editor="editor" :shouldShow="bubbleShouldShow" :key="'TiptapBubbleMenu-1'">
+        <button class="autodown-bubble-btn" :class="{ active: btn.active }" :title="btn.title" @click="RunButton(btn)" v-for="btn in buttons">
+          <component :is="(btn.icon) as any" :size="14" />
+        </button>
+      </TiptapBubbleMenu>
+    </template>
+
+</template>
+
+<style>
+/* Component styles */
+
+</style>

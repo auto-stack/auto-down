@@ -28,7 +28,7 @@ import { BlockId } from './BlockId'
 import { BlockInsertHandle } from './BlockInsertHandle'
 import { WikiLink } from './WikiLink'
 import { BlockEmbed } from './BlockEmbed'
-import type { SlashItem } from '../menus/SlashMenu.vue'
+import type { SlashItem } from '../menus/slashItem'
 
 export interface EditorOptions {
   placeholder?: string

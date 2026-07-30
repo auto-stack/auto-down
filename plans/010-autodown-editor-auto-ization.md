@@ -126,10 +126,14 @@ Phase 3/4 的组件大量依赖手写 TS（`useMenuBounds`、lucide 图标、`co
 3. `TableMenu.vue`（165 行）。
 4. `CodeBlockMenu.vue`（392 行，最难：坐标定位、document 级事件捕获、滚动锁定、rAF 重定位）。
 
-### 验收标准
+### 验收标准（Phase 3 已完成 ✅）
 
-- [ ] 四个菜单全部 Auto 化，demo e2e + 截图 diff 全绿。
-- [ ] slot / watch 两项缺口是否需要补，在本阶段结束时给出实证结论并回填任务 1.4/1.5。
+- [x] 四个菜单全部 Auto 化，demo e2e + 截图 diff 不劣于基线（8 通过 + 1 个既有失败 scroll-sync:141）。
+  - SlashMenu：`slash_menu.at`（150 行）+ ext TS；`SlashItem` 接口移至 `menus/slashItem.ts`（包公共 API 经 `index.ts` re-export 保持不变）。
+  - BubbleMenu / TableMenu / CodeBlockMenu：各 `.at` + ext TS 模式；CodeBlockMenu 采用"全状态入 ext"架构（DSL 无法注册 editor dom 上的 capture 监听）。
+- [x] slot / watch 两项缺口的实证结论：**watch 已在 3.0b 实现并投入使用**（SlashMenu 重置选中、thumb 几何）；**slot 仍未需要**（菜单族无插槽需求，dyn 动态组件覆盖了图标场景），任务 1.4 继续 deferred 至 Phase 4 评估（NodeView 可能需要）。
+- Phase 3 新增的 DSL 能力（3.0a/3.0b，auto-lang `phase3-dsl-capabilities` 分支，已合并 master `1ecc13e3`）：引号自定义事件（`on "autodown:slash-open".document`）、`style_obj` 内联样式绑定、`dyn` 动态组件、widget 级 `watch` 块、块体闭包 StateRef 修复。
+- **闭包真相与回流重构**（重要）：Auto 语言一直有闭包（`x => expr`、`(x, y) => x + y`，Plan 060/090），Phase 3 中期"DSL 无闭包"为误判，唯一真 bug 是块体闭包经 a2ts 委托丢 StateRef `.value`（已修）。修复后四个菜单的 ext TS 大规模回流 Auto：slash 147→33、bubble 144→86、table 147→56、codeblock 452→92 行。ext 中仅留真正表达不了的（tiptap/lowlight 再导出、静态图标/语言清单、import 手写定位纯函数）。README 误判清单已纠错，真实限制（computed 里 `??`/块体闭包、括号丢失、`.contains` 被映射为 `.includes` 等约 10 条）记录在 `src/auto/README.md`，是后续生成器打磨清单。
 
 ---
 

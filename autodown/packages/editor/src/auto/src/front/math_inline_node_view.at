@@ -1,0 +1,119 @@
+// math_inline_node_view.at — MathInlineNodeView widget: Auto widget DSL
+// port of the original hand-written src/node-views/MathInlineNodeView.vue.
+// The generated SFC replaces it (see src/auto/README.md). All widget logic
+// lives here in the DSL; the shared hand-written extension
+// utils/node_view_ext.ts keeps the tiptap NodeViewWrapper re-export
+// (dual-resolution shim) and re-exports renderKatexPreview/setInnerHTML
+// from src/composables/renderPreview.ts (npm imports, try/catch and v-html
+// are inexpressible in the DSL; see renderPreview.ts's header comment).
+//
+// Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
+// to `any[]`. All eight NodeViewProps fields are declared (the original
+// used defineProps<NodeViewProps>()) so nothing falls through as attrs.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see
+// details_node_view.at / math_block_node_view.at:
+// - The source comes from the node ATTRS (not textContent — the inline
+//   node has no editable content, so no NodeViewContent here).
+// - The original's html/error refs become model vars with the "" sentinel
+//   (the originals used null; falsy either way).
+// - The original's v-html becomes an EMPTY preview span filled
+//   imperatively via setInnerHTML(.previewEl, ...) inside nextTick (the
+//   DSL has no v-html; the error branch unmounts the span — setInnerHTML
+//   null-guards).
+// - The error fallback's ${{ source }}$ interpolation becomes the
+//   source_label computed (bare string concatenation, no parenthesized
+//   receivers — those mis-codegen).
+// - render() runs on mount via .Init and on source changes via watch —
+//   the original's watch(..., { immediate: true }) (the DSL watch has no
+//   immediate option; the body is DUPLICATED because a msg handler that
+//   no view event references is not emitted).
+// - `as:` in PAREN form (keyword token); the bare data-math-inline
+//   attribute binds the empty string (identical DOM to the original's
+//   valueless attribute).
+
+widget MathInlineNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
+    use {
+        fn: nextTick from "vue"
+        component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
+        fn: renderKatexPreview, setInnerHTML, strOr from "src/front/utils/node_view_ext.ts"
+    }
+
+    msg Msg { Init }
+
+    model {
+        var html str = ""
+        var error_text str = ""
+    }
+
+    computed {
+        // The original's computed(() => props.node.attrs.source as string
+        // || '') — the cast is a no-op at runtime; strOr covers the ||.
+        source => strOr(.node.attrs.source, "")
+        // The error fallback's ${{ source }}$ interpolation.
+        source_label => "$" + .source.value + "$"
+        // The original's v-if="!error" / v-else chain (same rendered
+        // branch in every state).
+        show_preview => .error_text == ""
+        show_error => .error_text != ""
+    }
+
+    view {
+        NodeViewWrapper (as: "span") {
+            class: "autodown-math-inline",
+            data-math-inline: "",
+
+            if .show_preview {
+                // v-html replacement: empty span, filled imperatively by
+                // setInnerHTML after each render (see header).
+                span { ref: "previewEl", class: "autodown-math-inline-preview" }
+            }
+            if .show_error {
+                span {
+                    class: "autodown-math-inline-error",
+                    title: "Math preview error",
+                    text .source_label
+                }
+            }
+        }
+    }
+
+    watch {
+        // The original's watch(() => source.value, render) — the immediate
+        // run happens in .Init (the DSL watch has no immediate option; the
+        // body is DUPLICATED — see mermaid_node_view.at).
+        .source -> {
+            let result = renderKatexPreview(.source.value, false)
+            .html = result.html
+            .error_text = result.error
+            nextTick(() => {
+                setInnerHTML(.previewEl, result.html)
+            })
+        }
+    }
+
+    on {
+        .Init -> {
+            // render() — duplicated in the watch above.
+            let result = renderKatexPreview(.source.value, false)
+            .html = result.html
+            .error_text = result.error
+            nextTick(() => {
+                setInnerHTML(.previewEl, result.html)
+            })
+        }
+    }
+
+    style {
+        .autodown-math-inline {
+          display: inline;
+        }
+        .autodown-math-inline-preview {
+          display: inline;
+        }
+        .autodown-math-inline-error {
+          color: hsl(var(--destructive, 0 72% 51%));
+          text-decoration: wavy underline;
+        }
+    }
+}

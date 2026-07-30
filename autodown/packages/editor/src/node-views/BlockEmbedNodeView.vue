@@ -1,108 +1,152 @@
+<!-- BlockEmbedNodeView component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { NodeViewWrapper } from '@tiptap/vue-3'
-import type { NodeViewProps } from '@tiptap/vue-3'
+import { ref, computed, onMounted, watch } from 'vue'
+import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
+import { strOr, orNull } from '../auto/src/front/utils/node_view_ext'
 
-interface BlockInfo {
-  uuid: string
-  page_path: string
-  block_id?: string
-  kind: string
-  content: string
-  properties: Record<string, any>
-  line_start: number
-  line_end: number
-}
 
-const props = defineProps<NodeViewProps>()
+const block = ref<any>(undefined)
+const loading = ref<boolean>(false)
+const error_text = ref<string>('')
 
-const attrs = computed(() => ({
-  raw: (props.node.attrs.raw as string) || '![[Untitled]]',
-  title: (props.node.attrs.title as string) || 'Untitled',
-  blockId: (props.node.attrs.blockId as string | null | undefined) || null,
-}))
+const attr_raw = computed<any>(() => strOr(props.node.attrs.raw, '![[Untitled]]'))
+const attr_title = computed<any>(() => strOr(props.node.attrs.title, 'Untitled'))
+const attr_block_id = computed<any>(() => orNull(props.node.attrs.blockId))
+const display_label = computed<any>(() => strOr(attr_block_id.value && attr_title.value + '#' + attr_block_id.value, attr_title.value))
+const loading_text = computed<any>(() => strOr('Loading ' + display_label.value + '…', 'Loading…'))
+const block_content = computed<any>(() => strOr(block.value && block.value.content, ''))
+const show_loading = computed<boolean>(() => loading.value)
+const show_error = computed<boolean>(() => !loading.value && error_text.value !== '')
+const show_block = computed<boolean>(() => !loading.value && error_text.value === '' && block.value)
 
-const block = ref<BlockInfo | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
+const props = defineProps<{
+  node: any
+  editor: any
+  updateAttributes: any
+  selected: boolean
+  extension: any
+  getPos: any
+  deleteNode: any
+  decorations: any[]
+}>()
 
-const displayLabel = computed(() => {
-  return attrs.value.blockId ? `${attrs.value.title}#${attrs.value.blockId}` : attrs.value.title
+const emit = defineEmits<{
+}>()
+
+watch(attr_block_id, () => {
+  let id = attr_block_id.value;
+
+  if (id != null) {let loader = null;
+  let opts = props.extension.options;
+  if (opts != null) {loader = opts.loadBlock;
+  }if (loader == null) {error_text.value = 'No block loader configured';
+  }if (loader != null) {loading.value = true;
+  error_text.value = '';
+
+  let clean_id = id;
+  if (id.startsWith('^')) {clean_id = id.slice(1);
+  }let p = loader(clean_id);
+
+
+  p.then((result: any) => { block.value = result;
+  if (!result) {error_text.value = 'Block not found';
+  }loading.value = false;
+   }, (err: any) => { error_text.value = err.message || String(err);
+  block.value = null;
+  loading.value = false;
+   });
+  }}
 })
 
-async function load() {
-  const id = attrs.value.blockId
-  if (!id) return
-  const loader = (props.extension.options as any)?.loadBlock
-  if (typeof loader !== 'function') {
-    error.value = 'No block loader configured'
-    return
-  }
-  loading.value = true
-  error.value = null
-  try {
-    const cleanId = id.startsWith('^') ? id.slice(1) : id
-    const result = await loader(cleanId)
-    block.value = result || null
-    if (!result) error.value = 'Block not found'
-  } catch (e: any) {
-    error.value = e.message || String(e)
-    block.value = null
-  } finally {
-    loading.value = false
-  }
-}
+onMounted(() => {
 
-watch(() => attrs.value.blockId, load, { immediate: true })
+
+  let id = attr_block_id.value;
+  if (id != null) {let loader = null;
+  let opts = props.extension.options;
+  if (opts != null) {loader = opts.loadBlock;
+  }if (loader == null) {error_text.value = 'No block loader configured';
+  }if (loader != null) {loading.value = true;
+  error_text.value = '';
+  let clean_id = id;
+  if (id.startsWith('^')) {clean_id = id.slice(1);
+  }let p = loader(clean_id);
+  p.then((result: any) => { block.value = result;
+  if (!result) {error_text.value = 'Block not found';
+  }loading.value = false;
+   }, (err: any) => { error_text.value = err.message || String(err);
+  block.value = null;
+  loading.value = false;
+   });
+  }}
+})
+
+
 </script>
 
 <template>
-  <NodeViewWrapper
-    as="div"
-    class="autodown-block-embed"
-    :data-title="attrs.title"
-    :data-block-id="attrs.blockId || undefined"
-  >
-    <div v-if="loading" class="embed-state">Loading {{ displayLabel }}…</div>
-    <div v-else-if="error" class="embed-state embed-error">{{ error }}</div>
-    <template v-else-if="block">
-      <div class="embed-header">
-        <span class="embed-title">{{ displayLabel }}</span>
-      </div>
-      <div class="embed-content">{{ block.content }}</div>
-    </template>
-  </NodeViewWrapper>
+    <NodeViewWrapper :data-title="attr_title" :as="'div'" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
+      <template v-if="show_loading">
+        <div class="embed-state">
+          <span>{{ loading_text }}</span>
+        </div>
+      </template>
+      <template v-if="show_error">
+        <div class="embed-state embed-error">
+          <span>{{ error_text }}</span>
+        </div>
+      </template>
+      <template v-if="show_block">
+        <div class="embed-header">
+          <span class="embed-title">
+            <span>{{ display_label }}</span>
+          </span>
+        </div>
+      </template>
+      <template v-if="show_block">
+        <div class="embed-content">
+          <span>{{ block_content }}</span>
+        </div>
+      </template>
+    </NodeViewWrapper>
+
 </template>
 
-<style scoped>
-.autodown-block-embed {
-  border: 1px solid hsl(var(--border, 220 13% 91%));
-  border-radius: 0.375rem;
-  background: hsl(var(--muted, 210 20% 96%));
-  padding: 0.75rem;
-  margin: 0.5rem 0;
-}
-.embed-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-.embed-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: hsl(var(--primary, 238 55% 58%));
-}
-.embed-content {
-  font-size: 0.875rem;
-  color: hsl(var(--foreground, 224 64% 33%));
-  white-space: pre-wrap;
-}
-.embed-state {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground, 220 9% 46%));
-}
-.embed-error {
-  color: hsl(var(--destructive, 0 72% 51%));
-}
+<style>
+/* Component styles */
+
 </style>
+
+<style scoped>
+
+        .autodown-block-embed {
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--muted, 210 20% 96%));
+          padding: 0.75rem;
+          margin: 0.5rem 0;
+        }
+        .embed-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .embed-title {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: hsl(var(--primary, 238 55% 58%));
+        }
+        .embed-content {
+          font-size: 0.875rem;
+          color: hsl(var(--foreground, 224 64% 33%));
+          white-space: pre-wrap;
+        }
+        .embed-state {
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+        }
+        .embed-error {
+          color: hsl(var(--destructive, 0 72% 51%));
+        }
+    </style>

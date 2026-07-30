@@ -47,7 +47,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <img class="code-language-icon" :alt="language" :height="16" :src="url" :width="16" />
+    <img class="code-language-icon" :src="url" :alt="language" :width="16" :height="16" />
 
 </template>
 

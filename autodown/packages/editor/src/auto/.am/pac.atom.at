@@ -15,6 +15,12 @@ root {
     apps: [
         
     ]
+    bags: [
+        
+    ]
+    tests: [
+        
+    ]
     files: [
         
     ]

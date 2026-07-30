@@ -38,22 +38,13 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function SelectItem(i: any): void {
-  let item = filtered.value[i];
-  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
+function OnClose(): void {
   visible.value = false;
   query.value = '';
   range.value = null;
   selected_index.value = 0;
-  }
 
-  emit('SelectItem', i)
-}
-
-function HoverItem(i: any): void {
-  selected_index.value = i;
-
-  emit('HoverItem', i)
+  emit('OnClose')
 }
 
 function OnKeydown(e: any): void {
@@ -100,15 +91,6 @@ function OnKeydown(e: any): void {
   emit('OnKeydown', e)
 }
 
-function OnClose(): void {
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-
-  emit('OnClose')
-}
-
 function OnOpen(e: any): void {
   query.value = e.detail.query;
   range.value = e.detail.range;
@@ -144,6 +126,24 @@ function OnOpen(e: any): void {
   emit('OnOpen', e)
 }
 
+function HoverItem(i: any): void {
+  selected_index.value = i;
+
+  emit('HoverItem', i)
+}
+
+function SelectItem(i: any): void {
+  let item = filtered.value[i];
+  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+  }
+
+  emit('SelectItem', i)
+}
+
 function OnUpdate(e: any): void {
   query.value = e.detail.query;
   range.value = e.detail.range;
@@ -168,12 +168,12 @@ function OnUpdate(e: any): void {
   emit('OnUpdate', e)
 }
 
-function __auto_gl_autodown_slash_keydown_OnKeydown(e: any) {
-  OnKeydown(e)
-}
-
 function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
   OnUpdate(e)
+}
+
+function __auto_gl_autodown_slash_keydown_OnKeydown(e: any) {
+  OnKeydown(e)
 }
 
 function __auto_gl_autodown_slash_open_OnOpen(e: any) {
@@ -181,17 +181,17 @@ function __auto_gl_autodown_slash_open_OnOpen(e: any) {
 }
 
 onMounted(() => {
-  document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
-  document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
-  document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
   document.addEventListener('autodown:slash-close', OnClose)
+  document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
+  document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
+  document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
-  document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
-  document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
   document.removeEventListener('autodown:slash-close', OnClose)
+  document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
+  document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
+  document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
 })
 
 
@@ -199,7 +199,7 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-slash-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
+      <div class="autodown-slash-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
         <div class="autodown-slash-menu-items">
           <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" @click="SelectItem(i)" @mouseenter="HoverItem(i)" v-for="(item, i) in filtered">
             <component :is="(item.icon) as any" class="autodown-slash-menu-icon" :size="16" />

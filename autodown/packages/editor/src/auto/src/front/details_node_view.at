@@ -1,0 +1,192 @@
+// details_node_view.at — DetailsNodeView widget: Auto widget DSL port of the
+// original hand-written src/node-views/DetailsNodeView.vue. The generated SFC
+// replaces it (see src/auto/README.md). All of the original logic lives here
+// in the DSL; the shared hand-written extension utils/node_view_ext.ts only
+// keeps the tiptap NodeViewWrapper/NodeViewContent re-exports (the gen
+// project has no @tiptap/* dependency — dual-resolution shim, same trick as
+// the BubbleMenu wrapper), the inline-SVG edit icon (the DSL has no svg/path
+// view elements, rendered via `dyn`), strOr (a standalone `a || b` computed
+// is mis-typed computed<boolean>) and focusAndSelect (DSL template refs are
+// typed HTMLElement; .select() needs an input element and there is no cast).
+//
+// Prop types are deliberately wide: `Array<str>` is a generic instance,
+// which the Vue backend maps to TS `any` (bare `any` is rejected by the
+// name checker). All seven NodeViewProps are declared (even the unused
+// ones) so nothing falls through as attrs onto the root element — matching
+// the original's defineProps.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see slash_menu.at
+// for the shared list; new ones first hit by this widget:
+// - TERNARY in a computed emits `undefined` (it desugars to an If
+//   expression the computed codegen does not handle — same class of bug as
+//   `??`). The && / || idiom is used instead; the runtime value is
+//   identical (a && "x" || "y" picks "x" when a is truthy, "y" otherwise).
+// - `type:` and `as:` are NOT valid prop names in the brace form (type/as
+//   are keyword tokens; the brace-form prop check requires an Ident, so
+//   they mis-parse into junk <div> children). The PAREN form accepts any
+//   prop name, so input/button/NodeViewContent take type/as in parens.
+// - Calling a FUNCTION PROP directly (`.updateAttributes({ ... })`) emits a
+//   bare `updateAttributes(...)` without the props. prefix; a `let` local
+//   bound to the prop first (`.updateAttributes` field access emits
+//   props.updateAttributes correctly) calls it with the right receiver.
+// - The summary input uses real v-model: `value: .summary_draft` (plain
+//   model var) PLUS an `oninput:` handler folds into
+//   `v-model="summary_draft"` (the SummaryInput handler is emitted but
+//   never called — kept as the fold's write-back target).
+// - NodeViewContent's v-show becomes style_obj display ("" / "none"): the
+//   DSL has no v-show; Vue drops the empty-string style value, so the
+//   rendered inline style toggles exactly like v-show.
+// - `selected_state` is a computed reading the prop so `watch` gets a
+//   reactive source (the original watched () => props.selected).
+// - The input's bare `@click.stop` becomes onclick.stop: .Noop($event) —
+//   a handler is required by the DSL; Noop emits a no-op component event
+//   (no listener), same as the original's modifier-only binding.
+
+widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>) {
+    use {
+        fn: nextTick from "vue"
+        component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
+        fn: detailsEditIcon, strOr, focusAndSelect from "src/front/utils/node_view_ext.ts"
+    }
+
+    msg Msg { ToggleOpen, StartEditingSummary, CommitSummary, CancelSummary, SummaryInput, Noop }
+
+    model {
+        var editing_summary bool = false
+        var summary_draft str = ""
+    }
+
+    computed {
+        // Boolean(node.attrs.open): a real boolean so :data-open renders
+        // "true"/"false" exactly like the original (the details stylesheet
+        // keys off [data-open='true']). && / || idiom — ternary emits
+        // undefined in computeds (see header).
+        is_open => .node.attrs.open && true || false
+        summary => strOr(.node.attrs.summary, "Details")
+        // && / || idiom routed through strOr: a bare `a && "x" || "y"`
+        // computed is ALSO mis-typed computed<boolean> by the DSL type
+        // inference, and vue-tsc then rejects the string-returning getter.
+        marker => strOr(.is_open.value && "▼", "▶")
+        // v-show replacement: "" is dropped by Vue's style binding
+        // (visible), "none" hides — same inline-style toggling as v-show.
+        // (Inverted: a && "" || "none" would never yield "".)
+        content_display => strOr(!.is_open.value && "none", "")
+        edit_icon => detailsEditIcon()
+        // Reactive watch source for the selected prop (the original watched
+        // () => props.selected).
+        selected_state => .selected
+    }
+
+    view {
+        NodeViewWrapper {
+            class: "autodown-details",
+            data-open: .is_open,
+
+            div {
+                class: "autodown-details-summary",
+                span {
+                    class: "autodown-details-marker",
+                    aria-hidden: "true",
+                    title: "点击展开详细内容",
+                    onclick.stop: .ToggleOpen,
+                    text .marker
+                }
+                if !.editing_summary {
+                    span {
+                        class: "autodown-details-summary-text",
+                        onclick.stop: .ToggleOpen,
+                        text .summary
+                    }
+                }
+                if .editing_summary {
+                    // `type:` in PAREN form — it is a keyword token and
+                    // mis-parses in the brace form (see header).
+                    input (type: "text") {
+                        ref: "summaryInput",
+                        class: "autodown-details-summary-input",
+                        // v-model fold: value + oninput → v-model (see
+                        // header comment).
+                        value: .summary_draft,
+                        oninput: .SummaryInput($event),
+                        onblur: .CommitSummary,
+                        onkeydown.enter.prevent: .CommitSummary,
+                        onkeydown.escape.prevent: .CancelSummary,
+                        onclick.stop: .Noop($event)
+                    }
+                }
+                if !.editing_summary {
+                    button (type: "button") {
+                        class: "autodown-details-edit-btn",
+                        aria-label: "编辑摘要",
+                        title: "编辑摘要",
+                        onclick.stop: .StartEditingSummary,
+                        // Inline-SVG pencil icon from the extension (the DSL
+                        // has no svg/path elements); rendered via dyn —
+                        // lowercase <component :is>, same DOM.
+                        dyn (.edit_icon) {}
+                    }
+                }
+            }
+            // `as:` in paren form (keyword token, see header). NodeViewContent
+            // defaults to div anyway; kept explicit for parity.
+            NodeViewContent (as: "div") {
+                class: "autodown-details-content",
+                style_obj: { display: .content_display }
+            }
+        }
+    }
+
+    watch {
+        // Commit an in-progress summary edit when the node loses selection
+        // (the original's watch(() => props.selected, ...)).
+        .selected_state -> {
+            if !.selected && .editing_summary {
+                let update_attributes = .updateAttributes
+                let value = .summary_draft.trim()
+                if value != "" {
+                    update_attributes({ summary: value })
+                }
+                .editing_summary = false
+            }
+        }
+    }
+
+    on {
+        .ToggleOpen -> {
+            let update_attributes = .updateAttributes
+            update_attributes({ open: !.is_open.value })
+        }
+
+        .StartEditingSummary -> {
+            .summary_draft = .summary.value
+            .editing_summary = true
+            nextTick(() => {
+                focusAndSelect(.summaryInput)
+            })
+        }
+
+        .CommitSummary -> {
+            let update_attributes = .updateAttributes
+            let value = .summary_draft.trim()
+            if value != "" {
+                update_attributes({ summary: value })
+            }
+            .editing_summary = false
+        }
+
+        .CancelSummary -> {
+            .editing_summary = false
+        }
+
+        // Consumed by the v-model optimization (see the view): never
+        // emitted to the template, kept as the write-back target.
+        .SummaryInput(e) -> {
+            .summary_draft = e.target.value
+        }
+
+        // Target of the input's modifier-only @click.stop (the DSL requires
+        // a handler); emits a no-op component event with no listener.
+        .Noop(e) -> {
+        }
+    }
+}

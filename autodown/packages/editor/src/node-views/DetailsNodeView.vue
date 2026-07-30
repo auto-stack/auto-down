@@ -1,106 +1,123 @@
-<template>
-  <NodeViewWrapper class="autodown-details" :data-open="isOpen">
-    <div class="autodown-details-summary">
-      <span
-        class="autodown-details-marker"
-        aria-hidden="true"
-        title="点击展开详细内容"
-        @click.stop="toggleOpen"
-      >
-        {{ isOpen ? '▼' : '▶' }}
-      </span>
-      <span
-        v-if="!editingSummary"
-        class="autodown-details-summary-text"
-        @click.stop="toggleOpen"
-      >
-        {{ summary }}
-      </span>
-      <input
-        v-else
-        ref="summaryInput"
-        v-model="summaryDraft"
-        class="autodown-details-summary-input"
-        type="text"
-        @blur="commitSummary"
-        @keydown.enter.prevent="commitSummary"
-        @keydown.esc.prevent="cancelSummary"
-        @click.stop
-      />
-      <button
-        v-if="!editingSummary"
-        type="button"
-        class="autodown-details-edit-btn"
-        aria-label="编辑摘要"
-        title="编辑摘要"
-        @click.stop="startEditingSummary"
-      >
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-        </svg>
-      </button>
-    </div>
-    <NodeViewContent
-      v-show="isOpen"
-      class="autodown-details-content"
-      as="div"
-    />
-  </NodeViewWrapper>
-</template>
-
+<!-- DetailsNodeView component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { NodeViewContent, NodeViewWrapper } from '@tiptap/vue-3'
+import { ref, computed, watch } from 'vue'
+import { NodeViewContent } from '../auto/src/front/utils/node_view_ext'
+import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
+import { detailsEditIcon, strOr, focusAndSelect } from '../auto/src/front/utils/node_view_ext'
+import { nextTick } from 'vue'
+
+
+const editing_summary = ref<boolean>(false)
+const summary_draft = ref<string>('')
+
+const summaryInput = ref<HTMLElement | null>(null)
+
+const is_open = computed<boolean>(() => props.node.attrs.open && true || false)
+const summary = computed<any>(() => strOr(props.node.attrs.summary, 'Details'))
+const marker = computed<any>(() => strOr(is_open.value && '▼', '▶'))
+const content_display = computed<any>(() => strOr(!is_open.value && 'none', ''))
+const edit_icon = computed<any>(() => detailsEditIcon())
+const selected_state = computed<boolean>(() => props.selected)
 
 const props = defineProps<{
   node: any
-  updateAttributes: (attrs: Record<string, any>) => void
+  updateAttributes: any
   editor: any
   selected: boolean
   extension: any
-  getPos: () => number
-  deleteNode: () => void
+  getPos: any
+  deleteNode: any
 }>()
 
-const isOpen = computed(() => Boolean(props.node.attrs.open))
-const summary = computed(() => (props.node.attrs.summary as string) || 'Details')
+const emit = defineEmits<{
+  ToggleOpen: []
+  StartEditingSummary: []
+  CommitSummary: []
+  CancelSummary: []
+  SummaryInput: [any]
+  Noop: [any]
+}>()
 
-function toggleOpen() {
-  props.updateAttributes({ open: !isOpen.value })
-}
-
-const editingSummary = ref(false)
-const summaryDraft = ref('')
-const summaryInput = ref<HTMLInputElement>()
-
-function startEditingSummary() {
-  summaryDraft.value = summary.value
-  editingSummary.value = true
-  nextTick(() => {
-    summaryInput.value?.focus()
-    summaryInput.value?.select()
-  })
-}
-
-function commitSummary() {
-  const value = summaryDraft.value.trim()
-  if (value) {
-    props.updateAttributes({ summary: value })
+watch(selected_state, () => {
+  if (!props.selected && editing_summary.value) {let update_attributes = props.updateAttributes;
+  let value = summary_draft.value.trim();
+  if (value != '') {update_attributes({ summary: value });
+  }editing_summary.value = false;
   }
-  editingSummary.value = false
+})
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
 }
 
-function cancelSummary() {
-  editingSummary.value = false
-}
-
-watch(
-  () => props.selected,
-  (selected) => {
-    if (!selected && editingSummary.value) {
-      commitSummary()
-    }
+function CommitSummary(): void {
+  let update_attributes = props.updateAttributes;
+  let value = summary_draft.value.trim();
+  if (value != '') {update_attributes({ summary: value });
   }
-)
+  editing_summary.value = false;
+
+  emit('CommitSummary')
+}
+
+function StartEditingSummary(): void {
+  summary_draft.value = summary.value;
+  editing_summary.value = true;
+  nextTick(() => { focusAndSelect(summaryInput.value!);
+   });
+
+  emit('StartEditingSummary')
+}
+
+function CancelSummary(): void {
+  editing_summary.value = false;
+
+  emit('CancelSummary')
+}
+
+function SummaryInput(e: any): void {
+  summary_draft.value = e.target.value;
+
+  emit('SummaryInput', e)
+}
+
+function ToggleOpen(): void {
+  let update_attributes = props.updateAttributes;
+  update_attributes({ open: !is_open.value });
+
+  emit('ToggleOpen')
+}
+
+
 </script>
+
+<template>
+    <NodeViewWrapper :data-open="is_open" :class="'autodown-details'" :key="'NodeViewWrapper-1'">
+      <div class="autodown-details-summary">
+        <span class="autodown-details-marker" :aria-hidden="'true'" :title="'点击展开详细内容'" @click.stop="ToggleOpen">
+          <span>{{ marker }}</span>
+        </span>
+        <template v-if="! editing_summary">
+          <span class="autodown-details-summary-text" @click.stop="ToggleOpen">
+            <span>{{ summary }}</span>
+          </span>
+        </template>
+        <template v-if="editing_summary">
+          <input class="autodown-details-summary-input" ref="summaryInput" :type="'text'" v-model="summary_draft" @keydown.enter.prevent="CommitSummary" @blur="CommitSummary" @click.stop="Noop($event)" @keydown.esc.prevent="CancelSummary" />
+        </template>
+        <template v-if="! editing_summary">
+          <button class="autodown-details-edit-btn" :title="'编辑摘要'" :type="'button'" :aria-label="'编辑摘要'" @click.stop="StartEditingSummary">
+            <component :is="(edit_icon) as any" />
+          </button>
+        </template>
+      </div>
+      <NodeViewContent :style="({ display: content_display } as any)" :as="'div'" :class="'autodown-details-content'" :key="'NodeViewContent-2'" />
+    </NodeViewWrapper>
+
+</template>
+
+<style>
+/* Component styles */
+
+</style>

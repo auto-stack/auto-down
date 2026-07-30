@@ -131,7 +131,7 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-table-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
+      <div class="autodown-table-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
         <div class="autodown-table-menu-group">
           <button class="autodown-table-menu-btn" :title="titles_map.addRowBefore" @click="Run('addRowBefore')">
             <ArrowUpToLine :size="13" :key="'ArrowUpToLine-1'" />

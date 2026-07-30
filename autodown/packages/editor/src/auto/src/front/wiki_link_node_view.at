@@ -1,0 +1,256 @@
+// wiki_link_node_view.at — WikiLinkNodeView widget: Auto widget DSL port of
+// the original hand-written src/node-views/WikiLinkNodeView.vue. The
+// generated SFC replaces it (see src/auto/README.md). All of the original
+// logic lives here in the DSL; the shared hand-written extension
+// utils/node_view_ext.ts keeps the tiptap NodeViewWrapper re-export
+// (dual-resolution shim — the gen project has no @tiptap/* dependency), the
+// [[title#blockId]] regex parser (the DSL has no regex literals / optional
+// chaining), the lucide Pencil icon (npm components cannot be imported as
+// plain values; rendered via `dyn`), strOr (standalone && / || computeds
+// are mis-typed computed<boolean>) and focusAndSelect (template refs are
+// typed HTMLElement; .select() needs an input element and there is no
+// cast).
+//
+// Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
+// to `any[]` (bare `any` is rejected by the DSL name checker). All eight
+// NodeViewProps fields are declared (the original used
+// defineProps<NodeViewProps>()) so nothing falls through as attrs onto the
+// root element.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see
+// details_node_view.at and slash_menu.at for the full list:
+// - `as: "span"` in PAREN form (as/type are keyword tokens and mis-parse in
+//   the brace prop form).
+// - The wrapper class map uses the QUOTED key "is-editing" (hyphenated
+//   bare keys are not identifiers).
+// - `open_title` precomputes the `Open ${displayLabel}` tooltip (the
+//   original's template literal) — string concatenation works in computeds
+//   when routed through strOr for the type.
+// - Calling a function prop / option callback: `let`-bind first (a direct
+//   `.updateAttributes(...)` call emits without the props. prefix).
+// - The original's `typeof handler === 'function'` guard becomes
+//   `!= null` (the DSL has no typeof); differs only when openWikiLink is
+//   configured to a non-function truthy value, which never happens.
+// - The input uses the v-model fold (value + oninput pair) like
+//   DetailsNodeView; its modifier-only @click.stop targets the Noop
+//   handler.
+
+widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
+    use {
+        fn: nextTick from "vue"
+        component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
+        fn: parseWikiLinkRaw, wikiLinkPencilIcon, strOr, orNull, focusAndSelect from "src/front/utils/node_view_ext.ts"
+    }
+
+    msg Msg { StartEdit, OpenLink, Commit, Cancel, OnKeydown, InputInput, Noop }
+
+    model {
+        var editing bool = false
+        var input_value str = ""
+    }
+
+    computed {
+        // The original's attrs computed as three scalars — an OBJECT
+        // LITERAL as a computed body emits invalid JS (`() => {raw: ...}`
+        // is a block, not an object), and parens are dropped, so the
+        // fallbacks live on the scalar computeds instead (strOr / orNull:
+        // bare || computeds are mis-typed computed<boolean>).
+        attr_raw => strOr(.node.attrs.raw, "[[Untitled]]")
+        attr_title => strOr(.node.attrs.title, "Untitled")
+        attr_block_id => orNull(.node.attrs.blockId)
+        // blockId ? `${title}#${blockId}` : title — && / || idiom routed
+        // through strOr (ternary emits undefined in computeds).
+        display_label => strOr(.attr_block_id.value && .attr_title.value + "#" + .attr_block_id.value, .attr_title.value)
+        // The label tooltip: `Open ${displayLabel}`.
+        open_title => strOr("Open " + .display_label.value, "Open")
+        pencil_icon => wikiLinkPencilIcon()
+        // The wrapper class list as one bound string — the class map's
+        // hyphenated key ("is-editing") cannot be expressed (quoted keys
+        // break the style-binding codegen). Same rendered classes.
+        wrapper_class => strOr(.editing && "autodown-wikilink-node is-editing", "autodown-wikilink-node")
+    }
+
+    view {
+        NodeViewWrapper (as: "span") {
+            class: .wrapper_class,
+
+            if !.editing {
+                span {
+                    class: "autodown-wikilink-label",
+                    title: .open_title,
+                    onclick.stop: .OpenLink,
+                    text .display_label
+                }
+            }
+            if !.editing {
+                span {
+                    class: "autodown-wikilink-edit",
+                    title: "Edit link",
+                    onclick.stop: .StartEdit,
+                    // lucide Pencil from the extension, rendered via dyn —
+                    // lowercase <component :is>, same DOM as <Pencil>.
+                    dyn (.pencil_icon) { class: "h-3 w-3" }
+                }
+            }
+            if .editing {
+                input (type: "text") {
+                    ref: "inputEl",
+                    class: "autodown-wikilink-input",
+                    // v-model fold: value + oninput → v-model (the
+                    // InputInput handler is the fold's write-back target,
+                    // never emitted to the template).
+                    value: .input_value,
+                    oninput: .InputInput($event),
+                    onkeydown: .OnKeydown($event),
+                    onblur: .Commit,
+                    onclick.stop: .Noop($event)
+                }
+            }
+        }
+    }
+
+    watch {
+        // Keep the draft in sync with external raw changes while not
+        // editing (the original's watch(() => attrs.value.raw, ...)).
+        .attr_raw -> {
+            if !.editing {
+                .input_value = .attr_raw.value
+            }
+        }
+    }
+
+    on {
+        .StartEdit -> {
+            .input_value = .attr_raw.value
+            .editing = true
+            nextTick(() => {
+                focusAndSelect(.inputEl)
+            })
+        }
+
+        .OpenLink -> {
+            // (props.extension.options as any)?.openWikiLink — optional
+            // chaining via explicit null guards.
+            let handler = null
+            let opts = .extension.options
+            if opts != null {
+                handler = opts.openWikiLink
+            }
+            if handler != null {
+                handler(.attr_title.value, .attr_block_id.value || null)
+            }
+            if handler == null {
+                // Fallback: start editing when no opener is provided.
+                .input_value = .attr_raw.value
+                .editing = true
+                nextTick(() => {
+                    focusAndSelect(.inputEl)
+                })
+            }
+        }
+
+        .Commit -> {
+            let update_attributes = .updateAttributes
+            let value = .input_value.trim()
+            if value == "" {
+                // cancel() inline.
+                .editing = false
+                .input_value = .attr_raw.value
+            }
+            if value != "" {
+                let parsed = parseWikiLinkRaw(value)
+                update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId })
+                .editing = false
+            }
+        }
+
+        .Cancel -> {
+            .editing = false
+            .input_value = .attr_raw.value
+        }
+
+        .OnKeydown(e) -> {
+            if e.key == "Enter" {
+                e.preventDefault()
+                // commit() inline (a .Msg() statement would glue onto the
+                // previous line — see slash_menu.at note 8).
+                let update_attributes = .updateAttributes
+                let value = .input_value.trim()
+                if value == "" {
+                    .editing = false
+                    .input_value = .attr_raw.value
+                }
+                if value != "" {
+                    let parsed = parseWikiLinkRaw(value)
+                    update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId })
+                    .editing = false
+                }
+            }
+            if e.key == "Escape" {
+                e.preventDefault()
+                // cancel() inline.
+                .editing = false
+                .input_value = .attr_raw.value
+            }
+        }
+
+        // Consumed by the v-model optimization (see the view): never
+        // emitted to the template, kept as the write-back target.
+        .InputInput(e) -> {
+            .input_value = e.target.value
+        }
+
+        // Target of the input's modifier-only @click.stop (the DSL requires
+        // a handler); emits a no-op component event with no listener.
+        .Noop(e) -> {
+        }
+    }
+
+    style {
+        .autodown-wikilink-node {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.125rem;
+          vertical-align: middle;
+          cursor: pointer;
+          border-radius: 0.25rem;
+          padding: 0 0.125rem;
+          color: hsl(var(--primary, 238 55% 58%));
+          background: hsl(var(--primary, 238 55% 58%) / 0.08);
+          transition: background 0.15s ease;
+        }
+        .autodown-wikilink-node:hover {
+          background: hsl(var(--primary, 238 55% 58%) / 0.14);
+        }
+
+        .autodown-wikilink-label {
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+
+        .autodown-wikilink-edit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+        .autodown-wikilink-node:hover .autodown-wikilink-edit,
+        .autodown-wikilink-node.is-selected .autodown-wikilink-edit {
+          opacity: 1;
+        }
+
+        .autodown-wikilink-input {
+          width: auto;
+          min-width: 8rem;
+          font: inherit;
+          color: inherit;
+          background: hsl(var(--background, 0 0% 100%));
+          border: 1px solid hsl(var(--ring, 238 55% 58%));
+          border-radius: 0.25rem;
+          padding: 0 0.25rem;
+          outline: none;
+          box-shadow: 0 0 0 2px hsl(var(--ring, 238 55% 58%) / 0.2);
+        }
+    }
+}

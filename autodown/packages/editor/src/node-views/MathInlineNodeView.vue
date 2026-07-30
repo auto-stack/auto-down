@@ -1,61 +1,84 @@
+<!-- MathInlineNodeView component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { NodeViewWrapper } from '@tiptap/vue-3'
-import type { NodeViewProps } from '@tiptap/vue-3'
-import katex from 'katex'
+import { ref, computed, onMounted, watch } from 'vue'
+import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
+import { nextTick } from 'vue'
+import { renderKatexPreview, setInnerHTML, strOr } from '../auto/src/front/utils/node_view_ext'
 
-const props = defineProps<NodeViewProps>()
 
-const source = computed(() => props.node.attrs.source as string || '')
-const html = ref('')
-const error = ref<string | null>(null)
+const html = ref<string>('')
+const error_text = ref<string>('')
 
-function render() {
-  try {
-    html.value = katex.renderToString(source.value, {
-      throwOnError: true,
-      displayMode: false,
-    })
-    error.value = null
-  } catch (e: any) {
-    error.value = e.message || String(e)
-    html.value = ''
-  }
-}
+const previewEl = ref<HTMLElement | null>(null)
 
-watch(() => source.value, render, { immediate: true })
+const source = computed<any>(() => strOr(props.node.attrs.source, ''))
+const source_label = computed<string>(() => '$' + source.value + '$')
+const show_preview = computed<boolean>(() => error_text.value === '')
+const show_error = computed<boolean>(() => error_text.value !== '')
+
+const props = defineProps<{
+  node: any
+  editor: any
+  updateAttributes: any
+  selected: boolean
+  extension: any
+  getPos: any
+  deleteNode: any
+  decorations: any[]
+}>()
+
+const emit = defineEmits<{
+}>()
+
+watch(source, () => {
+  let result = renderKatexPreview(source.value, false);
+  html.value = result.html;
+  error_text.value = result.error;
+  nextTick(() => { setInnerHTML(previewEl.value!, result.html);
+   });
+})
+
+onMounted(() => {
+
+  let result = renderKatexPreview(source.value, false);
+  html.value = result.html;
+  error_text.value = result.error;
+  nextTick(() => { setInnerHTML(previewEl.value!, result.html);
+   });
+})
+
+
 </script>
 
 <template>
-  <NodeViewWrapper
-    as="span"
-    class="autodown-math-inline"
-    data-math-inline
-  >
-    <span
-      v-if="!error"
-      class="autodown-math-inline-preview"
-      v-html="html"
-    />
-    <span
-      v-else
-      class="autodown-math-inline-error"
-      title="Math preview error"
-    >
-      ${{ source }}$
-    </span>
-  </NodeViewWrapper>
+    <NodeViewWrapper :data-math-inline="''" :as="'span'" :class="'autodown-math-inline'" :key="'NodeViewWrapper-1'">
+      <template v-if="show_preview">
+        <span class="autodown-math-inline-preview" ref="previewEl" />
+      </template>
+      <template v-if="show_error">
+        <span class="autodown-math-inline-error" :title="'Math preview error'">
+          <span>{{ source_label }}</span>
+        </span>
+      </template>
+    </NodeViewWrapper>
+
 </template>
 
-<style scoped>
-.autodown-math-inline {
-  display: inline;
-}
-.autodown-math-inline-preview {
-  display: inline;
-}
-.autodown-math-inline-error {
-  color: hsl(var(--destructive, 0 72% 51%));
-  text-decoration: wavy underline;
-}
+<style>
+/* Component styles */
+
 </style>
+
+<style scoped>
+
+        .autodown-math-inline {
+          display: inline;
+        }
+        .autodown-math-inline-preview {
+          display: inline;
+        }
+        .autodown-math-inline-error {
+          color: hsl(var(--destructive, 0 72% 51%));
+          text-decoration: wavy underline;
+        }
+    </style>

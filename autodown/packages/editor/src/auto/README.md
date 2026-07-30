@@ -1,17 +1,28 @@
 # Auto widget sources for @autodown/editor
 
 `src/components/CodeLanguageIcon.vue`, `src/menus/SlashMenu.vue`,
-`src/menus/BubbleMenu.vue`, `src/menus/TableMenu.vue` and
-`src/menus/CodeBlockMenu.vue` are
+`src/menus/BubbleMenu.vue`, `src/menus/TableMenu.vue`,
+`src/menus/CodeBlockMenu.vue`, the seven node views
+`src/node-views/DetailsNodeView.vue`, `WikiLinkNodeView.vue`,
+`QueryBlockNodeView.vue`, `BlockEmbedNodeView.vue`,
+`MermaidNodeView.vue`, `MathBlockNodeView.vue`,
+`MathInlineNodeView.vue` and the top-level assembly component's inner
+half `src/core/AutoDownEditorInner.vue` are
 generated from Auto language widget DSL sources in this directory by the
-Auto compiler.
+Auto compiler. The public `src/core/AutoDownEditor.vue` is a thin
+hand-written shell around the generated inner (see the AutoDownEditor
+section below); the original fully hand-written version is kept as
+`src/core/AutoDownEditor.vue.bak`. With this, the editor package's Vue
+component layer is 100% Auto-generated except that shell (Tiptap
+extensions and CSS stay hand-written by design).
 
-**Compiler**: use the phase3 worktree binary
-`D:/autostack/auto-lang/.worktree/phase3-dsl-capabilities/target/debug/auto.exe`.
-The 3.0a/3.0b DSL capabilities this project relies on (quoted custom
-events, `style_obj`, `dyn`, `watch`, `use { fn/composable }`) are not
-merged back to master — do NOT use the main `D:/autostack/auto-lang`
-binary.
+**Compiler**: use the master binary
+`D:/autostack/auto-lang/target/debug/auto.exe`. The 3.0a/3.0b DSL
+capabilities this project relies on (quoted custom events, `style_obj`,
+`dyn`, `watch`, `use { fn/composable }`, closures) were merged back to
+master (merge commit `1ecc13e3`); the phase3 worktree binary
+`D:/autostack/auto-lang/.worktree/phase3-dsl-capabilities/target/debug/auto.exe`
+also works but is no longer required.
 
 ## Layout
 
@@ -28,6 +39,60 @@ binary.
 - `src/front/code_block_menu.at` — the `CodeBlockMenu` widget (port of the
   original hand-written `src/menus/CodeBlockMenu.vue`, kept as
   `src/menus/CodeBlockMenu.vue.bak`)
+- `src/front/details_node_view.at` — the `DetailsNodeView` widget (port of
+  the original hand-written `src/node-views/DetailsNodeView.vue`, kept as
+  `src/node-views/DetailsNodeView.vue.bak`)
+- `src/front/wiki_link_node_view.at` — the `WikiLinkNodeView` widget (port,
+  original kept as `src/node-views/WikiLinkNodeView.vue.bak`)
+- `src/front/query_block_node_view.at` — the `QueryBlockNodeView` widget
+  (port, original kept as `src/node-views/QueryBlockNodeView.vue.bak`)
+- `src/front/block_embed_node_view.at` — the `BlockEmbedNodeView` widget
+  (port, original kept as `src/node-views/BlockEmbedNodeView.vue.bak`)
+- `src/front/mermaid_node_view.at` — the `MermaidNodeView` widget (port,
+  original kept as `src/node-views/MermaidNodeView.vue.bak`)
+- `src/front/math_block_node_view.at` — the `MathBlockNodeView` widget
+  (port, original kept as `src/node-views/MathBlockNodeView.vue.bak`)
+- `src/front/math_inline_node_view.at` — the `MathInlineNodeView` widget
+  (port, original kept as `src/node-views/MathInlineNodeView.vue.bak`)
+- `src/front/auto_down_editor.at` — the `AutoDownEditorInner` widget (port
+  of the original hand-written `src/core/AutoDownEditor.vue` assembly
+  component, kept as `src/core/AutoDownEditor.vue.bak`). The generated
+  SFC is copied to `src/core/AutoDownEditorInner.vue` and wrapped by the
+  thin hand-written shell `src/core/AutoDownEditor.vue` — see the
+  AutoDownEditor section below.
+- `src/composables/renderPreview.ts` (editor tree) — the real KaTeX /
+  Mermaid preview rendering for the three render-type node views
+  (`renderKatexPreview`, `renderMermaidPreview`, `setInnerHTML`): the npm
+  library calls, the try/catch error paths and the imperative v-html
+  replacement genuinely cannot live in the DSL. Re-exported through
+  `utils/node_view_ext.ts` via a `../../../../composables/...` path that
+  resolves in both trees (same trick as `tiptapNodeView`).
+- `stubs/gen_renderPreview.ts` — gen-project stub for that module (the
+  gen project has no katex/mermaid dependency), mirrored into
+  `gen/front/vue/src/composables/renderPreview.ts` by the regen script.
+  Never ships.
+- `src/front/utils/node_view_ext.ts` — hand-written TS extension shared by
+  the seven node-view widgets: the tiptap `NodeViewWrapper`/`NodeViewContent`
+  re-exports (dual-resolution shim, same trick as the BubbleMenu wrapper),
+  the `[[title#blockId]]` regex parser (the DSL has no regex literals), the
+  WikiLink Pencil / Details inline-SVG edit icons (rendered via `dyn`),
+  `normalizeQueryResults` (per-item template fallbacks/interpolations are
+  not expressible in the view), `strOr`/`orNull` (standalone `||` computeds
+  are mis-typed `computed<boolean>` — the noResultsOr gap) and
+  `focusAndSelect` (DSL template refs are typed `HTMLElement`; `.select()`
+  needs an input element and there is no cast), and the
+  `renderKatexPreview`/`renderMermaidPreview`/`setInnerHTML` re-exports
+  from `src/composables/renderPreview.ts` for the three render-type node
+  views (same dual-resolution shim). See the extension's header
+  comment and the NodeView section below.
+- `src/composables/tiptapNodeView.ts` (editor tree) — the real re-export
+  of `NodeViewWrapper`/`NodeViewContent` from `@tiptap/vue-3`. The node-view
+  extension imports it via a `../../../../composables/...` path that
+  resolves in both trees (same trick as `tiptapBubbleMenu`).
+- `stubs/gen_tiptapNodeView.ts` — gen-project stub for that module,
+  mirrored into `gen/front/vue/src/composables/tiptapNodeView.ts` by the
+  regen script. Never ships: the copied node-view SFCs resolve the real
+  module in the editor tree.
 - `src/front/utils/slash_menu_ext.ts` — hand-written TS extension imported
   by `slash_menu.at` via `use { fn: ... }`. Only two things remain (both
   genuinely inexpressible in the DSL — see the SlashMenu section below):
@@ -73,6 +138,31 @@ binary.
   `gen/front/vue/src/composables/tiptapBubbleMenu.ts` by the regen script.
   Never ships: the copied `src/menus/BubbleMenu.vue` resolves the real
   module in the editor tree.
+- `src/front/utils/auto_down_editor_ext.ts` — hand-written TS extension
+  for `auto_down_editor.at`: the `useAutoDownEditorBridge` composable
+  (the DSL's `composable:` imports are called with ZERO arguments, so the
+  `useAutoDownEditor` options object is assembled there from the component
+  instance's props; `useAutoDownEditor.ts` itself is untouched), the
+  30-item static slash command manifest `getSlashItems` (lucide icons as
+  data + block-body command closures with `window.prompt` /
+  `navigator.clipboard` / DOM walking — same class of gap as
+  `bubbleIcon`), `normalizeAnchors` (no regex literals in the DSL), the
+  `EditorContent` / four-menu component re-exports (dual-resolution shim)
+  and the Check/X lucide re-exports for the `dyn` render trick. See the
+  AutoDownEditor section below.
+- `src/composables/tiptapEditorContent.ts` (editor tree) — the real
+  re-export of `EditorContent` from `@tiptap/vue-3`, plus the
+  `katex/dist/katex.min.css` side-effect import (the original
+  AutoDownEditor.vue imported it at module scope; the gen project has no
+  katex dependency, so the stub omits it). Same dual-resolution trick as
+  `tiptapBubbleMenu`.
+- `stubs/gen_tiptapEditorContent.ts`, `stubs/gen_useAutoDownEditor.ts`,
+  `stubs/gen_slashItem.ts`, `stubs/gen_menus/*.vue` — gen-project stubs
+  for `tiptapEditorContent.ts`, `useAutoDownEditor.ts`,
+  `src/menus/slashItem.ts` (the real one imports `@tiptap/core` types)
+  and the four menu SFCs re-exported by `auto_down_editor_ext.ts`;
+  mirrored into `gen/front/vue/src/composables/` resp.
+  `gen/front/vue/src/menus/` by the regen script. Never ship.
 - `src/front/app.at` — placeholder root widget. The generator always emits
   the root widget as `App.vue`; secondary widgets land in
   `gen/front/vue/src/components/<Name>.vue`. The dummy App exists only so
@@ -96,7 +186,23 @@ cp ../composables/useMenuBounds.ts gen/front/vue/src/composables/useMenuBounds.t
 # the real component from @tiptap/vue-3/menus; the gen project (no @tiptap
 # dependency) gets the behavior-free stub.
 cp stubs/gen_tiptapBubbleMenu.ts gen/front/vue/src/composables/tiptapBubbleMenu.ts
-D:/autostack/auto-lang/.worktree/phase3-dsl-capabilities/target/debug/auto.exe build -d .
+# Same trick for the tiptap NodeViewWrapper/NodeViewContent re-export.
+cp stubs/gen_tiptapNodeView.ts gen/front/vue/src/composables/tiptapNodeView.ts
+# Same trick for the KaTeX/Mermaid preview rendering used by the three
+# render-type node views (the gen project has no katex/mermaid dependency).
+cp stubs/gen_renderPreview.ts gen/front/vue/src/composables/renderPreview.ts
+# Same trick for the AutoDownEditorInner widget: tiptap EditorContent
+# (the real module also carries the katex CSS import), useAutoDownEditor,
+# the SlashItem type and the four menu SFCs re-exported by
+# auto_down_editor_ext.ts.
+cp stubs/gen_tiptapEditorContent.ts gen/front/vue/src/composables/tiptapEditorContent.ts
+cp stubs/gen_useAutoDownEditor.ts gen/front/vue/src/composables/useAutoDownEditor.ts
+mkdir -p gen/front/vue/src/menus
+cp stubs/gen_slashItem.ts gen/front/vue/src/menus/slashItem.ts
+cp stubs/gen_menus/SlashMenu.vue stubs/gen_menus/BubbleMenu.vue \
+   stubs/gen_menus/TableMenu.vue stubs/gen_menus/CodeBlockMenu.vue \
+   gen/front/vue/src/menus/
+D:/autostack/auto-lang/target/debug/auto.exe build -d .
 cd ..
 cp src/auto/gen/front/vue/src/components/CodeLanguageIcon.vue src/components/CodeLanguageIcon.vue
 # The generated SFC imports the extension via the gen-only `@/ext/...`
@@ -109,6 +215,13 @@ sed 's|@/ext/src/front/utils/table_menu_ext|../auto/src/front/utils/table_menu_e
   src/auto/gen/front/vue/src/components/TableMenu.vue > src/menus/TableMenu.vue
 sed 's|@/ext/src/front/utils/code_block_menu_ext|../auto/src/front/utils/code_block_menu_ext|g' \
   src/auto/gen/front/vue/src/components/CodeBlockMenu.vue > src/menus/CodeBlockMenu.vue
+for w in DetailsNodeView WikiLinkNodeView QueryBlockNodeView BlockEmbedNodeView \
+         MermaidNodeView MathBlockNodeView MathInlineNodeView; do
+  sed 's|@/ext/src/front/utils/node_view_ext|../auto/src/front/utils/node_view_ext|g' \
+    src/auto/gen/front/vue/src/components/$w.vue > src/node-views/$w.vue
+done
+sed 's|@/ext/src/front/utils/auto_down_editor_ext|../auto/src/front/utils/auto_down_editor_ext|g' \
+  src/auto/gen/front/vue/src/components/AutoDownEditorInner.vue > src/core/AutoDownEditorInner.vue
 ```
 
 （注意：`-d` 只接受项目目录本身（如 `-d .`），从包根 `-d src/auto` 会报
@@ -394,6 +507,168 @@ bodies. The logic has since flowed back into the widget. What remains in
     in the extension as `CODE_BLOCK_LANGUAGES` / `CodeBlockLanguage`
     (with the required `aliases` field, note 4).
 
+## NodeView workarounds (in addition to the menu ones above)
+
+The four interactive node views (DetailsNodeView, WikiLinkNodeView,
+QueryBlockNodeView, BlockEmbedNodeView) are widget DSL ports of the
+original `src/node-views/*.vue` (kept as `.bak`). The `VueNodeViewRenderer`
+adapter layers in `src/extensions/` are untouched — only the Vue
+components are generated. All seven/eight NodeViewProps fields are
+declared on each widget (`Array<str>` = any, `[]str` = any[], `selected:
+bool`) so nothing falls through as attrs onto the root element, matching
+the originals' `defineProps`. New probe-verified gaps, first hit by these
+widgets:
+
+1. **Ternary emits `undefined` in computeds.** `cond ? a : b` desugars to
+   an If expression the computed codegen does not handle (same class of
+   bug as `??`). The `&&` / `||` idiom is used instead — but see 2.
+2. **Standalone `&&` / `||` computeds are mis-typed `computed<boolean>`**
+   (extends the noResultsOr note): vue-tsc rejects a string-returning
+   getter under the explicit `<boolean>` generic, and boolean-typed values
+   break downstream string assignments/concatenations. All such fallbacks
+   route through the extension's typed `strOr` / `orNull`
+   (`strOr(cond && "x", "y")`, `strOr(props.node.attrs.summary, "Details")`).
+3. **An object literal as a computed body emits invalid JS**
+   (`() => {raw: ...}` is a block, not an object — and parens are dropped,
+   so the object-literal-returning closure form is unavailable too).
+   Object-literals INSIDE an array literal are fine (the BubbleMenu
+   buttons computed). The originals' `attrs` computed objects become
+   scalar computeds (`attr_raw` / `attr_title` / `attr_block_id`).
+4. **`type:` and `as:` are keyword tokens, not valid brace-form prop
+   names.** The brace-form prop check requires an Ident, so
+   `type: "text"` / `as: "div"` mis-parse into junk `<div>` children. The
+   PAREN prop form accepts any key: `input (type: "text") { ... }`,
+   `NodeViewContent (as: "div") { ... }`.
+5. **Calling a function PROP directly drops the `props.` prefix.**
+   `.updateAttributes({ ... })` emits a bare `updateAttributes(...)`
+   (TS2304). `let`-bind the prop first (`.updateAttributes` field access
+   emits `props.updateAttributes` correctly) and call the local.
+6. **Model vars auto-unwrap in computeds; computed refs do not.**
+   `.loading` in a computed emits `loading.value` (writing `.loading.value`
+   double-unwraps to `loading.value.value`), while another computed still
+   needs the explicit `.filtered.value` form (SlashMenu note 5).
+7. **A msg handler that no view event references is not emitted** — and
+   the DSL `watch` has no `{ immediate: true }` option. The QueryBlock /
+   BlockEmbed `load()` (original: `watch(..., load, { immediate: true })`)
+   is therefore DUPLICATED in `.Init` (onMounted) and the `watch` body —
+   same constraint as SlashMenu's duplicated positioning block.
+8. **`!= null` in a computed emits `!== undefined`** (handlers emit
+   `!= null` correctly). For a model var that can be null this is wrong
+   (`null !== undefined` is true) — BlockEmbed's `show_block` uses bare
+   truthiness (`.block`) instead, matching the original's `v-else-if="block"`.
+9. **`code` / `ul` / `li` are not in the DSL element table** and fall back
+   to `<div>`. `ul`/`li` would be pixel-identical as divs (the scoped CSS
+   resets list-style/padding/margin), but `<code>` gets its monospace from
+   the UA stylesheet — so all three render via `dyn` with a string tag
+   (`code_tag => "code"`, `dyn (.code_tag) { ... }` →
+   `<component :is="(code_tag) as any">` renders a real `<code>`; children
+   and `v-for` inside dyn blocks work).
+10. **The widget `style { ... }` block is emitted verbatim into
+    `<style scoped>`** — the originals' scoped CSS moves in unchanged.
+    Caveat: the style-block lexer handles `/* */` comments and CSS strings
+    but NOT `//` comments — an apostrophe (e.g. `original's`) starts a CSS
+    string and fails the build with "unterminated string in style block".
+11. **NodeViewContent's `v-show` becomes `style_obj` display.** The DSL has
+    no v-show; `style_obj: { display: .content_display }` with
+    `content_display => strOr(!.is_open.value && "none", "")` toggles the
+    same inline style (Vue drops the empty-string value). Unmounting the
+    content with `if` is NOT equivalent — it would break ProseMirror's
+    editable content DOM.
+12. **NodeViewWrapper/NodeViewContent via the dual-resolution shim**
+    (BubbleMenu note 2 pattern): `src/composables/tiptapNodeView.ts`
+    re-exports the real components in the editor tree;
+    `stubs/gen_tiptapNodeView.ts` is mirrored into the gen project.
+13. **The originals' `typeof x === 'function'` guards become `!= null` /
+    `== null`** (the DSL has no typeof). Differs only when
+    `openWikiLink`/`loadBlock` is configured to a non-function truthy
+    value, which never happens.
+14. **Promise-based async without async/await.** The DSL has no
+    async/await/try/finally, so the originals' async `load()` becomes a
+    two-callback `.then(res => { ... }, err => { ... })` (resolve = try,
+    reject = catch, the finally's `loading = false` duplicated into both).
+    `String(err)` passes through verbatim (like `btoa`).
+15. **The modifier-only `@click.stop` targets a `Noop` handler** (the DSL
+    requires a handler); it emits a no-op component event with no
+    listener — same behaviour as the original's modifier-only binding.
+16. **No defineExpose in any of the four originals**, so the DSL's lack of
+    expose support is irrelevant here (contrast CodeBlockMenu note 10).
+    The `WikiLinkAttrs`/`QueryResult`/`BlockInfo` interfaces were local
+    and unexported, so no `slashItem.ts`-style type split was needed.
+
+## Render NodeView workarounds (Mermaid / MathBlock / MathInline)
+
+The three render-type node views (MermaidNodeView, MathBlockNodeView,
+MathInlineNodeView) are widget DSL ports of the original
+`src/node-views/*.vue` (kept as `.bak`). The `VueNodeViewRenderer`
+adapters in `src/extensions/` are untouched. New gaps first hit by
+these widgets:
+
+1. **katex/mermaid rendering lives in `src/composables/renderPreview.ts`**
+   (re-exported through `utils/node_view_ext.ts` via the dual-resolution
+   shim; gen stub `stubs/gen_renderPreview.ts`). The DSL cannot import
+   npm packages and has no try/catch, so the originals' render() error
+   paths return `{ html/svg, error }` data instead (`""` error = the
+   originals' `null`; falsy either way). The call sequences
+   (mermaid.initialize options, random id shape, katex
+   throwOnError/displayMode, error message extraction) are verbatim.
+2. **v-html becomes imperative innerHTML.** The DSL has no v-html, so the
+   preview element renders EMPTY (`div { ref: "previewEl", ... }`) and is
+   filled by `setInnerHTML(.previewEl, ...)` inside `nextTick(() => ...)`
+   after the model vars flip (the element must re-mount first — the error
+   branch unmounts it, and setInnerHTML null-guards). Rendered DOM
+   identical to the originals' v-html once mounted.
+3. **Mermaid's async render needs only ONE .then callback** —
+   renderMermaidPreview never rejects (its try/catch returns the error as
+   data), so a single resolve callback carries both the original's try
+   and catch branches (contrast QueryBlock's two-callback .then for a
+   rejecting promise).
+4. **`:deep(...)` passes the style-block lexer verbatim** (first use:
+   `.autodown-mermaid-preview :deep(svg)` / `:deep(.katex-display)`) —
+   required because the imperatively filled innerHTML carries no scoped
+   data attribute.
+5. **Bare string concatenation works in computeds** —
+   `source_label => "$" + .source.value + "$"` (the MathInline error
+   fallback's `${{ source }}$` interpolation) emits
+   `'$' + source.value + '$'` correctly. Only PARENTHESIZED receivers
+   mis-codegen (SlashMenu note 6).
+6. **MathInline's source comes from node.attrs, not textContent** (the
+   inline node has no editable content — no NodeViewContent), and its
+   wrapper is `NodeViewWrapper (as: "span")`.
+7. **The originals exported no types** (the extensions import only the
+   components), so no `slashItem.ts`-style type split was needed.
+
+### Minor generated-output differences (Render NodeViews)
+
+(behaviorally identical DOM, on top of the NodeView list above):
+
+- The preview element is empty in the template and filled via
+  `setInnerHTML` after mount/update instead of `v-html` (note 2); the
+  `v-if` branches are wrapped in transparent `<template>`s; the error
+  text renders inside an extra inline `<span>`; `data-mermaid-block` /
+  `data-math-block` / `data-math-inline` bind the empty string (identical
+  to the originals' valueless attributes); the `<code>` child of
+  NodeViewContent renders as `<component :is="'code'">`; the `null` error
+  sentinel is `""` (falsy either way).
+
+### Minor generated-output differences (NodeViews)
+
+(behaviorally identical DOM):
+
+- The `v-if` branches are wrapped in transparent `<template>`s; texts
+  render inside an extra inline `<span>`; `v-for` items carry no `:key`;
+  static attrs are bound (`:type="'text'"`, `:as="'div'"`,
+  `:title="'...'"`); NodeViewWrapper/NodeViewContent get an auto-generated
+  `:key`; handlers emit no-op component events (SummaryInput/InputInput
+  are never even called — the v-model fold); `@keydown.escape` becomes
+  `@keydown.esc` (Vue alias); Details' input v-else and WikiLink's
+  two-span `v-if` group become sibling `v-if`s (same rendered branch);
+  the icons render as `<component :is>`; `data-query-block` binds the
+  empty string (renders `data-query-block=""` — identical to the
+  original's valueless attribute); the QueryBlock error/`block` refs use
+  the `""`/`undefined` sentinels instead of `null` (falsy either way);
+  `model = null` initializes as `undefined` (SlashMenu precedent).
+
+
 ### Minor generated-output differences (CodeBlockMenu)
 
 (behaviorally identical DOM):
@@ -408,6 +683,118 @@ bodies. The logic has since flowed back into the widget. What remains in
   the empty-list check binds the named `is_empty` computed instead of
   `filteredLanguages.length === 0`.
 
+
+## AutoDownEditor (Inner) notes — the assembly component + shell split
+
+`auto_down_editor.at` ports the original `src/core/AutoDownEditor.vue`
+(421 lines, kept as `.bak`): EditorContent + the four menus gated on the
+editor instance + the Save/Cancel action buttons, the content/canEdit
+prop watches and the view-originated events all live in the DSL. The
+generated SFC is copied to `src/core/AutoDownEditorInner.vue`; the
+public `src/core/AutoDownEditor.vue` is a ~130-line hand-written SHELL
+around it that owns the four things the DSL cannot express (contract
+unchanged — demo's `getBlockMap()`/`@update` and jade-garden's `$el`/
+`@open-wiki-link` consume them):
+
+1. **Emit names.** DSL component events are PascalCase-only, so the
+   contractual lowercase/hyphenated names (`update`, `save`, `cancel`,
+   `blur`, `focus`, `link-click`, `open-wiki-link`) are re-emitted by the
+   shell. Two channels connect inner and shell (see 2 below for why):
+   view-originated clicks use normal DSL msg events (`@SaveRequest`,
+   `@Cancel` — view-referenced, so they ARE declared in `defineEmits`),
+   while bridge-originated callbacks (tiptap's onUpdate/onBlur/onFocus/
+   onLinkClick/onOpenWikiLink + the editor-instance report) travel
+   through callback PROPS (`updateCb`, `blurCb`, ..., `editorReadyCb`)
+   read live from the component instance.
+2. **`defineEmits` only declares view-referenced handlers** (Plan 367
+   P1-4). A component event emitted from OUTSIDE the view (the
+   extension's bridge, via `getCurrentInstance().emit`) would be
+   undeclared — and with `defineEmits` present, undeclared `@Foo`
+   listeners fall through as attrs onto the single root element, where
+   Vue registers them as NATIVE DOM listeners (`blur`/`focus` don't
+   bubble, but the pollution and the double-delivery risk are real).
+   Hence callback props for everything the bridge originates.
+3. **defineExpose.** The DSL has no expose support; the shell exposes
+   `{ editor, handleSave, getBlockMap }` verbatim. It also means the
+   exposed `handleSave` and the Save button share ONE code path (the
+   button emits `SaveRequest`, the shell's `handleSave` computes
+   `getMarkdown` + `appendTableIAL` and emits `save`) — the original
+   could share it directly.
+4. **Slots + runtime prop defaults.** The DSL has no slot support and
+   generated prop defaults are not applied at runtime. The shell keeps
+   the original `withDefaults` (arriving resolved via `v-bind="$props"`)
+   and passes the `save-label`/`cancel-label` slots as FUNCTIONAL
+   COMPONENTS (`() => slots['save-label']?.() ?? props.saveLabel`),
+   rendered by the inner via `dyn` — identical rendered DOM to the
+   original's `<slot name="save-label">{{ saveLabel }}</slot>`.
+
+New probe/codegen-confirmed gaps first hit by this widget:
+
+5. **`use { composable: ... }` calls take ZERO arguments.** The codegen
+   emits `const x = useX()` at `<script setup>` top level, so the
+   `useAutoDownEditor` options object (props + emit-bridging callbacks)
+   cannot be assembled in the DSL. The extension's
+   `useAutoDownEditorBridge` reads the resolved props (and callback
+   props) from `getCurrentInstance()` and returns the slash items; the
+   timing still satisfies tiptap's `useEditor` (its onMounted/
+   onBeforeUnmount register inside this setup-scope call).
+   `useAutoDownEditor.ts` itself is untouched.
+6. **The composable local name is derived, not choosable.** `useFooBar`
+   binds to `fooBar` (strip `use`, lowercase first letter) — view code
+   must reference THAT name (a first draft referenced an imagined
+   `slashItemsBridge` and vue-tsc rejected it). A composable local CAN be
+   referenced in a view prop binding: `items: .autoDownEditorBridge`
+   hits the codegen's dot-strip rule and emits the bare local verbatim
+   (`:items="autoDownEditorBridge"`), which is exactly what a setup-scope
+   plain-array const needs. (Refs would NOT auto-unwrap through such a
+   nested path — the bridge deliberately returns a plain array, and the
+   editor instance travels as a PROP instead: bridge creates it, reports
+   it via `editorReadyCb`, the shell passes it back down as `editor`,
+   which gates the menus via `if .editor`.)
+7. **An empty msg handler body does not parse.** The pure-emit handlers
+   (`SaveRequest`/`Cancel` — all the work lives in the shell) carry a
+   `let noop = 0` statement (`noUnusedLocals` is off in the gen tsconfig,
+   so it is inert).
+8. **Bare `dyn (.someProp)` with no props block parses fine** and emits
+   `<component :is="(someProp) as any" />` — used for the slot-bridging
+   functional components (passing extra attrs to them would warn about
+   extraneous attrs on fragment roots, so they get none).
+9. **All original props must be declared on the inner widget** (26 of
+   them, wide `Array<str>`/`[]str` types as usual) — anything undeclared
+   would fall through as an attr onto the root `.autodown-editor` div.
+   The shell's `class="fill"` (demo) DOES intentionally fall through two
+   levels (shell → inner → root div), matching the original's single-root
+   fallthrough; jade-garden's `editorRef.value.$el` likewise resolves to
+   the same root element.
+10. **The katex CSS side-effect import moved to
+    `src/composables/tiptapEditorContent.ts`** (the dual-resolution
+    EditorContent shim) — the gen project's stub omits it (no katex
+    dependency), the editor tree bundles it exactly as before.
+11. **The inner manually sets `inst.exposed = { editor }`** (in the
+    bridge) — the defineExpose equivalent the DSL cannot emit. The
+    original component's root `.autodown-editor` div belonged to the
+    component that exposed the editor, and consumers reaching through the
+    DOM (the demo e2e reads
+    `el.__vueParentComponent.exposed.editor.value`) depend on that shape;
+    the div is now the inner's root, so the inner exposes the editor ref.
+    This is independent of the shell's own defineExpose (which serves
+    template-ref consumers: demo's `getBlockMap()`, jade-garden's `$el`).
+
+### Minor generated-output differences (AutoDownEditorInner)
+
+(behaviorally identical DOM):
+
+- The four menus' separate `v-if="editor"` directives become one shared
+  transparent `<template v-if>` wrapper; the action buttons' `if` is a
+  transparent template too; EditorContent and each menu get an
+  auto-generated `:key` (harmless); EditorContent's static class is bound
+  (`:class="'autodown-editor-content-wrapper'"`); the Save/Cancel labels
+  render through `<component :is>` functional components instead of
+  literal `<slot>` tags (same nodes); the handlers carry inert
+  `let noop` statements; `==`/`!=` are emitted instead of `===`/`!==`;
+  the menus mount one prop-hop later than the original (editor created in
+  the inner's onMounted → reported to the shell → passed back down as a
+  prop — same tick cascade, indistinguishable in the e2e screenshots).
 
 ## Minor generated-output differences vs the original hand-written SFCs
 

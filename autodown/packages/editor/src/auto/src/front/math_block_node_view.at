@@ -1,0 +1,140 @@
+// math_block_node_view.at — MathBlockNodeView widget: Auto widget DSL port
+// of the original hand-written src/node-views/MathBlockNodeView.vue. The
+// generated SFC replaces it (see src/auto/README.md). All widget logic
+// lives here in the DSL; the shared hand-written extension
+// utils/node_view_ext.ts keeps the tiptap NodeViewWrapper/NodeViewContent
+// re-exports (dual-resolution shim) and re-exports
+// renderKatexPreview/setInnerHTML from src/composables/renderPreview.ts
+// (npm imports, try/catch and v-html are inexpressible in the DSL; see
+// renderPreview.ts's header comment).
+//
+// Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
+// to `any[]`. All eight NodeViewProps fields are declared (the original
+// used defineProps<NodeViewProps>()) so nothing falls through as attrs.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see
+// details_node_view.at / query_block_node_view.at / mermaid_node_view.at:
+// - The original's html/error refs become model vars with the "" sentinel
+//   (the originals used null; falsy either way).
+// - The original's v-html becomes an EMPTY preview div filled imperatively
+//   via setInnerHTML(.previewEl, ...) inside nextTick (the DSL has no
+//   v-html; the error branch unmounts the div — setInnerHTML null-guards).
+// - The original's v-if="!error" / v-else chain becomes two exclusive
+//   named-boolean computeds. Note !error is TRUE on the empty source too,
+//   so the preview div renders (empty) initially — same as the original.
+// - render() runs on mount via .Init and on source changes via watch —
+//   the original's watch(..., { immediate: true }) (the DSL watch has no
+//   immediate option; the body is DUPLICATED because a msg handler that
+//   no view event references is not emitted). KaTeX rendering is
+//   synchronous, so no promise dance here (contrast mermaid_node_view.at).
+// - `as:` in PAREN form (keyword token); the <code> child renders via dyn
+//   with a string tag (not in the DSL element table).
+// - The bare data-math-block attribute binds the empty string (renders
+//   data-math-block="" — identical DOM to the original's valueless attr).
+
+widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
+    use {
+        fn: nextTick from "vue"
+        component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
+        fn: renderKatexPreview, setInnerHTML, strOr from "src/front/utils/node_view_ext.ts"
+    }
+
+    msg Msg { Init }
+
+    model {
+        var html str = ""
+        var error_text str = ""
+    }
+
+    computed {
+        // The original's computed(() => props.node.textContent || '').
+        source => strOr(.node.textContent, "")
+        code_tag => "code"
+        // The original's v-if="!error" / v-else chain (same rendered
+        // branch in every state, including the initial empty source).
+        show_preview => .error_text == ""
+        show_error => .error_text != ""
+    }
+
+    view {
+        NodeViewWrapper (as: "div") {
+            class: "autodown-math-block",
+            data-math-block: "",
+
+            if .show_preview {
+                // v-html replacement: empty div, filled imperatively by
+                // setInnerHTML after each render (see header).
+                div { ref: "previewEl", class: "autodown-math-preview" }
+            }
+            if .show_error {
+                div {
+                    class: "autodown-math-error",
+                    title: "Math preview error",
+                    text .error_text
+                }
+            }
+            NodeViewContent (as: "pre") {
+                class: "math-block-source",
+                dyn (.code_tag) {}
+            }
+        }
+    }
+
+    watch {
+        // The original's watch(() => source.value, render) — the immediate
+        // run happens in .Init (the DSL watch has no immediate option; the
+        // body is DUPLICATED — see mermaid_node_view.at).
+        .source -> {
+            let result = renderKatexPreview(.source.value, true)
+            .html = result.html
+            .error_text = result.error
+            nextTick(() => {
+                setInnerHTML(.previewEl, result.html)
+            })
+        }
+    }
+
+    on {
+        .Init -> {
+            // render() — duplicated in the watch above.
+            let result = renderKatexPreview(.source.value, true)
+            .html = result.html
+            .error_text = result.error
+            nextTick(() => {
+                setInnerHTML(.previewEl, result.html)
+            })
+        }
+    }
+
+    style {
+        .autodown-math-block {
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--card, 0 0% 100%));
+          overflow: hidden;
+        }
+        .autodown-math-preview {
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+        }
+        .autodown-math-preview :deep(.katex-display) {
+          margin: 0;
+        }
+        .autodown-math-error {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          color: hsl(var(--destructive, 0 72% 51%));
+          background: hsl(var(--destructive/10, 0 72% 51% / 0.1));
+        }
+        .math-block-source {
+          margin: 0;
+          border-top: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0;
+          background: hsl(var(--muted, 210 20% 96%));
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+          white-space: pre-wrap;
+        }
+    }
+}

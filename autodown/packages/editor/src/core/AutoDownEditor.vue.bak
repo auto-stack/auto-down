@@ -1,0 +1,422 @@
+<template>
+  <div class="autodown-editor" :class="{ 'is-focused': focused }">
+    <EditorContent :editor="editor" class="autodown-editor-content-wrapper" />
+    <BubbleMenuVue v-if="editor" :editor="editor" :link-prompt="linkUrlPrompt" />
+    <SlashMenu v-if="editor" :editor="editor" :items="slashItems" />
+    <TableMenu v-if="editor" :editor="editor" />
+    <CodeBlockMenu v-if="editor" :editor="editor" />
+    <div v-if="showActions" class="autodown-editor-actions">
+      <button class="autodown-save-btn" @click="handleSave">
+        <Check :size="13" />
+        <slot name="save-label">{{ saveLabel }}</slot>
+      </button>
+      <button class="autodown-cancel-btn" @click="emit('cancel')">
+        <X :size="13" />
+        <slot name="cancel-label">{{ cancelLabel }}</slot>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, watch } from 'vue'
+import { EditorContent } from '@tiptap/vue-3'
+import { useAutoDownEditor } from '../composables/useAutoDownEditor'
+import { appendTableIAL } from '../extensions/tableAttributes'
+import { getBlockMap } from '../extensions/BlockId'
+import BubbleMenuVue from '../menus/BubbleMenu.vue'
+import SlashMenu from '../menus/SlashMenu.vue'
+import type { SlashItem } from '../menus/slashItem'
+import TableMenu from '../menus/TableMenu.vue'
+import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
+import {
+  Heading1,
+  Heading2,
+  Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
+  Text,
+  List,
+  ListOrdered,
+  CheckSquare,
+  Code,
+  Quote,
+  Minus,
+  Image,
+  Table as TableIcon,
+  AlertCircle,
+  PanelTop,
+  Sigma,
+  Workflow,
+  Check,
+  X,
+  Link,
+  Search,
+  Square,
+  CircleDot,
+  CheckCircle2,
+  Clock,
+  Timer,
+  ArrowUp,
+} from 'lucide-vue-next'
+import 'katex/dist/katex.min.css'
+
+const props = withDefaults(defineProps<{
+  content: string
+  placeholder?: string
+  canEdit?: boolean
+  autofocus?: boolean
+  showActions?: boolean
+  saveLabel?: string
+  cancelLabel?: string
+  imageUrlPrompt?: string
+  linkUrlPrompt?: string
+  pageTitle?: string
+  onOpenWikiLink?: (title: string, blockId?: string | null) => void
+  loadBlock?: (id: string) => Promise<any | null>
+  extraSlashItems?: SlashItem[]
+  onAssetUpload?: (file: File) => Promise<string>
+  taskWorkflow?: 'todo' | 'now'
+  runQuery?: (q: string) => Promise<any>
+}>(), {
+  canEdit: true,
+  autofocus: false,
+  showActions: true,
+  saveLabel: 'Save',
+  cancelLabel: 'Cancel',
+  imageUrlPrompt: 'Enter image URL',
+  linkUrlPrompt: 'Enter URL',
+})
+
+const emit = defineEmits<{
+  update: [markdown: string]
+  save: [markdown: string]
+  cancel: []
+  blur: []
+  focus: []
+  'link-click': [id: string]
+  'open-wiki-link': [title: string, blockId?: string | null]
+}>()
+
+const baseSlashItems: SlashItem[] = [
+  {
+    title: 'Text',
+    description: 'Plain text',
+    icon: Text,
+    searchTerms: ['p'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setParagraph().run(),
+  },
+  {
+    title: 'Heading 1',
+    description: 'Big section heading',
+    icon: Heading1,
+    searchTerms: ['h1'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run(),
+  },
+  {
+    title: 'Heading 2',
+    description: 'Medium section heading',
+    icon: Heading2,
+    searchTerms: ['h2'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run(),
+  },
+  {
+    title: 'Heading 3',
+    description: 'Small section heading',
+    icon: Heading3,
+    searchTerms: ['h3'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run(),
+  },
+  {
+    title: 'Heading 4',
+    description: 'Fourth level heading',
+    icon: Heading4,
+    searchTerms: ['h4'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 4 }).run(),
+  },
+  {
+    title: 'Heading 5',
+    description: 'Fifth level heading',
+    icon: Heading5,
+    searchTerms: ['h5'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 5 }).run(),
+  },
+  {
+    title: 'Heading 6',
+    description: 'Sixth level heading',
+    icon: Heading6,
+    searchTerms: ['h6'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 6 }).run(),
+  },
+  {
+    title: 'Bullet List',
+    description: 'Bullet list',
+    icon: List,
+    searchTerms: ['ul'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run(),
+  },
+  {
+    title: 'Numbered List',
+    description: 'Numbered list',
+    icon: ListOrdered,
+    searchTerms: ['ol'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
+  },
+  {
+    title: 'Task List',
+    description: 'Task list',
+    icon: CheckSquare,
+    searchTerms: ['task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run(),
+  },
+  {
+    title: 'Code Block',
+    description: 'Code snippet',
+    icon: Code,
+    searchTerms: ['code'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'text' }).run()
+    },
+  },
+  {
+    title: 'Quote',
+    description: 'Quote',
+    icon: Quote,
+    searchTerms: ['blockquote'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
+  },
+  {
+    title: 'Divider',
+    description: 'Horizontal rule',
+    icon: Minus,
+    searchTerms: ['hr'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
+  },
+  {
+    title: 'Image',
+    description: 'Embed image',
+    icon: Image,
+    searchTerms: ['img'],
+    command: ({ editor, range }) => {
+      const url = window.prompt(props.imageUrlPrompt)
+      if (url) editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
+    },
+  },
+  {
+    title: 'Table',
+    description: 'Add table',
+    icon: TableIcon,
+    searchTerms: ['table'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
+  {
+    title: 'Callout',
+    description: 'Admonition / callout box',
+    icon: AlertCircle,
+    searchTerms: ['callout', 'admonition', 'warning', 'tip', 'note'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setCallout({ type: 'note', title: 'Note' }).run()
+    },
+  },
+  {
+    title: 'Details',
+    description: 'Collapsible details block',
+    icon: PanelTop,
+    searchTerms: ['details', 'toggle', 'collapse', 'accordion'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setDetails({ summary: 'Details' }).run()
+    },
+  },
+  {
+    title: 'Math',
+    description: 'Block math formula (KaTeX)',
+    icon: Sigma,
+    searchTerms: ['math', 'katex', 'formula', 'equation', 'latex'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setMathBlock().run()
+    },
+  },
+  {
+    title: 'Mermaid',
+    description: 'Mermaid diagram',
+    icon: Workflow,
+    searchTerms: ['mermaid', 'diagram', 'chart', 'flowchart'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setMermaidBlock().run()
+    },
+  },
+  {
+    title: 'TODO',
+    description: 'Insert a TODO task',
+    icon: Square,
+    searchTerms: ['todo', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- TODO ').run(),
+  },
+  {
+    title: 'DOING',
+    description: 'Insert a DOING task',
+    icon: CircleDot,
+    searchTerms: ['doing', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- DOING ').run(),
+  },
+  {
+    title: 'DONE',
+    description: 'Insert a DONE task',
+    icon: CheckCircle2,
+    searchTerms: ['done', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- DONE ').run(),
+  },
+  {
+    title: 'NOW',
+    description: 'Insert a NOW task',
+    icon: Clock,
+    searchTerms: ['now', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- NOW ').run(),
+  },
+  {
+    title: 'LATER',
+    description: 'Insert a LATER task',
+    icon: Timer,
+    searchTerms: ['later', 'task'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- LATER ').run(),
+  },
+  {
+    title: 'Priority A',
+    description: 'Insert [#A] priority',
+    icon: ArrowUp,
+    searchTerms: ['priority', 'A'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#A] ').run(),
+  },
+  {
+    title: 'Priority B',
+    description: 'Insert [#B] priority',
+    icon: ArrowUp,
+    searchTerms: ['priority', 'B'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#B] ').run(),
+  },
+  {
+    title: 'Priority C',
+    description: 'Insert [#C] priority',
+    icon: ArrowUp,
+    searchTerms: ['priority', 'C'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#C] ').run(),
+  },
+  {
+    title: 'Query',
+    description: 'Insert a query macro',
+    icon: Search,
+    searchTerms: ['query', 'macro'],
+    command: ({ editor, range }) => {
+      const q = window.prompt('Query (e.g. (task TODO DOING))', '(task TODO)')
+      if (q) {
+        editor.chain().focus().deleteRange(range).insertContent(`{{query ${q}}}`).run()
+      }
+    },
+  },
+  {
+    title: 'Block link',
+    description: 'Copy link to current block',
+    icon: Link,
+    searchTerms: ['block link', 'anchor', 'copy link'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      const title = props.pageTitle
+      const id = getCurrentBlockId(editor)
+      if (title && id) {
+        const link = `[[${title}#^${id}]]`
+        navigator.clipboard.writeText(link).catch(() => {})
+      }
+    },
+  },
+]
+
+const slashItems: SlashItem[] = [...baseSlashItems, ...(props.extraSlashItems ?? [])]
+
+function getCurrentBlockId(editor: any): string | null {
+  if (!editor.view) return null
+  const { from } = editor.state.selection
+  const domPos = editor.view.domAtPos(from)
+  let el = domPos.node
+  if (el.nodeType === Node.TEXT_NODE) el = el.parentElement
+  if (!(el instanceof HTMLElement)) return null
+  const blockEl = el.closest('[data-block-id]') as HTMLElement | null
+  return blockEl?.getAttribute('data-block-id') || null
+}
+
+const editor = useAutoDownEditor({
+  content: props.content,
+  placeholder: props.placeholder,
+  editable: props.canEdit,
+  autofocus: props.autofocus ?? false,
+  slashItems,
+  loadBlock: props.loadBlock,
+  onAssetUpload: props.onAssetUpload,
+  taskWorkflow: props.taskWorkflow,
+  runQuery: props.runQuery,
+  onUpdate: (editorInstance) => {
+    emit('update', editorInstance.getMarkdown())
+  },
+  onBlur: () => {
+    emit('blur')
+  },
+  onFocus: () => {
+    emit('focus')
+  },
+  onLinkClick: (id: string) => {
+    emit('link-click', id)
+  },
+  onOpenWikiLink: (title: string, blockId?: string | null) => {
+    emit('open-wiki-link', title, blockId)
+    props.onOpenWikiLink?.(title, blockId)
+  },
+})
+
+const focused = computed(() => editor.value?.isFocused ?? false)
+
+function normalizeAnchors(md: string): string {
+  return md
+    .split('\n')
+    .map((line) => line.replace(/\s+\^[a-zA-Z0-9_-]+\s*$/, ''))
+    .join('\n')
+}
+
+watch(
+  () => props.content,
+  (newContent) => {
+    if (editor.value) {
+      const current = editor.value.getMarkdown()
+      if (normalizeAnchors(current) !== normalizeAnchors(newContent)) {
+        editor.value.commands.setContent(newContent, { emitUpdate: false, contentType: 'markdown' })
+      }
+    }
+  }
+)
+
+// Plan 360: react to canEdit changes so a single editor instance can toggle
+// between read-only and editable without remounting (avoids Tiptap view.dom
+// errors that occur when two editor instances are swapped via v-if).
+watch(
+  () => props.canEdit,
+  (editable) => {
+    if (editor.value) {
+      editor.value.setEditable(editable)
+    }
+  }
+)
+
+function handleSave() {
+  if (editor.value) {
+    const md = editor.value.getMarkdown()
+    const mdWithIAL = appendTableIAL(md, editor.value)
+    emit('save', mdWithIAL)
+  }
+}
+
+defineExpose({
+  editor,
+  handleSave,
+  getBlockMap: () => getBlockMap(editor.value),
+})
+</script>

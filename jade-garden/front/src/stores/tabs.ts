@@ -1,9 +1,15 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { readWiki, writeWiki, type WikiDoc } from '@/lib/api'
-import { useRecentFilesStore } from '@/stores/recentFiles'
-
-import { ensureBlockAnchors } from '@/lib/blockParser'
+// tabs.ts — hand-written facade over the Auto-generated tabs store
+// composable (auto/src/front/tabs_store.at → stores/auto/useTabsStore.ts).
+//
+// Plan 011 Phase 5.1 (Pinia → Auto store pilot): the Pinia defineStore was
+// replaced by this facade, which keeps the original store API shape
+// (camelCase state, optional args) so all consumers stay unchanged.
+//
+// Singleton semantics: the generated composable declares its refs at module
+// level, so `g` below is instantiated once and shared by every useTabsStore()
+// call — identical to the Pinia singleton. State is exposed through getters
+// (and a setter for activePath) so property access stays reactive.
+import { useTabsStore as useGeneratedTabsStore } from './auto/useTabsStore'
 
 export interface Tab {
   path: string
@@ -20,134 +26,30 @@ export interface Tab {
   isWhiteboard?: boolean
 }
 
-export const useTabsStore = defineStore('tabs', () => {
-  const tabs = ref<Tab[]>([])
-  const activePath = ref<string | null>(null)
+const g = useGeneratedTabsStore()
 
-  const activeTab = computed(() => tabs.value.find(t => t.path === activePath.value) || null)
-
-  async function open(path: string, title?: string) {
-    const existing = tabs.value.find(t => t.path === path)
-    if (existing) {
-      activePath.value = path
-      if (!existing.loaded && !existing.isGraph) await load(path)
-      return
-    }
-    tabs.value.push({
-      path,
-      title: title || path.replace(/\.ad$/, ''),
-      body: '',
-      originalBody: '',
-      frontmatter: {},
-      dirty: false,
-      loaded: false,
-      saving: false,
-    })
-    activePath.value = path
-    await load(path)
-    const recent = useRecentFilesStore()
-    recent.record(path, title || path.replace(/\.ad$/, ''))
+export function useTabsStore() {
+  return {
+    get tabs(): Tab[] {
+      return g.tabs.value
+    },
+    get activePath(): string | null {
+      return g.active_path.value
+    },
+    set activePath(v: string | null) {
+      g.active_path.value = v
+    },
+    get activeTab(): Tab | null {
+      return g.active_tab ?? null
+    },
+    open: (path: string, title?: string): Promise<void> => g.Open({ path, title: title ?? '' }),
+    openGraph: (centerPath?: string | null, depth = 1): Promise<void> =>
+      g.OpenGraph({ center: centerPath ?? '', depth }),
+    openWhiteboard: (path: string, title?: string): Promise<void> =>
+      g.OpenWhiteboard({ path, title: title ?? '' }),
+    close: (path: string): Promise<void> => g.Close(path),
+    load: (path: string): Promise<void> => g.Load(path),
+    setBody: (path: string, body: string): void => g.SetBody({ path, body }),
+    save: (path: string): Promise<void> => g.Save(path),
   }
-
-  async function openGraph(centerPath?: string | null, depth = 1) {
-    const path = centerPath ? `__graph__:${centerPath}` : '__graph__'
-    const title = centerPath ? `局部图谱：${centerPath.replace(/\.ad$/, '')}` : '全局图谱'
-    const existing = tabs.value.find(t => t.path === path)
-    if (existing) {
-      activePath.value = path
-      return
-    }
-    tabs.value.push({
-      path,
-      title,
-      body: '',
-      originalBody: '',
-      frontmatter: {},
-      dirty: false,
-      loaded: true,
-      saving: false,
-      isGraph: true,
-      graphCenterPath: centerPath || null,
-      graphDepth: depth,
-    })
-    activePath.value = path
-  }
-
-  async function openWhiteboard(path: string, title?: string) {
-    const existing = tabs.value.find(t => t.path === path)
-    if (existing) {
-      activePath.value = path
-      return
-    }
-    tabs.value.push({
-      path,
-      title: title || path.replace(/\.canvas$/, ''),
-      body: '',
-      originalBody: '',
-      frontmatter: {},
-      dirty: false,
-      loaded: true,
-      saving: false,
-      isWhiteboard: true,
-    })
-    activePath.value = path
-  }
-
-  async function load(path: string) {
-    const tab = tabs.value.find(t => t.path === path)
-    if (!tab || tab.loaded) return
-    try {
-      const doc: WikiDoc = await readWiki(path)
-      tab.body = doc.body
-      tab.originalBody = doc.body
-      tab.frontmatter = doc.frontmatter || {}
-      tab.title = doc.frontmatter?.title || tab.title
-      tab.dirty = false
-      tab.loaded = true
-    } catch (e) {
-      tab.loaded = true
-      tab.originalBody = tab.body
-      tab.dirty = false
-      console.error('Failed to load wiki doc', e)
-    }
-  }
-
-  function close(path: string) {
-    const idx = tabs.value.findIndex(t => t.path === path)
-    if (idx === -1) return
-    const tab = tabs.value[idx]
-    if (tab.dirty && !tab.isGraph) {
-      const ok = confirm(`Close "${tab.title}" without saving?`)
-      if (!ok) return
-    }
-    tabs.value.splice(idx, 1)
-    if (activePath.value === path) {
-      activePath.value = tabs.value[Math.min(idx, tabs.value.length - 1)]?.path || null
-    }
-  }
-
-  function setBody(path: string, body: string) {
-    const tab = tabs.value.find(t => t.path === path)
-    if (!tab || tab.body === body) return
-    tab.body = body
-    tab.dirty = tab.body !== tab.originalBody
-  }
-
-  async function save(path: string) {
-    const tab = tabs.value.find((t) => t.path === path)
-    if (!tab || !tab.loaded) return
-    tab.saving = true
-    try {
-      const bodyWithAnchors = ensureBlockAnchors(tab.body, tab.originalBody)
-      const saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: bodyWithAnchors })
-      tab.frontmatter = saved.frontmatter || {}
-      tab.body = saved.body
-      tab.originalBody = saved.body
-      tab.dirty = false
-    } finally {
-      tab.saving = false
-    }
-  }
-
-  return { tabs, activePath, activeTab, open, openGraph, openWhiteboard, close, load, setBody, save }
-})
+}

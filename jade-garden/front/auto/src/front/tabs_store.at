@@ -1,0 +1,190 @@
+// tabs_store.at — TabsStore: the dirty/save tab state machine.
+// Pinia → Auto store pilot (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/tabs.ts.
+//
+// All external functions come through `use back.api:` — the ONLY import
+// channel the store codegen supports. It emits
+// `import { ... } from '@/lib/api'`, which the Regenerate flow sed-rewrites
+// to utils/tabs_store_ext.ts when copying into front/src/ (the gen project
+// resolves it to the stubs/gen_lib_api.ts mirror instead).
+use back.api: readWikiSafe, writeWikiSafe, ensureBlockAnchors, recordRecent, stripExt, confirmClose
+
+store Tabs {
+    model {
+        // Tab objects (Array<str> = any; the Tab interface lives in the
+        // hand-written facade front/src/stores/tabs.ts).
+        var tabs Array<str> = []
+        // null = no active tab (None -> null).
+        var active_path ?str = None
+    }
+
+    // msg payloads are SINGLE-typed only (compiler limitation), so the
+    // multi-arg actions take one map argument: Open({ path, title }).
+    msg Msg { Open(map), OpenGraph(map), OpenWhiteboard(map), Close(str),
+              Load(str), SetBody(map), Save(str) }
+
+    computed {
+        active_tab => .tabs.find(t => t.path == .active_path)
+        // The store codegen hardcodes an `all_tags` getter injection
+        // referencing a `notes` state var (notes-app-specific); declaring
+        // any all_tags computed suppresses that injection.
+        all_tags => []
+    }
+
+    on {
+        .Open(args) -> {
+            var path = args.path
+            var title = args.title
+            var existing = .tabs.find(t => t.path == path)
+            if existing != null {
+                .active_path = path
+                if !existing.loaded && !existing.isGraph {
+                    var doc2 = readWikiSafe(path)
+                    if doc2 != null {
+                        existing.body = doc2.body
+                        existing.originalBody = doc2.body
+                        existing.frontmatter = doc2.frontmatter || {}
+                        existing.title = doc2.frontmatter && doc2.frontmatter.title || existing.title
+                        existing.dirty = false
+                        existing.loaded = true
+                    }
+                    if doc2 == null {
+                        existing.loaded = true
+                        existing.originalBody = existing.body
+                        existing.dirty = false
+                    }
+                }
+            }
+            if existing == null {
+                var t2 = title
+                if t2 == "" {
+                    t2 = stripExt(path, ".ad")
+                }
+                .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: false, saving: false })
+                .active_path = path
+                var doc = readWikiSafe(path)
+                var tab = .tabs.find(t => t.path == path)
+                if tab != null && doc != null {
+                    tab.body = doc.body
+                    tab.originalBody = doc.body
+                    tab.frontmatter = doc.frontmatter || {}
+                    tab.title = doc.frontmatter && doc.frontmatter.title || tab.title
+                    tab.dirty = false
+                    tab.loaded = true
+                }
+                if tab != null && doc == null {
+                    tab.loaded = true
+                    tab.originalBody = tab.body
+                    tab.dirty = false
+                }
+                recordRecent(path, t2)
+            }
+        }
+
+        .OpenGraph(args) -> {
+            // center: "" sentinel = global graph (facade maps null -> "").
+            var center = args.center
+            var depth = args.depth
+            var path = "__graph__"
+            var title = "全局图谱"
+            if center != "" {
+                path = f"__graph__:${center}"
+                title = f"局部图谱：${stripExt(center, ".ad")}"
+            }
+            var existing = .tabs.find(t => t.path == path)
+            if existing != null {
+                .active_path = path
+            }
+            if existing == null {
+                .tabs.push({ path: path, title: title, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || None, graphDepth: depth })
+                .active_path = path
+            }
+        }
+
+        .OpenWhiteboard(args) -> {
+            var path = args.path
+            var title = args.title
+            var existing = .tabs.find(t => t.path == path)
+            if existing != null {
+                .active_path = path
+            }
+            if existing == null {
+                var t2 = title
+                if t2 == "" {
+                    t2 = stripExt(path, ".canvas")
+                }
+                .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isWhiteboard: true })
+                .active_path = path
+            }
+        }
+
+        .Load(path) -> {
+            var tab = .tabs.find(t => t.path == path)
+            if tab != null && !tab.loaded {
+                var doc = readWikiSafe(path)
+                if doc != null {
+                    tab.body = doc.body
+                    tab.originalBody = doc.body
+                    tab.frontmatter = doc.frontmatter || {}
+                    tab.title = doc.frontmatter && doc.frontmatter.title || tab.title
+                    tab.dirty = false
+                    tab.loaded = true
+                }
+                if doc == null {
+                    tab.loaded = true
+                    tab.originalBody = tab.body
+                    tab.dirty = false
+                }
+            }
+        }
+
+        .Close(path) -> {
+            var idx = .tabs.findIndex(t => t.path == path)
+            if idx != -1 {
+                var tab = .tabs[idx]
+                var ok = true
+                if tab.dirty && !tab.isGraph {
+                    ok = confirmClose(tab.title)
+                }
+                if ok {
+                    .tabs.splice(idx, 1)
+                    if .active_path == path {
+                        if .tabs.len() > 0 {
+                            var idx2 = Math.min(idx, .tabs.len() - 1)
+                            .active_path = .tabs[idx2].path
+                        }
+                        if .tabs.len() == 0 {
+                            .active_path = None
+                        }
+                    }
+                }
+            }
+        }
+
+        .SetBody(args) -> {
+            var path = args.path
+            var body = args.body
+            var tab = .tabs.find(t => t.path == path)
+            if tab != null && tab.body != body {
+                tab.body = body
+                tab.dirty = tab.body != tab.originalBody
+            }
+        }
+
+        .Save(path) -> {
+            var tab = .tabs.find(t => t.path == path)
+            if tab != null && tab.loaded {
+                tab.saving = true
+                var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
+                var saved = writeWikiSafe(path, { frontmatter: tab.frontmatter, body: body2 })
+                if saved != null {
+                    tab.frontmatter = saved.frontmatter || {}
+                    tab.body = saved.body
+                    tab.originalBody = saved.body
+                    tab.dirty = false
+                }
+                tab.saving = false
+            }
+        }
+    }
+}

@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pretest:e2e": "node scripts/e2e-prepare.mjs",
+    "test:e2e": "playwright test",
+    "pretest:e2e:update": "node scripts/e2e-prepare.mjs",
+    "test:e2e:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@autodown/editor": "link:../../autodown/packages/editor",
@@ -28,6 +32,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/cytoscape": "^3.31.0",
     "@types/prismjs": "^1.26.0",
     "@vitejs/plugin-vue": "^5.0.0",

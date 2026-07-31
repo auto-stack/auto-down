@@ -1,0 +1,14 @@
+// app.at — placeholder root widget.
+//
+// The Auto->Vue generator always emits the ROOT widget as App.vue and only
+// emits NON-root widgets as standalone components/<Name>.vue SFCs. This
+// placeholder exists so that jade-garden widgets are generated as
+// standalone component SFCs (same pattern as autodown/packages/editor/src/auto).
+// It is never deployed to front/src/.
+widget App {
+    view {
+        col {
+            text "jade-garden auto root placeholder"
+        }
+    }
+}

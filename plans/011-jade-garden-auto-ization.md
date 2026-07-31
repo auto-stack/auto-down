@@ -48,11 +48,12 @@
 
 ## 分阶段实施
 
-### Phase 5.0：准备（预计 0.5 天）
+### Phase 5.0：准备 ✅（2026-07-31 完成）
 
-- 5.0a 隔离旧 AutoUI 遗留（决策 1），front 转为"包内嵌 Auto 项目"模式；删除 useSyncedScroll.ts。
-- 5.0b 编译器投资（上表），worktree 开发、合并 master。
-- 5.0c **建立 e2e 基线**：扩充 `front/e2e-multi-tab.cjs` 为 Playwright 套件——工作区打开、文件树 CRUD、标签保活、编辑器输入/保存、wiki 链接跳转、右栏面板、图视图渲染、命令面板。基线全绿后才开始翻译。
+- ✅ 5.0a 隔离旧 AutoUI 遗留（legacy-autoui/），front 转为"包内嵌 Auto 项目"模式（front/auto/ 骨架）；删除 useSyncedScroll.ts。
+- ✅ 5.0b 编译器投资：defineExpose（`expose {}` 块）、slot outlet + 具名 slot、v-model:open 修复 + `"update:modelValue"` 契约 + `.to_float()`；探针证实递归组件已支持、Teleport 用 BodyPortal workaround 足够。auto-lang master f6f0c059（17627f1a + 集成合并 9926ab47，零文本冲突；ui_gen 504 passed / 3 预存失败）。
+- ✅ 5.0c e2e 基线：Playwright 19 测试两遍全绿（front/e2e/，含 8 张像素基线）；`pnpm test:e2e`。
+- 提交：auto-down 0a56e4b。注意：主仓 auto.exe 需 `cargo build` 重建后才含新能力（或用 worktree 二进制）。
 
 ### Phase 5.1：store + 简单面板（预计 1 周）
 

@@ -1,60 +1,56 @@
-import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+// theme.ts — hand-written facade over the Auto-generated theme store
+// composable (auto/src/front/theme_store.at → stores/auto/useThemeStore.ts).
+//
+// Plan 011 Phase 5.1 (Pinia → Auto store migration): the Pinia defineStore
+// was replaced by this facade, which keeps the original store API shape
+// so all consumers stay unchanged.
+//
+// What the DSL cannot express stays here / in the ext module: the initial
+// values come from localStorage / prefers-color-scheme (ext), and the
+// apply-on-change watch (original Pinia `watch([mode, accent], ...)`) is
+// registered below at module level with the same semantics.
+import { watch } from 'vue'
+import { useThemeStore as useGeneratedThemeStore } from './auto/useThemeStore'
+import {
+  applyThemeClasses,
+  getInitialThemeAccent,
+  getInitialThemeMode,
+  persistTheme,
+  type ThemeAccent,
+  type ThemeMode,
+} from '../../auto/src/front/utils/theme_store_ext'
 
-export type ThemeMode = 'light' | 'dark'
-export type ThemeAccent = 'indigo' | 'emerald' | 'rose' | 'amber' | 'slate'
+export type { ThemeAccent, ThemeMode }
 
-const THEME_MODE_KEY = 'jade-garden-theme-mode'
-const THEME_ACCENT_KEY = 'jade-garden-theme-accent'
+const g = useGeneratedThemeStore()
 
-function getInitialMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'light'
-  const stored = localStorage.getItem(THEME_MODE_KEY) as ThemeMode | null
-  if (stored === 'dark' || stored === 'light') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
+// Real initial values (the .at model only carries placeholders).
+g.mode.value = getInitialThemeMode()
+g.accent.value = getInitialThemeAccent()
 
-function getInitialAccent(): ThemeAccent {
-  if (typeof window === 'undefined') return 'indigo'
-  const stored = localStorage.getItem(THEME_ACCENT_KEY) as ThemeAccent | null
-  const valid: ThemeAccent[] = ['indigo', 'emerald', 'rose', 'amber', 'slate']
-  return valid.includes(stored as ThemeAccent) ? (stored as ThemeAccent) : 'indigo'
-}
-
-export const useThemeStore = defineStore('theme', () => {
-  const mode = ref<ThemeMode>(getInitialMode())
-  const accent = ref<ThemeAccent>(getInitialAccent())
-
-  function apply() {
-    const root = document.documentElement
-    if (mode.value === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
-
-    // Remove old accent classes
-    root.classList.remove('theme-indigo', 'theme-emerald', 'theme-rose', 'theme-amber', 'theme-slate')
-    root.classList.add(`theme-${accent.value}`)
-  }
-
-  function setMode(next: ThemeMode) {
-    mode.value = next
-  }
-
-  function setAccent(next: ThemeAccent) {
-    accent.value = next
-  }
-
-  function toggleMode() {
-    mode.value = mode.value === 'dark' ? 'light' : 'dark'
-  }
-
-  watch([mode, accent], () => {
-    apply()
-    localStorage.setItem(THEME_MODE_KEY, mode.value)
-    localStorage.setItem(THEME_ACCENT_KEY, accent.value)
-  })
-
-  return { mode, accent, apply, setMode, setAccent, toggleMode }
+// Original: watch([mode, accent], () => { apply(); localStorage... }).
+watch([g.mode, g.accent], () => {
+  applyThemeClasses(g.mode.value, g.accent.value)
+  persistTheme(g.mode.value, g.accent.value)
 })
+
+export function useThemeStore() {
+  return {
+    get mode(): ThemeMode {
+      return g.mode.value
+    },
+    set mode(v: ThemeMode) {
+      g.mode.value = v
+    },
+    get accent(): ThemeAccent {
+      return g.accent.value
+    },
+    set accent(v: ThemeAccent) {
+      g.accent.value = v
+    },
+    apply: (): void => applyThemeClasses(g.mode.value, g.accent.value),
+    setMode: (next: ThemeMode): void => g.SetMode(next),
+    setAccent: (next: ThemeAccent): void => g.SetAccent(next),
+    toggleMode: (): void => g.ToggleMode(),
+  }
+}

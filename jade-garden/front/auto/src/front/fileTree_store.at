@@ -1,0 +1,109 @@
+// fileTree_store.at — FileTreeStore: workspace file tree + expanded set.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/fileTree.ts.
+//
+// The DSL has no try/catch and no Set type, so utils/fileTree_store_ext.ts
+// provides: a never-rejecting listFiles wrapper for load() ({ files, error }
+// map, error == "" = success), RAW wrappers for create/duplicate/rename/
+// delete whose rejections propagate through the handler exactly like the
+// original actions (no caller-side behavior change), and toggleExpanded
+// which mutates the reactive Set in place. The Set itself is created by
+// the facade front/src/stores/fileTree.ts.
+use back.api: listFilesResult, createFileRaw, duplicateFileRaw, renameFileRaw, deleteFileRaw, toggleExpanded
+
+store FileTree {
+    model {
+        var files Array<str> = []
+        // Set<string>; real initial value assigned by the facade.
+        var expanded ?str = None
+        var loading bool = false
+        var error ?str = None
+    }
+
+    // Multi-arg actions take one map (msg payloads are single-typed only).
+    msg Msg { Load, Toggle(str), CreateFile(map), DuplicateFile(map),
+              RenameFile(map), DeleteFile(str) }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .Load -> {
+            .loading = true
+            .error = None
+            var res = listFilesResult()
+            if res.error == "" {
+                .files = res.files
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+
+        .Toggle(path) -> {
+            toggleExpanded(.expanded, path)
+        }
+
+        // Original: await api.createFile(...) [throws propagate]; await load().
+        // If the raw call rejects, the handler stops before the reload —
+        // identical to the original.
+        .CreateFile(args) -> {
+            createFileRaw(args.path, args.isDir)
+            .loading = true
+            .error = None
+            var res = listFilesResult()
+            if res.error == "" {
+                .files = res.files
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+
+        .DuplicateFile(args) -> {
+            duplicateFileRaw(args.sourcePath, args.targetPath)
+            .loading = true
+            .error = None
+            var res = listFilesResult()
+            if res.error == "" {
+                .files = res.files
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+
+        .RenameFile(args) -> {
+            renameFileRaw(args.oldPath, args.newPath)
+            .loading = true
+            .error = None
+            var res = listFilesResult()
+            if res.error == "" {
+                .files = res.files
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+
+        .DeleteFile(path) -> {
+            deleteFileRaw(path)
+            .loading = true
+            .error = None
+            var res = listFilesResult()
+            if res.error == "" {
+                .files = res.files
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+    }
+}

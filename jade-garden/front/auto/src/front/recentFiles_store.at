@@ -1,0 +1,40 @@
+// recentFiles_store.at — RecentFilesStore: the localStorage-backed recent
+// files list. Pinia → Auto store migration (plan 011 Phase 5.1), port of the
+// original hand-written front/src/stores/recentFiles.ts.
+//
+// localStorage + JSON.parse/stringify (with try/catch) and the
+// filter/unshift/slice list surgery are not expressible in the DSL: they
+// live in utils/recentFiles_store_ext.ts and return the NEW array, which the
+// handlers assign to .files. The real initial value (loadRecentFiles()) is
+// assigned by the facade front/src/stores/recentFiles.ts.
+use back.api: recordRecentFile, removeRecentFile, clearRecentFiles
+
+store RecentFiles {
+    model {
+        // RecentFile objects (Array<str> = any); real initial value is
+        // assigned by the facade from ext loadRecentFiles().
+        var files Array<str> = []
+    }
+
+    // Record takes one map (msg payloads are single-typed only).
+    msg Msg { Record(map), Remove(str), Clear }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .Record(args) -> {
+            .files = recordRecentFile(.files, args.path, args.title)
+        }
+
+        .Remove(path) -> {
+            .files = removeRecentFile(.files, path)
+        }
+
+        .Clear -> {
+            .files = clearRecentFiles()
+        }
+    }
+}

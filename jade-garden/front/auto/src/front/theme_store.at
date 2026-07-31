@@ -1,0 +1,40 @@
+// theme_store.at — ThemeStore: light/dark mode + accent color state.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/theme.ts.
+//
+// The initial values (localStorage / prefers-color-scheme) and the DOM +
+// persistence side effects (document.documentElement classList, localStorage)
+// are not expressible in the DSL: they live in utils/theme_store_ext.ts and
+// are wired up by the hand-written facade front/src/stores/theme.ts
+// (initial assignment + watch, mirroring the original Pinia watch).
+
+store Theme {
+    model {
+        // "light" | "dark" — real initial value assigned by the facade.
+        var mode str = "light"
+        // "indigo" | "emerald" | "rose" | "amber" | "slate".
+        var accent str = "indigo"
+    }
+
+    msg Msg { SetMode(str), SetAccent(str), ToggleMode }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .SetMode(next) -> {
+            .mode = next
+        }
+
+        .SetAccent(next) -> {
+            .accent = next
+        }
+
+        .ToggleMode -> {
+            if .mode == "dark" { .mode = "light" }
+            if .mode == "light" { .mode = "dark" }
+        }
+    }
+}

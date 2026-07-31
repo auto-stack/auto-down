@@ -1,56 +1,37 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { listFiles } from '@/lib/api'
+// plugins.ts — hand-written facade over the Auto-generated plugins store
+// composable (auto/src/front/plugins_store.at →
+// stores/auto/usePluginsStore.ts).
+//
+// Plan 011 Phase 5.1 (Pinia → Auto store migration): the Pinia defineStore
+// was replaced by this facade, which keeps the original store API shape
+// so all consumers stay unchanged.
+import { usePluginsStore as useGeneratedPluginsStore } from './auto/usePluginsStore'
+import { type PluginManifest } from '../../auto/src/front/utils/plugins_store_ext'
 
-export interface PluginManifest {
-  id: string
-  name: string
-  version: string
-  entry: string
-  permissions?: string[]
+export type { PluginManifest }
+
+const g = useGeneratedPluginsStore()
+
+export function usePluginsStore() {
+  return {
+    get plugins(): PluginManifest[] {
+      return g.plugins.value
+    },
+    set plugins(v: PluginManifest[]) {
+      g.plugins.value = v
+    },
+    get loading(): boolean {
+      return g.loading.value
+    },
+    set loading(v: boolean) {
+      g.loading.value = v
+    },
+    get error(): string | null {
+      return g.error.value
+    },
+    set error(v: string | null) {
+      g.error.value = v
+    },
+    load: (): Promise<void> => g.Load(),
+  }
 }
-
-export const usePluginsStore = defineStore('plugins', () => {
-  const plugins = ref<PluginManifest[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-
-  async function load() {
-    loading.value = true
-    error.value = null
-    try {
-      const nodes = await listFiles('', true)
-      const found: PluginManifest[] = []
-      function walk(list: any[]) {
-        for (const node of list) {
-          if (node.is_dir && node.name.toLowerCase() === 'plugins' && node.children) {
-            for (const child of node.children) {
-              if (!child.is_dir && child.path.toLowerCase().endsWith('.json')) {
-                found.push(loadManifest(child.path))
-              }
-            }
-          }
-          if (node.children) walk(node.children)
-        }
-      }
-      walk(nodes)
-      plugins.value = found
-    } catch (e: any) {
-      error.value = e.message || String(e)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  function loadManifest(path: string): PluginManifest {
-    // Manifests are loaded on demand by PluginFrame; the store only knows the path.
-    return {
-      id: path.replace(/\.json$/, '').replace(/^plugins\//, ''),
-      name: path.replace(/\.json$/, '').replace(/^plugins\//, ''),
-      version: '0.0.0',
-      entry: path,
-    }
-  }
-
-  return { plugins, loading, error, load }
-})

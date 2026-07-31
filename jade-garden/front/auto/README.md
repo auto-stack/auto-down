@@ -112,15 +112,27 @@ handler 体内实证可用：`var` 局部变量、if（无 else，用两个互�
 
 ### 重新生成（store）
 
+**多 store 项目的限制（Phase 5.1 批量翻译实证）**：编译器每次 build 只
+发射**最后编译的那个 .at 文件**里的 store（`generate_component_from_file`
+每个文件编译前清空 STORE_EXTRA_FILES 线程局部存储；增量扫描会编译所有
+.at，线程局部最终只剩最后一个文件的产物）。规避：**一次只留一个
+`*_store.at`**——其余临时移出 `src/front/`，build，sed 拷贝，再移回。
+`gen/front/vue/src/stores/` 跨 build 保留，gen 侧 vue-tsc 不受影响。
+另注意：增量扫描路径对 parse 失败**完全静默**（无 Warning）——判据是
+输出里有没有该 store 的 `✓ Store composable:` 行 + 检查 gen 产物内容。
+
 ```sh
 cd jade-garden/front/auto
 # gen 侧 stub 镜像必须先于 auto build（gen 的 vue-tsc 会检查 store 产物）
 mkdir -p gen/front/vue/src/lib
 cp stubs/gen_lib_api.ts gen/front/vue/src/lib/api.ts
+# 一次一个 store：其余 *_store.at 临时移出
+mv src/front/tabs_store.at src/front/sidebar_store.at ... /tmp/store_hold/
 D:/autostack/auto-lang/target/debug/auto.exe build -d .
-# 拷贝 + sed 改写 '@/lib/api' → 真实扩展模块（相对路径）
-sed 's|@/lib/api|../../../auto/src/front/utils/tabs_store_ext|g' \
-  gen/front/vue/src/stores/useTabsStore.ts > ../src/stores/auto/useTabsStore.ts
+mv /tmp/store_hold/*.at src/front/
+# 拷贝 + sed 改写 '@/lib/api' → 该 store 的扩展模块（相对路径）
+sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
+  gen/front/vue/src/stores/use<Name>Store.ts > ../src/stores/auto/use<Name>Store.ts
 ```
 
 ### 验证
@@ -152,3 +164,31 @@ sed 's|@/lib/api|../../../auto/src/front/utils/tabs_store_ext|g' \
    实证通过）。
 8. api 名单中的同步函数也会被自动 `await`（无害）；f-string 插值内的
    调用不加 await（对同步函数正好正确）。
+
+### Phase 5.1 批量翻译新增限制（9 个 store 实证）
+
+9. **每次 build 只发射一个 store**：见上文「重新生成（store）」的多
+   store 限制与逐文件 build 流程。增量路径 parse 失败静默无 Warning。
+10. **handler 无返回值**：msg handler 不返回任何值，带返回值的方法
+    （blocks 的 getBlocks/blockById/headings/parse）只能放 facade/ext，
+    facade 直接读写生成 store 的 state ref。
+11. **无 Map/Set 类型**：model 里声明 `var x ?str = None` 占位，facade
+    顶层赋 `new Map()`/`new Set()`；增删改经 ext helper 原地 mutate
+    （Vue 3 对 reactive Map/Set 的 mutate 有依赖跟踪，实证可用）。
+12. **无 watch**：跨 store watch（blocks 的 tabs.activeTab 同步）与
+    状态变化副作用（theme 的 apply+persist）放 facade 模块顶层
+    `watch(...)`，语义与 Pinia setup 内 watch 一致。
+13. **错误传播的两种复刻**：原 action 有 try/catch 吞下错误 → ext 返回
+    `{ ..., error: "" }` map，store 内 `if res.error == ""` 双分支
+    （workspace/graph/fileTree.load/plugins）；原 action 让 rejection
+    传播 → ext 用 RAW 包装直接 throw，rejection 穿过 async handler 到
+    facade 调用方（fileTree 的 create/duplicate/rename/delete，行为与
+    原 Pinia 完全一致）。「设置 error 后再 re-throw」（workspace.open）
+    由 facade 在 await 后检查 error 并 throw。
+14. **$patch**：消费方用到 Pinia `$patch` 时（graph settings reset），
+    facade 手工仿真（只覆盖实际用到的 key）。
+15. 无 payload 的 msg variant 可用（`ToggleLeft`），handler 写法
+    `.Name -> {`（无括号）；model 类型 `bool`/`int`/`str` 可用，
+    `var settings map = {}` 能编译但初值是 `ref(null)`（由 facade 赋真值）。
+16. model 初值不能调 ext 函数：所有需要计算/IO 的初值（localStorage、
+    matchMedia、new Map/Set）一律 facade 顶层赋值（`.at` 里只占位）。

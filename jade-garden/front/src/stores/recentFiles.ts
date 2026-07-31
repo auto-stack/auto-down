@@ -1,50 +1,40 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+// recentFiles.ts — hand-written facade over the Auto-generated recentFiles
+// store composable (auto/src/front/recentFiles_store.at →
+// stores/auto/useRecentFilesStore.ts).
+//
+// Plan 011 Phase 5.1 (Pinia → Auto store migration): the Pinia defineStore
+// was replaced by this facade, which keeps the original store API shape
+// so all consumers stay unchanged.
+//
+// The real initial value (localStorage load) is assigned below; the
+// generated composable's handlers are async but the ext functions they
+// await are synchronous, so the original sync signatures are preserved.
+import { useRecentFilesStore as useGeneratedRecentFilesStore } from './auto/useRecentFilesStore'
+import { loadRecentFiles, type RecentFile } from '../../auto/src/front/utils/recentFiles_store_ext'
 
-const STORAGE_KEY = 'jade-garden-recent-files'
-const MAX_RECENT = 25
+export type { RecentFile }
 
-export interface RecentFile {
-  path: string
-  title: string
-  openedAt: number
-}
+const g = useGeneratedRecentFilesStore()
 
-function load(): RecentFile[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as RecentFile[]) : []
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+// Real initial value (the .at model only carries a placeholder).
+g.files.value = loadRecentFiles()
+
+export function useRecentFilesStore() {
+  return {
+    get files(): RecentFile[] {
+      return g.files.value
+    },
+    set files(v: RecentFile[]) {
+      g.files.value = v
+    },
+    record: (path: string, title: string): void => {
+      g.Record({ path, title })
+    },
+    remove: (path: string): void => {
+      g.Remove(path)
+    },
+    clear: (): void => {
+      g.Clear()
+    },
   }
 }
-
-function save(items: RecentFile[]) {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-}
-
-export const useRecentFilesStore = defineStore('recentFiles', () => {
-  const files = ref<RecentFile[]>(load())
-
-  function record(path: string, title: string) {
-    const filtered = files.value.filter((f) => f.path !== path)
-    filtered.unshift({ path, title, openedAt: Date.now() })
-    files.value = filtered.slice(0, MAX_RECENT)
-    save(files.value)
-  }
-
-  function remove(path: string) {
-    files.value = files.value.filter((f) => f.path !== path)
-    save(files.value)
-  }
-
-  function clear() {
-    files.value = []
-    save([])
-  }
-
-  return { files, record, remove, clear }
-})

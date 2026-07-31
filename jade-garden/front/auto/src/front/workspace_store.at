@@ -1,0 +1,57 @@
+// workspace_store.at — WorkspaceStore: current workspace root/wiki_dir.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/workspace.ts.
+//
+// The DSL has no try/catch, so the api calls live in
+// utils/workspace_store_ext.ts as never-rejecting wrappers returning
+// { root, wiki_dir, error } maps (error == "" = success), mirroring the
+// original catch branches (`error.value = e.message || String(e)`).
+// The original open() also re-threw after setting error; that is replicated
+// by the facade front/src/stores/workspace.ts (throw on non-empty error).
+use back.api: getWorkspaceResult, openWorkspaceResult
+
+store Workspace {
+    model {
+        var root ?str = None
+        var wiki_dir ?str = None
+        var loading bool = false
+        var error ?str = None
+    }
+
+    msg Msg { Load, Open(str) }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .Load -> {
+            .loading = true
+            .error = None
+            var res = getWorkspaceResult()
+            if res.error == "" {
+                .root = res.root
+                .wiki_dir = res.wiki_dir
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+
+        .Open(path) -> {
+            .loading = true
+            .error = None
+            var res = openWorkspaceResult(path)
+            if res.error == "" {
+                .root = res.root
+                .wiki_dir = res.wiki_dir
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+    }
+}

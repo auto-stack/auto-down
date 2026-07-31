@@ -27,3 +27,49 @@ export function stripExt(path: string, _ext: string): string {
 export function confirmClose(_title: string): boolean {
   return true
 }
+
+export function recordRecentFile(files: any[], _path: string, _title: string): any[] {
+  return files
+}
+
+export function removeRecentFile(files: any[], _path: string): any[] {
+  return files
+}
+
+export function clearRecentFiles(): any[] {
+  return []
+}
+
+export async function getWorkspaceResult(): Promise<any> {
+  return { root: null, wiki_dir: null, error: '' }
+}
+
+export async function openWorkspaceResult(_path: string): Promise<any> {
+  return { root: null, wiki_dir: null, error: '' }
+}
+
+export async function getGraphResult(): Promise<any> {
+  return { nodes: [], edges: [], error: '' }
+}
+
+export function saveGraphSettings(_settings: any): void {}
+
+export async function listFilesResult(): Promise<any> {
+  return { files: [], error: '' }
+}
+
+export async function createFileRaw(_path: string, _isDir: boolean): Promise<void> {}
+
+export async function duplicateFileRaw(_sourcePath: string, _targetPath: string): Promise<void> {}
+
+export async function renameFileRaw(_oldPath: string, _newPath: string): Promise<void> {}
+
+export async function deleteFileRaw(_path: string): Promise<void> {}
+
+export function toggleExpanded(_expanded: any, _path: string): void {}
+
+export async function loadPluginsResult(): Promise<any> {
+  return { plugins: [], error: '' }
+}
+
+export function cacheClear(_cache: any, _path: string): void {}

@@ -1,0 +1,38 @@
+// blocks_store.at — BlocksStore: parsed-block cache keyed by page path.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/blocks.ts.
+//
+// This store is THIN by necessity — most of the original API cannot be
+// expressed in the DSL (see front/auto/README.md gaps list):
+// - the cache is a Map (no Map type in the DSL) — created by the facade and
+//   mutated through ext helpers,
+// - getBlocks/blockById/blockAtLine/headings take arguments AND return
+//   values (msg handlers return nothing) — implemented in the facade,
+// - parse() must return the ParsedBlock[] it just produced — facade calls
+//   ext parseIntoCache directly,
+// - the watch on tabs.activeTab (cross-store + immediate) and the
+//   activeBlocks computed live in the facade.
+// What remains here is the state declaration and the Clear action
+// ("" sentinel = clear all, set by the facade for the optional-arg API).
+use back.api: cacheClear
+
+store Blocks {
+    model {
+        // Map<string, PageBlocks>; real initial value (new Map()) assigned
+        // by the facade front/src/stores/blocks.ts.
+        var cache ?str = None
+    }
+
+    msg Msg { Clear(str) }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .Clear(path) -> {
+            cacheClear(.cache, path)
+        }
+    }
+}

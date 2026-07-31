@@ -1,107 +1,95 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import * as api from '@/lib/api'
-import type { GraphData, GraphNode, GraphEdge } from '@/lib/api'
+// graph.ts — hand-written facade over the Auto-generated graph store
+// composable (auto/src/front/graph_store.at → stores/auto/useGraphStore.ts).
+//
+// Plan 011 Phase 5.1 (Pinia → Auto store migration): the Pinia defineStore
+// was replaced by this facade, which keeps the original store API shape
+// (camelCase writable state, default arg on openLocal) so all consumers
+// stay unchanged.
+//
+// Adaptations: the real initial settings value comes from the ext module
+// (localStorage), and Pinia's $patch (used by GraphControls' reset) is
+// emulated — only the `settings` key is patched, which is the only key
+// any consumer passes.
+import { useGraphStore as useGeneratedGraphStore } from './auto/useGraphStore'
+import {
+  loadGraphSettings,
+  type GraphSettings,
+} from '../../auto/src/front/utils/graph_store_ext'
+import type { GraphEdge, GraphNode } from '@/lib/api'
 
-export interface GraphSettings {
-  showOrphans: boolean
-  showMissing: boolean
-  nodeSize: number
-  textOpacity: number
-  edgeWidth: number
-  showArrows: boolean
-  gravity: number
-  repulsion: number
-  attraction: number
-  linkLength: number
-}
+export type { GraphSettings }
 
-const DEFAULT_SETTINGS: GraphSettings = {
-  showOrphans: true,
-  showMissing: false,
-  nodeSize: 12,
-  textOpacity: 0.85,
-  edgeWidth: 1,
-  showArrows: false,
-  gravity: 0.05,
-  repulsion: 4500,
-  attraction: 0.05,
-  linkLength: 120,
-}
+const g = useGeneratedGraphStore()
 
-function loadSettings(): GraphSettings {
-  try {
-    const raw = localStorage.getItem('jade-garden.graph.settings')
-    if (raw) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
-    }
-  } catch {
-    // ignore
-  }
-  return { ...DEFAULT_SETTINGS }
-}
+// Real initial value (the .at model only carries a placeholder).
+g.settings.value = loadGraphSettings()
 
-export const useGraphStore = defineStore('graph', () => {
-  const nodes = ref<GraphNode[]>([])
-  const edges = ref<GraphEdge[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const settings = ref<GraphSettings>(loadSettings())
-  const searchQuery = ref('')
-  const viewMode = ref<'editor' | 'graph'>('editor')
-  const centerPath = ref<string | null>(null)
-  const depth = ref(1)
-
-  async function load() {
-    loading.value = true
-    error.value = null
-    try {
-      const data: GraphData = await api.getGraph()
-      nodes.value = data.nodes
-      edges.value = data.edges
-    } catch (e: any) {
-      error.value = e.message || String(e)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  function saveSettings() {
-    try {
-      localStorage.setItem('jade-garden.graph.settings', JSON.stringify(settings.value))
-    } catch {
-      // ignore
-    }
-  }
-
-  function toggleView() {
-    viewMode.value = viewMode.value === 'editor' ? 'graph' : 'editor'
-  }
-
-  function openLocal(path: string, d = 1) {
-    centerPath.value = path
-    depth.value = d
-    viewMode.value = 'graph'
-  }
-
-  function showGlobal() {
-    centerPath.value = null
-  }
-
+export function useGraphStore() {
   return {
-    nodes,
-    edges,
-    loading,
-    error,
-    settings,
-    searchQuery,
-    viewMode,
-    centerPath,
-    depth,
-    load,
-    saveSettings,
-    toggleView,
-    openLocal,
-    showGlobal,
+    get nodes(): GraphNode[] {
+      return g.nodes.value
+    },
+    set nodes(v: GraphNode[]) {
+      g.nodes.value = v
+    },
+    get edges(): GraphEdge[] {
+      return g.edges.value
+    },
+    set edges(v: GraphEdge[]) {
+      g.edges.value = v
+    },
+    get loading(): boolean {
+      return g.loading.value
+    },
+    set loading(v: boolean) {
+      g.loading.value = v
+    },
+    get error(): string | null {
+      return g.error.value
+    },
+    set error(v: string | null) {
+      g.error.value = v
+    },
+    get settings(): GraphSettings {
+      return g.settings.value
+    },
+    set settings(v: GraphSettings) {
+      g.settings.value = v
+    },
+    get searchQuery(): string {
+      return g.search_query.value
+    },
+    set searchQuery(v: string) {
+      g.search_query.value = v
+    },
+    get viewMode(): 'editor' | 'graph' {
+      return g.view_mode.value
+    },
+    set viewMode(v: 'editor' | 'graph') {
+      g.view_mode.value = v
+    },
+    get centerPath(): string | null {
+      return g.center_path.value
+    },
+    set centerPath(v: string | null) {
+      g.center_path.value = v
+    },
+    get depth(): number {
+      return g.depth.value
+    },
+    set depth(v: number) {
+      g.depth.value = v
+    },
+    load: (): Promise<void> => g.Load(),
+    saveSettings: (): void => {
+      g.SaveSettings()
+    },
+    toggleView: (): void => g.ToggleView(),
+    openLocal: (path: string, d = 1): void => g.OpenLocal({ path, depth: d }),
+    showGlobal: (): void => g.ShowGlobal(),
+    // Pinia $patch emulation (GraphControls' reset passes only `settings`).
+    $patch: (partial: { settings?: GraphSettings }): void => {
+      if (partial.settings) g.settings.value = partial.settings
+    },
   }
-})
+}

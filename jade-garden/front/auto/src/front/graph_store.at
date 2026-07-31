@@ -1,0 +1,70 @@
+// graph_store.at — GraphStore: graph data + view settings state.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/graph.ts.
+//
+// localStorage load/save of settings (with try/catch) and the getGraph
+// try/catch live in utils/graph_store_ext.ts. The real initial settings
+// value (loadGraphSettings()) is assigned by the facade
+// front/src/stores/graph.ts, which also provides the Pinia-compatible
+// $patch used by GraphControls.
+use back.api: getGraphResult, saveGraphSettings
+
+store Graph {
+    model {
+        var nodes Array<str> = []
+        var edges Array<str> = []
+        var loading bool = false
+        var error ?str = None
+        // GraphSettings object; real initial value assigned by the facade.
+        var settings map = {}
+        var search_query str = ""
+        // "editor" | "graph"
+        var view_mode str = "editor"
+        var center_path ?str = None
+        var depth int = 1
+    }
+
+    // OpenLocal takes one map (msg payloads are single-typed only):
+    // { path, depth }.
+    msg Msg { Load, SaveSettings, ToggleView, OpenLocal(map), ShowGlobal }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .Load -> {
+            .loading = true
+            .error = None
+            var res = getGraphResult()
+            if res.error == "" {
+                .nodes = res.nodes
+                .edges = res.edges
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+
+        .SaveSettings -> {
+            saveGraphSettings(.settings)
+        }
+
+        .ToggleView -> {
+            if .view_mode == "editor" { .view_mode = "graph" }
+            if .view_mode == "graph" { .view_mode = "editor" }
+        }
+
+        .OpenLocal(args) -> {
+            .center_path = args.path
+            .depth = args.depth
+            .view_mode = "graph"
+        }
+
+        .ShowGlobal -> {
+            .center_path = None
+        }
+    }
+}

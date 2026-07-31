@@ -1,0 +1,40 @@
+// plugins_store.at — PluginsStore: discovered plugin manifests.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/plugins.ts.
+//
+// The original load() is a recursive tree walk with regex-based manifest
+// derivation inside try/catch — none of which the DSL can express — so the
+// whole body lives in utils/plugins_store_ext.ts as a never-rejecting
+// wrapper returning { plugins, error } (error == "" = success), mirroring
+// the original catch/finally branches.
+use back.api: loadPluginsResult
+
+store Plugins {
+    model {
+        var plugins Array<str> = []
+        var loading bool = false
+        var error ?str = None
+    }
+
+    msg Msg { Load }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .Load -> {
+            .loading = true
+            .error = None
+            var res = loadPluginsResult()
+            if res.error == "" {
+                .plugins = res.plugins
+            }
+            if res.error != "" {
+                .error = res.error
+            }
+            .loading = false
+        }
+    }
+}

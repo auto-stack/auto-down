@@ -1,0 +1,35 @@
+// sidebar_store.at — SidebarStore: left/right panel layout state.
+// Pinia → Auto store migration (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/sidebar.ts.
+//
+// Pure state store: no external functions needed, hence no `use back.api:`
+// line. LeftPanel type and camelCase setters live in the hand-written facade
+// front/src/stores/sidebar.ts.
+
+store Sidebar {
+    model {
+        var left_open bool = true
+        var right_open bool = false
+        // "files" | "search" | "recent"
+        var left_panel str = "files"
+        var left_width int = 260
+    }
+
+    msg Msg { ToggleLeft, SetLeftPanel(str) }
+
+    computed {
+        // Suppresses the codegen's bogus all_tags injection (see README).
+        all_tags => []
+    }
+
+    on {
+        .ToggleLeft -> {
+            .left_open = !.left_open
+        }
+
+        .SetLeftPanel(panel) -> {
+            .left_panel = panel
+            .left_open = true
+        }
+    }
+}

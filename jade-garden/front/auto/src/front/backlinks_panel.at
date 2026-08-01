@@ -1,0 +1,114 @@
+// backlinks_panel.at — BacklinksPanel widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/BacklinksPanel.vue (plan 011 Phase 5.1). Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/backlinks_panel_ext|../../auto/src/front/utils/backlinks_panel_ext|g' \
+//     gen/front/vue/src/components/BacklinksPanel.vue > ../src/components/BacklinksPanel.vue
+//
+// All of the original logic lives here in the DSL except what the
+// extension utils/backlinks_panel_ext.ts keeps (facade re-export,
+// try/catch API wrapper, fileStem — see that file's header).
+//
+// Idioms forced by DSL codegen gaps (see autodown editor src/auto/README):
+// - ul/li are not in the DSL element table (they fall back to <div>), so
+//   the list renders via dyn with string tags — <component :is="'ul'">
+//   renders a real <ul>.
+// - The original's v-if / v-else-if / v-else chain becomes three exclusive
+//   named-boolean computeds (same rendered branch in every state).
+// - try/catch/finally as a single-callback .then: the extension's safe
+//   wrapper never rejects, so the resolve callback carries both the try
+//   and catch branches and the finally's loading=false (Mermaid note 3
+//   precedent).
+// - The original's watch(currentTitle, fetch, { immediate: true }) maps to
+//   the watch block's .immediate modifier on the current_title computed;
+//   computed refs need the explicit .value form in handler bodies.
+
+widget BacklinksPanel {
+    use {
+        composable: useTabsStore from "src/front/utils/backlinks_panel_ext.ts"
+        fn: tabFileStem, fetchBacklinksSafe from "src/front/utils/backlinks_panel_ext.ts"
+    }
+
+    msg Msg { OpenSource }
+
+    model {
+        var links []str = []
+        var loading bool = false
+    }
+
+    computed {
+        // Original: computed(() => tabs.activeTab?.path ? fileStem : '').
+        current_title => tabFileStem(.tabsStore.activeTab)
+        // The three mutually exclusive view states (the original's
+        // v-if / v-else-if / v-else chain). Model vars are auto-unwrapped
+        // in computeds.
+        show_loading => .loading
+        show_list => !.loading && .links.length > 0
+        show_empty => !.loading && .links.length == 0
+        // Native tags the DSL maps to div (ul/li are not in its element
+        // table) are rendered via dyn with a string tag.
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            class: "rounded-lg border bg-background/50 p-2.5",
+            h4 { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Backlinks" }
+            if .show_loading {
+                p { class: "text-xs text-muted-foreground", text "Loading…" }
+            }
+            if .show_list {
+                dyn (.ul_tag) {
+                    class: "space-y-0.5",
+                    // NOTE: the loop variable cannot be named `link` —
+                    // `link` is a DSL element keyword (router-link mapping)
+                    // and mis-parses ("Expected term, got RBrace").
+                    for bl in .links {
+                        dyn (.li_tag) {
+                            class: "cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground",
+                            title: bl.context,
+                            onclick: .OpenSource(bl),
+                            text bl.source_title
+                        }
+                    }
+                }
+            }
+            if .show_empty {
+                p { class: "text-xs text-muted-foreground", text "No backlinks." }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(currentTitle, fetchBacklinks, { immediate: true }).
+        .current_title.immediate -> {
+            // Original: if (!currentTitle.value) { backlinks.value = []; return }
+            if .current_title.value == "" {
+                .links = []
+            }
+            if .current_title.value != "" {
+                .loading = true
+                let p = fetchBacklinksSafe(.current_title.value)
+                // try/catch/finally as a one-callback .then: the extension
+                // wrapper never rejects, so this callback carries the try
+                // branch, the catch branch (empty array) comes from the
+                // wrapper, and the finally's loading=false lands here.
+                p.then(res => {
+                    .links = res
+                    .loading = false
+                })
+            }
+        }
+    }
+
+    on {
+        // Original: function openSource(link) { tabs.open(...) }
+        .OpenSource(bl) -> {
+            .tabsStore.open(bl.source_path, bl.source_title)
+        }
+    }
+}

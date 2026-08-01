@@ -1,0 +1,112 @@
+// recent_files_panel.at — RecentFilesPanel widget (Auto language source).
+// Auto-generated replacement for the hand-written
+// front/src/components/RecentFilesPanel.vue (plan 011 Phase 5.1).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/recent_files_panel_ext|../../auto/src/front/utils/recent_files_panel_ext|g' \
+//     gen/front/vue/src/components/RecentFilesPanel.vue > ../src/components/RecentFilesPanel.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header):
+// - ul/li render via dyn with string tags (not in the DSL element table).
+// - The lucide icons render via dyn with the extension's re-exported
+//   component symbols — dyn (.Trash2) → <component :is="(Trash2) as any">,
+//   same DOM as the original's <Trash2 class="..." />.
+// - The v-if / v-else empty/list chain becomes exclusive boolean computeds.
+// - formatTime is precomputed per entry by the extension (no Call bindings
+//   in the view).
+// - The original's @click.stop on the remove button maps to onclick.stop
+//   (Vue's .stop modifier, identical stopPropagation behaviour).
+// - `type: "button"` uses the PAREN prop form (type is a keyword token).
+
+widget RecentFilesPanel {
+    use {
+        composable: useRecentFilesStore, useTabsStore from "src/front/utils/recent_files_panel_ext.ts"
+        fn: recentFilesWithTime, removeRecent, Clock, X, Trash2 from "src/front/utils/recent_files_panel_ext.ts"
+    }
+
+    msg Msg { Open, Remove, ClearAll }
+
+    computed {
+        // Original: recent.files, with formatTime(openedAt) precomputed.
+        files => recentFilesWithTime(.recentFilesStore.files)
+        has_files => .files.value.length > 0
+        show_empty => .files.value.length == 0
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            class: "flex h-full flex-col",
+            div {
+                class: "flex h-[var(--header-height)] shrink-0 items-center justify-between border-b px-3",
+                span { class: "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Recent" }
+                if .has_files {
+                    button (type: "button") {
+                        title: "Clear recent files",
+                        class: "flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        onclick: .ClearAll,
+                        dyn (.Trash2) { class: "h-3.5 w-3.5" }
+                    }
+                }
+            }
+            div {
+                class: "flex-1 overflow-auto py-1",
+                if .show_empty {
+                    div {
+                        class: "flex flex-col items-center gap-2 p-4 text-sm text-muted-foreground",
+                        dyn (.Clock) { class: "h-5 w-5 opacity-50" }
+                        span { text "No recent files" }
+                    }
+                }
+                if .has_files {
+                    dyn (.ul_tag) {
+                        class: "space-y-0.5 px-1",
+                        for rf in .files {
+                            dyn (.li_tag) {
+                                class: "group flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground",
+                                onclick: .Open(rf),
+                                div {
+                                    class: "min-w-0 flex-1",
+                                    div { class: "truncate", text rf.title }
+                                    div { class: "truncate text-[10px] text-muted-foreground", text rf.path }
+                                }
+                                div {
+                                    class: "ml-2 flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100",
+                                    span { class: "text-[10px] text-muted-foreground", text rf.time }
+                                    button (type: "button") {
+                                        title: "Remove from recent",
+                                        class: "flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground",
+                                        onclick.stop: .Remove(rf),
+                                        dyn (.X) { class: "h-3 w-3" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: function open(path) { tabs.open(path) }
+        .Open(rf) -> {
+            .tabsStore.open(rf.path)
+        }
+        // Original: function remove(e, path) { e.stopPropagation(); recent.remove(path) }
+        // — stopPropagation comes from Vue's .stop modifier on the binding.
+        // NOTE: the call goes through the extension's removeRecent —
+        // `.recentFilesStore.remove(...)` hits the transpiler's
+        // `remove` → `.splice` array-method mapping and mis-emits.
+        .Remove(rf) -> {
+            removeRecent(rf.path)
+        }
+        // Original: function clearAll() { recent.clear() }
+        .ClearAll -> {
+            .recentFilesStore.clear()
+        }
+    }
+}

@@ -73,3 +73,41 @@ export async function loadPluginsResult(): Promise<any> {
 }
 
 export function cacheClear(_cache: any, _path: string): void {}
+
+// --- Phase 5.1 widget panel additions (types + link/page API) ---
+
+export interface Backlink {
+  source_title: string
+  source_path: string
+  context: string
+}
+
+export interface Outlink {
+  target_title: string
+  target_path?: string
+  exists: boolean
+  block_id?: string
+}
+
+export interface UnlinkedRef {
+  page_path: string
+  block_uuid?: string
+  context: string
+  matched_text: string
+}
+
+export async function getBacklinks(_title: string): Promise<any> {
+  return { links: [] }
+}
+
+export async function getOutlinks(_title: string): Promise<any> {
+  return { links: [] }
+}
+
+export async function getUnlinkedRefs(_title: string): Promise<any> {
+  return { title: '', refs: [] }
+}
+
+export async function createWikiPage(_title: string): Promise<string> {
+  return ''
+}

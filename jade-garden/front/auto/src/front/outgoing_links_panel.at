@@ -1,0 +1,104 @@
+// outgoing_links_panel.at — OutgoingLinksPanel widget (Auto language
+// source). Auto-generated replacement for the hand-written
+// front/src/components/OutgoingLinksPanel.vue (plan 011 Phase 5.1).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/outgoing_links_panel_ext|../../auto/src/front/utils/outgoing_links_panel_ext|g' \
+//     gen/front/vue/src/components/OutgoingLinksPanel.vue > ../src/components/OutgoingLinksPanel.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header and
+// autodown editor src/auto/README):
+// - ul/li render via dyn with string tags (not in the DSL element table).
+// - The loop variable cannot be named `link` (a DSL element keyword).
+// - The v-if / v-else-if / v-else chain becomes exclusive boolean computeds.
+// - The success/destructive dot class uses a ternary in the `style` prop
+//   (Plan 346) — emits the original's exact :class ternary binding.
+// - The openTarget flow (confirm + sequential awaits) lives in the
+//   extension (no async/await/early return in the DSL).
+
+widget OutgoingLinksPanel {
+    use {
+        composable: useTabsStore from "src/front/utils/outgoing_links_panel_ext.ts"
+        fn: tabFileStem, fetchOutlinksSafe, openOutlinkTarget from "src/front/utils/outgoing_links_panel_ext.ts"
+    }
+
+    msg Msg { OpenTarget }
+
+    model {
+        var links []str = []
+        var loading bool = false
+    }
+
+    computed {
+        current_title => tabFileStem(.tabsStore.activeTab)
+        show_loading => .loading
+        show_list => !.loading && .links.length > 0
+        show_empty => !.loading && .links.length == 0
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            class: "rounded-lg border bg-background/50 p-2.5",
+            h4 { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Outgoing links" }
+            if .show_loading {
+                p { class: "text-xs text-muted-foreground", text "Loading…" }
+            }
+            if .show_list {
+                dyn (.ul_tag) {
+                    class: "space-y-0.5",
+                    for ol in .links {
+                        dyn (.li_tag) {
+                            class: "flex cursor-pointer items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground",
+                            onclick: .OpenTarget(ol),
+                            // Plan 346: a ternary in the `style` prop emits
+                            // a :class ternary — the original's exact binding.
+                            span {
+                                class: "h-1.5 w-1.5 rounded-full shrink-0",
+                                style: ol.exists ? "bg-[hsl(var(--af-success))]" : "bg-destructive"
+                            }
+                            span { class: "truncate", text ol.target_title }
+                            if ol.block_id {
+                                span { class: "text-[10px] text-muted-foreground", text f"#${ol.block_id}" }
+                            }
+                        }
+                    }
+                }
+            }
+            if .show_empty {
+                p { class: "text-xs text-muted-foreground", text "No outgoing links." }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(currentTitle, fetchOutlinks, { immediate: true }).
+        .current_title.immediate -> {
+            if .current_title.value == "" {
+                .links = []
+            }
+            if .current_title.value != "" {
+                .loading = true
+                let p = fetchOutlinksSafe(.current_title.value)
+                // One-callback .then: the extension wrapper never rejects,
+                // so the original's try and catch branches both land here
+                // and the finally's loading=false is carried by it.
+                p.then(res => {
+                    .links = res
+                    .loading = false
+                })
+            }
+        }
+    }
+
+    on {
+        // Original: async function openTarget(link) { ... } — the whole
+        // flow lives in the extension (no async/await in the DSL).
+        .OpenTarget(ol) -> {
+            openOutlinkTarget(ol)
+        }
+    }
+}

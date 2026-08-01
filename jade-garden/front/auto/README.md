@@ -192,3 +192,98 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
     `var settings map = {}` 能编译但初值是 `ref(null)`（由 facade 赋真值）。
 16. model 初值不能调 ext 函数：所有需要计算/IO 的初值（localStorage、
     matchMedia、new Map/Set）一律 facade 顶层赋值（`.at` 里只占位）。
+
+## Widget 翻译模式
+
+（plan 011 Phase 5.1 简单面板批次实证：BacklinksPanel /
+OutgoingLinksPanel / UnlinkedReferencesPanel / OutlinePanel /
+RecentFilesPanel，2026-07-31。）
+
+### 文件布局（widget）
+
+- `src/front/<panel>_panel.at` — widget 源（一个组件一个文件）。
+- `src/front/utils/<panel>_ext.ts` — 手写 TS 扩展：facade 再导出
+  （dual-resolution shim，`../../../../src/stores/<x>` 在 front 树解析到
+  真 facade，在 gen 树解析到 stub）、try/catch 安全包装、正则、
+  `new Date`/`new CustomEvent`、lucide 图标再导出（gen 工程自带
+  lucide-vue-next 依赖，无需 shim）、v-html 函数式组件。
+- `stubs/gen_stores/<x>.ts` — facade 的 gen 侧 stub（`useXStore(): any`），
+  重新生成时镜像到 `gen/front/vue/src/stores/<x>.ts`；永不发布。
+- `stubs/gen_lib_wikiLink.ts` — wikiLink 的 gen 侧 stub（镜像到
+  `gen/front/vue/src/lib/wikiLink.ts`）。`stubs/gen_lib_api.ts` 已扩入
+  getBacklinks/getOutlinks/getUnlinkedRefs/createWikiPage 及相关 interface。
+
+### store facade 消费（`use { composable }`，实证）
+
+```auto
+use {
+    composable: useTabsStore from "src/front/utils/backlinks_panel_ext.ts"
+    fn: tabFileStem, fetchBacklinksSafe from "src/front/utils/backlinks_panel_ext.ts"
+}
+```
+
+codegen 在 `<script setup>` 顶层发射 `const tabsStore = useTabsStore()`
+（local 名 = 去 `use` 前缀 + 首字母小写，不可选；零参调用）。
+`.tabsStore.activeTab` 在 view 绑定 / computed / handler 三处都原样
+发射 `tabsStore.activeTab`（非 state/prop/ref 的首段 ident 透传为裸名）
+—— facade 的 getter 在渲染/computed 求值时执行，响应式跟踪成立。
+多个 composable 可以并列（`composable: useBlocksStore, useTabsStore`）。
+
+### 重新生成（widget）
+
+```sh
+cd jade-garden/front/auto
+# gen 侧 stub 镜像必须先于 auto build（gen 的 vue-tsc 会检查 ext 拷贝）
+mkdir -p gen/front/vue/src/lib gen/front/vue/src/stores
+cp stubs/gen_lib_api.ts gen/front/vue/src/lib/api.ts
+cp stubs/gen_lib_wikiLink.ts gen/front/vue/src/lib/wikiLink.ts
+cp stubs/gen_stores/*.ts gen/front/vue/src/stores/
+D:/autostack/auto-lang/target/debug/auto.exe build -d .
+# 检查输出无 "Warning: Failed to compile"，且 components/<Name>.vue 已更新
+# 拷贝 + sed 改写 ext import（front/src/components 的相对深度是 ../../）
+sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|g' \
+  gen/front/vue/src/components/<Panel>.vue > ../src/components/<Panel>.vue
+```
+
+### widget 翻译新增限制（本批次实证）
+
+17. **widget 的 msg variant 不带 payload 类型**：`msg Msg { OpenSource(map) }`
+    解析失败（"Expected term, got RBrace"——报错位置在 view 块深处，具有
+    迷惑性）。widget 写法是 `msg Msg { OpenSource }` + handler 声明参数
+    `.OpenSource(bl) -> {`（对比：store 的 msg variant 必须带一个类型）。
+18. **循环变量不能命名 `link`**：`link` 是 DSL 元素关键字（router-link
+    映射），`for link in ...` + `link.x` 会把后续内容错解析成 router-link
+    垃圾或 "Expected term, got RBrace"。换名（bl/ol/r/h/rf 均已验证）。
+19. **`.remove(...)` 被映射为 `.splice(...)`（任意接收者）**——与
+    `.contains`→`.includes` 同类陷阱：`recentFilesStore.remove(path)`
+    误发射 `recentFilesStore.splice(path, 1)`。经 ext 帮手中转
+    （`removeRecent(path)`）。
+20. **普通元素上的动态 `class:` 表达式被静默丢弃**：
+    `span { class: ol.dot_class }` 发射 `<span/>`（只认字符串字面量与
+    style 映射）。条件 class 用 **`style` prop 里的三元**（Plan 346）：
+    `style: ol.exists ? "bg-a" : "bg-b"` → `:class="ol.exists ? 'bg-a' : 'bg-b'"`，
+    循环变量条件可用，与原 `:class` 三元绑定逐字一致。
+21. **watch 已有 `.immediate`**：`watch { .src.immediate -> { ... } }` →
+    `watch(src, () => {...}, { immediate: true })`。watch 源必须是
+    model/prop/computed 名（原样发射；computed 以 ref 形式被 watch）。
+    editor 包 README「DSL watch 无 immediate」的记述已过时。
+22. **v-html 用函数式组件**：ext 里
+    `export const HtmlDiv = (props) => h('div', { class: props.class, innerHTML: props.html ?? '' })`，
+    widget 里 `use { component: HtmlDiv }` + `HtmlDiv (class: "...", html: r.html)`。
+    单变量 v-for 内 PascalCase 组件会自动加 `:key="'HtmlDiv-1-' + (r?.id ?? r)"`，
+    item 为 any 时 vue-tsc 通过。
+23. **`text f"...${x}..."`** f-string 在 view text 可用
+    （`text f"#${ol.block_id}"` → `#{{ ol.block_id }}`）。
+24. **`onclick.stop: .Remove(x)`** 修饰符 + 带参 handler 可用，与
+    `@click.stop="Remove(x)"` 等价（替代 `$event.stopPropagation()`）。
+25. **handler 调用 facade 方法**：`.tabsStore.open(a, b)` →
+    `tabsStore.open(a, b)`（非内建方法名透传）；view 引用的 handler 会
+    额外携带一句无害的 `emit('Open', x)`（无监听者，editor 批次先例）。
+
+### 生成产物与原手写 SFC 的细微差异（面板批次，DOM 行为等价）
+
+- v-if 分支包在透明 `<template>` 里；文本多一层内联 `<span>`；
+  v-for 无 `:key`；`==`/`===` 差异；ul/li 经 `<component :is="'ul'">`
+  渲染为真标签；`title`/`type` 静态属性以绑定形式发射
+  （`:title="'...'"`）；PascalCase 组件带自动 `:key`；HtmlDiv 的 class
+  以 `:class="'...'"` 传入。

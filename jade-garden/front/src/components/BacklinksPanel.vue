@@ -1,62 +1,78 @@
+<!-- BacklinksPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useTabsStore } from '@/stores/tabs'
-import { getBacklinks, type Backlink } from '@/lib/api'
+import { ref, computed, watch } from 'vue'
+import { tabFileStem, fetchBacklinksSafe } from '../../auto/src/front/utils/backlinks_panel_ext'
+import { useTabsStore } from '../../auto/src/front/utils/backlinks_panel_ext'
 
-const tabs = useTabsStore()
+const tabsStore = useTabsStore()
 
-function fileStem(path: string): string {
-  const name = path.split('/').pop() || path
-  const idx = name.lastIndexOf('.')
-  return idx > 0 ? name.slice(0, idx) : name
-}
 
-const currentTitle = computed(() => {
-  const path = tabs.activeTab?.path
-  return path ? fileStem(path) : ''
-})
+const links = ref<any[]>([])
+const loading = ref<boolean>(false)
 
-const backlinks = ref<Backlink[]>([])
-const loading = ref(false)
+const current_title = computed<any>(() => tabFileStem(tabsStore.activeTab))
+const show_loading = computed<boolean>(() => loading.value)
+const show_list = computed<boolean>(() => !loading.value && links.value.length > 0)
+const show_empty = computed<boolean>(() => !loading.value && links.value.length === 0)
+const ul_tag = computed<string>(() => 'ul')
+const li_tag = computed<string>(() => 'li')
 
-async function fetchBacklinks() {
-  if (!currentTitle.value) {
-    backlinks.value = []
-    return
+const emit = defineEmits<{
+  OpenSource: [any]
+}>()
+
+watch(current_title, () => {
+
+  if (current_title.value == '') {links.value = [];
   }
-  loading.value = true
-  try {
-    const res = await getBacklinks(currentTitle.value)
-    backlinks.value = res.links
-  } catch (e) {
-    backlinks.value = []
-  } finally {
-    loading.value = false
+  if (current_title.value != '') {loading.value = true;
+  let p = fetchBacklinksSafe(current_title.value);
+
+
+
+
+  p.then((res: any) => { links.value = res;
+  loading.value = false;
+   });
   }
+}, { immediate: true })
+
+function OpenSource(bl: any): void {
+  tabsStore.open(bl.source_path, bl.source_title);
+
+  emit('OpenSource', bl)
 }
 
-watch(currentTitle, fetchBacklinks, { immediate: true })
 
-function openSource(link: Backlink) {
-  tabs.open(link.source_path, link.source_title)
-}
 </script>
 
 <template>
-  <div class="rounded-lg border bg-background/50 p-2.5">
-    <h4 class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Backlinks</h4>
-    <p v-if="loading" class="text-xs text-muted-foreground">Loading…</p>
-    <ul v-else-if="backlinks.length" class="space-y-0.5">
-      <li
-        v-for="link in backlinks"
-        :key="link.source_path"
-        class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-        :title="link.context"
-        @click="openSource(link)"
-      >
-        {{ link.source_title }}
-      </li>
-    </ul>
-    <p v-else class="text-xs text-muted-foreground">No backlinks.</p>
-  </div>
+    <div class="rounded-lg border bg-background/50 p-2.5">
+      <h4 class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span>Backlinks</span>
+      </h4>
+      <template v-if="show_loading">
+        <p class="text-xs text-muted-foreground">
+          <span>Loading…</span>
+        </p>
+      </template>
+      <template v-if="show_list">
+        <component :is="(ul_tag) as any" class="space-y-0.5">
+          <component :is="(li_tag) as any" class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground" :title="bl.context" @click="OpenSource(bl)" v-for="bl in links">
+            <span>{{ bl.source_title }}</span>
+          </component>
+        </component>
+      </template>
+      <template v-if="show_empty">
+        <p class="text-xs text-muted-foreground">
+          <span>No backlinks.</span>
+        </p>
+      </template>
+    </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

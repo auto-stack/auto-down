@@ -1,73 +1,95 @@
+<!-- RecentFilesPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { Clock, X, Trash2 } from 'lucide-vue-next'
-import { useRecentFilesStore } from '@/stores/recentFiles'
-import { useTabsStore } from '@/stores/tabs'
+import { computed } from 'vue'
+import { recentFilesWithTime, removeRecent, Clock, X, Trash2 } from '../../auto/src/front/utils/recent_files_panel_ext'
+import { useRecentFilesStore, useTabsStore } from '../../auto/src/front/utils/recent_files_panel_ext'
 
-const recent = useRecentFilesStore()
-const tabs = useTabsStore()
+const recentFilesStore = useRecentFilesStore()
+const tabsStore = useTabsStore()
 
-function open(path: string) {
-  tabs.open(path)
+
+const files = computed<any>(() => recentFilesWithTime(recentFilesStore.files))
+const has_files = computed<boolean>(() => files.value.length > 0)
+const show_empty = computed<boolean>(() => files.value.length === 0)
+const ul_tag = computed<string>(() => 'ul')
+const li_tag = computed<string>(() => 'li')
+
+const emit = defineEmits<{
+  Open: [any]
+  Remove: [any]
+  ClearAll: []
+}>()
+
+function Open(rf: any): void {
+  tabsStore.open(rf.path);
+
+  emit('Open', rf)
 }
 
-function remove(e: Event, path: string) {
-  e.stopPropagation()
-  recent.remove(path)
+function ClearAll(): void {
+  recentFilesStore.clear();
+
+  emit('ClearAll')
 }
 
-function clearAll() {
-  recent.clear()
+function Remove(rf: any): void {
+  removeRecent(rf.path);
+
+  emit('Remove', rf)
 }
 
-function formatTime(ts: number): string {
-  const date = new Date(ts)
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-}
+
 </script>
 
 <template>
-  <div class="flex h-full flex-col">
-    <div class="flex h-[var(--header-height)] shrink-0 items-center justify-between border-b px-3">
-      <span class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent</span>
-      <button
-        v-if="recent.files.length"
-        type="button"
-        title="Clear recent files"
-        class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        @click="clearAll"
-      >
-        <Trash2 class="h-3.5 w-3.5" />
-      </button>
-    </div>
-    <div class="flex-1 overflow-auto py-1">
-      <div v-if="!recent.files.length" class="flex flex-col items-center gap-2 p-4 text-sm text-muted-foreground">
-        <Clock class="h-5 w-5 opacity-50" />
-        <span>No recent files</span>
+    <div class="flex h-full flex-col">
+      <div class="flex h-[var(--header-height)] shrink-0 items-center justify-between border-b px-3">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span>Recent</span>
+        </span>
+        <template v-if="has_files">
+          <button class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'Clear recent files'" @click="ClearAll">
+            <component :is="(Trash2) as any" class="h-3.5 w-3.5" />
+          </button>
+        </template>
       </div>
-      <ul v-else class="space-y-0.5 px-1">
-        <li
-          v-for="file in recent.files"
-          :key="file.path"
-          class="group flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
-          @click="open(file.path)"
-        >
-          <div class="min-w-0 flex-1">
-            <div class="truncate">{{ file.title }}</div>
-            <div class="truncate text-[10px] text-muted-foreground">{{ file.path }}</div>
+      <div class="flex-1 overflow-auto py-1">
+        <template v-if="show_empty">
+          <div class="flex flex-col items-center gap-2 p-4 text-sm text-muted-foreground">
+            <component :is="(Clock) as any" class="h-5 w-5 opacity-50" />
+            <span>
+              <span>No recent files</span>
+            </span>
           </div>
-          <div class="ml-2 flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100">
-            <span class="text-[10px] text-muted-foreground">{{ formatTime(file.openedAt) }}</span>
-            <button
-              type="button"
-              title="Remove from recent"
-              class="flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground"
-              @click="remove($event, file.path)"
-            >
-              <X class="h-3 w-3" />
-            </button>
-          </div>
-        </li>
-      </ul>
+        </template>
+        <template v-if="has_files">
+          <component :is="(ul_tag) as any" class="space-y-0.5 px-1">
+            <component :is="(li_tag) as any" class="group flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground" @click="Open(rf)" v-for="rf in files">
+              <div class="min-w-0 flex-1">
+                <div class="truncate">
+                  <span>{{ rf.title }}</span>
+                </div>
+                <div class="truncate text-[10px] text-muted-foreground">
+                  <span>{{ rf.path }}</span>
+                </div>
+              </div>
+              <div class="ml-2 flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100">
+                <span class="text-[10px] text-muted-foreground">
+                  <span>{{ rf.time }}</span>
+                </span>
+                <button class="flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground" :type="'button'" :title="'Remove from recent'" @click.stop="Remove(rf)">
+                  <component :is="(X) as any" class="h-3 w-3" />
+                </button>
+              </div>
+            </component>
+          </component>
+        </template>
+      </div>
     </div>
-  </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

@@ -1,57 +1,79 @@
+<!-- UnlinkedReferencesPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useTabsStore } from '@/stores/tabs'
-import { getUnlinkedRefs, type UnlinkedRef } from '@/lib/api'
+import { HtmlDiv } from '../../auto/src/front/utils/unlinked_references_panel_ext'
+import { tabTitle, tabPath, fetchUnlinkedSafe } from '../../auto/src/front/utils/unlinked_references_panel_ext'
+import { useTabsStore } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 
-const tabs = useTabsStore()
-const refs = ref<UnlinkedRef[]>([])
-const loading = ref(false)
+const tabsStore = useTabsStore()
 
-async function load() {
-  const title = tabs.activeTab?.title
-  if (!title) {
-    refs.value = []
-    return
+
+const refs = ref<any[]>([])
+const loading = ref<boolean>(false)
+
+const watch_key = computed<any>(() => tabPath(tabsStore.activeTab))
+const show_loading = computed<boolean>(() => loading.value)
+const show_list = computed<boolean>(() => !loading.value && refs.value.length > 0)
+const show_empty = computed<boolean>(() => !loading.value && refs.value.length === 0)
+const ul_tag = computed<string>(() => 'ul')
+const li_tag = computed<string>(() => 'li')
+
+const emit = defineEmits<{
+  OpenRef: [any]
+}>()
+
+watch(watch_key, () => {
+
+  let title = tabTitle(tabsStore.activeTab);
+  if (title == '') {refs.value = [];
   }
-  loading.value = true
-  try {
-    const res = await getUnlinkedRefs(title)
-    refs.value = res.refs
-  } catch (e) {
-    refs.value = []
-  } finally {
-    loading.value = false
+  if (title != '') {loading.value = true;
+  let p = fetchUnlinkedSafe(title);
+  p.then((res: any) => { refs.value = res;
+  loading.value = false;
+   });
   }
+}, { immediate: true })
+
+function OpenRef(r: any): void {
+  tabsStore.open(r.page_path);
+
+  emit('OpenRef', r)
 }
 
-watch(() => tabs.activeTab?.path, load, { immediate: true })
 
-function openRef(r: UnlinkedRef) {
-  tabs.open(r.page_path)
-}
-
-function highlightContext(context: string, matched: string): string {
-  if (!matched) return context
-  const re = new RegExp(`(${matched.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-  return context.replace(re, '<mark class="bg-primary/20 text-primary">$1</mark>')
-}
 </script>
 
 <template>
-  <div class="rounded-lg border bg-background/50 p-2.5">
-    <h4 class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Unlinked References</h4>
-    <div v-if="loading" class="text-xs text-muted-foreground">Loading…</div>
-    <ul v-else-if="refs.length" class="space-y-1">
-      <li
-        v-for="(r, idx) in refs"
-        :key="idx"
-        class="cursor-pointer rounded px-1.5 py-1 text-xs hover:bg-accent"
-        @click="openRef(r)"
-      >
-        <div class="mb-0.5 truncate text-[10px] text-muted-foreground">{{ r.page_path }}</div>
-        <div class="text-foreground/80" v-html="highlightContext(r.context, r.matched_text)" />
-      </li>
-    </ul>
-    <p v-else class="text-xs text-muted-foreground">No unlinked references.</p>
-  </div>
+    <div class="rounded-lg border bg-background/50 p-2.5">
+      <h4 class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span>Unlinked References</span>
+      </h4>
+      <template v-if="show_loading">
+        <div class="text-xs text-muted-foreground">
+          <span>Loading…</span>
+        </div>
+      </template>
+      <template v-if="show_list">
+        <component :is="(ul_tag) as any" class="space-y-1">
+          <component :is="(li_tag) as any" class="cursor-pointer rounded px-1.5 py-1 text-xs hover:bg-accent" @click="OpenRef(r)" v-for="r in refs">
+            <div class="mb-0.5 truncate text-[10px] text-muted-foreground">
+              <span>{{ r.page_path }}</span>
+            </div>
+            <HtmlDiv :class="'text-foreground/80'" :html="r.html" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+          </component>
+        </component>
+      </template>
+      <template v-if="show_empty">
+        <p class="text-xs text-muted-foreground">
+          <span>No unlinked references.</span>
+        </p>
+      </template>
+    </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

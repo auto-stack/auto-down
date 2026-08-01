@@ -280,6 +280,50 @@ sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|
     `tabsStore.open(a, b)`（非内建方法名透传）；view 引用的 handler 会
     额外携带一句无害的 `emit('Open', x)`（无监听者，editor 批次先例）。
 
+### Phase 5.1 batch 2 新增限制（Ribbon/StatusBar/AgendaPanel/SearchPanel/ThemePopover 实证）
+
+26. **ext 内嵌的 Tailwind class 字符串不在扫描路径内**：ext .ts 里的
+    class 字面量（如 `<mark>` 高亮的 `bg-primary/20 text-primary`）不在
+    front/tailwind.config.cjs 的 content glob（`./src/**`）内，Tailwind
+    不生成对应 utility —— batch 1 靠未翻译的 SearchPanel.vue 原文里的
+    同款字面量兜底（隐性依赖），SearchPanel 翻译后字面量移入 ext，
+    `.bg-primary/20` 消失，`<mark>` 退回 UA 默认黄色，e2e 截图基线立刻
+    抓出。修复：content 加入 `./auto/src/front/utils/*.ts`（已落地）。
+    教训：凡是 ext 里以字符串形式携带 Tailwind class 的，都必须落在
+    content 扫描路径内。
+27. **`to:` prop 在 dyn 块上误解析**：`to` 是关键字 token（同 editor
+    README 的 `type:`/`as:`），`dyn (.Teleport) { to: "body", ... }` 被
+    错解析成垃圾 `<div>` 子节点（含 `<div>body</div>`）。规避：ext 包
+    一个固定 `to="body"` 的函数式组件（BodyTeleport），经 dyn 渲染，
+    挂载 DOM 与 `<Teleport to="body">` 一致。
+28. **computed 体为「指向 import 常量的 dot-ref」时被误推断为
+    `computed<number>`**：`accents => .THEME_ACCENTS` 经名字启发式
+    （非 is_/has_ 前缀 → number）发射 `computed<number>(() => THEME_ACCENTS)`，
+    TS2769。规避：ext 提供零参函数，`accents => themeAccents()`（Call 体
+    发射 `computed<any>`，backlinks current_title 先例）。
+29. **循环变量不能命名 `task`**：与 `link`（gap 18）同类，`task` 是
+    DSL 关键字 token，`for task in ...` 报 "Expected term, got
+    RBrace"（报错位置在循环收尾处）。换名（tk 已验证）。
+
+### Phase 5.1 batch 2 新验证能力（非限制，之前未用过）
+
+- **子组件事件监听**：`ThemePopover { open: .theme_open, onclose: .CloseTheme }`
+  → `@close="CloseTheme"`（未知 onxxx 键剥离 `on` 前缀）；子 widget 的
+  自动 `emit('Close', e)` 与父侧 `@close`（编译为 onClose）匹配——子向
+  父的 emit 通道就此打通，无需手写 wrapper。
+- **quoted-key style map**：`style: { "text-primary bg-primary/10": item.active }`
+  → `:class="{ 'text-primary bg-primary/10': item.active }"`，与原件的
+  `:class` 对象形式逐字一致（条件必须是字段访问，Call 会 emit null）。
+- **v-model 折叠**：`value: .query` + `oninput: .QueryInput($event)` →
+  `v-model="query"`（editor README CodeBlockMenu note 3 的 jade 首用）；
+  handler 发射但不被调用。
+- **model var 存函数 + let-bind 调用**：`.Init` 里
+  `.debounced_search = useDebounceFn(run, 250)`（Array<str>=any 占位），
+  watch/handler 里 `let f = .debounced_search` 后 `f()`（TableMenu
+  let-bind 先例），debounce 语义与原件 useDebounceFn 一致。
+- **无 view 事件的 widget 可省略 msg/on 块**（StatusBar：全部逻辑在
+  watch + computed）。
+
 ### 生成产物与原手写 SFC 的细微差异（面板批次，DOM 行为等价）
 
 - v-if 分支包在透明 `<template>` 里；文本多一层内联 `<span>`；

@@ -4,6 +4,11 @@ module.exports = {
   content: [
     './index.html',
     './src/**/*.{ts,tsx,vue}',
+    // Auto widget extensions embed Tailwind class strings that no scanned
+    // .vue references (e.g. the <mark> highlight classes in
+    // search_panel_ext.ts / unlinked_references_panel_ext.ts — plan 011
+    // Phase 5.1 batch 2; see auto/README.md gap 26).
+    './auto/src/front/utils/*.ts',
     '../autodown/packages/editor/src/**/*.{ts,vue}',
     '../autodown/packages/vue/src/**/*.{ts,vue}',
   ],

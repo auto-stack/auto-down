@@ -1,94 +1,88 @@
+<!-- Ribbon component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref } from 'vue'
-import { FolderTree, Search, Clock, Palette, Network, CalendarDays } from 'lucide-vue-next'
-import { useSidebarStore } from '@/stores/sidebar'
-import { useTabsStore } from '@/stores/tabs'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { openDailyNote, todayDate } from '@/lib/dailyNote'
-import type { LeftPanel } from '@/stores/sidebar'
-import ThemePopover from './ThemePopover.vue'
+import { ref, computed } from 'vue'
+import { ThemePopover } from '../../auto/src/front/utils/ribbon_ext'
+import { ribbonItems, graphActive, openTodayNote, Network, CalendarDays, Palette } from '../../auto/src/front/utils/ribbon_ext'
+import { useSidebarStore, useTabsStore, useFileTreeStore } from '../../auto/src/front/utils/ribbon_ext'
 
-const sidebar = useSidebarStore()
-const tabs = useTabsStore()
-const fileTree = useFileTreeStore()
-const themeOpen = ref(false)
+const sidebarStore = useSidebarStore()
+const tabsStore = useTabsStore()
+const fileTreeStore = useFileTreeStore()
 
-async function openToday() {
-  await openDailyNote(todayDate(), tabs, fileTree)
+
+const theme_open = ref<boolean>(false)
+
+const items = computed<any>(() => ribbonItems(sidebarStore.leftPanel, sidebarStore.leftOpen))
+const graph_active = computed<any>(() => graphActive(tabsStore.activeTab))
+
+const emit = defineEmits<{
+  Select: [any]
+  OpenGlobalGraph: []
+  OpenToday: []
+  ToggleTheme: []
+  CloseTheme: []
+}>()
+
+function ToggleTheme(): void {
+  theme_open.value = !theme_open.value;
+
+  emit('ToggleTheme')
 }
 
-const items: { panel: LeftPanel; icon: any; label: string }[] = [
-  { panel: 'files', icon: FolderTree, label: 'Files' },
-  { panel: 'search', icon: Search, label: 'Search' },
-  { panel: 'recent', icon: Clock, label: 'Recent' },
-]
+function Select(item: any): void {
+  sidebarStore.setLeftPanel(item.panel);
 
-function select(panel: LeftPanel) {
-  sidebar.setLeftPanel(panel)
+  emit('Select', item)
 }
 
-function openGlobalGraph() {
-  tabs.openGraph()
+function CloseTheme(): void {
+  theme_open.value = false;
+
+  emit('CloseTheme')
 }
 
-function active(item: typeof items[number]): boolean {
-  return sidebar.leftPanel === item.panel && sidebar.leftOpen
+function OpenToday(): void {
+  openTodayNote(tabsStore, fileTreeStore);
+
+  emit('OpenToday')
 }
+
+function OpenGlobalGraph(): void {
+  tabsStore.openGraph();
+
+  emit('OpenGlobalGraph')
+}
+
+
 </script>
 
 <template>
-  <nav class="flex w-11 flex-col items-center gap-1 border-r bg-card py-2">
-    <button
-      v-for="item in items"
-      :key="item.panel"
-      type="button"
-      :title="item.label"
-      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': active(item) }"
-      @click="select(item.panel)"
-    >
-      <component :is="item.icon" class="h-[18px] w-[18px]" />
-      <span
-        v-if="active(item)"
-        class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
-      />
-    </button>
+    <nav class="flex w-11 flex-col items-center gap-1 border-r bg-card py-2">
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': item.active }" :type="'button'" :title="item.label" @click="Select(item)" v-for="item in items">
+        <component :is="(item.icon) as any" class="h-[18px] w-[18px]" />
+        <template v-if="item.active">
+          <span class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+        </template>
+      </button>
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph_active }" :type="'button'" :title="'全局图谱'" @click="OpenGlobalGraph">
+        <component :is="(Network) as any" class="h-[18px] w-[18px]" />
+        <template v-if="graph_active">
+          <span class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+        </template>
+      </button>
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'今日笔记'" :type="'button'" @click="OpenToday">
+        <component :is="(CalendarDays) as any" class="h-[18px] w-[18px]" />
+      </button>
+      <div class="flex-1" />
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="theme_open ? 'text-primary bg-primary/10' : ''" :title="'Theme'" :type="'button'" @click="ToggleTheme">
+        <component :is="(Palette) as any" class="h-[18px] w-[18px]" />
+      </button>
+      <ThemePopover :open="theme_open" :key="'ThemePopover-1'" @close="CloseTheme" />
+    </nav>
 
-    <button
-      type="button"
-      title="全局图谱"
-      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': tabs.activeTab?.isGraph && !tabs.activeTab?.graphCenterPath }"
-      @click="openGlobalGraph"
-    >
-      <Network class="h-[18px] w-[18px]" />
-      <span
-        v-if="tabs.activeTab?.isGraph && !tabs.activeTab?.graphCenterPath"
-        class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
-      />
-    </button>
-
-    <button
-      type="button"
-      title="今日笔记"
-      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      @click="openToday"
-    >
-      <CalendarDays class="h-[18px] w-[18px]" />
-    </button>
-
-    <div class="flex-1" />
-
-    <button
-      type="button"
-      title="Theme"
-      class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      :class="{ 'text-primary bg-primary/10': themeOpen }"
-      @click="themeOpen = !themeOpen"
-    >
-      <Palette class="h-[18px] w-[18px]" />
-    </button>
-
-    <ThemePopover :open="themeOpen" @close="themeOpen = false" />
-  </nav>
 </template>
+
+<style>
+/* Component styles */
+
+</style>

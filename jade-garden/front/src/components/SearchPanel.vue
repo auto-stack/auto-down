@@ -1,95 +1,126 @@
+<!-- SearchPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
-import { useTabsStore } from '@/stores/tabs'
-import { search, type SearchResult } from '@/lib/api'
-import { Search, FileText, Box } from 'lucide-vue-next'
+import { ref, computed, onMounted, watch } from 'vue'
+import { HtmlDiv } from '../../auto/src/front/utils/search_panel_ext'
+import { useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, strTruthy, Search, FileText, Box } from '../../auto/src/front/utils/search_panel_ext'
+import { useTabsStore } from '../../auto/src/front/utils/search_panel_ext'
 
-const tabs = useTabsStore()
-const query = ref('')
-const results = ref<SearchResult[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
+const tabsStore = useTabsStore()
 
-const hasQuery = computed(() => query.value.trim().length > 0)
 
-const debouncedSearch = useDebounceFn(async () => {
-  const q = query.value.trim()
-  if (!q) {
-    results.value = []
-    return
-  }
-  loading.value = true
-  error.value = null
-  try {
-    const res = await search(q, 30)
-    results.value = res.results
-  } catch (e: any) {
-    error.value = e.message || String(e)
-    results.value = []
-  } finally {
-    loading.value = false
-  }
-}, 250)
+const query = ref<string>('')
+const results = ref<any[]>([])
+const loading = ref<boolean>(false)
+const error = ref<string>('')
+const debounced_search = ref<any>(undefined)
 
-watch(query, debouncedSearch)
+const display_results = computed<any>(() => withSearchDisplay(results.value))
+const has_query = computed<boolean>(() => query.value.trim().length > 0)
+const has_error = computed<any>(() => strTruthy(error.value))
+const show_loading = computed<boolean>(() => loading.value)
+const show_error = computed<boolean>(() => !loading.value && has_error.value)
+const show_results = computed<boolean>(() => !loading.value && !has_error.value && results.value.length > 0)
+const show_no_results = computed<boolean>(() => !loading.value && !has_error.value && results.value.length === 0 && has_query.value)
+const show_hint = computed<boolean>(() => !loading.value && !has_error.value && results.value.length === 0 && !has_query.value)
+const ul_tag = computed<string>(() => 'ul')
+const li_tag = computed<string>(() => 'li')
 
-function snippetHtml(snippet?: string | null): string {
-  if (!snippet) return ''
-  return snippet.replace(/\u0001/g, '<mark class="bg-primary/20 text-primary">').replace(/\u0002/g, '</mark>')
+const emit = defineEmits<{
+  QueryInput: [any]
+  OpenResult: [any]
+}>()
+
+watch(query, () => {
+  let f = debounced_search.value;
+  f();
+})
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
 }
 
-function openResult(r: SearchResult) {
-  if (r.type === 'Page' && r.path) {
-    tabs.open(r.path, r.title)
-  } else if (r.type === 'Block' && r.page_path) {
-    tabs.open(r.page_path).then(() => {
-      if (r.block_id) {
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('jade-scroll-to-block', {
-            detail: { path: r.page_path, id: r.block_id },
-          }))
-        }, 150)
-      }
-    })
+function OpenResult(r: any): void {
+  if (r.type == 'Page' && r.path != null) {tabsStore.open(r.path, r.title);
   }
+  if (r.type == 'Block' && r.page_path != null) {let p = tabsStore.open(r.page_path);
+  p.then(() => { if (r.block_id != null) {scheduleScrollToBlock(r.page_path, r.block_id);
+  } });
+  }
+
+  emit('OpenResult', r)
 }
+
+onMounted(() => {
+  let run = () => { let q = query.value.trim();
+  if (q != '') {loading.value = true;
+  error.value = '';
+  let p = searchSafe(q);
+  p.then((res: any) => { results.value = res.results;
+  error.value = res.error;
+  loading.value = false;
+   });
+  }if (q == '') {results.value = [];
+  } };
+  let f = useDebounceFn(run, 250);
+  debounced_search.value = f;
+})
+
+
 </script>
 
 <template>
-  <div class="flex h-full flex-col p-3">
-    <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
-      <Search class="h-4 w-4 text-muted-foreground" />
-      <input
-        v-model="query"
-        type="text"
-        placeholder="Search pages and blocks..."
-        class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-      >
+    <div class="flex h-full flex-col p-3">
+      <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
+        <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
+        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" v-model="query" :placeholder="'Search pages and blocks...'" />
+      </div>
+      <template v-if="show_loading">
+        <div class="mt-4 text-center text-xs text-muted-foreground">
+          <span>Searching…</span>
+        </div>
+      </template>
+      <template v-if="show_error">
+        <div class="mt-4 text-center text-xs text-destructive">
+          <span>{{ error }}</span>
+        </div>
+      </template>
+      <template v-if="show_results">
+        <component :is="(ul_tag) as any" class="mt-2 flex-1 space-y-1 overflow-y-auto">
+          <component :is="(li_tag) as any" class="cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent" @click="OpenResult(r)" v-for="r in display_results">
+            <div class="flex items-center gap-1.5">
+              <template v-if="r.is_page">
+                <component :is="(FileText) as any" class="h-3.5 w-3.5 text-muted-foreground" />
+              </template>
+              <template v-if="r.is_block">
+                <component :is="(Box) as any" class="h-3.5 w-3.5 text-muted-foreground" />
+              </template>
+              <span class="truncate font-medium">
+                <span>{{ r.title_text }}</span>
+              </span>
+            </div>
+            <template v-if="r.has_snippet">
+              <HtmlDiv :html="r.snippet_html" :class="'mt-0.5 pl-5 text-xs text-muted-foreground'" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+            </template>
+          </component>
+        </component>
+      </template>
+      <template v-if="show_no_results">
+        <p class="mt-4 text-center text-xs text-muted-foreground">
+          <span>No results</span>
+        </p>
+      </template>
+      <template v-if="show_hint">
+        <p class="mt-4 text-center text-xs text-muted-foreground">
+          <span>Type to search pages and blocks</span>
+        </p>
+      </template>
     </div>
 
-    <div v-if="loading" class="mt-4 text-center text-xs text-muted-foreground">Searching…</div>
-    <div v-else-if="error" class="mt-4 text-center text-xs text-destructive">{{ error }}</div>
-    <ul v-else-if="results.length" class="mt-2 flex-1 space-y-1 overflow-y-auto">
-      <li
-        v-for="r in results"
-        :key="r.type === 'Page' ? r.path : r.uuid"
-        class="cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent"
-        @click="openResult(r)"
-      >
-        <div class="flex items-center gap-1.5">
-          <FileText v-if="r.type === 'Page'" class="h-3.5 w-3.5 text-muted-foreground" />
-          <Box v-else class="h-3.5 w-3.5 text-muted-foreground" />
-          <span class="truncate font-medium">{{ r.type === 'Page' ? r.title : r.page_path }}</span>
-        </div>
-        <div
-          v-if="r.snippet"
-          class="mt-0.5 pl-5 text-xs text-muted-foreground"
-          v-html="snippetHtml(r.snippet)"
-        />
-      </li>
-    </ul>
-    <p v-else-if="hasQuery" class="mt-4 text-center text-xs text-muted-foreground">No results</p>
-    <p v-else class="mt-4 text-center text-xs text-muted-foreground">Type to search pages and blocks</p>
-  </div>
 </template>
+
+<style>
+/* Component styles */
+
+</style>

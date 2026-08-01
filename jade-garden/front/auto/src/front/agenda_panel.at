@@ -1,0 +1,129 @@
+// agenda_panel.at — AgendaPanel widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/AgendaPanel.vue (plan 011 Phase 5.1 batch 2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/agenda_panel_ext|../../auto/src/front/utils/agenda_panel_ext|g' \
+//     gen/front/vue/src/components/AgendaPanel.vue > ../src/components/AgendaPanel.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - ul/li are not in the DSL element table, so the task list renders via
+//   dyn with string tags (backlinks precedent); <component :is="'ul'">
+//   renders a real <ul>.
+// - The v-if / v-else-if / v-else chain (loading / empty / groups) becomes
+//   three exclusive named-boolean computeds.
+// - formatDate / markerClass / `title || page_path` are precomputed per
+//   group/task by the extension's agendaDisplay (no Call bindings in the
+//   view; || is broken in DSL view text).
+// - The marker span's dynamic class is precomputed as three boolean flags
+//   (exactly one true) and bound through the style prop's QUOTED-KEY
+//   style-map form — a plain dynamic style: expr is silently dropped
+//   (README gap 20).
+// - The original's watch(() => tabs.activeTab?.path, load, { immediate })
+//   maps to the watch block's .immediate modifier on current_path; the
+//   load body does not read the path, so the watch source is only a
+//   trigger, exactly like the original.
+// - try/catch/finally as a one-callback .then: fetchAgendaSafe never
+//   rejects; its null return keeps the previous groups (the original's
+//   catch branch) and the finally's loading=false lands in the callback.
+
+widget AgendaPanel {
+    use {
+        composable: useTabsStore from "src/front/utils/agenda_panel_ext.ts"
+        fn: tabPath, fetchAgendaSafe, agendaDisplay, CalendarClock from "src/front/utils/agenda_panel_ext.ts"
+    }
+
+    msg Msg { OpenTask }
+
+    model {
+        var groups []str = []
+        var loading bool = false
+    }
+
+    computed {
+        current_path => tabPath(.tabsStore.activeTab)
+        display_groups => agendaDisplay(.groups)
+        show_loading => .loading
+        show_empty => !.loading && .groups.length == 0
+        show_groups => !.loading && .groups.length > 0
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            class: "rounded-md border",
+            div {
+                class: "flex items-center gap-2 border-b px-3 py-2",
+                dyn (.CalendarClock) { class: "h-4 w-4 text-muted-foreground" }
+                span { class: "text-xs font-semibold uppercase tracking-wider text-muted-foreground", text "Agenda" }
+            }
+            div {
+                class: "max-h-[40vh] overflow-auto p-2",
+                if .show_loading {
+                    div { class: "px-2 py-4 text-center text-xs text-muted-foreground", text "Loading…" }
+                }
+                if .show_empty {
+                    div { class: "px-2 py-4 text-center text-xs text-muted-foreground", text "No upcoming tasks" }
+                }
+                if .show_groups {
+                    div {
+                        class: "space-y-3",
+                        for g in .display_groups {
+                            div {
+                                div { class: "sticky top-0 bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground", text g.formatted_date }
+                                dyn (.ul_tag) {
+                                    class: "space-y-1",
+                                    for tk in g.tasks {
+                                        dyn (.li_tag) {
+                                            class: "cursor-pointer rounded px-2 py-1 text-xs hover:bg-accent",
+                                            onclick: .OpenTask(tk),
+                                            div {
+                                                class: "flex items-start gap-1.5",
+                                                span {
+                                                    class: "font-semibold",
+                                                    style: { "text-muted-foreground": tk.marker_muted, "text-primary": tk.marker_primary, "text-emerald-600 line-through": tk.marker_done },
+                                                    text tk.marker
+                                                }
+                                                if tk.priority {
+                                                    span { class: "font-semibold text-amber-600", text f"[#${tk.priority}]" }
+                                                }
+                                                span { class: "line-clamp-2", text tk.content }
+                                            }
+                                            div { class: "mt-0.5 truncate text-[10px] text-muted-foreground", text tk.line }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(() => tabs.activeTab?.path, load, { immediate: true }).
+        .current_path.immediate -> {
+            .loading = true
+            let p = fetchAgendaSafe()
+            p.then(res => {
+                // Original catch branch: keep the previous groups.
+                if res != null {
+                    .groups = res
+                }
+                .loading = false
+            })
+        }
+    }
+
+    on {
+        // Original: function openTask(path) { tabs.open(path) }
+        .OpenTask(tk) -> {
+            .tabsStore.open(tk.page_path)
+        }
+    }
+}

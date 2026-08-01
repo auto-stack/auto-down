@@ -1,74 +1,81 @@
+<!-- StatusBar component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useWorkspaceStore } from '@/stores/workspace'
-import { useTabsStore } from '@/stores/tabs'
-import { getBacklinks } from '@/lib/api'
+import { ref, computed, watch } from 'vue'
+import { useWorkspaceStore, useTabsStore } from '../../auto/src/front/utils/status_bar_ext'
+import { workspaceName, rootTitle, tabBody, tabPath, tabSaving, tabDirty, wordCount, charCount, linkCount, saveLabel, plural, fetchBacklinkCountSafe } from '../../auto/src/front/utils/status_bar_ext'
 
-const workspace = useWorkspaceStore()
-const tabs = useTabsStore()
+const workspaceStore = useWorkspaceStore()
+const tabsStore = useTabsStore()
 
-const workspaceName = computed(() => {
-  if (!workspace.root) return 'No workspace'
-  const parts = workspace.root.replace(/\\/g, '/').split('/').filter(Boolean)
-  return parts[parts.length - 1] || workspace.root
-})
 
-const body = computed(() => tabs.activeTab?.body ?? '')
-const wordCount = computed(() => {
-  const text = body.value.trim()
-  if (!text) return 0
-  return text.split(/\s+/).length
-})
-const charCount = computed(() => body.value.length)
-const linkCount = computed(() => (body.value.match(/\[\[/g) || []).length)
+const backlink_count = ref<number>(0)
 
-const saving = computed(() => tabs.activeTab?.saving)
-const dirty = computed(() => tabs.activeTab?.dirty)
-const saveLabel = computed(() => {
-  if (saving.value) return 'Saving…'
-  if (dirty.value) return 'Unsaved'
-  return 'Saved'
-})
+const ws_name = computed<any>(() => workspaceName(workspaceStore.root))
+const ws_title = computed<any>(() => rootTitle(workspaceStore.root))
+const body = computed<any>(() => tabBody(tabsStore.activeTab))
+const word_count = computed<any>(() => wordCount(body.value))
+const char_count = computed<any>(() => charCount(body.value))
+const link_count = computed<any>(() => linkCount(body.value))
+const saving = computed<any>(() => tabSaving(tabsStore.activeTab))
+const dirty = computed<any>(() => tabDirty(tabsStore.activeTab))
+const save_label = computed<any>(() => saveLabel(saving.value, dirty.value))
+const current_path = computed<any>(() => tabPath(tabsStore.activeTab))
+const backlinks_text = computed<any>(() => plural(backlink_count.value, 'backlink'))
+const words_text = computed<any>(() => plural(word_count.value, 'word'))
+const chars_text = computed<any>(() => plural(char_count.value, 'char'))
+const links_text = computed<any>(() => plural(link_count.value, 'link'))
+const tabs_text = computed<any>(() => plural(tabsStore.tabs.length, 'tab'))
 
-function fileStem(path: string): string {
-  const name = path.split('/').pop() || path
-  const idx = name.lastIndexOf('.')
-  return idx > 0 ? name.slice(0, idx) : name
-}
+watch(current_path, () => {
 
-const backlinkCount = ref(0)
-async function fetchBacklinks() {
-  const path = tabs.activeTab?.path
-  if (!path) {
-    backlinkCount.value = 0
-    return
+  if (current_path.value == '') {backlink_count.value = 0;
   }
-  try {
-    const res = await getBacklinks(fileStem(path))
-    backlinkCount.value = res.links.length
-  } catch {
-    backlinkCount.value = 0
-  }
-}
+  if (current_path.value != '') {let p = fetchBacklinkCountSafe(current_path.value);
 
-watch(() => tabs.activeTab?.path, fetchBacklinks, { immediate: true })
+
+  p.then((n: any) => { backlink_count.value = n;
+   });
+  }
+}, { immediate: true })
+
+
 </script>
 
 <template>
-  <footer class="flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[11px] text-muted-foreground">
-    <div class="flex items-center gap-3">
-      <span class="truncate max-w-[240px]" :title="workspace.root ?? undefined">
-        {{ workspaceName }}
-      </span>
-    </div>
-    <div class="flex items-center gap-3">
-      <span :class="dirty ? 'text-amber-500' : ''">{{ saveLabel }}</span>
-      <span class="text-border">|</span>
-      <span>{{ backlinkCount }} backlink{{ backlinkCount === 1 ? '' : 's' }}</span>
-      <span>{{ wordCount }} words</span>
-      <span>{{ charCount }} chars</span>
-      <span>{{ linkCount }} link{{ linkCount === 1 ? '' : 's' }}</span>
-      <span>{{ tabs.tabs.length }} tab{{ tabs.tabs.length === 1 ? '' : 's' }}</span>
-    </div>
-  </footer>
+    <footer class="flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[11px] text-muted-foreground">
+      <div class="flex items-center gap-3">
+        <span class="truncate max-w-[240px]" :title="ws_title">
+          <span>{{ ws_name }}</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span :class="dirty ? 'text-amber-500' : ''">
+          <span>{{ save_label }}</span>
+        </span>
+        <span class="text-border">
+          <span>|</span>
+        </span>
+        <span>
+          <span>{{ backlinks_text }}</span>
+        </span>
+        <span>
+          <span>{{ words_text }}</span>
+        </span>
+        <span>
+          <span>{{ chars_text }}</span>
+        </span>
+        <span>
+          <span>{{ links_text }}</span>
+        </span>
+        <span>
+          <span>{{ tabs_text }}</span>
+        </span>
+      </div>
+    </footer>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

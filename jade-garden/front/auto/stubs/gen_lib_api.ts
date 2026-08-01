@@ -111,3 +111,50 @@ export async function getUnlinkedRefs(_title: string): Promise<any> {
 export async function createWikiPage(_title: string): Promise<string> {
   return ''
 }
+
+// --- Phase 5.1 batch 2 additions (agenda + search) ---
+
+export interface TaskItem {
+  page_path: string
+  title: string
+  line: number
+  raw: string
+  marker: string
+  priority?: string
+  content: string
+  scheduled?: string
+  deadline?: string
+}
+
+export interface AgendaGroup {
+  date: string
+  tasks: TaskItem[]
+}
+
+export interface AgendaResponse {
+  groups: AgendaGroup[]
+}
+
+export async function getAgenda(_days = 14): Promise<AgendaResponse> {
+  return { groups: [] }
+}
+
+export interface SearchResult {
+  type: 'Page' | 'Block'
+  path?: string
+  title?: string
+  uuid?: string
+  page_path?: string
+  block_id?: string
+  content?: string
+  snippet?: string | null
+}
+
+export interface SearchResponse {
+  query: string
+  results: SearchResult[]
+}
+
+export async function search(_query: string, _limit = 20): Promise<SearchResponse> {
+  return { query: '', results: [] }
+}

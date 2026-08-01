@@ -1,0 +1,96 @@
+// status_bar.at — StatusBar widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/StatusBar.vue (plan 011 Phase 5.1 batch 2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/status_bar_ext|../../auto/src/front/utils/status_bar_ext|g' \
+//     gen/front/vue/src/components/StatusBar.vue > ../src/components/StatusBar.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - All display strings are precomputed by typed extension helpers
+//   (regex literals, optional chaining + ??, and ternaries are all
+//   unavailable/mis-typed in DSL computeds — see the extension header).
+// - The original's watch(() => tabs.activeTab?.path, fetch, { immediate })
+//   maps to the watch block's .immediate modifier on the current_path
+//   computed; the empty-path early return becomes exclusive if guards.
+// - The dirty-amber class uses the Plan 346 style ternary (a plain dynamic
+//   style: expr is silently dropped — README gap 20).
+// - This widget has no view events, so it declares no msg/on blocks; the
+//   backlink-count fetch lives entirely in the watch block.
+
+widget StatusBar {
+    use {
+        composable: useWorkspaceStore, useTabsStore from "src/front/utils/status_bar_ext.ts"
+        fn: workspaceName, rootTitle, tabBody, tabPath, tabSaving, tabDirty, wordCount, charCount, linkCount, saveLabel, plural, fetchBacklinkCountSafe from "src/front/utils/status_bar_ext.ts"
+    }
+
+    model {
+        var backlink_count int = 0
+    }
+
+    computed {
+        ws_name => workspaceName(.workspaceStore.root)
+        ws_title => rootTitle(.workspaceStore.root)
+        body => tabBody(.tabsStore.activeTab)
+        word_count => wordCount(.body.value)
+        char_count => charCount(.body.value)
+        link_count => linkCount(.body.value)
+        saving => tabSaving(.tabsStore.activeTab)
+        dirty => tabDirty(.tabsStore.activeTab)
+        save_label => saveLabel(.saving.value, .dirty.value)
+        current_path => tabPath(.tabsStore.activeTab)
+        backlinks_text => plural(.backlink_count, "backlink")
+        words_text => plural(.word_count.value, "word")
+        chars_text => plural(.char_count.value, "char")
+        links_text => plural(.link_count.value, "link")
+        tabs_text => plural(.tabsStore.tabs.length, "tab")
+    }
+
+    view {
+        footer {
+            class: "flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[11px] text-muted-foreground",
+            div {
+                class: "flex items-center gap-3",
+                span {
+                    class: "truncate max-w-[240px]",
+                    title: .ws_title,
+                    text .ws_name
+                }
+            }
+            div {
+                class: "flex items-center gap-3",
+                span {
+                    style: .dirty ? "text-amber-500" : "",
+                    text .save_label
+                }
+                span { class: "text-border", text "|" }
+                span { text .backlinks_text }
+                span { text .words_text }
+                span { text .chars_text }
+                span { text .links_text }
+                span { text .tabs_text }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(() => tabs.activeTab?.path, fetchBacklinks, { immediate: true }).
+        .current_path.immediate -> {
+            // Original: if (!path) { backlinkCount.value = 0; return }
+            if .current_path.value == "" {
+                .backlink_count = 0
+            }
+            if .current_path.value != "" {
+                let p = fetchBacklinkCountSafe(.current_path.value)
+                // try/catch as a one-callback .then: the extension wrapper
+                // never rejects (the catch branch returns 0).
+                p.then(n => {
+                    .backlink_count = n
+                })
+            }
+        }
+    }
+}

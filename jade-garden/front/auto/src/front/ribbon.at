@@ -1,0 +1,118 @@
+// ribbon.at — Ribbon widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/Ribbon.vue (plan 011 Phase 5.1 batch 2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/ribbon_ext|../../auto/src/front/utils/ribbon_ext|g' \
+//     gen/front/vue/src/components/Ribbon.vue > ../src/components/Ribbon.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - The lucide icons render via dyn with the extension's re-exported
+//   component symbols; the per-item icon is a loop-var field
+//   (dyn (.item.icon), SlashMenu precedent).
+// - The original's :class object maps ({ 'text-primary ...': cond }) use
+//   the style prop's QUOTED-KEY style-map form, which emits the same
+//   :class="{ 'key': cond }" object binding (conditions must be field
+//   accesses — Calls emit null — so active/graph_active are precomputed).
+// - The theme button's conditional class uses the Plan 346 style ternary
+//   (a plain dynamic style: expr is silently dropped — README gap 20).
+// - The ThemePopover child is consumed through the extension's component
+//   re-export; its close emit is heard via `onclose:` (unknown onxxx keys
+//   strip the "on" prefix → @close; Vue compiles @close to onClose, which
+//   the child's emit('Close') matches).
+// - The original's `await openDailyNote(...)` is not awaited in the
+//   handler (the DSL has no async handlers); the rejection behaviour is
+//   identical — an unhandled rejection either way.
+
+widget Ribbon {
+    use {
+        composable: useSidebarStore, useTabsStore, useFileTreeStore from "src/front/utils/ribbon_ext.ts"
+        fn: ribbonItems, graphActive, openTodayNote, Network, CalendarDays, Palette from "src/front/utils/ribbon_ext.ts"
+        component: ThemePopover from "src/front/utils/ribbon_ext.ts"
+    }
+
+    msg Msg { Select, OpenGlobalGraph, OpenToday, ToggleTheme, CloseTheme }
+
+    model {
+        var theme_open bool = false
+    }
+
+    computed {
+        // Original: items + active(item), precomputed by the extension.
+        items => ribbonItems(.sidebarStore.leftPanel, .sidebarStore.leftOpen)
+        // Original: tabs.activeTab?.isGraph && !tabs.activeTab?.graphCenterPath.
+        graph_active => graphActive(.tabsStore.activeTab)
+    }
+
+    view {
+        nav {
+            class: "flex w-11 flex-col items-center gap-1 border-r bg-card py-2",
+            for item in .items {
+                button (type: "button") {
+                    title: item.label,
+                    class: "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    style: { "text-primary bg-primary/10 hover:bg-primary/15": item.active },
+                    onclick: .Select(item),
+                    dyn (.item.icon) { class: "h-[18px] w-[18px]" }
+                    if item.active {
+                        span { class: "absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" }
+                    }
+                }
+            }
+            button (type: "button") {
+                title: "全局图谱",
+                class: "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                style: { "text-primary bg-primary/10 hover:bg-primary/15": .graph_active },
+                onclick: .OpenGlobalGraph,
+                dyn (.Network) { class: "h-[18px] w-[18px]" }
+                if .graph_active {
+                    span { class: "absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" }
+                }
+            }
+            button (type: "button") {
+                title: "今日笔记",
+                class: "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                onclick: .OpenToday,
+                dyn (.CalendarDays) { class: "h-[18px] w-[18px]" }
+            }
+            div { class: "flex-1" }
+            button (type: "button") {
+                title: "Theme",
+                class: "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                style: .theme_open ? "text-primary bg-primary/10" : "",
+                onclick: .ToggleTheme,
+                dyn (.Palette) { class: "h-[18px] w-[18px]" }
+            }
+            ThemePopover {
+                open: .theme_open,
+                onclose: .CloseTheme
+            }
+        }
+    }
+
+    on {
+        // Original: function select(panel) { sidebar.setLeftPanel(panel) }
+        .Select(item) -> {
+            .sidebarStore.setLeftPanel(item.panel)
+        }
+        // Original: function openGlobalGraph() { tabs.openGraph() }
+        .OpenGlobalGraph -> {
+            .tabsStore.openGraph()
+        }
+        // Original: async function openToday() { await openDailyNote(todayDate(), tabs, fileTree) }
+        .OpenToday -> {
+            openTodayNote(.tabsStore, .fileTreeStore)
+        }
+        // Original: @click="themeOpen = !themeOpen"
+        .ToggleTheme -> {
+            .theme_open = !.theme_open
+        }
+        // Original: @close="themeOpen = false" on ThemePopover
+        .CloseTheme -> {
+            .theme_open = false
+        }
+    }
+}

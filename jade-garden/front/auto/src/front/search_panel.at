@@ -1,0 +1,179 @@
+// search_panel.at — SearchPanel widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/SearchPanel.vue (plan 011 Phase 5.1 batch 2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/search_panel_ext|../../auto/src/front/utils/search_panel_ext|g' \
+//     gen/front/vue/src/components/SearchPanel.vue > ../src/components/SearchPanel.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - The search input uses real v-model: `value: .query` (plain model var)
+//   PLUS an `oninput:` handler folds into `v-model="query"` and drops the
+//   explicit @input (CodeBlockMenu note 3; the QueryInput handler is
+//   emitted but never called — kept as the fold's write-back target with
+//   the original's write-back body).
+// - The 250ms debounce is the original's useDebounceFn (re-exported via
+//   the extension): .Init builds the debounced closure (its body is the
+//   original debouncedSearch verbatim — the empty-query early return
+//   becomes exclusive if guards, try/catch/finally folds into a
+//   one-callback .then over the never-rejecting searchSafe) and stores it
+//   in a model var; the query watch let-binds it and calls the local
+//   (TableMenu/NodeView let-bind precedent).
+// - The v-else-if chain (loading / error / results / hasQuery / hint)
+//   becomes five exclusive named-boolean computeds; the error string's
+//   truthy check goes through the extension's strTruthy (`!= null` in a
+//   DSL computed emits !== undefined, wrong for a nullable string — so
+//   error is a plain str model var, "" = the original's null).
+// - ul/li render via dyn with string tags (backlinks precedent).
+// - The per-result icon branch / title ternary / snippet v-html are
+//   precomputed by the extension's withSearchDisplay (no Call/ternary
+//   bindings in the view); the v-html itself is the HtmlDiv functional
+//   component (README gap 22).
+// - The Block branch's `tabs.open(...).then(setTimeout dispatch)` maps to
+//   a one-callback .then whose body calls the extension's
+//   scheduleScrollToBlock (setTimeout + CustomEvent).
+
+widget SearchPanel {
+    use {
+        composable: useTabsStore from "src/front/utils/search_panel_ext.ts"
+        fn: useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, strTruthy, Search, FileText, Box from "src/front/utils/search_panel_ext.ts"
+        component: HtmlDiv from "src/front/utils/search_panel_ext.ts"
+    }
+
+    msg Msg { Init, QueryInput, OpenResult }
+
+    model {
+        var query str = ""
+        var results []str = []
+        var loading bool = false
+        var error str = ""
+        // The debounced search closure, built in .Init (Array<str> = any).
+        var debounced_search Array<str> = null
+    }
+
+    computed {
+        display_results => withSearchDisplay(.results)
+        has_query => .query.trim().length > 0
+        has_error => strTruthy(.error)
+        show_loading => .loading
+        show_error => !.loading && .has_error.value
+        show_results => !.loading && !.has_error.value && .results.length > 0
+        show_no_results => !.loading && !.has_error.value && .results.length == 0 && .has_query.value
+        show_hint => !.loading && !.has_error.value && .results.length == 0 && !.has_query.value
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            class: "flex h-full flex-col p-3",
+            div {
+                class: "flex items-center gap-2 rounded-md border bg-background px-2 py-1.5",
+                dyn (.Search) { class: "h-4 w-4 text-muted-foreground" }
+                input (type: "text") {
+                    value: .query,
+                    oninput: .QueryInput($event),
+                    placeholder: "Search pages and blocks...",
+                    class: "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                }
+            }
+            if .show_loading {
+                div { class: "mt-4 text-center text-xs text-muted-foreground", text "Searching…" }
+            }
+            if .show_error {
+                div { class: "mt-4 text-center text-xs text-destructive", text .error }
+            }
+            if .show_results {
+                dyn (.ul_tag) {
+                    class: "mt-2 flex-1 space-y-1 overflow-y-auto",
+                    for r in .display_results {
+                        dyn (.li_tag) {
+                            class: "cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent",
+                            onclick: .OpenResult(r),
+                            div {
+                                class: "flex items-center gap-1.5",
+                                if r.is_page {
+                                    dyn (.FileText) { class: "h-3.5 w-3.5 text-muted-foreground" }
+                                }
+                                if r.is_block {
+                                    dyn (.Box) { class: "h-3.5 w-3.5 text-muted-foreground" }
+                                }
+                                span { class: "truncate font-medium", text r.title_text }
+                            }
+                            if r.has_snippet {
+                                HtmlDiv (class: "mt-0.5 pl-5 text-xs text-muted-foreground", html: r.snippet_html)
+                            }
+                        }
+                    }
+                }
+            }
+            if .show_no_results {
+                p { class: "mt-4 text-center text-xs text-muted-foreground", text "No results" }
+            }
+            if .show_hint {
+                p { class: "mt-4 text-center text-xs text-muted-foreground", text "Type to search pages and blocks" }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(query, debouncedSearch).
+        .query -> {
+            let f = .debounced_search
+            f()
+        }
+    }
+
+    on {
+        // Builds the debounced search closure (the original's
+        // useDebounceFn(async () => { ... }, 250) body verbatim):
+        // - empty query: clear results and return (error/loading untouched),
+        // - otherwise: loading + clear error, fetch, then apply (the
+        //   extension's searchSafe never rejects, so the single .then
+        //   carries the try branch, the catch branch's data, and the
+        //   finally's loading=false).
+        .Init -> {
+            let run = () => {
+                var q = .query.trim()
+                if q != "" {
+                    .loading = true
+                    .error = ""
+                    let p = searchSafe(q)
+                    p.then(res => {
+                        .results = res.results
+                        .error = res.error
+                        .loading = false
+                    })
+                }
+                if q == "" {
+                    .results = []
+                }
+            }
+            let f = useDebounceFn(run, 250)
+            .debounced_search = f
+        }
+        // Emitted but never called — the value/oninput pair folds into
+        // v-model (see header); the body keeps the fold's write-back shape.
+        .QueryInput(e) -> {
+            .query = e.target.value
+        }
+        // Original: function openResult(r) { Page → open(path, title);
+        // Block → open(page_path).then(scroll-to-block after 150ms) }.
+        .OpenResult(r) -> {
+            if r.type == "Page" && r.path != null {
+                .tabsStore.open(r.path, r.title)
+            }
+            if r.type == "Block" && r.page_path != null {
+                let p = .tabsStore.open(r.page_path)
+                p.then(() => {
+                    if r.block_id != null {
+                        scheduleScrollToBlock(r.page_path, r.block_id)
+                    }
+                })
+            }
+        }
+    }
+}

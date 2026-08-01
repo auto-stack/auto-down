@@ -1,0 +1,125 @@
+// theme_popover.at — ThemePopover widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/ThemePopover.vue (plan 011 Phase 5.1 batch 2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/theme_popover_ext|../../auto/src/front/utils/theme_popover_ext|g' \
+//     gen/front/vue/src/components/ThemePopover.vue > ../src/components/ThemePopover.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - <Teleport> is not a DSL element and `to: "body"` on a dyn block
+//   mis-parses (`to` is a keyword token) into junk <div> children — the
+//   extension's BodyTeleport functional component wraps Teleport with a
+//   fixed to="body" and renders via dyn (same mounted DOM).
+// - The lucide icons render via dyn with the extension's re-exported
+//   component symbols (recent_files_panel precedent).
+// - The conditional :class ternaries (mode/accent buttons) use the style
+//   prop's Plan 346 ternary form — a plain dynamic `style: expr` is
+//   silently dropped, only string literals / style maps / If-ternaries
+//   emit (README gap 20).
+// - The accent swatch's :style="{ backgroundColor }" uses style_obj.
+// - The close signal is the widget's automatic emit: every view-referenced
+//   msg handler ends with emit('Close', e), and the parent's @close
+//   (compiled to onClose) matches emit('Close'). The original's
+//   closest('.theme-popover') guard still runs in the extension (kept for
+//   fidelity); it is always true for clicks that reach the overlay because
+//   the overlay and the popover are sibling fixed layers, so the
+//   unconditional emit matches the original's behaviour exactly.
+// - The `open` prop is read through the is_open computed (the view `if`
+//   then binds a computed, same shape as the editor node views'
+//   selected_state pattern).
+// - The accents list comes from the extension's themeAccents() call: a
+//   computed over a dot-ref to an imported const is mis-typed
+//   computed<number> (DSL name heuristic), a Call body emits computed<any>.
+
+widget ThemePopover(open: bool) {
+    use {
+        composable: useThemeStore from "src/front/utils/theme_popover_ext.ts"
+        fn: BodyTeleport, Sun, Moon, themeAccents, isOutsideThemePopover from "src/front/utils/theme_popover_ext.ts"
+    }
+
+    msg Msg { Close, SetLight, SetDark, SetAccent }
+
+    computed {
+        is_open => .open
+        accents => themeAccents()
+    }
+
+    view {
+        dyn (.BodyTeleport) {
+            if .is_open {
+                div {
+                    class: "fixed inset-0 z-40",
+                    onclick: .Close
+                }
+            }
+            if .is_open {
+                div {
+                    class: "theme-popover fixed left-[52px] bottom-3 z-50 w-56 rounded-xl border bg-card p-3 shadow-lg",
+                    div {
+                        class: "mb-3",
+                        span { class: "mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Appearance" }
+                        div {
+                            class: "flex rounded-lg border p-0.5",
+                            button (type: "button") {
+                                class: "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors",
+                                style: .themeStore.mode == "light" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent",
+                                onclick: .SetLight,
+                                dyn (.Sun) { class: "h-3.5 w-3.5" }
+                                text "Light"
+                            }
+                            button (type: "button") {
+                                class: "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors",
+                                style: .themeStore.mode == "dark" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent",
+                                onclick: .SetDark,
+                                dyn (.Moon) { class: "h-3.5 w-3.5" }
+                                text "Dark"
+                            }
+                        }
+                    }
+                    div {
+                        span { class: "mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Accent" }
+                        div {
+                            class: "grid grid-cols-5 gap-1.5",
+                            for accent in .accents {
+                                button (type: "button") {
+                                    title: accent.label,
+                                    class: "flex h-7 items-center justify-center rounded-md border transition-all",
+                                    style: .themeStore.accent == accent.key ? "border-primary ring-1 ring-primary" : "border-border hover:border-muted-foreground",
+                                    onclick: .SetAccent(accent),
+                                    span {
+                                        class: "h-4 w-4 rounded-full",
+                                        style_obj: { backgroundColor: accent.color }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: function onClickOutside(event) { if (!target.closest('.theme-popover')) emit('close') }.
+        // The emit itself is the widget's automatic emit('Close', e) (see
+        // header); the guard runs in the extension for fidelity.
+        .Close(e) -> {
+            let outside = isOutsideThemePopover(e)
+        }
+        // Original: function setMode(mode) { theme.setMode(mode) }
+        .SetLight -> {
+            .themeStore.setMode("light")
+        }
+        .SetDark -> {
+            .themeStore.setMode("dark")
+        }
+        // Original: function setAccent(accent) { theme.setAccent(accent) }
+        .SetAccent(accent) -> {
+            .themeStore.setAccent(accent.key)
+        }
+    }
+}

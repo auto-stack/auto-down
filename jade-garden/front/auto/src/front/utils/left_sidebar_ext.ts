@@ -2,9 +2,9 @@
 //
 // Only what the DSL genuinely cannot express lives here:
 // - the sidebar-store facade re-export (dual-resolution shim),
-// - the child component re-exports (FileTree is not yet Auto-translated;
-//   SearchPanel / RecentFilesPanel are generated SFCs — all imported through
-//   this module so the gen project type-checks against its stubs),
+// - the child component re-exports (FileTree (Phase 5.3a), SearchPanel and
+//   RecentFilesPanel are generated SFCs — all imported through this module
+//   so the gen project type-checks against its stubs),
 // - sidebarLeftWidth: the original's `:style="{ width: `${leftWidth}px` }"`
 //   template literal (a Call computed body emits computed<any> — gap 28).
 //

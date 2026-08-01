@@ -76,6 +76,14 @@ export function cacheClear(_cache: any, _path: string): void {}
 
 // --- Phase 5.1 widget panel additions (types + link/page API) ---
 
+// Phase 5.3a: FileTreeNode widget prop type (mirrors front/src/lib/api.ts).
+export interface FileNode {
+  name: string
+  path: string
+  is_dir: boolean
+  children?: FileNode[]
+}
+
 export interface Backlink {
   source_title: string
   source_path: string

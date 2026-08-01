@@ -1,0 +1,81 @@
+// file_tree.at — FileTree widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/FileTree.vue (plan 011 Phase 5.3a).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/file_tree_ext|../../auto/src/front/utils/file_tree_ext|g' \
+//     gen/front/vue/src/components/FileTree.vue > ../src/components/FileTree.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - FileTreeNode is a sibling widget (recursion probe pattern: `use
+//   file_tree_node: FileTreeNode` at file top); the v-for carries the
+//   explicit `key: node.path` (auto-lang c2779bc8, example 035) because
+//   FileNode has no `id` field and the automatic reuse key would be a
+//   per-loop constant.
+// - The header buttons' window.prompt flows live in the extension
+//   (promptNewFile / promptNewFolder); rejections stay unhandled exactly
+//   like the original's async click handlers.
+// - The lucide icons render via dyn with the extension's re-exported
+//   component symbols (theme_popover precedent).
+// - NO commas between sibling view children — a trailing comma emits a junk
+//   <div /> spacer (commas belong between props only).
+
+use file_tree_node: FileTreeNode
+
+widget FileTree {
+    use {
+        composable: useFileTreeStore from "src/front/utils/file_tree_ext.ts"
+        fn: promptNewFile, promptNewFolder, Plus, FolderPlus from "src/front/utils/file_tree_ext.ts"
+    }
+
+    msg Msg { NewFile, NewFolder }
+
+    view {
+        div {
+            class: "flex h-full flex-col",
+            div {
+                class: "flex h-[var(--header-height)] shrink-0 items-center justify-between border-b px-3",
+                span { class: "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Files" }
+                div {
+                    class: "flex items-center gap-0.5",
+                    button {
+                        title: "New file",
+                        class: "flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        onclick: .NewFile,
+                        dyn (.Plus) { class: "h-3.5 w-3.5" }
+                    }
+                    button {
+                        title: "New folder",
+                        class: "flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        onclick: .NewFolder,
+                        dyn (.FolderPlus) { class: "h-3.5 w-3.5" }
+                    }
+                }
+            }
+            div {
+                class: "flex-1 overflow-auto py-1",
+                if .fileTreeStore.loading {
+                    div { class: "p-3 text-sm text-muted-foreground", text "Loading..." }
+                }
+                for node in .fileTreeStore.files {
+                    FileTreeNode(key: node.path, node: node, level: 0)
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: async function createFile() — prompt + root-level
+        // createFile(name, false) in the extension.
+        .NewFile -> {
+            promptNewFile(.fileTreeStore)
+        }
+        // Original: async function createFolder().
+        .NewFolder -> {
+            promptNewFolder(.fileTreeStore)
+        }
+    }
+}

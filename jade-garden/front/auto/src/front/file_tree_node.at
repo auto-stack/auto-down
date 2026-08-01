@@ -1,0 +1,192 @@
+// file_tree_node.at — FileTreeNode widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/FileTreeNode.vue (plan 011 Phase 5.3a).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/file_tree_node_ext|../../auto/src/front/utils/file_tree_node_ext|g' \
+//     gen/front/vue/src/components/FileTreeNode.vue > ../src/components/FileTreeNode.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - RECURSION: the widget renders itself for expanded directories
+//   (probe-verified: the compiler emits the self-import). The v-for carries
+//   the explicit `key: child.path` (auto-lang c2779bc8, example 035) —
+//   without it every sibling would share the automatic per-loop constant
+//   key (`'FileTreeNode-1'`) and Vue would reuse component instances across
+//   different files.
+// - The original's `level?: number` prop (default 0) becomes a required
+//   `level: int`: the only two callers (FileTree and the recursion) both
+//   pass it explicitly, so behaviour is identical.
+// - The `node: FileNode` prop type emits `import type { FileNode } from
+//   '@/lib/api'` — resolves to the real module in the front tree and to
+//   the stub (which exports FileNode) in the gen tree.
+// - The <teleport to="body"> context menu renders via the extension's
+//   BodyTeleport (theme_popover precedent; `to:` on dyn mis-parses).
+// - The folder/file <component :is> icon is the extension's NodeIcon
+//   functional component (the DSL's dyn takes a static symbol); the
+//   chevrons are lucide re-exports rendered via dyn.
+// - The active-row :class ternary uses the style prop's Plan 346 ternary
+//   form (README gap 20); the marginLeft/marginRight and menu left/top
+//   style objects use style_obj with Call-body computeds (gap 28).
+// - @contextmenu.prevent replicates the original onRightClick's
+//   e.preventDefault(); the handler then reads clientX/clientY off $event.
+// - view-referenced computed reads inside OTHER computed bodies need the
+//   explicit `.value` (`.is_expanded.value`) — the compiler does not
+//   auto-unwrap computed refs in script expressions.
+// - The context-menu actions (prompt/confirm + path surgery + facade CRUD)
+//   and the setup-time once-only document click listener live in the
+//   extension; the menu closes in the handler BEFORE the extension call,
+//   matching the original's closeMenu()-first order. Rejections stay
+//   unhandled, exactly like the original's async handlers.
+// - NO commas between sibling view children — a trailing comma emits a junk
+//   <div /> spacer (commas belong between props only).
+
+widget FileTreeNode(node: FileNode, level: int) {
+    use {
+        composable: useFileTreeStore, useTabsStore from "src/front/utils/file_tree_node_ext.ts"
+        fn: BodyTeleport, NodeIcon, ChevronRight, ChevronDown, isNodeExpanded, px, nodeIndent, openNodeFile, ctxNewFile, ctxNewFolder, ctxRename, ctxDuplicate, ctxDelete, listenFirstClickOutside from "src/front/utils/file_tree_node_ext.ts"
+    }
+
+    msg Msg { Init, Toggle, RightClick, CtxNewFile, CtxNewFolder, CtxRename, CtxDuplicate, CtxDelete }
+
+    model {
+        var menu_open bool = false
+        var menu_x int = 0
+        var menu_y int = 0
+    }
+
+    computed {
+        // Original: fileTree.expanded.has(props.node.path) — Set.has is in
+        // the extension; the facade getter tracks the reactive Set.
+        is_expanded => isNodeExpanded(.fileTreeStore, .node.path)
+        // Original: tabs.activePath === props.node.path.
+        is_active => .tabsStore.activePath == .node.path
+        // Original chevron v-if / v-else-if as two exclusive ifs.
+        show_right => .node.is_dir && !.is_expanded.value
+        show_down => .node.is_dir && .is_expanded.value
+        // Original: v-if="node.is_dir && isExpanded && node.children"
+        // (children is FileNode[] | undefined; != null matches truthiness
+        // for every value it can actually hold).
+        show_children => .node.is_dir && .is_expanded.value && .node.children != null
+        next_level => .level + 1
+        // Original row :style="{ marginLeft: `${level * 12}px`, marginRight: '6px' }".
+        indent_left => nodeIndent(.level)
+        // Original menu :style="{ left: `${menuX}px`, top: `${menuY}px` }".
+        menu_left => px(.menu_x)
+        menu_top => px(.menu_y)
+    }
+
+    view {
+        div {
+            div {
+                class: "group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors",
+                style: .is_active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent hover:text-foreground",
+                style_obj: { marginLeft: .indent_left, marginRight: "6px" },
+                onclick: .Toggle,
+                oncontextmenu.prevent: .RightClick($event),
+                span {
+                    class: "flex h-4 w-4 items-center justify-center text-muted-foreground/70",
+                    if .show_right {
+                        dyn (.ChevronRight) { class: "h-3.5 w-3.5" }
+                    }
+                    if .show_down {
+                        dyn (.ChevronDown) { class: "h-3.5 w-3.5" }
+                    }
+                }
+                dyn (.NodeIcon) { is_dir: .node.is_dir, expanded: .is_expanded, active: .is_active }
+                span { class: "truncate", text .node.name }
+            }
+            if .show_children {
+                for child in .node.children {
+                    FileTreeNode(key: child.path, node: child, level: .next_level)
+                }
+            }
+            dyn (.BodyTeleport) {
+                if .menu_open {
+                    div {
+                        class: "file-context-menu absolute z-50 min-w-[140px] rounded-md border bg-popover p-1 shadow-md",
+                        style_obj: { left: .menu_left, top: .menu_top },
+                        button {
+                            class: "flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent",
+                            onclick: .CtxNewFile,
+                            text "New file"
+                        }
+                        button {
+                            class: "flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent",
+                            onclick: .CtxNewFolder,
+                            text "New folder"
+                        }
+                        button {
+                            class: "flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent",
+                            onclick: .CtxRename,
+                            text "Rename"
+                        }
+                        button {
+                            class: "flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent",
+                            onclick: .CtxDuplicate,
+                            text "Duplicate"
+                        }
+                        div { class: "my-1 h-px bg-border" }
+                        button {
+                            class: "flex w-full items-center rounded px-2 py-1 text-left text-xs text-destructive hover:bg-destructive/10",
+                            onclick: .CtxDelete,
+                            text "Delete"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: the setup-time document click listener (registered once
+        // per component instance, { once: true }) — extension-side; the
+        // write-back arrives as a closure (app_shell precedent).
+        .Init -> {
+            let close_menu = () => {
+                .menu_open = false
+            }
+            listenFirstClickOutside(close_menu)
+        }
+        // Original toggle(): dirs expand/collapse; files open through the
+        // extension's .canvas/.ad branch.
+        .Toggle -> {
+            if .node.is_dir {
+                .fileTreeStore.toggle(.node.path)
+            }
+            if !.node.is_dir {
+                openNodeFile(.tabsStore, .node)
+            }
+        }
+        // Original onRightClick (preventDefault is the .prevent modifier).
+        .RightClick(e) -> {
+            .menu_x = e.clientX
+            .menu_y = e.clientY
+            .menu_open = true
+        }
+        // Original createFile()/createFolder()/renameItem()/duplicateItem()/
+        // deleteItem(): closeMenu() first, then the extension flow.
+        .CtxNewFile -> {
+            .menu_open = false
+            ctxNewFile(.fileTreeStore, .node)
+        }
+        .CtxNewFolder -> {
+            .menu_open = false
+            ctxNewFolder(.fileTreeStore, .node)
+        }
+        .CtxRename -> {
+            .menu_open = false
+            ctxRename(.fileTreeStore, .node)
+        }
+        .CtxDuplicate -> {
+            .menu_open = false
+            ctxDuplicate(.fileTreeStore, .node)
+        }
+        .CtxDelete -> {
+            .menu_open = false
+            ctxDelete(.fileTreeStore, .node)
+        }
+    }
+}

@@ -10,7 +10,7 @@
 //     gen/front/vue/src/components/LeftSidebar.vue > ../src/components/LeftSidebar.vue
 //
 // Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
-// - FileTree (not yet translated) and the generated SearchPanel /
+// - FileTree (Phase 5.3a) and the generated SearchPanel /
 //   RecentFilesPanel SFCs are consumed through the extension's component
 //   re-exports (dual-resolution shim; ribbon ThemePopover precedent).
 // - The original's v-if / v-else-if / v-else panel chain becomes three

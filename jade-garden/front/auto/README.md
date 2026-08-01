@@ -472,3 +472,45 @@ WhiteboardPage 的按需挂载与空态），并挂载 `<TabStrip />`——消�
    实例身份（v-show keep-alive 契约）。
 2. GraphPage / WhiteboardPage 依赖 `:key="path"` 在活动 tab 切换时强制
    重挂载（Cytoscape 需要全新容器）；自动常量 key 会静默改变该行为。
+
+（注：auto-lang c2779bc8 起有显式 `key:` prop（见 Phase 5.3a 能力节），
+上述两条阻塞均已解除，MainArea 整体翻译可重新评估。）
+
+### Phase 5.3a 新增限制（FileTree / FileTreeNode 实证）
+
+43. **widget prop 的类型名原样透传为 `@/lib/api` 类型 import**：
+    `widget FileTreeNode(node: FileNode, level: int)` 发射
+    `defineProps<{ node: FileNode; level: number }>()` +
+    `import type { FileNode } from '@/lib/api'`（str/int/bool 映射为
+    string/number/boolean）。`map` **不是**合法 prop 类型——会发射损坏的
+    `import type { map } from '@/lib/api'`（gen 侧 TS2307）。对象 prop
+    写真实 TS interface 名，并保证它在 front 树 `src/lib/api.ts` 与
+    gen stub `stubs/gen_lib_api.ts` 双侧都存在（本批已为 stub 补
+    FileNode）。
+44. **computed 体内引用其他 computed 必须显式 `.value`**：codegen 不
+    解包 script 表达式里的 computed ref——`show_right => .node.is_dir
+    && !.is_expanded` 发射 `props.node.is_dir && !is_expanded`（ref
+    对象恒真，条件静默失效，无任何告警）。写 `.is_expanded.value`
+    （command_palette 的 `.commands.value` 先例，本批探针实证；与
+    gap 40 的 watch 体规则分开：computed 体一律要 `.value`）。
+
+### Phase 5.3a 新验证能力（非限制，之前未用过）
+
+- **递归 widget**：widget 可在自身 view 里渲染自己（发射自 import
+  `@/components/<Name>.vue`，vue-tsc/vite 通过；tmp/dsl-probes/
+  recursion 探针 + FileTreeNode 实证）。
+- **显式 v-for key**（auto-lang c2779bc8，example 035-vfor-key）：
+  `FileTreeNode(key: child.path, ...)` → `:key="child.path"`，覆盖自动
+  常量/`?.id` key——item 无 `id` 字段时（FileNode、Tab）必备。
+- **`oncontextmenu.prevent:`** → `@contextmenu.prevent`；handler 内可
+  读 `$event` 字段（`e.clientX`/`e.clientY` 原样发射）。
+- **dyn 上的表达式 props**：`dyn (.NodeIcon) { is_dir: .node.is_dir,
+  expanded: .is_expanded }` → `:is_dir="node.is_dir"` 等，函数式组件按
+  同名 prop 接收（原 `<component :is="state-dependent">` 的标准替身）。
+- **style_obj 混合值**：`style_obj: { marginLeft: .indent_left,
+  marginRight: "6px" }`——computed（模板自动解包）与字符串字面量可
+  混用。
+- **widget 根 `if` + 兄弟 widget 直引**：`use file_tree_node:
+  FileTreeNode` 文件顶声明后，另一 widget 直接以 PascalCase 引用
+  （发射 `import FileTreeNode from '@/components/FileTreeNode.vue'`，
+  无需经 ext 再导出）。

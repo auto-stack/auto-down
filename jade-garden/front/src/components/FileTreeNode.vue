@@ -1,183 +1,153 @@
+<!-- FileTreeNode component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import {
-  ChevronRight,
-  ChevronDown,
-  FileText,
-  Folder,
-  FolderOpen,
-} from 'lucide-vue-next'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { useTabsStore } from '@/stores/tabs'
+import { ref, computed, onMounted } from 'vue'
+import { BodyTeleport, NodeIcon, ChevronRight, ChevronDown, isNodeExpanded, px, nodeIndent, openNodeFile, ctxNewFile, ctxNewFolder, ctxRename, ctxDuplicate, ctxDelete, listenFirstClickOutside } from '../../auto/src/front/utils/file_tree_node_ext'
+import { useFileTreeStore, useTabsStore } from '../../auto/src/front/utils/file_tree_node_ext'
+
+const fileTreeStore = useFileTreeStore()
+const tabsStore = useTabsStore()
+
+import FileTreeNode from '@/components/FileTreeNode.vue'
+
+
+const menu_open = ref<boolean>(false)
+const menu_x = ref<number>(0)
+const menu_y = ref<number>(0)
+
+const is_expanded = computed<any>(() => isNodeExpanded(fileTreeStore, props.node.path))
+const is_active = computed<boolean>(() => tabsStore.activePath === props.node.path)
+const show_right = computed<boolean>(() => props.node.is_dir && !is_expanded.value)
+const show_down = computed<boolean>(() => props.node.is_dir && is_expanded.value)
+const show_children = computed<boolean>(() => props.node.is_dir && is_expanded.value && props.node.children !== undefined)
+const next_level = computed<number>(() => props.level + 1)
+const indent_left = computed<any>(() => nodeIndent(props.level))
+const menu_left = computed<any>(() => px(menu_x.value))
+const menu_top = computed<any>(() => px(menu_y.value))
+
+const props = defineProps<{
+  node: FileNode
+  level: number
+}>()
+
 import type { FileNode } from '@/lib/api'
 
-const props = defineProps<{ node: FileNode; level?: number }>()
+const emit = defineEmits<{
+  Toggle: []
+  RightClick: [any]
+  CtxNewFile: []
+  CtxNewFolder: []
+  CtxRename: []
+  CtxDuplicate: []
+  CtxDelete: []
+}>()
 
-const fileTree = useFileTreeStore()
-const tabs = useTabsStore()
-const level = computed(() => props.level ?? 0)
-const isExpanded = computed(() => fileTree.expanded.has(props.node.path))
-const isActive = computed(() => tabs.activePath === props.node.path)
+function CtxNewFolder(): void {
+  menu_open.value = false;
+  ctxNewFolder(fileTreeStore, props.node);
 
-const menuOpen = ref(false)
-const menuX = ref(0)
-const menuY = ref(0)
+  emit('CtxNewFolder')
+}
 
-function toggle() {
-  if (props.node.is_dir) {
-    fileTree.toggle(props.node.path)
-  } else if (props.node.path.toLowerCase().endsWith('.canvas')) {
-    tabs.openWhiteboard(props.node.path, props.node.name.replace(/\.canvas$/, ''))
-  } else {
-    tabs.open(props.node.path, props.node.name.replace(/\.ad$/, ''))
+function CtxRename(): void {
+  menu_open.value = false;
+  ctxRename(fileTreeStore, props.node);
+
+  emit('CtxRename')
+}
+
+function CtxNewFile(): void {
+  menu_open.value = false;
+  ctxNewFile(fileTreeStore, props.node);
+
+  emit('CtxNewFile')
+}
+
+function RightClick(e: any): void {
+  menu_x.value = e.clientX;
+  menu_y.value = e.clientY;
+  menu_open.value = true;
+
+  emit('RightClick', e)
+}
+
+function CtxDuplicate(): void {
+  menu_open.value = false;
+  ctxDuplicate(fileTreeStore, props.node);
+
+  emit('CtxDuplicate')
+}
+
+function Toggle(): void {
+  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
   }
-}
-
-function onRightClick(e: MouseEvent) {
-  e.preventDefault()
-  menuX.value = e.clientX
-  menuY.value = e.clientY
-  menuOpen.value = true
-}
-
-function closeMenu() {
-  menuOpen.value = false
-}
-
-async function createFile() {
-  closeMenu()
-  const base = props.node.is_dir ? props.node.path : (props.node.path.split('/').slice(0, -1).join('/') || '')
-  const name = window.prompt('New file name:', 'Untitled.ad')
-  if (!name) return
-  const path = base ? `${base}/${name}` : name
-  await fileTree.createFile(path, false)
-}
-
-async function createFolder() {
-  closeMenu()
-  const base = props.node.is_dir ? props.node.path : (props.node.path.split('/').slice(0, -1).join('/') || '')
-  const name = window.prompt('New folder name:', 'New Folder')
-  if (!name) return
-  const path = base ? `${base}/${name}` : name
-  await fileTree.createFile(path, true)
-}
-
-async function renameItem() {
-  closeMenu()
-  const name = window.prompt('Rename to:', props.node.name)
-  if (!name || name === props.node.name) return
-  const base = props.node.path.split('/').slice(0, -1).join('/') || ''
-  const newPath = base ? `${base}/${name}` : name
-  await fileTree.renameFile(props.node.path, newPath)
-}
-
-async function duplicateItem() {
-  closeMenu()
-  const parts = props.node.path.split('/')
-  const name = parts[parts.length - 1]
-  const base = parts.slice(0, -1).join('/') || ''
-  const dot = name.lastIndexOf('.')
-  const stem = dot > 0 ? name.slice(0, dot) : name
-  const ext = dot > 0 ? name.slice(dot) : ''
-  const newName = `${stem} (copy)${ext}`
-  const newPath = base ? `${base}/${newName}` : newName
-  await fileTree.duplicateFile(props.node.path, newPath)
-}
-
-async function deleteItem() {
-  closeMenu()
-  const ok = confirm(`Delete "${props.node.name}"?`)
-  if (!ok) return
-  await fileTree.deleteFile(props.node.path)
-}
-
-function clickOutside(e: MouseEvent) {
-  const target = e.target as HTMLElement
-  if (!target.closest('.file-context-menu')) {
-    closeMenu()
+  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
   }
+
+  emit('Toggle')
 }
 
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', clickOutside, { once: true })
+function CtxDelete(): void {
+  menu_open.value = false;
+  ctxDelete(fileTreeStore, props.node);
+
+  emit('CtxDelete')
 }
+
+onMounted(() => {
+  let close_menu = () => { menu_open.value = false;
+   };
+  listenFirstClickOutside(close_menu);
+})
+
+
 </script>
 
 <template>
-  <div>
-    <div
-      class="group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors"
-      :class="[
-        isActive
-          ? 'bg-primary/10 text-primary'
-          : 'text-foreground hover:bg-accent hover:text-foreground',
-      ]"
-      :style="{ marginLeft: `${level * 12}px`, marginRight: '6px' }"
-      @click="toggle"
-      @contextmenu="onRightClick"
-    >
-      <span class="flex h-4 w-4 items-center justify-center text-muted-foreground/70">
-        <ChevronRight v-if="node.is_dir && !isExpanded" class="h-3.5 w-3.5" />
-        <ChevronDown v-else-if="node.is_dir && isExpanded" class="h-3.5 w-3.5" />
-      </span>
-      <component
-        :is="node.is_dir ? (isExpanded ? FolderOpen : Folder) : FileText"
-        class="h-3.5 w-3.5 shrink-0"
-        :class="[
-          node.is_dir
-            ? 'text-muted-foreground/70'
-            : isActive ? 'text-primary' : 'text-muted-foreground',
-        ]"
-      />
-      <span class="truncate">{{ node.name }}</span>
-    </div>
-    <div v-if="node.is_dir && isExpanded && node.children">
-      <FileTreeNode
-        v-for="child in node.children"
-        :key="child.path"
-        :node="child"
-        :level="level + 1"
-      />
+    <div>
+      <div class="group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors" :class="is_active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent hover:text-foreground'" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @click="Toggle" @contextmenu.prevent="RightClick($event)">
+        <span class="flex h-4 w-4 items-center justify-center text-muted-foreground/70">
+          <template v-if="show_right">
+            <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
+          </template>
+          <template v-if="show_down">
+            <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
+          </template>
+        </span>
+        <component :is="(NodeIcon) as any" :active="is_active" :expanded="is_expanded" :is_dir="node.is_dir" />
+        <span class="truncate">
+          <span>{{ node.name }}</span>
+        </span>
+      </div>
+      <template v-if="show_children">
+        <FileTreeNode :node="child" :level="next_level" :key="child.path"  v-for="child in node.children"/>
+      </template>
+      <component :is="(BodyTeleport) as any">
+        <template v-if="menu_open">
+          <div class="file-context-menu absolute z-50 min-w-[140px] rounded-md border bg-popover p-1 shadow-md" :style="({ left: menu_left, top: menu_top } as any)">
+            <button class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent" @click="CtxNewFile">
+              <span>New file</span>
+            </button>
+            <button class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent" @click="CtxNewFolder">
+              <span>New folder</span>
+            </button>
+            <button class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent" @click="CtxRename">
+              <span>Rename</span>
+            </button>
+            <button class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent" @click="CtxDuplicate">
+              <span>Duplicate</span>
+            </button>
+            <div class="my-1 h-px bg-border" />
+            <button class="flex w-full items-center rounded px-2 py-1 text-left text-xs text-destructive hover:bg-destructive/10" @click="CtxDelete">
+              <span>Delete</span>
+            </button>
+          </div>
+        </template>
+      </component>
     </div>
 
-    <teleport to="body">
-      <div
-        v-if="menuOpen"
-        class="file-context-menu absolute z-50 min-w-[140px] rounded-md border bg-popover p-1 shadow-md"
-        :style="{ left: `${menuX}px`, top: `${menuY}px` }"
-      >
-        <button
-          class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent"
-          @click="createFile"
-        >
-          New file
-        </button>
-        <button
-          class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent"
-          @click="createFolder"
-        >
-          New folder
-        </button>
-        <button
-          class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent"
-          @click="renameItem"
-        >
-          Rename
-        </button>
-        <button
-          class="flex w-full items-center rounded px-2 py-1 text-left text-xs hover:bg-accent"
-          @click="duplicateItem"
-        >
-          Duplicate
-        </button>
-        <div class="my-1 h-px bg-border" />
-        <button
-          class="flex w-full items-center rounded px-2 py-1 text-left text-xs text-destructive hover:bg-destructive/10"
-          @click="deleteItem"
-        >
-          Delete
-        </button>
-      </div>
-    </teleport>
-  </div>
 </template>
+
+<style>
+/* Component styles */
+
+</style>

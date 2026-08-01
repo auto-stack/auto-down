@@ -1,0 +1,53 @@
+// left_sidebar.at — LeftSidebar widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/LeftSidebar.vue (plan 011 Phase 5.1 batch 3).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/left_sidebar_ext|../../auto/src/front/utils/left_sidebar_ext|g' \
+//     gen/front/vue/src/components/LeftSidebar.vue > ../src/components/LeftSidebar.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - FileTree (not yet translated) and the generated SearchPanel /
+//   RecentFilesPanel SFCs are consumed through the extension's component
+//   re-exports (dual-resolution shim; ribbon ThemePopover precedent).
+// - The original's v-if / v-else-if / v-else panel chain becomes three
+//   exclusive ifs (backlinks precedent); string comparisons in view-if
+//   conditions are probe-verified.
+// - :style="{ width: `${leftWidth}px` }" uses style_obj with the left_width
+//   computed (a Call body emits computed<any> — README gap 28).
+// - NO commas between sibling view children — a trailing comma emits a junk
+//   <div /> spacer (commas belong between props only).
+
+widget LeftSidebar {
+    use {
+        composable: useSidebarStore from "src/front/utils/left_sidebar_ext.ts"
+        fn: sidebarLeftWidth from "src/front/utils/left_sidebar_ext.ts"
+        component: FileTree, SearchPanel, RecentFilesPanel from "src/front/utils/left_sidebar_ext.ts"
+    }
+
+    computed {
+        // Original: :style="{ width: `${sidebar.leftWidth}px` }".
+        left_width => sidebarLeftWidth(.sidebarStore)
+    }
+
+    view {
+        if .sidebarStore.leftOpen {
+            aside {
+                class: "flex h-full flex-col border-r bg-card",
+                style_obj: { width: .left_width },
+                if .sidebarStore.leftPanel == "files" {
+                    FileTree { }
+                }
+                if .sidebarStore.leftPanel == "search" {
+                    SearchPanel { }
+                }
+                if .sidebarStore.leftPanel == "recent" {
+                    RecentFilesPanel { }
+                }
+            }
+        }
+    }
+}

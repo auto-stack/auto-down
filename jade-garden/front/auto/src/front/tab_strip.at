@@ -1,0 +1,148 @@
+// tab_strip.at — TabStrip widget (Auto language source).
+//
+// Auto-generated NEW component front/src/components/TabStrip.vue: the tab
+// strip of the original MainArea.vue, split out as its own widget (plan 011
+// Phase 5.1 batch 3). The rest of MainArea (the v-show keep-alive
+// EditorTab hosting body + GraphPage / WhiteboardPage) stays hand-written
+// in MainArea.vue, which now mounts <TabStrip /> — full MainArea
+// translation is deferred to Phase 5.3 because:
+//   (a) a DSL v-for over a PascalCase component emits an automatic
+//       :key="'EditorTab-1-' + (tab?.id ?? tab)" — Tab has no `id` field,
+//       so every EditorTab would share ONE constant key, breaking the
+//       per-tab instance identity that the v-show keep-alive contract
+//       (e2e 03-tabs) depends on;
+//   (b) GraphPage / WhiteboardPage rely on :key="path" to force a remount
+//       when the active tab changes (Cytoscape needs a fresh container) —
+//       the automatic key would be constant, silently changing behaviour.
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/tab_strip_ext|../../auto/src/front/utils/tab_strip_ext|g' \
+//     gen/front/vue/src/components/TabStrip.vue > ../src/components/TabStrip.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - The strip renders nothing when there are no tabs (the original's
+//   v-if="tabs.tabs.length > 0" on the strip div): has_tabs wraps the root.
+// - The per-tab active class ternaries compare against a precomputed
+//   `active` flag (stripTabs in the extension — ribbonItems precedent; view
+//   class conditions must be field accesses, not Calls/comparisons).
+// - Switch/close write-backs and the local-graph / today / daily-nav actions
+//   go through the extension: facade setter assignment is not a DSL lvalue,
+//   and the dailyNote lib (regex/Date) has no DSL import channel.
+// - The lucide icons render via dyn with the extension's re-exported
+//   component symbols (recent_files_panel precedent).
+// - The daily-note block's guards (activeDailyDate parse, title) are
+//   extension predicates (parseDailyDateFromPath returns Date|null — no DSL
+//   optional chaining).
+
+widget TabStrip {
+    use {
+        composable: useTabsStore, useFileTreeStore from "src/front/utils/tab_strip_ext.ts"
+        fn: stripTabs, hasStripTabs, canOpenLocalGraph, openLocalGraphTab, switchTab, closeTab, openTodayNote, navigateDailyNote, hasStripDaily, stripDailyTitle, X, Focus, Network, ChevronLeft, ChevronRight, CalendarDays from "src/front/utils/tab_strip_ext.ts"
+    }
+
+    msg Msg { SwitchTab, CloseTab, OpenLocalGraph, OpenToday, NavPrev, NavNext }
+
+    computed {
+        // Original: tabs.tabs with the active flag precomputed per tab.
+        items => stripTabs(.tabsStore.tabs, .tabsStore.activePath)
+        // Original: v-if="tabs.tabs.length > 0" on the strip div.
+        has_tabs => hasStripTabs(.tabsStore)
+        // Original: v-if="tabs.activeTab && !tabs.activeTab.isGraph".
+        can_local_graph => canOpenLocalGraph(.tabsStore.activeTab)
+        // Original: v-if="activeDailyDate" + getDailyNoteTitle(activeDailyDate).
+        has_daily => hasStripDaily(.tabsStore.activeTab)
+        daily_title => stripDailyTitle(.tabsStore.activeTab)
+    }
+
+    view {
+        if .has_tabs {
+            div {
+                class: "flex h-[var(--header-height)] shrink-0 items-center gap-1 border-b bg-card px-2",
+                for tab in .items {
+                    button (type: "button") {
+                        class: "group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
+                        style: tab.active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                        onclick: .SwitchTab(tab),
+                        if tab.isGraph {
+                            dyn (.Network) { class: "h-3.5 w-3.5" }
+                        }
+                        span { class: "truncate", text tab.title }
+                        if tab.dirty {
+                            span { class: "text-[9px] leading-none", text "●" }
+                        }
+                        span {
+                            class: "ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity",
+                            style: tab.active ? "opacity-100" : "group-hover:opacity-100",
+                            onclick.stop: .CloseTab(tab),
+                            dyn (.X) { class: "h-3 w-3" }
+                        }
+                    }
+                }
+                div { class: "mx-1 h-4 w-px bg-border" }
+                if .can_local_graph {
+                    button (type: "button") {
+                        title: "当前文档的局部图谱",
+                        class: "flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        onclick: .OpenLocalGraph,
+                        dyn (.Focus) { class: "h-3.5 w-3.5" }
+                        span { text "局部图谱" }
+                    }
+                }
+                button (type: "button") {
+                    title: "今日笔记",
+                    class: "ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    onclick: .OpenToday,
+                    dyn (.CalendarDays) { class: "h-3.5 w-3.5" }
+                    span { text "今日笔记" }
+                }
+                if .has_daily {
+                    div {
+                        class: "flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground",
+                        button (type: "button") {
+                            title: "前一天",
+                            class: "flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground",
+                            onclick: .NavPrev,
+                            dyn (.ChevronLeft) { class: "h-3.5 w-3.5" }
+                        }
+                        span { class: "px-1", text .daily_title }
+                        button (type: "button") {
+                            title: "后一天",
+                            class: "flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground",
+                            onclick: .NavNext,
+                            dyn (.ChevronRight) { class: "h-3.5 w-3.5" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: function onSwitch(path) { tabs.activePath = path }.
+        .SwitchTab(tab) -> {
+            switchTab(.tabsStore, tab.path)
+        }
+        // Original: function onClose(path) { tabs.close(path) }.
+        .CloseTab(tab) -> {
+            closeTab(.tabsStore, tab.path)
+        }
+        // Original: function openLocalGraph() { guard; tabs.openGraph(path, 1) }.
+        .OpenLocalGraph -> {
+            openLocalGraphTab(.tabsStore)
+        }
+        // Original: async function openToday() { await openDailyNote(todayDate(), ...) }.
+        .OpenToday -> {
+            openTodayNote(.tabsStore, .fileTreeStore)
+        }
+        // Original: function navigateDaily(direction) { guard;
+        // openAdjacentDailyNote(direction, path, tabs, fileTree) }.
+        .NavPrev -> {
+            navigateDailyNote("prev", .tabsStore, .fileTreeStore)
+        }
+        .NavNext -> {
+            navigateDailyNote("next", .tabsStore, .fileTreeStore)
+        }
+    }
+}

@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X, Focus, Network, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-vue-next'
 import { useTabsStore } from '@/stores/tabs'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { openDailyNote, openAdjacentDailyNote, todayDate, parseDailyDateFromPath, getDailyNoteTitle } from '@/lib/dailyNote'
+import TabStrip from './TabStrip.vue'
 import EditorTab from './EditorTab.vue'
 import GraphPage from './GraphPage.vue'
 import WhiteboardPage from './WhiteboardPage.vue'
 
 const tabs = useTabsStore()
-const fileTree = useFileTreeStore()
 
-const activeDailyDate = computed(() => {
-  const path = tabs.activeTab?.path
-  return path ? parseDailyDateFromPath(path) : null
-})
+// The tab strip was extracted to TabStrip.vue (Auto-generated from
+// auto/src/front/tab_strip.at — plan 011 Phase 5.1 batch 3). The body below
+// stays hand-written until Phase 5.3: the DSL's automatic :key on a v-for
+// of PascalCase components would be constant for Tab items (no `id` field),
+// breaking the v-show keep-alive contract guarded by e2e 03-tabs, and
+// GraphPage / WhiteboardPage rely on :key="path" remounts.
 
 // Every document tab stays mounted; visibility is toggled with v-show so that
 // switching tabs never destroys/recreates a Tiptap editor (which caused the
@@ -30,104 +29,11 @@ const activeGraphTab = computed(() =>
 const activeWhiteboardTab = computed(() =>
   tabs.activeTab?.isWhiteboard ? tabs.activeTab : null,
 )
-
-function openLocalGraph() {
-  const path = tabs.activeTab?.path
-  if (!path || tabs.activeTab?.isGraph) return
-  tabs.openGraph(path, 1)
-}
-
-function onClose(path: string) {
-  tabs.close(path)
-}
-
-function onSwitch(path: string) {
-  tabs.activePath = path
-}
-
-async function openToday() {
-  await openDailyNote(todayDate(), tabs, fileTree)
-}
-
-function navigateDaily(direction: -1 | 1) {
-  const path = tabs.activeTab?.path
-  if (!path) return
-  openAdjacentDailyNote(direction, path, tabs, fileTree)
-}
 </script>
 
 <template>
   <main class="flex h-full flex-col overflow-hidden bg-background">
-    <div
-      v-if="tabs.tabs.length > 0"
-      class="flex h-[var(--header-height)] shrink-0 items-center gap-1 border-b bg-card px-2"
-    >
-      <button
-        v-for="tab in tabs.tabs"
-        :key="tab.path"
-        type="button"
-        class="group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors"
-        :class="[
-          tabs.activePath === tab.path
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-        ]"
-        @click="onSwitch(tab.path)"
-      >
-        <Network v-if="tab.isGraph" class="h-3.5 w-3.5" />
-        <span class="truncate">{{ tab.title }}</span>
-        <span v-if="tab.dirty" class="text-[9px] leading-none">●</span>
-        <span
-          class="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity"
-          :class="tabs.activePath === tab.path ? 'opacity-100' : 'group-hover:opacity-100'"
-          @click.stop="onClose(tab.path)"
-        >
-          <X class="h-3 w-3" />
-        </span>
-      </button>
-      <div class="mx-1 h-4 w-px bg-border" />
-      <button
-        v-if="tabs.activeTab && !tabs.activeTab.isGraph"
-        type="button"
-        title="当前文档的局部图谱"
-        class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        @click="openLocalGraph"
-      >
-        <Focus class="h-3.5 w-3.5" />
-        <span>局部图谱</span>
-      </button>
-      <button
-        type="button"
-        title="今日笔记"
-        class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        @click="openToday"
-      >
-        <CalendarDays class="h-3.5 w-3.5" />
-        <span>今日笔记</span>
-      </button>
-      <div
-        v-if="activeDailyDate"
-        class="flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground"
-      >
-        <button
-          type="button"
-          title="前一天"
-          class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground"
-          @click="navigateDaily(-1)"
-        >
-          <ChevronLeft class="h-3.5 w-3.5" />
-        </button>
-        <span class="px-1">{{ getDailyNoteTitle(activeDailyDate) }}</span>
-        <button
-          type="button"
-          title="后一天"
-          class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground"
-          @click="navigateDaily(1)"
-        >
-          <ChevronRight class="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
+    <TabStrip />
 
     <div class="relative flex flex-1 overflow-hidden">
       <!-- Keep all editor tabs mounted; only the active one is visible. -->

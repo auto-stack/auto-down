@@ -1,0 +1,99 @@
+// app_shell.at — AppShell widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/AppShell.vue (plan 011 Phase 5.1 batch 3).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/app_shell_ext|../../auto/src/front/utils/app_shell_ext|g' \
+//     gen/front/vue/src/components/AppShell.vue > ../src/components/AppShell.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - The nine children are consumed through the extension's component
+//   re-exports (MainArea / QuickSwitcher / CommandPalette / FlashcardModal
+//   are not yet Auto-translated — dual-resolution shim).
+// - onMounted's async boot (theme.apply + await workspace.load + conditional
+//   fileTree.load) lives in the extension's initAppShell: the DSL has no
+//   async handlers, and the original's floating promise semantics are kept
+//   (the .Init handler does not await either).
+// - The window 'jade-open-flashcards' listener registers in .Init and
+//   unregisters in .Destroy through the extension (the DSL's
+//   on "evt".window view syntax is element-scoped; the original's listener
+//   is component-lifecycle-scoped). The open flag write-back arrives via a
+//   closure argument (search_panel let-closure precedent).
+// - The WorkspaceOpener / MainArea switch (v-if="!workspace.root" v-else)
+//   becomes two exclusive ifs on the has_root / no_root computeds
+//   (Call bodies emit computed<any> — README gap 28).
+// - FlashcardModal's v-model:open is manual wiring: :open down +
+//   on "update:open" up (example 034-vmodel pattern) — the generated
+//   template is `:open="flashcard_open" @update:open="FlashcardOpenChanged"`,
+//   exactly v-model:open's desugaring.
+
+widget AppShell {
+    use {
+        composable: useWorkspaceStore, useFileTreeStore, useThemeStore from "src/front/utils/app_shell_ext.ts"
+        fn: initAppShell, listenOpenFlashcards, unlistenOpenFlashcards, hasWorkspaceRoot, noWorkspaceRoot from "src/front/utils/app_shell_ext.ts"
+        component: Ribbon, LeftSidebar, MainArea, RightSidebar, StatusBar, QuickSwitcher, CommandPalette, FlashcardModal, WorkspaceOpener from "src/front/utils/app_shell_ext.ts"
+    }
+
+    msg Msg { Init, Destroy, FlashcardOpenChanged }
+
+    model {
+        var flashcard_open bool = false
+    }
+
+    computed {
+        // Original: v-if="!workspace.root" / v-else on workspace.root.
+        has_root => hasWorkspaceRoot(.workspaceStore)
+        no_root => noWorkspaceRoot(.workspaceStore)
+    }
+
+    view {
+        div {
+            class: "flex h-full flex-col bg-background text-foreground",
+            div {
+                class: "flex flex-1 overflow-hidden",
+                Ribbon { }
+                LeftSidebar { }
+                div {
+                    class: "flex flex-1 flex-col overflow-hidden",
+                    if .no_root {
+                        WorkspaceOpener { }
+                    }
+                    if .has_root {
+                        MainArea { }
+                    }
+                }
+                RightSidebar { }
+            }
+            StatusBar { }
+            QuickSwitcher { }
+            CommandPalette { }
+            FlashcardModal (open: .flashcard_open) {
+                on "update:open": .FlashcardOpenChanged
+            }
+        }
+    }
+
+    on {
+        // Original: onMounted(async () => { theme.apply(); await
+        // workspace.load(); if (workspace.root) await fileTree.load();
+        // window.addEventListener('jade-open-flashcards', openFlashcards) }).
+        .Init -> {
+            initAppShell(.workspaceStore, .fileTreeStore, .themeStore)
+            let cb = () => {
+                .flashcard_open = true
+            }
+            listenOpenFlashcards(cb)
+        }
+        // Original: onUnmounted(() => window.removeEventListener(...)).
+        .Destroy -> {
+            unlistenOpenFlashcards()
+        }
+        // Original: v-model:open="flashcardOpen" write-back.
+        .FlashcardOpenChanged(v) -> {
+            .flashcard_open = v
+        }
+    }
+}

@@ -1,0 +1,53 @@
+// right_sidebar.at — RightSidebar widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/RightSidebar.vue (plan 011 Phase 5.1 batch 3).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/right_sidebar_ext|../../auto/src/front/utils/right_sidebar_ext|g' \
+//     gen/front/vue/src/components/RightSidebar.vue > ../src/components/RightSidebar.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - The seven child panels are consumed through the extension's component
+//   re-exports (GraphSidebar / PropertiesPanel are not yet Auto-translated;
+//   the rest are generated SFCs — dual-resolution shim).
+// - The original's isGraph computed (`tabs.activeTab?.isGraph ?? false`)
+//   lives in the extension: optional chaining + ?? is not DSL expression
+//   syntax, and the && / || idiom would be mis-typed (ribbon graphActive
+//   precedent).
+// - The v-if/v-else graph switch becomes two exclusive ifs (the negated
+//   view-if condition `if !.is_graph` is probe-verified).
+// - NO commas between sibling view children — a trailing comma emits a junk
+//   <div /> spacer (commas belong between props only).
+
+widget RightSidebar {
+    use {
+        composable: useTabsStore from "src/front/utils/right_sidebar_ext.ts"
+        fn: tabIsGraph from "src/front/utils/right_sidebar_ext.ts"
+        component: GraphSidebar, AgendaPanel, OutlinePanel, BacklinksPanel, OutgoingLinksPanel, UnlinkedReferencesPanel, PropertiesPanel from "src/front/utils/right_sidebar_ext.ts"
+    }
+
+    computed {
+        // Original: const isGraph = computed(() => tabs.activeTab?.isGraph ?? false).
+        is_graph => tabIsGraph(.tabsStore.activeTab)
+    }
+
+    view {
+        aside {
+            class: "flex w-64 flex-col gap-3 overflow-y-auto border-l bg-card p-3 text-sm",
+            if .is_graph {
+                GraphSidebar { }
+            }
+            if !.is_graph {
+                AgendaPanel { }
+                OutlinePanel { }
+                BacklinksPanel { }
+                OutgoingLinksPanel { }
+                UnlinkedReferencesPanel { }
+                PropertiesPanel { }
+            }
+        }
+    }
+}

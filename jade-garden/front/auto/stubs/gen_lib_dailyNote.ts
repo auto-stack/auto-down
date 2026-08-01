@@ -10,3 +10,23 @@ export async function openDailyNote(_date: any, _tabs: any, _fileTree: any): Pro
 export function todayDate(): any {
   return null
 }
+
+// Batch 3 (tab_strip_ext): the remaining dailyNote helpers the tab strip's
+// extension re-exports.
+
+export function openAdjacentDailyNote(
+  _direction: number,
+  _currentPath: string,
+  _tabs: any,
+  _fileTree: any,
+): any {
+  return null
+}
+
+export function parseDailyDateFromPath(_path: string): any {
+  return null
+}
+
+export function getDailyNoteTitle(_date?: any, _config?: any): string {
+  return ''
+}

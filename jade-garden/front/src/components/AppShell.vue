@@ -1,56 +1,77 @@
+<!-- AppShell component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
-import { ref } from 'vue'
-import { useWorkspaceStore } from '@/stores/workspace'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { useThemeStore } from '@/stores/theme'
-import Ribbon from './Ribbon.vue'
-import LeftSidebar from './LeftSidebar.vue'
-import MainArea from './MainArea.vue'
-import RightSidebar from './RightSidebar.vue'
-import StatusBar from './StatusBar.vue'
-import QuickSwitcher from './QuickSwitcher.vue'
-import CommandPalette from './CommandPalette.vue'
-import FlashcardModal from './FlashcardModal.vue'
-import WorkspaceOpener from './WorkspaceOpener.vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { CommandPalette } from '../../auto/src/front/utils/app_shell_ext'
+import { FlashcardModal } from '../../auto/src/front/utils/app_shell_ext'
+import { LeftSidebar } from '../../auto/src/front/utils/app_shell_ext'
+import { MainArea } from '../../auto/src/front/utils/app_shell_ext'
+import { QuickSwitcher } from '../../auto/src/front/utils/app_shell_ext'
+import { Ribbon } from '../../auto/src/front/utils/app_shell_ext'
+import { RightSidebar } from '../../auto/src/front/utils/app_shell_ext'
+import { StatusBar } from '../../auto/src/front/utils/app_shell_ext'
+import { WorkspaceOpener } from '../../auto/src/front/utils/app_shell_ext'
+import { initAppShell, listenOpenFlashcards, unlistenOpenFlashcards, hasWorkspaceRoot, noWorkspaceRoot } from '../../auto/src/front/utils/app_shell_ext'
+import { useWorkspaceStore, useFileTreeStore, useThemeStore } from '../../auto/src/front/utils/app_shell_ext'
 
-const workspace = useWorkspaceStore()
-const fileTree = useFileTreeStore()
-const theme = useThemeStore()
-const flashcardOpen = ref(false)
+const workspaceStore = useWorkspaceStore()
+const fileTreeStore = useFileTreeStore()
+const themeStore = useThemeStore()
 
-function openFlashcards() {
-  flashcardOpen.value = true
+
+const flashcard_open = ref<boolean>(false)
+
+const has_root = computed<any>(() => hasWorkspaceRoot(workspaceStore))
+const no_root = computed<any>(() => noWorkspaceRoot(workspaceStore))
+
+const emit = defineEmits<{
+  FlashcardOpenChanged: [any]
+}>()
+
+function FlashcardOpenChanged(v: any): void {
+  flashcard_open.value = v;
+
+  emit('FlashcardOpenChanged', v)
 }
 
-onMounted(async () => {
-  theme.apply()
-  await workspace.load()
-  if (workspace.root) {
-    await fileTree.load()
-  }
-  window.addEventListener('jade-open-flashcards', openFlashcards)
+onMounted(() => {
+  initAppShell(workspaceStore, fileTreeStore, themeStore);
+  let cb = () => { flashcard_open.value = true;
+   };
+  listenOpenFlashcards(cb);
 })
 
 onUnmounted(() => {
-  window.removeEventListener('jade-open-flashcards', openFlashcards)
+  unlistenOpenFlashcards();
+
 })
+
+
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-background text-foreground">
-    <div class="flex flex-1 overflow-hidden">
-      <Ribbon />
-      <LeftSidebar />
-      <div class="flex flex-1 flex-col overflow-hidden">
-        <WorkspaceOpener v-if="!workspace.root" />
-        <MainArea v-else />
+    <div class="flex h-full flex-col bg-background text-foreground">
+      <div class="flex flex-1 overflow-hidden">
+        <Ribbon :key="'Ribbon-1'" />
+        <LeftSidebar :key="'LeftSidebar-2'" />
+        <div class="flex flex-1 flex-col overflow-hidden">
+          <template v-if="no_root">
+            <WorkspaceOpener :key="'WorkspaceOpener-3'" />
+          </template>
+          <template v-if="has_root">
+            <MainArea :key="'MainArea-4'" />
+          </template>
+        </div>
+        <RightSidebar :key="'RightSidebar-5'" />
       </div>
-      <RightSidebar />
+      <StatusBar :key="'StatusBar-6'" />
+      <QuickSwitcher :key="'QuickSwitcher-7'" />
+      <CommandPalette :key="'CommandPalette-8'" />
+      <FlashcardModal :open="flashcard_open" :key="'FlashcardModal-9'" @update:open="FlashcardOpenChanged" />
     </div>
-    <StatusBar />
-    <QuickSwitcher />
-    <CommandPalette />
-    <FlashcardModal v-model:open="flashcardOpen" />
-  </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

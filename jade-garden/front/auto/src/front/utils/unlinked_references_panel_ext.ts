@@ -44,7 +44,7 @@ export interface UnlinkedRefItem extends UnlinkedRef {
 export async function fetchUnlinkedSafe(title: string): Promise<UnlinkedRefItem[]> {
   try {
     const res = await getUnlinkedRefs(title)
-    return res.refs.map((r) => ({ ...r, html: highlightContext(r.context, r.matched_text) }))
+    return res.refs.map((r: any) => ({ ...r, html: highlightContext(r.context, r.matched_text) }))
   } catch (e) {
     return []
   }

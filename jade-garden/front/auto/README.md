@@ -13,7 +13,10 @@ pattern as `autodown/packages/editor/src/auto`).
 - `src/front/utils/*_ext.ts` — handwritten TS extensions, only for what the
   DSL genuinely cannot express (npm libs, try/catch, regex literals)
 - `stubs/` — gen-project stubs for dual-resolution shims (see editor's
-  src/auto/README.md for the mechanism)
+  src/auto/README.md for the mechanism): `gen_lib_*.ts` (lib mirrors),
+  `gen_stores/*.ts` (facade mirrors), `gen_components/*.vue` (untranslated
+  child-component mirrors, batch 3 — the compiler overwrites each with the
+  real SFC when that component is translated)
 - `gen/` — generated Vue project (gitignored)
 
 ## Regenerate
@@ -234,10 +237,17 @@ codegen 在 `<script setup>` 顶层发射 `const tabsStore = useTabsStore()`
 ```sh
 cd jade-garden/front/auto
 # gen 侧 stub 镜像必须先于 auto build（gen 的 vue-tsc 会检查 ext 拷贝）
-mkdir -p gen/front/vue/src/lib gen/front/vue/src/stores
+mkdir -p gen/front/vue/src/lib gen/front/vue/src/stores gen/front/vue/src/components
 cp stubs/gen_lib_api.ts gen/front/vue/src/lib/api.ts
 cp stubs/gen_lib_wikiLink.ts gen/front/vue/src/lib/wikiLink.ts
+cp stubs/gen_lib_dailyNote.ts gen/front/vue/src/lib/dailyNote.ts
 cp stubs/gen_stores/*.ts gen/front/vue/src/stores/
+cp stubs/gen_components/*.vue gen/front/vue/src/components/
+# 双重 src 镜像（gap 32：ext 的 ../../../../src/... 在 gen 树解析到 src/src/...）
+mkdir -p gen/front/vue/src/src
+cp -r gen/front/vue/src/lib gen/front/vue/src/src/lib
+cp -r gen/front/vue/src/stores gen/front/vue/src/src/stores
+cp -r gen/front/vue/src/components gen/front/vue/src/src/components
 D:/autostack/auto-lang/target/debug/auto.exe build -d .
 # 检查输出无 "Warning: Failed to compile"，且 components/<Name>.vue 已更新
 # 拷贝 + sed 改写 ext import（front/src/components 的相对深度是 ../../）
@@ -331,3 +341,79 @@ sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|
   渲染为真标签；`title`/`type` 静态属性以绑定形式发射
   （`:title="'...'"`）；PascalCase 组件带自动 `:key`；HtmlDiv 的 class
   以 `:class="'...'"` 传入。
+
+### Phase 5.1 batch 3 新增限制（WorkspaceOpener / CreatePagePrompt /
+### AppShell / LeftSidebar / RightSidebar / TabStrip 实证）
+
+30. **子元素之间的逗号产生垃圾 `<div />`**：view 块里在子节点（元素 /
+    text / if / for / dyn）之后写逗号（prop 列表习惯误带），会在该位置
+    静默多发射一个空 `<div />` 间隔元素，且无任何告警。规则：props
+    之间用逗号；兄弟子节点之间一律不用逗号。生成后 grep `<div />`
+    即可检出。
+31. **`code` 不是 DSL 元素**：`code { class: ... }` 静默降级为 `<div>`
+    （保留 class、丢失 UA monospace 样式）。经 ext 函数式组件
+    （CodeTag，`h('code', { class: props.class }, slots)`）+ dyn 渲染
+    真实标签（BodyTeleport slot 先例；class 以 props.class 传入）。
+    本批验证的元素表：`aside`/`main`/`nav`/`h1`/`h3`/`p`/`input`/
+    `button` 为已知元素；`svg` 不是（inline SVG 走 ext 函数式组件 +
+    innerHTML）。
+32. **gen 工程 dual-resolution 差一层（双重 src）**：jade 的 `auto/`
+    直接挂在 `front/` 下（editor 包挂在 `editor/src/` 下），ext 里的
+    `../../../../src/...` 在 front 树 4 层上溯到 `front/` 后接 `src/`
+    正好命中真模块；而 gen 树的 ext 副本位于
+    `gen/front/vue/src/ext/src/front/utils/`，4 层上溯已到 gen 的
+    `src/`，再接 `src/` 变成 `src/src/...` → vue-tsc TS2307 全灭
+    （batch 1/2 的所有 ext 同样失败——当时 gen 脚手架 build 失败被
+    SFC 已先行发射的事实掩盖，未被发现）。规避：stub 镜像额外复制到
+    `gen/front/vue/src/src/{lib,stores,components}`（见上文重新生成
+    流程）。另注：gen strict 模式下 ext 回调参数需显式标注
+    （unlinked_references_panel_ext 的 `(r: any)`，本批顺手修复）。
+33. **view-if 条件支持比较/取反表达式**（本批探针实证）：
+    `if .x != ""`、`if !.flag`、`if .panel == "files"`（含 composable
+    字段访问 `.sidebarStore.leftOpen`）均发射正确的 v-if；不再需要为
+    每个条件预声明 computed——但跨库调用/可选链仍走 ext（gap 28）。
+34. **保留字 token 再加一例**：computed/变量不要命名 `path`（SVG path
+    元素 token，与 gap 18 `link`、gap 29 `task` 同类）——改用
+    page_path。
+35. **属性字符串里的字面反斜杠**：原 SFC 模板属性是原始文本
+    （`placeholder="...D:\\wiki\\demo"` 的两个 `\` 字面上屏），.at
+    字符串 `\\` 会转义成单字符——保持 DOM 逐字一致需写四倍反斜杠
+    （`D:\\\\wiki\\\\demo`）。
+36. **父侧监听子组件 v-model 参数事件**：`Child(open: .flag) { on
+    "update:open": .Changed }` → `:open="flag" @update:open="Changed"`，
+    即 `v-model:open` 的脱糖（example 034-vmodel 模式，AppShell 的
+    FlashcardModal 实证）。
+
+### Phase 5.1 batch 3 新验证能力（非限制，之前未用过）
+
+- **`.Init` / `.Destroy`** → onMounted / onUnmounted（editor 包先例，
+  jade 首用于 AppShell 的启动引导与 window 事件注销）。
+- **`onclick.self:`** → `@click.self`、**`onkeydown.enter:`** →
+  `@keydown.enter`（修饰符原样透传；CreatePagePrompt 的
+  click.self=emit('cancel')、WorkspaceOpener 的回车提交实证）。
+- **`disabled: .busy`** → `:disabled="busy"`（布尔 attr 绑定）。
+- **handler 内 promise `.finally(() => {...})`**：复刻原件
+  try/finally 的 busy 复位且 rejection 继续传播（WorkspaceOpener）。
+- **闭包实参回写 model**：ext 异步函数收 `v => { .path = v }` 闭包
+  （chooseDirectory 的目录名回写；search_panel let-closure 先例的
+  推广）。
+- **widget 根节点即条件分支**：view 顶层直接 `if .open { div {...} }`
+  发射 `<template v-if>` 包裹的 fragment 根（CreatePagePrompt/
+  LeftSidebar/TabStrip 实证）。
+- **`style_obj: { width: .computed }`** → `:style="{ width: c }"`
+  （LeftSidebar 的 `:style="{ width: '${w}px' }"`）。
+
+### MainArea 的处置（batch 3 决策记录）
+
+MainArea 未整体翻译。其 tab strip 抽为新 widget `tab_strip.at` →
+`front/src/components/TabStrip.vue`（新文件）；MainArea.vue 手工精简为
+只保留 body（EditorTab 的 v-for+v-show keep-alive、GraphPage /
+WhiteboardPage 的按需挂载与空态），并挂载 `<TabStrip />`——消费方
+（AppShell）零改动。整体翻译推迟到 Phase 5.3，原因：
+
+1. DSL 对 PascalCase 组件的 v-for 自动 `:key` 是
+   `'EditorTab-1-' + (tab?.id ?? tab)`——Tab 无 `id` 字段，所有
+   EditorTab 将共享一个常量 key，直接破坏 e2e 03-tabs 守卫的 per-tab
+   实例身份（v-show keep-alive 契约）。
+2. GraphPage / WhiteboardPage 依赖 `:key="path"` 在活动 tab 切换时强制
+   重挂载（Cytoscape 需要全新容器）；自动常量 key 会静默改变该行为。

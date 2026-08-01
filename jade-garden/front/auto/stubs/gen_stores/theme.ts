@@ -5,3 +5,7 @@
 export function useThemeStore(): any {
   return {}
 }
+
+// Batch 3: type re-export needed by theme_popover_ext (gen-side type-check
+// only).
+export type ThemeAccent = any

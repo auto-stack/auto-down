@@ -1,0 +1,91 @@
+// create_page_prompt.at — CreatePagePrompt widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/CreatePagePrompt.vue (plan 011 Phase 5.1 batch 3).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/create_page_prompt_ext|../../auto/src/front/utils/create_page_prompt_ext|g' \
+//     gen/front/vue/src/components/CreatePagePrompt.vue > ../src/components/CreatePagePrompt.vue
+//
+// Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
+// - wikiTitleToPath lives in front/src/lib/wikiLink.ts (regex literals —
+//   no DSL import channel), re-exported through the extension
+//   (dual-resolution shim).
+// - The cancel/create signals are the widget's automatic emits: every
+//   view-referenced msg handler ends with emit('<Variant>', ...), and the
+//   parent's @cancel/@create (compiled to onCancel/onCreate) match
+//   emit('Cancel')/emit('Create') via Vue's capitalize fallback — the
+//   original's lowercase emit names need no wrapper (theme_popover
+//   precedent). NOTE: CreatePagePrompt currently has NO consumers in
+//   front/src (orphan component), so this contract is unused today.
+// - The `open` prop drives the root overlay's v-if directly (probe-verified:
+//   `if .open` on a prop emits v-if="open").
+// - onclick.self: → @click.self (modifier passes through verbatim).
+// - `code` is not a DSL element (it degrades to a plain <div>, losing the
+//   UA monospace style): the path chip renders through the extension's
+//   CodeTag functional component via dyn (BodyTeleport slot precedent).
+// - NO commas between sibling view children — a trailing comma emits a junk
+//   <div /> spacer (commas belong between props only).
+
+widget CreatePagePrompt(title: str, open: bool) {
+    use {
+        fn: wikiTitleToPath, CodeTag from "src/front/utils/create_page_prompt_ext.ts"
+    }
+
+    msg Msg { Create, Cancel }
+
+    computed {
+        // Original: const path = computed(() => wikiTitleToPath(props.title)).
+        // Named page_path: `path` is an SVG element keyword token in the DSL.
+        page_path => wikiTitleToPath(.title)
+    }
+
+    view {
+        if .open {
+            div {
+                class: "fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4",
+                onclick.self: .Cancel,
+                div {
+                    class: "w-full max-w-sm rounded-lg border bg-card p-5 shadow-lg",
+                    h3 { class: "text-base font-semibold", text "Create missing page?" }
+                    p {
+                        class: "mt-2 text-sm text-muted-foreground",
+                        text "The page "
+                        span { class: "font-medium text-foreground", text f"[[${.title}]]" }
+                        text " does not exist yet."
+                    }
+                    p {
+                        class: "mt-1 text-xs text-muted-foreground",
+                        text "Will be created as "
+                        dyn (.CodeTag) { class: "rounded bg-muted px-1 py-0.5", text .page_path }
+                        text "."
+                    }
+                    div {
+                        class: "mt-4 flex justify-end gap-2",
+                        button {
+                            class: "rounded-md border px-3 py-1.5 text-sm hover:bg-accent",
+                            onclick: .Cancel,
+                            text "Cancel"
+                        }
+                        button {
+                            class: "rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90",
+                            onclick: .Create,
+                            text "Create"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Both handlers' bodies are empty: the signal to the parent is the
+        // automatic emit (see header) — the original called emit() directly.
+        .Cancel -> {
+        }
+        .Create -> {
+        }
+    }
+}

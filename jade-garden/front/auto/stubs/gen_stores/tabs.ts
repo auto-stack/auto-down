@@ -13,3 +13,7 @@
 export function useTabsStore(): any {
   return {}
 }
+
+// Batch 3: type re-exports needed by the widget extensions (gen-side
+// type-check only; the front tree resolves the real facade types).
+export type Tab = any

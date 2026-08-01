@@ -5,3 +5,6 @@
 export function useSidebarStore(): any {
   return {}
 }
+
+// Batch 3: type re-export needed by ribbon_ext (gen-side type-check only).
+export type LeftPanel = any

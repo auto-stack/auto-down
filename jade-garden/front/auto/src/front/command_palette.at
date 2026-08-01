@@ -1,0 +1,185 @@
+// command_palette.at — CommandPalette widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/CommandPalette.vue (plan 011 Phase 5.2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/command_palette_ext|../../auto/src/front/utils/command_palette_ext|g' \
+//     gen/front/vue/src/components/CommandPalette.vue > ../src/components/CommandPalette.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - The Ctrl/Cmd+P and Escape hotkeys (the original's two onKeyStroke
+//   registrations) live in the extension's listenPaletteHotkeys with the
+//   toggle/close write-backs arriving as closures (app_shell
+//   listenOpenFlashcards precedent); .Destroy unlistens.
+// - The commands/recentItems/allItems/filtered computed chain is four
+//   extension Calls (Call bodies emit computed<any>, README gap 28);
+//   filterPalette also carries the per-item display fields (idx,
+//   has_subtitle) so the view needs no indexed v-for (whose auto-:key
+//   emits idx?.id on a number) and no truthy if on a loop-var string.
+// - The query input uses the v-model fold (value + oninput →
+//   v-model="query"; QueryInput is the dead fold target, search_panel
+//   precedent). The ArrowDown/ArrowUp/Enter handling uses key+prevent
+//   modifiers (@keydown.down.prevent etc.), exactly the original
+//   onKeydown's per-key preventDefault branches.
+// - The item icon (<component :is="item.icon">) is the extension's
+//   PaletteIcon functional component; ul/li render via dyn with string
+//   tags (backlinks precedent).
+// - The selected-row class ternaries use the style prop's Plan 346
+//   ternary form (README gap 20).
+// - focusPaletteInput replicates watch(open)'s nextTick + inputRef.focus()
+//   (no template refs in the DSL; the singleton input is located by its
+//   placeholder).
+
+widget CommandPalette {
+    use {
+        composable: useTabsStore, useFileTreeStore, useSidebarStore, useThemeStore, useRecentFilesStore, useWorkspaceStore from "src/front/utils/command_palette_ext.ts"
+        fn: buildCommands, recentFileItems, allPaletteItems, filterPalette, runPaletteItem, nextIndex, prevIndex, listenPaletteHotkeys, unlistenPaletteHotkeys, focusPaletteInput from "src/front/utils/command_palette_ext.ts"
+        component: PaletteIcon from "src/front/utils/command_palette_ext.ts"
+    }
+
+    msg Msg { Init, Destroy, CloseOverlay, QueryInput, Execute, ExecuteSelected, NextItem, PrevItem, HoverItem }
+
+    model {
+        var open bool = false
+        var query str = ""
+        var selected_index int = 0
+    }
+
+    computed {
+        commands => buildCommands(.tabsStore, .fileTreeStore, .sidebarStore, .themeStore)
+        recent_items => recentFileItems(.recentFilesStore.files)
+        all_items => allPaletteItems(.commands.value, .recent_items.value)
+        filtered => filterPalette(.all_items.value, .query)
+        has_results => .filtered.value.length > 0
+        no_results => .filtered.value.length == 0
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            if .open {
+                div {
+                    class: "fixed inset-0 z-[60] flex items-start justify-center bg-black/40 p-4 pt-[20vh]",
+                    onclick.self: .CloseOverlay,
+                    div {
+                        class: "w-full max-w-xl overflow-hidden rounded-lg border bg-card shadow-lg",
+                        div {
+                            class: "flex items-center gap-2 border-b px-3 py-2",
+                            span { class: "text-xs text-muted-foreground", text "⌘/Ctrl+P" }
+                            input (type: "text") {
+                                value: .query,
+                                oninput: .QueryInput($event),
+                                onkeydown.enter.prevent: .ExecuteSelected,
+                                onkeydown.down.prevent: .NextItem,
+                                onkeydown.up.prevent: .PrevItem,
+                                placeholder: "Type a command or recent file...",
+                                class: "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                            }
+                        }
+                        if .has_results {
+                            dyn (.ul_tag) {
+                                class: "max-h-[50vh] overflow-y-auto py-1",
+                                for item in .filtered {
+                                    dyn (.li_tag) {
+                                        class: "cursor-pointer px-3 py-2 text-sm",
+                                        style: item.idx == .selected_index ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/50",
+                                        onclick: .Execute(item),
+                                        onmouseenter: .HoverItem(item),
+                                        div {
+                                            class: "flex items-center gap-2",
+                                            PaletteIcon (icon: item.icon, class: "h-4 w-4 shrink-0 opacity-70")
+                                            div {
+                                                class: "min-w-0 flex-1",
+                                                div { class: "truncate", text item.title }
+                                                if item.has_subtitle {
+                                                    div {
+                                                        class: "truncate text-[11px]",
+                                                        style: item.idx == .selected_index ? "text-accent-foreground/70" : "text-muted-foreground",
+                                                        text item.subtitle
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if .no_results {
+                            p { class: "px-3 py-4 text-center text-sm text-muted-foreground", text "No commands found" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(open, async (isOpen) => { if (isOpen) { query =
+        // ''; selectedIndex = 0; await nextTick(); inputRef.focus() } }).
+        .open -> {
+            if .open {
+                .query = ""
+                .selected_index = 0
+                focusPaletteInput()
+            }
+        }
+        // Original: watch(filtered, () => { selectedIndex.value = 0 }).
+        .filtered -> {
+            .selected_index = 0
+        }
+    }
+
+    on {
+        // Original: the two onKeyStroke registrations (lifecycle-scoped).
+        .Init -> {
+            let toggle = () => {
+                .open = !.open
+            }
+            let on_escape = () => {
+                .open = false
+            }
+            listenPaletteHotkeys(.workspaceStore, toggle, on_escape)
+        }
+        .Destroy -> {
+            unlistenPaletteHotkeys()
+        }
+        // Original: @click.self="open = false".
+        .CloseOverlay -> {
+            .open = false
+        }
+        // Emitted but never called — the value/oninput pair folds into
+        // v-model (search_panel precedent).
+        .QueryInput(e) -> {
+            .query = e.target.value
+        }
+        // Original execute(item): run the item, then close.
+        .Execute(item) -> {
+            runPaletteItem(item, .tabsStore)
+            .open = false
+        }
+        // Original onKeydown's Enter branch.
+        .ExecuteSelected -> {
+            var item = .filtered.value[.selected_index]
+            if item != null {
+                runPaletteItem(item, .tabsStore)
+                .open = false
+            }
+        }
+        // Original onKeydown's ArrowDown branch.
+        .NextItem -> {
+            .selected_index = nextIndex(.selected_index, .filtered.value.length)
+        }
+        // Original onKeydown's ArrowUp branch.
+        .PrevItem -> {
+            .selected_index = prevIndex(.selected_index, .filtered.value.length)
+        }
+        // Original: @mouseenter="selectedIndex = idx".
+        .HoverItem(item) -> {
+            .selected_index = item.idx
+        }
+    }
+}

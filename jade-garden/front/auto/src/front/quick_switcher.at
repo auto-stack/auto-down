@@ -1,0 +1,165 @@
+// quick_switcher.at — QuickSwitcher widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/QuickSwitcher.vue (plan 011 Phase 5.2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/quick_switcher_ext|../../auto/src/front/utils/quick_switcher_ext|g' \
+//     gen/front/vue/src/components/QuickSwitcher.vue > ../src/components/QuickSwitcher.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list + the
+// command_palette.at header — this widget is the same shape):
+// - The Ctrl/Cmd+O / Escape hotkeys and the 'jade-open-quick-switcher'
+//   window event live in the extension's listenSwitcherHotkeys with the
+//   open/close write-backs arriving as closures (app_shell precedent);
+//   .Destroy unlistens.
+// - collectFiles / filterFiles are extension Calls (recursion, regex-free
+//   but lowercase/includes chains); filterFiles carries the per-row idx
+//   so the view needs no indexed v-for (auto-:key emits idx?.id on a
+//   number).
+// - The query input uses the v-model fold (value + oninput →
+//   v-model="query"; QueryInput is the dead fold target). Arrow/Enter
+//   handling uses key+prevent modifiers, exactly the original onKeydown's
+//   per-key preventDefault branches.
+// - The selected-row class ternary uses the style prop's Plan 346
+//   ternary form (README gap 20); ul/li render via dyn with string tags.
+
+widget QuickSwitcher {
+    use {
+        composable: useFileTreeStore, useTabsStore from "src/front/utils/quick_switcher_ext.ts"
+        fn: collectFiles, filterFiles, nextIndex, prevIndex, listenSwitcherHotkeys, unlistenSwitcherHotkeys, focusSwitcherInput, Search from "src/front/utils/quick_switcher_ext.ts"
+    }
+
+    msg Msg { Init, Destroy, CloseOverlay, QueryInput, SelectFile, SelectCurrent, NextItem, PrevItem, HoverFile }
+
+    model {
+        var open bool = false
+        var query str = ""
+        var selected_index int = 0
+    }
+
+    computed {
+        all_files => collectFiles(.fileTreeStore.files)
+        filtered => filterFiles(.all_files.value, .query)
+        has_results => .filtered.value.length > 0
+        no_results => .filtered.value.length == 0
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            if .open {
+                div {
+                    class: "fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[20vh]",
+                    onclick.self: .CloseOverlay,
+                    div {
+                        class: "w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg",
+                        div {
+                            class: "flex items-center gap-2 border-b px-3 py-2",
+                            dyn (.Search) { class: "h-4 w-4 text-muted-foreground" }
+                            input (type: "text") {
+                                value: .query,
+                                oninput: .QueryInput($event),
+                                onkeydown.enter.prevent: .SelectCurrent,
+                                onkeydown.down.prevent: .NextItem,
+                                onkeydown.up.prevent: .PrevItem,
+                                placeholder: "Search files...",
+                                class: "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                            }
+                            span { class: "text-xs text-muted-foreground", text "Ctrl+O" }
+                        }
+                        if .has_results {
+                            dyn (.ul_tag) {
+                                class: "max-h-[50vh] overflow-y-auto py-1",
+                                for file in .filtered {
+                                    dyn (.li_tag) {
+                                        class: "cursor-pointer px-3 py-1.5 text-sm",
+                                        style: file.idx == .selected_index ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/50",
+                                        onclick: .SelectFile(file),
+                                        onmouseenter: .HoverFile(file),
+                                        text file.name
+                                        span { class: "ml-2 text-xs text-muted-foreground", text file.path }
+                                    }
+                                }
+                            }
+                        }
+                        if .no_results {
+                            p { class: "px-3 py-4 text-center text-sm text-muted-foreground", text "No files found" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(open, async (isOpen) => { if (isOpen) { query =
+        // ''; selectedIndex = 0; await nextTick(); inputRef.focus() } }).
+        .open -> {
+            if .open {
+                .query = ""
+                .selected_index = 0
+                focusSwitcherInput()
+            }
+        }
+        // Original: watch(filtered, () => { selectedIndex.value = 0 }).
+        .filtered -> {
+            .selected_index = 0
+        }
+    }
+
+    on {
+        // Original: the two onKeyStroke registrations + the
+        // 'jade-open-quick-switcher' window listener (onMounted).
+        .Init -> {
+            let open_cb = () => {
+                .open = true
+            }
+            let close_cb = () => {
+                .open = false
+            }
+            listenSwitcherHotkeys(open_cb, close_cb)
+        }
+        // Original: onUnmounted's removeEventListener (+ the vueuse stops).
+        .Destroy -> {
+            unlistenSwitcherHotkeys()
+        }
+        // Original: @click.self="open = false".
+        .CloseOverlay -> {
+            .open = false
+        }
+        // Emitted but never called — the value/oninput pair folds into
+        // v-model (search_panel precedent).
+        .QueryInput(e) -> {
+            .query = e.target.value
+        }
+        // Original selectFile(path): open the file, then close.
+        .SelectFile(file) -> {
+            .tabsStore.open(file.path)
+            .open = false
+        }
+        // Original onKeydown's Enter branch.
+        .SelectCurrent -> {
+            var file = .filtered.value[.selected_index]
+            if file != null {
+                .tabsStore.open(file.path)
+                .open = false
+            }
+        }
+        // Original onKeydown's ArrowDown branch.
+        .NextItem -> {
+            .selected_index = nextIndex(.selected_index, .filtered.value.length)
+        }
+        // Original onKeydown's ArrowUp branch.
+        .PrevItem -> {
+            .selected_index = prevIndex(.selected_index, .filtered.value.length)
+        }
+        // Original: @mouseenter="selectedIndex = idx".
+        .HoverFile(file) -> {
+            .selected_index = file.idx
+        }
+    }
+}

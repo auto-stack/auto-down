@@ -1,136 +1,142 @@
+<!-- QuickSwitcher component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { onKeyStroke } from '@vueuse/core'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { useTabsStore } from '@/stores/tabs'
-import { Search } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { collectFiles, filterFiles, nextIndex, prevIndex, listenSwitcherHotkeys, unlistenSwitcherHotkeys, focusSwitcherInput, Search } from '../../auto/src/front/utils/quick_switcher_ext'
+import { useFileTreeStore, useTabsStore } from '../../auto/src/front/utils/quick_switcher_ext'
 
-const fileTree = useFileTreeStore()
-const tabs = useTabsStore()
+const fileTreeStore = useFileTreeStore()
+const tabsStore = useTabsStore()
 
-const open = ref(false)
-const query = ref('')
-const selectedIndex = ref(0)
-const inputRef = ref<HTMLInputElement | null>(null)
 
-interface FileItem {
-  path: string
-  name: string
-}
+const open = ref<boolean>(false)
+const query = ref<string>('')
+const selected_index = ref<number>(0)
 
-function collectFiles(nodes: typeof fileTree.files, items: FileItem[] = []) {
-  for (const n of nodes) {
-    if (n.is_dir && n.children) {
-      collectFiles(n.children, items)
-    } else if (!n.is_dir) {
-      items.push({ path: n.path, name: n.name })
-    }
-  }
-  return items
-}
+const all_files = computed<any>(() => collectFiles(fileTreeStore.files))
+const filtered = computed<any>(() => filterFiles(all_files.value, query.value))
+const has_results = computed<boolean>(() => filtered.value.length > 0)
+const no_results = computed<boolean>(() => filtered.value.length === 0)
+const ul_tag = computed<string>(() => 'ul')
+const li_tag = computed<string>(() => 'li')
 
-const allFiles = computed(() => collectFiles(fileTree.files))
-const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return allFiles.value.slice(0, 12)
-  return allFiles.value
-    .filter(f => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q))
-    .slice(0, 12)
-})
+const emit = defineEmits<{
+  CloseOverlay: []
+  QueryInput: [any]
+  SelectFile: [any]
+  SelectCurrent: []
+  NextItem: []
+  PrevItem: []
+  HoverFile: [any]
+}>()
 
-watch(open, async (isOpen) => {
-  if (isOpen) {
-    query.value = ''
-    selectedIndex.value = 0
-    await nextTick()
-    inputRef.value?.focus()
+watch(open, () => {
+  if (open.value) {query.value = '';
+  selected_index.value = 0;
+  focusSwitcherInput();
   }
 })
 
 watch(filtered, () => {
-  selectedIndex.value = 0
+  selected_index.value = 0;
 })
 
-function selectFile(path: string) {
-  tabs.open(path)
-  open.value = false
+function SelectFile(file: any): void {
+  tabsStore.open(file.path);
+  open.value = false;
+
+  emit('SelectFile', file)
 }
 
-onKeyStroke('o', (e) => {
-  if (e.ctrlKey || e.metaKey) {
-    e.preventDefault()
-    open.value = true
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
+function SelectCurrent(): void {
+  let file = filtered.value[selected_index.value];
+  if (file != null) {tabsStore.open(file.path);
+  open.value = false;
   }
-})
 
-onKeyStroke('Escape', () => {
-  open.value = false
-})
+  emit('SelectCurrent')
+}
 
-function onExternalOpen() {
-  open.value = true
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
+}
+
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
+
+  emit('NextItem')
+}
+
+function HoverFile(file: any): void {
+  selected_index.value = file.idx;
+
+  emit('HoverFile', file)
+}
+
+function CloseOverlay(): void {
+  open.value = false;
+
+  emit('CloseOverlay')
 }
 
 onMounted(() => {
-  window.addEventListener('jade-open-quick-switcher', onExternalOpen)
+  let open_cb = () => { open.value = true;
+   };
+  let close_cb = () => { open.value = false;
+   };
+  listenSwitcherHotkeys(open_cb, close_cb);
 })
 
 onUnmounted(() => {
-  window.removeEventListener('jade-open-quick-switcher', onExternalOpen)
+  unlistenSwitcherHotkeys();
+
 })
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    selectedIndex.value = (selectedIndex.value + 1) % filtered.value.length
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    selectedIndex.value = (selectedIndex.value - 1 + filtered.value.length) % filtered.value.length
-  } else if (e.key === 'Enter') {
-    e.preventDefault()
-    const file = filtered.value[selectedIndex.value]
-    if (file) selectFile(file.path)
-  }
-}
+
 </script>
 
 <template>
-  <div>
-    <div
-      v-if="open"
-      class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[20vh]"
-      @click.self="open = false"
-    >
-      <div class="w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg">
-        <div class="flex items-center gap-2 border-b px-3 py-2">
-          <Search class="h-4 w-4 text-muted-foreground" />
-          <input
-            ref="inputRef"
-            v-model="query"
-            type="text"
-            placeholder="Search files..."
-            class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            @keydown="onKeydown"
-          >
-          <span class="text-xs text-muted-foreground">Ctrl+O</span>
+    <div>
+      <template v-if="open">
+        <div class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[20vh]" @click.self="CloseOverlay">
+          <div class="w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg">
+            <div class="flex items-center gap-2 border-b px-3 py-2">
+              <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Search files...'" v-model="query" @keydown.up.prevent="PrevItem" @keydown.enter.prevent="SelectCurrent" @keydown.down.prevent="NextItem" />
+              <span class="text-xs text-muted-foreground">
+                <span>Ctrl+O</span>
+              </span>
+            </div>
+            <template v-if="has_results">
+              <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
+                <component :is="(li_tag) as any" class="cursor-pointer px-3 py-1.5 text-sm" :class="file.idx == selected_index ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/50'" @click="SelectFile(file)" @mouseenter="HoverFile(file)" v-for="file in filtered">
+                  <span>{{ file.name }}</span>
+                  <span class="ml-2 text-xs text-muted-foreground">
+                    <span>{{ file.path }}</span>
+                  </span>
+                </component>
+              </component>
+            </template>
+            <template v-if="no_results">
+              <p class="px-3 py-4 text-center text-sm text-muted-foreground">
+                <span>No files found</span>
+              </p>
+            </template>
+          </div>
         </div>
-        <ul v-if="filtered.length" class="max-h-[50vh] overflow-y-auto py-1">
-          <li
-            v-for="(file, idx) in filtered"
-            :key="file.path"
-            class="cursor-pointer px-3 py-1.5 text-sm"
-            :class="idx === selectedIndex ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/50'"
-            @click="selectFile(file.path)"
-            @mouseenter="selectedIndex = idx"
-          >
-            {{ file.name }}
-            <span class="ml-2 text-xs text-muted-foreground">{{ file.path }}</span>
-          </li>
-        </ul>
-        <p v-else class="px-3 py-4 text-center text-sm text-muted-foreground">
-          No files found
-        </p>
-      </div>
+      </template>
     </div>
-  </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

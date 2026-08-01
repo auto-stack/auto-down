@@ -1,0 +1,267 @@
+// properties_panel.at — PropertiesPanel widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/PropertiesPanel.vue (plan 011 Phase 5.2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/properties_panel_ext|../../auto/src/front/utils/properties_panel_ext|g' \
+//     gen/front/vue/src/components/PropertiesPanel.vue > ../src/components/PropertiesPanel.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - The original's `watch(() => tabs.activeTab?.path, syncEntries,
+//   { immediate: true })` is the .active_tab.immediate watch (the path
+//   never mutates in place, so watching the tab object identity triggers
+//   on the same set), and the `watch(frontmatter, ..., { deep: true })`
+//   is the .fm_json watch (JSON string form — same mutation set).
+// - The entry key/value inputs do NOT use the v-model fold: the fold
+//   drops the explicit @input handler, but these inputs need BOTH the
+//   write-back AND the commit on input — so they use explicit :value +
+//   @input pairs (exactly what v-model compiles to) with the write-back
+//   in the handler.
+// - The new-key/new-value inputs DO use the v-model fold (value +
+//   oninput → v-model="new_key"); the NewKeyInput/NewValueInput handlers
+//   are emitted but never called (search_panel precedent).
+// - updateFrontmatter's fm rebuild + debounced save is the extension's
+//   commitFrontmatter (typeof chains / Number.isNaN / alert / regex have
+//   no DSL form); the 1200ms debounce is built in .Init and passed to
+//   the extension as a closure (search_panel let-bind precedent).
+// - The per-entry type branch (boolean/date/other), the true/false
+//   label, and the list placeholder are precomputed in place by the
+//   extension's withPropDisplay — no Call/ternary bindings in the view,
+//   and handler write-backs still hit the real entry objects.
+// - The boolean pill's conditional class uses the style prop's Plan 346
+//   ternary form (README gap 20), replicating the original's truthy
+//   :class check on entry.value.
+
+widget PropertiesPanel {
+    use {
+        composable: useTabsStore from "src/front/utils/properties_panel_ext.ts"
+        fn: useDebounceFn, syncEntries, fmJson, propsDirty, commitFrontmatter, setEntryType, tryAddProperty, withPropDisplay, eventValue, tabsActiveTab, Plus, Trash2, Check, X from "src/front/utils/properties_panel_ext.ts"
+    }
+
+    msg Msg { Init, KeyChanged, ValueChanged, Commit, ToggleBool, SetType, RemoveProperty, AddProperty, Cancel, SaveNow, NewKeyInput, NewValueInput }
+
+    model {
+        var entries Array<str> = []
+        var new_key str = ""
+        var new_value str = ""
+        // The debounced save closure, built in .Init (Array<str> = any).
+        var debounced_save Array<str> = null
+    }
+
+    computed {
+        active_tab => tabsActiveTab(.tabsStore)
+        fm_json => fmJson(.tabsStore)
+        display_entries => withPropDisplay(.entries)
+        is_dirty => propsDirty(.entries, .tabsStore)
+        has_entries => .entries.length > 0
+        no_entries => .entries.length == 0
+        select_tag => "select"
+        option_tag => "option"
+    }
+
+    view {
+        div {
+            class: "rounded-lg border bg-background/50 p-2.5",
+            div {
+                class: "mb-2 flex items-center justify-between",
+                h4 { class: "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "Properties" }
+                if .is_dirty {
+                    div {
+                        class: "flex items-center gap-1",
+                        button (type: "button") {
+                            class: "flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground",
+                            title: "Revert",
+                            onclick: .Cancel,
+                            dyn (.X) { class: "h-3 w-3" }
+                        }
+                        button (type: "button") {
+                            class: "flex h-5 w-5 items-center justify-center rounded text-primary hover:bg-primary/10",
+                            title: "Save now",
+                            onclick: .SaveNow,
+                            dyn (.Check) { class: "h-3 w-3" }
+                        }
+                    }
+                }
+            }
+            if .has_entries {
+                div {
+                    class: "space-y-2",
+                    for entry in .display_entries {
+                        div {
+                            class: "group",
+                            div {
+                                class: "mb-0.5 flex items-center justify-between",
+                                input (type: "text") {
+                                    value: entry.key,
+                                    oninput: .KeyChanged({ entry: entry, evt: $event }),
+                                    onchange: .Commit,
+                                    class: "w-full bg-transparent text-[11px] font-medium text-muted-foreground outline-none"
+                                }
+                                button (type: "button") {
+                                    class: "invisible flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:visible",
+                                    onclick: .RemoveProperty(entry.idx),
+                                    dyn (.Trash2) { class: "h-3 w-3" }
+                                }
+                            }
+                            div {
+                                class: "flex items-center gap-1",
+                                if entry.is_bool {
+                                    button (type: "button") {
+                                        class: "h-6 rounded border px-2 text-xs transition-colors",
+                                        style: entry.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground",
+                                        onclick: .ToggleBool(entry),
+                                        text entry.bool_label
+                                    }
+                                }
+                                if entry.is_date {
+                                    input (type: "date") {
+                                        value: entry.value,
+                                        oninput: .ValueChanged({ entry: entry, evt: $event }),
+                                        class: "h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary"
+                                    }
+                                }
+                                if entry.is_other {
+                                    input (type: "text") {
+                                        value: entry.value,
+                                        oninput: .ValueChanged({ entry: entry, evt: $event }),
+                                        placeholder: entry.placeholder_text,
+                                        class: "h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary"
+                                    }
+                                }
+                                dyn (.select_tag) {
+                                    value: entry.type,
+                                    onchange: .SetType({ idx: entry.idx, evt: $event }),
+                                    class: "h-6 rounded border bg-background px-1 text-[10px] uppercase text-muted-foreground outline-none",
+                                    dyn (.option_tag) { value: "text", text "text" }
+                                    dyn (.option_tag) { value: "number", text "num" }
+                                    dyn (.option_tag) { value: "boolean", text "bool" }
+                                    dyn (.option_tag) { value: "date", text "date" }
+                                    dyn (.option_tag) { value: "list", text "list" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if .no_entries {
+                p { class: "text-xs text-muted-foreground", text "No frontmatter properties." }
+            }
+            div {
+                class: "mt-3 flex items-center gap-1 border-t border-border/50 pt-2",
+                input (type: "text") {
+                    value: .new_key,
+                    oninput: .NewKeyInput($event),
+                    onkeydown.enter: .AddProperty,
+                    placeholder: "key",
+                    class: "h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary"
+                }
+                input (type: "text") {
+                    value: .new_value,
+                    oninput: .NewValueInput($event),
+                    onkeydown.enter: .AddProperty,
+                    placeholder: "value",
+                    class: "h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary"
+                }
+                button (type: "button") {
+                    class: "flex h-6 w-6 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
+                    onclick: .AddProperty,
+                    dyn (.Plus) { class: "h-3.5 w-3.5" }
+                }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(() => tabs.activeTab?.path, syncEntries,
+        // { immediate: true }) — the path never mutates in place, so the
+        // tab-object watch triggers on the same set.
+        .active_tab.immediate -> {
+            .entries = syncEntries(.tabsStore)
+        }
+        // Original: watch(() => tabs.activeTab?.frontmatter, syncEntries,
+        // { deep: true }) — the JSON string form changes on the same
+        // mutation set.
+        .fm_json -> {
+            .entries = syncEntries(.tabsStore)
+        }
+    }
+
+    on {
+        // Builds the debounced save closure (the original's
+        // useDebounceFn(() => { if (tabs.activeTab?.path)
+        // tabs.save(tabs.activeTab.path) }, 1200)).
+        .Init -> {
+            let run = () => {
+                var tab = .tabsStore.activeTab
+                if tab != null && tab.path != "" {
+                    .tabsStore.save(tab.path)
+                }
+            }
+            let f = useDebounceFn(run, 1200)
+            .debounced_save = f
+        }
+        // Original: v-model="entry.key" live write-back (the commit rides
+        // the separate @change, exactly like the original). Multi-param
+        // handlers only register the first param, so the view passes one
+        // map arg.
+        .KeyChanged(args) -> {
+            args.entry.key = eventValue(args.evt)
+        }
+        // Original: v-model="entry.value" + @input="updateFrontmatter".
+        .ValueChanged(args) -> {
+            args.entry.value = eventValue(args.evt)
+            commitFrontmatter(.tabsStore, .entries, .debounced_save)
+        }
+        // Original: @change="updateFrontmatter" on the key input.
+        .Commit -> {
+            commitFrontmatter(.tabsStore, .entries, .debounced_save)
+        }
+        // Original: @click="entry.value = !entry.value; updateFrontmatter()".
+        .ToggleBool(entry) -> {
+            entry.value = !entry.value
+            commitFrontmatter(.tabsStore, .entries, .debounced_save)
+        }
+        // Original: @change="setType(idx, ($event.target as
+        // HTMLSelectElement).value as any)".
+        .SetType(args) -> {
+            setEntryType(.entries, args.idx, eventValue(args.evt))
+            commitFrontmatter(.tabsStore, .entries, .debounced_save)
+        }
+        // Original: removeProperty(idx) = splice + updateFrontmatter.
+        .RemoveProperty(idx) -> {
+            .entries.splice(idx, 1)
+            commitFrontmatter(.tabsStore, .entries, .debounced_save)
+        }
+        // Original: addProperty() = guard + push + clear + updateFrontmatter.
+        .AddProperty -> {
+            let added = tryAddProperty(.entries, .new_key, .new_value)
+            if added {
+                .new_key = ""
+                .new_value = ""
+                commitFrontmatter(.tabsStore, .entries, .debounced_save)
+            }
+        }
+        // Original: cancel() = syncEntries().
+        .Cancel -> {
+            .entries = syncEntries(.tabsStore)
+        }
+        // Original: @click="tabs.activeTab?.path && tabs.save(tabs.activeTab.path)".
+        .SaveNow -> {
+            var t = .tabsStore.activeTab
+            if t != null && t.path != "" {
+                .tabsStore.save(t.path)
+            }
+        }
+        // Emitted but never called — the value/oninput pair folds into
+        // v-model (search_panel precedent).
+        .NewKeyInput(e) -> {
+            .new_key = e.target.value
+        }
+        .NewValueInput(e) -> {
+            .new_value = e.target.value
+        }
+    }
+}

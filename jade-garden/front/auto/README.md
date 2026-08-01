@@ -403,6 +403,61 @@ sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|
 - **`style_obj: { width: .computed }`** → `:style="{ width: c }"`
   （LeftSidebar 的 `:style="{ width: '${w}px' }"`）。
 
+### Phase 5.2 batch 4 新增限制（FlashcardModal / PropertiesPanel /
+### GraphControls / CommandPalette / QuickSwitcher 实证）
+
+37. **view 事件实参不能写字面量；handler 多参数只有第一个进作用域**：
+    `onclick.self: ."update:open"(false)` 解析失败（"Expected term,
+    got RBrace"，报错位在 view 收尾 `}`，具有迷惑性）；`.Handler(a, e)`
+    双参数 handler 编译期报 UndefinedVariable（只点后一个参数的名，
+    报错 span 错位到附近注释/语句）。规避：view 侧传单个 map 实参
+    `.Handler({ entry: entry, evt: $event })`（map 字面量实参实证
+    可用），handler 声明 `.Handler(args) -> { args.entry.x = ... }`。
+38. **无 class 的表单元素被映射为 shadcn 组件**：`input`/`button`/
+    `textarea`/`checkbox` 仅当带 class/style prop 时才 force_native；
+    无 class 的 `input (type: "range")` 变成 `<Input type="range">`
+    （min/max/step/value 全部丢失，事件改接 @update:modelValue）。
+    `select`/`option` **无论有无 class** 都映射为 shadcn Select。
+    规避：select/option 用 dyn + 字符串标签（ul/li 先例）；range
+    输入用 ext 函数式组件（RangeInput = `h('input', {...})`——dyn
+    块上 `type:` 是关键字 token 会错解析，gap 27 同类）。
+39. **带索引 v-for 内 PascalCase 组件的自动 :key 是 `idx?.id`**：
+    `for idx, item in ...`（DSL 索引在前，Vue 发射值在前）里嵌
+    PascalCase 组件时 key 用索引变量，`idx?.id` 对 number 报
+    TS2339。规避：索引作为展示字段挂在 item 上（ext mapper 加
+    `idx`），循环用无索引形式，handler 传 `entry.idx`。
+40. **model var 的 watch 体内不要再写 `.value`**：watch 体里 `.x`
+    （model var）已展开为 `x.value`，写 `.x.value` 变成
+    `x.value.value`（TS2339）。computed 作 watch 源时相反，需要
+    `.c.value`（flashcard is_open 实证）——按 watch 源种类区分。
+41. **quoted v-model emit 的 payload 是 handler 形参原样转发**：
+    `msg Msg { "update:open"(bool) }` + handler 的 auto-emit 在体
+    之后执行 `emit('update:open', v)`；view 无参接线时 v 是 DOM
+    事件对象。要发固定值，在 handler 体内给形参重新赋值
+    （`v = false`；FlashcardModal 的 click.self 关闭实证）。
+42. **codegen 总追加空 `<style>` 块，无法表达 scoped style**：
+    GraphControls 原件的 `<style scoped>` 无 DSL 形式。规避：样式
+    块原文存 `src/front/<name>.styleblock`，regen 流程在 sed 拷贝
+    后 `cat` 追加（class 钩子不变，scoped data-v 选择器对生成模板
+    同样生效，含子组件根元素）。
+
+### Phase 5.2 batch 4 新验证能力（非限制，之前未用过）
+
+- **map 字面量作 view 事件实参**：`oninput: .H({ entry: entry,
+  evt: $event })` → `@input="H({ entry: entry, evt: $event })"`
+  （gap 37 多参数 handler 的标准规避）。
+- **key+prevent 修饰符组合**：`onkeydown.enter.prevent:` /
+  `.down.prevent` / `.up.prevent` → `@keydown.enter.prevent` 等，
+  与原 onKeydown 内逐 key preventDefault 分支逐字等价（palette /
+  switcher 的键盘导航实证）。
+- **`onmouseenter:`** → `@mouseenter`；**`checked:`** → `:checked`
+  （checkbox 双向的显式形式）。
+- **ext 函数式组件上的事件接线**：`RangeInput (..., oninput: .H)` →
+  `@input="H"` → onInput prop，函数式组件内挂为原生 DOM 监听。
+- **`h4`/`label` 是已知元素**；**watch 源为 computed 时发射
+  `watch(c, ...)` 且体内 `.c.value` 正确**；**view-if 直接支持
+  `.graphStore.centerPath` 这类 composable 字段真值判断**。
+
 ### MainArea 的处置（batch 3 决策记录）
 
 MainArea 未整体翻译。其 tab strip 抽为新 widget `tab_strip.at` →

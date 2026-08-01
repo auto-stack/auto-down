@@ -5,3 +5,7 @@
 export function useRecentFilesStore(): any {
   return {}
 }
+
+// Batch 4 (command_palette_ext): type re-export for the gen-side
+// type-check (the front tree resolves the real facade type).
+export type RecentFile = any

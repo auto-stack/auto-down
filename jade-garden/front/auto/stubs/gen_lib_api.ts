@@ -158,3 +158,47 @@ export interface SearchResponse {
 export async function search(_query: string, _limit = 20): Promise<SearchResponse> {
   return { query: '', results: [] }
 }
+
+// Batch 4 (flashcard_modal_ext): the SRS card API the extension re-exports.
+
+export interface Card {
+  page_path: string
+  block_id: string
+  uuid: string
+  raw: string
+  question: string
+  answer: string
+  deck?: string
+  ease_factor: number
+  repeats: number
+  last_interval: number
+  next_schedule?: string
+  last_score?: number
+  last_reviewed?: string
+}
+
+export interface CardsResponse {
+  cards: Card[]
+}
+
+export async function getDueCards(_limit = 50): Promise<CardsResponse> {
+  return { cards: [] }
+}
+
+export async function reviewCard(
+  _pagePath: string,
+  _blockId: string,
+  _grade: number,
+): Promise<{ card: Card | null }> {
+  return { card: null }
+}
+
+// Batch 4 (command_palette_ext): the workspace import/export API.
+
+export async function exportMarkdown(): Promise<Blob> {
+  return new Blob()
+}
+
+export async function importMarkdown(_zipFile: File): Promise<{ imported: number }> {
+  return { imported: 0 }
+}

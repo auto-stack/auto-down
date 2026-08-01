@@ -1,0 +1,222 @@
+// flashcard_modal.at — FlashcardModal widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/FlashcardModal.vue (plan 011 Phase 5.2).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/flashcard_modal_ext|../../auto/src/front/utils/flashcard_modal_ext|g' \
+//     gen/front/vue/src/components/FlashcardModal.vue > ../src/components/FlashcardModal.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - The v-model:open contract is the 034-vmodel child pattern: an `open`
+//   prop + a QUOTED msg variant `"update:open"(bool)` whose empty handler
+//   auto-appends emit('update:open', v). The overlay's click.self wires the
+//   variant with a literal `false` arg (the original's close() =
+//   `open.value = false`).
+// - load()'s try/catch/finally folds into a one-callback .then over the
+//   extension's never-rejecting getDueCardsSafe (search_panel precedent);
+//   the same body appears in .Init (the original onMounted's
+//   `if (open) load()`), the is_open watch (the original watch(open)), and
+//   the .Rate reload branch — the DSL has no handler-to-handler calls.
+// - The v-if / v-else-if / v-else chain (loading / error / empty / cards)
+//   becomes four exclusive named-boolean computeds; error is a plain str
+//   model var, "" = the original's null (search_panel precedent).
+// - current / question / answer / the index+1 counter are extension Calls
+//   (no optional chaining or view-text arithmetic in the DSL).
+
+widget FlashcardModal(open: bool) {
+    use {
+        fn: Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText, strTruthy from "src/front/utils/flashcard_modal_ext.ts"
+    }
+
+    msg Msg { Init, Reveal, Rate, "update:open"(bool) }
+
+    model {
+        var cards Array<str> = []
+        var loading bool = false
+        var index int = 0
+        var show_answer bool = false
+        // "" = the original's null (strTruthy computed does the v-else-if check).
+        var error str = ""
+    }
+
+    computed {
+        is_open => .open
+        current => cardAt(.cards, .index)
+        counter_text => counterText(.index, .cards.length)
+        question_text => cardQuestion(.current.value)
+        answer_text => cardAnswer(.current.value)
+        has_error => strTruthy(.error)
+        show_loading => .loading
+        show_error => !.loading && .has_error.value
+        show_empty => !.loading && !.has_error.value && .cards.length == 0
+        show_cards => !.loading && !.has_error.value && .cards.length > 0
+    }
+
+    view {
+        if .is_open {
+            div {
+                class: "fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4",
+                onclick.self: ."update:open",
+                div {
+                    class: "w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-xl",
+                    div {
+                        class: "flex items-center gap-2 border-b px-4 py-3",
+                        dyn (.Brain) { class: "h-5 w-5 text-primary" }
+                        span { class: "font-semibold", text "Flashcards" }
+                        span { class: "ml-auto text-xs text-muted-foreground", text .counter_text }
+                    }
+                    div {
+                        class: "min-h-[200px] p-6",
+                        if .show_loading {
+                            div { class: "flex h-40 items-center justify-center text-sm text-muted-foreground", text "Loading cards…" }
+                        }
+                        if .show_error {
+                            div { class: "text-sm text-destructive", text .error }
+                        }
+                        if .show_empty {
+                            div {
+                                class: "flex h-40 flex-col items-center justify-center gap-2 text-muted-foreground",
+                                dyn (.Brain) { class: "h-8 w-8 opacity-50" }
+                                span { text "No cards due for review" }
+                            }
+                        }
+                        if .show_cards {
+                            div { class: "mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground", text "Question" }
+                            div { class: "mb-6 whitespace-pre-wrap text-base leading-relaxed", text .question_text }
+                            if .show_answer {
+                                div { class: "mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground", text "Answer" }
+                                div { class: "mb-6 whitespace-pre-wrap text-base leading-relaxed", text .answer_text }
+                            }
+                            if !.show_answer {
+                                div {
+                                    class: "flex justify-center",
+                                    button (type: "button") {
+                                        class: "rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90",
+                                        onclick: .Reveal,
+                                        text "Show answer"
+                                    }
+                                }
+                            }
+                            if .show_answer {
+                                div {
+                                    class: "grid grid-cols-4 gap-2",
+                                    button (type: "button") {
+                                        class: "rounded-md bg-destructive/10 px-2 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20",
+                                        onclick: .Rate(1),
+                                        text "Again"
+                                    }
+                                    button (type: "button") {
+                                        class: "rounded-md bg-amber-500/10 px-2 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-500/20",
+                                        onclick: .Rate(2),
+                                        text "Hard"
+                                    }
+                                    button (type: "button") {
+                                        class: "rounded-md bg-primary/10 px-2 py-2 text-xs font-semibold text-primary hover:bg-primary/20",
+                                        onclick: .Rate(3),
+                                        text "Good"
+                                    }
+                                    button (type: "button") {
+                                        class: "rounded-md bg-emerald-500/10 px-2 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/20",
+                                        onclick: .Rate(4),
+                                        text "Easy"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(open, (isOpen) => { if (isOpen) load() }).
+        .is_open -> {
+            if .is_open.value {
+                .loading = true
+                .error = ""
+                let p = getDueCardsSafe()
+                p.then(res => {
+                    if res.error == "" {
+                        .cards = res.cards
+                        .index = 0
+                        .show_answer = false
+                    }
+                    if res.error != "" {
+                        .error = res.error
+                    }
+                    .loading = false
+                })
+            }
+        }
+    }
+
+    on {
+        // Original: onMounted(() => { if (open.value) load() }).
+        .Init -> {
+            if .open {
+                .loading = true
+                .error = ""
+                let p = getDueCardsSafe()
+                p.then(res => {
+                    if res.error == "" {
+                        .cards = res.cards
+                        .index = 0
+                        .show_answer = false
+                    }
+                    if res.error != "" {
+                        .error = res.error
+                    }
+                    .loading = false
+                })
+            }
+        }
+        // Original: function reveal() { showAnswer.value = true }.
+        .Reveal -> {
+            .show_answer = true
+        }
+        // Original rate(grade): await reviewCard; on success index + 1,
+        // hide the answer, and reload when the deck is exhausted; on error
+        // only the error message is set (index stays). The extension's
+        // reviewCardSafe never rejects, so the single .then carries both
+        // branches; the reload is the load() body inlined (no
+        // handler-to-handler calls in the DSL).
+        .Rate(grade) -> {
+            var card = .current.value
+            if card != null {
+                let p = reviewCardSafe(card.page_path, card.block_id, grade)
+                p.then(res => {
+                    if res.error != "" {
+                        .error = res.error
+                    }
+                    if res.error == "" {
+                        .index = .index + 1
+                        .show_answer = false
+                        if .index >= .cards.length {
+                            .loading = true
+                            .error = ""
+                            let p2 = getDueCardsSafe()
+                            p2.then(res2 => {
+                                if res2.error == "" {
+                                    .cards = res2.cards
+                                    .index = 0
+                                    .show_answer = false
+                                }
+                                if res2.error != "" {
+                                    .error = res2.error
+                                }
+                                .loading = false
+                            })
+                        }
+                    }
+                })
+            }
+        }
+        // The v-model:open write-up: the view wires this quoted variant with
+        // a literal false; the auto-emit appends emit('update:open', v).
+        ."update:open"(v) -> { v = false }
+    }
+}

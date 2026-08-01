@@ -1,290 +1,157 @@
+<!-- CommandPalette component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
-import { onKeyStroke } from '@vueuse/core'
-import {
-  CalendarDays,
-  Network,
-  Sun,
-  Moon,
-  PanelLeft,
-  PanelRight,
-  FileSearch,
-  Clock,
-  Brain,
-  Download,
-  Upload,
-  type LucideIcon,
-} from 'lucide-vue-next'
-import { useTabsStore } from '@/stores/tabs'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { useSidebarStore } from '@/stores/sidebar'
-import { useThemeStore } from '@/stores/theme'
-import { useRecentFilesStore } from '@/stores/recentFiles'
-import { useWorkspaceStore } from '@/stores/workspace'
-import { openDailyNote, todayDate } from '@/lib/dailyNote'
-import { exportMarkdown, importMarkdown } from '@/lib/api'
-import type { RecentFile } from '@/stores/recentFiles'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { PaletteIcon } from '../../auto/src/front/utils/command_palette_ext'
+import { buildCommands, recentFileItems, allPaletteItems, filterPalette, runPaletteItem, nextIndex, prevIndex, listenPaletteHotkeys, unlistenPaletteHotkeys, focusPaletteInput } from '../../auto/src/front/utils/command_palette_ext'
+import { useTabsStore, useFileTreeStore, useSidebarStore, useThemeStore, useRecentFilesStore, useWorkspaceStore } from '../../auto/src/front/utils/command_palette_ext'
 
-interface CommandItem {
-  id: string
-  type: 'command'
-  title: string
-  subtitle?: string
-  icon: LucideIcon
-  action: () => void
-}
+const tabsStore = useTabsStore()
+const fileTreeStore = useFileTreeStore()
+const sidebarStore = useSidebarStore()
+const themeStore = useThemeStore()
+const recentFilesStore = useRecentFilesStore()
+const workspaceStore = useWorkspaceStore()
 
-interface FileItem {
-  id: string
-  type: 'file'
-  title: string
-  subtitle: string
-  icon: typeof Clock
-  recent: RecentFile
-}
 
-type PaletteItem = CommandItem | FileItem
+const open = ref<boolean>(false)
+const query = ref<string>('')
+const selected_index = ref<number>(0)
 
-const open = ref(false)
-const query = ref('')
-const selectedIndex = ref(0)
-const inputRef = ref<HTMLInputElement | null>(null)
+const commands = computed<any>(() => buildCommands(tabsStore, fileTreeStore, sidebarStore, themeStore))
+const recent_items = computed<any>(() => recentFileItems(recentFilesStore.files))
+const all_items = computed<any>(() => allPaletteItems(commands.value, recent_items.value))
+const filtered = computed<any>(() => filterPalette(all_items.value, query.value))
+const has_results = computed<boolean>(() => filtered.value.length > 0)
+const no_results = computed<boolean>(() => filtered.value.length === 0)
+const ul_tag = computed<string>(() => 'ul')
+const li_tag = computed<string>(() => 'li')
 
-const tabs = useTabsStore()
-const fileTree = useFileTreeStore()
-const sidebar = useSidebarStore()
-const theme = useThemeStore()
-const recent = useRecentFilesStore()
-const workspace = useWorkspaceStore()
+const emit = defineEmits<{
+  CloseOverlay: []
+  QueryInput: [any]
+  Execute: [any]
+  ExecuteSelected: []
+  NextItem: []
+  PrevItem: []
+  HoverItem: [any]
+}>()
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function pickFile(accept: string): Promise<File | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = accept
-    input.onchange = () => {
-      resolve(input.files?.[0] || null)
-    }
-    input.click()
-  })
-}
-
-const commands = computed<CommandItem[]>(() => {
-  const list: CommandItem[] = [
-    {
-      id: 'today',
-      type: 'command',
-      title: 'Open today\'s note',
-      subtitle: 'Create or open the daily journal entry',
-      icon: CalendarDays,
-      action: () => openDailyNote(todayDate(), tabs, fileTree),
-    },
-    {
-      id: 'global-graph',
-      type: 'command',
-      title: 'Open global graph',
-      subtitle: 'Show the workspace graph view',
-      icon: Network,
-      action: () => tabs.openGraph(),
-    },
-    {
-      id: 'toggle-theme',
-      type: 'command',
-      title: 'Toggle theme',
-      subtitle: `Current: ${theme.mode}`,
-      icon: theme.mode === 'dark' ? Sun : Moon,
-      action: () => theme.toggleMode(),
-    },
-    {
-      id: 'toggle-left-sidebar',
-      type: 'command',
-      title: 'Toggle left sidebar',
-      subtitle: sidebar.leftOpen ? 'Hide' : 'Show',
-      icon: PanelLeft,
-      action: () => sidebar.toggleLeft(),
-    },
-    {
-      id: 'toggle-right-sidebar',
-      type: 'command',
-      title: 'Toggle right sidebar',
-      subtitle: sidebar.rightOpen ? 'Hide' : 'Show',
-      icon: PanelRight,
-      action: () => { sidebar.rightOpen = !sidebar.rightOpen },
-    },
-    {
-      id: 'open-file-search',
-      type: 'command',
-      title: 'Open file search',
-      subtitle: 'Quick switcher (Ctrl+O)',
-      icon: FileSearch,
-      action: () => window.dispatchEvent(new CustomEvent('jade-open-quick-switcher')),
-    },
-    {
-      id: 'review-flashcards',
-      type: 'command',
-      title: 'Review flashcards',
-      subtitle: 'SRS due cards',
-      icon: Brain,
-      action: () => window.dispatchEvent(new CustomEvent('jade-open-flashcards')),
-    },
-    {
-      id: 'export-markdown',
-      type: 'command',
-      title: 'Export Markdown',
-      subtitle: 'Download workspace as zip of .md files',
-      icon: Download,
-      action: async () => {
-        const blob = await exportMarkdown()
-        downloadBlob(blob, 'jade-garden-export.zip')
-      },
-    },
-    {
-      id: 'import-markdown',
-      type: 'command',
-      title: 'Import Markdown',
-      subtitle: 'Upload a zip of .md files',
-      icon: Upload,
-      action: async () => {
-        const file = await pickFile('.zip')
-        if (!file) return
-        const res = await importMarkdown(file)
-        alert(`Imported ${res.imported} files`)
-        await fileTree.load()
-      },
-    },
-  ]
-  return list
-})
-
-const recentFileItems = computed<FileItem[]>(() => {
-  return recent.files.map((f) => ({
-    id: `recent:${f.path}`,
-    type: 'file',
-    title: f.title,
-    subtitle: f.path,
-    icon: Clock,
-    recent: f,
-  }))
-})
-
-const allItems = computed<PaletteItem[]>(() => {
-  return [...commands.value, ...recentFileItems.value]
-})
-
-const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return allItems.value.slice(0, 20)
-  return allItems.value.filter((item) => {
-    const text = [item.title, item.subtitle].join(' ').toLowerCase()
-    return text.includes(q)
-  }).slice(0, 20)
-})
-
-watch(open, async (isOpen) => {
-  if (isOpen) {
-    query.value = ''
-    selectedIndex.value = 0
-    await nextTick()
-    inputRef.value?.focus()
+watch(open, () => {
+  if (open.value) {query.value = '';
+  selected_index.value = 0;
+  focusPaletteInput();
   }
 })
 
 watch(filtered, () => {
-  selectedIndex.value = 0
+  selected_index.value = 0;
 })
 
-onKeyStroke('p', (e) => {
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
-    e.preventDefault()
-    if (!workspace.root) return
-    open.value = !open.value
-  }
-})
+function HoverItem(item: any): void {
+  selected_index.value = item.idx;
 
-onKeyStroke('Escape', () => {
-  open.value = false
-})
-
-function execute(item: PaletteItem) {
-  if (item.type === 'command') {
-    item.action()
-  } else {
-    tabs.open(item.recent.path, item.recent.title)
-  }
-  open.value = false
+  emit('HoverItem', item)
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    selectedIndex.value = (selectedIndex.value + 1) % filtered.value.length
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    selectedIndex.value = (selectedIndex.value - 1 + filtered.value.length) % filtered.value.length
-  } else if (e.key === 'Enter') {
-    e.preventDefault()
-    const item = filtered.value[selectedIndex.value]
-    if (item) execute(item)
-  }
+function Execute(item: any): void {
+  runPaletteItem(item, tabsStore);
+  open.value = false;
+
+  emit('Execute', item)
 }
+
+function CloseOverlay(): void {
+  open.value = false;
+
+  emit('CloseOverlay')
+}
+
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
+
+  emit('NextItem')
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
+}
+
+function ExecuteSelected(): void {
+  let item = filtered.value[selected_index.value];
+  if (item != null) {runPaletteItem(item, tabsStore);
+  open.value = false;
+  }
+
+  emit('ExecuteSelected')
+}
+
+onMounted(() => {
+  let toggle = () => { open.value = !open.value;
+   };
+  let on_escape = () => { open.value = false;
+   };
+  listenPaletteHotkeys(workspaceStore, toggle, on_escape);
+})
+
+onUnmounted(() => {
+  unlistenPaletteHotkeys();
+
+})
+
+
 </script>
 
 <template>
-  <div>
-    <div
-      v-if="open"
-      class="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 p-4 pt-[20vh]"
-      @click.self="open = false"
-    >
-      <div class="w-full max-w-xl overflow-hidden rounded-lg border bg-card shadow-lg">
-        <div class="flex items-center gap-2 border-b px-3 py-2">
-          <span class="text-xs text-muted-foreground">⌘/Ctrl+P</span>
-          <input
-            ref="inputRef"
-            v-model="query"
-            type="text"
-            placeholder="Type a command or recent file..."
-            class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            @keydown="onKeydown"
-          >
-        </div>
-        <ul v-if="filtered.length" class="max-h-[50vh] overflow-y-auto py-1">
-          <li
-            v-for="(item, idx) in filtered"
-            :key="item.id"
-            class="cursor-pointer px-3 py-2 text-sm"
-            :class="idx === selectedIndex ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/50'"
-            @click="execute(item)"
-            @mouseenter="selectedIndex = idx"
-          >
-            <div class="flex items-center gap-2">
-              <component :is="item.icon" class="h-4 w-4 shrink-0 opacity-70" />
-              <div class="min-w-0 flex-1">
-                <div class="truncate">{{ item.title }}</div>
-                <div
-                  v-if="item.subtitle"
-                  class="truncate text-[11px]"
-                  :class="idx === selectedIndex ? 'text-accent-foreground/70' : 'text-muted-foreground'"
-                >
-                  {{ item.subtitle }}
-                </div>
-              </div>
+    <div>
+      <template v-if="open">
+        <div class="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 p-4 pt-[20vh]" @click.self="CloseOverlay">
+          <div class="w-full max-w-xl overflow-hidden rounded-lg border bg-card shadow-lg">
+            <div class="flex items-center gap-2 border-b px-3 py-2">
+              <span class="text-xs text-muted-foreground">
+                <span>⌘/Ctrl+P</span>
+              </span>
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Type a command or recent file...'" v-model="query" @keydown.down.prevent="NextItem" @keydown.enter.prevent="ExecuteSelected" @keydown.up.prevent="PrevItem" />
             </div>
-          </li>
-        </ul>
-        <p v-else class="px-3 py-4 text-center text-sm text-muted-foreground">
-          No commands found
-        </p>
-      </div>
+            <template v-if="has_results">
+              <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
+                <component :is="(li_tag) as any" class="cursor-pointer px-3 py-2 text-sm" :class="item.idx == selected_index ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/50'" @click="Execute(item)" @mouseenter="HoverItem(item)" v-for="item in filtered">
+                  <div class="flex items-center gap-2">
+                    <PaletteIcon :icon="item.icon" :class="'h-4 w-4 shrink-0 opacity-70'" :key="'PaletteIcon-1-' + (item?.id ?? item)" />
+                    <div class="min-w-0 flex-1">
+                      <div class="truncate">
+                        <span>{{ item.title }}</span>
+                      </div>
+                      <template v-if="item.has_subtitle">
+                        <div class="truncate text-[11px]" :class="item.idx == selected_index ? 'text-accent-foreground/70' : 'text-muted-foreground'">
+                          <span>{{ item.subtitle }}</span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </component>
+              </component>
+            </template>
+            <template v-if="no_results">
+              <p class="px-3 py-4 text-center text-sm text-muted-foreground">
+                <span>No commands found</span>
+              </p>
+            </template>
+          </div>
+        </div>
+      </template>
     </div>
-  </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

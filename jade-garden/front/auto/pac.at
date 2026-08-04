@@ -2,3 +2,4 @@ name: "jade-garden-front-auto"
 version: "0.1.0"
 scene: "ui"
 render: "vue"
+npm_deps: ["cytoscape@^3.34.0", "cytoscape-fcose@^2.2.0"]

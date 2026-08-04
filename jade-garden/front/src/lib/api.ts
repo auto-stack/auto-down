@@ -109,6 +109,24 @@ export interface GraphEdge {
   block_id?: string
 }
 
+// Graph view settings. Defined here (next to GraphNode/GraphEdge) so the
+// Auto-generated GraphView widget's `settings: GraphSettings` prop resolves
+// its `import type { GraphSettings } from '@/lib/api'` in both the front
+// tree and the gen project (plan 011 Phase 5.3b); graph_store_ext re-exports
+// it for the store facade and pre-existing consumers.
+export interface GraphSettings {
+  showOrphans: boolean
+  showMissing: boolean
+  nodeSize: number
+  textOpacity: number
+  edgeWidth: number
+  showArrows: boolean
+  gravity: number
+  repulsion: number
+  attraction: number
+  linkLength: number
+}
+
 export interface GraphData {
   nodes: GraphNode[]
   edges: GraphEdge[]

@@ -1,0 +1,147 @@
+// graph_view.at — GraphView widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/GraphView.vue (plan 011 Phase 5.3b).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/graph_view_ext|../../auto/src/front/utils/graph_view_ext|g' \
+//     gen/front/vue/src/components/GraphView.vue > ../src/components/GraphView.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - The cytoscape instance (creation, layout, event handlers, style) lives
+//   entirely in graph_view_ext.ts (plan 011 非目标 #3 — the editor package's
+//   Tiptap encapsulation strategy). The widget owns the container div, the
+//   watches and the imperative surface only.
+// - `nodes`/`edges` array props emit `any` (List-of-User prop types are not
+//   mapped); `settings: GraphSettings` emits
+//   `import type { GraphSettings } from '@/lib/api'`, which resolves since
+//   Phase 5.3b moved the interface next to GraphNode/GraphEdge in
+//   front/src/lib/api.ts (graph_store_ext re-exports it) and mirrored it
+//   into stubs/gen_lib_api.ts.
+// - Optional props use defaults: `loading: bool = false` /
+//   `highlightQuery: str = ""` emit `loading?: boolean` /
+//   `highlightQuery?: string` — the original's optional props. CamelCase
+//   prop names pass through verbatim (Vue camelizes the parent's
+//   kebab-case attrs back).
+// - The deep settings watch is `watch { .settings.deep -> ... }` →
+//   `watch(() => props.settings, ..., { deep: true })`, verbatim the
+//   original. The `els` computed is the watch source for the original's
+//   watch(elements) (computed refs as watch sources need `.value` in the
+//   body — README gap 40).
+// - The `open` emit: a QUOTED msg variant `"open"(str)` whose empty handler
+//   auto-appends `emit('open', p)` (flashcard_modal precedent). The handler
+//   is marked used by a never-true `if .open_emit_wiring` guard in the view
+//   (expose{} does NOT mark parameterized handlers used — README gap 45);
+//   the cytoscape tap callback reaches it through the onOpen closure passed
+//   to initGraph in .Init.
+// - fit/relayout are exposed via `expose {}` (first production use,
+//   example 032): the parent (GraphPage) calls them through
+//   `ref: "graphViewRef"`.
+// - The original's scoped <style> is the widget-level `style {}` block
+//   (027-native-css), emitted verbatim as <style scoped>.
+
+widget GraphView(nodes: Array<GraphNode>, edges: Array<GraphEdge>, settings: GraphSettings, loading: bool = false, highlightQuery: str = "") {
+    use {
+        fn: buildElements, initGraph, updateGraphElements, applyGraphSettings, applyGraphHighlight, destroyGraph, graphFit, graphRelayout from "src/front/utils/graph_view_ext.ts"
+    }
+
+    msg Msg { Init, Destroy, Fit, Relayout, "open"(str) }
+
+    model {
+        // Opaque cytoscape handle (initGraph's return; the `[]` placeholder
+        // is a gen-time `ref<any[]>([])` — the extension null-guards it).
+        var handle Array<str> = []
+        // Always false; exists only so the view references the quoted
+        // "open" handler (marks it used so its function + typed emit
+        // declaration are generated — see the header comment).
+        var open_emit_wiring bool = false
+    }
+
+    computed {
+        // The original `elements` computed (filter + cytoscape element
+        // definition) — the extension does the work; this computed exists
+        // to be the reactive watch source, exactly like the original.
+        els => buildElements(.nodes, .edges, .settings)
+    }
+
+    view {
+        div {
+            ref: "containerEl",
+            class: "graph-view",
+            if .open_emit_wiring {
+                button { class: "hidden", onclick: ."open", text "open" }
+            }
+            if .loading {
+                div { class: "graph-loading", text "加载图谱…" }
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(elements, ...) — swap elements, relayout,
+        // re-highlight.
+        .els -> {
+            updateGraphElements(.handle, .els.value, .settings, .highlightQuery)
+        }
+        // Original: watch(() => props.settings, ..., { deep: true }).
+        .settings.deep -> {
+            applyGraphSettings(.handle, .settings)
+        }
+        // Original: watch(() => props.highlightQuery, ...).
+        .highlightQuery -> {
+            applyGraphHighlight(.handle, .highlightQuery)
+        }
+    }
+
+    on {
+        // Original: onMounted(initCy).
+        .Init -> {
+            let on_open = (p) => {
+                .open(p)
+            }
+            .handle = initGraph(.containerEl, .nodes, .edges, .settings, on_open)
+        }
+        // Original: onUnmounted(cy?.destroy()).
+        .Destroy -> {
+            destroyGraph(.handle)
+        }
+        // Original exposed fit().
+        .Fit -> {
+            graphFit(.handle)
+        }
+        // Original exposed relayout().
+        .Relayout -> {
+            graphRelayout(.handle, .settings)
+        }
+        // The emit body is empty; the codegen auto-appends emit('open', p)
+        // (quoted-variant contract). Called only from the on_open closure.
+        ."open"(p) -> {
+        }
+    }
+
+    expose {
+        .Fit, .Relayout
+    }
+
+    style {
+        /* The original GraphView.vue scoped styles, verbatim. */
+        .graph-view {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            position: relative;
+        }
+        .graph-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+            pointer-events: none;
+        }
+    }
+}

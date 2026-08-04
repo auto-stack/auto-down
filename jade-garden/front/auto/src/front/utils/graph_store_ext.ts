@@ -7,20 +7,17 @@
 // Only what the DSL genuinely cannot express lives here: localStorage
 // load/save of the settings (with try/catch) and the try/catch around
 // getGraph (never-rejecting wrapper returning { nodes, edges, error }).
-import { getGraph, type GraphEdge, type GraphNode } from '../../../../src/lib/api'
+import {
+  getGraph,
+  type GraphEdge,
+  type GraphNode,
+  type GraphSettings,
+} from '../../../../src/lib/api'
 
-export interface GraphSettings {
-  showOrphans: boolean
-  showMissing: boolean
-  nodeSize: number
-  textOpacity: number
-  edgeWidth: number
-  showArrows: boolean
-  gravity: number
-  repulsion: number
-  attraction: number
-  linkLength: number
-}
+// GraphSettings moved to src/lib/api.ts (next to GraphNode/GraphEdge) in
+// Phase 5.3b so the generated GraphView widget's prop-type import resolves;
+// re-exported here for the store facade and existing consumers.
+export type { GraphSettings }
 
 const DEFAULT_SETTINGS: GraphSettings = {
   showOrphans: true,

@@ -1,0 +1,162 @@
+// graph_sidebar.at — GraphSidebar widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/GraphSidebar.vue (plan 011 Phase 5.3b).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/graph_sidebar_ext|../../auto/src/front/utils/graph_sidebar_ext|g' \
+//     gen/front/vue/src/components/GraphSidebar.vue > ../src/components/GraphSidebar.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - The stats / topNodes computeds are extension Calls (multi-count object
+//   literal and spread+sort+slice have no DSL form); the
+//   `node.label || node.id` fallback is precomputed as `display` by the
+//   topDegreeNodes mapper (a Call in view text has no DSL form — README
+//   gap 46).
+// - ul/li are not in the DSL element table (they fall back to <div>), so
+//   the list renders via dyn with string tags (backlinks_panel precedent);
+//   the li carries the original's :key="node.id".
+// - The v-if="graph.loading" / v-else pair becomes two exclusive ifs
+//   (panels precedent).
+// - The row click is the loop-param handler `.OpenNode(node)` →
+//   `tabs.open(node.path, node.label)` through the facade, exactly the
+//   original.
+// - The original's scoped <style> is the widget-level `style {}` block
+//   (027-native-css), emitted verbatim as <style scoped>.
+// - NO commas between sibling view children (README gap 30).
+
+widget GraphSidebar {
+    use {
+        composable: useGraphStore, useTabsStore from "src/front/utils/graph_sidebar_ext.ts"
+        fn: graphStats, topDegreeNodes, Network from "src/front/utils/graph_sidebar_ext.ts"
+    }
+
+    msg Msg { Init, OpenNode }
+
+    computed {
+        // Original: stats / topNodes computeds (extension Calls; the
+        // facade getters execute inside the computed, so the reactive
+        // tracking matches the original).
+        stats => graphStats(.graphStore.nodes, .graphStore.edges)
+        top_nodes => topDegreeNodes(.graphStore.nodes)
+        // Native tags the DSL maps to div (backlinks_panel precedent).
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        div {
+            class: "flex h-full flex-col",
+            div {
+                class: "flex h-[var(--header-height)] items-center border-b px-3",
+                dyn (.Network) { class: "mr-1.5 h-4 w-4 text-primary" }
+                span { class: "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "图谱" }
+            }
+            div {
+                class: "flex-1 overflow-y-auto p-3",
+                div {
+                    class: "grid grid-cols-2 gap-2 text-xs",
+                    div {
+                        class: "stat-card",
+                        span { class: "stat-label", text "页面" }
+                        span { class: "stat-value", text .stats.total }
+                    }
+                    div {
+                        class: "stat-card",
+                        span { class: "stat-label", text "链接" }
+                        span { class: "stat-value", text .stats.edges }
+                    }
+                    div {
+                        class: "stat-card",
+                        span { class: "stat-label", text "缺失" }
+                        span { class: "stat-value", text .stats.missing }
+                    }
+                    div {
+                        class: "stat-card",
+                        span { class: "stat-label", text "孤立" }
+                        span { class: "stat-value", text .stats.orphan }
+                    }
+                }
+                div {
+                    class: "mt-5",
+                    div { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", text "连接最多的页面" }
+                    if .graphStore.loading {
+                        div { class: "text-xs text-muted-foreground", text "加载中…" }
+                    }
+                    if !.graphStore.loading {
+                        dyn (.ul_tag) {
+                            class: "space-y-1",
+                            for node in .top_nodes {
+                                dyn (.li_tag) {
+                                    key: node.id,
+                                    class: "flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-accent cursor-pointer",
+                                    onclick: .OpenNode(node),
+                                    span { class: "truncate", text node.display }
+                                    span { class: "shrink-0 text-[10px] text-muted-foreground", text node.degree }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: onMounted(() => { if (graph.nodes.length === 0 &&
+        // !graph.loading) graph.load() }).
+        .Init -> {
+            if .graphStore.nodes.length == 0 && !.graphStore.loading {
+                .graphStore.load()
+            }
+        }
+        // Original: @click="tabs.open(node.path, node.label)".
+        .OpenNode(node) -> {
+            .tabsStore.open(node.path, node.label)
+        }
+    }
+
+    style {
+        /* The original GraphSidebar.vue scoped styles, verbatim. */
+        .open-graph-btn {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: opacity 0.15s ease;
+        }
+        .open-graph-btn:hover {
+            opacity: 0.9;
+        }
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--background));
+        }
+        .stat-label {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        .stat-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: hsl(var(--foreground));
+            font-variant-numeric: tabular-nums;
+        }
+    }
+}

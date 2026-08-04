@@ -1,0 +1,202 @@
+// graph_page.at — GraphPage widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/GraphPage.vue (plan 011 Phase 5.3b).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/graph_page_ext|../../auto/src/front/utils/graph_page_ext|g' \
+//     gen/front/vue/src/components/GraphPage.vue > ../src/components/GraphPage.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - GraphView / GraphControls are sibling widgets (file-top `use` — the
+//   FileTree/FileTreeNode precedent); the template ref on GraphView is
+//   `ref: "graphViewRef"` and the exposed Fit/Relayout calls go through
+//   the extension's null-safe wrappers (the original's
+//   `graphViewRef?.fit()` optional chaining has no DSL form).
+// - Optional props use defaults: `centerPath: ?str = None` emits
+//   `centerPath?: string | null`, `depth: int = 1` emits `depth?: number`
+//   (no runtime default in either the original or the generated SFC —
+//   MainArea always passes both). CamelCase prop names pass through
+//   verbatim so MainArea's `:center-path` attr matches.
+// - The local-graph BFS / visible-node filtering / center-title regex live
+//   in the extension (Set/queue/regex have no DSL form); the computed
+//   bodies are extension Calls with the same reactive deps as the
+//   original's computeds (graphStore.nodes/edges getters + props).
+// - The `open` child event is wired `onopen: .OpenPage` (theme_popover
+//   precedent) → `@open="OpenPage"`; the handler forwards to the tabs
+//   facade exactly like the original openPage().
+// - The original's scoped <style> is the widget-level `style {}` block
+//   (027-native-css), emitted verbatim as <style scoped>.
+// - NO commas between sibling view children (README gap 30).
+
+use graph_view: GraphView
+use graph_controls: GraphControls
+
+widget GraphPage(centerPath: ?str = None, depth: int = 1) {
+    use {
+        composable: useGraphStore, useTabsStore from "src/front/utils/graph_page_ext.ts"
+        fn: visibleGraphNodes, visibleGraphEdges, centerTitle, hasCenter, fitGraphView, relayoutGraphView, Globe, Maximize, RefreshCw from "src/front/utils/graph_page_ext.ts"
+    }
+
+    msg Msg { Init, OpenPage, SwitchToGlobal, FitView, RelayoutView }
+
+    computed {
+        // Original: isLocal = computed(() => !!props.centerPath). An ext
+        // Call: the DSL's `!= null` compiles to `!== undefined` (gap 47),
+        // which mis-fires on MainArea's explicit null.
+        is_local => hasCenter(.centerPath)
+        // Original: visibleNodes / visibleEdges (extension does the BFS).
+        visible_nodes => visibleGraphNodes(.graphStore.nodes, .graphStore.edges, .centerPath, .depth)
+        visible_edges => visibleGraphEdges(.graphStore.nodes, .graphStore.edges, .centerPath, .depth)
+        // Original: centerTitle.
+        center_title => centerTitle(.graphStore.nodes, .centerPath)
+    }
+
+    view {
+        div {
+            class: "graph-page",
+            div {
+                class: "graph-toolbar",
+                div {
+                    class: "flex items-center gap-2",
+                    span { class: "text-xs font-medium text-muted-foreground", text "关系图谱" }
+                    if .is_local {
+                        span { class: "local-badge", text f"局部：${.center_title}" }
+                    }
+                }
+                div {
+                    class: "flex items-center gap-1",
+                    if .is_local {
+                        button (type: "button") {
+                            class: "graph-tool-btn",
+                            title: "返回全局图谱",
+                            onclick: .SwitchToGlobal,
+                            dyn (.Globe) { class: "h-3.5 w-3.5" }
+                        }
+                    }
+                    button (type: "button") {
+                        class: "graph-tool-btn",
+                        title: "适应画布",
+                        onclick: .FitView,
+                        dyn (.Maximize) { class: "h-3.5 w-3.5" }
+                    }
+                    button (type: "button") {
+                        class: "graph-tool-btn",
+                        title: "重新布局",
+                        onclick: .RelayoutView,
+                        dyn (.RefreshCw) { class: "h-3.5 w-3.5" }
+                    }
+                }
+            }
+            div {
+                class: "graph-body",
+                GraphView {
+                    ref: "graphViewRef",
+                    nodes: .visible_nodes,
+                    edges: .visible_edges,
+                    settings: .graphStore.settings,
+                    loading: .graphStore.loading,
+                    highlightQuery: .graphStore.searchQuery,
+                    class: "graph-canvas",
+                    onopen: .OpenPage
+                }
+                GraphControls { }
+            }
+            if .graphStore.error {
+                div { class: "graph-error", text .graphStore.error }
+            }
+        }
+    }
+
+    on {
+        // Original: onMounted(() => graph.load()).
+        .Init -> {
+            .graphStore.load()
+        }
+        // Original: openPage(path) = tabs.open(path).
+        .OpenPage(p) -> {
+            .tabsStore.open(p)
+        }
+        // Original: switchToGlobal() = tabs.openGraph().
+        .SwitchToGlobal -> {
+            .tabsStore.openGraph()
+        }
+        // Original template: @click="graphViewRef?.fit()".
+        .FitView -> {
+            fitGraphView(.graphViewRef)
+        }
+        // Original template: @click="graphViewRef?.relayout()".
+        .RelayoutView -> {
+            relayoutGraphView(.graphViewRef)
+        }
+    }
+
+    style {
+        /* The original GraphPage.vue scoped styles, verbatim. */
+        .graph-page {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            background: hsl(var(--background));
+        }
+        .graph-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: var(--header-height, 2.25rem);
+            padding: 0 0.75rem;
+            border-bottom: 1px solid hsl(var(--border));
+            background: hsl(var(--card));
+        }
+        .local-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            background: hsl(var(--primary) / 0.12);
+            color: hsl(var(--primary));
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .graph-tool-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.25rem;
+            color: hsl(var(--muted-foreground));
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .graph-tool-btn:hover {
+            background: hsl(var(--accent));
+            color: hsl(var(--accent-foreground));
+        }
+        .graph-body {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .graph-canvas {
+            flex: 1;
+            min-width: 0;
+        }
+        .graph-error {
+            position: absolute;
+            bottom: 0.75rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            background: hsl(var(--destructive));
+            color: hsl(var(--destructive-foreground));
+            font-size: 0.75rem;
+        }
+    }
+}

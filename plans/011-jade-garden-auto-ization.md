@@ -55,29 +55,52 @@
 - ✅ 5.0c e2e 基线：Playwright 19 测试两遍全绿（front/e2e/，含 8 张像素基线）；`pnpm test:e2e`。
 - 提交：auto-down 0a56e4b。注意：主仓 auto.exe 需 `cargo build` 重建后才含新能力（或用 worktree 二进制）。
 
-### Phase 5.1：store + 简单面板（预计 1 周）
+### Phase 5.1：store + 简单面板 ✅（2026-07-31 ~ 08-01 完成）
 
-- tabs/theme/workspace/files store 翻译为 Auto store 模块。
-- 纯声明式组件（约 15 个）：Ribbon、StatusBar、BacklinksPanel、OutgoingLinksPanel、UnlinkedReferencesPanel、OutlinePanel、AgendaPanel、RecentFilesPanel、SearchPanel、WorkspaceOpener、CreatePagePrompt、ThemePopover、AppShell、LeftSidebar、RightSidebar、MainArea 标签栏。
-- 每个组件翻译后跑 5.0c 基线。
+- ✅ 全部 9 个 store（试点 tabs，批量 blocks/fileTree/graph/plugins/recentFiles/sidebar/theme/workspace）翻译为 Auto store 模块 + 手写 facade，消费方零改动。
+- ✅ 纯声明式组件 15 个分三批完成（batch 1：Backlinks/OutgoingLinks/UnlinkedRefs/Outline/RecentFiles；batch 2：Ribbon/StatusBar/Agenda/Search/ThemePopover；batch 3：WorkspaceOpener/CreatePagePrompt/AppShell/LeftSidebar/RightSidebar/TabStrip）。
+- ✅ 每个批次翻译后跑 5.0c 基线，全绿。
+- 提交：38b332e（试点）、6fd4999（其余 store）、f4466f4 / 6c2a128 / 56b3a15（组件三批）。
 
-### Phase 5.2：中等组件（预计 1 周）
+### Phase 5.2：中等组件 ✅（2026-08-02 完成）
 
-- GraphControls（v-model.number 滑杆）、FlashcardModal（命名 v-model）、CommandPalette、QuickSwitcher（全局热键 + 命令式 DOM）、PropertiesPanel（frontmatter 编辑）。
-- lib 层 `use import` 接线。
+- ✅ GraphControls（range 滑杆经 ext RangeInput）、FlashcardModal（v-model:open 脱糖）、CommandPalette、QuickSwitcher（全局热键 + 键盘导航修饰符）、PropertiesPanel 全部翻译。
+- ✅ lib 层 `use import` / ext 中转接线全部落地（api/wikiLink/dailyNote/templates + 双侧 stub）。
+- 提交：aa6e4b2。
 
-### Phase 5.3：困难组件（预计 2 周）
+### Phase 5.3：困难组件 ✅（2026-08-03 ~ 08-04 完成，四批）
 
-- EditorTab（Teleport + 事件总线 + $el DOM 逃生舱 + 防抖）。
-- GraphView + GraphPage + GraphSidebar（cytoscape 封装 + defineExpose）。
-- FileTree + FileTreeNode（递归 + Teleport）。
-- WhiteboardPage（contenteditable + 拖拽）——如代价过高可保留手写并记录理由（同 editor 内核策略）。✅ 已完成翻译（5.3d，2026-08-04）：实际组件无拖拽/选区/IME，仅 contenteditable+blur，全部可用 DSL + 薄 ext 复刻（`whiteboard_page.at` + `whiteboard_page_ext.ts`；探针 tmp/dsl-probes/whiteboard 验证 contenteditable/onblur/ondblclick/多语句闭包透传）；MainArea 改为兄弟 widget 直引，gen_components stub 清空（目录已无任何 stub），e2e 19/19 全绿。
+- ✅ 5.3a FileTree + FileTreeNode（递归 widget + 显式 `key:`，cb24440）。
+- ✅ 5.3b GraphView + GraphPage + GraphSidebar（cytoscape ext 封装 + `expose {}`，cf04d95）。
+- ✅ 5.3c EditorTab（事件总线 + $el 逃生舱 + EditorShell wrapper）+ MainArea 整体翻译（077010c）。
+- ✅ 5.3d WhiteboardPage（d7e3643）：实际组件无拖拽/选区/IME，仅 contenteditable+blur，全部可用 DSL + 薄 ext 复刻（`whiteboard_page.at` + `whiteboard_page_ext.ts`；探针 tmp/dsl-probes/whiteboard 验证 contenteditable/onblur/ondblclick/多语句闭包透传）；MainArea 改为兄弟 widget 直引，gen_components stub 清空（目录已无任何 stub），e2e 19/19 全绿。
 
-### Phase 5.4：收尾
+### Phase 5.4：收尾 ✅（2026-08-04 完成）
 
-- 全量 e2e + 视觉对拍（关键页面截图 diff）。
-- 704 行 CSS 保持手写资产原样引入。
-- 回填 plan 010 Phase 5 验收；更新本 plan 与各 README。
+- ✅ 全量验证：`pnpm build`（vue-tsc + vite）干净通过；`pnpm test:e2e` 19/19 一次通过（含 8 张截图像素基线，无 03-tabs flake）。
+- ✅ 组件层盘点：`front/src/` 共 31 个 `.vue` —— 29 个由 `.at` 生成（`components/*.vue`，均含生成标记，与 `front/auto/src/front/*.at` 一一对应）；2 个特许手写：`App.vue`（7 行根壳，仅挂载 AppShell，属 bootstrap）与 `PluginFrame.vue`（iframe sandbox/postMessage RPC，milestone 7 遗留，当前**零引用**死代码，未翻译，建议另行清理）。`auto/stubs/gen_components/` 已清空。
+- ✅ store 层盘点：9 个 store 全部翻译（注：5.0 调研口径"10 store"有误，0a56e4b 基线实际即 9 个），生成 composable 在 `src/stores/auto/`，手写 facade 在 `src/stores/`。
+- ✅ 704 行 CSS 保持手写资产原样引入；lib 层（api/blockParser/dailyNote/templates/wikiLink）保持手写 TS。
+- ✅ 编译器缺口回填 plan 012（`plans/012-autodsl-vue-codegen-backlog.md`，55 条缺口分级 + 三批修复建议）；各 README 已随各批次同步。
+
+## Phase 5 总结
+
+**最终数字**：11 个提交（5.0：0a56e4b；5.1：38b332e/6fd4999/f4466f4/6c2a128/56b3a15；5.2：aa6e4b2；5.3：cb24440/cf04d95/077010c/d7e3643；另有 45559b8 文档提交）。产出 29 个 widget `.at` + 9 个 store `.at`，覆盖全部 29 个组件与 9 个 store；e2e 19/19 稳定绿（含截图基线）；`front/auto/README.md` 沉淀 55 条编译器缺口 + 30 余条新验证能力。
+
+**什么有效**：
+
+- **facade 零 diff 模式**：生成 composable 与 Pinia API 的形状差异全部由薄 facade 抹平，消费方（组件/测试）零改动——diff 面即回归面，每次替换的审查成本极低。
+- **ext 层政策**：只装 DSL 真正表达不了的东西（npm 库、try/catch、正则、imperative 内核），且有 dual-resolution shim 让 gen 侧 vue-tsc 同样可检查——ext 没有变成藏污纳垢的后门。
+- **e2e + 截图门控**：5.0c 先建基线再动手，之后每批必跑 19 测试 + 像素基线；静默类编译器缺陷（P0）多次被截图/断言当场抓出（如 Tailwind content glob、逗号垃圾 div）。
+- **探针先行**：每个难组件翻译前在 `tmp/dsl-probes/` 做最小管线探针，把不确定性从正式翻译中剥离。
+
+**真实代价**：
+
+- **55 条编译器缺口**：其中 9 条是"静默出错且无告警"级（P0），全靠下游规避 + 人工 grep + e2e 兜底；修复 backlog 见 plan 012。
+- **ext 层体积**：29 个组件几乎各配一个 `*_ext.ts`，加上 stubs 镜像与双重 src 拷贝流程，regen 流程步骤多、易错（cp -r 嵌套、镜像过期各踩过一次）。
+- **regen 不可无人值守**：store 一次只能编译一个、parse 失败静默、`auto build` 不 fail——每次 regen 必须人工核对输出。
+
+**后续**：编译器侧按 plan 012 三批推进（静默发射防护 → store 编译正确性 → 测试债回填）；P2 表达力缺口随批次顺手做。
 
 ## 风险与对策
 

@@ -1,5 +1,6 @@
 # Plan: Jade-Garden 应用 Auto 化
 
+> 状态：✅ 已完成（2026-07-31，0a56e4b → d7e3643 + 收尾 545c477/cb41e8c；最终验证 e2e 19/19）。
 > 前置：plan 010（AutoDown 编辑器 Auto 化）已完成，编译器能力基线 = auto-lang master（闭包/watch/dyn/style_obj/自定义事件/use import/ref DOM 逃生舱/块体闭包）。
 > 调研结论：Jade-Garden 名义是 Auto 工程，实际 99% 手写——`front/` 约 6600 行手写 Vue 3 + Pinia + Tailwind（26 组件 + 10 store + lib 层 + 704 行 CSS），`back/server/` 3706 行手写 Rust Axum。`.at` 文件（app.at/api.at 等）全是占位，且**`auto run` 会用占位覆盖真实 `src/App.vue`，必须先行隔离**。
 
@@ -100,7 +101,7 @@
 - **ext 层体积**：29 个组件几乎各配一个 `*_ext.ts`，加上 stubs 镜像与双重 src 拷贝流程，regen 流程步骤多、易错（cp -r 嵌套、镜像过期各踩过一次）。
 - **regen 不可无人值守**：store 一次只能编译一个、parse 失败静默、`auto build` 不 fail——每次 regen 必须人工核对输出。
 
-**后续**：编译器侧按 plan 012 三批推进（静默发射防护 → store 编译正确性 → 测试债回填）；P2 表达力缺口随批次顺手做。
+**后续**：编译器侧按 plan 012 三批推进（静默发射防护 → store 编译正确性 → 测试债回填）；P2 表达力缺口随批次顺手做。e2e 侧补充覆盖目前无测试守的区域（见 `front/e2e/README.md` deferred 清单）：FileTreeNode 右键菜单 CRUD、WhiteboardPage 交互、OutlinePanel 若日后接通 `blocks.parse`、PropertiesPanel 编辑流、flashcard 有卡状态。
 
 ## 风险与对策
 

@@ -2,9 +2,6 @@
 //
 // Only what the DSL genuinely cannot express lives here:
 // - the tabs store facade re-export (dual-resolution shim),
-// - the WhiteboardPage re-export (still hand-written, Phase 5.3d —
-//   app_shell_ext component re-export precedent; gen side resolves through
-//   stubs/gen_components/WhiteboardPage.vue),
 // - editorTabs (the original's `tabs.tabs.filter(t => !t.isGraph)` PLUS the
 //   per-tab v-show display value precomputed from tabs.activePath — v-show
 //   has no DSL form, so each EditorTab gets `:style="{ display }"`, which is
@@ -21,9 +18,8 @@
 // below resolve to front/src/... in the jade-garden front tree.
 import { h } from 'vue'
 import { useTabsStore } from '../../../../src/stores/tabs'
-import WhiteboardPage from '../../../../src/components/WhiteboardPage.vue'
 
-export { useTabsStore, WhiteboardPage }
+export { useTabsStore }
 
 /** Original: editorTabs = computed(() => tabs.tabs.filter(t => !t.isGraph)),
  *  plus the per-tab v-show display: visible ('' — the absolute inset-0 CSS

@@ -1,0 +1,155 @@
+// whiteboard_page.at — WhiteboardPage widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/WhiteboardPage.vue (plan 011 Phase 5.3d — the last
+// hand-written component in the tree). Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/whiteboard_page_ext|../../auto/src/front/utils/whiteboard_page_ext|g' \
+//     gen/front/vue/src/components/WhiteboardPage.vue > ../src/components/WhiteboardPage.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - v-else-if / v-else have NO DSL form. The original's loading / error /
+//   canvas 3-way branch is three mutually exclusive v-ifs: `.loading`
+//   directly, plus the ext's showError / showCanvas computed guards
+//   (!loading && !!error / !loading && !error).
+// - The conditional ring class (`:class="{ 'ring-2 ring-primary':
+//   selectedId === shape.id }"`) needs a field-access condition for the
+//   quoted-key style map, and the per-shape position style needs string
+//   fields — both precomputed by the ext's shapeList mapper, which wraps
+//   each shape ({ shape, sid, selected, s_left, ... }) so the extra view
+//   fields never leak into the saved doc (the wrapper holds the ORIGINAL
+//   shape reference; updateLabel still mutates doc.shapes entries).
+// - contenteditable / onblur / ondblclick all pass through verbatim
+//   (probe tmp/dsl-probes/whiteboard: `:contenteditable="'true'"`,
+//   `@blur`, `@dblclick`). The label edit reads event.target.innerText in
+//   the ext (readLabel); saving on EVERY blur — even unchanged — is the
+//   original's behavior, kept verbatim.
+// - try/catch has no DSL form (gap 4): the load flow is the ext's
+//   loadWhiteboard with three single-statement closures (setDoc / setErr /
+//   done — callback-closure precedent), replicating the original's
+//   loading=true → await → doc-or-error → loading=false order via
+//   .then/.catch/.finally. save() is the ext's saveWhiteboard
+//   (writeWhiteboard + tab.dirty=false on success, console.error on
+//   failure) — fire-and-forget exactly like the original's un-awaited
+//   save() calls from addShape / updateLabel.
+// - Date.now() / endsWith / `??=` have no DSL form: addNoteShape (id +
+//   grid position + push, `(doc.shapes ??= [])` matching the original's
+//   initial `{ shapes: [] }` guarantee) and openShapeTarget (the .ad
+//   suffix logic + tabs.open) live in the ext.
+// - The original's inline template assignments (`@click="selectedId =
+//   null"`, `@click.stop="selectedId = shape.id"`) are the .Deselect /
+//   .Select handlers — behaviorally identical (plus the codegen's usual
+//   harmless auto-emit).
+
+widget WhiteboardPage(path: str) {
+    use {
+        composable: useTabsStore from "src/front/utils/whiteboard_page_ext.ts"
+        fn: loadWhiteboard, saveWhiteboard, addNoteShape, shapeList, readLabel, openShapeTarget, showError, showCanvas from "src/front/utils/whiteboard_page_ext.ts"
+    }
+
+    msg Msg { Init, AddShape, UpdateLabel, OpenTarget, Select, Deselect }
+
+    model {
+        // Original: doc = ref<{ shapes: WhiteboardShape[] }>({ shapes: [] }).
+        var doc map = {}
+        var loading bool = false
+        var error ?str = None
+        var selected_id ?str = None
+    }
+
+    computed {
+        // Original: shapes = computed(() => doc.value.shapes) — plus the
+        // per-shape view fields (selected / position strings), see header.
+        shape_list => shapeList(.doc, .selected_id)
+        // Original: v-else-if="error" (i.e. !loading && error truthy).
+        show_error => showError(.loading, .error)
+        // Original: v-else (i.e. !loading && !error).
+        show_canvas => showCanvas(.loading, .error)
+    }
+
+    view {
+        div {
+            class: "flex h-full flex-col bg-background",
+            div {
+                class: "flex h-[var(--header-height)] items-center justify-between border-b px-3",
+                span { class: "text-sm font-medium", text .path }
+                button (type: "button") {
+                    class: "rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90",
+                    onclick: .AddShape,
+                    text "Add note"
+                }
+            }
+            div {
+                class: "relative flex-1 overflow-hidden",
+                if .loading {
+                    div {
+                        class: "absolute inset-0 flex items-center justify-center text-sm text-muted-foreground",
+                        text "Loading…"
+                    }
+                }
+                if .show_error {
+                    div {
+                        class: "absolute inset-0 flex items-center justify-center text-sm text-destructive",
+                        text f"${.error}"
+                    }
+                }
+                if .show_canvas {
+                    div {
+                        class: "absolute inset-0",
+                        onclick: .Deselect,
+                        for item in .shape_list {
+                            div {
+                                key: item.sid,
+                                class: "absolute rounded-md border bg-card p-2 shadow-sm",
+                                style: { "ring-2 ring-primary": item.selected },
+                                style_obj: { left: item.s_left, top: item.s_top, width: item.s_width, height: item.s_height },
+                                onclick.stop: .Select(item.sid),
+                                ondblclick: .OpenTarget(item.shape),
+                                div {
+                                    class: "h-full w-full overflow-hidden text-xs outline-none",
+                                    contenteditable: "true",
+                                    onblur: .UpdateLabel({ shape: item.shape, evt: $event }),
+                                    text item.shape.label
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        // Original: onMounted(load) — load sets loading, fetches, assigns
+        // doc or error, then clears loading (ext callback chain).
+        .Init -> {
+            .loading = true
+            .error = null
+            loadWhiteboard(.path, (d) => { .doc = d }, (e) => { .error = e }, () => { .loading = false })
+        }
+        // Original: addShape — push a new note at the next grid slot, save.
+        .AddShape -> {
+            addNoteShape(.doc)
+            saveWhiteboard(.tabsStore, .path, .doc)
+        }
+        // Original: updateLabel — shape.label = target.innerText, save.
+        .UpdateLabel(args) -> {
+            args.shape.label = readLabel(args.evt)
+            saveWhiteboard(.tabsStore, .path, .doc)
+        }
+        // Original: openTarget — dblclick opens shape.target (.ad suffix).
+        .OpenTarget(shape) -> {
+            openShapeTarget(.tabsStore, shape)
+        }
+        // Original: @click.stop="selectedId = shape.id".
+        .Select(sid) -> {
+            .selected_id = sid
+        }
+        // Original: @click="selectedId = null".
+        .Deselect -> {
+            .selected_id = null
+        }
+    }
+}

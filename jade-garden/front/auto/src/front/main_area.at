@@ -27,23 +27,20 @@
 //   activeWhiteboardTab / tabs.length === 0) go through the extension
 //   (optional chaining / || / === have no exact DSL form — and `!= null`
 //   compiles to `!== undefined`, gap 47).
-// - TabStrip / EditorTab / GraphPage are sibling widgets (file-top `use`,
-//   graph_page precedent); WhiteboardPage is still hand-written (Phase
-//   5.3d) and comes through the extension's component re-export
-//   (app_shell precedent) with stubs/gen_components/WhiteboardPage.vue as
-//   its gen-side mirror.
+// - TabStrip / EditorTab / GraphPage / WhiteboardPage are sibling widgets
+//   (file-top `use`, graph_page precedent).
 // - The empty-state inline SVG is the extension's EmptyFileIcon functional
 //   component (innerHTML — svg is not a DSL element, gap 31).
 
 use tab_strip: TabStrip
 use editor_tab: EditorTab
 use graph_page: GraphPage
+use whiteboard_page: WhiteboardPage
 
 widget MainArea {
     use {
         composable: useTabsStore from "src/front/utils/main_area_ext.ts"
         fn: editorTabs, hasGraphTab, graphTabPath, graphCenter, graphDepth, hasWhiteboardTab, whiteboardPath, noTabs, EmptyFileIcon from "src/front/utils/main_area_ext.ts"
-        component: WhiteboardPage from "src/front/utils/main_area_ext.ts"
     }
 
     computed {

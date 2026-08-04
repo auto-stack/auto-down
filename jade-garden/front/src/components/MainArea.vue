@@ -1,7 +1,6 @@
 <!-- MainArea component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { WhiteboardPage } from '../../auto/src/front/utils/main_area_ext'
 import { editorTabs, hasGraphTab, graphTabPath, graphCenter, graphDepth, hasWhiteboardTab, whiteboardPath, noTabs, EmptyFileIcon } from '../../auto/src/front/utils/main_area_ext'
 import { useTabsStore } from '../../auto/src/front/utils/main_area_ext'
 
@@ -10,6 +9,7 @@ const tabsStore = useTabsStore()
 import EditorTab from '@/components/EditorTab.vue'
 import GraphPage from '@/components/GraphPage.vue'
 import TabStrip from '@/components/TabStrip.vue'
+import WhiteboardPage from '@/components/WhiteboardPage.vue'
 
 
 const editor_tabs = computed<any>(() => editorTabs(tabsStore.tabs, tabsStore.activePath))
@@ -28,12 +28,12 @@ const no_tabs = computed<any>(() => noTabs(tabsStore.tabs))
     <main class="flex h-full flex-col overflow-hidden bg-background">
       <TabStrip :key="'TabStrip-1'" />
       <div class="relative flex flex-1 overflow-hidden">
-        <EditorTab class="absolute inset-0" :path="tab.path" :key="tab.path" :style="({ display: tab.display } as any)"  v-for="tab in editor_tabs"/>
+        <EditorTab class="absolute inset-0" :key="tab.path" :path="tab.path" :style="({ display: tab.display } as any)"  v-for="tab in editor_tabs"/>
         <template v-if="has_graph">
-          <GraphPage class="absolute inset-0" :key="graph_key" :depth="graph_depth" :centerPath="graph_center" />
+          <GraphPage class="absolute inset-0" :depth="graph_depth" :key="graph_key" :centerPath="graph_center" />
         </template>
         <template v-if="has_whiteboard">
-          <WhiteboardPage :key="whiteboard_path" :path="whiteboard_path" :class="'absolute inset-0'" />
+          <WhiteboardPage class="absolute inset-0" :path="whiteboard_path" :key="whiteboard_path" />
         </template>
         <template v-if="no_tabs">
           <div class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">

@@ -71,7 +71,7 @@
 - EditorTab（Teleport + 事件总线 + $el DOM 逃生舱 + 防抖）。
 - GraphView + GraphPage + GraphSidebar（cytoscape 封装 + defineExpose）。
 - FileTree + FileTreeNode（递归 + Teleport）。
-- WhiteboardPage（contenteditable + 拖拽）——如代价过高可保留手写并记录理由（同 editor 内核策略）。
+- WhiteboardPage（contenteditable + 拖拽）——如代价过高可保留手写并记录理由（同 editor 内核策略）。✅ 已完成翻译（5.3d，2026-08-04）：实际组件无拖拽/选区/IME，仅 contenteditable+blur，全部可用 DSL + 薄 ext 复刻（`whiteboard_page.at` + `whiteboard_page_ext.ts`；探针 tmp/dsl-probes/whiteboard 验证 contenteditable/onblur/ondblclick/多语句闭包透传）；MainArea 改为兄弟 widget 直引，gen_components stub 清空（目录已无任何 stub），e2e 19/19 全绿。
 
 ### Phase 5.4：收尾
 

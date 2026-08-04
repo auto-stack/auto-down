@@ -257,3 +257,31 @@ export async function uploadAsset(_file: File): Promise<string> {
 export async function runQuery(_q: string): Promise<any> {
   return { results: [] }
 }
+
+// Phase 5.3d (whiteboard_page_ext): the whiteboard persistence API.
+
+export interface WhiteboardShape {
+  id: string
+  kind: string
+  x: number
+  y: number
+  width: number
+  height: number
+  label: string
+  target?: string
+}
+
+export interface WhiteboardDoc {
+  shapes: WhiteboardShape[]
+}
+
+export async function readWhiteboard(_path: string): Promise<WhiteboardDoc> {
+  return { shapes: [] }
+}
+
+export async function writeWhiteboard(
+  _path: string,
+  doc: WhiteboardDoc,
+): Promise<WhiteboardDoc> {
+  return doc
+}

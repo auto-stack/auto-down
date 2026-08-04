@@ -15,8 +15,9 @@ pattern as `autodown/packages/editor/src/auto`).
 - `stubs/` — gen-project stubs for dual-resolution shims (see editor's
   src/auto/README.md for the mechanism): `gen_lib_*.ts` (lib mirrors),
   `gen_stores/*.ts` (facade mirrors), `gen_components/*.vue` (untranslated
-  child-component mirrors, batch 3 — the compiler overwrites each with the
-  real SFC when that component is translated)
+  child-component mirrors — **currently empty**: WhiteboardPage, the last
+  one, was translated in Phase 5.3d; the compiler now emits every
+  component's real SFC)
 - `gen/` — generated Vue project (gitignored)
 
 ## Regenerate
@@ -488,8 +489,11 @@ WhiteboardPage 的按需挂载与空态），并挂载 `<TabStrip />`——消�
 **Phase 5.3c 已完成整体翻译**：`main_area.at` + `editor_tab.at` →
 `MainArea.vue` / `EditorTab.vue`（消费方 AppShell 零改动；e2e 02/03/04
 全绿）。v-for 用 `key: tab.path` 显式 key；v-show 用 style_obj display
-复刻（gap 52）；`stubs/gen_components/MainArea.vue` 已删除（新增
-WhiteboardPage.vue stub 接替——5.3d 前 WhiteboardPage 仍手写）。
+复刻（gap 52）；`stubs/gen_components/MainArea.vue` 已删除。
+**Phase 5.3d**（WhiteboardPage 翻译）后 MainArea 改为文件顶
+`use whiteboard_page: WhiteboardPage` 兄弟 widget 直引，
+main_area_ext 的组件再导出与 `stubs/gen_components/WhiteboardPage.vue`
+一并移除——gen_components stub 目录就此清空。
 
 ### Phase 5.3a 新增限制（FileTree / FileTreeNode 实证）
 
@@ -662,3 +666,47 @@ WhiteboardPage.vue stub 接替——5.3d 前 WhiteboardPage 仍手写）。
   （gen_autodown_editor.d.ts → gen/front/vue/src/types/，
   cytoscape-fcose 先例——cytoscape 是真 npm 包装进 gen，workspace
   link: 包装不了，只能声明模块）。
+
+### Phase 5.3d 新增限制（WhiteboardPage 实证，探针 tmp/dsl-probes/whiteboard）
+
+53. **关键字 token prop 必须写圆括号形式**：`button { type: "button", ... }`
+    （块内 prop 写法）被错解析成垃圾子节点 `<div /><div>button</div><div />`
+    （gap 27 `to:` 同类；type/to 是关键字 token）。规避：`button
+    (type: "button") { class: ..., ... }`（flashcard_modal 先例）——发射
+    `:type="'button'"`，DOM 等价。
+54. **view 无 v-else-if / v-else**：三分支（loading / error / canvas）改三个
+    互斥 v-if——`.loading` 直接判断，另两个经 ext 守卫 computed
+    （`showError(loading, error)` = `!loading && !!error`，showCanvas 同
+    理），与原 v-else-if/v-else 链的求值逐字一致。
+55. **组件从 ext 再导出改为兄弟 widget 直引后，必须重新镜像
+    src/src/components**：README 顶部流程在 build **前**把
+    components/*.vue 复制到 src/src/components（双重 src，gap 32）——
+    改动组件接线（如 MainArea 的 WhiteboardPage 从 ext re-export 改为
+    文件顶 `use`）后，旧镜像仍引用 ext 的旧导出，gen vue-tsc
+    TS2724。规避：build 后再 `cp gen/front/vue/src/components/*.vue
+    gen/front/vue/src/src/components/` 并重跑 build（第二次 vue-tsc
+    即绿）。
+
+### Phase 5.3d 新验证能力（非限制，之前未用过）
+
+- **`contenteditable: "true"` 原样透传**：→ `:contenteditable="'true'"`，
+  与原裸 `contenteditable` 属性 DOM 等价（无特殊大小写/布尔处理）。
+- **`onblur:` / `ondblclick:`** → `@blur` / `@dblclick`（事件名透传，
+  onmouseenter/oncontextmenu 同族）。`onblur: .H({ shape: s, evt: $event })`
+  map 实参 + `$event` 可用（gap 37 标准规避），DOM 读取
+  （`evt.target.innerText`）放 ext。
+- **多语句闭包 + 多闭包实参**：ext 函数收多个回调
+  （`loadWhiteboard(path, (d) => { .doc = d }, (e) => { .error = e },
+  () => { .loading = false })`）与单回调多语句体（两条赋值）均编译
+  ——try/catch/finally 的 .then/.catch/.finally 复刻（gap 4）由此无需
+  中间 model var。
+- **widget 的 `var doc map = {}` 发射 `ref<any>({})`**（对比 store 的
+  gap 15：store 侧同写法初值是 `ref(null)`）——widget model 的 map
+  字面量初值保留。handler 内 `.doc.shapes.len()` → `.length`、
+  `.doc.shapes.push(s)` → `doc.value.shapes.push(s)`（map 字段的数组
+  方法透传）。
+- **循环内包装对象模式**：mapper computed 返回 `{ shape: <原引用>,
+  sid, selected, s_left, ... }` 包装——quoted-key style map 的字段条件
+  （`item.selected`）与 style_obj 的字符串字段（`item.s_left`）都走已
+  验证路径，且展示字段不污染持久化 doc（writeWhiteboard 收到的
+  shape 字段与原手写逐字一致）。

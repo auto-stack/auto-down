@@ -1,115 +1,113 @@
+<!-- WhiteboardPage component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { readWhiteboard, writeWhiteboard, type WhiteboardShape } from '@/lib/api'
-import { useTabsStore } from '@/stores/tabs'
+import { ref, computed, onMounted } from 'vue'
+import { loadWhiteboard, saveWhiteboard, addNoteShape, shapeList, readLabel, openShapeTarget, showError, showCanvas } from '../../auto/src/front/utils/whiteboard_page_ext'
+import { useTabsStore } from '../../auto/src/front/utils/whiteboard_page_ext'
+
+const tabsStore = useTabsStore()
+
+
+const doc = ref<any>({})
+const loading = ref<boolean>(false)
+const error = ref<any>(undefined)
+const selected_id = ref<any>(undefined)
+
+const shape_list = computed<any>(() => shapeList(doc.value, selected_id.value))
+const show_error = computed<any>(() => showError(loading.value, error.value))
+const show_canvas = computed<any>(() => showCanvas(loading.value, error.value))
 
 const props = defineProps<{
   path: string
 }>()
 
-const tabs = useTabsStore()
-const doc = ref<{ shapes: WhiteboardShape[] }>({ shapes: [] })
-const loading = ref(false)
-const error = ref<string | null>(null)
-const selectedId = ref<string | null>(null)
+const emit = defineEmits<{
+  AddShape: []
+  UpdateLabel: [any]
+  OpenTarget: [any]
+  Select: [any]
+  Deselect: []
+}>()
 
-const shapes = computed(() => doc.value.shapes)
+function UpdateLabel(args: any): void {
+  args.shape.label = readLabel(args.evt);
+  saveWhiteboard(tabsStore, props.path, doc.value);
 
-async function load() {
-  loading.value = true
-  error.value = null
-  try {
-    doc.value = await readWhiteboard(props.path)
-  } catch (e: any) {
-    error.value = e.message || String(e)
-  } finally {
-    loading.value = false
-  }
+  emit('UpdateLabel', args)
 }
 
-onMounted(load)
+function Deselect(): void {
+  selected_id.value = null;
 
-function addShape() {
-  const id = `shape-${Date.now()}`
-  const x = 50 + (doc.value.shapes.length % 5) * 160
-  const y = 50 + Math.floor(doc.value.shapes.length / 5) * 120
-  doc.value.shapes.push({
-    id,
-    kind: 'note',
-    x,
-    y,
-    width: 140,
-    height: 100,
-    label: 'New note',
-  })
-  save()
+  emit('Deselect')
 }
 
-function updateLabel(shape: WhiteboardShape, event: Event) {
-  const target = event.target as HTMLDivElement
-  shape.label = target.innerText
-  save()
+function Select(sid: any): void {
+  selected_id.value = sid;
+
+  emit('Select', sid)
 }
 
-async function save() {
-  try {
-    await writeWhiteboard(props.path, doc.value)
-    const tab = tabs.tabs.find(t => t.path === props.path)
-    if (tab) tab.dirty = false
-  } catch (e) {
-    console.error('Failed to save whiteboard', e)
-  }
+function AddShape(): void {
+  addNoteShape(doc.value);
+  saveWhiteboard(tabsStore, props.path, doc.value);
+
+  emit('AddShape')
 }
 
-function openTarget(shape: WhiteboardShape) {
-  if (!shape.target) return
-  const targetPath = shape.target.endsWith('.ad') ? shape.target : `${shape.target}.ad`
-  tabs.open(targetPath)
+function OpenTarget(shape: any): void {
+  openShapeTarget(tabsStore, shape);
+
+  emit('OpenTarget', shape)
 }
+
+onMounted(() => {
+  loading.value = true;
+  error.value = null;
+  loadWhiteboard(props.path, (d: any) => { doc.value = d;
+   }, (e: any) => { error.value = e;
+   }, () => { loading.value = false;
+   });
+})
+
+
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-background">
-    <div class="flex h-[var(--header-height)] items-center justify-between border-b px-3">
-      <span class="text-sm font-medium">{{ path }}</span>
-      <button
-        type="button"
-        class="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-        @click="addShape"
-      >
-        Add note
-      </button>
-    </div>
-    <div class="relative flex-1 overflow-hidden">
-      <div v-if="loading" class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-        Loading…
+    <div class="flex h-full flex-col bg-background">
+      <div class="flex h-[var(--header-height)] items-center justify-between border-b px-3">
+        <span class="text-sm font-medium">
+          <span>{{ path }}</span>
+        </span>
+        <button class="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90" :type="'button'" @click="AddShape">
+          <span>Add note</span>
+        </button>
       </div>
-      <div v-else-if="error" class="absolute inset-0 flex items-center justify-center text-sm text-destructive">
-        {{ error }}
-      </div>
-      <div
-        v-else
-        class="absolute inset-0"
-        @click="selectedId = null"
-      >
-        <div
-          v-for="shape in shapes"
-          :key="shape.id"
-          class="absolute rounded-md border bg-card p-2 shadow-sm"
-          :class="{ 'ring-2 ring-primary': selectedId === shape.id }"
-          :style="{ left: `${shape.x}px`, top: `${shape.y}px`, width: `${shape.width}px`, height: `${shape.height}px` }"
-          @click.stop="selectedId = shape.id"
-          @dblclick="openTarget(shape)"
-        >
-          <div
-            class="h-full w-full overflow-hidden text-xs outline-none"
-            contenteditable
-            @blur="updateLabel(shape, $event)"
-          >
-            {{ shape.label }}
+      <div class="relative flex-1 overflow-hidden">
+        <template v-if="loading">
+          <div class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+            <span>Loading…</span>
           </div>
-        </div>
+        </template>
+        <template v-if="show_error">
+          <div class="absolute inset-0 flex items-center justify-center text-sm text-destructive">
+            <span>{{ error }}</span>
+          </div>
+        </template>
+        <template v-if="show_canvas">
+          <div class="absolute inset-0" @click="Deselect">
+            <div class="absolute rounded-md border bg-card p-2 shadow-sm" :class="{ 'ring-2 ring-primary': item.selected }" :key="item.sid" :style="({ left: item.s_left, top: item.s_top, width: item.s_width, height: item.s_height } as any)" @click.stop="Select(item.sid)" @dblclick="OpenTarget(item.shape)" v-for="item in shape_list">
+              <div class="h-full w-full overflow-hidden text-xs outline-none" :contenteditable="'true'" @blur="UpdateLabel({ shape: item.shape, evt: $event })">
+                <span>{{ item.shape.label }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
-  </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

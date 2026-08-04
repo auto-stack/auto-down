@@ -1,0 +1,209 @@
+// editor_tab.at — EditorTab widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/EditorTab.vue (plan 011 Phase 5.3c).
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/editor_tab_ext|../../auto/src/front/utils/editor_tab_ext|g' \
+//     gen/front/vue/src/components/EditorTab.vue > ../src/components/EditorTab.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - v-show has NO DSL form (only v-if). Both v-show sites (the loading
+//   overlay here; the per-tab visibility in MainArea) are replicated with
+//   `:style="{ display: ... }"` — behaviorally identical (v-show itself only
+//   toggles inline display) and the e2e 03-tabs keep-alive contract holds
+//   because the components stay MOUNTED either way. The overlay's display
+//   comes from the overlay_display computed (ext), keeping the CSS flex
+//   class as the visible value exactly like v-show.
+// - The 2s debounced save is the original's useDebounceFn (re-exported via
+//   the extension): .Init builds the debounced closure (its body is the
+//   original's `if (tab.value?.dirty) tabs.save(props.path)` — moved to the
+//   ext's saveTabIfDirty verbatim) and stores it in a model var; OnUpdate
+//   let-binds it and calls the local (search_panel precedent).
+// - The editor shell function props (loadBlock / extraSlashItems /
+//   onAssetUpload / runQuery) and the open-wiki-link handler are built once
+//   in .Init (the original builds them once in setup) and passed through
+//   model vars (probe editortab: `:loadBlock="load_block"` unwraps the ref).
+// - The editor shell's onAssetUpload / onOpenWikiLink props cannot be bound
+//   from the DSL (the view parser treats every `on*` key as an event
+//   listener — README gap 51). The extension's EditorShell wrapper takes
+//   them as `assetUpload` / `openWikiLink` and forwards everything else via
+//   attrs (identical DOM/props/wiring); it is stateful and single-root so
+//   `ref: "editorRef"` still resolves `$el` for the DOM escape hatch.
+//   open-wiki-link uses the PROP channel rather than the emit: the DSL can
+//   wire a quoted component event (`on "open-wiki-link":`) but its handler
+//   would only receive the FIRST of the emit's two args (title, blockId) —
+//   the blockId scroll flow would silently break. The editor's inner calls
+//   props.onOpenWikiLink?.(title, blockId) alongside the emit
+//   (auto_down_editor_ext.ts bridge), so the prop channel invokes the
+//   handler with BOTH args — behaviorally identical to the original's
+//   @open-wiki-link listener.
+// - The window event-bus listener is `on "jade-scroll-to-block".window:` —
+//   codegen registers window.addEventListener on mount and removes it on
+//   unmount (verbatim the original's onMounted/onUnmounted pair; the event
+//   is dispatched on window, so .window — not .document — is the right
+//   target).
+// - The mousemove/mouseleave hover tracking on the editor wrapper, the
+//   300ms leave timer, the scroll-to-block DOM walk and the clipboard write
+//   all live in the extension (DOM escape hatch / setTimeout / template
+//   literals — no DSL form). Per-tab instances get their own hover handle
+//   (graph_view opaque-handle precedent), built in .Init and torn down in
+//   .Destroy.
+// - The teleported hover button is the BodyTeleport functional component
+//   via dyn (theme_popover precedent) wrapping HoverLinkBtn (an ext
+//   functional component that returns null when hover_block is null — the
+//   original's v-if); its click travels the oncopy event wiring back to the
+//   widget's .CopyBlockLink handler (RangeInput precedent).
+// - The original's scoped <style> is the widget-level style {} block
+//   (027-native-css), emitted verbatim as <style scoped>.
+
+widget EditorTab(path: str) {
+    use {
+        composable: useTabsStore, useFileTreeStore from "src/front/utils/editor_tab_ext.ts"
+        fn: useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLinkFn, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent from "src/front/utils/editor_tab_ext.ts"
+        component: EditorShell, BodyTeleport, HoverLinkBtn from "src/front/utils/editor_tab_ext.ts"
+    }
+
+    msg Msg { Init, Destroy, OnUpdate, CopyBlockLink, OnScrollToBlock }
+
+    model {
+        // The original's hoverBlock ref ({ id, top, left } | null).
+        var hover_block Array<str> = null
+        // Opaque hover-listener handle (ext; per-tab instance state).
+        var hover_handle Array<str> = null
+        // The debounced save closure, built in .Init (Array<str> = any).
+        var debounced_save Array<str> = null
+        // Editor shell function props, built once in .Init.
+        var load_block Array<str> = null
+        var asset_upload Array<str> = null
+        var run_query Array<str> = null
+        var extra_slash Array<str> = null
+        var open_wiki_link Array<str> = null
+    }
+
+    computed {
+        // Original: tab = computed(() => tabs.tabs.find(t => t.path === props.path)).
+        tab => findTab(.tabsStore.tabs, .path)
+        // Original: body = computed(() => tab.value?.body ?? '').
+        body => tabBody(.tab.value)
+        // Original template: :page-title="tab?.title".
+        page_title => tabTitle(.tab.value)
+        // Original: v-show="!tab?.loaded" on the loading overlay (display
+        // '' keeps the CSS flex class, exactly like v-show's visible state).
+        overlay_display => overlayDisplay(.tab.value)
+    }
+
+    view {
+        div {
+            class: "editor-workspace",
+            on "jade-scroll-to-block".window: .OnScrollToBlock($event),
+            EditorShell {
+                ref: "editorRef",
+                content: .body,
+                pageTitle: .page_title,
+                loadBlock: .load_block,
+                extraSlashItems: .extra_slash,
+                assetUpload: .asset_upload,
+                runQuery: .run_query,
+                openWikiLink: .open_wiki_link,
+                placeholder: "Start typing...",
+                showActions: false,
+                class: "h-full w-full",
+                onupdate: .OnUpdate
+            }
+            div {
+                class: "absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground",
+                style_obj: { display: .overlay_display },
+                text "Loading…"
+            }
+            dyn (.BodyTeleport) {
+                HoverLinkBtn (hb: .hover_block, oncopy: .CopyBlockLink)
+            }
+        }
+    }
+
+    watch {
+        // Original: watch(() => props.path, () => { if (tab.value &&
+        // !tab.value.loaded) tabs.load(props.path) }, { immediate: true }).
+        .path.immediate -> {
+            loadTabIfNeeded(.tabsStore, .tab.value, .path)
+        }
+    }
+
+    on {
+        // Original setup: build the debounced save + the editor shell
+        // function props once; onMounted: attach the wrapper hover
+        // listeners (the window listener is the view's .window wiring).
+        .Init -> {
+            let run = () => {
+                saveTabIfDirty(.tabsStore, .path)
+            }
+            let f = useDebounceFn(run, 2000)
+            .debounced_save = f
+            .load_block = loadBlockFn()
+            .asset_upload = assetUploadFn()
+            .run_query = runQueryFn()
+            .extra_slash = extraSlashItemsFn(.fileTreeStore, .tabsStore, .path)
+            .open_wiki_link = openWikiLinkFn(.tabsStore, .fileTreeStore)
+            .hover_handle = listenEditorHover(.editorRef, (hb) => {
+                .hover_block = hb
+            })
+        }
+        // Original onUnmounted: clear the hover timer, remove the wrapper
+        // listeners (the window listener cleanup is codegen's own).
+        .Destroy -> {
+            unlistenEditorHover(.hover_handle)
+        }
+        // Original: function onUpdate(md) { tabs.setBody(path, md);
+        // debouncedSave() }.
+        .OnUpdate(md) -> {
+            .tabsStore.setBody(.path, md)
+            let f = .debounced_save
+            f()
+        }
+        // Original: copyBlockLink — early return when no id/title (hover
+        // block kept), otherwise write the [[title#^id]] link and clear.
+        .CopyBlockLink -> {
+            let ok = copyBlockLinkSafe(.hover_block, .tab.value)
+            if ok {
+                .hover_block = null
+            }
+        }
+        // Original: onScrollToBlock — ignore events for other tabs, scroll
+        // the wrapper's [data-block-id] element into view.
+        .OnScrollToBlock(e) -> {
+            scrollToBlockFromEvent(.editorRef, .path, e)
+        }
+    }
+
+    style {
+        /* The original EditorTab.vue scoped styles, verbatim. */
+        .editor-workspace {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .editor-workspace :deep(.autodown-editor) {
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-workspace :deep(.autodown-editor-content-wrapper) {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 1rem 1.5rem;
+        }
+    }
+}

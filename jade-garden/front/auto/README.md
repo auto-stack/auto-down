@@ -237,17 +237,26 @@ codegen 在 `<script setup>` 顶层发射 `const tabsStore = useTabsStore()`
 ```sh
 cd jade-garden/front/auto
 # gen 侧 stub 镜像必须先于 auto build（gen 的 vue-tsc 会检查 ext 拷贝）
-mkdir -p gen/front/vue/src/lib gen/front/vue/src/stores gen/front/vue/src/components
+mkdir -p gen/front/vue/src/lib gen/front/vue/src/stores gen/front/vue/src/components gen/front/vue/src/types
 cp stubs/gen_lib_api.ts gen/front/vue/src/lib/api.ts
 cp stubs/gen_lib_wikiLink.ts gen/front/vue/src/lib/wikiLink.ts
 cp stubs/gen_lib_dailyNote.ts gen/front/vue/src/lib/dailyNote.ts
+cp stubs/gen_lib_templates.ts gen/front/vue/src/lib/templates.ts
 cp stubs/gen_stores/*.ts gen/front/vue/src/stores/
 cp stubs/gen_components/*.vue gen/front/vue/src/components/
+# cytoscape-fcose 无类型包（Phase 5.3b graph_view_ext；front 树对应
+# src/types/cytoscape-fcose.d.ts）
+cp stubs/gen_cytoscape_fcose.d.ts gen/front/vue/src/types/cytoscape-fcose.d.ts
+# '@autodown/editor' 是 front 的 workspace link: 依赖，gen 装不了
+# （Phase 5.3c editor_tab_ext 的 AutoDownEditor 再导出；declare module stub）
+cp stubs/gen_autodown_editor.d.ts gen/front/vue/src/types/autodown-editor.d.ts
 # 双重 src 镜像（gap 32：ext 的 ../../../../src/... 在 gen 树解析到 src/src/...）
-mkdir -p gen/front/vue/src/src
-cp -r gen/front/vue/src/lib gen/front/vue/src/src/lib
-cp -r gen/front/vue/src/stores gen/front/vue/src/src/stores
-cp -r gen/front/vue/src/components gen/front/vue/src/src/components
+# 注意先删旧目录再逐文件 cp——cp -r 在目标已存在时会嵌套成 lib/lib（gap 50）
+rm -rf gen/front/vue/src/src/lib gen/front/vue/src/src/stores gen/front/vue/src/src/components
+mkdir -p gen/front/vue/src/src/lib gen/front/vue/src/src/stores gen/front/vue/src/src/components
+cp gen/front/vue/src/lib/*.ts gen/front/vue/src/src/lib/
+cp gen/front/vue/src/stores/*.ts gen/front/vue/src/src/stores/
+cp gen/front/vue/src/components/*.vue gen/front/vue/src/src/components/
 D:/autostack/auto-lang/target/debug/auto.exe build -d .
 # 检查输出无 "Warning: Failed to compile"，且 components/<Name>.vue 已更新
 # 拷贝 + sed 改写 ext import（front/src/components 的相对深度是 ../../）
@@ -476,6 +485,12 @@ WhiteboardPage 的按需挂载与空态），并挂载 `<TabStrip />`——消�
 （注：auto-lang c2779bc8 起有显式 `key:` prop（见 Phase 5.3a 能力节），
 上述两条阻塞均已解除，MainArea 整体翻译可重新评估。）
 
+**Phase 5.3c 已完成整体翻译**：`main_area.at` + `editor_tab.at` →
+`MainArea.vue` / `EditorTab.vue`（消费方 AppShell 零改动；e2e 02/03/04
+全绿）。v-for 用 `key: tab.path` 显式 key；v-show 用 style_obj display
+复刻（gap 52）；`stubs/gen_components/MainArea.vue` 已删除（新增
+WhiteboardPage.vue stub 接替——5.3d 前 WhiteboardPage 仍手写）。
+
 ### Phase 5.3a 新增限制（FileTree / FileTreeNode 实证）
 
 43. **widget prop 的类型名原样透传为 `@/lib/api` 类型 import**：
@@ -514,3 +529,136 @@ WhiteboardPage 的按需挂载与空态），并挂载 `<TabStrip />`——消�
   FileTreeNode` 文件顶声明后，另一 widget 直接以 PascalCase 引用
   （发射 `import FileTreeNode from '@/components/FileTreeNode.vue'`，
   无需经 ext 再导出）。
+
+### Phase 5.3b 新增限制（GraphView / GraphPage / GraphSidebar 实证）
+
+45. **`expose {}` 不标记带参 handler 为 used**：expose 块列出的**无参**
+    handler（`.Fit`）正常生成函数并被 expose；**带参数**的 handler
+    （`.open(p)`，含 quoted `."open"(p)`）即使写进 expose 块也不会被
+    生成（used_handlers 对带参 handler 只认 view 引用；quoted 名的
+    expose 条目与 on 块 pattern 亦对不上）。引用处静默退化为裸名——
+    `open(p)` 命中 DOM lib 的 `window.open` 全局，**vue-tsc 不报错**，
+    运行期行为完全错误。规避：quoted msg variant（`"open"(str)`）+
+    对应 quoted handler（`."open"(p) -> {}`，体空，codegen 自动追加
+    `emit('open', p)` 并生成带类型的 `open: [string]` 声明）+ view 里
+    用**永假 v-if 守卫元素**引用它（`if .open_emit_wiring { button {
+    class: "hidden", onclick: ."open", ... } }`，model var 恒 false，
+    只渲染注释锚点；守卫按钮必须带 class，否则按 gap 38 映射成 shadcn
+    Button）。ext 回调经 `.Init` 闭包调 `open(p)` 接通（GraphView 的
+    cytoscape tap → onOpen 闭包实证）。
+46. **view text 不支持 Call 表达式**：`text nodeLabel(node)` 解析失败
+    （"Expected term, got RBrace"，报错位在循环收尾处）。规避：ext
+    mapper 预计算展示字段（topDegreeNodes 加 `display`；`text
+    node.display` 可用）。
+47. **`!= null` 被编译为 `!== undefined`**：DSL 的 `.x != null` 发射
+    `props.x !== undefined`——父组件显式传 null 时（MainArea 的
+    `:center-path="activeGraphTab.graphCenterPath"`，类型
+    `string | null | undefined`）语义错误（null 被判为"有值"）。规避：
+    真值/空值判断经 ext（graph_page 的 `hasCenter`，flashcard 的
+    `strTruthy` 先例）。
+48. **Array<User> prop 类型发射 `any` 且不产生 import**：`nodes:
+    Array<GraphNode>` → `nodes: any`（gap 43 的 User 类型 import 只覆盖
+    顶层 User，List<User> 不追踪）。可用但丢失 prop 类型——需要类型时
+    只能等 codegen 支持。
+49. **pac.at `npm_deps` 的版本分隔符是 `@`**：`"cytoscape:^3.34.0"`
+    会被整体当作包名写进 package.json（pnpm install 报
+    ERR_PNPM_INVALID_DEPENDENCY_NAME）；正确写法
+    `"cytoscape@^3.34.0"`（`:` 分隔仅用于 `name:link:path`）。本批为
+    graph_view_ext 的 cytoscape/cytoscape-fcose 首次启用 npm_deps。
+50. **双重 src 镜像的 `cp -r` 嵌套陷阱**：README 顶部流程里的
+    `cp -r gen/front/vue/src/lib gen/front/vue/src/src/lib` 在目标目录
+    **已存在**时会复制成 `src/src/lib/lib/...`（首次之后每次 regen 都
+    中招），ext 的 `../../../../src/...` 解析到旧副本，vue-tsc
+    TS2305/2307。规避：先 `rm -rf gen/front/vue/src/src/{lib,stores,components}`
+    再镜像，或逐文件 `cp gen/front/vue/src/lib/*.ts .../src/lib/`。
+
+### Phase 5.3b 新验证能力（非限制，之前未用过）
+
+- **`expose {}`（example 032 首个生产用例）**：`expose { .Fit, .Relayout }`
+  → `defineExpose({ Fit, Relayout })`；父侧 `GraphView { ref:
+  "graphViewRef", ... }` + handler 里 `.graphViewRef.Fit()` →
+  `graphViewRef.value!.Fit()`（组件 ref 类型 `ref<any>(null)`）。原
+  `graphViewRef?.fit()` 的可选链经 ext 包装保 null 安全
+  （`fitGraphView(.graphViewRef)`）。
+- **widget 级 `style {}` 块（027-native-css）**：原样发射为
+  `<style scoped>`（逐字，含注释）——新 widget 不再需要 gap 42 的
+  .styleblock + cat 追加工厂（codegen 仍先附一个空 `<style>` 块，与
+  GraphControls 现状一致，无害）。注意 .at 文件必须保持 **LF**：
+  python 文本模式改写会把行尾转成 CRLF 并被 style 块逐字捕获。
+- **可选 widget prop 用默认值语法**：`loading: bool = false` →
+  `loading?: boolean`、`centerPath: ?str = None` →
+  `centerPath?: string | null`（无 withDefaults，运行时与原 optional
+  prop 一致）。camelCase prop 名原样透传（`highlightQuery` →
+  `highlightQuery?: string`），父侧 kebab-case attr 由 Vue 驼峰化匹配。
+- **watch `.deep` 修饰符**：`watch { .settings.deep -> { ... } }` →
+  `watch(() => props.settings, ..., { deep: true })`（prop 源自动包
+  getter），与原手写 watch 逐字一致。
+- **quoted 小写 emit variant**：`msg Msg { "open"(str) }` + 空 handler
+  → `defineEmits<{ open: [string] }>` + `emit('open', p)`，与原件的
+  `defineEmits<{ open: [path: string] }>` 等价；父侧 `onopen: .OpenPage`
+  → `@open="OpenPage"`。
+- **第三方 imperative 库的 ext 封装模式**（cytoscape，editor 包 Tiptap
+  策略的 jade 首用）：实例生命周期全部在 ext（initGraph/更新/销毁/
+  fit/relayout），widget 持 opaque handle model var（`Array<str>=[]`
+  占位，ext 一律 null-guard 并把 handle 参数标 `any`——`any[]` 不可赋
+  给结构化 handle 类型），props 变化经 watch 转发；事件回调经 `.Init`
+  闭包回接 widget 的 emit handler。gen 侧：pac.at `npm_deps` 装库（见
+  gap 49），无类型包（cytoscape-fcose）用 stubs 里的 d.ts 镜像
+  （`stubs/gen_cytoscape_fcose.d.ts` → `gen/front/vue/src/types/`，
+  对应 front 树的 `src/types/cytoscape-fcose.d.ts`）。
+- **dyn 上的显式 `key:`**：`dyn (.li_tag) { key: node.id, ... }` →
+  `<component :is="'li'" :key="node.id" v-for=...>`（035 的组件 key
+  在 dyn 上同样生效）。
+
+### Phase 5.3c 新增限制（EditorTab / MainArea 实证）
+
+51. **`on*` 开头的 prop 名被 view 解析当作事件监听**：子组件调用点写
+    `onAssetUpload: .x` / `onOpenWikiLink: .y`，被编译为
+    `@assetupload="asset_upload"`（小写塌陷的错误事件名）并自动生成同名
+    `// TODO: handler not defined` stub 函数——与 model var 同名时
+    TS2300（Duplicate identifier），无同名时静默生成错误接线。规避：
+    ext 薄 wrapper 组件（EditorShell：`defineComponent` + attrs 转发，
+    把 `assetUpload`/`openWikiLink` 改名回 `onAssetUpload`/
+    `onOpenWikiLink`，其余 props/`@update` 监听/class 原样透传——DOM、
+    props、事件接线与被包组件逐字一致）。wrapper 必须是 **stateful 单根**
+    组件：父侧 `ref: "editorRef"` 的 `$el` 逃生舱（hover/scroll DOM 查
+    询）依赖它解析到被包组件的根元素（函数式组件无实例，ref 拿不到
+    `$el`）。
+52. **v-show 无 DSL 形式**：codegen 只有 v-if。keep-alive 的可见性切换
+    用 `:style="{ display: ... }"` 复刻（v-show 本身只切 inline
+    display；组件保持挂载，e2e 03-tabs 的 v-show 契约实证全绿）。可见
+    值写 `''`（回落到元素的 CSS class——如 overlay 的 `flex`——与
+    v-show 的可见态逐字一致），隐藏值写 `'none'`。组件调用点上用
+    `style_obj: { display: <每 tab 预计算字段> }`（MainArea 的
+    editorTabs ext mapper；style_obj 值里写「带循环变量实参的 Call」未
+    验证，mapper 预计算是已验证路径）。
+
+### Phase 5.3c 新验证能力（非限制，之前未用过）
+
+- **prop 命名 `path` 可用**：`widget EditorTab(path: str)` + `watch {
+  .path.immediate -> ... }` → `watch(() => props.path, ..., { immediate:
+  true })` 逐字（probe tmp/dsl-probes/editortab + 本批实证）——gap 34
+  的 `path` 保留字警告只适用于 computed/局部变量命名，不适用于 prop
+  声明与其 watch 源。
+- **`on "ns:evt".window:` 全局 CustomEvent 监听**：根元素上
+  `on "jade-scroll-to-block".window: .OnScrollToBlock($event)` → codegen
+  生成 wrapper 函数 + onMounted addEventListener / onUnmounted
+  removeEventListener（含清理，无泄漏）。注意事件派在 window 上时必须
+  用 `.window`（`.document` 收不到 window.dispatchEvent 的事件）。
+- **小写 emit 的父侧监听**：`onupdate: .OnUpdate` → `@update="OnUpdate"`
+  （payload 作 handler 第一个形参；AutoDownEditor 的 `@update` 实证）。
+- **model var 存函数作组件函数 prop**：.Init 里 `.load_block =
+  loadBlockFn()`（ext 零参工厂），view 里 `loadBlock: .load_block` →
+  `:loadBlock="load_block"`（模板自动解包 ref；editor 的
+  loadBlock/extraSlashItems/onAssetUpload/runQuery 四个函数 prop 实证）。
+- **多实参组件 emit 走 prop 通道**：DSL handler 只收 emit 的第一个实参
+  （gap 37 同类），`open-wiki-link` 的 (title, blockId) 双实参经编辑器
+  inner 的 `props.onOpenWikiLink?.(title, blockId)` prop 通道接通
+  （auto_down_editor_ext.ts 桥原本就双通道调用），行为与
+  `@open-wiki-link` 监听逐字一致。
+- **ext 组件 import 自 workspace link: 依赖**：ext 里
+  `import { AutoDownEditor } from '@autodown/editor'` 在 front 树解析
+  （link: 依赖）；gen 树用 stubs 的 `declare module` d.ts 镜像
+  （gen_autodown_editor.d.ts → gen/front/vue/src/types/，
+  cytoscape-fcose 先例——cytoscape 是真 npm 包装进 gen，workspace
+  link: 包装不了，只能声明模块）。

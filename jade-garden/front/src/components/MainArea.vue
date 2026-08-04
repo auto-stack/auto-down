@@ -1,72 +1,56 @@
+<!-- MainArea component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useTabsStore } from '@/stores/tabs'
-import TabStrip from './TabStrip.vue'
-import EditorTab from './EditorTab.vue'
-import GraphPage from './GraphPage.vue'
-import WhiteboardPage from './WhiteboardPage.vue'
+import { WhiteboardPage } from '../../auto/src/front/utils/main_area_ext'
+import { editorTabs, hasGraphTab, graphTabPath, graphCenter, graphDepth, hasWhiteboardTab, whiteboardPath, noTabs, EmptyFileIcon } from '../../auto/src/front/utils/main_area_ext'
+import { useTabsStore } from '../../auto/src/front/utils/main_area_ext'
 
-const tabs = useTabsStore()
+const tabsStore = useTabsStore()
 
-// The tab strip was extracted to TabStrip.vue (Auto-generated from
-// auto/src/front/tab_strip.at — plan 011 Phase 5.1 batch 3). The body below
-// stays hand-written until Phase 5.3: the DSL's automatic :key on a v-for
-// of PascalCase components would be constant for Tab items (no `id` field),
-// breaking the v-show keep-alive contract guarded by e2e 03-tabs, and
-// GraphPage / WhiteboardPage rely on :key="path" remounts.
+import EditorTab from '@/components/EditorTab.vue'
+import GraphPage from '@/components/GraphPage.vue'
+import TabStrip from '@/components/TabStrip.vue'
 
-// Every document tab stays mounted; visibility is toggled with v-show so that
-// switching tabs never destroys/recreates a Tiptap editor (which caused the
-// "editor view is not available" error and blank second tabs).
-const editorTabs = computed(() => tabs.tabs.filter(t => !t.isGraph))
 
-// The graph tab is mounted only while active because Cytoscape needs a visible,
-// sized container to lay out; mounting it hidden would render a blank graph.
-const activeGraphTab = computed(() =>
-  tabs.activeTab?.isGraph ? tabs.activeTab : null,
-)
+const editor_tabs = computed<any>(() => editorTabs(tabsStore.tabs, tabsStore.activePath))
+const has_graph = computed<any>(() => hasGraphTab(tabsStore.activeTab))
+const graph_key = computed<any>(() => graphTabPath(tabsStore.activeTab))
+const graph_center = computed<any>(() => graphCenter(tabsStore.activeTab))
+const graph_depth = computed<any>(() => graphDepth(tabsStore.activeTab))
+const has_whiteboard = computed<any>(() => hasWhiteboardTab(tabsStore.activeTab))
+const whiteboard_path = computed<any>(() => whiteboardPath(tabsStore.activeTab))
+const no_tabs = computed<any>(() => noTabs(tabsStore.tabs))
 
-const activeWhiteboardTab = computed(() =>
-  tabs.activeTab?.isWhiteboard ? tabs.activeTab : null,
-)
+
 </script>
 
 <template>
-  <main class="flex h-full flex-col overflow-hidden bg-background">
-    <TabStrip />
-
-    <div class="relative flex flex-1 overflow-hidden">
-      <!-- Keep all editor tabs mounted; only the active one is visible. -->
-      <EditorTab
-        v-for="tab in editorTabs"
-        v-show="tabs.activePath === tab.path"
-        :key="tab.path"
-        :path="tab.path"
-        class="absolute inset-0"
-      />
-      <!-- Graph tab is mounted on demand so Cytoscape gets a sized container. -->
-      <GraphPage
-        v-if="activeGraphTab"
-        :key="activeGraphTab.path"
-        :center-path="activeGraphTab.graphCenterPath"
-        :depth="activeGraphTab.graphDepth || 1"
-        class="absolute inset-0"
-      />
-      <WhiteboardPage
-        v-if="activeWhiteboardTab"
-        :key="activeWhiteboardTab.path"
-        :path="activeWhiteboardTab.path"
-        class="absolute inset-0"
-      />
-      <div
-        v-if="tabs.tabs.length === 0"
-        class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"
-      >
-        <div class="rounded-full bg-accent p-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </div>
-        <p class="text-sm">Select a file from the sidebar to open it.</p>
+    <main class="flex h-full flex-col overflow-hidden bg-background">
+      <TabStrip :key="'TabStrip-1'" />
+      <div class="relative flex flex-1 overflow-hidden">
+        <EditorTab class="absolute inset-0" :path="tab.path" :key="tab.path" :style="({ display: tab.display } as any)"  v-for="tab in editor_tabs"/>
+        <template v-if="has_graph">
+          <GraphPage class="absolute inset-0" :key="graph_key" :depth="graph_depth" :centerPath="graph_center" />
+        </template>
+        <template v-if="has_whiteboard">
+          <WhiteboardPage :key="whiteboard_path" :path="whiteboard_path" :class="'absolute inset-0'" />
+        </template>
+        <template v-if="no_tabs">
+          <div class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+            <div class="rounded-full bg-accent p-3">
+              <component :is="(EmptyFileIcon) as any" class="h-6 w-6" />
+            </div>
+            <p class="text-sm">
+              <span>Select a file from the sidebar to open it.</span>
+            </p>
+          </div>
+        </template>
       </div>
-    </div>
-  </main>
+    </main>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

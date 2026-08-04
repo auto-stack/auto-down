@@ -52,6 +52,34 @@ export async function getGraphResult(): Promise<any> {
   return { nodes: [], edges: [], error: '' }
 }
 
+// Phase 5.3b: graph widget prop/extension types (mirror front/src/lib/api.ts).
+export interface GraphNode {
+  id: string
+  label: string
+  path: string
+  exists: boolean
+  degree: number
+}
+
+export interface GraphEdge {
+  source: string
+  target: string
+  block_id?: string
+}
+
+export interface GraphSettings {
+  showOrphans: boolean
+  showMissing: boolean
+  nodeSize: number
+  textOpacity: number
+  edgeWidth: number
+  showArrows: boolean
+  gravity: number
+  repulsion: number
+  attraction: number
+  linkLength: number
+}
+
 export function saveGraphSettings(_settings: any): void {}
 
 export async function listFilesResult(): Promise<any> {
@@ -209,4 +237,23 @@ export async function exportMarkdown(): Promise<Blob> {
 
 export async function importMarkdown(_zipFile: File): Promise<{ imported: number }> {
   return { imported: 0 }
+}
+
+// Phase 5.3c (editor_tab_ext): the editor shell's data props + the
+// dangling-link create flow.
+
+export async function getBlock(_id: string): Promise<any> {
+  return { found: false }
+}
+
+export async function readWiki(_path: string): Promise<any> {
+  return { path: '', body: '', frontmatter: {} }
+}
+
+export async function uploadAsset(_file: File): Promise<string> {
+  return ''
+}
+
+export async function runQuery(_q: string): Promise<any> {
+  return { results: [] }
 }

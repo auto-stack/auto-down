@@ -1,0 +1,115 @@
+// main_area.at — MainArea widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// front/src/components/MainArea.vue (plan 011 Phase 5.3c; the tab strip was
+// already extracted to tab_strip.at in Phase 5.1 batch 3). The batch-3
+// deferral reasons are gone: explicit `key:` on component instantiations
+// (auto-lang c2779bc8, example 035) gives the v-for its per-tab
+// `:key="tab.path"` and GraphPage / WhiteboardPage their remount keys.
+// Regenerate:
+//
+//   cd jade-garden/front/auto
+//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   sed 's|@/ext/src/front/utils/main_area_ext|../../auto/src/front/utils/main_area_ext|g' \
+//     gen/front/vue/src/components/MainArea.vue > ../src/components/MainArea.vue
+//
+// Idioms forced by DSL codegen gaps (see README's gap list):
+// - v-show has NO DSL form. The per-tab `v-show="tabs.activePath ===
+//   tab.path"` keep-alive switch is replicated with
+//   `:style="{ display: tab.display }"` on each EditorTab — behaviorally
+//   identical (v-show only toggles inline display; the components stay
+//   MOUNTED either way, which is what the e2e 03-tabs contract guards).
+//   The display value is precomputed per tab by the extension's editorTabs
+//   (the Call-with-loop-var form in style_obj is unverified; the mapper
+//   also keeps the original's `!t.isGraph` filter verbatim — whiteboard
+//   tabs DO get a hidden/covered EditorTab in the original too).
+// - The v-if guards and their key/prop derivations (activeGraphTab /
+//   activeWhiteboardTab / tabs.length === 0) go through the extension
+//   (optional chaining / || / === have no exact DSL form — and `!= null`
+//   compiles to `!== undefined`, gap 47).
+// - TabStrip / EditorTab / GraphPage are sibling widgets (file-top `use`,
+//   graph_page precedent); WhiteboardPage is still hand-written (Phase
+//   5.3d) and comes through the extension's component re-export
+//   (app_shell precedent) with stubs/gen_components/WhiteboardPage.vue as
+//   its gen-side mirror.
+// - The empty-state inline SVG is the extension's EmptyFileIcon functional
+//   component (innerHTML — svg is not a DSL element, gap 31).
+
+use tab_strip: TabStrip
+use editor_tab: EditorTab
+use graph_page: GraphPage
+
+widget MainArea {
+    use {
+        composable: useTabsStore from "src/front/utils/main_area_ext.ts"
+        fn: editorTabs, hasGraphTab, graphTabPath, graphCenter, graphDepth, hasWhiteboardTab, whiteboardPath, noTabs, EmptyFileIcon from "src/front/utils/main_area_ext.ts"
+        component: WhiteboardPage from "src/front/utils/main_area_ext.ts"
+    }
+
+    computed {
+        // Original: editorTabs = tabs.tabs.filter(t => !t.isGraph), plus the
+        // per-tab v-show display precomputed from tabs.activePath.
+        editor_tabs => editorTabs(.tabsStore.tabs, .tabsStore.activePath)
+        // Original: v-if="activeGraphTab" where activeGraphTab =
+        // tabs.activeTab?.isGraph ? tabs.activeTab : null.
+        has_graph => hasGraphTab(.tabsStore.activeTab)
+        // Original: :key="activeGraphTab.path".
+        graph_key => graphTabPath(.tabsStore.activeTab)
+        // Original: :center-path="activeGraphTab.graphCenterPath".
+        graph_center => graphCenter(.tabsStore.activeTab)
+        // Original: :depth="activeGraphTab.graphDepth || 1".
+        graph_depth => graphDepth(.tabsStore.activeTab)
+        // Original: v-if="activeWhiteboardTab" + :key/:path from its path.
+        has_whiteboard => hasWhiteboardTab(.tabsStore.activeTab)
+        whiteboard_path => whiteboardPath(.tabsStore.activeTab)
+        // Original: v-if="tabs.tabs.length === 0".
+        no_tabs => noTabs(.tabsStore.tabs)
+    }
+
+    view {
+        main {
+            class: "flex h-full flex-col overflow-hidden bg-background",
+            TabStrip { }
+            div {
+                class: "relative flex flex-1 overflow-hidden",
+                // Keep all editor tabs mounted; only the active one is
+                // visible (v-show keep-alive → display style, see header).
+                for tab in .editor_tabs {
+                    EditorTab {
+                        key: tab.path,
+                        path: tab.path,
+                        class: "absolute inset-0",
+                        style_obj: { display: tab.display }
+                    }
+                }
+                // Graph tab is mounted on demand so Cytoscape gets a sized
+                // container; :key forces a remount when the tab changes.
+                if .has_graph {
+                    GraphPage {
+                        key: .graph_key,
+                        centerPath: .graph_center,
+                        depth: .graph_depth,
+                        class: "absolute inset-0"
+                    }
+                }
+                if .has_whiteboard {
+                    WhiteboardPage {
+                        key: .whiteboard_path,
+                        path: .whiteboard_path,
+                        class: "absolute inset-0"
+                    }
+                }
+                if .no_tabs {
+                    div {
+                        class: "flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground",
+                        div {
+                            class: "rounded-full bg-accent p-3",
+                            dyn (.EmptyFileIcon) { class: "h-6 w-6" }
+                        }
+                        p { class: "text-sm", text "Select a file from the sidebar to open it." }
+                    }
+                }
+            }
+        }
+    }
+}

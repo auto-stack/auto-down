@@ -1,271 +1,146 @@
+<!-- EditorTab component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed, watch, ref, onMounted, onUnmounted } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
-import { AutoDownEditor } from '@autodown/editor'
-import { useTabsStore } from '@/stores/tabs'
-import { useFileTreeStore } from '@/stores/fileTree'
-import { createWikiPage, getBlock, readWiki, uploadAsset, runQuery } from '@/lib/api'
-import { headingTextToBlockId } from '@/lib/wikiLink'
-import { findTemplates, stripFrontmatter, expandTemplate } from '@/lib/templates'
-import { Link2, FileText } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { BodyTeleport } from '../../auto/src/front/utils/editor_tab_ext'
+import { EditorShell } from '../../auto/src/front/utils/editor_tab_ext'
+import { HoverLinkBtn } from '../../auto/src/front/utils/editor_tab_ext'
+import { useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLinkFn, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent } from '../../auto/src/front/utils/editor_tab_ext'
+import { useTabsStore, useFileTreeStore } from '../../auto/src/front/utils/editor_tab_ext'
+
+const tabsStore = useTabsStore()
+const fileTreeStore = useFileTreeStore()
+
+
+const hover_block = ref<any>(undefined)
+const hover_handle = ref<any>(undefined)
+const debounced_save = ref<any>(undefined)
+const load_block = ref<any>(undefined)
+const asset_upload = ref<any>(undefined)
+const run_query = ref<any>(undefined)
+const extra_slash = ref<any>(undefined)
+const open_wiki_link = ref<any>(undefined)
+
+const editorRef = ref<any>(null)
+
+const tab = computed<any>(() => findTab(tabsStore.tabs, props.path))
+const body = computed<any>(() => tabBody(tab.value))
+const page_title = computed<any>(() => tabTitle(tab.value))
+const overlay_display = computed<any>(() => overlayDisplay(tab.value))
 
 const props = defineProps<{
   path: string
 }>()
 
-const tabs = useTabsStore()
-const fileTree = useFileTreeStore()
-const tab = computed(() => tabs.tabs.find(t => t.path === props.path))
-const body = computed(() => tab.value?.body ?? '')
-const editorRef = ref<InstanceType<typeof AutoDownEditor> | null>(null)
-
-const hoverBlock = ref<{ id: string; top: number; left: number } | null>(null)
-let hoverTimer: ReturnType<typeof setTimeout> | null = null
+const emit = defineEmits<{
+  OnUpdate: [any]
+  CopyBlockLink: []
+  OnScrollToBlock: [any]
+}>()
 
 watch(() => props.path, () => {
-  if (tab.value && !tab.value.loaded) {
-    tabs.load(props.path)
-  }
+  loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
 
-const debouncedSave = useDebounceFn(() => {
-  if (tab.value?.dirty) tabs.save(props.path)
-}, 2000)
-
-function onUpdate(md: string) {
-  tabs.setBody(props.path, md)
-  debouncedSave()
-}
-
-function scrollToBlockId(id: string) {
-  const wrapper = editorRef.value?.$el?.querySelector('.autodown-editor-content-wrapper')
-  if (!wrapper) return
-  const el = wrapper.querySelector(`[data-block-id="${id}"]`)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-}
-
-function normalizeBlockId(blockId: string): string {
-  let id = blockId.trim()
-  if (id.startsWith('^')) id = id.slice(1)
-  if (/\s/.test(id)) id = headingTextToBlockId(id)
-  return id
-}
-
-async function loadBlock(id: string) {
-  const res = await getBlock(id)
-  return res.block || null
-}
-
-async function onAssetUpload(file: File): Promise<string> {
-  return uploadAsset(file)
-}
-
-async function onRunQuery(q: string) {
-  return runQuery(q)
-}
-
-const extraSlashItems = [
-  {
-    title: 'Template',
-    description: 'Insert a template from templates/',
-    icon: FileText,
-    searchTerms: ['template', 'tpl'],
-    command: async ({ editor, range }: any) => {
-      const templates = findTemplates(fileTree.files)
-      const names = templates.map((t) => t.name).join(', ') || 'none'
-      const defaultName = templates[0]?.name ?? ''
-      const name = window.prompt(`Template name (${names}):`, defaultName)
-      if (!name) return
-      const tpl = templates.find((t) => t.name.toLowerCase() === name.toLowerCase())
-      let raw = ''
-      if (tpl) {
-        const doc = await readWiki(tpl.path)
-        raw = stripFrontmatter(doc.body)
-      } else {
-        raw = `- ## Notes\n- <% today %>`
-      }
-      const expanded = expandTemplate(raw, { currentPageTitle: tab.value?.title, now: new Date() })
-      editor.chain().focus().deleteRange(range).insertContent(expanded).run()
-    },
-  },
-]
-
-async function onOpenWikiLink(title: string, blockId?: string | null) {
-  if (!fileTree.files.length && !fileTree.loading) {
-    await fileTree.load()
+function CopyBlockLink(): void {
+  let ok = copyBlockLinkSafe(hover_block.value, tab.value);
+  if (ok) {hover_block.value = null;
   }
 
-  const targetName = `${title}.ad`
-  let targetPath: string | undefined
-
-  function search(nodes: any[]): string | undefined {
-    for (const node of nodes) {
-      if (!node.is_dir && node.name.toLowerCase() === targetName.toLowerCase()) {
-        return node.path
-      }
-      if (node.children) {
-        const found = search(node.children)
-        if (found) return found
-      }
-    }
-    return undefined
-  }
-
-  targetPath = search(fileTree.files)
-
-  if (!targetPath) {
-    const ok = confirm(`页面 "${title}" 还不存在，是否创建？`)
-    if (!ok) return
-    try {
-      targetPath = await createWikiPage(title)
-      await fileTree.load()
-    } catch (e) {
-      alert(`创建页面失败：${e}`)
-      return
-    }
-  }
-
-  await tabs.open(targetPath, title)
-  if (blockId) {
-    const id = normalizeBlockId(blockId)
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('jade-scroll-to-block', { detail: { path: targetPath, id } }))
-    }, 150)
-  }
+  emit('CopyBlockLink')
 }
 
-function onScrollToBlock(e: Event) {
-  const detail = (e as CustomEvent).detail
-  if (detail.path !== props.path) return
-  scrollToBlockId(detail.id)
+function OnUpdate(md: any): void {
+  tabsStore.setBody(props.path, md);
+  let f = debounced_save.value;
+  f();
+
+  emit('OnUpdate', md)
 }
 
-function getEditorWrapper(): HTMLElement | null {
-  return editorRef.value?.$el?.querySelector('.autodown-editor-content-wrapper') ?? null
-}
+function OnScrollToBlock(e: any): void {
+  scrollToBlockFromEvent(editorRef.value!, props.path, e);
 
-function findBlockElement(target: EventTarget | null): HTMLElement | null {
-  if (!(target instanceof HTMLElement)) return null
-  return target.closest('[data-block-id]') as HTMLElement | null
-}
-
-function onMouseMove(e: MouseEvent) {
-  if (hoverTimer) clearTimeout(hoverTimer)
-  const target = e.target as HTMLElement
-  const blockEl = findBlockElement(target)
-  if (!blockEl) {
-    hoverBlock.value = null
-    return
-  }
-  const id = blockEl.getAttribute('data-block-id')
-  if (!id) {
-    hoverBlock.value = null
-    return
-  }
-  const rect = blockEl.getBoundingClientRect()
-  hoverBlock.value = { id, top: rect.top, left: rect.right }
-}
-
-function onMouseLeave() {
-  if (hoverTimer) clearTimeout(hoverTimer)
-  hoverTimer = setTimeout(() => {
-    hoverBlock.value = null
-  }, 300)
-}
-
-function copyBlockLink() {
-  const id = hoverBlock.value?.id
-  const title = tab.value?.title
-  if (!id || !title) return
-  const link = `[[${title}#^${id}]]`
-  navigator.clipboard.writeText(link).catch(() => {})
-  hoverBlock.value = null
+  emit('OnScrollToBlock', e)
 }
 
 onMounted(() => {
-  window.addEventListener('jade-scroll-to-block', onScrollToBlock)
-  const wrapper = getEditorWrapper()
-  if (wrapper) {
-    wrapper.addEventListener('mousemove', onMouseMove)
-    wrapper.addEventListener('mouseleave', onMouseLeave)
-  }
+  let run = () => { saveTabIfDirty(tabsStore, props.path);
+   };
+  let f = useDebounceFn(run, 2000);
+  debounced_save.value = f;
+  load_block.value = loadBlockFn();
+  asset_upload.value = assetUploadFn();
+  run_query.value = runQueryFn();
+  extra_slash.value = extraSlashItemsFn(fileTreeStore, tabsStore, props.path);
+  open_wiki_link.value = openWikiLinkFn(tabsStore, fileTreeStore);
+  hover_handle.value = listenEditorHover(editorRef.value!, (hb: any) => { hover_block.value = hb;
+   });
 })
 
 onUnmounted(() => {
-  window.removeEventListener('jade-scroll-to-block', onScrollToBlock)
-  if (hoverTimer) clearTimeout(hoverTimer)
-  const wrapper = getEditorWrapper()
-  if (wrapper) {
-    wrapper.removeEventListener('mousemove', onMouseMove)
-    wrapper.removeEventListener('mouseleave', onMouseLeave)
-  }
+  unlistenEditorHover(hover_handle.value);
+
 })
+
+function __auto_gl_jade_scroll_to_block_OnScrollToBlock(e: any) {
+  OnScrollToBlock(e)
+}
+
+onMounted(() => {
+  window.addEventListener('jade-scroll-to-block', __auto_gl_jade_scroll_to_block_OnScrollToBlock)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('jade-scroll-to-block', __auto_gl_jade_scroll_to_block_OnScrollToBlock)
+})
+
+
 </script>
 
 <template>
-  <div class="editor-workspace">
-    <AutoDownEditor
-      ref="editorRef"
-      :content="body"
-      :page-title="tab?.title"
-      :load-block="loadBlock"
-      :extra-slash-items="extraSlashItems"
-      :on-asset-upload="onAssetUpload"
-      :run-query="onRunQuery"
-      placeholder="Start typing..."
-      :show-actions="false"
-      class="h-full w-full"
-      @update="onUpdate"
-      @open-wiki-link="onOpenWikiLink"
-    />
-    <div
-      v-show="!tab?.loaded"
-      class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground"
-    >
-      Loading…
+    <div class="editor-workspace">
+      <EditorShell :class="'h-full w-full'" :extraSlashItems="extra_slash" ref="editorRef" :placeholder="'Start typing...'" :openWikiLink="open_wiki_link" :content="body" :assetUpload="asset_upload" :pageTitle="page_title" :loadBlock="load_block" :showActions="false" :runQuery="run_query" :key="'EditorShell-1'" @update="OnUpdate" />
+      <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
+        <span>Loading…</span>
+      </div>
+      <component :is="(BodyTeleport) as any">
+        <HoverLinkBtn :hb="hover_block" :key="'HoverLinkBtn-2'" @copy="CopyBlockLink" />
+      </component>
     </div>
-    <teleport to="body">
-      <button
-        v-if="hoverBlock"
-        type="button"
-        class="fixed z-50 flex h-6 items-center gap-1 rounded border bg-popover px-1.5 text-[11px] text-foreground shadow-md hover:bg-accent"
-        :style="{ top: `${hoverBlock.top}px`, left: `${hoverBlock.left}px` }"
-        title="Copy block link"
-        @click="copyBlockLink"
-      >
-        <Link2 class="h-3 w-3" />
-        link
-      </button>
-    </teleport>
-  </div>
+
 </template>
 
-<style scoped>
-.editor-workspace {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
+<style>
+/* Component styles */
 
-.editor-workspace :deep(.autodown-editor) {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.editor-workspace :deep(.autodown-editor-content-wrapper) {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 1rem 1.5rem;
-}
 </style>
+
+<style scoped>
+
+        /* The original EditorTab.vue scoped styles, verbatim. */
+        .editor-workspace {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .editor-workspace :deep(.autodown-editor) {
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-workspace :deep(.autodown-editor-content-wrapper) {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 1rem 1.5rem;
+        }
+    </style>

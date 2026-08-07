@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ 批次 A/B/C/D 全部完成（2026-08-07；A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34）。**P0 静默失败类 12 项已修、1 项 OPEN（#13 class: 三坏形式）**；剩余 = P0#13 + P2 表达力缺口（v-show/try-catch/保留字治理优先）+ P3 体验长尾。jade 侧死 workaround 已清理（auto-down 4212408）。
+> 状态：✅ **P0 静默失败类清零**（2026-08-08；批次 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。13 项 P0 全修；warning 通道（R008-R011 + `--strict`）兜底未来降级行为。剩余 = P2 表达力缺口（v-show/try-catch/保留字治理优先）+ P3 体验长尾（含 `expr_to_vue_bound_value` 兜底硬化 follow-up）。jade 侧死 workaround 已清理（auto-down 4212408）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -30,7 +30,7 @@
 | 10 | — | ✅ DONE（5.0b f6f0c059）：widget 内 slot outlet 缺失，`slot` 被静默编译成 `<div/>`、子内容被吞且无告警（含无 outlet 却传子内容时的告警，033 实证） | — |
 | 11 | — | `label`/`select` 元素静态 `class:` 在 shadcn 路径静默丢弃（plan 337 drift guard 注册 Label 副作用，jade regen 实证抓出，e2e 未捕获） | ✅ DONE（280e50c2）：push_native_classes + R011 告警；**遗留也已清**（批次 D，63569c34）：match 后 choke point 统一补发，133 个从不看 class 的分支全部转发（仅 ~41 个经 DSL tag 可达，choke point 防御未来派发拓宽） |
 | 12 | — | `oninput: .H({ q: .query })` 中**状态字段**作 map 字面量实参 → 发射 `this.query`（Vue 3 模板表达式中 `this` 无效，静默运行期错误；批次 C 探针发现，生产实证模式用循环变量故未踩） | ✅ DONE（批次 D，63569c34）：`vue_event_param()` 任意标识符位剥离 `this.`（map 值/嵌套调用/全局监听），3 个先红后绿测试 |
-| 13 | — | `class:` 三种坏形式（jade 清理批次探针发现，2026-08-07）：① 同元素第二个 `class:` **静默覆盖**静态 class（无告警）；② map 形式键不引号化 → 输出语法错误；③ `+` 拼接与数组形式发射 `null` | 🔲 OPEN：① 告警或合并；②③ 正确发射或拒绝+告警（批次 D 或下一批） |
+| 13 | — | `class:` 三种坏形式（jade 清理批次探针发现，2026-08-07）：① 同元素第二个 `class:` **静默覆盖**静态 class（无告警）；② map 形式键不引号化 → 输出语法错误；③ `+` 拼接与数组形式发射 `null` | ✅ DONE（a59ffdce）：① aura/extract 合并为数组绑定；② js_obj_key 引号化；③ Expr::If 臂 + R011 响亮拒绝兜底；shadcn choke point 自动继承。**follow-up（P3）**：`expr_to_vue_bound_value` 的 `_ => "null"` 兜底未动，`style:` 臂与数组元素级不支持形式仍可能静默带 null——后续改 Err + 逐调用点接警告 |
 
 ## P1 假绿/测试缺口类
 

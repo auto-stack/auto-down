@@ -1,0 +1,61 @@
+<div id="gersh" style="width:100%"></div>
+<script>
+(function () {
+  // 复数特征值（2x2）：λ = (tr ± sqrt(tr²-4det)) / 2
+  function eig(a, b, c, d) {
+    const tr = a + d, det = a * d - b * c, disc = tr * tr - 4 * det;
+    if (disc >= 0) {
+      const s = Math.sqrt(disc);
+      return [[(tr + s) / 2, 0], [(tr - s) / 2, 0]];
+    }
+    const s = Math.sqrt(-disc);
+    return [[tr / 2, s / 2], [tr / 2, -s / 2]];
+  }
+  function disk(re, r) {
+    const t = Array.from({length: 81}, (_, i) => {
+      const a = 2 * Math.PI * i / 80;
+      return [re + r * Math.cos(a), r * Math.sin(a)];
+    });
+    return {x: t.map(p => p[0]), y: t.map(p => p[1]), mode: 'lines',
+            fill: 'toself', opacity: 0.18, line: {width: 1.5}, hoverinfo: 'skip'};
+  }
+  function draw() {
+    const a = +document.getElementById('gg-a').value, b = +document.getElementById('gg-b').value;
+    const c = +document.getElementById('gg-c').value, d = +document.getElementById('gg-d').value;
+    const r1 = Math.abs(b), r2 = Math.abs(c);
+    const A = [[a, b], [c, d]];
+    const D1 = disk(a, r1), D2 = disk(d, r2);
+    D1.name = 'disk 1 (|b|=' + r1.toFixed(1) + ')'; D1.line.color = '#ef4444'; D1.fillcolor = '#ef4444';
+    D2.name = 'disk 2 (|c|=' + r2.toFixed(1) + ')'; D2.line.color = '#1a7f37'; D2.fillcolor = '#1a7f37';
+    const ev = eig(a, b, c, d);
+    const eigTrace = {x: ev.map(p => p[0]), y: ev.map(p => p[1]), mode: 'markers',
+                      marker: {size: 12, color: '#0969da', symbol: 'star'},
+                      name: '特征值', hoverinfo: 'skip'};
+    const data = [D1, D2, eigTrace];
+    const lo = Math.max(Math.abs(a) + r1, Math.abs(d) + r2, 1.5) + 1;
+    Plotly.react('gersh', data, {
+      title: {text: 'A = [[' + a + ',' + b + '],[' + c + ',' + d + ']]   特征值必落在圆盘并集内',
+              x: 0.5, font: {size: 13}},
+      xaxis: {title: 'Re', range: [-lo, lo], scaleanchor: 'y', scaleratio: 1, gridcolor: '#eee', zeroline: true},
+      yaxis: {title: 'Im', range: [-lo, lo], gridcolor: '#eee'},
+      template: 'plotly_white', showlegend: true, height: 430, margin: {l: 45, r: 20, t: 55, b: 40}
+    }, {responsive: true});
+  }
+  const box = document.getElementById('gersh');
+  const ctrl = document.createElement('div');
+  ctrl.style.cssText = 'font-family:system-ui,sans-serif;font-size:13px;padding:6px 4px;display:flex;gap:14px;flex-wrap:wrap';
+  const items = [['a', 3, -4, 4, 0.1], ['b', 1, -4, 4, 0.1], ['c', -1, -4, 4, 0.1], ['d', 2, -4, 4, 0.1]];
+  ctrl.innerHTML = items.map(([k, v, lo, hi, st]) =>
+    `<label>${k} <input type="range" id="gg-${k}" min="${lo}" max="${hi}" step="${st}" value="${v}"><span id="gg-${k}v"></span></label>`).join('');
+  box.parentNode.insertBefore(ctrl, box.nextSibling);
+  items.forEach(([k]) => {
+    const el = document.getElementById('gg-' + k), lab = document.getElementById('gg-' + k + 'v');
+    el.addEventListener('input', () => { lab.textContent = el.value; draw(); });
+  });
+  function init() {
+    items.forEach(([k, v]) => { document.getElementById('gg-' + k + 'v').textContent = v; });
+    draw();
+  }
+  if (window.Plotly) init(); else { const i = setInterval(() => { if (window.Plotly) { clearInterval(i); init(); } }, 60); }
+})();
+</script>

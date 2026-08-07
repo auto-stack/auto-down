@@ -1,0 +1,76 @@
+<div id="svd-explore" style="width:100%"></div>
+<script>
+(function () {
+  const N = 120;
+  const circle = Array.from({length: N + 1}, (_, i) => {
+    const a = 2 * Math.PI * i / N;
+    return [Math.cos(a), Math.sin(a)];
+  });
+  const rot = (t) => [[Math.cos(t), -Math.sin(t)], [Math.sin(t), Math.cos(t)]];
+  function apply(A, pts) {
+    return pts.map(p => [A[0][0]*p[0] + A[0][1]*p[1],
+                         A[1][0]*p[0] + A[1][1]*p[1]]);
+  }
+  function matmul(A, B) {
+    return [[A[0][0]*B[0][0]+A[0][1]*B[1][0], A[0][0]*B[0][1]+A[0][1]*B[1][1]],
+            [A[1][0]*B[0][0]+A[1][1]*B[1][0], A[1][0]*B[0][1]+A[1][1]*B[1][1]]];
+  }
+  const xs = circle.map(p => p[0]), ys = circle.map(p => p[1]);
+
+  function trace(pts, color, name, w) {
+    return {x: pts.map(p=>p[0]), y: pts.map(p=>p[1]), mode:'lines',
+            line:{color:color, width:w||3}, name:name, hoverinfo:'skip'};
+  }
+  function arrows(pts, color, name) {
+    return {x:[0, pts[0][0]], y:[0, pts[0][1]], mode:'lines+markers',
+            line:{color:color, width:5}, marker:{size:7,color:color}, name:name, hoverinfo:'skip'};
+  }
+
+  function draw() {
+    const s1 = parseFloat(document.getElementById('svd-s1').value);
+    const s2 = parseFloat(document.getElementById('svd-s2').value);
+    const th = parseFloat(document.getElementById('svd-th').value) * Math.PI / 180;
+    const A = matmul(rot(th), [[s1,0],[0,s2]]);
+    const img = apply(A, circle);
+    // 椭圆主轴方向 = U 的列（旋转 θ 后的 x,y 轴），长度 σ₁,σ₂
+    const ax1 = apply(A, [[1,0]]), ax2 = apply(A, [[0,1]]);
+    const data = [
+      trace(circle.map(p=>p), '#9aa5b1', 'unit circle', 2),
+      trace(img, '#0969da', 'A·(unit circle)', 4),
+      arrows(ax1, '#ef4444', 'σ₁ dir'),
+      arrows(ax2, '#1a7f37', 'σ₂ dir'),
+    ];
+    const lo = Math.max(s1, s2) + 0.5;
+    Plotly.react('svd-explore', data, {
+      title: {text: 'σ₁ = ' + s1.toFixed(2) + ',  σ₂ = ' + s2.toFixed(2)
+              + ',  θ = ' + (th*180/Math.PI).toFixed(0) + '°', x:0.5},
+      xaxis:{range:[-lo,lo], scaleanchor:'y', scaleratio:1, gridcolor:'#eee', zeroline:true},
+      yaxis:{range:[-lo,lo], gridcolor:'#eee'},
+      template:'plotly_white', showlegend:true, height:440,
+      margin:{l:20,r:20,t:50,b:10}
+    }, {responsive:true});
+  }
+  const box = document.getElementById('svd-explore');
+  const ctrl = document.createElement('div');
+  ctrl.style.cssText = 'font-family:system-ui,sans-serif;font-size:13px;padding:6px 4px;display:flex;gap:18px;flex-wrap:wrap;align-items:center';
+  ctrl.innerHTML = `
+    <label>σ₁ <input type="range" id="svd-s1" min="0.2" max="2.6" step="0.05" value="1.8"><span id="svd-s1v"></span></label>
+    <label>σ₂ <input type="range" id="svd-s2" min="0.2" max="2.6" step="0.05" value="0.7"><span id="svd-s2v"></span></label>
+    <label>θ° <input type="range" id="svd-th" min="0" max="180" step="1" value="30"><span id="svd-thv"></span></label>`;
+  box.parentNode.insertBefore(ctrl, box.nextSibling);
+  ['svd-s1','svd-s2','svd-th'].forEach(id => {
+    const el = document.getElementById(id);
+    const lab = document.getElementById(id + 'v');
+    el.addEventListener('input', () => { lab.textContent = el.value; draw(); });
+  });
+  function init() {
+    document.getElementById('svd-s1v').textContent = document.getElementById('svd-s1').value;
+    document.getElementById('svd-s2v').textContent = document.getElementById('svd-s2').value;
+    document.getElementById('svd-thv').textContent = document.getElementById('svd-th').value;
+    draw();
+  }
+  if (window.Plotly) init(); else {
+    const i = setInterval(() => { if (window.Plotly) { clearInterval(i); init(); } }, 60);
+  }
+})();
+</script>

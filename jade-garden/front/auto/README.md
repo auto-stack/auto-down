@@ -70,7 +70,7 @@ store Tabs {                      // store Tabs -> 生成 useTabsStore.ts / useT
     msg Msg { Open(map), Close(str), Load(str) }   // 见限制 1
     computed {
         active_tab => .tabs.find(t => t.path == .active_path)
-        all_tags => []            // 见限制 2（必须声明，占位即可）
+        all_tags => []            // 可选占位（限制 2 已修复，≥ 94fc2d3e 无需声明）
     }
     on {
         .Open(args) -> {
@@ -122,8 +122,10 @@ composable（输出里每个 store 各一行 `✓ Store composable:`），无需
 逐文件 build。旧限制（每次 build 只发射最后编译的 .at 文件里的 store，
 Phase 5.1 实证）仅在使用更旧编译器时适用，其「一次只留一个
 `*_store.at`」规避流程见 git 历史。
-另注意：增量扫描路径对 parse 失败**完全静默**（无 Warning）——判据是
-输出里有没有该 store 的 `✓ Store composable:` 行 + 检查 gen 产物内容。
+另注意（2026-08-07 起过时）：增量扫描路径（`auto run`）对 parse 失败曾
+**完全静默**——auto-lang ≥ 94fc2d3e（plan 012 批次 B）起增量路径同样打印
+`Warning: Failed to compile <path>`（与全量路径字符串一致），`--strict` 下
+直接 fail build；`auto run` 多 store 变更也需 ≥ 94fc2d3e 才能全部发射。
 
 ```sh
 cd jade-garden/front/auto
@@ -147,9 +149,11 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
 1. **msg payload 单类型**：`Open(str, str)` 解析失败（"Expected term, got
    RBrace"），每个 variant 只能带一个类型。多参数动作改收 map：
    `Open(map)` + handler 内 `var path = args.path`；facade 侧组装对象。
-2. **all_tags 硬编码注入**：store codegen 对任何不含 all_tags 的 store
-   注入一个引用 `notes.value` 的 getter（015-notes 专用 hack），会导致
-   TS2304。规避：store 里声明一个占位 `all_tags => []` computed 即可抑制。
+2. **~~all_tags 硬编码注入~~（已修复，auto-lang ≥ 94fc2d3e，plan 012 批次 B）**：
+   store codegen 曾对任何不含 all_tags 的 store 注入一个引用 `notes.value`
+   的 getter（015-notes 专用 hack），导致 TS2304；该注入已删除，store 只有
+   自己声明 `all_tags` 才有对应 getter。现有 9 个 `*_store.at` 里的占位
+   `all_tags => []` **不再必要但仍合法**（产物不变），可择期删除。
 3. **store 的唯一 import 通道是 `@/lib/api`**：`use back.api:` 列什么名
    就 import 什么名（不校验 back.api 是否真实存在），其他模块
    （blockParser、其他 Pinia store）无法直接 import —— 全部经 ext 模块
@@ -171,7 +175,7 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
 
 9. **~~每次 build 只发射一个 store~~（已修复，auto-lang ≥ 280e50c2）**：
    单次全量 build 现发射全部 store，见上文「重新生成（store）」。
-   「增量路径 parse 失败静默无 Warning」的注意仍然有效。
+   「增量路径 parse 失败静默无 Warning」同样已修复（≥ 94fc2d3e）。
 10. **handler 无返回值**：msg handler 不返回任何值，带返回值的方法
     （blocks 的 getBlocks/blockById/headings/parse）只能放 facade/ext，
     facade 直接读写生成 store 的 state ref。

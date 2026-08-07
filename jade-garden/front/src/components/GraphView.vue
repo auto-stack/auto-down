@@ -5,7 +5,6 @@ import { buildElements, initGraph, updateGraphElements, applyGraphSettings, appl
 
 
 const handle = ref<any[]>([])
-const open_emit_wiring = ref<boolean>(false)
 
 const containerEl = ref<HTMLElement | null>(null)
 
@@ -22,7 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   Fit: []
   Relayout: []
-  open: [string]
+  Open: [string]
 }>()
 
 import type { GraphNode, GraphEdge, GraphSettings } from '@/lib/api'
@@ -45,9 +44,9 @@ function Relayout(): void {
   emit('Relayout')
 }
 
-function open(p: any): void {
+function Open(p: any): void {
 
-  emit('open', p)
+  emit('Open', p)
 }
 
 function Fit(): void {
@@ -57,7 +56,7 @@ function Fit(): void {
 }
 
 onMounted(() => {
-  let on_open = (p: any) => { open(p);
+  let on_open = (p: any) => { Open(p);
    };
   handle.value = initGraph(containerEl.value!, props.nodes, props.edges, props.settings, on_open);
 })
@@ -67,17 +66,12 @@ onUnmounted(() => {
 
 })
 
-defineExpose({ Fit, Relayout })
+defineExpose({ Fit, Relayout, Open })
 
 </script>
 
 <template>
     <div class="graph-view" ref="containerEl">
-      <template v-if="open_emit_wiring">
-        <button class="hidden" @click="open">
-          <span>open</span>
-        </button>
-      </template>
       <template v-if="loading">
         <div class="graph-loading">
           <span>加载图谱…</span>

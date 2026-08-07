@@ -70,7 +70,6 @@ store Tabs {                      // store Tabs -> 生成 useTabsStore.ts / useT
     msg Msg { Open(map), Close(str), Load(str) }   // 见限制 1
     computed {
         active_tab => .tabs.find(t => t.path == .active_path)
-        all_tags => []            // 可选占位（限制 2 已修复，≥ 94fc2d3e 无需声明）
     }
     on {
         .Open(args) -> {
@@ -152,8 +151,9 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
 2. **~~all_tags 硬编码注入~~（已修复，auto-lang ≥ 94fc2d3e，plan 012 批次 B）**：
    store codegen 曾对任何不含 all_tags 的 store 注入一个引用 `notes.value`
    的 getter（015-notes 专用 hack），导致 TS2304；该注入已删除，store 只有
-   自己声明 `all_tags` 才有对应 getter。现有 9 个 `*_store.at` 里的占位
-   `all_tags => []` **不再必要但仍合法**（产物不变），可择期删除。
+   自己声明 `all_tags` 才有对应 getter。原 9 个 `*_store.at` 里的占位
+   `all_tags => []` **已于 2026-08-07 全部删除**（编译器 ≥ 24f0dd16；
+   删除前已确认无任何 facade/组件消费 all_tags getter）。
 3. **store 的唯一 import 通道是 `@/lib/api`**：`use back.api:` 列什么名
    就 import 什么名（不校验 back.api 是否真实存在），其他模块
    （blockParser、其他 Pinia store）无法直接 import —— 全部经 ext 模块
@@ -281,11 +281,19 @@ sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|
     `.contains`→`.includes` 同类陷阱：`recentFilesStore.remove(path)`
     误发射 `recentFilesStore.splice(path, 1)`。经 ext 帮手中转
     （`removeRecent(path)`）。
-20. **普通元素上的动态 `class:` 表达式被静默丢弃**：
-    `span { class: ol.dot_class }` 发射 `<span/>`（只认字符串字面量与
-    style 映射）。条件 class 用 **`style` prop 里的三元**（Plan 346）：
-    `style: ol.exists ? "bg-a" : "bg-b"` → `:class="ol.exists ? 'bg-a' : 'bg-b'"`，
-    循环变量条件可用，与原 `:class` 三元绑定逐字一致。
+20. **~~普通元素上的动态 `class:` 表达式被静默丢弃~~（已修复，auto-lang
+    ≥ 24f0dd16，plan 012 批次 A）**：动态 `class:`（含三元、循环变量
+    条件）现在发射真 `:class` 绑定。原规避（条件 class 用 **`style` prop
+    里的三元**，Plan 346：`style: ol.exists ? "bg-a" : "bg-b"` →
+    `:class="ol.exists ? 'bg-a' : 'bg-b'"`）**已于 2026-08-07 全部改写
+    为真 `class:` 三元**（13 处：ribbon / quick_switcher /
+    command_palette ×2 / properties_panel / file_tree_node / status_bar /
+    theme_popover ×3 / outgoing_links_panel / tab_strip ×2）。注意 codegen
+    仍只保留**一个** `class:` prop（重复书写时后者静默胜出），故静态
+    class 须并入三元的两个分支（生成 class 字符串与旧合并结果逐字一致，
+    已 diff 验证）。`class:` 的 map 形式不引用键名（`:class="{x y: ...}"`
+    语法错误）——quoted-key 条件 class 仍用 `style: { "cls": cond }`
+    形式（发射逐字正确）。
 21. **watch 已有 `.immediate`**：`watch { .src.immediate -> { ... } }` →
     `watch(src, () => {...}, { immediate: true })`。watch 源必须是
     model/prop/computed 名（原样发射；computed 以 ref 形式被 watch）。
@@ -509,12 +517,16 @@ main_area_ext 的组件再导出与 `stubs/gen_components/WhiteboardPage.vue`
     写真实 TS interface 名，并保证它在 front 树 `src/lib/api.ts` 与
     gen stub `stubs/gen_lib_api.ts` 双侧都存在（本批已为 stub 补
     FileNode）。
-44. **computed 体内引用其他 computed 必须显式 `.value`**：codegen 不
-    解包 script 表达式里的 computed ref——`show_right => .node.is_dir
-    && !.is_expanded` 发射 `props.node.is_dir && !is_expanded`（ref
-    对象恒真，条件静默失效，无任何告警）。写 `.is_expanded.value`
-    （command_palette 的 `.commands.value` 先例，本批探针实证；与
-    gap 40 的 watch 体规则分开：computed 体一律要 `.value`）。
+44. **~~computed 体内引用其他 computed 必须显式 `.value`~~（已修复，
+    auto-lang ≥ 24f0dd16，plan 012 批次 A）**：computed 体现在自动解包
+    computed ref，手写 `.value` 已全部移除（2026-08-07：file_tree_node /
+    command_palette / editor_tab / flashcard_modal / status_bar /
+    search_panel / outline_panel / quick_switcher / recent_files_panel，
+    生成产物与移除前逐字一致）。**watch / handler 体内仍需显式
+    `.value`**（gap 40 规则不变：ts_adapter 路径未动）——
+    backlinks_panel / outgoing_links_panel / graph_view / editor_tab 的
+    watch 体与 quick_switcher / command_palette 的 handler 体里的
+    `.value` 均保留。
 
 ### Phase 5.3a 新验证能力（非限制，之前未用过）
 
@@ -539,30 +551,29 @@ main_area_ext 的组件再导出与 `stubs/gen_components/WhiteboardPage.vue`
 
 ### Phase 5.3b 新增限制（GraphView / GraphPage / GraphSidebar 实证）
 
-45. **`expose {}` 不标记带参 handler 为 used**：expose 块列出的**无参**
-    handler（`.Fit`）正常生成函数并被 expose；**带参数**的 handler
-    （`.open(p)`，含 quoted `."open"(p)`）即使写进 expose 块也不会被
-    生成（used_handlers 对带参 handler 只认 view 引用；quoted 名的
-    expose 条目与 on 块 pattern 亦对不上）。引用处静默退化为裸名——
-    `open(p)` 命中 DOM lib 的 `window.open` 全局，**vue-tsc 不报错**，
-    运行期行为完全错误。规避：quoted msg variant（`"open"(str)`）+
-    对应 quoted handler（`."open"(p) -> {}`，体空，codegen 自动追加
-    `emit('open', p)` 并生成带类型的 `open: [string]` 声明）+ view 里
-    用**永假 v-if 守卫元素**引用它（`if .open_emit_wiring { button {
-    class: "hidden", onclick: ."open", ... } }`，model var 恒 false，
-    只渲染注释锚点；守卫按钮必须带 class，否则按 gap 38 映射成 shadcn
-    Button）。ext 回调经 `.Init` 闭包调 `open(p)` 接通（GraphView 的
-    cytoscape tap → onOpen 闭包实证）。
+45. **~~`expose {}` 不标记带参 handler 为 used~~（已修复，auto-lang
+    ≥ 24f0dd16，plan 012 批次 A）**：expose 块列出的带参 handler 现在
+    正常生成函数并被 expose。原 GraphView 规避（quoted msg variant
+    `"open"(str)` + 永假 v-if 守卫按钮 `open_emit_wiring`）**已于
+    2026-08-07 移除**：改为普通 `Open(str)` variant + 空 handler
+    （codegen 自动追加 `emit('Open', p)`，父侧 `@open` 经同一个 onOpen
+    prop 捕获，端到端不变）+ `expose { .Fit, .Relayout, .Open }` →
+    `defineExpose({ Fit, Relayout, Open })`（已验证生成 SFC 与 e2e
+    07-graph 全绿）。历史教训保留：修复前带参 handler 未被标记时引用处
+    静默退化为裸名（`open(p)` 命中 `window.open`，vue-tsc 不报错）。
 46. **view text 不支持 Call 表达式**：`text nodeLabel(node)` 解析失败
     （"Expected term, got RBrace"，报错位在循环收尾处）。规避：ext
     mapper 预计算展示字段（topDegreeNodes 加 `display`；`text
     node.display` 可用）。
-47. **`!= null` 被编译为 `!== undefined`**：DSL 的 `.x != null` 发射
-    `props.x !== undefined`——父组件显式传 null 时（MainArea 的
-    `:center-path="activeGraphTab.graphCenterPath"`，类型
-    `string | null | undefined`）语义错误（null 被判为"有值"）。规避：
-    真值/空值判断经 ext（graph_page 的 `hasCenter`，flashcard 的
-    `strTruthy` 先例）。
+47. **~~`!= null` 被编译为 `!== undefined`~~（已修复，auto-lang
+    ≥ 24f0dd16，plan 012 批次 A）**：`!= null` 现在发射宽松 `!= null`
+    （同时覆盖 null/undefined）。原 ext 真值守卫规避**已于 2026-08-07
+    移除**：graph_page 的 `hasCenter(.centerPath)` → `is_local =>
+    .centerPath != null`（centerPath 永不取 ""——tabs store 把 "" 哨兵
+    映射为 None，故宽松判等与原 `!!` 逐字等价）；flashcard_modal /
+    search_panel 的 `strTruthy(.error)` → `has_error => .error != ""`
+    （error 是普通 str model var，"" = 无错误，纯空串判断而非 null
+    判断）。ext 里的 hasCenter/strTruthy 导出已删除。
 48. **Array<User> prop 类型发射 `any` 且不产生 import**：`nodes:
     Array<GraphNode>` → `nodes: any`（gap 43 的 User 类型 import 只覆盖
     顶层 User，List<User> 不追踪）。可用但丢失 prop 类型——需要类型时

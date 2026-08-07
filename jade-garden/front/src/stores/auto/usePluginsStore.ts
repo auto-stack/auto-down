@@ -20,8 +20,5 @@ loading.value = false;
         loading,
         error,
         Load,
-        get all_tags() {
-            return [];
-        },
     }
 }

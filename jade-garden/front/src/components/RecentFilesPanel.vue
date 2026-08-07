@@ -20,6 +20,12 @@ const emit = defineEmits<{
   ClearAll: []
 }>()
 
+function Open(rf: any): void {
+  tabsStore.open(rf.path);
+
+  emit('Open', rf)
+}
+
 function Remove(rf: any): void {
   removeRecent(rf.path);
 
@@ -32,12 +38,6 @@ function ClearAll(): void {
   emit('ClearAll')
 }
 
-function Open(rf: any): void {
-  tabsStore.open(rf.path);
-
-  emit('Open', rf)
-}
-
 
 </script>
 
@@ -48,7 +48,7 @@ function Open(rf: any): void {
           <span>Recent</span>
         </span>
         <template v-if="has_files">
-          <button class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'Clear recent files'" :type="'button'" @click="ClearAll">
+          <button class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'Clear recent files'" @click="ClearAll">
             <component :is="(Trash2) as any" class="h-3.5 w-3.5" />
           </button>
         </template>

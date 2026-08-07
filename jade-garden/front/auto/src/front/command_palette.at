@@ -27,8 +27,8 @@
 // - The item icon (<component :is="item.icon">) is the extension's
 //   PaletteIcon functional component; ul/li render via dyn with string
 //   tags (backlinks precedent).
-// - The selected-row class ternaries use the style prop's Plan 346
-//   ternary form (README gap 20).
+// - The selected-row class ternaries are real dynamic `class:` expressions
+//   (compiler ≥ 24f0dd16, gap 20 fix).
 // - focusPaletteInput replicates watch(open)'s nextTick + inputRef.focus()
 //   (no template refs in the DSL; the singleton input is located by its
 //   placeholder).
@@ -51,10 +51,10 @@ widget CommandPalette {
     computed {
         commands => buildCommands(.tabsStore, .fileTreeStore, .sidebarStore, .themeStore)
         recent_items => recentFileItems(.recentFilesStore.files)
-        all_items => allPaletteItems(.commands.value, .recent_items.value)
-        filtered => filterPalette(.all_items.value, .query)
-        has_results => .filtered.value.length > 0
-        no_results => .filtered.value.length == 0
+        all_items => allPaletteItems(.commands, .recent_items)
+        filtered => filterPalette(.all_items, .query)
+        has_results => .filtered.length > 0
+        no_results => .filtered.length == 0
         ul_tag => "ul"
         li_tag => "li"
     }
@@ -85,8 +85,7 @@ widget CommandPalette {
                                 class: "max-h-[50vh] overflow-y-auto py-1",
                                 for item in .filtered {
                                     dyn (.li_tag) {
-                                        class: "cursor-pointer px-3 py-2 text-sm",
-                                        style: item.idx == .selected_index ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/50",
+                                        class: item.idx == .selected_index ? "cursor-pointer px-3 py-2 text-sm bg-accent text-accent-foreground" : "cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-accent/50",
                                         onclick: .Execute(item),
                                         onmouseenter: .HoverItem(item),
                                         div {
@@ -97,8 +96,7 @@ widget CommandPalette {
                                                 div { class: "truncate", text item.title }
                                                 if item.has_subtitle {
                                                     div {
-                                                        class: "truncate text-[11px]",
-                                                        style: item.idx == .selected_index ? "text-accent-foreground/70" : "text-muted-foreground",
+                                                        class: item.idx == .selected_index ? "truncate text-[11px] text-accent-foreground/70" : "truncate text-[11px] text-muted-foreground",
                                                         text item.subtitle
                                                     }
                                                 }

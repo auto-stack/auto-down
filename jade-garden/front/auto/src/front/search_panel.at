@@ -23,10 +23,8 @@
 //   in a model var; the query watch let-binds it and calls the local
 //   (TableMenu/NodeView let-bind precedent).
 // - The v-else-if chain (loading / error / results / hasQuery / hint)
-//   becomes five exclusive named-boolean computeds; the error string's
-//   truthy check goes through the extension's strTruthy (`!= null` in a
-//   DSL computed emits !== undefined, wrong for a nullable string — so
-//   error is a plain str model var, "" = the original's null).
+//   becomes five exclusive named-boolean computeds; error is a plain str
+//   model var ("" = no error), checked with `!= ""`.
 // - ul/li render via dyn with string tags (backlinks precedent).
 // - The per-result icon branch / title ternary / snippet v-html are
 //   precomputed by the extension's withSearchDisplay (no Call/ternary
@@ -39,7 +37,7 @@
 widget SearchPanel {
     use {
         composable: useTabsStore from "src/front/utils/search_panel_ext.ts"
-        fn: useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, strTruthy, Search, FileText, Box from "src/front/utils/search_panel_ext.ts"
+        fn: useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, Search, FileText, Box from "src/front/utils/search_panel_ext.ts"
         component: HtmlDiv from "src/front/utils/search_panel_ext.ts"
     }
 
@@ -57,12 +55,12 @@ widget SearchPanel {
     computed {
         display_results => withSearchDisplay(.results)
         has_query => .query.trim().length > 0
-        has_error => strTruthy(.error)
+        has_error => .error != ""
         show_loading => .loading
-        show_error => !.loading && .has_error.value
-        show_results => !.loading && !.has_error.value && .results.length > 0
-        show_no_results => !.loading && !.has_error.value && .results.length == 0 && .has_query.value
-        show_hint => !.loading && !.has_error.value && .results.length == 0 && !.has_query.value
+        show_error => !.loading && .has_error
+        show_results => !.loading && !.has_error && .results.length > 0
+        show_no_results => !.loading && !.has_error && .results.length == 0 && .has_query
+        show_hint => !.loading && !.has_error && .results.length == 0 && !.has_query
         ul_tag => "ul"
         li_tag => "li"
     }

@@ -9,8 +9,5 @@ export function useBlocksStore(): any {
     return {
         cache,
         Clear,
-        get all_tags() {
-            return [];
-        },
     }
 }

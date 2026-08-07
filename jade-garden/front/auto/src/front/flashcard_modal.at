@@ -28,7 +28,7 @@
 
 widget FlashcardModal(open: bool) {
     use {
-        fn: Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText, strTruthy from "src/front/utils/flashcard_modal_ext.ts"
+        fn: Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText from "src/front/utils/flashcard_modal_ext.ts"
     }
 
     msg Msg { Init, Reveal, Rate, "update:open"(bool) }
@@ -38,7 +38,7 @@ widget FlashcardModal(open: bool) {
         var loading bool = false
         var index int = 0
         var show_answer bool = false
-        // "" = the original's null (strTruthy computed does the v-else-if check).
+        // "" = no error (has_error checks != "").
         var error str = ""
     }
 
@@ -46,13 +46,13 @@ widget FlashcardModal(open: bool) {
         is_open => .open
         current => cardAt(.cards, .index)
         counter_text => counterText(.index, .cards.length)
-        question_text => cardQuestion(.current.value)
-        answer_text => cardAnswer(.current.value)
-        has_error => strTruthy(.error)
+        question_text => cardQuestion(.current)
+        answer_text => cardAnswer(.current)
+        has_error => .error != ""
         show_loading => .loading
-        show_error => !.loading && .has_error.value
-        show_empty => !.loading && !.has_error.value && .cards.length == 0
-        show_cards => !.loading && !.has_error.value && .cards.length > 0
+        show_error => !.loading && .has_error
+        show_empty => !.loading && !.has_error && .cards.length == 0
+        show_cards => !.loading && !.has_error && .cards.length > 0
     }
 
     view {

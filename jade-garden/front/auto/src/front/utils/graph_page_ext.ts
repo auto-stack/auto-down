@@ -85,13 +85,6 @@ export function centerTitle(nodes: GraphNode[], centerPath: string | null | unde
   return node?.label || centerPath.replace(/\.ad$/, '')
 }
 
-/** Original: isLocal = computed(() => !!props.centerPath). The DSL's
- *  `!= null` compiles to `!== undefined` (README gap 47), which is true for
- *  an explicit null — so the truthiness check lives here. */
-export function hasCenter(centerPath: string | null | undefined): boolean {
-  return !!centerPath
-}
-
 /** Original template: @click="graphViewRef?.fit()" (the generated
  *  GraphView exposes Fit). */
 export function fitGraphView(graphViewRef: any): void {

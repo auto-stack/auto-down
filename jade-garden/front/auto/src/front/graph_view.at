@@ -30,12 +30,12 @@
 //   original. The `els` computed is the watch source for the original's
 //   watch(elements) (computed refs as watch sources need `.value` in the
 //   body — README gap 40).
-// - The `open` emit: a QUOTED msg variant `"open"(str)` whose empty handler
-//   auto-appends `emit('open', p)` (flashcard_modal precedent). The handler
-//   is marked used by a never-true `if .open_emit_wiring` guard in the view
-//   (expose{} does NOT mark parameterized handlers used — README gap 45);
-//   the cytoscape tap callback reaches it through the onOpen closure passed
-//   to initGraph in .Init.
+// - The `open` emit: the parameterized `Open(str)` handler is listed in
+//   `expose {}`, which marks it used (compiler ≥ 24f0dd16, gap 45 fix) so
+//   its function + typed emit declaration are generated; the empty handler
+//   body auto-appends `emit('Open', p)`, caught by the parent's @open
+//   listener (same onOpen prop). The cytoscape tap callback reaches it
+//   through the onOpen closure passed to initGraph in .Init.
 // - fit/relayout are exposed via `expose {}` (first production use,
 //   example 032): the parent (GraphPage) calls them through
 //   `ref: "graphViewRef"`.
@@ -47,16 +47,12 @@ widget GraphView(nodes: Array<GraphNode>, edges: Array<GraphEdge>, settings: Gra
         fn: buildElements, initGraph, updateGraphElements, applyGraphSettings, applyGraphHighlight, destroyGraph, graphFit, graphRelayout from "src/front/utils/graph_view_ext.ts"
     }
 
-    msg Msg { Init, Destroy, Fit, Relayout, "open"(str) }
+    msg Msg { Init, Destroy, Fit, Relayout, Open(str) }
 
     model {
         // Opaque cytoscape handle (initGraph's return; the `[]` placeholder
         // is a gen-time `ref<any[]>([])` — the extension null-guards it).
         var handle Array<str> = []
-        // Always false; exists only so the view references the quoted
-        // "open" handler (marks it used so its function + typed emit
-        // declaration are generated — see the header comment).
-        var open_emit_wiring bool = false
     }
 
     computed {
@@ -70,9 +66,6 @@ widget GraphView(nodes: Array<GraphNode>, edges: Array<GraphEdge>, settings: Gra
         div {
             ref: "containerEl",
             class: "graph-view",
-            if .open_emit_wiring {
-                button { class: "hidden", onclick: ."open", text "open" }
-            }
             if .loading {
                 div { class: "graph-loading", text "加载图谱…" }
             }
@@ -99,7 +92,7 @@ widget GraphView(nodes: Array<GraphNode>, edges: Array<GraphEdge>, settings: Gra
         // Original: onMounted(initCy).
         .Init -> {
             let on_open = (p) => {
-                .open(p)
+                .Open(p)
             }
             .handle = initGraph(.containerEl, .nodes, .edges, .settings, on_open)
         }
@@ -115,14 +108,15 @@ widget GraphView(nodes: Array<GraphNode>, edges: Array<GraphEdge>, settings: Gra
         .Relayout -> {
             graphRelayout(.handle, .settings)
         }
-        // The emit body is empty; the codegen auto-appends emit('open', p)
-        // (quoted-variant contract). Called only from the on_open closure.
-        ."open"(p) -> {
+        // The emit body is empty; the codegen auto-appends emit('Open', p),
+        // which the parent's @open listener catches (same onOpen prop).
+        // Called only from the on_open closure.
+        .Open(p) -> {
         }
     }
 
     expose {
-        .Fit, .Relayout
+        .Fit, .Relayout, .Open
     }
 
     style {

@@ -27,14 +27,15 @@
 // - The folder/file <component :is> icon is the extension's NodeIcon
 //   functional component (the DSL's dyn takes a static symbol); the
 //   chevrons are lucide re-exports rendered via dyn.
-// - The active-row :class ternary uses the style prop's Plan 346 ternary
-//   form (README gap 20); the marginLeft/marginRight and menu left/top
+// - The active-row :class ternary is a real dynamic `class:` expression
+//   (compiler ≥ 24f0dd16, gap 20 fix); the marginLeft/marginRight and menu
+//   left/top
 //   style objects use style_obj with Call-body computeds (gap 28).
 // - @contextmenu.prevent replicates the original onRightClick's
 //   e.preventDefault(); the handler then reads clientX/clientY off $event.
-// - view-referenced computed reads inside OTHER computed bodies need the
-//   explicit `.value` (`.is_expanded.value`) — the compiler does not
-//   auto-unwrap computed refs in script expressions.
+// - computed refs are auto-unwrapped in computed bodies (compiler ≥
+//   24f0dd16, gap 44 fix); handler/watch bodies still need explicit
+//   `.value`.
 // - The context-menu actions (prompt/confirm + path surgery + facade CRUD)
 //   and the setup-time once-only document click listener live in the
 //   extension; the menu closes in the handler BEFORE the extension call,
@@ -64,12 +65,12 @@ widget FileTreeNode(node: FileNode, level: int) {
         // Original: tabs.activePath === props.node.path.
         is_active => .tabsStore.activePath == .node.path
         // Original chevron v-if / v-else-if as two exclusive ifs.
-        show_right => .node.is_dir && !.is_expanded.value
-        show_down => .node.is_dir && .is_expanded.value
+        show_right => .node.is_dir && !.is_expanded
+        show_down => .node.is_dir && .is_expanded
         // Original: v-if="node.is_dir && isExpanded && node.children"
         // (children is FileNode[] | undefined; != null matches truthiness
         // for every value it can actually hold).
-        show_children => .node.is_dir && .is_expanded.value && .node.children != null
+        show_children => .node.is_dir && .is_expanded && .node.children != null
         next_level => .level + 1
         // Original row :style="{ marginLeft: `${level * 12}px`, marginRight: '6px' }".
         indent_left => nodeIndent(.level)
@@ -81,8 +82,7 @@ widget FileTreeNode(node: FileNode, level: int) {
     view {
         div {
             div {
-                class: "group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors",
-                style: .is_active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent hover:text-foreground",
+                class: .is_active ? "group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors bg-primary/10 text-primary" : "group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors text-foreground hover:bg-accent hover:text-foreground",
                 style_obj: { marginLeft: .indent_left, marginRight: "6px" },
                 onclick: .Toggle,
                 oncontextmenu.prevent: .RightClick($event),

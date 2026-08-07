@@ -62,8 +62,7 @@ widget TabStrip {
                 class: "flex h-[var(--header-height)] shrink-0 items-center gap-1 border-b bg-card px-2",
                 for tab in .items {
                     button (type: "button") {
-                        class: "group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
-                        style: tab.active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                        class: tab.active ? "group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors bg-primary/10 text-primary" : "group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors text-muted-foreground hover:bg-accent hover:text-foreground",
                         onclick: .SwitchTab(tab),
                         if tab.isGraph {
                             dyn (.Network) { class: "h-3.5 w-3.5" }
@@ -73,8 +72,7 @@ widget TabStrip {
                             span { class: "text-[9px] leading-none", text "●" }
                         }
                         span {
-                            class: "ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity",
-                            style: tab.active ? "opacity-100" : "group-hover:opacity-100",
+                            class: tab.active ? "ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity opacity-100" : "ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity group-hover:opacity-100",
                             onclick.stop: .CloseTab(tab),
                             dyn (.X) { class: "h-3 w-3" }
                         }

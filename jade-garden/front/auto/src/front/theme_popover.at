@@ -16,10 +16,8 @@
 //   fixed to="body" and renders via dyn (same mounted DOM).
 // - The lucide icons render via dyn with the extension's re-exported
 //   component symbols (recent_files_panel precedent).
-// - The conditional :class ternaries (mode/accent buttons) use the style
-//   prop's Plan 346 ternary form — a plain dynamic `style: expr` is
-//   silently dropped, only string literals / style maps / If-ternaries
-//   emit (README gap 20).
+// - The conditional :class ternaries (mode/accent buttons) are real dynamic
+//   `class:` expressions (compiler ≥ 24f0dd16, gap 20 fix).
 // - The accent swatch's :style="{ backgroundColor }" uses style_obj.
 // - The close signal is the widget's automatic emit: every view-referenced
 //   msg handler ends with emit('Close', e), and the parent's @close
@@ -65,15 +63,13 @@ widget ThemePopover(open: bool) {
                         div {
                             class: "flex rounded-lg border p-0.5",
                             button (type: "button") {
-                                class: "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors",
-                                style: .themeStore.mode == "light" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent",
+                                class: .themeStore.mode == "light" ? "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors bg-primary/10 text-primary" : "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors text-muted-foreground hover:bg-accent",
                                 onclick: .SetLight,
                                 dyn (.Sun) { class: "h-3.5 w-3.5" }
                                 text "Light"
                             }
                             button (type: "button") {
-                                class: "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors",
-                                style: .themeStore.mode == "dark" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent",
+                                class: .themeStore.mode == "dark" ? "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors bg-primary/10 text-primary" : "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors text-muted-foreground hover:bg-accent",
                                 onclick: .SetDark,
                                 dyn (.Moon) { class: "h-3.5 w-3.5" }
                                 text "Dark"
@@ -87,8 +83,7 @@ widget ThemePopover(open: bool) {
                             for accent in .accents {
                                 button (type: "button") {
                                     title: accent.label,
-                                    class: "flex h-7 items-center justify-center rounded-md border transition-all",
-                                    style: .themeStore.accent == accent.key ? "border-primary ring-1 ring-primary" : "border-border hover:border-muted-foreground",
+                                    class: .themeStore.accent == accent.key ? "flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary" : "flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground",
                                     onclick: .SetAccent(accent),
                                     span {
                                         class: "h-4 w-4 rounded-full",

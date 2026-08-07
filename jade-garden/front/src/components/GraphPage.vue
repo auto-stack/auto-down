@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useGraphStore, useTabsStore } from '../../auto/src/front/utils/graph_page_ext'
-import { visibleGraphNodes, visibleGraphEdges, centerTitle, hasCenter, fitGraphView, relayoutGraphView, Globe, Maximize, RefreshCw } from '../../auto/src/front/utils/graph_page_ext'
+import { visibleGraphNodes, visibleGraphEdges, centerTitle, fitGraphView, relayoutGraphView, Globe, Maximize, RefreshCw } from '../../auto/src/front/utils/graph_page_ext'
 
 const graphStore = useGraphStore()
 const tabsStore = useTabsStore()
@@ -13,7 +13,7 @@ import GraphView from '@/components/GraphView.vue'
 
 const graphViewRef = ref<any>(null)
 
-const is_local = computed<any>(() => hasCenter(props.centerPath))
+const is_local = computed<boolean>(() => props.centerPath != null)
 const visible_nodes = computed<any>(() => visibleGraphNodes(graphStore.nodes, graphStore.edges, props.centerPath, props.depth))
 const visible_edges = computed<any>(() => visibleGraphEdges(graphStore.nodes, graphStore.edges, props.centerPath, props.depth))
 const center_title = computed<any>(() => centerTitle(graphStore.nodes, props.centerPath))
@@ -30,16 +30,10 @@ const emit = defineEmits<{
   RelayoutView: []
 }>()
 
-function RelayoutView(): void {
-  relayoutGraphView(graphViewRef.value!);
+function OpenPage(p: any): void {
+  tabsStore.open(p);
 
-  emit('RelayoutView')
-}
-
-function SwitchToGlobal(): void {
-  tabsStore.openGraph();
-
-  emit('SwitchToGlobal')
+  emit('OpenPage', p)
 }
 
 function FitView(): void {
@@ -48,10 +42,16 @@ function FitView(): void {
   emit('FitView')
 }
 
-function OpenPage(p: any): void {
-  tabsStore.open(p);
+function SwitchToGlobal(): void {
+  tabsStore.openGraph();
 
-  emit('OpenPage', p)
+  emit('SwitchToGlobal')
+}
+
+function RelayoutView(): void {
+  relayoutGraphView(graphViewRef.value!);
+
+  emit('RelayoutView')
 }
 
 onMounted(() => {
@@ -89,7 +89,7 @@ onMounted(() => {
         </div>
       </div>
       <div class="graph-body">
-        <GraphView class="graph-canvas" :nodes="visible_nodes" :settings="graphStore.settings" ref="graphViewRef" :loading="graphStore.loading" :edges="visible_edges" :highlightQuery="graphStore.searchQuery" @open="OpenPage" :key="'GraphView-1'" />
+        <GraphView class="graph-canvas" :nodes="visible_nodes" ref="graphViewRef" :settings="graphStore.settings" :edges="visible_edges" :highlightQuery="graphStore.searchQuery" :loading="graphStore.loading" @open="OpenPage" :key="'GraphView-1'" />
         <GraphControls :key="'GraphControls-2'" />
       </div>
       <template v-if="graphStore.error">

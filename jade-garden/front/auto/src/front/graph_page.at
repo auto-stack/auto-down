@@ -37,16 +37,16 @@ use graph_controls: GraphControls
 widget GraphPage(centerPath: ?str = None, depth: int = 1) {
     use {
         composable: useGraphStore, useTabsStore from "src/front/utils/graph_page_ext.ts"
-        fn: visibleGraphNodes, visibleGraphEdges, centerTitle, hasCenter, fitGraphView, relayoutGraphView, Globe, Maximize, RefreshCw from "src/front/utils/graph_page_ext.ts"
+        fn: visibleGraphNodes, visibleGraphEdges, centerTitle, fitGraphView, relayoutGraphView, Globe, Maximize, RefreshCw from "src/front/utils/graph_page_ext.ts"
     }
 
     msg Msg { Init, OpenPage, SwitchToGlobal, FitView, RelayoutView }
 
     computed {
-        // Original: isLocal = computed(() => !!props.centerPath). An ext
-        // Call: the DSL's `!= null` compiles to `!== undefined` (gap 47),
-        // which mis-fires on MainArea's explicit null.
-        is_local => hasCenter(.centerPath)
+        // Original: isLocal = computed(() => !!props.centerPath). Never ""
+        // here (tabs store maps the "" sentinel to None, MainArea's
+        // graphCenter ext maps absent to null), so `!= null` is equivalent.
+        is_local => .centerPath != null
         // Original: visibleNodes / visibleEdges (extension does the BFS).
         visible_nodes => visibleGraphNodes(.graphStore.nodes, .graphStore.edges, .centerPath, .depth)
         visible_edges => visibleGraphEdges(.graphStore.nodes, .graphStore.edges, .centerPath, .depth)

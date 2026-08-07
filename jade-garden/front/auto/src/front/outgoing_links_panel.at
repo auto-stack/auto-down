@@ -13,8 +13,8 @@
 // - ul/li render via dyn with string tags (not in the DSL element table).
 // - The loop variable cannot be named `link` (a DSL element keyword).
 // - The v-if / v-else-if / v-else chain becomes exclusive boolean computeds.
-// - The success/destructive dot class uses a ternary in the `style` prop
-//   (Plan 346) — emits the original's exact :class ternary binding.
+// - The success/destructive dot class is a real dynamic `class:` ternary
+//   (compiler ≥ 24f0dd16, gap 20 fix) — the original's exact binding.
 // - The openTarget flow (confirm + sequential awaits) lives in the
 //   extension (no async/await/early return in the DSL).
 
@@ -54,11 +54,8 @@ widget OutgoingLinksPanel {
                         dyn (.li_tag) {
                             class: "flex cursor-pointer items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground",
                             onclick: .OpenTarget(ol),
-                            // Plan 346: a ternary in the `style` prop emits
-                            // a :class ternary — the original's exact binding.
                             span {
-                                class: "h-1.5 w-1.5 rounded-full shrink-0",
-                                style: ol.exists ? "bg-[hsl(var(--af-success))]" : "bg-destructive"
+                                class: ol.exists ? "h-1.5 w-1.5 rounded-full shrink-0 bg-[hsl(var(--af-success))]" : "h-1.5 w-1.5 rounded-full shrink-0 bg-destructive"
                             }
                             span { class: "truncate", text ol.target_title }
                             if ol.block_id {

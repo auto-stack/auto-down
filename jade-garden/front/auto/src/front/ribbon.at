@@ -17,8 +17,8 @@
 //   the style prop's QUOTED-KEY style-map form, which emits the same
 //   :class="{ 'key': cond }" object binding (conditions must be field
 //   accesses — Calls emit null — so active/graph_active are precomputed).
-// - The theme button's conditional class uses the Plan 346 style ternary
-//   (a plain dynamic style: expr is silently dropped — README gap 20).
+// - The theme button's conditional class is a real dynamic `class:` ternary
+//   (compiler ≥ 24f0dd16, gap 20 fix).
 // - The ThemePopover child is consumed through the extension's component
 //   re-export; its close emit is heard via `onclose:` (unknown onxxx keys
 //   strip the "on" prefix → @close; Vue compiles @close to onClose, which
@@ -81,8 +81,7 @@ widget Ribbon {
             div { class: "flex-1" }
             button (type: "button") {
                 title: "Theme",
-                class: "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                style: .theme_open ? "text-primary bg-primary/10" : "",
+                class: .theme_open ? "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground text-primary bg-primary/10" : "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
                 onclick: .ToggleTheme,
                 dyn (.Palette) { class: "h-[18px] w-[18px]" }
             }

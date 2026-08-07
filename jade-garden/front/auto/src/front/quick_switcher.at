@@ -23,8 +23,8 @@
 //   v-model="query"; QueryInput is the dead fold target). Arrow/Enter
 //   handling uses key+prevent modifiers, exactly the original onKeydown's
 //   per-key preventDefault branches.
-// - The selected-row class ternary uses the style prop's Plan 346
-//   ternary form (README gap 20); ul/li render via dyn with string tags.
+// - The selected-row class ternary is a real dynamic `class:` expression
+//   (compiler ≥ 24f0dd16, gap 20 fix); ul/li render via dyn with string tags.
 
 widget QuickSwitcher {
     use {
@@ -42,9 +42,9 @@ widget QuickSwitcher {
 
     computed {
         all_files => collectFiles(.fileTreeStore.files)
-        filtered => filterFiles(.all_files.value, .query)
-        has_results => .filtered.value.length > 0
-        no_results => .filtered.value.length == 0
+        filtered => filterFiles(.all_files, .query)
+        has_results => .filtered.length > 0
+        no_results => .filtered.length == 0
         ul_tag => "ul"
         li_tag => "li"
     }
@@ -76,8 +76,7 @@ widget QuickSwitcher {
                                 class: "max-h-[50vh] overflow-y-auto py-1",
                                 for file in .filtered {
                                     dyn (.li_tag) {
-                                        class: "cursor-pointer px-3 py-1.5 text-sm",
-                                        style: file.idx == .selected_index ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/50",
+                                        class: file.idx == .selected_index ? "cursor-pointer px-3 py-1.5 text-sm bg-accent text-accent-foreground" : "cursor-pointer px-3 py-1.5 text-sm text-foreground hover:bg-accent/50",
                                         onclick: .SelectFile(file),
                                         onmouseenter: .HoverFile(file),
                                         text file.name

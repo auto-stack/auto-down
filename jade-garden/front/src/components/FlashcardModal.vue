@@ -1,7 +1,7 @@
 <!-- FlashcardModal component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText, strTruthy } from '../../auto/src/front/utils/flashcard_modal_ext'
+import { Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText } from '../../auto/src/front/utils/flashcard_modal_ext'
 
 
 const cards = ref<any[]>([])
@@ -15,7 +15,7 @@ const current = computed<any>(() => cardAt(cards.value, index.value))
 const counter_text = computed<any>(() => counterText(index.value, cards.value.length))
 const question_text = computed<any>(() => cardQuestion(current.value))
 const answer_text = computed<any>(() => cardAnswer(current.value))
-const has_error = computed<any>(() => strTruthy(error.value))
+const has_error = computed<boolean>(() => error.value !== '')
 const show_loading = computed<boolean>(() => loading.value)
 const show_error = computed<boolean>(() => !loading.value && has_error.value)
 const show_empty = computed<boolean>(() => !loading.value && !has_error.value && cards.value.length === 0)
@@ -44,16 +44,16 @@ watch(is_open, () => {
   }
 })
 
-function Reveal(): void {
-  show_answer.value = true;
-
-  emit('Reveal')
-}
-
 function update_open(v: any): void {
   v = false;
 
   emit('update:open', v)
+}
+
+function Reveal(): void {
+  show_answer.value = true;
+
+  emit('Reveal')
 }
 
 function Rate(grade: any): void {

@@ -21,16 +21,16 @@ const emit = defineEmits<{
   SetAccent: [any]
 }>()
 
-function Close(e: any): void {
-  let outside = isOutsideThemePopover(e);
-
-  emit('Close', e)
-}
-
 function SetLight(): void {
   themeStore.setMode('light');
 
   emit('SetLight')
+}
+
+function SetDark(): void {
+  themeStore.setMode('dark');
+
+  emit('SetDark')
 }
 
 function SetAccent(accent: any): void {
@@ -39,10 +39,10 @@ function SetAccent(accent: any): void {
   emit('SetAccent', accent)
 }
 
-function SetDark(): void {
-  themeStore.setMode('dark');
+function Close(e: any): void {
+  let outside = isOutsideThemePopover(e);
 
-  emit('SetDark')
+  emit('Close', e)
 }
 
 
@@ -60,11 +60,11 @@ function SetDark(): void {
               <span>Appearance</span>
             </span>
             <div class="flex rounded-lg border p-0.5">
-              <button class="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors" :class="themeStore.mode == 'light' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent'" :type="'button'" @click="SetLight">
+              <button :class="themeStore.mode == 'light' ? 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors bg-primary/10 text-primary' : 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors text-muted-foreground hover:bg-accent'" :type="'button'" @click="SetLight">
                 <component :is="(Sun) as any" class="h-3.5 w-3.5" />
                 <span>Light</span>
               </button>
-              <button class="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors" :class="themeStore.mode == 'dark' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent'" :type="'button'" @click="SetDark">
+              <button :class="themeStore.mode == 'dark' ? 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors bg-primary/10 text-primary' : 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-colors text-muted-foreground hover:bg-accent'" :type="'button'" @click="SetDark">
                 <component :is="(Moon) as any" class="h-3.5 w-3.5" />
                 <span>Dark</span>
               </button>
@@ -75,7 +75,7 @@ function SetDark(): void {
               <span>Accent</span>
             </span>
             <div class="grid grid-cols-5 gap-1.5">
-              <button class="flex h-7 items-center justify-center rounded-md border transition-all" :class="themeStore.accent == accent.key ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-muted-foreground'" :type="'button'" :title="accent.label" @click="SetAccent(accent)" v-for="accent in accents">
+              <button :class="themeStore.accent == accent.key ? 'flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary' : 'flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground'" :title="accent.label" :type="'button'" @click="SetAccent(accent)" v-for="accent in accents">
                 <span class="h-4 w-4 rounded-full" :style="({ backgroundColor: accent.color } as any)" />
               </button>
             </div>

@@ -12,9 +12,7 @@
 //   v-html stand-in (unlinked_references_panel precedent),
 // - withSearchDisplay (per-result display fields: the type ternary, the
 //   v-if="r.snippet" guard — no Call/ternary bindings in the DSL view),
-// - scheduleScrollToBlock (setTimeout + new CustomEvent + dispatchEvent),
-// - strTruthy (the error string's truthy check: `!= null` in a DSL
-//   computed emits !== undefined, which is wrong for a nullable string).
+// - scheduleScrollToBlock (setTimeout + new CustomEvent + dispatchEvent).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
@@ -76,11 +74,6 @@ export function withSearchDisplay(results: SearchResult[]): SearchResultView[] {
     has_snippet: !!r.snippet,
     snippet_html: snippetHtml(r.snippet),
   }))
-}
-
-/** Original: truthy check on the error string (v-else-if="error"). */
-export function strTruthy(s: string): boolean {
-  return !!s
 }
 
 /** Original: setTimeout(150) + window.dispatchEvent(new CustomEvent(

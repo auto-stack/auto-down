@@ -24,11 +24,6 @@ store FileTree {
     msg Msg { Load, Toggle(str), CreateFile(map), DuplicateFile(map),
               RenameFile(map), DeleteFile(str) }
 
-    computed {
-        // Suppresses the codegen's bogus all_tags injection (see README).
-        all_tags => []
-    }
-
     on {
         .Load -> {
             .loading = true

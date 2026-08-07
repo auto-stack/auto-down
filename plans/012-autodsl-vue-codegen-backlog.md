@@ -27,9 +27,10 @@
 | 7 | 45 | `expose {}` 不标记**带参** handler 为 used → handler 不生成，引用处静默退化为裸名，命中 `window.open` 全局 | ✅ DONE（批次 A）：expose 按 base pattern 计入 used + R009 告警兜底 |
 | 8 | 19 | `.remove(x)` 被映射为 `.splice(x, 1)`（**任意接收者**）——与 `.contains`→`.includes` 同类 | ✅ DONE（批次 A）：类型门控映射，facade/composable 接收者透传 + R010 Info |
 | 9 | 47 | `.x != null` 编译为 `!== undefined` —— 父组件显式传 null 时语义反转，静默错误 | ✅ DONE（批次 A）：补 `Expr::Null` arm + 松散 `!= null` 语义 |
-| 10 | — | ✅ DONE（5.0b f6f0c059）：widget 内 slot outlet 缺失，`slot` 被静默编译成 `<div/>`、子内容被吞且无告警 | — |
+| 10 | — | ✅ DONE（5.0b f6f0c059）：widget 内 slot outlet 缺失，`slot` 被静默编译成 `<div/>`、子内容被吞且无告警（含无 outlet 却传子内容时的告警，033 实证） | — |
 | 11 | — | `label`/`select` 元素静态 `class:` 在 shadcn 路径静默丢弃（plan 337 drift guard 注册 Label 副作用，jade regen 实证抓出，e2e 未捕获） | ✅ DONE（280e50c2）：push_native_classes + R011 告警（~75 个 push_style_class 分支）；**遗留**：其余 ~130 个 shadcn 子组件分支仍静默丢 class，需单独批次 |
-| 12 | — | `oninput: .H({ q: .query })` 中**状态字段**作 map 字面量实参 → 发射 `this.query`（Vue 3 模板表达式中 `this` 无效，静默运行期错误；批次 C 探针发现，生产实证模式用循环变量故未踩） | 🔲 OPEN：建议下一批次以真实 parse 路径测试复现后修复 |
+| 12 | — | `oninput: .H({ q: .query })` 中**状态字段**作 map 字面量实参 → 发射 `this.query`（Vue 3 模板表达式中 `this` 无效，静默运行期错误；批次 C 探针发现，生产实证模式用循环变量故未踩） | 🔲 OPEN：建议下一批次以真实 parse 路径测试复现后修复（批次 D 进行中） |
+| 13 | — | `class:` 三种坏形式（jade 清理批次探针发现，2026-08-07）：① 同元素第二个 `class:` **静默覆盖**静态 class（无告警）；② map 形式键不引号化 → 输出语法错误；③ `+` 拼接与数组形式发射 `null` | 🔲 OPEN：① 告警或合并；②③ 正确发射或拒绝+告警（批次 D 或下一批） |
 
 ## P1 假绿/测试缺口类
 

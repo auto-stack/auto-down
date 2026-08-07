@@ -41,6 +41,14 @@ const emit = defineEmits<{
 
 import type { FileNode } from '@/lib/api'
 
+function RightClick(e: any): void {
+  menu_x.value = e.clientX;
+  menu_y.value = e.clientY;
+  menu_open.value = true;
+
+  emit('RightClick', e)
+}
+
 function Toggle(): void {
   if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
   }
@@ -48,20 +56,6 @@ function Toggle(): void {
   }
 
   emit('Toggle')
-}
-
-function CtxRename(): void {
-  menu_open.value = false;
-  ctxRename(fileTreeStore, props.node);
-
-  emit('CtxRename')
-}
-
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
-
-  emit('CtxNewFolder')
 }
 
 function CtxDuplicate(): void {
@@ -78,19 +72,25 @@ function CtxNewFile(): void {
   emit('CtxNewFile')
 }
 
-function RightClick(e: any): void {
-  menu_x.value = e.clientX;
-  menu_y.value = e.clientY;
-  menu_open.value = true;
-
-  emit('RightClick', e)
-}
-
 function CtxDelete(): void {
   menu_open.value = false;
   ctxDelete(fileTreeStore, props.node);
 
   emit('CtxDelete')
+}
+
+function CtxRename(): void {
+  menu_open.value = false;
+  ctxRename(fileTreeStore, props.node);
+
+  emit('CtxRename')
+}
+
+function CtxNewFolder(): void {
+  menu_open.value = false;
+  ctxNewFolder(fileTreeStore, props.node);
+
+  emit('CtxNewFolder')
 }
 
 onMounted(() => {
@@ -104,7 +104,7 @@ onMounted(() => {
 
 <template>
     <div>
-      <div class="group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors" :class="is_active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent hover:text-foreground'" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @contextmenu.prevent="RightClick($event)" @click="Toggle">
+      <div :class="is_active ? 'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors bg-primary/10 text-primary' : 'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors text-foreground hover:bg-accent hover:text-foreground'" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @click="Toggle" @contextmenu.prevent="RightClick($event)">
         <span class="flex h-4 w-4 items-center justify-center text-muted-foreground/70">
           <template v-if="show_right">
             <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
@@ -113,13 +113,13 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :active="is_active" :expanded="is_expanded" :is_dir="node.is_dir" />
+        <component :is="(NodeIcon) as any" :is_dir="node.is_dir" :active="is_active" :expanded="is_expanded" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :level="next_level" :node="child" :key="child.path"  v-for="child in node.children"/>
+        <FileTreeNode :level="next_level" :key="child.path" :node="child"  v-for="child in node.children"/>
       </template>
       <component :is="(BodyTeleport) as any">
         <template v-if="menu_open">

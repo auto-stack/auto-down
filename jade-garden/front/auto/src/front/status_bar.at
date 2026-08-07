@@ -16,8 +16,8 @@
 // - The original's watch(() => tabs.activeTab?.path, fetch, { immediate })
 //   maps to the watch block's .immediate modifier on the current_path
 //   computed; the empty-path early return becomes exclusive if guards.
-// - The dirty-amber class uses the Plan 346 style ternary (a plain dynamic
-//   style: expr is silently dropped — README gap 20).
+// - The dirty-amber class is a real dynamic `class:` ternary (compiler ≥
+//   24f0dd16, gap 20 fix).
 // - This widget has no view events, so it declares no msg/on blocks; the
 //   backlink-count fetch lives entirely in the watch block.
 
@@ -35,17 +35,17 @@ widget StatusBar {
         ws_name => workspaceName(.workspaceStore.root)
         ws_title => rootTitle(.workspaceStore.root)
         body => tabBody(.tabsStore.activeTab)
-        word_count => wordCount(.body.value)
-        char_count => charCount(.body.value)
-        link_count => linkCount(.body.value)
+        word_count => wordCount(.body)
+        char_count => charCount(.body)
+        link_count => linkCount(.body)
         saving => tabSaving(.tabsStore.activeTab)
         dirty => tabDirty(.tabsStore.activeTab)
-        save_label => saveLabel(.saving.value, .dirty.value)
+        save_label => saveLabel(.saving, .dirty)
         current_path => tabPath(.tabsStore.activeTab)
         backlinks_text => plural(.backlink_count, "backlink")
-        words_text => plural(.word_count.value, "word")
-        chars_text => plural(.char_count.value, "char")
-        links_text => plural(.link_count.value, "link")
+        words_text => plural(.word_count, "word")
+        chars_text => plural(.char_count, "char")
+        links_text => plural(.link_count, "link")
         tabs_text => plural(.tabsStore.tabs.length, "tab")
     }
 
@@ -63,7 +63,7 @@ widget StatusBar {
             div {
                 class: "flex items-center gap-3",
                 span {
-                    style: .dirty ? "text-amber-500" : "",
+                    class: .dirty ? "text-amber-500" : "",
                     text .save_label
                 }
                 span { class: "text-border", text "|" }

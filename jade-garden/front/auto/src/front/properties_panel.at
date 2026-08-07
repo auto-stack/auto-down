@@ -31,8 +31,8 @@
 //   label, and the list placeholder are precomputed in place by the
 //   extension's withPropDisplay — no Call/ternary bindings in the view,
 //   and handler write-backs still hit the real entry objects.
-// - The boolean pill's conditional class uses the style prop's Plan 346
-//   ternary form (README gap 20), replicating the original's truthy
+// - The boolean pill's conditional class is a real dynamic `class:` ternary
+//   (compiler ≥ 24f0dd16, gap 20 fix), replicating the original's truthy
 //   :class check on entry.value.
 
 widget PropertiesPanel {
@@ -110,8 +110,7 @@ widget PropertiesPanel {
                                 class: "flex items-center gap-1",
                                 if entry.is_bool {
                                     button (type: "button") {
-                                        class: "h-6 rounded border px-2 text-xs transition-colors",
-                                        style: entry.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground",
+                                        class: entry.value ? "h-6 rounded border px-2 text-xs transition-colors border-primary bg-primary/10 text-primary" : "h-6 rounded border px-2 text-xs transition-colors border-border bg-background text-muted-foreground",
                                         onclick: .ToggleBool(entry),
                                         text entry.bool_label
                                     }

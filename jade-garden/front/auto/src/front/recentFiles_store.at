@@ -19,11 +19,6 @@ store RecentFiles {
     // Record takes one map (msg payloads are single-typed only).
     msg Msg { Record(map), Remove(str), Clear }
 
-    computed {
-        // Suppresses the codegen's bogus all_tags injection (see README).
-        all_tags => []
-    }
-
     on {
         .Record(args) -> {
             .files = recordRecentFile(.files, args.path, args.title)

@@ -10,10 +10,7 @@
 //   `current?.question || current?.raw` optional-chain fallbacks — no
 //   optional chaining in the DSL),
 // - counterText (the `{{ index + 1 }} / {{ cards.length }}` header — no
-//   arithmetic in view text),
-// - strTruthy (the error string's truthy check — `!= null` in a DSL
-//   computed emits !== undefined, wrong for a nullable string;
-//   search_panel precedent).
+//   arithmetic in view text).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
@@ -71,9 +68,4 @@ export function cardAnswer(card: Card | null): string {
 /** Original header: {{ index + 1 }} / {{ cards.length }}. */
 export function counterText(index: number, count: number): string {
   return `${index + 1} / ${count}`
-}
-
-/** Original: truthy check on the error string (v-else-if="error"). */
-export function strTruthy(s: string): boolean {
-  return !!s
 }

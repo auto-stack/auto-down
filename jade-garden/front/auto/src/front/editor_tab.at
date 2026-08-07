@@ -87,12 +87,12 @@ widget EditorTab(path: str) {
         // Original: tab = computed(() => tabs.tabs.find(t => t.path === props.path)).
         tab => findTab(.tabsStore.tabs, .path)
         // Original: body = computed(() => tab.value?.body ?? '').
-        body => tabBody(.tab.value)
+        body => tabBody(.tab)
         // Original template: :page-title="tab?.title".
-        page_title => tabTitle(.tab.value)
+        page_title => tabTitle(.tab)
         // Original: v-show="!tab?.loaded" on the loading overlay (display
         // '' keeps the CSS flex class, exactly like v-show's visible state).
-        overlay_display => overlayDisplay(.tab.value)
+        overlay_display => overlayDisplay(.tab)
     }
 
     view {

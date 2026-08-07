@@ -47,22 +47,16 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function NextItem(): void {
-  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
-
-  emit('NextItem')
-}
-
 function CloseOverlay(): void {
   open.value = false;
 
   emit('CloseOverlay')
 }
 
-function HoverItem(item: any): void {
-  selected_index.value = item.idx;
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
 
-  emit('HoverItem', item)
+  emit('PrevItem')
 }
 
 function ExecuteSelected(): void {
@@ -74,16 +68,16 @@ function ExecuteSelected(): void {
   emit('ExecuteSelected')
 }
 
+function HoverItem(item: any): void {
+  selected_index.value = item.idx;
+
+  emit('HoverItem', item)
+}
+
 function QueryInput(e: any): void {
   query.value = e.target.value;
 
   emit('QueryInput', e)
-}
-
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
-
-  emit('PrevItem')
 }
 
 function Execute(item: any): void {
@@ -91,6 +85,12 @@ function Execute(item: any): void {
   open.value = false;
 
   emit('Execute', item)
+}
+
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
+
+  emit('NextItem')
 }
 
 onMounted(() => {
@@ -118,19 +118,19 @@ onUnmounted(() => {
               <span class="text-xs text-muted-foreground">
                 <span>⌘/Ctrl+P</span>
               </span>
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Type a command or recent file...'" v-model="query" @keydown.down.prevent="NextItem" @keydown.up.prevent="PrevItem" @keydown.enter.prevent="ExecuteSelected" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Type a command or recent file...'" :type="'text'" v-model="query" @keydown.down.prevent="NextItem" @keydown.enter.prevent="ExecuteSelected" @keydown.up.prevent="PrevItem" />
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
-                <component :is="(li_tag) as any" class="cursor-pointer px-3 py-2 text-sm" :class="item.idx == selected_index ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/50'" @mouseenter="HoverItem(item)" @click="Execute(item)" v-for="item in filtered">
+                <component :is="(li_tag) as any" :class="item.idx == selected_index ? 'cursor-pointer px-3 py-2 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-accent/50'" @click="Execute(item)" @mouseenter="HoverItem(item)" v-for="item in filtered">
                   <div class="flex items-center gap-2">
-                    <PaletteIcon :class="'h-4 w-4 shrink-0 opacity-70'" :icon="item.icon" :key="'PaletteIcon-1-' + (item?.id ?? item)" />
+                    <PaletteIcon :icon="item.icon" :class="'h-4 w-4 shrink-0 opacity-70'" :key="'PaletteIcon-1-' + (item?.id ?? item)" />
                     <div class="min-w-0 flex-1">
                       <div class="truncate">
                         <span>{{ item.title }}</span>
                       </div>
                       <template v-if="item.has_subtitle">
-                        <div class="truncate text-[11px]" :class="item.idx == selected_index ? 'text-accent-foreground/70' : 'text-muted-foreground'">
+                        <div :class="item.idx == selected_index ? 'truncate text-[11px] text-accent-foreground/70' : 'truncate text-[11px] text-muted-foreground'">
                           <span>{{ item.subtitle }}</span>
                         </div>
                       </template>

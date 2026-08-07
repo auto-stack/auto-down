@@ -31,8 +31,8 @@ widget OutlinePanel {
         // Original: computed(() => blocks.activeBlocks.filter(heading)),
         // with the paddingLeft style precomputed per heading.
         headings => outlineHeadings(.blocksStore.activeBlocks)
-        show_list => .headings.value.length > 0
-        show_empty => .headings.value.length == 0
+        show_list => .headings.length > 0
+        show_empty => .headings.length == 0
         ul_tag => "ul"
         li_tag => "li"
     }

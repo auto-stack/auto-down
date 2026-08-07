@@ -25,10 +25,6 @@ store Tabs {
 
     computed {
         active_tab => .tabs.find(t => t.path == .active_path)
-        // The store codegen hardcodes an `all_tags` getter injection
-        // referencing a `notes` state var (notes-app-specific); declaring
-        // any all_tags computed suppresses that injection.
-        all_tags => []
     }
 
     on {

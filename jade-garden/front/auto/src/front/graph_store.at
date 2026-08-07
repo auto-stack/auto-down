@@ -28,11 +28,6 @@ store Graph {
     // { path, depth }.
     msg Msg { Load, SaveSettings, ToggleView, OpenLocal(map), ShowGlobal }
 
-    computed {
-        // Suppresses the codegen's bogus all_tags injection (see README).
-        all_tags => []
-    }
-
     on {
         .Load -> {
             .loading = true

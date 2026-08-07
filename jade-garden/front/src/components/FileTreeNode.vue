@@ -41,28 +41,11 @@ const emit = defineEmits<{
 
 import type { FileNode } from '@/lib/api'
 
-function RightClick(e: any): void {
-  menu_x.value = e.clientX;
-  menu_y.value = e.clientY;
-  menu_open.value = true;
-
-  emit('RightClick', e)
-}
-
-function Toggle(): void {
-  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
-  }
-  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
-  }
-
-  emit('Toggle')
-}
-
-function CtxDuplicate(): void {
+function CtxNewFolder(): void {
   menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
+  ctxNewFolder(fileTreeStore, props.node);
 
-  emit('CtxDuplicate')
+  emit('CtxNewFolder')
 }
 
 function CtxNewFile(): void {
@@ -72,11 +55,26 @@ function CtxNewFile(): void {
   emit('CtxNewFile')
 }
 
+function CtxDuplicate(): void {
+  menu_open.value = false;
+  ctxDuplicate(fileTreeStore, props.node);
+
+  emit('CtxDuplicate')
+}
+
 function CtxDelete(): void {
   menu_open.value = false;
   ctxDelete(fileTreeStore, props.node);
 
   emit('CtxDelete')
+}
+
+function RightClick(e: any): void {
+  menu_x.value = e.clientX;
+  menu_y.value = e.clientY;
+  menu_open.value = true;
+
+  emit('RightClick', e)
 }
 
 function CtxRename(): void {
@@ -86,11 +84,13 @@ function CtxRename(): void {
   emit('CtxRename')
 }
 
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
+function Toggle(): void {
+  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
+  }
+  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
+  }
 
-  emit('CtxNewFolder')
+  emit('Toggle')
 }
 
 onMounted(() => {

@@ -47,37 +47,10 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function CloseOverlay(): void {
-  open.value = false;
-
-  emit('CloseOverlay')
-}
-
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
-
-  emit('PrevItem')
-}
-
-function ExecuteSelected(): void {
-  let item = filtered.value[selected_index.value];
-  if (item != null) {runPaletteItem(item, tabsStore);
-  open.value = false;
-  }
-
-  emit('ExecuteSelected')
-}
-
 function HoverItem(item: any): void {
   selected_index.value = item.idx;
 
   emit('HoverItem', item)
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
 }
 
 function Execute(item: any): void {
@@ -91,6 +64,33 @@ function NextItem(): void {
   selected_index.value = nextIndex(selected_index.value, filtered.value.length);
 
   emit('NextItem')
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
+function CloseOverlay(): void {
+  open.value = false;
+
+  emit('CloseOverlay')
+}
+
+function ExecuteSelected(): void {
+  let item = filtered.value[selected_index.value];
+  if (item != null) {runPaletteItem(item, tabsStore);
+  open.value = false;
+  }
+
+  emit('ExecuteSelected')
+}
+
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
 }
 
 onMounted(() => {
@@ -118,13 +118,13 @@ onUnmounted(() => {
               <span class="text-xs text-muted-foreground">
                 <span>⌘/Ctrl+P</span>
               </span>
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Type a command or recent file...'" :type="'text'" v-model="query" @keydown.down.prevent="NextItem" @keydown.enter.prevent="ExecuteSelected" @keydown.up.prevent="PrevItem" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Type a command or recent file...'" v-model="query" @keydown.enter.prevent="ExecuteSelected" @keydown.down.prevent="NextItem" @keydown.up.prevent="PrevItem" />
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
                 <component :is="(li_tag) as any" :class="item.idx == selected_index ? 'cursor-pointer px-3 py-2 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-accent/50'" @click="Execute(item)" @mouseenter="HoverItem(item)" v-for="item in filtered">
                   <div class="flex items-center gap-2">
-                    <PaletteIcon :icon="item.icon" :class="'h-4 w-4 shrink-0 opacity-70'" :key="'PaletteIcon-1-' + (item?.id ?? item)" />
+                    <PaletteIcon :class="'h-4 w-4 shrink-0 opacity-70'" :icon="item.icon" :key="'PaletteIcon-1-' + (item?.id ?? item)" />
                     <div class="min-w-0 flex-1">
                       <div class="truncate">
                         <span>{{ item.title }}</span>

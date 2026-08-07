@@ -43,23 +43,17 @@ watch(fm_json, () => {
   entries.value = syncEntries(tabsStore);
 })
 
-function Commit(entry: any): void {
-  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
+function Cancel(): void {
+  entries.value = syncEntries(tabsStore);
 
-  emit('Commit')
+  emit('Cancel')
 }
 
-function KeyChanged(args: any): void {
-  args.entry.key = eventValue(args.evt);
-
-  emit('KeyChanged', args)
-}
-
-function ValueChanged(args: any): void {
-  args.entry.value = eventValue(args.evt);
+function ToggleBool(entry: any): void {
+  entry.value = !entry.value;
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
-  emit('ValueChanged', args)
+  emit('ToggleBool', entry)
 }
 
 function SetType(args: any): void {
@@ -69,11 +63,30 @@ function SetType(args: any): void {
   emit('SetType', args)
 }
 
+function ValueChanged(args: any): void {
+  args.entry.value = eventValue(args.evt);
+  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
+
+  emit('ValueChanged', args)
+}
+
 function RemoveProperty(idx: any): void {
   entries.value.splice(idx, 1);
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
   emit('RemoveProperty', idx)
+}
+
+function NewValueInput(e: any): void {
+  new_value.value = e.target.value;
+
+  emit('NewValueInput', e)
+}
+
+function KeyChanged(args: any): void {
+  args.entry.key = eventValue(args.evt);
+
+  emit('KeyChanged', args)
 }
 
 function SaveNow(): void {
@@ -90,23 +103,10 @@ function NewKeyInput(e: any): void {
   emit('NewKeyInput', e)
 }
 
-function NewValueInput(e: any): void {
-  new_value.value = e.target.value;
-
-  emit('NewValueInput', e)
-}
-
-function ToggleBool(entry: any): void {
-  entry.value = !entry.value;
+function Commit(entry: any): void {
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
-  emit('ToggleBool', entry)
-}
-
-function Cancel(): void {
-  entries.value = syncEntries(tabsStore);
-
-  emit('Cancel')
+  emit('Commit')
 }
 
 function AddProperty(): void {
@@ -151,7 +151,7 @@ onMounted(() => {
         <div class="space-y-2">
           <div class="group" v-for="entry in display_entries">
             <div class="mb-0.5 flex items-center justify-between">
-              <input class="w-full bg-transparent text-[11px] font-medium text-muted-foreground outline-none" :value="entry.key" :type="'text'" @change="Commit(entry)" @input="KeyChanged({ entry: entry, evt: $event })" />
+              <input class="w-full bg-transparent text-[11px] font-medium text-muted-foreground outline-none" :type="'text'" :value="entry.key" @input="KeyChanged({ entry: entry, evt: $event })" @change="Commit(entry)" />
               <button class="invisible flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:visible" :type="'button'" @click="RemoveProperty(entry.idx)">
                 <component :is="(Trash2) as any" class="h-3 w-3" />
               </button>
@@ -163,10 +163,10 @@ onMounted(() => {
                 </button>
               </template>
               <template v-if="entry.is_date">
-                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :value="entry.value" :type="'date'" @input="ValueChanged({ entry: entry, evt: $event })" />
+                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'date'" :value="entry.value" @input="ValueChanged({ entry: entry, evt: $event })" />
               </template>
               <template v-if="entry.is_other">
-                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="entry.placeholder_text" :type="'text'" :value="entry.value" @input="ValueChanged({ entry: entry, evt: $event })" />
+                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="entry.placeholder_text" :value="entry.value" :type="'text'" @input="ValueChanged({ entry: entry, evt: $event })" />
               </template>
               <component :is="(select_tag) as any" class="h-6 rounded border bg-background px-1 text-[10px] uppercase text-muted-foreground outline-none" :value="entry.type" @change="SetType({ idx: entry.idx, evt: $event })">
                 <component :is="(option_tag) as any" :value="'text'">
@@ -195,8 +195,8 @@ onMounted(() => {
         </p>
       </template>
       <div class="mt-3 flex items-center gap-1 border-t border-border/50 pt-2">
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'key'" v-model="new_key" :type="'text'" @keydown.enter="AddProperty" />
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" v-model="new_value" :placeholder="'value'" :type="'text'" @keydown.enter="AddProperty" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'text'" :placeholder="'key'" v-model="new_key" @keydown.enter="AddProperty" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'value'" :type="'text'" v-model="new_value" @keydown.enter="AddProperty" />
         <button class="flex h-6 w-6 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground hover:bg-accent hover:text-foreground" :type="'button'" @click="AddProperty">
           <component :is="(Plus) as any" class="h-3.5 w-3.5" />
         </button>

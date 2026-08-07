@@ -19,14 +19,6 @@ const emit = defineEmits<{
   ChooseDir: []
 }>()
 
-function ChooseDir(): void {
-  let set_path = (v: any) => { path.value = v;
-   };
-  chooseWorkspaceDir(set_path);
-
-  emit('ChooseDir')
-}
-
 function Open(): void {
   let p = path.value.trim();
   if (p != '') {busy.value = true;
@@ -43,6 +35,14 @@ function PathInput(e: any): void {
   path.value = e.target.value;
 
   emit('PathInput', e)
+}
+
+function ChooseDir(): void {
+  let set_path = (v: any) => { path.value = v;
+   };
+  chooseWorkspaceDir(set_path);
+
+  emit('ChooseDir')
 }
 
 

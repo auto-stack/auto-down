@@ -21,18 +21,6 @@ const emit = defineEmits<{
   SetAccent: [any]
 }>()
 
-function SetLight(): void {
-  themeStore.setMode('light');
-
-  emit('SetLight')
-}
-
-function SetDark(): void {
-  themeStore.setMode('dark');
-
-  emit('SetDark')
-}
-
 function SetAccent(accent: any): void {
   themeStore.setAccent(accent.key);
 
@@ -43,6 +31,18 @@ function Close(e: any): void {
   let outside = isOutsideThemePopover(e);
 
   emit('Close', e)
+}
+
+function SetLight(): void {
+  themeStore.setMode('light');
+
+  emit('SetLight')
+}
+
+function SetDark(): void {
+  themeStore.setMode('dark');
+
+  emit('SetDark')
 }
 
 
@@ -75,7 +75,7 @@ function Close(e: any): void {
               <span>Accent</span>
             </span>
             <div class="grid grid-cols-5 gap-1.5">
-              <button :class="themeStore.accent == accent.key ? 'flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary' : 'flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground'" :title="accent.label" :type="'button'" @click="SetAccent(accent)" v-for="accent in accents">
+              <button :class="themeStore.accent == accent.key ? 'flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary' : 'flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground'" :type="'button'" :title="accent.label" @click="SetAccent(accent)" v-for="accent in accents">
                 <span class="h-4 w-4 rounded-full" :style="({ backgroundColor: accent.color } as any)" />
               </button>
             </div>

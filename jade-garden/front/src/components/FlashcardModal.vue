@@ -44,12 +44,6 @@ watch(is_open, () => {
   }
 })
 
-function update_open(v: any): void {
-  v = false;
-
-  emit('update:open', v)
-}
-
 function Reveal(): void {
   show_answer.value = true;
 
@@ -75,6 +69,12 @@ function Rate(grade: any): void {
   }
 
   emit('Rate', grade)
+}
+
+function update_open(v: any): void {
+  v = false;
+
+  emit('update:open', v)
 }
 
 onMounted(() => {

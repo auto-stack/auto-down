@@ -11,14 +11,14 @@ const tabsStore = useTabsStore()
 const fileTreeStore = useFileTreeStore()
 
 
-const hover_block = ref<any>(undefined)
-const hover_handle = ref<any>(undefined)
-const debounced_save = ref<any>(undefined)
-const load_block = ref<any>(undefined)
-const asset_upload = ref<any>(undefined)
-const run_query = ref<any>(undefined)
-const extra_slash = ref<any>(undefined)
-const open_wiki_link = ref<any>(undefined)
+const hover_block = ref<any>(null)
+const hover_handle = ref<any>(null)
+const debounced_save = ref<any>(null)
+const load_block = ref<any>(null)
+const asset_upload = ref<any>(null)
+const run_query = ref<any>(null)
+const extra_slash = ref<any>(null)
+const open_wiki_link = ref<any>(null)
 
 const editorRef = ref<any>(null)
 
@@ -99,7 +99,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell :class="'h-full w-full'" :extraSlashItems="extra_slash" ref="editorRef" :placeholder="'Start typing...'" :openWikiLink="open_wiki_link" :content="body" :assetUpload="asset_upload" :pageTitle="page_title" :loadBlock="load_block" :showActions="false" :runQuery="run_query" :key="'EditorShell-1'" @update="OnUpdate" />
+      <EditorShell :openWikiLink="open_wiki_link" :extraSlashItems="extra_slash" ref="editorRef" :content="body" :runQuery="run_query" :placeholder="'Start typing...'" :showActions="false" :assetUpload="asset_upload" :loadBlock="load_block" :pageTitle="page_title" :class="'h-full w-full'" :key="'EditorShell-1'" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

@@ -19,13 +19,13 @@ const props = defineProps<{
   highlightQuery?: string
 }>()
 
-import type { GraphSettings } from '@/lib/api'
-
 const emit = defineEmits<{
   Fit: []
   Relayout: []
   open: [string]
 }>()
+
+import type { GraphNode, GraphEdge, GraphSettings } from '@/lib/api'
 
 watch(els, () => {
   updateGraphElements(handle.value, els.value, props.settings, props.highlightQuery);
@@ -39,12 +39,6 @@ watch(() => props.highlightQuery, () => {
   applyGraphHighlight(handle.value, props.highlightQuery);
 })
 
-function Fit(): void {
-  graphFit(handle.value);
-
-  emit('Fit')
-}
-
 function Relayout(): void {
   graphRelayout(handle.value, props.settings);
 
@@ -54,6 +48,12 @@ function Relayout(): void {
 function open(p: any): void {
 
   emit('open', p)
+}
+
+function Fit(): void {
+  graphFit(handle.value);
+
+  emit('Fit')
 }
 
 onMounted(() => {

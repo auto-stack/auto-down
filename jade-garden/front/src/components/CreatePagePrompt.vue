@@ -16,14 +16,14 @@ const emit = defineEmits<{
   Cancel: []
 }>()
 
-function Cancel(): void {
-
-  emit('Cancel')
-}
-
 function Create(): void {
 
   emit('Create')
+}
+
+function Cancel(): void {
+
+  emit('Cancel')
 }
 
 

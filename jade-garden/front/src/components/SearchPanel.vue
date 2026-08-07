@@ -12,7 +12,7 @@ const query = ref<string>('')
 const results = ref<any[]>([])
 const loading = ref<boolean>(false)
 const error = ref<string>('')
-const debounced_search = ref<any>(undefined)
+const debounced_search = ref<any>(null)
 
 const display_results = computed<any>(() => withSearchDisplay(results.value))
 const has_query = computed<boolean>(() => query.value.trim().length > 0)
@@ -74,7 +74,7 @@ onMounted(() => {
     <div class="flex h-full flex-col p-3">
       <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
         <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" v-model="query" :placeholder="'Search pages and blocks...'" />
+        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Search pages and blocks...'" v-model="query" />
       </div>
       <template v-if="show_loading">
         <div class="mt-4 text-center text-xs text-muted-foreground">
@@ -101,7 +101,7 @@ onMounted(() => {
               </span>
             </div>
             <template v-if="r.has_snippet">
-              <HtmlDiv :html="r.snippet_html" :class="'mt-0.5 pl-5 text-xs text-muted-foreground'" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+              <HtmlDiv :class="'mt-0.5 pl-5 text-xs text-muted-foreground'" :html="r.snippet_html" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
             </template>
           </component>
         </component>

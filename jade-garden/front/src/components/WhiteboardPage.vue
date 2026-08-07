@@ -9,8 +9,8 @@ const tabsStore = useTabsStore()
 
 const doc = ref<any>({})
 const loading = ref<boolean>(false)
-const error = ref<any>(undefined)
-const selected_id = ref<any>(undefined)
+const error = ref<any>(null)
+const selected_id = ref<any>(null)
 
 const shape_list = computed<any>(() => shapeList(doc.value, selected_id.value))
 const show_error = computed<any>(() => showError(loading.value, error.value))
@@ -28,11 +28,11 @@ const emit = defineEmits<{
   Deselect: []
 }>()
 
-function UpdateLabel(args: any): void {
-  args.shape.label = readLabel(args.evt);
+function AddShape(): void {
+  addNoteShape(doc.value);
   saveWhiteboard(tabsStore, props.path, doc.value);
 
-  emit('UpdateLabel', args)
+  emit('AddShape')
 }
 
 function Deselect(): void {
@@ -47,17 +47,17 @@ function Select(sid: any): void {
   emit('Select', sid)
 }
 
-function AddShape(): void {
-  addNoteShape(doc.value);
-  saveWhiteboard(tabsStore, props.path, doc.value);
-
-  emit('AddShape')
-}
-
 function OpenTarget(shape: any): void {
   openShapeTarget(tabsStore, shape);
 
   emit('OpenTarget', shape)
+}
+
+function UpdateLabel(args: any): void {
+  args.shape.label = readLabel(args.evt);
+  saveWhiteboard(tabsStore, props.path, doc.value);
+
+  emit('UpdateLabel', args)
 }
 
 onMounted(() => {
@@ -95,7 +95,7 @@ onMounted(() => {
         </template>
         <template v-if="show_canvas">
           <div class="absolute inset-0" @click="Deselect">
-            <div class="absolute rounded-md border bg-card p-2 shadow-sm" :class="{ 'ring-2 ring-primary': item.selected }" :key="item.sid" :style="({ left: item.s_left, top: item.s_top, width: item.s_width, height: item.s_height } as any)" @click.stop="Select(item.sid)" @dblclick="OpenTarget(item.shape)" v-for="item in shape_list">
+            <div class="absolute rounded-md border bg-card p-2 shadow-sm" :class="{ 'ring-2 ring-primary': item.selected }" :key="item.sid" :style="({ left: item.s_left, top: item.s_top, width: item.s_width, height: item.s_height } as any)" @dblclick="OpenTarget(item.shape)" @click.stop="Select(item.sid)" v-for="item in shape_list">
               <div class="h-full w-full overflow-hidden text-xs outline-none" :contenteditable="'true'" @blur="UpdateLabel({ shape: item.shape, evt: $event })">
                 <span>{{ item.shape.label }}</span>
               </div>

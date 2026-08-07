@@ -18,7 +18,7 @@ const is_expanded = computed<any>(() => isNodeExpanded(fileTreeStore, props.node
 const is_active = computed<boolean>(() => tabsStore.activePath === props.node.path)
 const show_right = computed<boolean>(() => props.node.is_dir && !is_expanded.value)
 const show_down = computed<boolean>(() => props.node.is_dir && is_expanded.value)
-const show_children = computed<boolean>(() => props.node.is_dir && is_expanded.value && props.node.children !== undefined)
+const show_children = computed<boolean>(() => props.node.is_dir && is_expanded.value && props.node.children != null)
 const next_level = computed<number>(() => props.level + 1)
 const indent_left = computed<any>(() => nodeIndent(props.level))
 const menu_left = computed<any>(() => px(menu_x.value))
@@ -28,8 +28,6 @@ const props = defineProps<{
   node: FileNode
   level: number
 }>()
-
-import type { FileNode } from '@/lib/api'
 
 const emit = defineEmits<{
   Toggle: []
@@ -41,11 +39,15 @@ const emit = defineEmits<{
   CtxDelete: []
 }>()
 
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
+import type { FileNode } from '@/lib/api'
 
-  emit('CtxNewFolder')
+function Toggle(): void {
+  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
+  }
+  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
+  }
+
+  emit('Toggle')
 }
 
 function CtxRename(): void {
@@ -53,6 +55,20 @@ function CtxRename(): void {
   ctxRename(fileTreeStore, props.node);
 
   emit('CtxRename')
+}
+
+function CtxNewFolder(): void {
+  menu_open.value = false;
+  ctxNewFolder(fileTreeStore, props.node);
+
+  emit('CtxNewFolder')
+}
+
+function CtxDuplicate(): void {
+  menu_open.value = false;
+  ctxDuplicate(fileTreeStore, props.node);
+
+  emit('CtxDuplicate')
 }
 
 function CtxNewFile(): void {
@@ -68,22 +84,6 @@ function RightClick(e: any): void {
   menu_open.value = true;
 
   emit('RightClick', e)
-}
-
-function CtxDuplicate(): void {
-  menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
-
-  emit('CtxDuplicate')
-}
-
-function Toggle(): void {
-  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
-  }
-  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
-  }
-
-  emit('Toggle')
 }
 
 function CtxDelete(): void {
@@ -104,7 +104,7 @@ onMounted(() => {
 
 <template>
     <div>
-      <div class="group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors" :class="is_active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent hover:text-foreground'" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @click="Toggle" @contextmenu.prevent="RightClick($event)">
+      <div class="group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors" :class="is_active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent hover:text-foreground'" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @contextmenu.prevent="RightClick($event)" @click="Toggle">
         <span class="flex h-4 w-4 items-center justify-center text-muted-foreground/70">
           <template v-if="show_right">
             <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
@@ -119,7 +119,7 @@ onMounted(() => {
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :node="child" :level="next_level" :key="child.path"  v-for="child in node.children"/>
+        <FileTreeNode :level="next_level" :node="child" :key="child.path"  v-for="child in node.children"/>
       </template>
       <component :is="(BodyTeleport) as any">
         <template v-if="menu_open">

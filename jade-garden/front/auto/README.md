@@ -116,12 +116,12 @@ handler 体内实证可用：`var` 局部变量、if（无 else，用两个互�
 
 ### 重新生成（store）
 
-**多 store 项目的限制（Phase 5.1 批量翻译实证）**：编译器每次 build 只
-发射**最后编译的那个 .at 文件**里的 store（`generate_component_from_file`
-每个文件编译前清空 STORE_EXTRA_FILES 线程局部存储；增量扫描会编译所有
-.at，线程局部最终只剩最后一个文件的产物）。规避：**一次只留一个
-`*_store.at`**——其余临时移出 `src/front/`，build，sed 拷贝，再移回。
-`gen/front/vue/src/stores/` 跨 build 保留，gen 侧 vue-tsc 不受影响。
+**gap 9a 已在上游修复（auto-lang ≥ 280e50c2，2026-08-07 全量 regen
+实证）**：单次全量 `auto build` 现在正确发射**全部 9 个** store
+composable（输出里每个 store 各一行 `✓ Store composable:`），无需再
+逐文件 build。旧限制（每次 build 只发射最后编译的 .at 文件里的 store，
+Phase 5.1 实证）仅在使用更旧编译器时适用，其「一次只留一个
+`*_store.at`」规避流程见 git 历史。
 另注意：增量扫描路径对 parse 失败**完全静默**（无 Warning）——判据是
 输出里有没有该 store 的 `✓ Store composable:` 行 + 检查 gen 产物内容。
 
@@ -130,10 +130,8 @@ cd jade-garden/front/auto
 # gen 侧 stub 镜像必须先于 auto build（gen 的 vue-tsc 会检查 store 产物）
 mkdir -p gen/front/vue/src/lib
 cp stubs/gen_lib_api.ts gen/front/vue/src/lib/api.ts
-# 一次一个 store：其余 *_store.at 临时移出
-mv src/front/tabs_store.at src/front/sidebar_store.at ... /tmp/store_hold/
 D:/autostack/auto-lang/target/debug/auto.exe build -d .
-mv /tmp/store_hold/*.at src/front/
+# 确认输出有全部 9 行 ✓ Store composable: 且无 "Warning: Failed to compile"
 # 拷贝 + sed 改写 '@/lib/api' → 该 store 的扩展模块（相对路径）
 sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
   gen/front/vue/src/stores/use<Name>Store.ts > ../src/stores/auto/use<Name>Store.ts
@@ -171,8 +169,9 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
 
 ### Phase 5.1 批量翻译新增限制（9 个 store 实证）
 
-9. **每次 build 只发射一个 store**：见上文「重新生成（store）」的多
-   store 限制与逐文件 build 流程。增量路径 parse 失败静默无 Warning。
+9. **~~每次 build 只发射一个 store~~（已修复，auto-lang ≥ 280e50c2）**：
+   单次全量 build 现发射全部 store，见上文「重新生成（store）」。
+   「增量路径 parse 失败静默无 Warning」的注意仍然有效。
 10. **handler 无返回值**：msg handler 不返回任何值，带返回值的方法
     （blocks 的 getBlocks/blockById/headings/parse）只能放 facade/ext，
     facade 直接读写生成 store 的 state ref。
@@ -686,6 +685,11 @@ main_area_ext 的组件再导出与 `stubs/gen_components/WhiteboardPage.vue`
     TS2724。规避：build 后再 `cp gen/front/vue/src/components/*.vue
     gen/front/vue/src/src/components/` 并重跑 build（第二次 vue-tsc
     即绿）。
+56. **handler/属性的发射顺序跨 build 不稳定**（2026-08-07 全量 regen
+    实证）：同一源码连续两次 `auto build`，store 的 hoisted const
+    lambda 顺序与模板属性顺序会变化（HashMap 迭代序），语义无差。
+    同批 regen 跑多次 build 时，以**最后一次** build 的产物为准部署，
+    否则部署产物与 gen 产物不一致。
 
 ### Phase 5.3d 新验证能力（非限制，之前未用过）
 

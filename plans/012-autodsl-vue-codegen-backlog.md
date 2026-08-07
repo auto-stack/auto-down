@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ 批次 A/B/C 全部完成（2026-08-07；A=be17713e、label 修复=280e50c2、B=94fc2d3e、C=1631fed1）。P0 原 9 项全修 + 新增 2 项（label 已修、`this.query` map 实参待修）；剩余工作 = P2 表达力缺口（v-show/try-catch/保留字治理优先）+ P0#11 遗留（~130 个 shadcn 子组件分支 class 转发）+ P0#12。
+> 状态：✅ 批次 A/B/C/D 全部完成（2026-08-07；A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34）。**P0 静默失败类 12 项已修、1 项 OPEN（#13 class: 三坏形式）**；剩余 = P0#13 + P2 表达力缺口（v-show/try-catch/保留字治理优先）+ P3 体验长尾。jade 侧死 workaround 已清理（auto-down 4212408）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -28,8 +28,8 @@
 | 8 | 19 | `.remove(x)` 被映射为 `.splice(x, 1)`（**任意接收者**）——与 `.contains`→`.includes` 同类 | ✅ DONE（批次 A）：类型门控映射，facade/composable 接收者透传 + R010 Info |
 | 9 | 47 | `.x != null` 编译为 `!== undefined` —— 父组件显式传 null 时语义反转，静默错误 | ✅ DONE（批次 A）：补 `Expr::Null` arm + 松散 `!= null` 语义 |
 | 10 | — | ✅ DONE（5.0b f6f0c059）：widget 内 slot outlet 缺失，`slot` 被静默编译成 `<div/>`、子内容被吞且无告警（含无 outlet 却传子内容时的告警，033 实证） | — |
-| 11 | — | `label`/`select` 元素静态 `class:` 在 shadcn 路径静默丢弃（plan 337 drift guard 注册 Label 副作用，jade regen 实证抓出，e2e 未捕获） | ✅ DONE（280e50c2）：push_native_classes + R011 告警（~75 个 push_style_class 分支）；**遗留**：其余 ~130 个 shadcn 子组件分支仍静默丢 class，需单独批次 |
-| 12 | — | `oninput: .H({ q: .query })` 中**状态字段**作 map 字面量实参 → 发射 `this.query`（Vue 3 模板表达式中 `this` 无效，静默运行期错误；批次 C 探针发现，生产实证模式用循环变量故未踩） | 🔲 OPEN：建议下一批次以真实 parse 路径测试复现后修复（批次 D 进行中） |
+| 11 | — | `label`/`select` 元素静态 `class:` 在 shadcn 路径静默丢弃（plan 337 drift guard 注册 Label 副作用，jade regen 实证抓出，e2e 未捕获） | ✅ DONE（280e50c2）：push_native_classes + R011 告警；**遗留也已清**（批次 D，63569c34）：match 后 choke point 统一补发，133 个从不看 class 的分支全部转发（仅 ~41 个经 DSL tag 可达，choke point 防御未来派发拓宽） |
+| 12 | — | `oninput: .H({ q: .query })` 中**状态字段**作 map 字面量实参 → 发射 `this.query`（Vue 3 模板表达式中 `this` 无效，静默运行期错误；批次 C 探针发现，生产实证模式用循环变量故未踩） | ✅ DONE（批次 D，63569c34）：`vue_event_param()` 任意标识符位剥离 `this.`（map 值/嵌套调用/全局监听），3 个先红后绿测试 |
 | 13 | — | `class:` 三种坏形式（jade 清理批次探针发现，2026-08-07）：① 同元素第二个 `class:` **静默覆盖**静态 class（无告警）；② map 形式键不引号化 → 输出语法错误；③ `+` 拼接与数组形式发射 `null` | 🔲 OPEN：① 告警或合并；②③ 正确发射或拒绝+告警（批次 D 或下一批） |
 
 ## P1 假绿/测试缺口类

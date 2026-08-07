@@ -526,3 +526,73 @@
   background: hsl(var(--af-error) / 0.08);
   color: hsl(var(--af-error));
 }
+
+/* ─── Math Textbook Callout Types (Phase 2: LADR migration) ─── */
+
+/* 定理：紫 */
+.autodown-callout-theorem {
+  border-left: 4px solid #8250df;
+  background: rgba(130, 80, 223, 0.06);
+}
+.autodown-callout-theorem .autodown-callout-header {
+  color: #6f42e1;
+}
+.autodown-callout-theorem .autodown-callout-icon-theorem::before { content: "📐"; }
+.autodown-callout-theorem .autodown-callout-title { font-weight: 700; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.04em; }
+
+/* 定义：蓝 */
+.autodown-callout-definition {
+  border-left: 4px solid #0969da;
+  background: rgba(9, 105, 218, 0.06);
+}
+.autodown-callout-definition .autodown-callout-header { color: #0550ae; }
+.autodown-callout-definition .autodown-callout-icon-definition::before { content: "📘"; }
+.autodown-callout-definition .autodown-callout-title { font-weight: 700; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.04em; }
+
+/* 示例：绿 */
+.autodown-callout-example {
+  border-left: 4px solid #1a7f37;
+  background: rgba(26, 127, 55, 0.06);
+}
+.autodown-callout-example .autodown-callout-header { color: #0a3622; }
+.autodown-callout-example .autodown-callout-icon-example::before { content: "💡"; }
+.autodown-callout-example .autodown-callout-title { font-weight: 700; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.04em; }
+
+/* 练习：琥珀 */
+.autodown-callout-exercise {
+  border-left: 4px solid #d97706;
+  background: rgba(217, 119, 6, 0.06);
+}
+.autodown-callout-exercise .autodown-callout-header { color: #b45309; }
+.autodown-callout-exercise .autodown-callout-icon-exercise::before { content: "✏️"; }
+.autodown-callout-exercise .autodown-callout-title { font-weight: 700; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.04em; }
+
+/* ─── 通用 Callout 增强样式 ─── */
+.autodown-callout {
+  margin: 0.75rem 0;
+  border-radius: 0 8px 8px 0;
+  padding: 0 1rem;
+  overflow: hidden;
+}
+.autodown-callout-content {
+  padding-bottom: 0.75rem;
+}
+.autodown-callout-header {
+  padding-top: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+/* ─── 预览侧 callout（markstream-vue 渲染的 HTML）─── */
+.autodown-callout-theorem,
+.autodown-callout-definition,
+.autodown-callout-example,
+.autodown-callout-exercise {
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 0 8px 8px 0;
+  padding: 0.5rem 1rem;
+  margin: 0.75rem 0;
+}

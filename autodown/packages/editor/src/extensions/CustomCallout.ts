@@ -4,7 +4,7 @@ import { mergeAttributes, Node, type CommandProps } from '@tiptap/core'
  * Supported callout/admonition types. These align with the container names
  * that markstream-vue renders as AdmonitionNode (:::note, :::warning, ...).
  */
-export const CALLOUT_TYPES = ['note', 'info', 'tip', 'warning', 'caution', 'danger', 'error'] as const
+export const CALLOUT_TYPES = ['note', 'info', 'tip', 'warning', 'caution', 'danger', 'error', 'theorem', 'definition', 'example', 'exercise'] as const
 export type CalloutType = (typeof CALLOUT_TYPES)[number]
 
 function isValidCalloutType(value: string): value is CalloutType {

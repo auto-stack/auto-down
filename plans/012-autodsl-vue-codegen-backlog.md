@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：📋 待启动（backlog 梳理完成，三批修复建议未排期；执行在 auto-lang，建议沿用 worktree 模式）。
+> 状态：✅ 批次 A/B/C 全部完成（2026-08-07；A=be17713e、label 修复=280e50c2、B=94fc2d3e、C=1631fed1）。P0 原 9 项全修 + 新增 2 项（label 已修、`this.query` map 实参待修）；剩余工作 = P2 表达力缺口（v-show/try-catch/保留字治理优先）+ P0#11 遗留（~130 个 shadcn 子组件分支 class 转发）+ P0#12。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -14,29 +14,31 @@
 
 ---
 
-## P0 静默失败类（未修 9 项 + 已修 1 项）
+## P0 静默失败类（全部 10 项已修 + 后续新发现 2 项待修）
 
-| # | gap | 现象 | 现有规避 | 修复方向 |
-|---|---|---|---|---|
-| 1 | 30 | view 子节点之间误写逗号 → 静默多发射空 `<div />` 间隔元素，无任何告警 | 规则约定 + 生成后 `grep "<div />"` | parser 对子节点位置的逗号报错或告警；或生成器对空 div 间隔告警 |
-| 2 | 20 | 普通元素上的动态 `class:` 表达式被静默丢弃（`span { class: ol.x }` → `<span/>`） | `style:` prop 三元 hack（Plan 346）或 quoted-key style map | codegen 对无法处理的 `class:` 非字面量值告警；长期支持 `:class` 动态绑定 |
-| 3 | 9a | 多 store 项目每次 build 只发射**最后编译的那个 .at** 的 store（STORE_EXTRA_FILES 线程局部每文件清空） | 一次只留一个 `*_store.at`，逐文件 build | STORE_EXTRA_FILES 跨文件累积，或在多 store 检出时聚合发射 |
-| 4 | 9b | 增量扫描路径对 parse 失败**完全静默**（连 Warning 都没有）；非增量路径有 Warning 但不 fail、留 stale SFC | 人工检查输出有无 `✓ Store composable:` 行 | 增量/非增量统一：parse 失败打 Warning 且 build 返回非零（或 `--strict` 开关） |
-| 5 | 2 | store codegen 对不含 `all_tags` 的 store 硬编码注入引用 `notes.value` 的 getter（015-notes 专用 hack）→ TS2304 | store 里声明占位 `all_tags => []` | 删除该 hack 或改为按模板显式 opt-in |
-| 6 | 44 | computed 体内引用其他 computed 不解包 ref → 裸 ref 恒真，条件静默失效，无告警（`.is_expanded` 发射成 `is_expanded` 而非 `is_expanded.value`） | 手写 `.value` 后缀 | codegen 在 script 表达式里对 computed ref 自动解包（与模板侧一致），或对裸 ref 出现在布尔位置告警 |
-| 7 | 45 | `expose {}` 不标记**带参** handler 为 used → handler 不生成，引用处静默退化为裸名，命中 `window.open` 全局，**vue-tsc 不报错**，运行期完全错误 | quoted msg variant + 永假 v-if 守卫元素强行引用 | used_handlers 把 expose 条目（含带参、quoted 名）计入 used；quoted 名与 on 块 pattern 对齐 |
-| 8 | 19 | `.remove(x)` 被映射为 `.splice(x, 1)`（**任意接收者**，包括 store facade）——与 `.contains`→`.includes` 同类 | ext 帮手中转 | 方法映射只对已证明为数组的接收者生效；其他接收者透传或告警 |
-| 9 | 47 | `.x != null` 编译为 `!== undefined` —— 父组件显式传 null 时语义反转，静默错误 | ext 真值守卫函数 | DSL `null` 映射同时覆盖 null/undefined（`x != null` 语义），或提供 `?.`/`is none` 原语 |
-| 10 | — | ✅ DONE：widget 内 slot outlet 缺失，`slot` 被静默编译成 `<div/>`、子内容被吞且无告警 | — | auto-lang 5.0b（f6f0c059 = 17627f1a + 集成合并 9926ab47）：`slot`/`slot(name:)` outlet + 父侧具名 slot；剩余项：无 outlet 却传子内容时应告警（见 P3） |
+| # | gap | 现象 | 状态 |
+|---|---|---|---|
+| 1 | 30 | view 子节点之间误写逗号 → 静默多发射空 `<div />` 间隔元素，无任何告警 | ✅ DONE（批次 A，be17713e）：codegen 跳过 + R008 告警 |
+| 2 | 20 | 普通元素上的动态 `class:` 表达式被静默丢弃（`span { class: ol.x }` → `<span/>`） | ✅ DONE（批次 A）：真支持 `:class` 绑定（含三元、与 style: 合并） |
+| 3 | 9a | 多 store 项目每次 build 只发射**最后编译的那个 .at** 的 store（STORE_EXTRA_FILES 线程局部每文件清空） | ✅ DONE：全量路径上游 a96d4da2（plan 043）；增量路径批次 B（94fc2d3e）补完 |
+| 4 | 9b | 增量扫描路径对 parse 失败**完全静默**（连 Warning 都没有）；非增量路径有 Warning 但不 fail、留 stale SFC | ✅ DONE（批次 B）：5 处统一为 `Warning: Failed to compile`（与 fresh 同字符串），`--strict` 非零退出 |
+| 5 | 2 | store codegen 对不含 `all_tags` 的 store 硬编码注入引用 `notes.value` 的 getter（015-notes 专用 hack）→ TS2304 | ✅ DONE（批次 B）：hack 删除，jade/015 占位仍合法（不必要） |
+| 6 | 44 | computed 体内引用其他 computed 不解包 ref → 裸 ref 恒真，条件静默失效，无告警 | ✅ DONE（批次 A）：自动解包 + 手写 `.value` 幂等守卫 |
+| 7 | 45 | `expose {}` 不标记**带参** handler 为 used → handler 不生成，引用处静默退化为裸名，命中 `window.open` 全局 | ✅ DONE（批次 A）：expose 按 base pattern 计入 used + R009 告警兜底 |
+| 8 | 19 | `.remove(x)` 被映射为 `.splice(x, 1)`（**任意接收者**）——与 `.contains`→`.includes` 同类 | ✅ DONE（批次 A）：类型门控映射，facade/composable 接收者透传 + R010 Info |
+| 9 | 47 | `.x != null` 编译为 `!== undefined` —— 父组件显式传 null 时语义反转，静默错误 | ✅ DONE（批次 A）：补 `Expr::Null` arm + 松散 `!= null` 语义 |
+| 10 | — | ✅ DONE（5.0b f6f0c059）：widget 内 slot outlet 缺失，`slot` 被静默编译成 `<div/>`、子内容被吞且无告警 | — |
+| 11 | — | `label`/`select` 元素静态 `class:` 在 shadcn 路径静默丢弃（plan 337 drift guard 注册 Label 副作用，jade regen 实证抓出，e2e 未捕获） | ✅ DONE（280e50c2）：push_native_classes + R011 告警（~75 个 push_style_class 分支）；**遗留**：其余 ~130 个 shadcn 子组件分支仍静默丢 class，需单独批次 |
+| 12 | — | `oninput: .H({ q: .query })` 中**状态字段**作 map 字面量实参 → 发射 `this.query`（Vue 3 模板表达式中 `this` 无效，静默运行期错误；批次 C 探针发现，生产实证模式用循环变量故未踩） | 🔲 OPEN：建议下一批次以真实 parse 路径测试复现后修复 |
 
 ## P1 假绿/测试缺口类
 
 | # | gap | 现象 | 修复方向 |
 |---|---|---|---|
 | 1 | — | ✅ DONE：内建 overlay 的 `v-model:open` 被静默丢弃（`extract_state_ref` vue.rs:8231 只认裸 Ident），相关单测是**手构 AST** 才过的假绿——真实 parse 路径从未覆盖 | auto-lang 5.0b（f6f0c059）：修复 + `"update:modelValue"` 契约；教训：ui_gen 测试必须走真实 parse 管线 |
-| 2 | 32 附注 | gen 脚手架 vue-tsc build 失败曾被"SFC 已先行发射"掩盖（batch 1/2 的 ext 在 gen 侧全灭未被发现）——codegen 产物发射与 gen 工程类型检查之间无门 | `auto build` 把 gen 侧 vue-tsc 失败作为 build 失败；或至少把 gen build 状态显式打印 |
-| 3 | 9b 衍生 | 增量编译路径（含 store 逐文件 build 流程）无任何自动化测试，jade 侧靠人工核对输出行 | auto-lang 侧为增量路径补集成测试：parse 失败、多 store、stale SFC 三个场景 |
-| 4 | — | README 中大量"实证可用"能力（`.finally`、闭包实参回写、多语句闭包、style_obj 混合值等）只在 jade/editor 两个下游项目验证，编译器仓内无对应单测，回归无保护 | 把下游实证的用法回写成 `examples/ui/` 最小示例 + codegen 快照测试 |
+| 2 | 32 附注 | gen 脚手架 vue-tsc build 失败曾被"SFC 已先行发射"掩盖（batch 1/2 的 ext 在 gen 侧全灭未被发现）——codegen 产物发射与 gen 工程类型检查之间无门 | ✅ 已核实无需修（批次 B）：gen `build` 脚本 = `vue-tsc && vite build`，npm 失败已传播为 `auto build` 非零退出 |
+| 3 | 9b 衍生 | 增量编译路径（含 store 逐文件 build 流程）无任何自动化测试，jade 侧靠人工核对输出行 | ✅ DONE（批次 B）：`incremental_compile_changed` 抽出 + 2 个增量集成测试（多 store 发射、parse 失败语义，含反向对照） |
+| 4 | — | README 中大量"实证可用"能力（`.finally`、闭包实参回写、多语句闭包、style_obj 混合值等）只在 jade/editor 两个下游项目验证，编译器仓内无对应单测，回归无保护 | ✅ DONE（批次 C）：`tests/vue_capabilities.rs` 16 条真实管线片段断言锁（递归自引用、.window 监听清理、可选 prop 默认值、小写 emit 双侧、v-model 折叠、style_obj 混合值等）；同时 17 个手构 AST 测试转真实管线，假绿发现 0 |
 
 ## P2 表达力缺口类（有稳定规避）
 
@@ -113,13 +115,13 @@
 
 P0/P1 归并为三个可独立交付的编译器工作批次（每批配 `examples/ui/` 最小示例 + 真实 parse 管线单测）：
 
-**批次 A：静默发射防护（P0 #1/#2/#6/#7/#8/#9 + P3 告警通道）**
-先建 codegen warning 基础设施，再把六处静默错误逐个改为告警或正确发射：逗号垃圾 div、动态 class 丢弃、computed 裸 ref、expose 带参 handler、`.remove` 误映射、`!= null` 语义。收益最大——jade/editor 下游全部规避代码可随告警出现而审计清理。
+**批次 A：静默发射防护（P0 #1/#2/#6/#7/#8/#9 + P3 告警通道）** ✅ DONE（be17713e）
+warning 基础设施统一到 validators.rs（R008-R011 + `--strict`），六处静默错误全部修复（其中动态 `class:` 超预期做了真绑定支持）。jade 全量 regen 实证兼容，并借此抓出 P0#11（label class 主仓回归，280e50c2 修复）。
 
-**批次 B：store 编译正确性（P0 #3/#4/#5 + P1 #2/#3）**
-STORE_EXTRA_FILES 跨文件聚合、增量/非增量路径失败语义统一（Warning + 非零退出）、删除 all_tags 硬编码 hack、gen 侧 vue-tsc 状态接入 build 结果。直接消灭 jade"一次一个 store 逐文件 build"的 regen 流程。
+**批次 B：store 编译正确性（P0 #3/#4/#5 + P1 #2/#3）** ✅ DONE（94fc2d3e）
+增量路径 store 聚合补完、失败语义统一（Warning + `--strict` 非零退出）、all_tags hack 删除；P1#2 核实现状已接入。jade 的"一次一个 store"流程已废（README 同步）。
 
-**批次 C：测试债回填（P1 #1 已修教训 + #4）**
-ui_gen 测试全部改走真实 parse 管线（禁手构 AST）；把 jade/editor 实证的 30+ 条"已验证能力"回写成 examples/ui 快照测试，锁定不再回归。
+**批次 C：测试债回填（P1 #1 已修教训 + #4）** ✅ DONE（1631fed1）
+17 个手构 AST 测试转真实 parse 管线（0 假绿发现；顺手修了 1 个反向假红）；`tests/vue_capabilities.rs` 16 条能力回归锁（片段断言，免疫绝对路径 + HashMap 顺序两坑）。
 
-P2 表达力缺口不单独立项：优先级最高的是 v-show（52）、try/catch（4）、保留字治理（18/27/29/34/53 一批同根），可在批次 A/B 触到同一代码区域时顺手做。
+**剩余建议**（新批次时再立）：P0#12（`this.query` map 实参）先写真实管线复现测试再修；P0#11 遗留的 ~130 个 shadcn 子组件 class 转发单独批次；P2 表达力缺口优先级最高的是 v-show（52）、try/catch（4）、保留字治理（18/27/29/34/53 一批同根）。

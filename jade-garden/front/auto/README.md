@@ -163,10 +163,10 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
    finally 可选），发射真实 JS try/catch/finally，try 内的 api 调用仍
    自动 await 并把 handler 标为 async。tabs store 的 save 已改为：
    try 内直接调 RAW `writeWiki`（rejection 落进 catch），catch 经 ext
-   `rethrow(e)` 再抛出（DSL 无 throw 语句；且 parser 不把 catch 绑定
-   放入作用域，引用 `e` 报 UndefinedVariable —— handler 里先声明
-   `var e = None` 影子变量满足名字解析，发射的 JS 中 `catch (e)` 绑定
-   遮蔽它，`rethrow(e)` 抛的是真实错误），finally 清 `tab.saving`。
+   `rethrow(e)` 再抛出（DSL 无 throw 语句；catch 绑定作用域曾不被
+   parser 承认、需 `var e = None` 影子变量绕过 —— auto-lang master
+   fee0c230 已修复，catch (e) 在 catch 体内可直接引用），finally 清
+   `tab.saving`。
    rejection 穿过 async handler → facade promise → 调用方，与原 Pinia
    save() 的 try/finally 传播语义完全一致；**gap 4 记载的行为偏差
    （writeWikiSafe 吞错变 console.error）就此消除**，writeWikiSafe 已

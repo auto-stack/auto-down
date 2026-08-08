@@ -23,18 +23,6 @@ const emit = defineEmits<{
   CloseTheme: []
 }>()
 
-function CloseTheme(): void {
-  theme_open.value = false;
-
-  emit('CloseTheme')
-}
-
-function Select(item: any): void {
-  sidebarStore.setLeftPanel(item.panel);
-
-  emit('Select', item)
-}
-
 function OpenToday(): void {
   openTodayNote(tabsStore, fileTreeStore);
 
@@ -51,6 +39,18 @@ function ToggleTheme(): void {
   theme_open.value = !theme_open.value;
 
   emit('ToggleTheme')
+}
+
+function CloseTheme(): void {
+  theme_open.value = false;
+
+  emit('CloseTheme')
+}
+
+function Select(item: any): void {
+  sidebarStore.setLeftPanel(item.panel);
+
+  emit('Select', item)
 }
 
 

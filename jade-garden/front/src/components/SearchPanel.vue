@@ -35,6 +35,12 @@ watch(query, () => {
   f();
 })
 
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
 function OpenResult(r: any): void {
   if (r.type == 'Page' && r.path != null) {tabsStore.open(r.path, r.title);
   }
@@ -44,12 +50,6 @@ function OpenResult(r: any): void {
   }
 
   emit('OpenResult', r)
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
 }
 
 onMounted(() => {
@@ -74,7 +74,7 @@ onMounted(() => {
     <div class="flex h-full flex-col p-3">
       <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
         <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Search pages and blocks...'" :type="'text'" v-model="query" @input="QueryInput($event)" />
+        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Search pages and blocks...'" v-model="query" @input="QueryInput($event)" />
       </div>
       <template v-if="show_loading">
         <div class="mt-4 text-center text-xs text-muted-foreground">
@@ -101,7 +101,7 @@ onMounted(() => {
               </span>
             </div>
             <template v-if="r.has_snippet">
-              <HtmlDiv :class="'mt-0.5 pl-5 text-xs text-muted-foreground'" :html="r.snippet_html" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+              <HtmlDiv :html="r.snippet_html" :class="'mt-0.5 pl-5 text-xs text-muted-foreground'" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
             </template>
           </component>
         </component>

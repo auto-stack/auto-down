@@ -12,6 +12,12 @@ const center_path = ref<any>(null)
 const depth = ref<any>(1)
 
 export function useGraphStore(): any {
+    const SaveSettings = async () => { await saveGraphSettings(settings.value);
+ }
+    const OpenLocal = (args: any) => { center_path.value = args.path;
+depth.value = args.depth;
+view_mode.value = 'graph';
+ }
     const Load = async () => { loading.value = true;
 error.value = null;
 let res = await getGraphResult();
@@ -22,18 +28,12 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const OpenLocal = (args: any) => { center_path.value = args.path;
-depth.value = args.depth;
-view_mode.value = 'graph';
+    const ShowGlobal = () => { center_path.value = null;
  }
     const ToggleView = () => { if (view_mode.value == 'editor') {view_mode.value = 'graph';
 }
 if (view_mode.value == 'graph') {view_mode.value = 'editor';
 }
- }
-    const ShowGlobal = () => { center_path.value = null;
- }
-    const SaveSettings = async () => { await saveGraphSettings(settings.value);
  }
     return {
         nodes,
@@ -45,10 +45,10 @@ if (view_mode.value == 'graph') {view_mode.value = 'editor';
         view_mode,
         center_path,
         depth,
-        Load,
-        OpenLocal,
-        ToggleView,
-        ShowGlobal,
         SaveSettings,
+        OpenLocal,
+        Load,
+        ShowGlobal,
+        ToggleView,
     }
 }

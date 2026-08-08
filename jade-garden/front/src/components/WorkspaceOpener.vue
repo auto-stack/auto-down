@@ -19,6 +19,18 @@ const emit = defineEmits<{
   ChooseDir: []
 }>()
 
+function Open(): void {
+  let p = path.value.trim();
+  if (p != '') {busy.value = true;
+  clearWorkspaceError(workspaceStore);
+  let pr = openWorkspaceFlow(workspaceStore, fileTreeStore, p);
+  pr.finally(() => { busy.value = false;
+   });
+  }
+
+  emit('Open')
+}
+
 function PathInput(e: any): void {
   path.value = e.target.value;
 
@@ -31,18 +43,6 @@ function ChooseDir(): void {
   chooseWorkspaceDir(set_path);
 
   emit('ChooseDir')
-}
-
-function Open(): void {
-  let p = path.value.trim();
-  if (p != '') {busy.value = true;
-  clearWorkspaceError(workspaceStore);
-  let pr = openWorkspaceFlow(workspaceStore, fileTreeStore, p);
-  pr.finally(() => { busy.value = false;
-   });
-  }
-
-  emit('Open')
 }
 
 
@@ -63,10 +63,10 @@ function Open(): void {
           </p>
         </div>
         <div class="flex gap-2">
-          <button class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'选择文件夹'" @click="ChooseDir">
+          <button class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'选择文件夹'" :type="'button'" @click="ChooseDir">
             <component :is="(FolderOpen) as any" class="h-5 w-5" />
           </button>
-          <input class="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-primary/30 transition-shadow focus:ring-2" :placeholder="'粘贴完整目录路径，例如 D:\\\\wiki\\\\demo'" v-model="path" :type="'text'" @input="PathInput($event)" @keydown.enter="Open" />
+          <input class="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-primary/30 transition-shadow focus:ring-2" :type="'text'" v-model="path" :placeholder="'粘贴完整目录路径，例如 D:\\\\wiki\\\\demo'" @input="PathInput($event)" @keydown.enter="Open" />
           <button class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50" :disabled="busy" @click="Open">
             <span>Open</span>
           </button>

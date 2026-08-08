@@ -30,6 +30,12 @@ const emit = defineEmits<{
   RelayoutView: []
 }>()
 
+function SwitchToGlobal(): void {
+  tabsStore.openGraph();
+
+  emit('SwitchToGlobal')
+}
+
 function OpenPage(p: any): void {
   tabsStore.open(p);
 
@@ -40,12 +46,6 @@ function FitView(): void {
   fitGraphView(graphViewRef.value!);
 
   emit('FitView')
-}
-
-function SwitchToGlobal(): void {
-  tabsStore.openGraph();
-
-  emit('SwitchToGlobal')
 }
 
 function RelayoutView(): void {
@@ -89,7 +89,7 @@ onMounted(() => {
         </div>
       </div>
       <div class="graph-body">
-        <GraphView class="graph-canvas" ref="graphViewRef" :loading="graphStore.loading" :edges="visible_edges" :nodes="visible_nodes" :highlightQuery="graphStore.searchQuery" :settings="graphStore.settings" @open="OpenPage" :key="'GraphView-1'" />
+        <GraphView class="graph-canvas" :highlightQuery="graphStore.searchQuery" :loading="graphStore.loading" :edges="visible_edges" :nodes="visible_nodes" ref="graphViewRef" :settings="graphStore.settings" @open="OpenPage" :key="'GraphView-1'" />
         <GraphControls :key="'GraphControls-2'" />
       </div>
       <template v-if="graphStore.error">

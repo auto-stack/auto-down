@@ -176,13 +176,6 @@ store Tabs {
             var tab = .tabs.find(t => t.path == path)
             if tab != null && tab.loaded {
                 tab.saving = true
-                // Shadow hack: the parser never puts the catch binding in
-                // scope (referencing it is an UndefinedVariable error), so
-                // this dummy `e` satisfies name resolution. In the emitted
-                // JS the `catch (e)` binding shadows it, so `rethrow(e)`
-                // re-throws the REAL error. (Vue path only — the VM would
-                // rethrow this placeholder instead.)
-                var e = None
                 try {
                     var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
                     var saved = writeWiki(path, { frontmatter: tab.frontmatter, body: body2 })

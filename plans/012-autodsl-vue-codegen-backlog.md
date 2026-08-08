@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ **P0 静默失败类清零**（2026-08-08；批次 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。13 项 P0 全修；warning 通道（R008-R011 + `--strict`）兜底未来降级行为。剩余 = P2 表达力缺口（v-show/try-catch/保留字治理优先）+ P3 体验长尾（含 `expr_to_vue_bound_value` 兜底硬化 follow-up）。jade 侧死 workaround 已清理（auto-down 4212408）。
+> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -40,10 +40,13 @@
 | 2 | 32 附注 | gen 脚手架 vue-tsc build 失败曾被"SFC 已先行发射"掩盖（batch 1/2 的 ext 在 gen 侧全灭未被发现）——codegen 产物发射与 gen 工程类型检查之间无门 | ✅ 已核实无需修（批次 B）：gen `build` 脚本 = `vue-tsc && vite build`，npm 失败已传播为 `auto build` 非零退出 |
 | 3 | 9b 衍生 | 增量编译路径（含 store 逐文件 build 流程）无任何自动化测试，jade 侧靠人工核对输出行 | ✅ DONE（批次 B）：`incremental_compile_changed` 抽出 + 2 个增量集成测试（多 store 发射、parse 失败语义，含反向对照） |
 | 4 | — | README 中大量"实证可用"能力（`.finally`、闭包实参回写、多语句闭包、style_obj 混合值等）只在 jade/editor 两个下游项目验证，编译器仓内无对应单测，回归无保护 | ✅ DONE（批次 C）：`tests/vue_capabilities.rs` 16 条真实管线片段断言锁（递归自引用、.window 监听清理、可选 prop 默认值、小写 emit 双侧、v-model 折叠、style_obj 混合值等）；同时 17 个手构 AST 测试转真实管线，假绿发现 0 |
+| 5 | — | **cap_vmodel_fold 在 master 确定性失败**（63569c34 之后某提交引入）：v-model 折叠同时发射 `v-model` 和 `@input`（应只发 v-model）。P2 批次在干净树复跑 4/4 全红确认 pre-existing，疑似 plan 399/ash-gui 期间回归 | 🔲 OPEN（master 侧，待排查）；这正是批次 C 能力锁的设计目的——抓到即修 |
 
 ## P2 表达力缺口类（有稳定规避）
 
 按主题分组，gap 编号见 README。
+
+> **已落地（c5b5fecf，2026-08-08）**：v-show（52 → `show:` prop）、try/catch/finally（4 → 语言级支持 + 修复 Vue 路径静默丢弃）、保留字治理（18/27/29/34/43/53 → link/task 标识符化、关键字 prop 键、map 类型、path 测试锁定；残留：裸 link/task 作 view 子节点仍是元素语义，文档化）。下表中这些行仅作历史留档。
 
 ### 控制流 / 错误处理
 

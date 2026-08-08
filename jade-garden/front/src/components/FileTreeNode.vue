@@ -41,11 +41,11 @@ const emit = defineEmits<{
 
 import type { FileNode } from '@/lib/api'
 
-function CtxNewFolder(): void {
+function CtxDuplicate(): void {
   menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
+  ctxDuplicate(fileTreeStore, props.node);
 
-  emit('CtxNewFolder')
+  emit('CtxDuplicate')
 }
 
 function CtxNewFile(): void {
@@ -55,18 +55,11 @@ function CtxNewFile(): void {
   emit('CtxNewFile')
 }
 
-function CtxDuplicate(): void {
+function CtxNewFolder(): void {
   menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
+  ctxNewFolder(fileTreeStore, props.node);
 
-  emit('CtxDuplicate')
-}
-
-function CtxDelete(): void {
-  menu_open.value = false;
-  ctxDelete(fileTreeStore, props.node);
-
-  emit('CtxDelete')
+  emit('CtxNewFolder')
 }
 
 function RightClick(e: any): void {
@@ -75,6 +68,13 @@ function RightClick(e: any): void {
   menu_open.value = true;
 
   emit('RightClick', e)
+}
+
+function CtxDelete(): void {
+  menu_open.value = false;
+  ctxDelete(fileTreeStore, props.node);
+
+  emit('CtxDelete')
 }
 
 function CtxRename(): void {
@@ -113,13 +113,13 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :is_dir="node.is_dir" :active="is_active" :expanded="is_expanded" />
+        <component :is="(NodeIcon) as any" :expanded="is_expanded" :is_dir="node.is_dir" :active="is_active" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :level="next_level" :key="child.path" :node="child"  v-for="child in node.children"/>
+        <FileTreeNode :node="child" :level="next_level" :key="child.path"  v-for="child in node.children"/>
       </template>
       <component :is="(BodyTeleport) as any">
         <template v-if="menu_open">

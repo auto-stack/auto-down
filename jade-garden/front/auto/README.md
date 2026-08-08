@@ -60,7 +60,7 @@ AutoUI project files were archived to `jade-garden/legacy-autoui/`
 ### store .at 语法（实证可用）
 
 ```auto
-use back.api: readWikiSafe, writeWikiSafe, ensureBlockAnchors, recordRecent, stripExt, confirmClose
+use back.api: readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose
 
 store Tabs {                      // store Tabs -> 生成 useTabsStore.ts / useTabsStore()
     model {
@@ -158,11 +158,21 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
    就 import 什么名（不校验 back.api 是否真实存在），其他模块
    （blockParser、其他 Pinia store）无法直接 import —— 全部经 ext 模块
    中转，拷贝时 sed 改写 `@/lib/api` 为 ext 路径；gen 侧用 stub 镜像。
-4. **无 try/catch/finally**：错误分支改为 ext 的 safe 包装
-   （catch → log + 返回 null），store 内 `if doc == null` 分支复刻原
-   catch 逻辑。已知行为偏差：原 save() 失败会向调用方传播 rejection
-   （无调用方 await save，唯一差异是 unhandled rejection 变为
-   console.error）—— 记录在 ext 注释与此处。
+4. **~~无 try/catch/finally~~（已解决，2026-08-08，编译器 ≥ c5b5fecf）**：
+   handler/on 体现支持 `try { } catch (e) { } finally { }`（catch 必填、
+   finally 可选），发射真实 JS try/catch/finally，try 内的 api 调用仍
+   自动 await 并把 handler 标为 async。tabs store 的 save 已改为：
+   try 内直接调 RAW `writeWiki`（rejection 落进 catch），catch 经 ext
+   `rethrow(e)` 再抛出（DSL 无 throw 语句；且 parser 不把 catch 绑定
+   放入作用域，引用 `e` 报 UndefinedVariable —— handler 里先声明
+   `var e = None` 影子变量满足名字解析，发射的 JS 中 `catch (e)` 绑定
+   遮蔽它，`rethrow(e)` 抛的是真实错误），finally 清 `tab.saving`。
+   rejection 穿过 async handler → facade promise → 调用方，与原 Pinia
+   save() 的 try/finally 传播语义完全一致；**gap 4 记载的行为偏差
+   （writeWikiSafe 吞错变 console.error）就此消除**，writeWikiSafe 已
+   删除。load 路径保留 readWikiSafe 的 null 映射（原 load 本身有
+   catch，属忠实翻译而非偏差）。其余 store 的 safe 包装同样复刻原
+   catch 分支（非偏差），维持不变。
 5. **无正则字面量**：`path.replace(/\.ad$/, '')` 放 ext（`stripExt`）。
 6. **无 early return**：用 if 守卫反转（`if tab != null && !tab.loaded`）。
 7. **三元在 handler 可用**；`cond && a || b` 惯例在 handler/computed 均

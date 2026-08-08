@@ -10,8 +10,12 @@ export async function readWikiSafe(_path: string): Promise<any> {
   return null
 }
 
-export async function writeWikiSafe(_path: string, _doc: any): Promise<any> {
+export async function writeWiki(_path: string, _doc: any): Promise<any> {
   return null
+}
+
+export function rethrow(e: unknown): never {
+  throw e
 }
 
 export function ensureBlockAnchors(body: string, _originalBody: string): string {

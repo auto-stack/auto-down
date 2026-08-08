@@ -7,7 +7,11 @@
 // mirror that only exists so gen-side vue-tsc passes — it never ships.)
 //
 // Only what the DSL genuinely cannot express lives here:
-// - try/catch around the wiki API (the DSL has no try/catch/finally),
+// - the load() catch branch (readWikiSafe's null return maps to the store's
+//   `if doc == null` branches — the original caught load errors),
+// - `rethrow` (the DSL has try/catch/finally but no `throw` statement; the
+//   Save handler's catch calls it so save rejections propagate to facade
+//   callers exactly like the original Pinia store),
 // - regex literals (stripExt; the DSL has no regex),
 // - the cross-store call into the Pinia recentFiles store,
 // - window.confirm with an interpolated message.
@@ -18,30 +22,27 @@ import { readWiki, writeWiki, type WikiDoc } from '../../../../src/lib/api'
 import { ensureBlockAnchors } from '../../../../src/lib/blockParser'
 import { useRecentFilesStore } from '../../../../src/stores/recentFiles'
 
-export { ensureBlockAnchors }
+export { ensureBlockAnchors, writeWiki }
 
-/** readWiki that never rejects: the DSL has no try/catch, so the original
- *  load()'s catch branch (mark loaded, keep body, log) maps to a null
- *  return handled in the store's `if doc == null` branch. */
+/** Re-throws the caught error. The DSL gained try/catch/finally
+ *  (compiler >= c5b5fecf) but has no `throw` statement, so the Save
+ *  handler's `catch (e) { rethrow(e) }` restores the original save()
+ *  semantics: the rejection propagates out of the async handler (after the
+ *  finally block clears tab.saving) to whoever awaited save(). This closes
+ *  the deviation formerly documented here and in front/auto/README.md
+ *  gap 4 (writeWikiSafe swallowed save failures into console.error). */
+export function rethrow(e: unknown): never {
+  throw e
+}
+
+/** readWiki that never rejects: the original load() had a try/catch whose
+ *  catch branch marked the tab loaded, kept the body, and logged — that
+ *  maps to a null return handled in the store's `if doc == null` branch. */
 export async function readWikiSafe(path: string): Promise<WikiDoc | null> {
   try {
     return await readWiki(path)
   } catch (e) {
     console.error('Failed to load wiki doc', e)
-    return null
-  }
-}
-
-/** writeWiki that never rejects (logs + null). DEVIATION from the original
- *  Pinia store: a failed save no longer propagates a rejection to callers
- *  (the original re-threw after its finally block; no caller awaited save,
- *  so the only observable difference is the console.error instead of an
- *  unhandled rejection). Documented in front/auto/README.md. */
-export async function writeWikiSafe(path: string, doc: WikiDoc): Promise<WikiDoc | null> {
-  try {
-    return await writeWiki(path, doc)
-  } catch (e) {
-    console.error('Failed to save wiki doc', e)
     return null
   }
 }

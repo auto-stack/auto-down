@@ -21,18 +21,6 @@ const emit = defineEmits<{
   SetAccent: [any]
 }>()
 
-function SetAccent(accent: any): void {
-  themeStore.setAccent(accent.key);
-
-  emit('SetAccent', accent)
-}
-
-function Close(e: any): void {
-  let outside = isOutsideThemePopover(e);
-
-  emit('Close', e)
-}
-
 function SetLight(): void {
   themeStore.setMode('light');
 
@@ -43,6 +31,18 @@ function SetDark(): void {
   themeStore.setMode('dark');
 
   emit('SetDark')
+}
+
+function SetAccent(accent: any): void {
+  themeStore.setAccent(accent.key);
+
+  emit('SetAccent', accent)
+}
+
+function Close(e: any): void {
+  let outside = isOutsideThemePopover(e);
+
+  emit('Close', e)
 }
 
 

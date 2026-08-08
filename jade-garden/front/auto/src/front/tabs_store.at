@@ -7,7 +7,12 @@
 // `import { ... } from '@/lib/api'`, which the Regenerate flow sed-rewrites
 // to utils/tabs_store_ext.ts when copying into front/src/ (the gen project
 // resolves it to the stubs/gen_lib_api.ts mirror instead).
-use back.api: readWikiSafe, writeWikiSafe, ensureBlockAnchors, recordRecent, stripExt, confirmClose
+// Save uses REAL try/catch/finally (compiler >= c5b5fecf, gap 4 resolved):
+// writeWiki is the RAW api call (rejects), the catch rethrows via the ext
+// `rethrow` helper so the rejection propagates like the original Pinia
+// store; finally keeps tab.saving accurate on both paths. Load keeps its
+// original catch behavior via readWikiSafe's null return.
+use back.api: readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose
 
 store Tabs {
     model {
@@ -171,15 +176,30 @@ store Tabs {
             var tab = .tabs.find(t => t.path == path)
             if tab != null && tab.loaded {
                 tab.saving = true
-                var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
-                var saved = writeWikiSafe(path, { frontmatter: tab.frontmatter, body: body2 })
-                if saved != null {
+                // Shadow hack: the parser never puts the catch binding in
+                // scope (referencing it is an UndefinedVariable error), so
+                // this dummy `e` satisfies name resolution. In the emitted
+                // JS the `catch (e)` binding shadows it, so `rethrow(e)`
+                // re-throws the REAL error. (Vue path only — the VM would
+                // rethrow this placeholder instead.)
+                var e = None
+                try {
+                    var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
+                    var saved = writeWiki(path, { frontmatter: tab.frontmatter, body: body2 })
                     tab.frontmatter = saved.frontmatter || {}
                     tab.body = saved.body
                     tab.originalBody = saved.body
                     tab.dirty = false
+                } catch (e) {
+                    // Original save() had no catch — the rejection propagated
+                    // (after finally). The DSL has no throw statement, so the
+                    // ext `rethrow` helper re-throws; the emitted JS runs
+                    // finally first, then the rejection leaves the async
+                    // handler and reaches facade callers.
+                    rethrow(e)
+                } finally {
+                    tab.saving = false
                 }
-                tab.saving = false
             }
         }
     }

@@ -30,16 +30,16 @@ const emit = defineEmits<{
   RelayoutView: []
 }>()
 
+function OpenPage(p: any): void {
+  tabsStore.open(p);
+
+  emit('OpenPage', p)
+}
+
 function FitView(): void {
   fitGraphView(graphViewRef.value!);
 
   emit('FitView')
-}
-
-function RelayoutView(): void {
-  relayoutGraphView(graphViewRef.value!);
-
-  emit('RelayoutView')
 }
 
 function SwitchToGlobal(): void {
@@ -48,10 +48,10 @@ function SwitchToGlobal(): void {
   emit('SwitchToGlobal')
 }
 
-function OpenPage(p: any): void {
-  tabsStore.open(p);
+function RelayoutView(): void {
+  relayoutGraphView(graphViewRef.value!);
 
-  emit('OpenPage', p)
+  emit('RelayoutView')
 }
 
 onMounted(() => {
@@ -80,16 +80,16 @@ onMounted(() => {
               <component :is="(Globe) as any" class="h-3.5 w-3.5" />
             </button>
           </template>
-          <button class="graph-tool-btn" :type="'button'" :title="'适应画布'" @click="FitView">
+          <button class="graph-tool-btn" :title="'适应画布'" :type="'button'" @click="FitView">
             <component :is="(Maximize) as any" class="h-3.5 w-3.5" />
           </button>
-          <button class="graph-tool-btn" :title="'重新布局'" :type="'button'" @click="RelayoutView">
+          <button class="graph-tool-btn" :type="'button'" :title="'重新布局'" @click="RelayoutView">
             <component :is="(RefreshCw) as any" class="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
       <div class="graph-body">
-        <GraphView class="graph-canvas" :settings="graphStore.settings" :highlightQuery="graphStore.searchQuery" :loading="graphStore.loading" :edges="visible_edges" :nodes="visible_nodes" ref="graphViewRef" @open="OpenPage" :key="'GraphView-1'" />
+        <GraphView class="graph-canvas" ref="graphViewRef" :loading="graphStore.loading" :edges="visible_edges" :nodes="visible_nodes" :highlightQuery="graphStore.searchQuery" :settings="graphStore.settings" @open="OpenPage" :key="'GraphView-1'" />
         <GraphControls :key="'GraphControls-2'" />
       </div>
       <template v-if="graphStore.error">

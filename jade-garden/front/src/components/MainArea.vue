@@ -28,9 +28,9 @@ const no_tabs = computed<any>(() => noTabs(tabsStore.tabs))
     <main class="flex h-full flex-col overflow-hidden bg-background">
       <TabStrip :key="'TabStrip-1'" />
       <div class="relative flex flex-1 overflow-hidden">
-        <EditorTab class="absolute inset-0" :key="tab.path" :path="tab.path" :style="({ display: tab.display } as any)"  v-for="tab in editor_tabs"/>
+        <EditorTab class="absolute inset-0" :style="({ display: tab.display } as any)" :key="tab.path" :path="tab.path"  v-for="tab in editor_tabs"/>
         <template v-if="has_graph">
-          <GraphPage class="absolute inset-0" :depth="graph_depth" :key="graph_key" :centerPath="graph_center" />
+          <GraphPage class="absolute inset-0" :key="graph_key" :centerPath="graph_center" :depth="graph_depth" />
         </template>
         <template v-if="has_whiteboard">
           <WhiteboardPage class="absolute inset-0" :path="whiteboard_path" :key="whiteboard_path" />

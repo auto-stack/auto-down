@@ -60,7 +60,7 @@ function OpenRef(r: any): void {
             <div class="mb-0.5 truncate text-[10px] text-muted-foreground">
               <span>{{ r.page_path }}</span>
             </div>
-            <HtmlDiv :class="'text-foreground/80'" :html="r.html" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+            <HtmlDiv :html="r.html" :class="'text-foreground/80'" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
           </component>
         </component>
       </template>

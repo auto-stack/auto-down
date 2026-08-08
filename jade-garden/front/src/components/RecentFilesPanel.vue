@@ -26,16 +26,16 @@ function Open(rf: any): void {
   emit('Open', rf)
 }
 
-function ClearAll(): void {
-  recentFilesStore.clear();
-
-  emit('ClearAll')
-}
-
 function Remove(rf: any): void {
   removeRecent(rf.path);
 
   emit('Remove', rf)
+}
+
+function ClearAll(): void {
+  recentFilesStore.clear();
+
+  emit('ClearAll')
 }
 
 
@@ -48,7 +48,7 @@ function Remove(rf: any): void {
           <span>Recent</span>
         </span>
         <template v-if="has_files">
-          <button class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'Clear recent files'" :type="'button'" @click="ClearAll">
+          <button class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'Clear recent files'" @click="ClearAll">
             <component :is="(Trash2) as any" class="h-3.5 w-3.5" />
           </button>
         </template>
@@ -77,7 +77,7 @@ function Remove(rf: any): void {
                 <span class="text-[10px] text-muted-foreground">
                   <span>{{ rf.time }}</span>
                 </span>
-                <button class="flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground" :title="'Remove from recent'" :type="'button'" @click.stop="Remove(rf)">
+                <button class="flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground" :type="'button'" :title="'Remove from recent'" @click.stop="Remove(rf)">
                   <component :is="(X) as any" class="h-3 w-3" />
                 </button>
               </div>

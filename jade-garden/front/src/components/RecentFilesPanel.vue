@@ -20,6 +20,12 @@ const emit = defineEmits<{
   ClearAll: []
 }>()
 
+function ClearAll(): void {
+  recentFilesStore.clear();
+
+  emit('ClearAll')
+}
+
 function Open(rf: any): void {
   tabsStore.open(rf.path);
 
@@ -30,12 +36,6 @@ function Remove(rf: any): void {
   removeRecent(rf.path);
 
   emit('Remove', rf)
-}
-
-function ClearAll(): void {
-  recentFilesStore.clear();
-
-  emit('ClearAll')
 }
 
 
@@ -77,7 +77,7 @@ function ClearAll(): void {
                 <span class="text-[10px] text-muted-foreground">
                   <span>{{ rf.time }}</span>
                 </span>
-                <button class="flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground" :title="'Remove from recent'" :type="'button'" @click.stop="Remove(rf)">
+                <button class="flex h-5 w-5 items-center justify-center rounded hover:bg-destructive hover:text-destructive-foreground" :type="'button'" :title="'Remove from recent'" @click.stop="Remove(rf)">
                   <component :is="(X) as any" class="h-3 w-3" />
                 </button>
               </div>

@@ -49,34 +49,11 @@ function RightClick(e: any): void {
   emit('RightClick', e)
 }
 
-function Toggle(): void {
-  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
-  }
-  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
-  }
-
-  emit('Toggle')
-}
-
 function CtxNewFile(): void {
   menu_open.value = false;
   ctxNewFile(fileTreeStore, props.node);
 
   emit('CtxNewFile')
-}
-
-function CtxDuplicate(): void {
-  menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
-
-  emit('CtxDuplicate')
-}
-
-function CtxRename(): void {
-  menu_open.value = false;
-  ctxRename(fileTreeStore, props.node);
-
-  emit('CtxRename')
 }
 
 function CtxNewFolder(): void {
@@ -91,6 +68,29 @@ function CtxDelete(): void {
   ctxDelete(fileTreeStore, props.node);
 
   emit('CtxDelete')
+}
+
+function Toggle(): void {
+  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
+  }
+  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
+  }
+
+  emit('Toggle')
+}
+
+function CtxRename(): void {
+  menu_open.value = false;
+  ctxRename(fileTreeStore, props.node);
+
+  emit('CtxRename')
+}
+
+function CtxDuplicate(): void {
+  menu_open.value = false;
+  ctxDuplicate(fileTreeStore, props.node);
+
+  emit('CtxDuplicate')
 }
 
 onMounted(() => {
@@ -113,13 +113,13 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :is_dir="node.is_dir" :active="is_active" :expanded="is_expanded" />
+        <component :is="(NodeIcon) as any" :active="is_active" :is_dir="node.is_dir" :expanded="is_expanded" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :key="child.path" :level="next_level" :node="child"  v-for="child in node.children"/>
+        <FileTreeNode :level="next_level" :key="child.path" :node="child"  v-for="child in node.children"/>
       </template>
       <component :is="(BodyTeleport) as any">
         <template v-if="menu_open">

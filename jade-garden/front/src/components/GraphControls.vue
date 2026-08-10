@@ -20,23 +20,16 @@ const emit = defineEmits<{
   Reset: []
 }>()
 
-function DepthChanged(e: any): void {
-  graphStore.depth = eventNumber(e);
-
-  emit('DepthChanged', e)
-}
-
-function SliderChanged(args: any): void {
-  setGraphNumber(graphStore, args.key, eventNumber(args.evt));
-  graphStore.saveSettings();
-
-  emit('SliderChanged', args)
-}
-
 function SearchInput(e: any): void {
   graphStore.searchQuery = eventValue(e);
 
   emit('SearchInput', e)
+}
+
+function DepthChanged(e: any): void {
+  graphStore.depth = eventNumber(e);
+
+  emit('DepthChanged', e)
 }
 
 function FlagChanged(args: any): void {
@@ -46,16 +39,23 @@ function FlagChanged(args: any): void {
   emit('FlagChanged', args)
 }
 
+function Reset(): void {
+  resetGraphSettings(graphStore);
+
+  emit('Reset')
+}
+
 function ShowGlobal(): void {
   graphStore.showGlobal();
 
   emit('ShowGlobal')
 }
 
-function Reset(): void {
-  resetGraphSettings(graphStore);
+function SliderChanged(args: any): void {
+  setGraphNumber(graphStore, args.key, eventNumber(args.evt));
+  graphStore.saveSettings();
 
-  emit('Reset')
+  emit('SliderChanged', args)
 }
 
 
@@ -70,7 +70,7 @@ function Reset(): void {
             <span>搜索</span>
           </span>
         </div>
-        <input class="graph-input" :type="'text'" :placeholder="'搜索节点…'" :value="graphStore.searchQuery" @input="SearchInput($event)" />
+        <input class="graph-input" :placeholder="'搜索节点…'" :type="'text'" :value="graphStore.searchQuery" @input="SearchInput($event)" />
       </div>
       <template v-if="graphStore.centerPath">
         <div class="section">
@@ -87,7 +87,7 @@ function Reset(): void {
             <span>
               <span>深度</span>
             </span>
-            <RangeInput :value="graphStore.depth" :max="'3'" :min="'1'" :step="'1'" :key="'RangeInput-1'" @input="DepthChanged($event)" />
+            <RangeInput :max="'3'" :step="'1'" :value="graphStore.depth" :min="'1'" :key="'RangeInput-1'" @input="DepthChanged($event)" />
             <span class="value">
               <span>{{ graphStore.depth }}</span>
             </span>
@@ -108,7 +108,7 @@ function Reset(): void {
           <span>
             <span>显示孤立文件</span>
           </span>
-          <input class="toggle" :type="'checkbox'" :checked="graphStore.settings.showOrphans" @change="FlagChanged({ key: 'showOrphans', evt: $event })" />
+          <input class="toggle" :checked="graphStore.settings.showOrphans" :type="'checkbox'" @change="FlagChanged({ key: 'showOrphans', evt: $event })" />
         </label>
         <label class="control-row">
           <span>
@@ -128,7 +128,7 @@ function Reset(): void {
           <span>
             <span>节点大小</span>
           </span>
-          <RangeInput :max="'40'" :value="graphStore.settings.nodeSize" :step="'1'" :min="'4'" :key="'RangeInput-2'" @input="SliderChanged({ key: 'nodeSize', evt: $event })" />
+          <RangeInput :step="'1'" :value="graphStore.settings.nodeSize" :min="'4'" :max="'40'" :key="'RangeInput-2'" @input="SliderChanged({ key: 'nodeSize', evt: $event })" />
           <span class="value">
             <span>{{ graphStore.settings.nodeSize }}</span>
           </span>
@@ -146,7 +146,7 @@ function Reset(): void {
           <span>
             <span>连线粗细</span>
           </span>
-          <RangeInput :min="'0.5'" :step="'0.5'" :value="graphStore.settings.edgeWidth" :max="'5'" :key="'RangeInput-4'" @input="SliderChanged({ key: 'edgeWidth', evt: $event })" />
+          <RangeInput :max="'5'" :min="'0.5'" :value="graphStore.settings.edgeWidth" :step="'0.5'" :key="'RangeInput-4'" @input="SliderChanged({ key: 'edgeWidth', evt: $event })" />
           <span class="value">
             <span>{{ graphStore.settings.edgeWidth }}</span>
           </span>
@@ -169,7 +169,7 @@ function Reset(): void {
           <span>
             <span>图谱向心力</span>
           </span>
-          <RangeInput :step="'0.01'" :value="graphStore.settings.gravity" :min="'0'" :max="'0.5'" :key="'RangeInput-5'" @input="SliderChanged({ key: 'gravity', evt: $event })" />
+          <RangeInput :max="'0.5'" :step="'0.01'" :value="graphStore.settings.gravity" :min="'0'" :key="'RangeInput-5'" @input="SliderChanged({ key: 'gravity', evt: $event })" />
           <span class="value">
             <span>{{ graphStore.settings.gravity }}</span>
           </span>
@@ -178,7 +178,7 @@ function Reset(): void {
           <span>
             <span>节点排斥力</span>
           </span>
-          <RangeInput :value="graphStore.settings.repulsion" :step="'500'" :max="'20000'" :min="'1000'" :key="'RangeInput-6'" @input="SliderChanged({ key: 'repulsion', evt: $event })" />
+          <RangeInput :max="'20000'" :min="'1000'" :step="'500'" :value="graphStore.settings.repulsion" :key="'RangeInput-6'" @input="SliderChanged({ key: 'repulsion', evt: $event })" />
           <span class="value">
             <span>{{ graphStore.settings.repulsion }}</span>
           </span>
@@ -187,7 +187,7 @@ function Reset(): void {
           <span>
             <span>相连节点吸引力</span>
           </span>
-          <RangeInput :step="'0.001'" :min="'0.001'" :value="graphStore.settings.attraction" :max="'0.5'" :key="'RangeInput-7'" @input="SliderChanged({ key: 'attraction', evt: $event })" />
+          <RangeInput :value="graphStore.settings.attraction" :min="'0.001'" :max="'0.5'" :step="'0.001'" :key="'RangeInput-7'" @input="SliderChanged({ key: 'attraction', evt: $event })" />
           <span class="value">
             <span>{{ graphStore.settings.attraction }}</span>
           </span>
@@ -196,7 +196,7 @@ function Reset(): void {
           <span>
             <span>连线长度</span>
           </span>
-          <RangeInput :max="'300'" :value="graphStore.settings.linkLength" :step="'10'" :min="'30'" :key="'RangeInput-8'" @input="SliderChanged({ key: 'linkLength', evt: $event })" />
+          <RangeInput :max="'300'" :min="'30'" :value="graphStore.settings.linkLength" :step="'10'" :key="'RangeInput-8'" @input="SliderChanged({ key: 'linkLength', evt: $event })" />
           <span class="value">
             <span>{{ graphStore.settings.linkLength }}</span>
           </span>

@@ -74,7 +74,7 @@ onMounted(() => {
     <div class="flex h-full flex-col p-3">
       <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
         <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Search pages and blocks...'" v-model="query" @input="QueryInput($event)" />
+        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" v-model="query" :type="'text'" :placeholder="'Search pages and blocks...'" @input="QueryInput($event)" />
       </div>
       <template v-if="show_loading">
         <div class="mt-4 text-center text-xs text-muted-foreground">

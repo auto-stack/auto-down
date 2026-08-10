@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
+> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -87,13 +87,13 @@
 | gap | 缺口 | 规避 |
 |---|---|---|
 | 52 | 无 v-show | `style_obj: { display: ... }` 复刻（可见 `''`/隐藏 `'none'`） |
-| 27 | Teleport 无原生支持；`to:` 是关键字 token，dyn 块上误解析成垃圾子节点 | BodyTeleport 函数式组件 + dyn |
+| 27 | Teleport 无原生支持；`to:` 是关键字 token，dyn 块上误解析成垃圾子节点 | ✅ DONE：`to:` prop 解析已随保留字批次（c5b5fecf）修复；**批次 E3（f8acfb43）**：`teleport (to: "body")` 原生 → `<Teleport>`（含表达式 to、disabled、缺 to 发 R015）；ext BodyTeleport 可后续迁移删除 |
 | 38 | shadcn 过度映射：无 class 的 input/button/textarea/checkbox 变 shadcn 组件丢绑定；select/option 无论有无 class 都映射 Select | dyn + 字符串标签；ext 函数式组件（RangeInput） |
 | 53 | `type:` 等关键字 token prop 块内写法错解析成垃圾子节点 | 圆括号 prop 写法 `button (type: "button")` |
 | 18/29/34 | 保留字 token 碰撞：循环变量/变量不能命名 `link`/`task`/`path`（prop 声明除外） | 换名（bl/tk/page_path） |
 | 31 | `code`/`svg` 等不在元素表 → 静默降级 `<div>` | ext 函数式组件 + dyn |
 | 46 | view text 不支持 Call 表达式 | ext mapper 预计算展示字段 |
-| 22 | 无 v-html | ext 函数式组件 `h('div', { innerHTML })` |
+| 22 | 无 v-html | ✅ DONE（批次 E2，c7034bf5）：`html:` prop 原生 → `v-html` + R014 冲突告警；ext 函数式组件 `h('div', { innerHTML })` 规避仍可工作，jade 可择机迁移 |
 | 40 | watch 体内 model var 不能再写 `.value`；computed 作 watch 源相反要写 `.c.value` —— 规则靠口口相传 | 按 watch 源种类区分 |
 | 28 | computed 指向 import 常量时被名字启发式误推断 `computed<number>` | ext 零参函数包装（Call 体发射 `computed<any>`） |
 | —（5.0b 遗留） | 无 scoped slot（具名 slot 已通，作用域 slot 数据传递没有） | 目前无需求方，记录备查 |

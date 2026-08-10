@@ -26,19 +26,7 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const Toggle = async (path: any) => { await toggleExpanded(expanded.value, path);
- }
     const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
-loading.value = true;
-error.value = null;
-let res = await listFilesResult();
-if (res.error == '') {files.value = res.files;
-}
-if (res.error != '') {error.value = res.error;
-}
-loading.value = false;
- }
-    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
 loading.value = true;
 error.value = null;
 let res = await listFilesResult();
@@ -58,6 +46,18 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
+    const Toggle = async (path: any) => { await toggleExpanded(expanded.value, path);
+ }
+    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
+loading.value = true;
+error.value = null;
+let res = await listFilesResult();
+if (res.error == '') {files.value = res.files;
+}
+if (res.error != '') {error.value = res.error;
+}
+loading.value = false;
+ }
     return {
         files,
         expanded,
@@ -65,9 +65,9 @@ loading.value = false;
         error,
         Load,
         CreateFile,
-        Toggle,
         DuplicateFile,
-        RenameFile,
         DeleteFile,
+        Toggle,
+        RenameFile,
     }
 }

@@ -23,16 +23,16 @@ const emit = defineEmits<{
   NavNext: []
 }>()
 
+function NavPrev(): void {
+  navigateDailyNote('prev', tabsStore, fileTreeStore);
+
+  emit('NavPrev')
+}
+
 function NavNext(): void {
   navigateDailyNote('next', tabsStore, fileTreeStore);
 
   emit('NavNext')
-}
-
-function OpenLocalGraph(): void {
-  openLocalGraphTab(tabsStore);
-
-  emit('OpenLocalGraph')
 }
 
 function OpenToday(): void {
@@ -53,10 +53,10 @@ function SwitchTab(tab: any): void {
   emit('SwitchTab', tab)
 }
 
-function NavPrev(): void {
-  navigateDailyNote('prev', tabsStore, fileTreeStore);
+function OpenLocalGraph(): void {
+  openLocalGraphTab(tabsStore);
 
-  emit('NavPrev')
+  emit('OpenLocalGraph')
 }
 
 
@@ -90,7 +90,7 @@ function NavPrev(): void {
             </span>
           </button>
         </template>
-        <button class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'今日笔记'" @click="OpenToday">
+        <button class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'今日笔记'" :type="'button'" @click="OpenToday">
           <component :is="(CalendarDays) as any" class="h-3.5 w-3.5" />
           <span>
             <span>今日笔记</span>
@@ -98,7 +98,7 @@ function NavPrev(): void {
         </button>
         <template v-if="has_daily">
           <div class="flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground">
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'前一天'" :type="'button'" @click="NavPrev">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'前一天'" @click="NavPrev">
               <component :is="(ChevronLeft) as any" class="h-3.5 w-3.5" />
             </button>
             <span class="px-1">

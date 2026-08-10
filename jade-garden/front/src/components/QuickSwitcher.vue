@@ -46,13 +46,16 @@ function HoverFile(file: any): void {
   emit('HoverFile', file)
 }
 
-function SelectCurrent(): void {
-  let file = filtered.value[selected_index.value];
-  if (file != null) {tabsStore.open(file.path);
+function CloseOverlay(): void {
   open.value = false;
-  }
 
-  emit('SelectCurrent')
+  emit('CloseOverlay')
+}
+
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
 }
 
 function QueryInput(e: any): void {
@@ -68,22 +71,19 @@ function SelectFile(file: any): void {
   emit('SelectFile', file)
 }
 
+function SelectCurrent(): void {
+  let file = filtered.value[selected_index.value];
+  if (file != null) {tabsStore.open(file.path);
+  open.value = false;
+  }
+
+  emit('SelectCurrent')
+}
+
 function NextItem(): void {
   selected_index.value = nextIndex(selected_index.value, filtered.value.length);
 
   emit('NextItem')
-}
-
-function CloseOverlay(): void {
-  open.value = false;
-
-  emit('CloseOverlay')
-}
-
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
-
-  emit('PrevItem')
 }
 
 onMounted(() => {
@@ -109,14 +109,14 @@ onUnmounted(() => {
           <div class="w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg">
             <div class="flex items-center gap-2 border-b px-3 py-2">
               <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" v-model="query" :type="'text'" :placeholder="'Search files...'" @keydown.enter.prevent="SelectCurrent" @keydown.down.prevent="NextItem" @input="QueryInput($event)" @keydown.up.prevent="PrevItem" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" v-model="query" :placeholder="'Search files...'" :type="'text'" @input="QueryInput($event)" @keydown.up.prevent="PrevItem" @keydown.down.prevent="NextItem" @keydown.enter.prevent="SelectCurrent" />
               <span class="text-xs text-muted-foreground">
                 <span>Ctrl+O</span>
               </span>
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
-                <component :is="(li_tag) as any" :class="file.idx == selected_index ? 'cursor-pointer px-3 py-1.5 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-1.5 text-sm text-foreground hover:bg-accent/50'" @click="SelectFile(file)" @mouseenter="HoverFile(file)" v-for="file in filtered">
+                <component :is="(li_tag) as any" :class="file.idx == selected_index ? 'cursor-pointer px-3 py-1.5 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-1.5 text-sm text-foreground hover:bg-accent/50'" @mouseenter="HoverFile(file)" @click="SelectFile(file)" v-for="file in filtered">
                   <span>{{ file.name }}</span>
                   <span class="ml-2 text-xs text-muted-foreground">
                     <span>{{ file.path }}</span>

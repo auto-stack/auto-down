@@ -38,15 +38,15 @@ watch(() => props.highlightQuery, () => {
   applyGraphHighlight(handle.value, props.highlightQuery);
 })
 
-function Open(p: any): void {
-
-  emit('Open', p)
-}
-
 function Relayout(): void {
   graphRelayout(handle.value, props.settings);
 
   emit('Relayout')
+}
+
+function Open(p: any): void {
+
+  emit('Open', p)
 }
 
 function Fit(): void {

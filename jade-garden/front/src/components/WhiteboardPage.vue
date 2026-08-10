@@ -28,12 +28,6 @@ const emit = defineEmits<{
   Deselect: []
 }>()
 
-function Select(sid: any): void {
-  selected_id.value = sid;
-
-  emit('Select', sid)
-}
-
 function OpenTarget(shape: any): void {
   openShapeTarget(tabsStore, shape);
 
@@ -47,17 +41,23 @@ function UpdateLabel(args: any): void {
   emit('UpdateLabel', args)
 }
 
+function AddShape(): void {
+  addNoteShape(doc.value);
+  saveWhiteboard(tabsStore, props.path, doc.value);
+
+  emit('AddShape')
+}
+
 function Deselect(): void {
   selected_id.value = null;
 
   emit('Deselect')
 }
 
-function AddShape(): void {
-  addNoteShape(doc.value);
-  saveWhiteboard(tabsStore, props.path, doc.value);
+function Select(sid: any): void {
+  selected_id.value = sid;
 
-  emit('AddShape')
+  emit('Select', sid)
 }
 
 onMounted(() => {

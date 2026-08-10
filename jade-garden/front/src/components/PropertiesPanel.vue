@@ -43,10 +43,25 @@ watch(fm_json, () => {
   entries.value = syncEntries(tabsStore);
 })
 
-function NewKeyInput(e: any): void {
-  new_key.value = e.target.value;
+function ToggleBool(entry: any): void {
+  entry.value = !entry.value;
+  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
-  emit('NewKeyInput', e)
+  emit('ToggleBool', entry)
+}
+
+function SaveNow(): void {
+  let t = tabsStore.activeTab;
+  if (t != null && t.path != '') {tabsStore.save(t.path);
+  }
+
+  emit('SaveNow')
+}
+
+function NewValueInput(e: any): void {
+  new_value.value = e.target.value;
+
+  emit('NewValueInput', e)
 }
 
 function ValueChanged(args: any): void {
@@ -54,6 +69,12 @@ function ValueChanged(args: any): void {
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
   emit('ValueChanged', args)
+}
+
+function NewKeyInput(e: any): void {
+  new_key.value = e.target.value;
+
+  emit('NewKeyInput', e)
 }
 
 function KeyChanged(args: any): void {
@@ -85,14 +106,6 @@ function AddProperty(): void {
   emit('AddProperty')
 }
 
-function SaveNow(): void {
-  let t = tabsStore.activeTab;
-  if (t != null && t.path != '') {tabsStore.save(t.path);
-  }
-
-  emit('SaveNow')
-}
-
 function Cancel(): void {
   entries.value = syncEntries(tabsStore);
 
@@ -104,19 +117,6 @@ function RemoveProperty(idx: any): void {
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
   emit('RemoveProperty', idx)
-}
-
-function NewValueInput(e: any): void {
-  new_value.value = e.target.value;
-
-  emit('NewValueInput', e)
-}
-
-function ToggleBool(entry: any): void {
-  entry.value = !entry.value;
-  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
-
-  emit('ToggleBool', entry)
 }
 
 onMounted(() => {
@@ -138,7 +138,7 @@ onMounted(() => {
         </h4>
         <template v-if="is_dirty">
           <div class="flex items-center gap-1">
-            <button class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" :title="'Revert'" :type="'button'" @click="Cancel">
+            <button class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" :type="'button'" :title="'Revert'" @click="Cancel">
               <component :is="(X) as any" class="h-3 w-3" />
             </button>
             <button class="flex h-5 w-5 items-center justify-center rounded text-primary hover:bg-primary/10" :title="'Save now'" :type="'button'" @click="SaveNow">
@@ -151,7 +151,7 @@ onMounted(() => {
         <div class="space-y-2">
           <div class="group" v-for="entry in display_entries">
             <div class="mb-0.5 flex items-center justify-between">
-              <input class="w-full bg-transparent text-[11px] font-medium text-muted-foreground outline-none" :type="'text'" :value="entry.key" @change="Commit(entry)" @input="KeyChanged({ entry: entry, evt: $event })" />
+              <input class="w-full bg-transparent text-[11px] font-medium text-muted-foreground outline-none" :value="entry.key" :type="'text'" @input="KeyChanged({ entry: entry, evt: $event })" @change="Commit(entry)" />
               <button class="invisible flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:visible" :type="'button'" @click="RemoveProperty(entry.idx)">
                 <component :is="(Trash2) as any" class="h-3 w-3" />
               </button>
@@ -163,7 +163,7 @@ onMounted(() => {
                 </button>
               </template>
               <template v-if="entry.is_date">
-                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'date'" :value="entry.value" @input="ValueChanged({ entry: entry, evt: $event })" />
+                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :value="entry.value" :type="'date'" @input="ValueChanged({ entry: entry, evt: $event })" />
               </template>
               <template v-if="entry.is_other">
                 <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'text'" :value="entry.value" :placeholder="entry.placeholder_text" @input="ValueChanged({ entry: entry, evt: $event })" />
@@ -195,7 +195,7 @@ onMounted(() => {
         </p>
       </template>
       <div class="mt-3 flex items-center gap-1 border-t border-border/50 pt-2">
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" v-model="new_key" :placeholder="'key'" :type="'text'" @keydown.enter="AddProperty" @input="NewKeyInput($event)" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" v-model="new_key" :type="'text'" :placeholder="'key'" @keydown.enter="AddProperty" @input="NewKeyInput($event)" />
         <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'text'" :placeholder="'value'" v-model="new_value" @input="NewValueInput($event)" @keydown.enter="AddProperty" />
         <button class="flex h-6 w-6 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground hover:bg-accent hover:text-foreground" :type="'button'" @click="AddProperty">
           <component :is="(Plus) as any" class="h-3.5 w-3.5" />

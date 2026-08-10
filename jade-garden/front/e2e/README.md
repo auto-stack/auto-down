@@ -43,6 +43,10 @@ the debug binary) and `pnpm install` in `front/`.
 | Ctrl+P / Ctrl+O modals | `06-palette.spec.ts` | Ctrl+P = CommandPalette (commands), Ctrl+O = QuickSwitcher (file search). Also covers the Flashcards modal via the palette command. |
 | Graph view mounts cytoscape | `07-graph.spec.ts` | Asserts `.graph-view canvas` + sidebar stats, not canvas pixels. |
 | Screenshot baselines | `08-screenshots.spec.ts` | Main layout, editor area, and each right-sidebar panel. Baselines in `08-screenshots.spec.ts-snapshots/`. |
+| File-tree context menu CRUD | `09-filetree-context.spec.ts` | Right-click → teleported `.file-context-menu` → New file / New folder / Rename / Delete. Native `prompt`/`confirm` auto-answered via `page.on('dialog')`; effects verified through the API and the reloaded tree. |
+| Whiteboard (.canvas) | `10-whiteboard.spec.ts` | Seed via API (see caveat below), open from the tree, edit a note label on blur, `Add note`; saves verified by polling `GET /api/whiteboard/:path`. |
+| PropertiesPanel editing | `11-properties.spec.ts` | Edit an existing frontmatter value + add a new property; the 1.2 s debounced save is verified through `GET /api/wiki/:path`. Target doc created via API. |
+| Flashcard review with due cards | `12-flashcards.spec.ts` | Card doc created via API (`#card` + `^block-id` + `{{cloze answer \ hint}}`). Covers question render, reveal, all four rating buttons, and the SRS write-back; pins the "card stays due after review" app gap (see Known gaps). |
 
 ## Mapping caveats vs the plan's panel list
 
@@ -53,8 +57,9 @@ References, Properties** (right sidebar) plus Search/Recent (left sidebar).
 - **Tags, Bookmarks**: no such panels exist in the app — nothing to test.
 - **Tasks**: closest is `AgendaPanel` (covered). The fixture tasks have no
   scheduled/deadline dates, so it renders its `No upcoming tasks` empty state.
-- **Flashcards**: a modal, not a panel; the fixture contains no flashcards, so
-  the modal's `No cards due for review` empty state is asserted instead.
+- **Flashcards**: a modal, not a panel; `06-palette.spec.ts` asserts the
+  `No cards due for review` empty state against the card-less fixture, and
+  `12-flashcards.spec.ts` covers the with-cards review flow.
 
 ## Known app-side gaps pinned by this baseline
 
@@ -63,15 +68,31 @@ References, Properties** (right sidebar) plus Search/Recent (left sidebar).
   `No headings.` even for documents with headings. `05-panels.spec.ts` pins
   this current behavior; if the app is fixed, update the test and the
   `panel-outline.png` baseline deliberately.
+- **Reviewed flashcards stay due.** `review_card` writes `card-next-schedule::`
+  etc. as indented property lines under the block, but the due-scan
+  (`srs::parse_block_properties`) only reads the block's own parser line
+  range — one line for a list item — so the schedule is never read back and
+  the card is due again immediately. `12-flashcards.spec.ts` pins this:
+  after rating, the same card reappears instead of the empty state.
+- **Backend errors are HTTP 200.** Handlers return `Result<Json, String>` and
+  axum renders the `String` error as a 200 text/plain body, so API-level
+  assertions must inspect the payload (e.g. JSON-parse guard), not `res.ok()`.
+
+## Caveats of the 09–12 additions
+
+- **All test data is created in-test via the backend API** (the runtime
+  workspace is reset by `e2e-prepare.mjs` before every run, so no cleanup is
+  needed). The static fixture `tmp/wiki-demo/wiki` is untouched. The new specs
+  sort after `08-screenshots`, so their extra files cannot alter the baselines.
+- **Whiteboard storage is split**: the file tree shows a `.canvas` marker at
+  the wiki root, but `GET/POST /api/whiteboard/:path` reads/writes
+  `whiteboards/:path` (the backend namespaces the shape document). The test
+  seeds both halves — this pins the current app behavior, including the split.
 
 ## Deliberately NOT covered (and why)
 
 - **Graph canvas pixels**: cytoscape-fcose layout is nondeterministic across
   runs, so graph screenshots would be flaky. DOM-level assertions only.
-- **File-tree CRUD via context menu**: the app drives create/rename/delete
-  through native `window.prompt`/`confirm`; covered implicitly by the
-  dangling-wiki-link create-page flow instead.
-- **Whiteboard (.canvas files)**: the fixture workspace has none.
 
 ## Flakiness policy
 

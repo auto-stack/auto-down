@@ -29,22 +29,22 @@ function NavPrev(): void {
   emit('NavPrev')
 }
 
-function NavNext(): void {
-  navigateDailyNote('next', tabsStore, fileTreeStore);
-
-  emit('NavNext')
-}
-
 function OpenToday(): void {
   openTodayNote(tabsStore, fileTreeStore);
 
   emit('OpenToday')
 }
 
-function CloseTab(tab: any): void {
-  closeTab(tabsStore, tab.path);
+function OpenLocalGraph(): void {
+  openLocalGraphTab(tabsStore);
 
-  emit('CloseTab', tab)
+  emit('OpenLocalGraph')
+}
+
+function NavNext(): void {
+  navigateDailyNote('next', tabsStore, fileTreeStore);
+
+  emit('NavNext')
 }
 
 function SwitchTab(tab: any): void {
@@ -53,10 +53,10 @@ function SwitchTab(tab: any): void {
   emit('SwitchTab', tab)
 }
 
-function OpenLocalGraph(): void {
-  openLocalGraphTab(tabsStore);
+function CloseTab(tab: any): void {
+  closeTab(tabsStore, tab.path);
 
-  emit('OpenLocalGraph')
+  emit('CloseTab', tab)
 }
 
 
@@ -83,14 +83,14 @@ function OpenLocalGraph(): void {
         </button>
         <div class="mx-1 h-4 w-px bg-border" />
         <template v-if="can_local_graph">
-          <button class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'当前文档的局部图谱'" @click="OpenLocalGraph">
+          <button class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'当前文档的局部图谱'" :type="'button'" @click="OpenLocalGraph">
             <component :is="(Focus) as any" class="h-3.5 w-3.5" />
             <span>
               <span>局部图谱</span>
             </span>
           </button>
         </template>
-        <button class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'今日笔记'" :type="'button'" @click="OpenToday">
+        <button class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'今日笔记'" @click="OpenToday">
           <component :is="(CalendarDays) as any" class="h-3.5 w-3.5" />
           <span>
             <span>今日笔记</span>
@@ -104,7 +104,7 @@ function OpenLocalGraph(): void {
             <span class="px-1">
               <span>{{ daily_title }}</span>
             </span>
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'后一天'" :type="'button'" @click="NavNext">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'后一天'" @click="NavNext">
               <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
             </button>
           </div>

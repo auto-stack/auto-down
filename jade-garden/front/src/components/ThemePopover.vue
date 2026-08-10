@@ -1,7 +1,7 @@
 <!-- ThemePopover component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { BodyTeleport, Sun, Moon, themeAccents, isOutsideThemePopover } from '../../auto/src/front/utils/theme_popover_ext'
+import { Sun, Moon, themeAccents, isOutsideThemePopover } from '../../auto/src/front/utils/theme_popover_ext'
 import { useThemeStore } from '../../auto/src/front/utils/theme_popover_ext'
 
 const themeStore = useThemeStore()
@@ -21,18 +21,6 @@ const emit = defineEmits<{
   SetAccent: [any]
 }>()
 
-function SetLight(): void {
-  themeStore.setMode('light');
-
-  emit('SetLight')
-}
-
-function Close(e: any): void {
-  let outside = isOutsideThemePopover(e);
-
-  emit('Close', e)
-}
-
 function SetDark(): void {
   themeStore.setMode('dark');
 
@@ -45,11 +33,23 @@ function SetAccent(accent: any): void {
   emit('SetAccent', accent)
 }
 
+function SetLight(): void {
+  themeStore.setMode('light');
+
+  emit('SetLight')
+}
+
+function Close(e: any): void {
+  let outside = isOutsideThemePopover(e);
+
+  emit('Close', e)
+}
+
 
 </script>
 
 <template>
-    <component :is="(BodyTeleport) as any">
+    <Teleport to="body">
       <template v-if="is_open">
         <div class="fixed inset-0 z-40" @click="Close" />
       </template>
@@ -75,14 +75,14 @@ function SetAccent(accent: any): void {
               <span>Accent</span>
             </span>
             <div class="grid grid-cols-5 gap-1.5">
-              <button :class="themeStore.accent == accent.key ? 'flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary' : 'flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground'" :type="'button'" :title="accent.label" @click="SetAccent(accent)" v-for="accent in accents">
+              <button :class="themeStore.accent == accent.key ? 'flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary' : 'flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground'" :title="accent.label" :type="'button'" @click="SetAccent(accent)" v-for="accent in accents">
                 <span class="h-4 w-4 rounded-full" :style="({ backgroundColor: accent.color } as any)" />
               </button>
             </div>
           </div>
         </div>
       </template>
-    </component>
+    </Teleport>
 
 </template>
 

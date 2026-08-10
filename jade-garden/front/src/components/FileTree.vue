@@ -13,16 +13,16 @@ const emit = defineEmits<{
   NewFolder: []
 }>()
 
-function NewFile(): void {
-  promptNewFile(fileTreeStore);
-
-  emit('NewFile')
-}
-
 function NewFolder(): void {
   promptNewFolder(fileTreeStore);
 
   emit('NewFolder')
+}
+
+function NewFile(): void {
+  promptNewFile(fileTreeStore);
+
+  emit('NewFile')
 }
 
 
@@ -49,7 +49,7 @@ function NewFolder(): void {
             <span>Loading...</span>
           </div>
         </template>
-        <FileTreeNode :level="0" :node="node" :key="node.path"  v-for="node in fileTreeStore.files"/>
+        <FileTreeNode :level="0" :key="node.path" :node="node"  v-for="node in fileTreeStore.files"/>
       </div>
     </div>
 

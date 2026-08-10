@@ -28,8 +28,8 @@
 // - ul/li render via dyn with string tags (backlinks precedent).
 // - The per-result icon branch / title ternary / snippet v-html are
 //   precomputed by the extension's withSearchDisplay (no Call/ternary
-//   bindings in the view); the v-html itself is the HtmlDiv functional
-//   component (README gap 22).
+//   bindings in the view); the v-html itself is the DSL's native `html:`
+//   prop on plain elements (compiler c7034bf5, gap 22 closed).
 // - The Block branch's `tabs.open(...).then(setTimeout dispatch)` maps to
 //   a one-callback .then whose body calls the extension's
 //   scheduleScrollToBlock (setTimeout + CustomEvent).
@@ -38,7 +38,6 @@ widget SearchPanel {
     use {
         composable: useTabsStore from "src/front/utils/search_panel_ext.ts"
         fn: useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, Search, FileText, Box from "src/front/utils/search_panel_ext.ts"
-        component: HtmlDiv from "src/front/utils/search_panel_ext.ts"
     }
 
     msg Msg { Init, QueryInput, OpenResult }
@@ -102,7 +101,7 @@ widget SearchPanel {
                                 span { class: "truncate font-medium", text r.title_text }
                             }
                             if r.has_snippet {
-                                HtmlDiv (class: "mt-0.5 pl-5 text-xs text-muted-foreground", html: r.snippet_html)
+                                div (class: "mt-0.5 pl-5 text-xs text-muted-foreground", html: r.snippet_html)
                             }
                         }
                     }

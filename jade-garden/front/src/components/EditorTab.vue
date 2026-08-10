@@ -1,7 +1,6 @@
 <!-- EditorTab component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { BodyTeleport } from '../../auto/src/front/utils/editor_tab_ext'
 import { EditorShell } from '../../auto/src/front/utils/editor_tab_ext'
 import { HoverLinkBtn } from '../../auto/src/front/utils/editor_tab_ext'
 import { useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLinkFn, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent } from '../../auto/src/front/utils/editor_tab_ext'
@@ -41,12 +40,12 @@ watch(() => props.path, () => {
   loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
 
-function CopyBlockLink(): void {
-  let ok = copyBlockLinkSafe(hover_block.value, tab.value);
-  if (ok) {hover_block.value = null;
-  }
+function OnUpdate(md: any): void {
+  tabsStore.setBody(props.path, md);
+  let f = debounced_save.value;
+  f();
 
-  emit('CopyBlockLink')
+  emit('OnUpdate', md)
 }
 
 function OnScrollToBlock(e: any): void {
@@ -55,12 +54,12 @@ function OnScrollToBlock(e: any): void {
   emit('OnScrollToBlock', e)
 }
 
-function OnUpdate(md: any): void {
-  tabsStore.setBody(props.path, md);
-  let f = debounced_save.value;
-  f();
+function CopyBlockLink(): void {
+  let ok = copyBlockLinkSafe(hover_block.value, tab.value);
+  if (ok) {hover_block.value = null;
+  }
 
-  emit('OnUpdate', md)
+  emit('CopyBlockLink')
 }
 
 onMounted(() => {
@@ -99,13 +98,13 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell :extraSlashItems="extra_slash" :assetUpload="asset_upload" :runQuery="run_query" :showActions="false" ref="editorRef" :class="'h-full w-full'" :loadBlock="load_block" :pageTitle="page_title" :content="body" :placeholder="'Start typing...'" :openWikiLink="open_wiki_link" :key="'EditorShell-1'" @update="OnUpdate" />
+      <EditorShell :pageTitle="page_title" :runQuery="run_query" :showActions="false" ref="editorRef" :class="'h-full w-full'" :assetUpload="asset_upload" :loadBlock="load_block" :openWikiLink="open_wiki_link" :extraSlashItems="extra_slash" :placeholder="'Start typing...'" :content="body" :key="'EditorShell-1'" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>
-      <component :is="(BodyTeleport) as any">
+      <Teleport to="body">
         <HoverLinkBtn :hb="hover_block" :key="'HoverLinkBtn-2'" @copy="CopyBlockLink" />
-      </component>
+      </Teleport>
     </div>
 
 </template>

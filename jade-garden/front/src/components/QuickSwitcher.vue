@@ -40,37 +40,6 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function HoverFile(file: any): void {
-  selected_index.value = file.idx;
-
-  emit('HoverFile', file)
-}
-
-function CloseOverlay(): void {
-  open.value = false;
-
-  emit('CloseOverlay')
-}
-
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
-
-  emit('PrevItem')
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
-}
-
-function SelectFile(file: any): void {
-  tabsStore.open(file.path);
-  open.value = false;
-
-  emit('SelectFile', file)
-}
-
 function SelectCurrent(): void {
   let file = filtered.value[selected_index.value];
   if (file != null) {tabsStore.open(file.path);
@@ -84,6 +53,37 @@ function NextItem(): void {
   selected_index.value = nextIndex(selected_index.value, filtered.value.length);
 
   emit('NextItem')
+}
+
+function HoverFile(file: any): void {
+  selected_index.value = file.idx;
+
+  emit('HoverFile', file)
+}
+
+function CloseOverlay(): void {
+  open.value = false;
+
+  emit('CloseOverlay')
+}
+
+function SelectFile(file: any): void {
+  tabsStore.open(file.path);
+  open.value = false;
+
+  emit('SelectFile', file)
+}
+
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
 }
 
 onMounted(() => {
@@ -109,7 +109,7 @@ onUnmounted(() => {
           <div class="w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg">
             <div class="flex items-center gap-2 border-b px-3 py-2">
               <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" v-model="query" :placeholder="'Search files...'" :type="'text'" @input="QueryInput($event)" @keydown.up.prevent="PrevItem" @keydown.down.prevent="NextItem" @keydown.enter.prevent="SelectCurrent" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" v-model="query" :placeholder="'Search files...'" @keydown.down.prevent="NextItem" @keydown.enter.prevent="SelectCurrent" @input="QueryInput($event)" @keydown.up.prevent="PrevItem" />
               <span class="text-xs text-muted-foreground">
                 <span>Ctrl+O</span>
               </span>

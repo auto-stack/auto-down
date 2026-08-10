@@ -4,9 +4,6 @@
 // - the fileTree/tabs store facade re-exports (dual-resolution shims —
 //   resolve to front/src/stores/*.ts in the front tree and to stubs in the
 //   gen project),
-// - the Teleport wrapper (the DSL has no teleport element and `to:` on a dyn
-//   block mis-parses — BodyTeleport is the theme_popover precedent; rendered
-//   via dyn, same mounted DOM as the original's <teleport to="body">),
 // - the lucide chevron re-exports (rendered via dyn) and NodeIcon, the
 //   stand-in for the original's
 //   `<component :is="node.is_dir ? (isExpanded ? FolderOpen : Folder) : FileText">`
@@ -29,7 +26,7 @@
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
-import { Teleport, h } from 'vue'
+import { h } from 'vue'
 import {
   ChevronRight,
   ChevronDown,
@@ -42,10 +39,6 @@ import { useTabsStore } from '../../../../src/stores/tabs'
 import type { FileNode } from '../../../../src/lib/api'
 
 export { useFileTreeStore, useTabsStore, ChevronRight, ChevronDown }
-
-/** <teleport to="body"> wrapper (theme_popover BodyTeleport precedent). */
-export const BodyTeleport = (_props: any, { slots }: any) =>
-  h(Teleport, { to: 'body' }, slots)
 
 /** Original: <component :is="node.is_dir ? (isExpanded ? FolderOpen : Folder)
  *  : FileText" class="h-3.5 w-3.5 shrink-0" :class="[node.is_dir ?

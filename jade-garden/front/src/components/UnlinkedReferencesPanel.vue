@@ -1,7 +1,6 @@
 <!-- UnlinkedReferencesPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { HtmlDiv } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 import { tabTitle, tabPath, fetchUnlinkedSafe } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 
@@ -60,7 +59,7 @@ function OpenRef(r: any): void {
             <div class="mb-0.5 truncate text-[10px] text-muted-foreground">
               <span>{{ r.page_path }}</span>
             </div>
-            <HtmlDiv :html="r.html" :class="'text-foreground/80'" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+            <div class="text-foreground/80" v-html="r.html" />
           </component>
         </component>
       </template>

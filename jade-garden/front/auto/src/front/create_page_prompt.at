@@ -25,7 +25,8 @@
 // - onclick.self: → @click.self (modifier passes through verbatim).
 // - `code` is not a DSL element (it degrades to a plain <div>, losing the
 //   UA monospace style): the path chip renders through the extension's
-//   CodeTag functional component via dyn (BodyTeleport slot precedent).
+//   CodeTag functional component via dyn (the ext functional-component-via-
+//   dyn pattern for tags missing from the DSL element table).
 // - NO commas between sibling view children — a trailing comma emits a junk
 //   <div /> spacer (commas belong between props only).
 

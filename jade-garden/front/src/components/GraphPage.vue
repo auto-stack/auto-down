@@ -30,10 +30,10 @@ const emit = defineEmits<{
   RelayoutView: []
 }>()
 
-function RelayoutView(): void {
-  relayoutGraphView(graphViewRef.value!);
+function FitView(): void {
+  fitGraphView(graphViewRef.value!);
 
-  emit('RelayoutView')
+  emit('FitView')
 }
 
 function SwitchToGlobal(): void {
@@ -42,10 +42,10 @@ function SwitchToGlobal(): void {
   emit('SwitchToGlobal')
 }
 
-function FitView(): void {
-  fitGraphView(graphViewRef.value!);
+function RelayoutView(): void {
+  relayoutGraphView(graphViewRef.value!);
 
-  emit('FitView')
+  emit('RelayoutView')
 }
 
 function OpenPage(p: any): void {
@@ -83,13 +83,13 @@ onMounted(() => {
           <button class="graph-tool-btn" :type="'button'" :title="'适应画布'" @click="FitView">
             <component :is="(Maximize) as any" class="h-3.5 w-3.5" />
           </button>
-          <button class="graph-tool-btn" :type="'button'" :title="'重新布局'" @click="RelayoutView">
+          <button class="graph-tool-btn" :title="'重新布局'" :type="'button'" @click="RelayoutView">
             <component :is="(RefreshCw) as any" class="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
       <div class="graph-body">
-        <GraphView class="graph-canvas" ref="graphViewRef" :nodes="visible_nodes" :loading="graphStore.loading" :settings="graphStore.settings" :highlightQuery="graphStore.searchQuery" :edges="visible_edges" @open="OpenPage" :key="'GraphView-1'" />
+        <GraphView class="graph-canvas" :edges="visible_edges" :highlightQuery="graphStore.searchQuery" :settings="graphStore.settings" ref="graphViewRef" :loading="graphStore.loading" :nodes="visible_nodes" @open="OpenPage" :key="'GraphView-1'" />
         <GraphControls :key="'GraphControls-2'" />
       </div>
       <template v-if="graphStore.error">

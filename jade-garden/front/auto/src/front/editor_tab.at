@@ -51,8 +51,8 @@
 //   literals — no DSL form). Per-tab instances get their own hover handle
 //   (graph_view opaque-handle precedent), built in .Init and torn down in
 //   .Destroy.
-// - The teleported hover button is the BodyTeleport functional component
-//   via dyn (theme_popover precedent) wrapping HoverLinkBtn (an ext
+// - The teleported hover button is the DSL's native teleport element
+//   (compiler f8acfb43, gap 27 closed) wrapping HoverLinkBtn (an ext
 //   functional component that returns null when hover_block is null — the
 //   original's v-if); its click travels the oncopy event wiring back to the
 //   widget's .CopyBlockLink handler (RangeInput precedent).
@@ -63,7 +63,7 @@ widget EditorTab(path: str) {
     use {
         composable: useTabsStore, useFileTreeStore from "src/front/utils/editor_tab_ext.ts"
         fn: useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLinkFn, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent from "src/front/utils/editor_tab_ext.ts"
-        component: EditorShell, BodyTeleport, HoverLinkBtn from "src/front/utils/editor_tab_ext.ts"
+        component: EditorShell, HoverLinkBtn from "src/front/utils/editor_tab_ext.ts"
     }
 
     msg Msg { Init, Destroy, OnUpdate, CopyBlockLink, OnScrollToBlock }
@@ -118,7 +118,7 @@ widget EditorTab(path: str) {
                 style_obj: { display: .overlay_display },
                 text "Loading…"
             }
-            dyn (.BodyTeleport) {
+            teleport (to: "body") {
                 HoverLinkBtn (hb: .hover_block, oncopy: .CopyBlockLink)
             }
         }

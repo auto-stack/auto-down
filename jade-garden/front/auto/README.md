@@ -313,6 +313,8 @@ sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|
     widget 里 `use { component: HtmlDiv }` + `HtmlDiv (class: "...", html: r.html)`。
     单变量 v-for 内 PascalCase 组件会自动加 `:key="'HtmlDiv-1-' + (r?.id ?? r)"`，
     item 为 any 时 vue-tsc 通过。
+    已迁移原生（2026-08-10）：原生元素 `div (class: "...", html: expr)`
+    直接发射 `v-html`（auto-lang c7034bf5），HtmlDiv 已删除。
 23. **`text f"...${x}..."`** f-string 在 view text 可用
     （`text f"#${ol.block_id}"` → `#{{ ol.block_id }}`）。
 24. **`onclick.stop: .Remove(x)`** 修饰符 + 带参 handler 可用，与
@@ -337,6 +339,9 @@ sed 's|@/ext/src/front/utils/<panel>_ext|../../auto/src/front/utils/<panel>_ext|
     错解析成垃圾 `<div>` 子节点（含 `<div>body</div>`）。规避：ext 包
     一个固定 `to="body"` 的函数式组件（BodyTeleport），经 dyn 渲染，
     挂载 DOM 与 `<Teleport to="body">` 一致。
+    已迁移原生（2026-08-10）：`teleport (to: "body") { ... }` 原生元素
+    直接发射 `<Teleport to="body">`（auto-lang f8acfb43），BodyTeleport
+    已删除。
 28. **computed 体为「指向 import 常量的 dot-ref」时被误推断为
     `computed<number>`**：`accents => .THEME_ACCENTS` 经名字启发式
     （非 is_/has_ 前缀 → number）发射 `computed<number>(() => THEME_ACCENTS)`，

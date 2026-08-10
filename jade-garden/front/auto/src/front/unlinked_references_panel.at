@@ -11,16 +11,16 @@
 // Idioms forced by DSL codegen gaps (see backlinks_panel.at header):
 // - ul/li render via dyn with string tags (not in the DSL element table).
 // - The v-if / v-else-if / v-else chain becomes exclusive boolean computeds.
-// - The original's v-html highlight div renders through the extension's
-//   HtmlDiv functional component (the DSL has no v-html); the highlight
-//   regex is precomputed per item by the extension.
+// - The original's v-html highlight div uses the DSL's native `html:` prop
+//   on plain elements (compiler c7034bf5, gap 22 closed): `div (class:
+//   "...", html: r.html)` emits v-html; the highlight regex is precomputed
+//   per item by the extension.
 // - The original watches tabs.activeTab?.path but loads by
 //   tabs.activeTab?.title — the watch source is the watch_key computed
 //   (ext tabPath), the load title comes from ext tabTitle.
 
 widget UnlinkedReferencesPanel {
     use {
-        component: HtmlDiv from "src/front/utils/unlinked_references_panel_ext.ts"
         composable: useTabsStore from "src/front/utils/unlinked_references_panel_ext.ts"
         fn: tabTitle, tabPath, fetchUnlinkedSafe from "src/front/utils/unlinked_references_panel_ext.ts"
     }
@@ -57,7 +57,7 @@ widget UnlinkedReferencesPanel {
                             class: "cursor-pointer rounded px-1.5 py-1 text-xs hover:bg-accent",
                             onclick: .OpenRef(r),
                             div { class: "mb-0.5 truncate text-[10px] text-muted-foreground", text r.page_path }
-                            HtmlDiv (class: "text-foreground/80", html: r.html)
+                            div (class: "text-foreground/80", html: r.html)
                         }
                     }
                 }

@@ -10,10 +10,9 @@
 //     gen/front/vue/src/components/ThemePopover.vue > ../src/components/ThemePopover.vue
 //
 // Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
-// - <Teleport> is not a DSL element and `to: "body"` on a dyn block
-//   mis-parses (`to` is a keyword token) into junk <div> children — the
-//   extension's BodyTeleport functional component wraps Teleport with a
-//   fixed to="body" and renders via dyn (same mounted DOM).
+// - <teleport to="body"> is the DSL's native teleport element (compiler
+//   f8acfb43, gap 27 closed) — `teleport (to: "body") { ... }` emits the
+//   real <Teleport>, no ext wrapper needed.
 // - The lucide icons render via dyn with the extension's re-exported
 //   component symbols (recent_files_panel precedent).
 // - The conditional :class ternaries (mode/accent buttons) are real dynamic
@@ -36,7 +35,7 @@
 widget ThemePopover(open: bool) {
     use {
         composable: useThemeStore from "src/front/utils/theme_popover_ext.ts"
-        fn: BodyTeleport, Sun, Moon, themeAccents, isOutsideThemePopover from "src/front/utils/theme_popover_ext.ts"
+        fn: Sun, Moon, themeAccents, isOutsideThemePopover from "src/front/utils/theme_popover_ext.ts"
     }
 
     msg Msg { Close, SetLight, SetDark, SetAccent }
@@ -47,7 +46,7 @@ widget ThemePopover(open: bool) {
     }
 
     view {
-        dyn (.BodyTeleport) {
+        teleport (to: "body") {
             if .is_open {
                 div {
                     class: "fixed inset-0 z-40",

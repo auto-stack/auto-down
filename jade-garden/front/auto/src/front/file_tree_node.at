@@ -22,8 +22,8 @@
 // - The `node: FileNode` prop type emits `import type { FileNode } from
 //   '@/lib/api'` — resolves to the real module in the front tree and to
 //   the stub (which exports FileNode) in the gen tree.
-// - The <teleport to="body"> context menu renders via the extension's
-//   BodyTeleport (theme_popover precedent; `to:` on dyn mis-parses).
+// - The <teleport to="body"> context menu uses the DSL's native teleport
+//   element (compiler f8acfb43, gap 27 closed).
 // - The folder/file <component :is> icon is the extension's NodeIcon
 //   functional component (the DSL's dyn takes a static symbol); the
 //   chevrons are lucide re-exports rendered via dyn.
@@ -47,7 +47,7 @@
 widget FileTreeNode(node: FileNode, level: int) {
     use {
         composable: useFileTreeStore, useTabsStore from "src/front/utils/file_tree_node_ext.ts"
-        fn: BodyTeleport, NodeIcon, ChevronRight, ChevronDown, isNodeExpanded, px, nodeIndent, openNodeFile, ctxNewFile, ctxNewFolder, ctxRename, ctxDuplicate, ctxDelete, listenFirstClickOutside from "src/front/utils/file_tree_node_ext.ts"
+        fn: NodeIcon, ChevronRight, ChevronDown, isNodeExpanded, px, nodeIndent, openNodeFile, ctxNewFile, ctxNewFolder, ctxRename, ctxDuplicate, ctxDelete, listenFirstClickOutside from "src/front/utils/file_tree_node_ext.ts"
     }
 
     msg Msg { Init, Toggle, RightClick, CtxNewFile, CtxNewFolder, CtxRename, CtxDuplicate, CtxDelete }
@@ -103,7 +103,7 @@ widget FileTreeNode(node: FileNode, level: int) {
                     FileTreeNode(key: child.path, node: child, level: .next_level)
                 }
             }
-            dyn (.BodyTeleport) {
+            teleport (to: "body") {
                 if .menu_open {
                     div {
                         class: "file-context-menu absolute z-50 min-w-[140px] rounded-md border bg-popover p-1 shadow-md",

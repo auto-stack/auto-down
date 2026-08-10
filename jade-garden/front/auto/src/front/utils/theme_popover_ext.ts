@@ -4,8 +4,9 @@
 // - the theme-store facade re-export (dual-resolution shim — resolves to
 //   front/src/stores/theme.ts in the front tree and to a stub in the gen
 //   project),
-// - the Teleport/lucide re-exports (the DSL has no teleport element and no
-//   npm imports; rendered via `dyn`),
+// - the lucide re-exports (the DSL has no npm imports; rendered via `dyn`
+//   — the teleport itself is now the DSL's native teleport element,
+//   compiler f8acfb43),
 // - the static accents list (object literals as a computed body emit
 //   invalid JS; an imported const is dot-stripped to a bare symbol),
 // - the onClickOutside closest() guard (DOM API + the DSL's
@@ -13,18 +14,10 @@
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
-import { Teleport, h } from 'vue'
 import { Sun, Moon } from 'lucide-vue-next'
 import { useThemeStore, type ThemeAccent } from '../../../../src/stores/theme'
 
 export { useThemeStore, Sun, Moon }
-
-/** <Teleport to="body"> wrapper: the DSL has no teleport element and `to:`
- *  on a dyn block mis-parses (to is a keyword token) into junk children —
- *  the widget renders this via `dyn`, same mounted DOM as the original's
- *  <Teleport to="body">. */
-export const BodyTeleport = (_props: any, { slots }: any) =>
-  h(Teleport, { to: 'body' }, slots)
 
 export interface AccentSwatch {
   key: ThemeAccent

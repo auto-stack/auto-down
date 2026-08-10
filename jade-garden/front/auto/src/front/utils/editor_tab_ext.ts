@@ -5,10 +5,10 @@
 // - the AutoDownEditor thin shell re-export (@autodown/editor — the gen
 //   project resolves it through src/types/autodown-editor.d.ts),
 // - useDebounceFn (@vueuse/core re-export, search_panel precedent),
-// - BodyTeleport / HoverLinkBtn (the <teleport to="body"> wrapper — `to:`
-//   on a dyn block mis-parses, gap 27 — and the hover button functional
-//   component, which returns null when there is no hover block, i.e. the
-//   original's v-if; the original's v-show on the loading overlay is the
+// - HoverLinkBtn (the teleported hover button functional component, which
+//   returns null when there is no hover block, i.e. the original's v-if —
+//   the teleport itself is the DSL's native teleport element, compiler
+//   f8acfb43; the original's v-show on the loading overlay is the
 //   widget's style_obj display computed — v-show has no DSL form),
 // - findTab / tabBody / tabTitle / overlayDisplay (the tab computed and its
 //   derived bindings — optional chaining / ?? / === have no exact DSL form),
@@ -27,7 +27,7 @@
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
-import { h, Teleport, defineComponent } from 'vue'
+import { h, defineComponent } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Link2, FileText } from 'lucide-vue-next'
 import { AutoDownEditor } from '@autodown/editor'
@@ -61,10 +61,6 @@ export const EditorShell = defineComponent({
     }
   },
 })
-
-/** <teleport to="body"> wrapper (theme_popover BodyTeleport precedent). */
-export const BodyTeleport = (_props: any, { slots }: any) =>
-  h(Teleport, { to: 'body' }, slots)
 
 /** The original teleported hover button, verbatim (v-if="hoverBlock" becomes
  *  the null return; the click travels back to the widget via onCopy). The

@@ -8,26 +8,20 @@
 // - searchSafe (try/catch/finally around the search API: the catch branch
 //   comes back as { results: [], error } data and the promise never
 //   rejects; "" error = the original's null — falsy either way),
-// - snippetHtml (regex literals — \u0001/\u0002 → <mark>) and the HtmlDiv
-//   v-html stand-in (unlinked_references_panel precedent),
+// - snippetHtml (regex literals — \u0001/\u0002 → <mark>; the v-html
+//   rendering itself is the DSL's native `html:` prop, compiler c7034bf5),
 // - withSearchDisplay (per-result display fields: the type ternary, the
 //   v-if="r.snippet" guard — no Call/ternary bindings in the DSL view),
 // - scheduleScrollToBlock (setTimeout + new CustomEvent + dispatchEvent).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
-import { h } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Search, FileText, Box } from 'lucide-vue-next'
 import { search, type SearchResult } from '../../../../src/lib/api'
 import { useTabsStore } from '../../../../src/stores/tabs'
 
 export { useTabsStore, useDebounceFn, Search, FileText, Box }
-
-/** v-html stand-in (the DSL has no v-html): renders the original's
- *  `<div class="mt-0.5 pl-5 ..." v-html="snippetHtml(r.snippet)" />`. */
-export const HtmlDiv = (props: { class?: string; html?: string }) =>
-  h('div', { class: props.class, innerHTML: props.html ?? '' })
 
 export interface SearchOutcome {
   results: SearchResult[]

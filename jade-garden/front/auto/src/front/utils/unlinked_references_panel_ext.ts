@@ -5,14 +5,12 @@
 // - the tabs-store facade re-export (dual-resolution shim),
 // - try/catch around the unlinked-refs API (the DSL has no try/catch),
 // - the highlightContext regex (the DSL has no regex literals) — applied
-//   per item in the safe wrapper so the view needs no Call bindings,
-// - the v-html rendering (the DSL has no v-html): HtmlDiv is a functional
-//   component that sets innerHTML, rendering the same DOM as the
-//   original's `<div class="text-foreground/80" v-html="..." />`.
+//   per item in the safe wrapper so the view needs no Call bindings (the
+//   v-html rendering itself is the DSL's native `html:` prop, compiler
+//   c7034bf5).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
-import { h } from 'vue'
 import { getUnlinkedRefs, type UnlinkedRef } from '../../../../src/lib/api'
 import { useTabsStore } from '../../../../src/stores/tabs'
 
@@ -49,8 +47,3 @@ export async function fetchUnlinkedSafe(title: string): Promise<UnlinkedRefItem[
     return []
   }
 }
-
-/** v-html stand-in (the DSL has no v-html). Renders exactly the original's
- *  `<div class="text-foreground/80" v-html="html" />`. */
-export const HtmlDiv = (props: { class?: string; html?: string }) =>
-  h('div', { class: props.class, innerHTML: props.html ?? '' })

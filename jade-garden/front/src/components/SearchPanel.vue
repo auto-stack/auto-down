@@ -1,7 +1,6 @@
 <!-- SearchPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { HtmlDiv } from '../../auto/src/front/utils/search_panel_ext'
 import { useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, Search, FileText, Box } from '../../auto/src/front/utils/search_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/search_panel_ext'
 
@@ -35,12 +34,6 @@ watch(query, () => {
   f();
 })
 
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
-}
-
 function OpenResult(r: any): void {
   if (r.type == 'Page' && r.path != null) {tabsStore.open(r.path, r.title);
   }
@@ -50,6 +43,12 @@ function OpenResult(r: any): void {
   }
 
   emit('OpenResult', r)
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
 }
 
 onMounted(() => {
@@ -101,7 +100,7 @@ onMounted(() => {
               </span>
             </div>
             <template v-if="r.has_snippet">
-              <HtmlDiv :html="r.snippet_html" :class="'mt-0.5 pl-5 text-xs text-muted-foreground'" :key="'HtmlDiv-1-' + (r?.id ?? r)" />
+              <div class="mt-0.5 pl-5 text-xs text-muted-foreground" v-html="r.snippet_html" />
             </template>
           </component>
         </component>

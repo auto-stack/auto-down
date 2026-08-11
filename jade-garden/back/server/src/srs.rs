@@ -107,14 +107,33 @@ fn build_qa(content: &str) -> (String, String) {
 
 fn parse_block_properties(text: &str, line_start: usize, line_end: usize) -> HashMap<String, String> {
     let mut props = HashMap::new();
-    let lines: Vec<&str> = text.lines().collect();
-    for i in line_start..line_end {
-        if i >= lines.len() {
-            break;
-        }
-        let line = lines[i];
-        if let Some(cap) = PROPERTY_RE.captures(line) {
+    // Block line ranges come from `parser::parse_page`, which strips the
+    // frontmatter before indexing lines — so index into the body, not the
+    // raw file text.
+    let (_, body) = crate::parser::split_frontmatter(text);
+    let lines: Vec<&str> = body.lines().collect();
+    for i in line_start..line_end.min(lines.len()) {
+        if let Some(cap) = PROPERTY_RE.captures(lines[i]) {
             props.insert(cap[1].to_string(), cap[2].trim().to_string());
+        }
+    }
+    // Single-line blocks (list items, headings) end at their own line, but
+    // `review_card` writes `key:: value` properties as deeper-indented lines
+    // below the block. Keep consuming lines while they are indented deeper
+    // than the block line; stop at a blank line or at the next block (same or
+    // shallower indent). Mirrors the property-region scan in `review_card`.
+    if line_start < lines.len() {
+        let block_line = lines[line_start];
+        let block_indent = block_line.len() - block_line.trim_start().len();
+        for i in line_end.max(line_start + 1)..lines.len() {
+            let line = lines[i];
+            let indent = line.len() - line.trim_start().len();
+            if line.trim().is_empty() || indent <= block_indent {
+                break;
+            }
+            if let Some(cap) = PROPERTY_RE.captures(line) {
+                props.insert(cap[1].to_string(), cap[2].trim().to_string());
+            }
         }
     }
     props
@@ -444,4 +463,90 @@ pub async fn review_card(
             last_reviewed: updated_props.get("card-last-reviewed").cloned(),
         },
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_block_properties_reads_indented_lines_below_single_line_block() {
+        // Shape written by `review_card`: single-line list item + deeper-
+        // indented property lines. The parser gives the block range [0, 1),
+        // so the properties are only found by scanning past line_end.
+        let text = "- 法国的首都是哪里？ #card ^c1\n  card-next-schedule:: 2099-01-01\n  card-repeats:: 1\n";
+        let props = parse_block_properties(text, 0, 1);
+        assert_eq!(props.get("card-next-schedule").map(String::as_str), Some("2099-01-01"));
+        assert_eq!(props.get("card-repeats").map(String::as_str), Some("1"));
+    }
+
+    #[test]
+    fn parse_block_properties_without_property_lines_is_empty() {
+        let text = "- plain block ^b1\n- next block ^b2\n";
+        let props = parse_block_properties(text, 0, 1);
+        assert!(props.is_empty());
+    }
+
+    #[test]
+    fn parse_block_properties_stops_at_next_block() {
+        // The second block's own property line must not leak into the first.
+        let text = "- card one ^c1\n  deck:: french\n- card two ^c2\n  deck:: german\n";
+        let props = parse_block_properties(text, 0, 1);
+        assert_eq!(props.get("deck").map(String::as_str), Some("french"));
+        let props2 = parse_block_properties(text, 2, 3);
+        assert_eq!(props2.get("deck").map(String::as_str), Some("german"));
+    }
+
+    #[test]
+    fn parse_block_properties_block_at_end_of_file() {
+        // No trailing newline, property region runs to EOF.
+        let text = "- card ^c1\n  card-repeats:: 3";
+        let props = parse_block_properties(text, 0, 1);
+        assert_eq!(props.get("card-repeats").map(String::as_str), Some("3"));
+    }
+
+    #[test]
+    fn parse_block_properties_stops_at_blank_line() {
+        let text = "- card ^c1\n  deck:: french\n\n  orphan:: ignored\n";
+        let props = parse_block_properties(text, 0, 1);
+        assert_eq!(props.get("deck").map(String::as_str), Some("french"));
+        assert!(!props.contains_key("orphan"));
+    }
+
+    #[test]
+    fn parse_block_properties_crlf_line_endings() {
+        let text = "- card ^c1\r\n  deck:: french\r\n";
+        let props = parse_block_properties(text, 0, 1);
+        assert_eq!(props.get("deck").map(String::as_str), Some("french"));
+    }
+
+    #[test]
+    fn parse_block_properties_with_frontmatter_offsets() {
+        // parse_page strips frontmatter, so line ranges are body-relative;
+        // the lookup must skip the frontmatter too.
+        let text = "---\ntitle: Cards\n---\n\n- card ^c1\n  card-next-schedule:: 2099-01-01\n";
+        let props = parse_block_properties(text, 0, 1);
+        assert_eq!(props.get("card-next-schedule").map(String::as_str), Some("2099-01-01"));
+    }
+
+    #[test]
+    fn extract_cards_reads_back_schedule_written_like_review_card() {
+        // End-to-end over a frontmatter document: a card whose schedule was
+        // persisted as indented property lines is not due again.
+        let text = "---\ntitle: Cards\n---\n\n- Q? {{cloze Paris \\ 城市}} #card ^c1\n  card-next-schedule:: 2099-01-01\n  card-repeats:: 1\n";
+        let parsed = crate::parser::parse_page(text);
+        let cards = extract_cards("Cards.ad", text, &parsed.blocks);
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].next_schedule.as_deref(), Some("2099-01-01"));
+        assert_eq!(cards[0].repeats, 1);
+    }
+
+    #[test]
+    fn extract_cards_unscheduled_card_stays_due() {
+        let text = "- Q? #card ^c1\n";
+        let parsed = crate::parser::parse_page(text);
+        let cards = extract_cards("Cards.ad", text, &parsed.blocks);
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].next_schedule, None);
+    }
 }

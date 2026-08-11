@@ -52,18 +52,19 @@ test.describe('flashcard review', () => {
       })
       .toContain('card-next-schedule::')
 
-    // PINNED APP GAP (see e2e/README.md): the modal refetches due cards after
-    // the last rating, and the card comes straight back as due — srs.rs's
-    // parse_block_properties only scans the block's own parser line range,
-    // which for a single-line list item excludes the indented property lines
-    // review_card just wrote, so card-next-schedule is never read back.
-    // Assert the CURRENT behavior (same card re-shown), not the ideal one.
-    await expect(page.getByRole('button', { name: 'Show answer' })).toBeVisible()
-    await expect(page.getByText('法国的首都是哪里？{{城市}}')).toBeVisible()
+    // After the last rating the modal refetches due cards; with the schedule
+    // now read back (fixed in srs::parse_block_properties, 2026-08-11), the
+    // card is no longer due and the modal shows the empty state.
+    await expect(page.getByText('No cards due for review')).toBeVisible()
+    await expect(page.getByText('法国的首都是哪里？{{城市}}')).not.toBeVisible()
 
-    const due = await page.request.get('/api/cards/due')
-    expect(due.ok()).toBe(true)
-    // Pinned with the gap above: still 1 due card despite the review.
-    expect(((await due.json()) as { cards: unknown[] }).cards).toHaveLength(1)
+    // The due endpoint agrees: zero due cards after the review.
+    await expect
+      .poll(async () => {
+        const res = await page.request.get('/api/cards/due')
+        if (!res.ok()) return -1
+        return ((await res.json()) as { cards: unknown[] }).cards.length
+      })
+      .toBe(0)
   })
 })

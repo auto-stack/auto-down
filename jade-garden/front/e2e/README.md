@@ -46,7 +46,7 @@ the debug binary) and `pnpm install` in `front/`.
 | File-tree context menu CRUD | `09-filetree-context.spec.ts` | Right-click → teleported `.file-context-menu` → New file / New folder / Rename / Delete. Native `prompt`/`confirm` auto-answered via `page.on('dialog')`; effects verified through the API and the reloaded tree. |
 | Whiteboard (.canvas) | `10-whiteboard.spec.ts` | Seed via API (see caveat below), open from the tree, edit a note label on blur, `Add note`; saves verified by polling `GET /api/whiteboard/:path`. |
 | PropertiesPanel editing | `11-properties.spec.ts` | Edit an existing frontmatter value + add a new property; the 1.2 s debounced save is verified through `GET /api/wiki/:path`. Target doc created via API. |
-| Flashcard review with due cards | `12-flashcards.spec.ts` | Card doc created via API (`#card` + `^block-id` + `{{cloze answer \ hint}}`). Covers question render, reveal, all four rating buttons, and the SRS write-back; pins the "card stays due after review" app gap (see Known gaps). |
+| Flashcard review with due cards | `12-flashcards.spec.ts` | Card doc created via API (`#card` + `^block-id` + `{{cloze answer \ hint}}`). Covers question render, reveal, all four rating buttons, and the SRS write-back; after rating, the card leaves the due set (empty state + `/api/cards/due` = 0). |
 
 ## Mapping caveats vs the plan's panel list
 
@@ -68,12 +68,15 @@ References, Properties** (right sidebar) plus Search/Recent (left sidebar).
   `No headings.` even for documents with headings. `05-panels.spec.ts` pins
   this current behavior; if the app is fixed, update the test and the
   `panel-outline.png` baseline deliberately.
-- **Reviewed flashcards stay due.** `review_card` writes `card-next-schedule::`
-  etc. as indented property lines under the block, but the due-scan
-  (`srs::parse_block_properties`) only reads the block's own parser line
-  range — one line for a list item — so the schedule is never read back and
-  the card is due again immediately. `12-flashcards.spec.ts` pins this:
-  after rating, the same card reappears instead of the empty state.
+- **Reviewed flashcards stay due.** (FIXED 2026-08-11) `review_card` wrote
+  `card-next-schedule::` etc. as indented property lines under the block, but
+  the due-scan (`srs::parse_block_properties`) only read the block's own
+  parser line range — one line for a list item — so the schedule was never
+  read back and the card was due again immediately. Fixed by extending
+  `parse_block_properties` to consume deeper-indented property lines below the
+  block (and to index into the frontmatter-stripped body). `12-flashcards.spec.ts`
+  now asserts the fixed behavior: after rating, the modal shows the empty
+  state and `/api/cards/due` returns 0.
 - **Backend errors are HTTP 200.** Handlers return `Result<Json, String>` and
   axum renders the `String` error as a 200 text/plain body, so API-level
   assertions must inspect the payload (e.g. JSON-parse guard), not `res.ok()`.

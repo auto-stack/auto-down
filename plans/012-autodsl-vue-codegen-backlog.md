@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）；**报错定位专项**（c6e59f55：gap 37a 修复 + error-limit 丢弃根因共性机制修复，其余 4 点自愈配锁，jade ext 已迁移原生 teleport/v-html = auto-down f95c03b）；**批次 F**（56355c01 裸 return 换行陷阱修复 + 5b76d82d else-if 覆盖，gap 6/54 关闭）；**批次 G store 表达力**（4d656863 store map 初值、0daa826a store watch、gap 1/10 自愈配锁，gap 12/15/1/10 关闭）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
+> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）；**报错定位专项**（c6e59f55：gap 37a 修复 + error-limit 丢弃根因共性机制修复，其余 4 点自愈配锁，jade ext 已迁移原生 teleport/v-html = auto-down f95c03b）；**批次 F**（56355c01 裸 return 换行陷阱修复 + 5b76d82d else-if 覆盖，gap 6/54 关闭）；**批次 G store 表达力**（4d656863 store map 初值、0daa826a store watch、gap 1/10 自愈配锁，gap 12/15/1/10 关闭）；**gap 37 jade 迁移**（2026-08-11：37b 多参数自愈后 16 处单 map 实参改回多参数直写 + 6 handler 多形参化，e2e 23/23）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -77,7 +77,7 @@
 
 | gap | 缺口 | 规避 |
 |---|---|---|
-| 37 | view 事件实参不能写字面量；handler 多参数只有第一个进作用域（报错 span 错位） | 单 map 实参 `.H({ entry: e, evt: $event })` |
+| 37 | view 事件实参不能写字面量；handler 多参数只有第一个进作用域（报错 span 错位） | ✅ 已迁移（2026-08-11）：37b 多参数自愈后，jade 16 处单 map 实参全部改回多参数直写（graph_controls ×11、properties_panel ×4、whiteboard_page ×1），6 个 handler 改多形参；emit 元组自动升 `[any, any]`，e2e 23/23。残留：bool 字面量实参仍不支持（37a 改响亮报错，int/str 可用） |
 | 41 | quoted v-model emit 的 payload 是 handler 形参原样转发 | handler 体内给形参重新赋值发固定值 |
 | —（5.3c 实证） | 组件 emit 多实参只接通第一个 | 双实参走 prop 回调通道（`props.onX?.(a, b)`） |
 | 51 | `on*` 开头 prop 名被 view 解析当事件监听 → 小写塌陷错误接线 / 同名 TS2300 | ext stateful 单根 wrapper 改名回 `onXxx` |

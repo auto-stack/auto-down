@@ -44,15 +44,15 @@ function Fit(): void {
   emit('Fit')
 }
 
-function Open(p: any): void {
-
-  emit('Open', p)
-}
-
 function Relayout(): void {
   graphRelayout(handle.value, props.settings);
 
   emit('Relayout')
+}
+
+function Open(p: any): void {
+
+  emit('Open', p)
 }
 
 onMounted(() => {

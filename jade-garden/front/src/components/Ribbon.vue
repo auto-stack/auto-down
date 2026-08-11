@@ -29,28 +29,28 @@ function ToggleTheme(): void {
   emit('ToggleTheme')
 }
 
-function OpenGlobalGraph(): void {
-  tabsStore.openGraph();
-
-  emit('OpenGlobalGraph')
-}
-
-function Select(item: any): void {
-  sidebarStore.setLeftPanel(item.panel);
-
-  emit('Select', item)
-}
-
 function OpenToday(): void {
   openTodayNote(tabsStore, fileTreeStore);
 
   emit('OpenToday')
 }
 
+function OpenGlobalGraph(): void {
+  tabsStore.openGraph();
+
+  emit('OpenGlobalGraph')
+}
+
 function CloseTheme(): void {
   theme_open.value = false;
 
   emit('CloseTheme')
+}
+
+function Select(item: any): void {
+  sidebarStore.setLeftPanel(item.panel);
+
+  emit('Select', item)
 }
 
 

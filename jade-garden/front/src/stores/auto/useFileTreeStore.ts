@@ -7,7 +7,15 @@ const loading = ref<any>(false)
 const error = ref<any>(null)
 
 export function useFileTreeStore(): any {
-    const Toggle = async (path: any) => { await toggleExpanded(expanded.value, path);
+    const DeleteFile = async (path: any) => { await deleteFileRaw(path);
+loading.value = true;
+error.value = null;
+let res = await listFilesResult();
+if (res.error == '') {files.value = res.files;
+}
+if (res.error != '') {error.value = res.error;
+}
+loading.value = false;
  }
     const CreateFile = async (args: any) => { await createFileRaw(args.path, args.isDir);
 loading.value = true;
@@ -19,17 +27,9 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
-loading.value = true;
-error.value = null;
-let res = await listFilesResult();
-if (res.error == '') {files.value = res.files;
-}
-if (res.error != '') {error.value = res.error;
-}
-loading.value = false;
+    const Toggle = async (path: any) => { await toggleExpanded(expanded.value, path);
  }
-    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
+    const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
 loading.value = true;
 error.value = null;
 let res = await listFilesResult();
@@ -48,7 +48,7 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const DeleteFile = async (path: any) => { await deleteFileRaw(path);
+    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
 loading.value = true;
 error.value = null;
 let res = await listFilesResult();
@@ -63,11 +63,11 @@ loading.value = false;
         expanded,
         loading,
         error,
-        Toggle,
-        CreateFile,
-        DuplicateFile,
-        RenameFile,
-        Load,
         DeleteFile,
+        CreateFile,
+        Toggle,
+        DuplicateFile,
+        Load,
+        RenameFile,
     }
 }

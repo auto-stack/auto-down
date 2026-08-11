@@ -96,7 +96,7 @@ widget PropertiesPanel {
                                 class: "mb-0.5 flex items-center justify-between",
                                 input (type: "text") {
                                     value: entry.key,
-                                    oninput: .KeyChanged({ entry: entry, evt: $event }),
+                                    oninput: .KeyChanged(entry, $event),
                                     onchange: .Commit,
                                     class: "w-full bg-transparent text-[11px] font-medium text-muted-foreground outline-none"
                                 }
@@ -118,21 +118,21 @@ widget PropertiesPanel {
                                 if entry.is_date {
                                     input (type: "date") {
                                         value: entry.value,
-                                        oninput: .ValueChanged({ entry: entry, evt: $event }),
+                                        oninput: .ValueChanged(entry, $event),
                                         class: "h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary"
                                     }
                                 }
                                 if entry.is_other {
                                     input (type: "text") {
                                         value: entry.value,
-                                        oninput: .ValueChanged({ entry: entry, evt: $event }),
+                                        oninput: .ValueChanged(entry, $event),
                                         placeholder: entry.placeholder_text,
                                         class: "h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary"
                                     }
                                 }
                                 dyn (.select_tag) {
                                     value: entry.type,
-                                    onchange: .SetType({ idx: entry.idx, evt: $event }),
+                                    onchange: .SetType(entry.idx, $event),
                                     class: "h-6 rounded border bg-background px-1 text-[10px] uppercase text-muted-foreground outline-none",
                                     dyn (.option_tag) { value: "text", text "text" }
                                     dyn (.option_tag) { value: "number", text "num" }
@@ -206,12 +206,12 @@ widget PropertiesPanel {
         // the separate @change, exactly like the original). Multi-param
         // handlers only register the first param, so the view passes one
         // map arg.
-        .KeyChanged(args) -> {
-            args.entry.key = eventValue(args.evt)
+        .KeyChanged(entry, evt) -> {
+            entry.key = eventValue(evt)
         }
         // Original: v-model="entry.value" + @input="updateFrontmatter".
-        .ValueChanged(args) -> {
-            args.entry.value = eventValue(args.evt)
+        .ValueChanged(entry, evt) -> {
+            entry.value = eventValue(evt)
             commitFrontmatter(.tabsStore, .entries, .debounced_save)
         }
         // Original: @change="updateFrontmatter" on the key input.
@@ -225,8 +225,8 @@ widget PropertiesPanel {
         }
         // Original: @change="setType(idx, ($event.target as
         // HTMLSelectElement).value as any)".
-        .SetType(args) -> {
-            setEntryType(.entries, args.idx, eventValue(args.evt))
+        .SetType(idx, evt) -> {
+            setEntryType(.entries, idx, eventValue(evt))
             commitFrontmatter(.tabsStore, .entries, .debounced_save)
         }
         // Original: removeProperty(idx) = splice + updateFrontmatter.

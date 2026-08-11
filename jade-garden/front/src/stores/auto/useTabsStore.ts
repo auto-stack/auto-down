@@ -5,6 +5,21 @@ const tabs = ref<any>([])
 const active_path = ref<any>(null)
 
 export function useTabsStore(): any {
+    const OpenGraph = (args: any) => { 
+let center = args.center;
+let depth = args.depth;
+let path: string = '__graph__';
+let title: string = '全局图谱';
+if (center != '') {path = `__graph__:${center}`;
+title = `局部图谱：${stripExt(center, ".ad")}`;
+}
+let existing = tabs.value.find((t: any) => t.path == path);
+if (existing != null) {active_path.value = path;
+}
+if (existing == null) {tabs.value.push({ path: path, title: title, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || null, graphDepth: depth });
+active_path.value = path;
+}
+ }
     const Load = async (path: any) => { let tab = tabs.value.find((t: any) => t.path == path);
 if (tab != null && !tab.loaded) {let doc = await readWikiSafe(path);
 if (doc != null) {tab.body = doc.body;
@@ -17,6 +32,50 @@ tab.loaded = true;
 tab.originalBody = tab.body;
 tab.dirty = false;
 }}
+ }
+    const Open = async (args: any) => { let path = args.path;
+let title = args.title;
+let existing = tabs.value.find((t: any) => t.path == path);
+if (existing != null) {active_path.value = path;
+if (!existing.loaded && !existing.isGraph) {let doc2 = await readWikiSafe(path);
+if (doc2 != null) {existing.body = doc2.body;
+existing.originalBody = doc2.body;
+existing.frontmatter = doc2.frontmatter || {  };
+existing.title = doc2.frontmatter && doc2.frontmatter.title || existing.title;
+existing.dirty = false;
+existing.loaded = true;
+}if (doc2 == null) {existing.loaded = true;
+existing.originalBody = existing.body;
+existing.dirty = false;
+}}}
+if (existing == null) {let t2 = title;
+if (t2 == '') {t2 = await stripExt(path, '.ad');
+}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: false, saving: false });
+active_path.value = path;
+let doc = await readWikiSafe(path);
+let tab = tabs.value.find((t: any) => t.path == path);
+if (tab != null && doc != null) {tab.body = doc.body;
+tab.originalBody = doc.body;
+tab.frontmatter = doc.frontmatter || {  };
+tab.title = doc.frontmatter && doc.frontmatter.title || tab.title;
+tab.dirty = false;
+tab.loaded = true;
+}if (tab != null && doc == null) {tab.loaded = true;
+tab.originalBody = tab.body;
+tab.dirty = false;
+}await recordRecent(path, t2);
+}
+ }
+    const OpenWhiteboard = async (args: any) => { let path = args.path;
+let title = args.title;
+let existing = tabs.value.find((t: any) => t.path == path);
+if (existing != null) {active_path.value = path;
+}
+if (existing == null) {let t2 = title;
+if (t2 == '') {t2 = await stripExt(path, '.canvas');
+}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: true, saving: false, isWhiteboard: true });
+active_path.value = path;
+}
  }
     const Close = async (path: any) => { let idx = tabs.value.findIndex((t: any) => t.path == path);
 if (idx != -1) {let tab = tabs.value[idx];
@@ -53,75 +112,16 @@ await rethrow(e);
 }
 }
  }
-    const Open = async (args: any) => { let path = args.path;
-let title = args.title;
-let existing = tabs.value.find((t: any) => t.path == path);
-if (existing != null) {active_path.value = path;
-if (!existing.loaded && !existing.isGraph) {let doc2 = await readWikiSafe(path);
-if (doc2 != null) {existing.body = doc2.body;
-existing.originalBody = doc2.body;
-existing.frontmatter = doc2.frontmatter || {  };
-existing.title = doc2.frontmatter && doc2.frontmatter.title || existing.title;
-existing.dirty = false;
-existing.loaded = true;
-}if (doc2 == null) {existing.loaded = true;
-existing.originalBody = existing.body;
-existing.dirty = false;
-}}}
-if (existing == null) {let t2 = title;
-if (t2 == '') {t2 = await stripExt(path, '.ad');
-}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: false, saving: false });
-active_path.value = path;
-let doc = await readWikiSafe(path);
-let tab = tabs.value.find((t: any) => t.path == path);
-if (tab != null && doc != null) {tab.body = doc.body;
-tab.originalBody = doc.body;
-tab.frontmatter = doc.frontmatter || {  };
-tab.title = doc.frontmatter && doc.frontmatter.title || tab.title;
-tab.dirty = false;
-tab.loaded = true;
-}if (tab != null && doc == null) {tab.loaded = true;
-tab.originalBody = tab.body;
-tab.dirty = false;
-}await recordRecent(path, t2);
-}
- }
-    const OpenGraph = (args: any) => { 
-let center = args.center;
-let depth = args.depth;
-let path: string = '__graph__';
-let title: string = '全局图谱';
-if (center != '') {path = `__graph__:${center}`;
-title = `局部图谱：${stripExt(center, ".ad")}`;
-}
-let existing = tabs.value.find((t: any) => t.path == path);
-if (existing != null) {active_path.value = path;
-}
-if (existing == null) {tabs.value.push({ path: path, title: title, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || null, graphDepth: depth });
-active_path.value = path;
-}
- }
-    const OpenWhiteboard = async (args: any) => { let path = args.path;
-let title = args.title;
-let existing = tabs.value.find((t: any) => t.path == path);
-if (existing != null) {active_path.value = path;
-}
-if (existing == null) {let t2 = title;
-if (t2 == '') {t2 = await stripExt(path, '.canvas');
-}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: true, saving: false, isWhiteboard: true });
-active_path.value = path;
-}
- }
     return {
         tabs,
         active_path,
+        OpenGraph,
         Load,
+        Open,
+        OpenWhiteboard,
         Close,
         SetBody,
         Save,
-        Open,
-        OpenGraph,
-        OpenWhiteboard,
         get active_tab() {
             return tabs.value.find((t: any) => t.path == active_path.value);
         },

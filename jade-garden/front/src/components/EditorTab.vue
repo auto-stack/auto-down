@@ -98,7 +98,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell ref="editorRef" :showActions="false" :class="'h-full w-full'" :content="body" :assetUpload="asset_upload" :openWikiLink="open_wiki_link" :placeholder="'Start typing...'" :extraSlashItems="extra_slash" :pageTitle="page_title" :runQuery="run_query" :loadBlock="load_block" :key="'EditorShell-1'" @update="OnUpdate" />
+      <EditorShell :pageTitle="page_title" ref="editorRef" :loadBlock="load_block" :extraSlashItems="extra_slash" :showActions="false" :content="body" :openWikiLink="open_wiki_link" :runQuery="run_query" :placeholder="'Start typing...'" :class="'h-full w-full'" :assetUpload="asset_upload" :key="'EditorShell-1'" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

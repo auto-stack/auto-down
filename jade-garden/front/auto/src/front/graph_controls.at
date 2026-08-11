@@ -95,7 +95,7 @@ widget GraphControls {
                     span { text "显示孤立文件" }
                     input (type: "checkbox") {
                         checked: .graphStore.settings.showOrphans,
-                        onchange: .FlagChanged({ key: "showOrphans", evt: $event }),
+                        onchange: .FlagChanged("showOrphans", $event),
                         class: "toggle"
                     }
                 }
@@ -104,7 +104,7 @@ widget GraphControls {
                     span { text "显示缺失页面" }
                     input (type: "checkbox") {
                         checked: .graphStore.settings.showMissing,
-                        onchange: .FlagChanged({ key: "showMissing", evt: $event }),
+                        onchange: .FlagChanged("showMissing", $event),
                         class: "toggle"
                     }
                 }
@@ -119,19 +119,19 @@ widget GraphControls {
                 label {
                     class: "slider-row",
                     span { text "节点大小" }
-                    RangeInput (value: .graphStore.settings.nodeSize, oninput: .SliderChanged({ key: "nodeSize", evt: $event }), min: "4", max: "40", step: "1")
+                    RangeInput (value: .graphStore.settings.nodeSize, oninput: .SliderChanged("nodeSize", $event), min: "4", max: "40", step: "1")
                     span { class: "value", text .graphStore.settings.nodeSize }
                 }
                 label {
                     class: "slider-row",
                     span { text "文本透明度" }
-                    RangeInput (value: .graphStore.settings.textOpacity, oninput: .SliderChanged({ key: "textOpacity", evt: $event }), min: "0", max: "1", step: "0.05")
+                    RangeInput (value: .graphStore.settings.textOpacity, oninput: .SliderChanged("textOpacity", $event), min: "0", max: "1", step: "0.05")
                     span { class: "value", text .opacity_label }
                 }
                 label {
                     class: "slider-row",
                     span { text "连线粗细" }
-                    RangeInput (value: .graphStore.settings.edgeWidth, oninput: .SliderChanged({ key: "edgeWidth", evt: $event }), min: "0.5", max: "5", step: "0.5")
+                    RangeInput (value: .graphStore.settings.edgeWidth, oninput: .SliderChanged("edgeWidth", $event), min: "0.5", max: "5", step: "0.5")
                     span { class: "value", text .graphStore.settings.edgeWidth }
                 }
                 label {
@@ -139,7 +139,7 @@ widget GraphControls {
                     span { text "显示箭头" }
                     input (type: "checkbox") {
                         checked: .graphStore.settings.showArrows,
-                        onchange: .FlagChanged({ key: "showArrows", evt: $event }),
+                        onchange: .FlagChanged("showArrows", $event),
                         class: "toggle"
                     }
                 }
@@ -154,25 +154,25 @@ widget GraphControls {
                 label {
                     class: "slider-row",
                     span { text "图谱向心力" }
-                    RangeInput (value: .graphStore.settings.gravity, oninput: .SliderChanged({ key: "gravity", evt: $event }), min: "0", max: "0.5", step: "0.01")
+                    RangeInput (value: .graphStore.settings.gravity, oninput: .SliderChanged("gravity", $event), min: "0", max: "0.5", step: "0.01")
                     span { class: "value", text .graphStore.settings.gravity }
                 }
                 label {
                     class: "slider-row",
                     span { text "节点排斥力" }
-                    RangeInput (value: .graphStore.settings.repulsion, oninput: .SliderChanged({ key: "repulsion", evt: $event }), min: "1000", max: "20000", step: "500")
+                    RangeInput (value: .graphStore.settings.repulsion, oninput: .SliderChanged("repulsion", $event), min: "1000", max: "20000", step: "500")
                     span { class: "value", text .graphStore.settings.repulsion }
                 }
                 label {
                     class: "slider-row",
                     span { text "相连节点吸引力" }
-                    RangeInput (value: .graphStore.settings.attraction, oninput: .SliderChanged({ key: "attraction", evt: $event }), min: "0.001", max: "0.5", step: "0.001")
+                    RangeInput (value: .graphStore.settings.attraction, oninput: .SliderChanged("attraction", $event), min: "0.001", max: "0.5", step: "0.001")
                     span { class: "value", text .graphStore.settings.attraction }
                 }
                 label {
                     class: "slider-row",
                     span { text "连线长度" }
-                    RangeInput (value: .graphStore.settings.linkLength, oninput: .SliderChanged({ key: "linkLength", evt: $event }), min: "30", max: "300", step: "10")
+                    RangeInput (value: .graphStore.settings.linkLength, oninput: .SliderChanged("linkLength", $event), min: "30", max: "300", step: "10")
                     span { class: "value", text .graphStore.settings.linkLength }
                 }
             }
@@ -191,8 +191,8 @@ widget GraphControls {
         }
         // Original: v-model.number="graph.settings.<key>" + @input="update"
         // (update = graph.saveSettings()).
-        .SliderChanged(args) -> {
-            setGraphNumber(.graphStore, args.key, eventNumber(args.evt))
+        .SliderChanged(key, evt) -> {
+            setGraphNumber(.graphStore, key, eventNumber(evt))
             .graphStore.saveSettings()
         }
         // Original: v-model.number="graph.depth" (no saveSettings on depth).
@@ -200,8 +200,8 @@ widget GraphControls {
             .graphStore.depth = eventNumber(e)
         }
         // Original: v-model="graph.settings.<key>" checkbox + @change="update".
-        .FlagChanged(args) -> {
-            setGraphFlag(.graphStore, args.key, eventChecked(args.evt))
+        .FlagChanged(key, evt) -> {
+            setGraphFlag(.graphStore, key, eventChecked(evt))
             .graphStore.saveSettings()
         }
         // Original: @click="graph.showGlobal()".

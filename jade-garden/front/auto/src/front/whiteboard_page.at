@@ -110,7 +110,7 @@ widget WhiteboardPage(path: str) {
                                 div {
                                     class: "h-full w-full overflow-hidden text-xs outline-none",
                                     contenteditable: "true",
-                                    onblur: .UpdateLabel({ shape: item.shape, evt: $event }),
+                                    onblur: .UpdateLabel(item.shape, $event),
                                     text item.shape.label
                                 }
                             }
@@ -135,8 +135,8 @@ widget WhiteboardPage(path: str) {
             saveWhiteboard(.tabsStore, .path, .doc)
         }
         // Original: updateLabel — shape.label = target.innerText, save.
-        .UpdateLabel(args) -> {
-            args.shape.label = readLabel(args.evt)
+        .UpdateLabel(shape, evt) -> {
+            shape.label = readLabel(evt)
             saveWhiteboard(.tabsStore, .path, .doc)
         }
         // Original: openTarget — dblclick opens shape.target (.ad suffix).

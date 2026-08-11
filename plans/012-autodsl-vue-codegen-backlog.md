@@ -53,8 +53,8 @@
 | gap | 缺口 | 规避 |
 |---|---|---|
 | 4 | 无 try/catch/finally | ext safe 包装（catch→null / `{error:""}` map / RAW throw 三模式）；`.finally(()=>{})` 可复刻 finally |
-| 6 | 无 early return | if 守卫反转 |
-| 54 | 无 v-else-if / v-else | 互斥 v-if + ext 守卫 computed |
+| 6 | 无 early return | ✅ DONE（批次 F，56355c01）：裸 `return` 换行即终止（修复了下一条语句被静默吞为返回值的 P0 级陷阱，Plan 241 旧语义正式反转）；VM/ts_adapter 本已支持 |
+| 54 | 无 v-else-if / v-else | ✅ DONE：master 本已实现（Plan 367 parser + Plan 043 M5 codegen 展平相邻链），批次 F（5b76d82d）补三分支/单 else/链内组合 3 个覆盖测试；互斥 v-if 规避可逐步淘汰 |
 | 5 | 无正则字面量 | ext（stripExt 等） |
 
 ### 类型 / 数据结构

@@ -40,14 +40,6 @@ watch(() => props.path, () => {
   loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
 
-function OnUpdate(md: any): void {
-  tabsStore.setBody(props.path, md);
-  let f = debounced_save.value;
-  f();
-
-  emit('OnUpdate', md)
-}
-
 function OnScrollToBlock(e: any): void {
   scrollToBlockFromEvent(editorRef.value!, props.path, e);
 
@@ -60,6 +52,14 @@ function CopyBlockLink(): void {
   }
 
   emit('CopyBlockLink')
+}
+
+function OnUpdate(md: any): void {
+  tabsStore.setBody(props.path, md);
+  let f = debounced_save.value;
+  f();
+
+  emit('OnUpdate', md)
 }
 
 onMounted(() => {
@@ -98,7 +98,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell :pageTitle="page_title" :runQuery="run_query" :showActions="false" ref="editorRef" :class="'h-full w-full'" :assetUpload="asset_upload" :loadBlock="load_block" :openWikiLink="open_wiki_link" :extraSlashItems="extra_slash" :placeholder="'Start typing...'" :content="body" :key="'EditorShell-1'" @update="OnUpdate" />
+      <EditorShell ref="editorRef" :showActions="false" :class="'h-full w-full'" :content="body" :assetUpload="asset_upload" :openWikiLink="open_wiki_link" :placeholder="'Start typing...'" :extraSlashItems="extra_slash" :pageTitle="page_title" :runQuery="run_query" :loadBlock="load_block" :key="'EditorShell-1'" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

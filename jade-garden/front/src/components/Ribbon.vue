@@ -23,22 +23,10 @@ const emit = defineEmits<{
   CloseTheme: []
 }>()
 
-function Select(item: any): void {
-  sidebarStore.setLeftPanel(item.panel);
+function ToggleTheme(): void {
+  theme_open.value = !theme_open.value;
 
-  emit('Select', item)
-}
-
-function CloseTheme(): void {
-  theme_open.value = false;
-
-  emit('CloseTheme')
-}
-
-function OpenToday(): void {
-  openTodayNote(tabsStore, fileTreeStore);
-
-  emit('OpenToday')
+  emit('ToggleTheme')
 }
 
 function OpenGlobalGraph(): void {
@@ -47,10 +35,22 @@ function OpenGlobalGraph(): void {
   emit('OpenGlobalGraph')
 }
 
-function ToggleTheme(): void {
-  theme_open.value = !theme_open.value;
+function Select(item: any): void {
+  sidebarStore.setLeftPanel(item.panel);
 
-  emit('ToggleTheme')
+  emit('Select', item)
+}
+
+function OpenToday(): void {
+  openTodayNote(tabsStore, fileTreeStore);
+
+  emit('OpenToday')
+}
+
+function CloseTheme(): void {
+  theme_open.value = false;
+
+  emit('CloseTheme')
 }
 
 
@@ -74,7 +74,7 @@ function ToggleTheme(): void {
         <component :is="(CalendarDays) as any" class="h-[18px] w-[18px]" />
       </button>
       <div class="flex-1" />
-      <button :class="theme_open ? 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground text-primary bg-primary/10' : 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'" :title="'Theme'" :type="'button'" @click="ToggleTheme">
+      <button :class="theme_open ? 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground text-primary bg-primary/10' : 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'" :type="'button'" :title="'Theme'" @click="ToggleTheme">
         <component :is="(Palette) as any" class="h-[18px] w-[18px]" />
       </button>
       <ThemePopover :open="theme_open" :key="'ThemePopover-1'" @close="CloseTheme" />

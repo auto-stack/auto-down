@@ -34,6 +34,19 @@ function Deselect(): void {
   emit('Deselect')
 }
 
+function UpdateLabel(args: any): void {
+  args.shape.label = readLabel(args.evt);
+  saveWhiteboard(tabsStore, props.path, doc.value);
+
+  emit('UpdateLabel', args)
+}
+
+function Select(sid: any): void {
+  selected_id.value = sid;
+
+  emit('Select', sid)
+}
+
 function AddShape(): void {
   addNoteShape(doc.value);
   saveWhiteboard(tabsStore, props.path, doc.value);
@@ -45,19 +58,6 @@ function OpenTarget(shape: any): void {
   openShapeTarget(tabsStore, shape);
 
   emit('OpenTarget', shape)
-}
-
-function Select(sid: any): void {
-  selected_id.value = sid;
-
-  emit('Select', sid)
-}
-
-function UpdateLabel(args: any): void {
-  args.shape.label = readLabel(args.evt);
-  saveWhiteboard(tabsStore, props.path, doc.value);
-
-  emit('UpdateLabel', args)
 }
 
 onMounted(() => {

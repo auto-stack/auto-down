@@ -34,7 +34,7 @@ function ScrollTo(content: any): void {
       </h4>
       <template v-if="show_list">
         <component :is="(ul_tag) as any" class="space-y-0.5">
-          <component :is="(li_tag) as any" class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground" :title="h.content" :style="({ paddingLeft: h.pad } as any)" @click="ScrollTo(h.content)" v-for="h in headings">
+          <component :is="(li_tag) as any" class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground" :style="({ paddingLeft: h.pad } as any)" :title="h.content" @click="ScrollTo(h.content)" v-for="h in headings">
             <span>{{ h.content }}</span>
           </component>
         </component>

@@ -33,16 +33,16 @@ function SetAccent(accent: any): void {
   emit('SetAccent', accent)
 }
 
-function SetLight(): void {
-  themeStore.setMode('light');
-
-  emit('SetLight')
-}
-
 function Close(e: any): void {
   let outside = isOutsideThemePopover(e);
 
   emit('Close', e)
+}
+
+function SetLight(): void {
+  themeStore.setMode('light');
+
+  emit('SetLight')
 }
 
 

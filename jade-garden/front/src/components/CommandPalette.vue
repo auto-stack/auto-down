@@ -47,41 +47,10 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function Execute(item: any): void {
-  runPaletteItem(item, tabsStore);
-  open.value = false;
-
-  emit('Execute', item)
-}
-
-function NextItem(): void {
-  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
-
-  emit('NextItem')
-}
-
 function HoverItem(item: any): void {
   selected_index.value = item.idx;
 
   emit('HoverItem', item)
-}
-
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
-
-  emit('PrevItem')
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
-}
-
-function CloseOverlay(): void {
-  open.value = false;
-
-  emit('CloseOverlay')
 }
 
 function ExecuteSelected(): void {
@@ -91,6 +60,37 @@ function ExecuteSelected(): void {
   }
 
   emit('ExecuteSelected')
+}
+
+function Execute(item: any): void {
+  runPaletteItem(item, tabsStore);
+  open.value = false;
+
+  emit('Execute', item)
+}
+
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
+}
+
+function CloseOverlay(): void {
+  open.value = false;
+
+  emit('CloseOverlay')
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
+
+  emit('NextItem')
 }
 
 onMounted(() => {
@@ -118,7 +118,7 @@ onUnmounted(() => {
               <span class="text-xs text-muted-foreground">
                 <span>⌘/Ctrl+P</span>
               </span>
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Type a command or recent file...'" :type="'text'" v-model="query" @keydown.down.prevent="NextItem" @keydown.enter.prevent="ExecuteSelected" @keydown.up.prevent="PrevItem" @input="QueryInput($event)" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Type a command or recent file...'" :type="'text'" v-model="query" @input="QueryInput($event)" @keydown.enter.prevent="ExecuteSelected" @keydown.down.prevent="NextItem" @keydown.up.prevent="PrevItem" />
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">

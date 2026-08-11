@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）；**报错定位专项**（c6e59f55：gap 37a 修复 + error-limit 丢弃根因共性机制修复，其余 4 点自愈配锁，jade ext 已迁移原生 teleport/v-html = auto-down f95c03b）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
+> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）；**报错定位专项**（c6e59f55：gap 37a 修复 + error-limit 丢弃根因共性机制修复，其余 4 点自愈配锁，jade ext 已迁移原生 teleport/v-html = auto-down f95c03b）；**批次 F**（56355c01 裸 return 换行陷阱修复 + 5b76d82d else-if 覆盖，gap 6/54 关闭）；**批次 G store 表达力**（4d656863 store map 初值、0daa826a store watch、gap 1/10 自愈配锁，gap 12/15/1/10 关闭）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -62,12 +62,12 @@
 | gap | 缺口 | 规避 |
 |---|---|---|
 | 11 | 无 Map/Set | model 占位 + facade 顶层 `new Map()` + ext 原地 mutate |
-| 1 | store msg payload 单类型（`Open(str,str)` 解析失败） | 单 map payload + facade 参数归一 |
+| 1 | store msg payload 单类型（`Open(str,str)` 解析失败） | ✅ 已自愈（Plan 043 M5，`MsgDecl.payload: Vec<Type>`），批次 G（1694e109）配防回退测试；单 map payload 规避可逐步淘汰 |
 | 17 | widget msg variant 不能带 payload 类型（与 store 规则相反，报错位置迷惑） | `msg Msg { X }` + handler 声明参数 |
-| 10 | handler 无返回值 | 带返回值方法放 facade/ext，直读写生成 store 的 state ref |
-| 12 | store 内无 watch | facade 模块顶层 `watch(...)` |
+| 10 | handler 无返回值 | ✅ 已自愈（批次 F 后通用语句层带值 return 直达 store handler，Pinia action 返回值合法），批次 G（b281ce4f）配防回退测试 |
+| 12 | store 内无 watch | ✅ DONE（批次 G，0daa826a）：store 体支持 `watch {}` 块，codegen 在 composable 模块级发射 `watch(...)`（.immediate/.deep/多源），与 facade 手写法同构 |
 | 14 | 无 `$patch` | facade 手工仿真用到的 key |
-| 15 | store `var x map = {}` 初值发射 `ref(null)`（widget 侧同写法保留 `{}`，行为不一致） | facade 赋真值 |
+| 15 | store `var x map = {}` 初值发射 `ref(null)`（widget 侧同写法保留 `{}`，行为不一致） | ✅ DONE（批次 G，4d656863）：store 初值 Object 字面量如实发射（`ref({})`）；jade 唯一命中 graph_store settings，facade 赋真值兼容 |
 | 16 | model 初值不能调 ext 函数 | facade 顶层赋值 |
 | 43 | prop 类型名原样透传为 `@/lib/api` import；`map` 作 prop 类型发射损坏 import | 真实 TS interface 名 + 双侧 stub 同步 |
 | 48 | `Array<User>` prop 类型发射 `any` 且不 import | 暂丢类型，等 codegen 支持 List<User> |

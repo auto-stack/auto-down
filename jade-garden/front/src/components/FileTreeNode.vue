@@ -41,34 +41,11 @@ const emit = defineEmits<{
 
 import type { FileNode } from '@/lib/api'
 
-function CtxDelete(): void {
-  menu_open.value = false;
-  ctxDelete(fileTreeStore, props.node);
-
-  emit('CtxDelete')
-}
-
 function CtxDuplicate(): void {
   menu_open.value = false;
   ctxDuplicate(fileTreeStore, props.node);
 
   emit('CtxDuplicate')
-}
-
-function Toggle(): void {
-  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
-  }
-  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
-  }
-
-  emit('Toggle')
-}
-
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
-
-  emit('CtxNewFolder')
 }
 
 function RightClick(e: any): void {
@@ -86,11 +63,34 @@ function CtxRename(): void {
   emit('CtxRename')
 }
 
+function CtxNewFolder(): void {
+  menu_open.value = false;
+  ctxNewFolder(fileTreeStore, props.node);
+
+  emit('CtxNewFolder')
+}
+
 function CtxNewFile(): void {
   menu_open.value = false;
   ctxNewFile(fileTreeStore, props.node);
 
   emit('CtxNewFile')
+}
+
+function Toggle(): void {
+  if (props.node.is_dir) {fileTreeStore.toggle(props.node.path);
+  }
+  if (!props.node.is_dir) {openNodeFile(tabsStore, props.node);
+  }
+
+  emit('Toggle')
+}
+
+function CtxDelete(): void {
+  menu_open.value = false;
+  ctxDelete(fileTreeStore, props.node);
+
+  emit('CtxDelete')
 }
 
 onMounted(() => {
@@ -113,13 +113,13 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :expanded="is_expanded" :active="is_active" :is_dir="node.is_dir" />
+        <component :is="(NodeIcon) as any" :active="is_active" :expanded="is_expanded" :is_dir="node.is_dir" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :node="child" :key="child.path" :level="next_level"  v-for="child in node.children"/>
+        <FileTreeNode :key="child.path" :level="next_level" :node="child"  v-for="child in node.children"/>
       </template>
       <Teleport to="body">
         <template v-if="menu_open">

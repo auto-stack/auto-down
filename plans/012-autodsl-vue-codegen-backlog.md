@@ -1,6 +1,6 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
-> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
+> 状态：✅ P0 清零 + **P2 三优先已落地**（2026-08-08；v-show/保留字治理/try-catch-finally = c5b5fecf；此前 A=be17713e、label=280e50c2、B=94fc2d3e、C=1631fed1、D=63569c34、P0#13=a59ffdce）。try/catch 顺带修复了又一个 P0 级静默丢弃（Stmt::Try 在 Vue 路径无发射分支）。**后续落地**：catch 绑定作用域修复（fee0c230，jade 影子 hack 已清）；P0#13 follow-up 兜底硬化（批次 E1 = 41ac83ae，`expr_to_vue_bound_value` 兜底改 Err + R013 告警 + 全调用点分类接线，下游零命中）；**事件修饰符回归修复**（bf4022bb：plan 402 在 aura extract 归一化事件 key 致 Vue 路径 `@click.self`/多 keydown 坍塌，还原完整 key + VM 消费点改 base 感知查找）；**批次 E2 v-html 原生**（c7034bf5：`html:` prop → `v-html` + R014 冲突告警，gap 22 关闭；331952c0 修正：拦截收敛到普通元素路径，dyn/组件恢复 `:html` 透传——jade ext HtmlDiv 模式实证回归的修复）；**批次 E3 Teleport 原生**（f8acfb43：`teleport (to:)` → `<Teleport>` + R015，gap 27 关闭）；**报错定位专项**（c6e59f55：gap 37a 修复 + error-limit 丢弃根因共性机制修复，其余 4 点自愈配锁，jade ext 已迁移原生 teleport/v-html = auto-down f95c03b）。剩余 = P2 其他表达力缺口 + P3 体验长尾 + 🔲 cap_vmodel_fold master 回归（见 P1 表 #5）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。
 > 标注说明：gap 编号 = README 编号；✅ DONE = 已在 5.0b/c2779bc8 修复，仅留档。
@@ -104,7 +104,7 @@
 
 | gap | 现象 | 建议 |
 |---|---|---|
-| 17/37/46/53 | parse 报错位置严重错位（报在 view 收尾 `}`、循环收尾、附近注释），排错靠经验 | parser 错误 span 绑定到真实 token |
+| 17/37/46/53 | parse 报错位置严重错位（报在 view 收尾 `}`、循环收尾、附近注释），排错靠经验 | ✅ 大部落地（报错定位专项，2026-08-11）：gap 17/18/29/34/37b/46 经保留字治理等批次**已自愈**并配防回退测试；37a 实质修复（c6e59f55：parse_event_arg 静默空转改响亮报错 + **error-limit 丢弃根因的共性机制**——超限不再只报收尾派生错误）。残留：check_symbol 的 UndefinedVariable 仍用游标位置 span（UI 路径未触发，立项时表达式节点带 span 解决）；错误恢复冲刷派生错误噪音（根因已排第一） |
 | 30/31/44 等 | 大量静默降级无任何告警（本表 P0 的共性） | 引入 codegen warning 通道：所有"丢弃/降级/透传"行为统一告警，`--strict` 升级为错误 |
 | — | `auto build -d` 路径处理：从错误目录运行会静默用错项目；jade 遗留地雷是 `auto run` 用占位覆盖真实 src（plan 011 5.0a 因此隔离） | 非项目目录硬失败；`auto run` 覆盖既有文件前要求确认/备份 |
 | 32/50/55 | gen 工程双重 src（`src/src/...`）镜像：ext 相对上溯差一层、`cp -r` 已存在目标嵌套、组件接线改动后旧镜像 TS2724 | gen 侧用 tsconfig paths 别名替代物理镜像，消除双重 src |

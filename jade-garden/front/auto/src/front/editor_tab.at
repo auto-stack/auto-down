@@ -128,7 +128,7 @@ widget EditorTab(path: str) {
         // Original: watch(() => props.path, () => { if (tab.value &&
         // !tab.value.loaded) tabs.load(props.path) }, { immediate: true }).
         .path.immediate -> {
-            loadTabIfNeeded(.tabsStore, .tab.value, .path)
+            loadTabIfNeeded(.tabsStore, .tab, .path)
         }
     }
 
@@ -166,7 +166,7 @@ widget EditorTab(path: str) {
         // Original: copyBlockLink — early return when no id/title (hover
         // block kept), otherwise write the [[title#^id]] link and clear.
         .CopyBlockLink -> {
-            let ok = copyBlockLinkSafe(.hover_block, .tab.value)
+            let ok = copyBlockLinkSafe(.hover_block, .tab)
             if ok {
                 .hover_block = null
             }

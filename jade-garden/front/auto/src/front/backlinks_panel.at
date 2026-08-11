@@ -24,7 +24,9 @@
 //   precedent).
 // - The original's watch(currentTitle, fetch, { immediate: true }) maps to
 //   the watch block's .immediate modifier on the current_title computed;
-//   computed refs need the explicit .value form in handler bodies.
+//   computed refs are auto-unwrapped in handler bodies too (compiler ≥
+//   Plan 408 P4, 7bd6d4e3) — the explicit .value form was removed once it
+//   started double-unwrapping.
 
 widget BacklinksPanel {
     use {
@@ -87,12 +89,12 @@ widget BacklinksPanel {
         // Original: watch(currentTitle, fetchBacklinks, { immediate: true }).
         .current_title.immediate -> {
             // Original: if (!currentTitle.value) { backlinks.value = []; return }
-            if .current_title.value == "" {
+            if .current_title == "" {
                 .links = []
             }
-            if .current_title.value != "" {
+            if .current_title != "" {
                 .loading = true
-                let p = fetchBacklinksSafe(.current_title.value)
+                let p = fetchBacklinksSafe(.current_title)
                 // try/catch/finally as a one-callback .then: the extension
                 // wrapper never rejects, so this callback carries the try
                 // branch, the catch branch (empty array) comes from the

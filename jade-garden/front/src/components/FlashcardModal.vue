@@ -50,12 +50,6 @@ function Reveal(): void {
   emit('Reveal')
 }
 
-function update_open(v: any): void {
-  v = false;
-
-  emit('update:open', v)
-}
-
 function Rate(grade: any): void {
   let card = current.value;
   if (card != null) {let p = reviewCardSafe(card.page_path, card.block_id, grade);
@@ -75,6 +69,12 @@ function Rate(grade: any): void {
   }
 
   emit('Rate', grade)
+}
+
+function update_open(v: any): void {
+  v = false;
+
+  emit('update:open', v)
 }
 
 onMounted(() => {

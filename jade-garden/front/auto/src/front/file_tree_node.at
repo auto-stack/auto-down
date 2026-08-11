@@ -34,8 +34,8 @@
 // - @contextmenu.prevent replicates the original onRightClick's
 //   e.preventDefault(); the handler then reads clientX/clientY off $event.
 // - computed refs are auto-unwrapped in computed bodies (compiler ≥
-//   24f0dd16, gap 44 fix); handler/watch bodies still need explicit
-//   `.value`.
+//   24f0dd16, gap 44 fix) AND in handler/watch bodies (Plan 408 P4,
+//   7bd6d4e3) — explicit `.value` is no longer written anywhere.
 // - The context-menu actions (prompt/confirm + path surgery + facade CRUD)
 //   and the setup-time once-only document click listener live in the
 //   extension; the menu closes in the handler BEFORE the extension call,

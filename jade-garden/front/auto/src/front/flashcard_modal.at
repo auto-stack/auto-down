@@ -135,7 +135,7 @@ widget FlashcardModal(open: bool) {
     watch {
         // Original: watch(open, (isOpen) => { if (isOpen) load() }).
         .is_open -> {
-            if .is_open.value {
+            if .is_open {
                 .loading = true
                 .error = ""
                 let p = getDueCardsSafe()
@@ -185,7 +185,7 @@ widget FlashcardModal(open: bool) {
         // branches; the reload is the load() body inlined (no
         // handler-to-handler calls in the DSL).
         .Rate(grade) -> {
-            var card = .current.value
+            var card = .current
             if card != null {
                 let p = reviewCardSafe(card.page_path, card.block_id, grade)
                 p.then(res => {

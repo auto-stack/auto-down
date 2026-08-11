@@ -48,6 +48,35 @@ function CtxNewFile(): void {
   emit('CtxNewFile')
 }
 
+function CtxDelete(): void {
+  menu_open.value = false;
+  ctxDelete(fileTreeStore, props.node);
+
+  emit('CtxDelete')
+}
+
+function RightClick(e: any): void {
+  menu_x.value = e.clientX;
+  menu_y.value = e.clientY;
+  menu_open.value = true;
+
+  emit('RightClick', e)
+}
+
+function CtxRename(): void {
+  menu_open.value = false;
+  ctxRename(fileTreeStore, props.node);
+
+  emit('CtxRename')
+}
+
+function CtxDuplicate(): void {
+  menu_open.value = false;
+  ctxDuplicate(fileTreeStore, props.node);
+
+  emit('CtxDuplicate')
+}
+
 function CtxNewFolder(): void {
   menu_open.value = false;
   ctxNewFolder(fileTreeStore, props.node);
@@ -62,35 +91,6 @@ function Toggle(): void {
   }
 
   emit('Toggle')
-}
-
-function CtxRename(): void {
-  menu_open.value = false;
-  ctxRename(fileTreeStore, props.node);
-
-  emit('CtxRename')
-}
-
-function RightClick(e: any): void {
-  menu_x.value = e.clientX;
-  menu_y.value = e.clientY;
-  menu_open.value = true;
-
-  emit('RightClick', e)
-}
-
-function CtxDuplicate(): void {
-  menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
-
-  emit('CtxDuplicate')
-}
-
-function CtxDelete(): void {
-  menu_open.value = false;
-  ctxDelete(fileTreeStore, props.node);
-
-  emit('CtxDelete')
 }
 
 onMounted(() => {
@@ -113,7 +113,7 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :is_dir="node.is_dir" :expanded="is_expanded" :active="is_active" />
+        <component :is="(NodeIcon) as any" :expanded="is_expanded" :is_dir="node.is_dir" :active="is_active" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>

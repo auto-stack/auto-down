@@ -31,9 +31,9 @@ if (view_mode.value == 'graph') {view_mode.value = 'editor';
 depth.value = args.depth;
 view_mode.value = 'graph';
  }
-    const ShowGlobal = () => { center_path.value = null;
- }
     const SaveSettings = async () => { await saveGraphSettings(settings.value);
+ }
+    const ShowGlobal = () => { center_path.value = null;
  }
     return {
         nodes,
@@ -48,7 +48,7 @@ view_mode.value = 'graph';
         Load,
         ToggleView,
         OpenLocal,
-        ShowGlobal,
         SaveSettings,
+        ShowGlobal,
     }
 }

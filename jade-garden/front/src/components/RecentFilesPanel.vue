@@ -20,12 +20,6 @@ const emit = defineEmits<{
   ClearAll: []
 }>()
 
-function Remove(rf: any): void {
-  removeRecent(rf.path);
-
-  emit('Remove', rf)
-}
-
 function ClearAll(): void {
   recentFilesStore.clear();
 
@@ -36,6 +30,12 @@ function Open(rf: any): void {
   tabsStore.open(rf.path);
 
   emit('Open', rf)
+}
+
+function Remove(rf: any): void {
+  removeRecent(rf.path);
+
+  emit('Remove', rf)
 }
 
 

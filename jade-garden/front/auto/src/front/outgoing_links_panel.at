@@ -74,12 +74,12 @@ widget OutgoingLinksPanel {
     watch {
         // Original: watch(currentTitle, fetchOutlinks, { immediate: true }).
         .current_title.immediate -> {
-            if .current_title.value == "" {
+            if .current_title == "" {
                 .links = []
             }
-            if .current_title.value != "" {
+            if .current_title != "" {
                 .loading = true
-                let p = fetchOutlinksSafe(.current_title.value)
+                let p = fetchOutlinksSafe(.current_title)
                 // One-callback .then: the extension wrapper never rejects,
                 // so the original's try and catch branches both land here
                 // and the finally's loading=false is carried by it.

@@ -40,18 +40,6 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function NextItem(): void {
-  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
-
-  emit('NextItem')
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
-}
-
 function CloseOverlay(): void {
   open.value = false;
 
@@ -67,10 +55,16 @@ function SelectCurrent(): void {
   emit('SelectCurrent')
 }
 
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
 
-  emit('PrevItem')
+  emit('NextItem')
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
 }
 
 function HoverFile(file: any): void {
@@ -84,6 +78,12 @@ function SelectFile(file: any): void {
   open.value = false;
 
   emit('SelectFile', file)
+}
+
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+
+  emit('PrevItem')
 }
 
 onMounted(() => {
@@ -109,7 +109,7 @@ onUnmounted(() => {
           <div class="w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg">
             <div class="flex items-center gap-2 border-b px-3 py-2">
               <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" v-model="query" :placeholder="'Search files...'" @keydown.up.prevent="PrevItem" @input="QueryInput($event)" @keydown.down.prevent="NextItem" @keydown.enter.prevent="SelectCurrent" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Search files...'" v-model="query" :type="'text'" @keydown.enter.prevent="SelectCurrent" @keydown.down.prevent="NextItem" @keydown.up.prevent="PrevItem" @input="QueryInput($event)" />
               <span class="text-xs text-muted-foreground">
                 <span>Ctrl+O</span>
               </span>

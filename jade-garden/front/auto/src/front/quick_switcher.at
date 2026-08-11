@@ -142,7 +142,7 @@ widget QuickSwitcher {
         }
         // Original onKeydown's Enter branch.
         .SelectCurrent -> {
-            var file = .filtered.value[.selected_index]
+            var file = .filtered[.selected_index]
             if file != null {
                 .tabsStore.open(file.path)
                 .open = false
@@ -150,11 +150,11 @@ widget QuickSwitcher {
         }
         // Original onKeydown's ArrowDown branch.
         .NextItem -> {
-            .selected_index = nextIndex(.selected_index, .filtered.value.length)
+            .selected_index = nextIndex(.selected_index, .filtered.length)
         }
         // Original onKeydown's ArrowUp branch.
         .PrevItem -> {
-            .selected_index = prevIndex(.selected_index, .filtered.value.length)
+            .selected_index = prevIndex(.selected_index, .filtered.length)
         }
         // Original: @mouseenter="selectedIndex = idx".
         .HoverFile(file) -> {

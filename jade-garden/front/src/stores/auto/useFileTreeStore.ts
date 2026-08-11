@@ -7,7 +7,7 @@ const loading = ref<any>(false)
 const error = ref<any>(null)
 
 export function useFileTreeStore(): any {
-    const DeleteFile = async (path: any) => { await deleteFileRaw(path);
+    const CreateFile = async (args: any) => { await createFileRaw(args.path, args.isDir);
 loading.value = true;
 error.value = null;
 let res = await listFilesResult();
@@ -17,7 +17,7 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const CreateFile = async (args: any) => { await createFileRaw(args.path, args.isDir);
+    const DeleteFile = async (path: any) => { await deleteFileRaw(path);
 loading.value = true;
 error.value = null;
 let res = await listFilesResult();
@@ -39,7 +39,8 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const Load = async () => { loading.value = true;
+    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
+loading.value = true;
 error.value = null;
 let res = await listFilesResult();
 if (res.error == '') {files.value = res.files;
@@ -48,8 +49,7 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
-loading.value = true;
+    const Load = async () => { loading.value = true;
 error.value = null;
 let res = await listFilesResult();
 if (res.error == '') {files.value = res.files;
@@ -63,11 +63,11 @@ loading.value = false;
         expanded,
         loading,
         error,
-        DeleteFile,
         CreateFile,
+        DeleteFile,
         Toggle,
         DuplicateFile,
-        Load,
         RenameFile,
+        Load,
     }
 }

@@ -80,11 +80,11 @@ widget StatusBar {
         // Original: watch(() => tabs.activeTab?.path, fetchBacklinks, { immediate: true }).
         .current_path.immediate -> {
             // Original: if (!path) { backlinkCount.value = 0; return }
-            if .current_path.value == "" {
+            if .current_path == "" {
                 .backlink_count = 0
             }
-            if .current_path.value != "" {
-                let p = fetchBacklinkCountSafe(.current_path.value)
+            if .current_path != "" {
+                let p = fetchBacklinkCountSafe(.current_path)
                 // try/catch as a one-callback .then: the extension wrapper
                 // never rejects (the catch branch returns 0).
                 p.then(n => {

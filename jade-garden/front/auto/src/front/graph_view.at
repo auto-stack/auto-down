@@ -76,7 +76,7 @@ widget GraphView(nodes: Array<GraphNode>, edges: Array<GraphEdge>, settings: Gra
         // Original: watch(elements, ...) — swap elements, relayout,
         // re-highlight.
         .els -> {
-            updateGraphElements(.handle, .els.value, .settings, .highlightQuery)
+            updateGraphElements(.handle, .els, .settings, .highlightQuery)
         }
         // Original: watch(() => props.settings, ..., { deep: true }).
         .settings.deep -> {

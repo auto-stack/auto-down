@@ -20,17 +20,23 @@ const emit = defineEmits<{
   Reset: []
 }>()
 
-function SliderChanged(key: any, evt: any): void {
-  setGraphNumber(graphStore, key, eventNumber(evt));
-  graphStore.saveSettings();
+function SearchInput(e: any): void {
+  graphStore.searchQuery = eventValue(e);
 
-  emit('SliderChanged', key, evt)
+  emit('SearchInput', e)
 }
 
 function ShowGlobal(): void {
   graphStore.showGlobal();
 
   emit('ShowGlobal')
+}
+
+function SliderChanged(key: any, evt: any): void {
+  setGraphNumber(graphStore, key, eventNumber(evt));
+  graphStore.saveSettings();
+
+  emit('SliderChanged', key, evt)
 }
 
 function DepthChanged(e: any): void {
@@ -50,12 +56,6 @@ function FlagChanged(key: any, evt: any): void {
   graphStore.saveSettings();
 
   emit('FlagChanged', key, evt)
-}
-
-function SearchInput(e: any): void {
-  graphStore.searchQuery = eventValue(e);
-
-  emit('SearchInput', e)
 }
 
 
@@ -87,7 +87,7 @@ function SearchInput(e: any): void {
             <span>
               <span>深度</span>
             </span>
-            <RangeInput :value="graphStore.depth" :step="'1'" :max="'3'" :min="'1'" :key="'RangeInput-1'" @input="DepthChanged($event)" />
+            <RangeInput :min="'1'" :max="'3'" :value="graphStore.depth" :step="'1'" :key="'RangeInput-1'" @input="DepthChanged($event)" />
             <span class="value">
               <span>{{ graphStore.depth }}</span>
             </span>
@@ -114,7 +114,7 @@ function SearchInput(e: any): void {
           <span>
             <span>显示缺失页面</span>
           </span>
-          <input class="toggle" :checked="graphStore.settings.showMissing" :type="'checkbox'" @change="FlagChanged('showMissing', $event)" />
+          <input class="toggle" :type="'checkbox'" :checked="graphStore.settings.showMissing" @change="FlagChanged('showMissing', $event)" />
         </label>
       </div>
       <div class="section">
@@ -128,7 +128,7 @@ function SearchInput(e: any): void {
           <span>
             <span>节点大小</span>
           </span>
-          <RangeInput :min="'4'" :max="'40'" :step="'1'" :value="graphStore.settings.nodeSize" :key="'RangeInput-2'" @input="SliderChanged('nodeSize', $event)" />
+          <RangeInput :value="graphStore.settings.nodeSize" :step="'1'" :max="'40'" :min="'4'" :key="'RangeInput-2'" @input="SliderChanged('nodeSize', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.nodeSize }}</span>
           </span>
@@ -137,7 +137,7 @@ function SearchInput(e: any): void {
           <span>
             <span>文本透明度</span>
           </span>
-          <RangeInput :step="'0.05'" :max="'1'" :min="'0'" :value="graphStore.settings.textOpacity" :key="'RangeInput-3'" @input="SliderChanged('textOpacity', $event)" />
+          <RangeInput :max="'1'" :step="'0.05'" :value="graphStore.settings.textOpacity" :min="'0'" :key="'RangeInput-3'" @input="SliderChanged('textOpacity', $event)" />
           <span class="value">
             <span>{{ opacity_label }}</span>
           </span>
@@ -146,7 +146,7 @@ function SearchInput(e: any): void {
           <span>
             <span>连线粗细</span>
           </span>
-          <RangeInput :max="'5'" :step="'0.5'" :value="graphStore.settings.edgeWidth" :min="'0.5'" :key="'RangeInput-4'" @input="SliderChanged('edgeWidth', $event)" />
+          <RangeInput :min="'0.5'" :step="'0.5'" :max="'5'" :value="graphStore.settings.edgeWidth" :key="'RangeInput-4'" @input="SliderChanged('edgeWidth', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.edgeWidth }}</span>
           </span>
@@ -155,7 +155,7 @@ function SearchInput(e: any): void {
           <span>
             <span>显示箭头</span>
           </span>
-          <input class="toggle" :checked="graphStore.settings.showArrows" :type="'checkbox'" @change="FlagChanged('showArrows', $event)" />
+          <input class="toggle" :type="'checkbox'" :checked="graphStore.settings.showArrows" @change="FlagChanged('showArrows', $event)" />
         </label>
       </div>
       <div class="section">
@@ -169,7 +169,7 @@ function SearchInput(e: any): void {
           <span>
             <span>图谱向心力</span>
           </span>
-          <RangeInput :value="graphStore.settings.gravity" :step="'0.01'" :max="'0.5'" :min="'0'" :key="'RangeInput-5'" @input="SliderChanged('gravity', $event)" />
+          <RangeInput :step="'0.01'" :max="'0.5'" :value="graphStore.settings.gravity" :min="'0'" :key="'RangeInput-5'" @input="SliderChanged('gravity', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.gravity }}</span>
           </span>
@@ -178,7 +178,7 @@ function SearchInput(e: any): void {
           <span>
             <span>节点排斥力</span>
           </span>
-          <RangeInput :min="'1000'" :step="'500'" :max="'20000'" :value="graphStore.settings.repulsion" :key="'RangeInput-6'" @input="SliderChanged('repulsion', $event)" />
+          <RangeInput :min="'1000'" :max="'20000'" :value="graphStore.settings.repulsion" :step="'500'" :key="'RangeInput-6'" @input="SliderChanged('repulsion', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.repulsion }}</span>
           </span>
@@ -187,7 +187,7 @@ function SearchInput(e: any): void {
           <span>
             <span>相连节点吸引力</span>
           </span>
-          <RangeInput :min="'0.001'" :step="'0.001'" :value="graphStore.settings.attraction" :max="'0.5'" :key="'RangeInput-7'" @input="SliderChanged('attraction', $event)" />
+          <RangeInput :value="graphStore.settings.attraction" :max="'0.5'" :step="'0.001'" :min="'0.001'" :key="'RangeInput-7'" @input="SliderChanged('attraction', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.attraction }}</span>
           </span>
@@ -196,7 +196,7 @@ function SearchInput(e: any): void {
           <span>
             <span>连线长度</span>
           </span>
-          <RangeInput :step="'10'" :max="'300'" :min="'30'" :value="graphStore.settings.linkLength" :key="'RangeInput-8'" @input="SliderChanged('linkLength', $event)" />
+          <RangeInput :min="'30'" :max="'300'" :value="graphStore.settings.linkLength" :step="'10'" :key="'RangeInput-8'" @input="SliderChanged('linkLength', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.linkLength }}</span>
           </span>

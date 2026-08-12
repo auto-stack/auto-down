@@ -17,7 +17,7 @@
 // - loadBlockFn / assetUploadFn / runQueryFn / extraSlashItemsFn (the editor
 //   shell function props; the slash item's command closure needs
 //   window.prompt, async template expansion and `new Date`),
-// - openWikiLinkFn (the dangling-link create flow: confirm/alert,
+// - openWikiLink (the dangling-link create flow: confirm/alert,
 //   try/catch, recursive tree search, setTimeout + CustomEvent dispatch),
 // - listenEditorHover / unlistenEditorHover (the wrapper mousemove /
 //   mouseleave listeners + the 300ms leave timer; per-tab instance state
@@ -41,10 +41,11 @@ export { useTabsStore, useFileTreeStore, useDebounceFn }
 
 /** Thin shell around AutoDownEditor (README gap 51): the DSL's view parser
  *  treats every prop key starting with `on` as an EVENT listener, so the
- *  shell's `onAssetUpload` / `onOpenWikiLink` props cannot be bound from a
- *  widget. This wrapper takes the same values under `assetUpload` /
- *  `openWikiLink` and forwards everything else (props, the @update listener,
- *  class) untouched via attrs — identical DOM, props and event wiring. It is
+ *  shell's `onAssetUpload` prop cannot be bound from a widget. This wrapper
+ *  takes the same value under `assetUpload` and forwards everything else
+ *  (props, the @update listener, the @open-wiki-link listener — it lands in
+ *  attrs as onOpenWikiLink and binds to the inner's declared prop, class)
+ *  untouched via attrs — identical DOM, props and event wiring. It is
  *  a stateful single-root component so the parent's `ref: "editorRef"` still
  *  resolves `$el` to the editor's root element (the hover/scroll DOM escape
  *  hatch below depends on it). */
@@ -52,11 +53,10 @@ export const EditorShell = defineComponent({
   name: 'EditorShell',
   setup(_props, { attrs }) {
     return () => {
-      const { assetUpload, openWikiLink, ...rest } = attrs
+      const { assetUpload, ...rest } = attrs
       return h(AutoDownEditor as any, {
         ...rest,
         onAssetUpload: assetUpload,
-        onOpenWikiLink: openWikiLink,
       })
     }
   },
@@ -180,11 +180,11 @@ function normalizeBlockId(blockId: string): string {
   return id
 }
 
-/** Original onOpenWikiLink, verbatim (returned as the editor's
- *  onOpenWikiLink PROP handler — the inner invokes it with (title, blockId),
- *  the same args the original's @open-wiki-link listener received). */
-export function openWikiLinkFn(tabs: any, fileTree: any) {
-  return async (title: string, blockId?: string | null): Promise<void> => {
+/** Original onOpenWikiLink, verbatim (invoked by the widget's
+ *  .OpenWikiLink(title, block_id) handler — the quoted `on "open-wiki-link":`
+ *  listener forwards BOTH of the inner's args since the gap-37b multi-param
+ *  self-heal; the old prop-callback channel is gone). */
+export async function openWikiLink(tabs: any, fileTree: any, title: string, blockId?: string | null): Promise<void> {
     if (!fileTree.files.length && !fileTree.loading) {
       await fileTree.load()
     }
@@ -226,7 +226,6 @@ export function openWikiLinkFn(tabs: any, fileTree: any) {
         window.dispatchEvent(new CustomEvent('jade-scroll-to-block', { detail: { path: targetPath, id } }))
       }, 150)
     }
-  }
 }
 
 /** Original getEditorWrapper (the editorRef is already the unwrapped

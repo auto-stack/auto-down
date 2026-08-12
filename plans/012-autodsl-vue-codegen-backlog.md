@@ -79,7 +79,7 @@
 |---|---|---|
 | 37 | view 事件实参不能写字面量；handler 多参数只有第一个进作用域（报错 span 错位） | ✅ 已迁移（2026-08-11）：37b 多参数自愈后，jade 16 处单 map 实参全部改回多参数直写（graph_controls ×11、properties_panel ×4、whiteboard_page ×1），6 个 handler 改多形参；emit 元组自动升 `[any, any]`，e2e 23/23。残留：bool 字面量实参仍不支持（37a 改响亮报错，int/str 可用） |
 | 41 | quoted v-model emit 的 payload 是 handler 形参原样转发 | handler 体内给形参重新赋值发固定值 |
-| —（5.3c 实证） | 组件 emit 多实参只接通第一个 | 双实参走 prop 回调通道（`props.onX?.(a, b)`） |
+| —（5.3c 实证） | 组件 emit 多实参只接通第一个 | ✅ 已迁移（2026-08-11）：机制=37b 多参数自愈 + quoted event 裸 handler 引用（Vue 传全部实参），editor_tab 的 open-wiki-link 从 prop 回调通道迁回 `on "open-wiki-link": .OpenWikiLink(title, block_id)`；ext `openWikiLinkFn` 闭包改直调 `openWikiLink`，EditorShell 不再做 openWikiLink 改名转发；auto-lang bcafc6f7 配守护测试 |
 | 51 | `on*` 开头 prop 名被 view 解析当事件监听 → 小写塌陷错误接线 / 同名 TS2300 | ext stateful 单根 wrapper 改名回 `onXxx` |
 
 ### 视图 / 元素映射

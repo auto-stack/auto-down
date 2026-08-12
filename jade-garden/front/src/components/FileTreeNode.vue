@@ -48,11 +48,11 @@ function CtxNewFile(): void {
   emit('CtxNewFile')
 }
 
-function CtxDelete(): void {
+function CtxDuplicate(): void {
   menu_open.value = false;
-  ctxDelete(fileTreeStore, props.node);
+  ctxDuplicate(fileTreeStore, props.node);
 
-  emit('CtxDelete')
+  emit('CtxDuplicate')
 }
 
 function RightClick(e: any): void {
@@ -63,25 +63,11 @@ function RightClick(e: any): void {
   emit('RightClick', e)
 }
 
-function CtxRename(): void {
+function CtxDelete(): void {
   menu_open.value = false;
-  ctxRename(fileTreeStore, props.node);
+  ctxDelete(fileTreeStore, props.node);
 
-  emit('CtxRename')
-}
-
-function CtxDuplicate(): void {
-  menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
-
-  emit('CtxDuplicate')
-}
-
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
-
-  emit('CtxNewFolder')
+  emit('CtxDelete')
 }
 
 function Toggle(): void {
@@ -91,6 +77,20 @@ function Toggle(): void {
   }
 
   emit('Toggle')
+}
+
+function CtxNewFolder(): void {
+  menu_open.value = false;
+  ctxNewFolder(fileTreeStore, props.node);
+
+  emit('CtxNewFolder')
+}
+
+function CtxRename(): void {
+  menu_open.value = false;
+  ctxRename(fileTreeStore, props.node);
+
+  emit('CtxRename')
 }
 
 onMounted(() => {
@@ -119,7 +119,7 @@ onMounted(() => {
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :key="child.path" :node="child" :level="next_level"  v-for="child in node.children"/>
+        <FileTreeNode :node="child" :key="child.path" :level="next_level"  v-for="child in node.children"/>
       </template>
       <Teleport to="body">
         <template v-if="menu_open">

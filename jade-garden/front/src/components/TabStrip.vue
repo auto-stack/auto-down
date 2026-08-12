@@ -23,6 +23,24 @@ const emit = defineEmits<{
   NavNext: []
 }>()
 
+function OpenToday(): void {
+  openTodayNote(tabsStore, fileTreeStore);
+
+  emit('OpenToday')
+}
+
+function NavPrev(): void {
+  navigateDailyNote('prev', tabsStore, fileTreeStore);
+
+  emit('NavPrev')
+}
+
+function CloseTab(tab: any): void {
+  closeTab(tabsStore, tab.path);
+
+  emit('CloseTab', tab)
+}
+
 function SwitchTab(tab: any): void {
   switchTab(tabsStore, tab.path);
 
@@ -35,28 +53,10 @@ function OpenLocalGraph(): void {
   emit('OpenLocalGraph')
 }
 
-function CloseTab(tab: any): void {
-  closeTab(tabsStore, tab.path);
-
-  emit('CloseTab', tab)
-}
-
-function NavPrev(): void {
-  navigateDailyNote('prev', tabsStore, fileTreeStore);
-
-  emit('NavPrev')
-}
-
 function NavNext(): void {
   navigateDailyNote('next', tabsStore, fileTreeStore);
 
   emit('NavNext')
-}
-
-function OpenToday(): void {
-  openTodayNote(tabsStore, fileTreeStore);
-
-  emit('OpenToday')
 }
 
 
@@ -98,7 +98,7 @@ function OpenToday(): void {
         </button>
         <template v-if="has_daily">
           <div class="flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground">
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'前一天'" @click="NavPrev">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'前一天'" :type="'button'" @click="NavPrev">
               <component :is="(ChevronLeft) as any" class="h-3.5 w-3.5" />
             </button>
             <span class="px-1">

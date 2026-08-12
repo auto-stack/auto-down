@@ -47,10 +47,28 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
+
+  emit('NextItem')
+}
+
 function CloseOverlay(): void {
   open.value = false;
 
   emit('CloseOverlay')
+}
+
+function HoverItem(item: any): void {
+  selected_index.value = item.idx;
+
+  emit('HoverItem', item)
 }
 
 function PrevItem(): void {
@@ -73,24 +91,6 @@ function ExecuteSelected(): void {
   }
 
   emit('ExecuteSelected')
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
-}
-
-function NextItem(): void {
-  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
-
-  emit('NextItem')
-}
-
-function HoverItem(item: any): void {
-  selected_index.value = item.idx;
-
-  emit('HoverItem', item)
 }
 
 onMounted(() => {
@@ -118,7 +118,7 @@ onUnmounted(() => {
               <span class="text-xs text-muted-foreground">
                 <span>⌘/Ctrl+P</span>
               </span>
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" v-model="query" :type="'text'" :placeholder="'Type a command or recent file...'" @keydown.down.prevent="NextItem" @keydown.up.prevent="PrevItem" @input="QueryInput($event)" @keydown.enter.prevent="ExecuteSelected" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" v-model="query" :placeholder="'Type a command or recent file...'" @keydown.down.prevent="NextItem" @input="QueryInput($event)" @keydown.up.prevent="PrevItem" @keydown.enter.prevent="ExecuteSelected" />
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">

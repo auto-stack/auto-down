@@ -32,14 +32,13 @@
 //   them as `assetUpload` / `openWikiLink` and forwards everything else via
 //   attrs (identical DOM/props/wiring); it is stateful and single-root so
 //   `ref: "editorRef"` still resolves `$el` for the DOM escape hatch.
-//   open-wiki-link uses the PROP channel rather than the emit: the DSL can
-//   wire a quoted component event (`on "open-wiki-link":`) but its handler
-//   would only receive the FIRST of the emit's two args (title, blockId) —
-//   the blockId scroll flow would silently break. The editor's inner calls
-//   props.onOpenWikiLink?.(title, blockId) alongside the emit
-//   (auto_down_editor_ext.ts bridge), so the prop channel invokes the
-//   handler with BOTH args — behaviorally identical to the original's
-//   @open-wiki-link listener.
+//   open-wiki-link travels the EMIT channel: `on "open-wiki-link":` wires
+//   a quoted component event whose bare handler reference receives BOTH of
+//   the inner's (title, blockId) args — multi-param handlers work since
+//   the gap-37b self-heal, so the old prop-callback channel
+//   (props.onOpenWikiLink?.(title, blockId) via the openWikiLink attr
+//   rename) is gone. EditorShell forwards the listener through attrs to
+//   the inner's declared onOpenWikiLink prop.
 // - The window event-bus listener is `on "jade-scroll-to-block".window:` —
 //   codegen registers window.addEventListener on mount and removes it on
 //   unmount (verbatim the original's onMounted/onUnmounted pair; the event
@@ -62,11 +61,11 @@
 widget EditorTab(path: str) {
     use {
         composable: useTabsStore, useFileTreeStore from "src/front/utils/editor_tab_ext.ts"
-        fn: useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLinkFn, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent from "src/front/utils/editor_tab_ext.ts"
+        fn: useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLink, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent from "src/front/utils/editor_tab_ext.ts"
         component: EditorShell, HoverLinkBtn from "src/front/utils/editor_tab_ext.ts"
     }
 
-    msg Msg { Init, Destroy, OnUpdate, CopyBlockLink, OnScrollToBlock }
+    msg Msg { Init, Destroy, OnUpdate, CopyBlockLink, OnScrollToBlock, OpenWikiLink }
 
     model {
         // The original's hoverBlock ref ({ id, top, left } | null).
@@ -80,7 +79,6 @@ widget EditorTab(path: str) {
         var asset_upload Array<str> = null
         var run_query Array<str> = null
         var extra_slash Array<str> = null
-        var open_wiki_link Array<str> = null
     }
 
     computed {
@@ -107,7 +105,7 @@ widget EditorTab(path: str) {
                 extraSlashItems: .extra_slash,
                 assetUpload: .asset_upload,
                 runQuery: .run_query,
-                openWikiLink: .open_wiki_link,
+                on "open-wiki-link": .OpenWikiLink,
                 placeholder: "Start typing...",
                 showActions: false,
                 class: "h-full w-full",
@@ -146,7 +144,6 @@ widget EditorTab(path: str) {
             .asset_upload = assetUploadFn()
             .run_query = runQueryFn()
             .extra_slash = extraSlashItemsFn(.fileTreeStore, .tabsStore, .path)
-            .open_wiki_link = openWikiLinkFn(.tabsStore, .fileTreeStore)
             .hover_handle = listenEditorHover(.editorRef, (hb) => {
                 .hover_block = hb
             })
@@ -175,6 +172,11 @@ widget EditorTab(path: str) {
         // the wrapper's [data-block-id] element into view.
         .OnScrollToBlock(e) -> {
             scrollToBlockFromEvent(.editorRef, .path, e)
+        }
+        // Original: @open-wiki-link="onOpenWikiLink" — the inner editor's
+        // bridge invokes the forwarded listener with (title, blockId).
+        .OpenWikiLink(title, block_id) -> {
+            openWikiLink(.tabsStore, .fileTreeStore, title, block_id)
         }
     }
 

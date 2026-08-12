@@ -30,28 +30,28 @@ const emit = defineEmits<{
   RelayoutView: []
 }>()
 
-function OpenPage(p: any): void {
-  tabsStore.open(p);
-
-  emit('OpenPage', p)
-}
-
 function RelayoutView(): void {
   relayoutGraphView(graphViewRef.value!);
 
   emit('RelayoutView')
 }
 
-function SwitchToGlobal(): void {
-  tabsStore.openGraph();
-
-  emit('SwitchToGlobal')
-}
-
 function FitView(): void {
   fitGraphView(graphViewRef.value!);
 
   emit('FitView')
+}
+
+function OpenPage(p: any): void {
+  tabsStore.open(p);
+
+  emit('OpenPage', p)
+}
+
+function SwitchToGlobal(): void {
+  tabsStore.openGraph();
+
+  emit('SwitchToGlobal')
 }
 
 onMounted(() => {
@@ -76,20 +76,20 @@ onMounted(() => {
         </div>
         <div class="flex items-center gap-1">
           <template v-if="is_local">
-            <button class="graph-tool-btn" :type="'button'" :title="'返回全局图谱'" @click="SwitchToGlobal">
+            <button class="graph-tool-btn" :title="'返回全局图谱'" :type="'button'" @click="SwitchToGlobal">
               <component :is="(Globe) as any" class="h-3.5 w-3.5" />
             </button>
           </template>
           <button class="graph-tool-btn" :type="'button'" :title="'适应画布'" @click="FitView">
             <component :is="(Maximize) as any" class="h-3.5 w-3.5" />
           </button>
-          <button class="graph-tool-btn" :title="'重新布局'" :type="'button'" @click="RelayoutView">
+          <button class="graph-tool-btn" :type="'button'" :title="'重新布局'" @click="RelayoutView">
             <component :is="(RefreshCw) as any" class="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
       <div class="graph-body">
-        <GraphView :highlightQuery="graphStore.searchQuery" :nodes="visible_nodes" :edges="visible_edges" :settings="graphStore.settings" :loading="graphStore.loading" ref="graphViewRef" :class="'graph-canvas'" :key="'GraphView-1'" @open="OpenPage" />
+        <GraphView :edges="visible_edges" :loading="graphStore.loading" :nodes="visible_nodes" ref="graphViewRef" :highlightQuery="graphStore.searchQuery" :class="'graph-canvas'" :settings="graphStore.settings" :key="'GraphView-1'" @open="OpenPage" />
         <GraphControls :key="'GraphControls-2'" />
       </div>
       <template v-if="graphStore.error">

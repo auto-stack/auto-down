@@ -4,16 +4,16 @@ import { recordRecentFile, removeRecentFile, clearRecentFiles } from '../../../a
 const files = ref<any>([])
 
 export function useRecentFilesStore(): any {
+    const Record = async (args: any) => { files.value = await recordRecentFile(files.value, args.path, args.title);
+ }
     const Remove = async (path: any) => { files.value = await removeRecentFile(files.value, path);
  }
     const Clear = async () => { files.value = await clearRecentFiles();
  }
-    const Record = async (args: any) => { files.value = await recordRecentFile(files.value, args.path, args.title);
- }
     return {
         files,
+        Record,
         Remove,
         Clear,
-        Record,
     }
 }

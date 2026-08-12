@@ -3,7 +3,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { EditorShell } from '../../auto/src/front/utils/editor_tab_ext'
 import { HoverLinkBtn } from '../../auto/src/front/utils/editor_tab_ext'
-import { useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLinkFn, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent } from '../../auto/src/front/utils/editor_tab_ext'
+import { useDebounceFn, findTab, tabBody, tabTitle, overlayDisplay, saveTabIfDirty, loadTabIfNeeded, loadBlockFn, assetUploadFn, runQueryFn, extraSlashItemsFn, openWikiLink, listenEditorHover, unlistenEditorHover, copyBlockLinkSafe, scrollToBlockFromEvent } from '../../auto/src/front/utils/editor_tab_ext'
 import { useTabsStore, useFileTreeStore } from '../../auto/src/front/utils/editor_tab_ext'
 
 const tabsStore = useTabsStore()
@@ -17,7 +17,6 @@ const load_block = ref<any>(null)
 const asset_upload = ref<any>(null)
 const run_query = ref<any>(null)
 const extra_slash = ref<any>(null)
-const open_wiki_link = ref<any>(null)
 
 const editorRef = ref<any>(null)
 
@@ -34,17 +33,12 @@ const emit = defineEmits<{
   OnUpdate: [any]
   CopyBlockLink: []
   OnScrollToBlock: [any]
+  OpenWikiLink: [any, any]
 }>()
 
 watch(() => props.path, () => {
   loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
-
-function OnScrollToBlock(e: any): void {
-  scrollToBlockFromEvent(editorRef.value!, props.path, e);
-
-  emit('OnScrollToBlock', e)
-}
 
 function CopyBlockLink(): void {
   let ok = copyBlockLinkSafe(hover_block.value, tab.value);
@@ -52,6 +46,18 @@ function CopyBlockLink(): void {
   }
 
   emit('CopyBlockLink')
+}
+
+function OpenWikiLink(title: any, block_id: any): void {
+  openWikiLink(tabsStore, fileTreeStore, title, block_id);
+
+  emit('OpenWikiLink', title, block_id)
+}
+
+function OnScrollToBlock(e: any): void {
+  scrollToBlockFromEvent(editorRef.value!, props.path, e);
+
+  emit('OnScrollToBlock', e)
 }
 
 function OnUpdate(md: any): void {
@@ -71,7 +77,6 @@ onMounted(() => {
   asset_upload.value = assetUploadFn();
   run_query.value = runQueryFn();
   extra_slash.value = extraSlashItemsFn(fileTreeStore, tabsStore, props.path);
-  open_wiki_link.value = openWikiLinkFn(tabsStore, fileTreeStore);
   hover_handle.value = listenEditorHover(editorRef.value!, (hb: any) => { hover_block.value = hb;
    });
 })
@@ -98,7 +103,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell ref="editorRef" :placeholder="'Start typing...'" :showActions="false" :content="body" :extraSlashItems="extra_slash" :openWikiLink="open_wiki_link" :assetUpload="asset_upload" :pageTitle="page_title" :loadBlock="load_block" :class="'h-full w-full'" :runQuery="run_query" :key="'EditorShell-1'" @update="OnUpdate" />
+      <EditorShell :content="body" :showActions="false" :pageTitle="page_title" :runQuery="run_query" :placeholder="'Start typing...'" ref="editorRef" :assetUpload="asset_upload" :class="'h-full w-full'" :loadBlock="load_block" :extraSlashItems="extra_slash" :key="'EditorShell-1'" @open-wiki-link="OpenWikiLink" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

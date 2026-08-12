@@ -33,16 +33,16 @@ function SetLight(): void {
   emit('SetLight')
 }
 
-function SetAccent(accent: any): void {
-  themeStore.setAccent(accent.key);
-
-  emit('SetAccent', accent)
-}
-
 function SetDark(): void {
   themeStore.setMode('dark');
 
   emit('SetDark')
+}
+
+function SetAccent(accent: any): void {
+  themeStore.setAccent(accent.key);
+
+  emit('SetAccent', accent)
 }
 
 

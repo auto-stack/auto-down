@@ -23,6 +23,12 @@ const emit = defineEmits<{
   CloseTheme: []
 }>()
 
+function Select(item: any): void {
+  sidebarStore.setLeftPanel(item.panel);
+
+  emit('Select', item)
+}
+
 function ToggleTheme(): void {
   theme_open.value = !theme_open.value;
 
@@ -35,22 +41,16 @@ function OpenGlobalGraph(): void {
   emit('OpenGlobalGraph')
 }
 
-function CloseTheme(): void {
-  theme_open.value = false;
-
-  emit('CloseTheme')
-}
-
 function OpenToday(): void {
   openTodayNote(tabsStore, fileTreeStore);
 
   emit('OpenToday')
 }
 
-function Select(item: any): void {
-  sidebarStore.setLeftPanel(item.panel);
+function CloseTheme(): void {
+  theme_open.value = false;
 
-  emit('Select', item)
+  emit('CloseTheme')
 }
 
 
@@ -64,13 +64,13 @@ function Select(item: any): void {
           <span class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
         </template>
       </button>
-      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph_active }" :type="'button'" :title="'全局图谱'" @click="OpenGlobalGraph">
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph_active }" :title="'全局图谱'" :type="'button'" @click="OpenGlobalGraph">
         <component :is="(Network) as any" class="h-[18px] w-[18px]" />
         <template v-if="graph_active">
           <span class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
         </template>
       </button>
-      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'今日笔记'" @click="OpenToday">
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'今日笔记'" :type="'button'" @click="OpenToday">
         <component :is="(CalendarDays) as any" class="h-[18px] w-[18px]" />
       </button>
       <div class="flex-1" />

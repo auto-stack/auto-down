@@ -2,8 +2,8 @@ import { ref } from 'vue'
 import { loadPluginsResult } from '../../../auto/src/front/utils/plugins_store_ext'
 
 const plugins = ref<any>([])
-const loading = ref<any>(false)
-const error = ref<any>(null)
+const loading = ref<boolean>(false)
+const error = ref<string | null>(null)
 
 export function usePluginsStore(): any {
     const Load = async () => { loading.value = true;

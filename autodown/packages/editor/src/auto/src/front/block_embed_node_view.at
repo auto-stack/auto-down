@@ -57,9 +57,9 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
         attr_block_id => orNull(.node.attrs.blockId)
         // blockId ? `${title}#${blockId}` : title — && / || idiom routed
         // through strOr (ternary emits undefined in computeds).
-        display_label => strOr(.attr_block_id.value && .attr_title.value + "#" + .attr_block_id.value, .attr_title.value)
+        display_label => strOr(.attr_block_id && .attr_title + "#" + .attr_block_id, .attr_title)
         // `Loading {{ displayLabel }}…` as a component-level computed.
-        loading_text => strOr("Loading " + .display_label.value + "…", "Loading…")
+        loading_text => strOr("Loading " + .display_label + "…", "Loading…")
         // block.content, guarded (block is null until loaded). `.block`
         // auto-unwraps to block.value in computeds.
         block_content => strOr(.block && .block.content, "")
@@ -108,7 +108,7 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
         // handler that no view event references is not emitted — see the
         // header comment).
         .attr_block_id -> {
-            let id = .attr_block_id.value
+            let id = .attr_block_id
             // Original: if (!id) return — no loader work without a blockId.
             if id != null {
                 let loader = null
@@ -150,7 +150,7 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
         .Init -> {
             // load() — duplicated in the watch above (see the comment
             // there).
-            let id = .attr_block_id.value
+            let id = .attr_block_id
             if id != null {
                 let loader = null
                 let opts = .extension.options

@@ -43,10 +43,10 @@ watch(fm_json, () => {
   entries.value = syncEntries(tabsStore);
 })
 
-function Commit(entry: any): void {
-  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
+function KeyChanged(entry: any, evt: any): void {
+  entry.key = eventValue(evt);
 
-  emit('Commit')
+  emit('KeyChanged', entry, evt)
 }
 
 function Cancel(): void {
@@ -55,11 +55,10 @@ function Cancel(): void {
   emit('Cancel')
 }
 
-function ValueChanged(entry: any, evt: any): void {
-  entry.value = eventValue(evt);
-  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
+function NewKeyInput(e: any): void {
+  new_key.value = e.target.value;
 
-  emit('ValueChanged', entry, evt)
+  emit('NewKeyInput', e)
 }
 
 function SetType(idx: any, evt: any): void {
@@ -77,23 +76,17 @@ function SaveNow(): void {
   emit('SaveNow')
 }
 
-function KeyChanged(entry: any, evt: any): void {
-  entry.key = eventValue(evt);
+function NewValueInput(e: any): void {
+  new_value.value = e.target.value;
 
-  emit('KeyChanged', entry, evt)
+  emit('NewValueInput', e)
 }
 
-function NewKeyInput(e: any): void {
-  new_key.value = e.target.value;
-
-  emit('NewKeyInput', e)
-}
-
-function ToggleBool(entry: any): void {
-  entry.value = !entry.value;
+function ValueChanged(entry: any, evt: any): void {
+  entry.value = eventValue(evt);
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
-  emit('ToggleBool', entry)
+  emit('ValueChanged', entry, evt)
 }
 
 function RemoveProperty(idx: any): void {
@@ -113,10 +106,17 @@ function AddProperty(): void {
   emit('AddProperty')
 }
 
-function NewValueInput(e: any): void {
-  new_value.value = e.target.value;
+function ToggleBool(entry: any): void {
+  entry.value = !entry.value;
+  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
-  emit('NewValueInput', e)
+  emit('ToggleBool', entry)
+}
+
+function Commit(entry: any): void {
+  commitFrontmatter(tabsStore, entries.value, debounced_save.value);
+
+  emit('Commit')
 }
 
 onMounted(() => {
@@ -138,7 +138,7 @@ onMounted(() => {
         </h4>
         <template v-if="is_dirty">
           <div class="flex items-center gap-1">
-            <button class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" :type="'button'" :title="'Revert'" @click="Cancel">
+            <button class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" :title="'Revert'" :type="'button'" @click="Cancel">
               <component :is="(X) as any" class="h-3 w-3" />
             </button>
             <button class="flex h-5 w-5 items-center justify-center rounded text-primary hover:bg-primary/10" :title="'Save now'" :type="'button'" @click="SaveNow">
@@ -158,15 +158,15 @@ onMounted(() => {
             </div>
             <div class="flex items-center gap-1">
               <template v-if="entry.is_bool">
-                <button :class="entry.value ? 'h-6 rounded border px-2 text-xs transition-colors border-primary bg-primary/10 text-primary' : 'h-6 rounded border px-2 text-xs transition-colors border-border bg-background text-muted-foreground'" :type="'button'" @click="ToggleBool(entry)">
+                <button :class="(entry.value ? 'h-6 rounded border px-2 text-xs transition-colors border-primary bg-primary/10 text-primary' : 'h-6 rounded border px-2 text-xs transition-colors border-border bg-background text-muted-foreground')" :type="'button'" @click="ToggleBool(entry)">
                   <span>{{ entry.bool_label }}</span>
                 </button>
               </template>
               <template v-if="entry.is_date">
-                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :value="entry.value" :type="'date'" @input="ValueChanged(entry, $event)" />
+                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'date'" :value="entry.value" @input="ValueChanged(entry, $event)" />
               </template>
               <template v-if="entry.is_other">
-                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="entry.placeholder_text" :type="'text'" :value="entry.value" @input="ValueChanged(entry, $event)" />
+                <input class="h-6 w-full rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :value="entry.value" :placeholder="entry.placeholder_text" :type="'text'" @input="ValueChanged(entry, $event)" />
               </template>
               <component :is="(select_tag) as any" class="h-6 rounded border bg-background px-1 text-[10px] uppercase text-muted-foreground outline-none" :value="entry.type" @change="SetType(entry.idx, $event)">
                 <component :is="(option_tag) as any" :value="'text'">
@@ -195,8 +195,8 @@ onMounted(() => {
         </p>
       </template>
       <div class="mt-3 flex items-center gap-1 border-t border-border/50 pt-2">
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" v-model="new_key" :placeholder="'key'" :type="'text'" @input="NewKeyInput($event)" @keydown.enter="AddProperty" />
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'value'" :type="'text'" v-model="new_value" @keydown.enter="AddProperty" @input="NewValueInput($event)" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'key'" :type="'text'" v-model="new_key" @keydown.enter="AddProperty" @input="NewKeyInput($event)" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :type="'text'" :placeholder="'value'" v-model="new_value" @input="NewValueInput($event)" @keydown.enter="AddProperty" />
         <button class="flex h-6 w-6 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground hover:bg-accent hover:text-foreground" :type="'button'" @click="AddProperty">
           <component :is="(Plus) as any" class="h-3.5 w-3.5" />
         </button>

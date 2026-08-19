@@ -21,7 +21,7 @@
 // and table_menu.at for the full list: `.editor["view"]` bracket access
 // (`view` is a DSL keyword), `el["contains"](x)` bracket access (dot-form
 // `.contains` is mis-mapped to `.includes` by the transpiler's array/string
-// method mapping), `.filtered.value` in handlers (computed refs are not
+// method mapping), `.filtered` in handlers (computed refs are not
 // auto-unwrapped outside the template), emptiness via the named `is_empty`
 // computed (`.filtered.length` inside a view `if` is mangled), explicit
 // `x = x + 1` (no `+=`), and `if x != null && x.closest != null` guards
@@ -69,7 +69,7 @@ widget CodeBlockMenu(editor: Array<str>) {
         filtered => codeBlockLanguages().filter(lang => [lang.id, lang.label].concat(lang.aliases).join(" ").toLowerCase().contains(.search.toLowerCase().trim()))
         // The template codegen mangles `.filtered.length` in a view `if`
         // (renders `filtered.lengthgth`), so emptiness is a named computed.
-        is_empty => .filtered.value.length == 0
+        is_empty => .filtered.length == 0
         check_icon => codeBlockCheckIcon()
     }
 
@@ -486,7 +486,7 @@ widget CodeBlockMenu(editor: Array<str>) {
         }
 
         .MoveDown -> {
-            if .highlighted_index < .filtered.value.length - 1 {
+            if .highlighted_index < .filtered.length - 1 {
                 .highlighted_index = .highlighted_index + 1
                 nextTick(() => {
                     let s_menu = null
@@ -532,16 +532,16 @@ widget CodeBlockMenu(editor: Array<str>) {
         // The original selectHighlighted(): a single filtered result is
         // selected directly; otherwise the highlighted item.
         .SelectHighlighted -> {
-            if .filtered.value.length == 1 {
-                let only = .filtered.value[0]
+            if .filtered.length == 1 {
+                let only = .filtered[0]
                 .editor.chain().focus().setCodeBlock({ language: only.id }).run()
                 .visible = false
                 .search = ""
                 .highlighted_index = 0
                 .active_code_block = null
             }
-            if .filtered.value.length != 1 {
-                let lang = .filtered.value[.highlighted_index]
+            if .filtered.length != 1 {
+                let lang = .filtered[.highlighted_index]
                 if lang != null {
                     .editor.chain().focus().setCodeBlock({ language: lang.id }).run()
                     .visible = false

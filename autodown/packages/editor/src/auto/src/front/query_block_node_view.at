@@ -119,13 +119,13 @@ widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes
             }
             // Original: if (!run || !query.value) — sets the error and
             // returns (loading/results untouched).
-            if run == null || .query_text.value == "" {
+            if run == null || .query_text == "" {
                 .error_text = "No query runner configured"
             }
-            if run != null && .query_text.value != "" {
+            if run != null && .query_text != "" {
                 .loading = true
                 .error_text = ""
-                let p = run(.query_text.value)
+                let p = run(.query_text)
                 // try/catch/finally as a two-callback .then: resolve branch
                 // = try, reject branch = catch, loading=false (finally) is
                 // duplicated into both.
@@ -150,13 +150,13 @@ widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes
             if opts != null {
                 run = opts.runQuery
             }
-            if run == null || .query_text.value == "" {
+            if run == null || .query_text == "" {
                 .error_text = "No query runner configured"
             }
-            if run != null && .query_text.value != "" {
+            if run != null && .query_text != "" {
                 .loading = true
                 .error_text = ""
-                let p = run(.query_text.value)
+                let p = run(.query_text)
                 p.then(res => {
                     .results = normalizeQueryResults(res)
                     .loading = false

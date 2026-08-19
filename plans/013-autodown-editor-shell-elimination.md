@@ -19,7 +19,7 @@
 | 小写/连字符 emit 名（update/save/link-click 等） | `cap_quoted_lowercase_emit_child/parent_wiring` 双侧锁定 | ✅ 已自愈，quoted msg variant 可表达 |
 | defineExpose（editor/handleSave/getBlockMap） | `expose {}` 块已支持 handler/state/template ref（test_expose_* 系列） | ✅ 可用；handleSave 需 handler 带返回值（gap 10 已自愈） |
 | slot（save-label/cancel-label 具名非作用域） | 具名 slot outlet + 父侧 `slot(name:)` 双侧已通 | ✅ 可用，可弃"函数式组件 + dyn"桥接 |
-| withDefaults 运行时默认值 | 类型侧已通（`cap_optional_props_with_defaults` → `?: type`）；**运行时默认值疑似仍不生效**（README AutoDownEditor #4） | ⚠️ 需 probe；若仍缺，是唯一需要先修编译器的项 |
+| withDefaults 运行时默认值 | 类型侧已通（`cap_optional_props_with_defaults` → `?: type`）；运行时默认值疑似仍不生效（README AutoDownEditor #4） | ✅ probe 11 实证已自愈：`can_edit?: boolean` + 运行时 `{ can_edit: true }` 双侧都在 |
 
 ### 需立即注意：editor widgets 可能已无法 regen
 
@@ -41,6 +41,15 @@ Plan 408 P4（handler/watch 体 ref 自动解包）后，jade 侧 20 处手写 `
 **预计仍残留（保持规避或记 niche）**：括号丢弃（SlashMenu #6）、DOM `.contains` 误映射（Bubble/Table #7，括号记号）、`view` 关键字（SlashMenu #7/CodeBlockMenu #6）、正则字面量、`??` 若未修、tiptap/npm 双解析 shim、slashItem 类型导出、空 handler 体 noop 占位、PascalCase 自动 `:key` 启发式（CodeBlockMenu #7）。
 
 **真 ext 项（不回迁）**：katex/mermaid 渲染、lucide 图标值、30 项 slash 清单（prompt/clipboard 块体闭包）、`useAutoDownEditorBridge`、computeMenuPosition 再导出、双解析 stub 机制。
+
+### Phase 0.3 probe 结论（2026-08-19 实证，`tmp/dsl-probes/plan013/REPORT.md`）
+
+13 条最小 probe 全部跑完，**12 条可用、仅 1 条确认残留**：
+
+- ✅ 已自愈（A 组全中）：三元 computed、`??` computed、`!= null` computed（发宽松 `!= null`）、v-show（`show:`）、v-html（`html:`）、defineExpose（`expose {}` 支持 state/模板 ref/on handler/use fn）、async handler（`.await` 后缀，无双回调）、ext `use { fn }`。
+- ✅ B 组预判被推翻（实际已好）：DOM `.contains` 原样透传、withDefaults 运行时默认值、空 handler 体、PascalCase 自动 `:key` 启发式存在。
+- ❌ 唯一确认残留：**括号丢弃**——`(a+b)*c` → `a + b * c`、`(x||y)&&z` → `x || y && z`，静默错语义、无警告。回迁期间规避法：带优先级的混合表达式拆多步 `let`，不写括号。已记录，待立项修编译器。
+- 附带观察：每个 msg handler 自动追加 `emit('X')` + defineEmits 声明（无害噪音，既有设计）；`expose` 的 on handler 固定 void，要返回值需 expose `use { fn }` 引入的函数。
 
 ## Phase 0：门控与基线（0.5~1 天）
 

@@ -27,6 +27,8 @@ root {
     name: "editor-widgets"
     scene: "ui"
     render: "vue"
+    shadcn: false
+    default_classes: false
     defines: [
         
     ]

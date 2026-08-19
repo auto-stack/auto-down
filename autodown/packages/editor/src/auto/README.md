@@ -24,6 +24,18 @@ master (merge commit `1ecc13e3`); the phase3 worktree binary
 `D:/autostack/auto-lang/.worktree/phase3-dsl-capabilities/target/debug/auto.exe`
 also works but is no longer required.
 
+**Workaround status (2026-08-19)**: plan 013 Phase 0.3 re-probed every
+workaround listed below against the current master compiler — see
+`plans/013-autodown-editor-shell-elimination.md` and
+`tmp/dsl-probes/plan013/REPORT.md`. 12 of 13 probed capabilities are now
+native (ternary/`??`/`!= null` computed, `show:`, `html:`, `expose {}`,
+async handlers, ext `use { fn }`, withDefaults runtime defaults, DOM
+`.contains`, empty handlers, PascalCase `:key`). The only confirmed
+remaining compiler bug is **dropped parentheses** in mixed-precedence
+expressions (`(a+b)*c` → `a + b * c`, silently wrong) — split such
+expressions into multiple `let` steps instead. Individual workaround notes
+below are the 2026-07 baseline and are being retired batch by batch.
+
 ## Layout
 
 - `pac.at` — Auto project manifest (`scene: "ui"`, `render: "vue"`)
@@ -171,61 +183,24 @@ also works but is no longer required.
 
 ## Regenerate
 
-From `autodown/packages/editor`:
+From `autodown/packages/editor/src/auto`:
 
 ```sh
-cd src/auto
-# Mirror for the gen project only: slash_menu_ext.ts imports the real
-# composables/useMenuBounds.ts via a path that resolves both in the editor
-# package (src/auto/src/front/utils → src/composables) and in the gen
-# project (src/ext/src/front/utils → src/composables). The gen mirror must
-# exist before vue-tsc/vite run.
-mkdir -p gen/front/vue/src/composables
-cp ../composables/useMenuBounds.ts gen/front/vue/src/composables/useMenuBounds.ts
-# Same trick for the tiptap BubbleMenu wrapper: the editor tree re-exports
-# the real component from @tiptap/vue-3/menus; the gen project (no @tiptap
-# dependency) gets the behavior-free stub.
-cp stubs/gen_tiptapBubbleMenu.ts gen/front/vue/src/composables/tiptapBubbleMenu.ts
-# Same trick for the tiptap NodeViewWrapper/NodeViewContent re-export.
-cp stubs/gen_tiptapNodeView.ts gen/front/vue/src/composables/tiptapNodeView.ts
-# Same trick for the KaTeX/Mermaid preview rendering used by the three
-# render-type node views (the gen project has no katex/mermaid dependency).
-cp stubs/gen_renderPreview.ts gen/front/vue/src/composables/renderPreview.ts
-# Same trick for the AutoDownEditorInner widget: tiptap EditorContent
-# (the real module also carries the katex CSS import), useAutoDownEditor,
-# the SlashItem type and the four menu SFCs re-exported by
-# auto_down_editor_ext.ts.
-cp stubs/gen_tiptapEditorContent.ts gen/front/vue/src/composables/tiptapEditorContent.ts
-cp stubs/gen_useAutoDownEditor.ts gen/front/vue/src/composables/useAutoDownEditor.ts
-mkdir -p gen/front/vue/src/menus
-cp stubs/gen_slashItem.ts gen/front/vue/src/menus/slashItem.ts
-cp stubs/gen_menus/SlashMenu.vue stubs/gen_menus/BubbleMenu.vue \
-   stubs/gen_menus/TableMenu.vue stubs/gen_menus/CodeBlockMenu.vue \
-   gen/front/vue/src/menus/
-D:/autostack/auto-lang/target/debug/auto.exe build -d .
-cd ..
-cp src/auto/gen/front/vue/src/components/CodeLanguageIcon.vue src/components/CodeLanguageIcon.vue
-# The generated SFC imports the extension via the gen-only `@/ext/...`
-# alias; rewrite it to the editor-relative path while copying.
-sed 's|@/ext/src/front/utils/slash_menu_ext|../auto/src/front/utils/slash_menu_ext|g' \
-  src/auto/gen/front/vue/src/components/SlashMenu.vue > src/menus/SlashMenu.vue
-sed 's|@/ext/src/front/utils/bubble_menu_ext|../auto/src/front/utils/bubble_menu_ext|g' \
-  src/auto/gen/front/vue/src/components/BubbleMenu.vue > src/menus/BubbleMenu.vue
-sed 's|@/ext/src/front/utils/table_menu_ext|../auto/src/front/utils/table_menu_ext|g' \
-  src/auto/gen/front/vue/src/components/TableMenu.vue > src/menus/TableMenu.vue
-sed 's|@/ext/src/front/utils/code_block_menu_ext|../auto/src/front/utils/code_block_menu_ext|g' \
-  src/auto/gen/front/vue/src/components/CodeBlockMenu.vue > src/menus/CodeBlockMenu.vue
-for w in DetailsNodeView WikiLinkNodeView QueryBlockNodeView BlockEmbedNodeView \
-         MermaidNodeView MathBlockNodeView MathInlineNodeView; do
-  sed 's|@/ext/src/front/utils/node_view_ext|../auto/src/front/utils/node_view_ext|g' \
-    src/auto/gen/front/vue/src/components/$w.vue > src/node-views/$w.vue
-done
-sed 's|@/ext/src/front/utils/auto_down_editor_ext|../auto/src/front/utils/auto_down_editor_ext|g' \
-  src/auto/gen/front/vue/src/components/AutoDownEditorInner.vue > src/core/AutoDownEditorInner.vue
+bash gen/regen.sh
 ```
 
-（注意：`-d` 只接受项目目录本身（如 `-d .`），从包根 `-d src/auto` 会报
-"pac.at not found in workspace"。）
+The script (kept in the gitignored `gen/` directory, like jade's) performs
+the whole pipeline with gating: mirrors the `stubs/` and real modules into
+the gen project (the `useMenuBounds` path trick, the behavior-free tiptap
+BubbleMenu/NodeViewWrapper/EditorContent stubs, the KaTeX/Mermaid
+renderPreview stub, `gen_slashItem.ts` and the four menu SFC stubs),
+runs `auto build`, aborts without touching the editor tree when the build
+or the `vue-tsc` gate fails (no stale output left behind), then rewrites
+the gen-only `@/ext/...` import aliases to editor-relative paths and copies
+the SFCs into `src/components`, `src/menus`, `src/node-views` and
+`src/core`. It also refuses to deploy output containing the `.value.value`
+double-unwrap artifact (hand-written `.value` in handler/watch bodies is
+auto-unwrapped since plan 408 P4 — never write `.value` in `.at` sources).
 
 `auto build` also runs `pnpm install` + `vue-tsc` + `vite build` inside
 `src/auto/gen/front/vue` (a self-contained project, not part of the

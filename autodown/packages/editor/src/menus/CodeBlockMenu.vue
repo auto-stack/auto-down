@@ -12,15 +12,15 @@ const current_language = ref<string>('')
 const pos_top = ref<string>('')
 const pos_left = ref<string>('')
 const pos_visibility = ref<string>('')
-const active_code_block = ref<any>(undefined)
-const editor_el = ref<any>(undefined)
-const editor_dom = ref<any>(undefined)
-const wrapper_el = ref<any>(undefined)
+const active_code_block = ref<any>(null)
+const editor_el = ref<any>(null)
+const editor_dom = ref<any>(null)
+const wrapper_el = ref<any>(null)
 const raf_id = ref<number>(0)
-const wheel_cb = ref<any>(undefined)
-const dom_mousedown_cb = ref<any>(undefined)
-const dom_click_cb = ref<any>(undefined)
-const scroll_cb = ref<any>(undefined)
+const wheel_cb = ref<any>(null)
+const dom_mousedown_cb = ref<any>(null)
+const dom_click_cb = ref<any>(null)
+const scroll_cb = ref<any>(null)
 
 const menuEl = ref<HTMLElement | null>(null)
 const searchEl = ref<HTMLElement | null>(null)
@@ -45,54 +45,19 @@ const emit = defineEmits<{
   OutsideClick: [any]
 }>()
 
-function SelectItem(lang: any): void {
-  props.editor.chain().focus().setCodeBlock({ language: lang.id }).run();
-  visible.value = false;
-  search.value = '';
-  highlighted_index.value = 0;
-  active_code_block.value = null;
-
-  emit('SelectItem', lang)
-}
-
-function MoveUp(): void {
-  if (highlighted_index.value > 0) {highlighted_index.value = highlighted_index.value - 1;
-  nextTick(() => { let s_menu = null;
-  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
-  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
-  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
-  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
-  let itemRect = s_item.getBoundingClientRect();
-  let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
-  s_list.scrollTop = s_list.scrollTop + offset;
-  }} });
-  }
-
-  emit('MoveUp')
-}
-
 function SearchInput(e: any): void {
   search.value = e.target.value;
 
   emit('SearchInput', e)
 }
 
-function OutsideClick(e: any): void {
-  if (visible.value) {let menu = null;
-  if (editor_el.value != null) {menu = editor_el.value.querySelector('.autodown-codeblock-menu');
-  }if (menu != null) {if (!menu["contains"](e.target)) {visible.value = false;
+function Close(): void {
+  visible.value = false;
   search.value = '';
   highlighted_index.value = 0;
   active_code_block.value = null;
-  }}}
 
-  emit('OutsideClick', e)
-}
-
-function HoverItem(i: any): void {
-  highlighted_index.value = i;
-
-  emit('HoverItem', i)
+  emit('Close')
 }
 
 function SelectHighlighted(): void {
@@ -114,15 +79,6 @@ function SelectHighlighted(): void {
   emit('SelectHighlighted')
 }
 
-function Close(): void {
-  visible.value = false;
-  search.value = '';
-  highlighted_index.value = 0;
-  active_code_block.value = null;
-
-  emit('Close')
-}
-
 function MoveDown(): void {
   if (highlighted_index.value < filtered.value.length - 1) {highlighted_index.value = highlighted_index.value + 1;
   nextTick(() => { let s_menu = null;
@@ -131,12 +87,56 @@ function MoveDown(): void {
   let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
   if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
   let itemRect = s_item.getBoundingClientRect();
-  let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  let offset: number = itemRect.top - listRect.top - Math.trunc(listRect.height / 2) + Math.trunc(itemRect.height / 2);
   s_list.scrollTop = s_list.scrollTop + offset;
   }} });
   }
 
   emit('MoveDown')
+}
+
+function OutsideClick(e: any): void {
+  if (visible.value) {let menu = null;
+  if (editor_el.value != null) {menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (menu != null) {if (!menu["contains"](e.target)) {visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+  }}}
+
+  emit('OutsideClick', e)
+}
+
+function MoveUp(): void {
+  if (highlighted_index.value > 0) {highlighted_index.value = highlighted_index.value - 1;
+  nextTick(() => { let s_menu = null;
+  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
+  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
+  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
+  let itemRect = s_item.getBoundingClientRect();
+  let offset: number = itemRect.top - listRect.top - Math.trunc(listRect.height / 2) + Math.trunc(itemRect.height / 2);
+  s_list.scrollTop = s_list.scrollTop + offset;
+  }} });
+  }
+
+  emit('MoveUp')
+}
+
+function SelectItem(lang: any): void {
+  props.editor.chain().focus().setCodeBlock({ language: lang.id }).run();
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+
+  emit('SelectItem', lang)
+}
+
+function HoverItem(i: any): void {
+  highlighted_index.value = i;
+
+  emit('HoverItem', i)
 }
 
 onMounted(() => {
@@ -210,8 +210,8 @@ onMounted(() => {
   }if (menu != null && menu["contains"](e.target)) {e.preventDefault();
   e.stopPropagation();
   let list = menu.querySelector('.autodown-codeblock-menu-list');
-  if (list != null) {let can_down = list.scrollTop + list.clientHeight < list.scrollHeight;
-  let can_up = list.scrollTop > 0;
+  if (list != null) {let can_down: boolean = list.scrollTop + list.clientHeight < list.scrollHeight;
+  let can_up: boolean = list.scrollTop > 0;
 
 
   if (e.deltaY > 0 && can_down) {list.scrollTop = list.scrollTop + e.deltaY;
@@ -261,9 +261,9 @@ onMounted(() => {
   }if (copy != null) {e.preventDefault();
   e.stopPropagation();
   let pre = copy.closest('pre');
-  let code = '';
+  let code: string = '';
   if (pre != null) {let codeEl = pre.querySelector('code');
-  if (codeEl != null) {code = codeEl.textContent ?? '';
+  if (codeEl != null) {code = (codeEl.textContent ?? '');
   }}navigator.clipboard.writeText(code);
   }if (copy == null && expand != null) {e.preventDefault();
   e.stopPropagation();
@@ -291,8 +291,8 @@ onMounted(() => {
 
 
   current_language.value = '';
-  if (active_code_block.value != null) {current_language.value = active_code_block.value.getAttribute('data-language') ?? '';
-  }if (current_language.value == '') {current_language.value = props.editor.getAttributes('codeBlock').language ?? '';
+  if (active_code_block.value != null) {current_language.value = (active_code_block.value.getAttribute('data-language') ?? '');
+  }if (current_language.value == '') {current_language.value = (props.editor.getAttributes('codeBlock').language ?? '');
   }visible.value = true;
   search.value = '';
   let idx = codeBlockLanguages().findIndex((l: any) => l.id == current_language.value);
@@ -342,7 +342,7 @@ onMounted(() => {
   let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
   if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
   let itemRect = s_item.getBoundingClientRect();
-  let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  let offset: number = itemRect.top - listRect.top - Math.trunc(listRect.height / 2) + Math.trunc(itemRect.height / 2);
   s_list.scrollTop = s_list.scrollTop + offset;
   }} });
    });
@@ -389,9 +389,9 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-codeblock-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
+      <div class="autodown-codeblock-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
         <div class="autodown-codeblock-menu-header">
-          <input class="autodown-codeblock-menu-search" v-model="search" :placeholder="'Search language…'" ref="searchEl" @keydown.down.prevent="MoveDown" @keydown.esc="Close" @keydown.up.prevent="MoveUp" @keydown.enter.prevent="SelectHighlighted" />
+          <input class="autodown-codeblock-menu-search" :placeholder="'Search language…'" v-model="search" ref="searchEl" @input="SearchInput($event)" @keydown.down.prevent="MoveDown" @keydown.esc="Close" @keydown.up.prevent="MoveUp" @keydown.enter.prevent="SelectHighlighted" />
         </div>
         <div class="autodown-codeblock-menu-list" ref="listEl">
           <button class="autodown-codeblock-menu-item" :class="{ active: i == highlighted_index, selected: lang.id == current_language }" @mouseenter="HoverItem(i)" @click="SelectItem(lang)" v-for="(lang, i) in filtered">

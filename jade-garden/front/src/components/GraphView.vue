@@ -10,13 +10,16 @@ const containerEl = ref<HTMLElement | null>(null)
 
 const els = computed<any>(() => buildElements(props.nodes, props.edges, props.settings))
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   nodes: any
   edges: any
   settings: GraphSettings
   loading?: boolean
   highlightQuery?: string
-}>()
+}>(), {
+  loading: false,
+  highlightQuery: '',
+})
 
 const emit = defineEmits<{
   Fit: []
@@ -38,6 +41,11 @@ watch(() => props.highlightQuery, () => {
   applyGraphHighlight(handle.value, props.highlightQuery);
 })
 
+function Open(p: any): void {
+
+  emit('Open', p)
+}
+
 function Fit(): void {
   graphFit(handle.value);
 
@@ -48,11 +56,6 @@ function Relayout(): void {
   graphRelayout(handle.value, props.settings);
 
   emit('Relayout')
-}
-
-function Open(p: any): void {
-
-  emit('Open', p)
 }
 
 onMounted(() => {

@@ -13,16 +13,16 @@ const emit = defineEmits<{
   NewFolder: []
 }>()
 
-function NewFile(): void {
-  promptNewFile(fileTreeStore);
-
-  emit('NewFile')
-}
-
 function NewFolder(): void {
   promptNewFolder(fileTreeStore);
 
   emit('NewFolder')
+}
+
+function NewFile(): void {
+  promptNewFile(fileTreeStore);
+
+  emit('NewFile')
 }
 
 

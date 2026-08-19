@@ -14,8 +14,8 @@ const previewEl = ref<HTMLElement | null>(null)
 
 const source = computed<any>(() => strOr(props.node.textContent, ''))
 const code_tag = computed<string>(() => 'code')
-const show_preview = computed<boolean>(() => error_text.value === '')
-const show_error = computed<boolean>(() => error_text.value !== '')
+const show_preview = computed<boolean>(() => !(error_text.value))
+const show_error = computed<boolean>(() => !!(error_text.value))
 
 const props = defineProps<{
   node: any
@@ -52,7 +52,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :data-math-block="''" :as="'div'" :class="'autodown-math-block'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-math-block'" :data-math-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <div class="autodown-math-preview" ref="previewEl" />
       </template>

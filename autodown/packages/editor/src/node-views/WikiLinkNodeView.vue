@@ -53,25 +53,19 @@ function StartEdit(): void {
   emit('StartEdit')
 }
 
-function OnKeydown(e: any): void {
-  if (e.key == 'Enter') {e.preventDefault();
-
-
+function Commit(): void {
   let update_attributes = props.updateAttributes;
   let value = input_value.value.trim();
-  if (value == '') {editing.value = false;
-  input_value.value = attr_raw.value;
-  }if (value != '') {let parsed = parseWikiLinkRaw(value);
-  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
-  editing.value = false;
-  }}
-  if (e.key == 'Escape') {e.preventDefault();
-
+  if (value == '') {
   editing.value = false;
   input_value.value = attr_raw.value;
   }
+  if (value != '') {let parsed = parseWikiLinkRaw(value);
+  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
+  editing.value = false;
+  }
 
-  emit('OnKeydown', e)
+  emit('Commit')
 }
 
 function OpenLink(): void {
@@ -93,9 +87,25 @@ function OpenLink(): void {
   emit('OpenLink')
 }
 
-function Noop(e: any): void {
+function OnKeydown(e: any): void {
+  if (e.key == 'Enter') {e.preventDefault();
 
-  emit('Noop', e)
+
+  let update_attributes = props.updateAttributes;
+  let value = input_value.value.trim();
+  if (value == '') {editing.value = false;
+  input_value.value = attr_raw.value;
+  }if (value != '') {let parsed = parseWikiLinkRaw(value);
+  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
+  editing.value = false;
+  }}
+  if (e.key == 'Escape') {e.preventDefault();
+
+  editing.value = false;
+  input_value.value = attr_raw.value;
+  }
+
+  emit('OnKeydown', e)
 }
 
 function InputInput(e: any): void {
@@ -104,19 +114,9 @@ function InputInput(e: any): void {
   emit('InputInput', e)
 }
 
-function Commit(): void {
-  let update_attributes = props.updateAttributes;
-  let value = input_value.value.trim();
-  if (value == '') {
-  editing.value = false;
-  input_value.value = attr_raw.value;
-  }
-  if (value != '') {let parsed = parseWikiLinkRaw(value);
-  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
-  editing.value = false;
-  }
+function Noop(e: any): void {
 
-  emit('Commit')
+  emit('Noop', e)
 }
 
 
@@ -135,7 +135,7 @@ function Commit(): void {
         </span>
       </template>
       <template v-if="editing">
-        <input class="autodown-wikilink-input" ref="inputEl" v-model="input_value" :type="'text'" @keydown="OnKeydown($event)" @click.stop="Noop($event)" @blur="Commit" />
+        <input class="autodown-wikilink-input" :type="'text'" v-model="input_value" ref="inputEl" @click.stop="Noop($event)" @keydown="OnKeydown($event)" @blur="Commit" @input="InputInput($event)" />
       </template>
     </NodeViewWrapper>
 

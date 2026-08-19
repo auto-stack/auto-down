@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('check heading top space', async ({ page }) => {
-  await page.goto('http://localhost:5173/')
+  await page.goto('/')
   await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 5000 })
 
   const leftInfo = await page.evaluate(() => {

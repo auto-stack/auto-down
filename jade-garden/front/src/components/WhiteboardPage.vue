@@ -28,6 +28,19 @@ const emit = defineEmits<{
   Deselect: []
 }>()
 
+function AddShape(): void {
+  addNoteShape(doc.value);
+  saveWhiteboard(tabsStore, props.path, doc.value);
+
+  emit('AddShape')
+}
+
+function OpenTarget(shape: any): void {
+  openShapeTarget(tabsStore, shape);
+
+  emit('OpenTarget', shape)
+}
+
 function Select(sid: any): void {
   selected_id.value = sid;
 
@@ -40,24 +53,11 @@ function Deselect(): void {
   emit('Deselect')
 }
 
-function AddShape(): void {
-  addNoteShape(doc.value);
-  saveWhiteboard(tabsStore, props.path, doc.value);
-
-  emit('AddShape')
-}
-
 function UpdateLabel(shape: any, evt: any): void {
   shape.label = readLabel(evt);
   saveWhiteboard(tabsStore, props.path, doc.value);
 
   emit('UpdateLabel', shape, evt)
-}
-
-function OpenTarget(shape: any): void {
-  openShapeTarget(tabsStore, shape);
-
-  emit('OpenTarget', shape)
 }
 
 onMounted(() => {
@@ -95,7 +95,7 @@ onMounted(() => {
         </template>
         <template v-if="show_canvas">
           <div class="absolute inset-0" @click="Deselect">
-            <div class="absolute rounded-md border bg-card p-2 shadow-sm" :class="{ 'ring-2 ring-primary': item.selected }" :key="item.sid" :style="({ left: item.s_left, top: item.s_top, width: item.s_width, height: item.s_height } as any)" @dblclick="OpenTarget(item.shape)" @click.stop="Select(item.sid)" v-for="item in shape_list">
+            <div class="absolute rounded-md border bg-card p-2 shadow-sm" :class="{ 'ring-2 ring-primary': item.selected }" :style="({ left: item.s_left, top: item.s_top, width: item.s_width, height: item.s_height } as any)" :key="item.sid" @dblclick="OpenTarget(item.shape)" @click.stop="Select(item.sid)" v-for="item in shape_list">
               <div class="h-full w-full overflow-hidden text-xs outline-none" :contenteditable="'true'" @blur="UpdateLabel(item.shape, $event)">
                 <span>{{ item.shape.label }}</span>
               </div>

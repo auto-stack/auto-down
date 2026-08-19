@@ -7,7 +7,7 @@ import { nextTick } from 'vue'
 
 const visible = ref<boolean>(false)
 const query = ref<string>('')
-const range = ref<any>(undefined)
+const range = ref<any>(null)
 const selected_index = ref<number>(0)
 const pos_top = ref<string>('')
 const pos_left = ref<string>('')
@@ -19,11 +19,13 @@ const filtered = computed<any>(() => props.items.filter((item) => [item.title, i
 const is_empty = computed<boolean>(() => filtered.value.length === 0)
 const empty_text = computed<any>(() => noResultsOr(props.noResultsText))
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   editor: any
   items: any[]
   noResultsText?: string
-}>()
+}>(), {
+  noResultsText: 'No results',
+})
 
 const emit = defineEmits<{
   OnOpen: [any]
@@ -47,13 +49,55 @@ function OnClose(): void {
   emit('OnClose')
 }
 
+function OnUpdate(e: any): void {
+  query.value = e.detail.query;
+  range.value = e.detail.range;
+  nextTick(() => { if (range.value != null && props.editor['view']) {let coords = props.editor['view'].coordsAtPos(range.value.from);
+  let editorEl = props.editor['view'].dom.closest('.autodown-editor');
+  if (editorEl != null) {let rect = editorEl.getBoundingClientRect();
+  let trigger = { top: coords.top - rect.top, left: coords.left - rect.left, bottom: coords.bottom - rect.top, right: coords.right - rect.left, width: coords.right - coords.left, height: coords.bottom - coords.top };
+  let container = { width: rect.width, height: rect.height };
+  let initial = computeMenuPosition(trigger, 0, 0, container, 'bottom', 8, 'left');
+  pos_top.value = initial.top + 'px';
+  pos_left.value = initial.left + 'px';
+  pos_visibility.value = 'hidden';
+  nextTick(() => { let menu = editorEl.querySelector('.autodown-slash-menu');
+  if (menu != null) {let menuRect = menu.getBoundingClientRect();
+  let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, 'bottom', 8, 'left');
+  pos_top.value = pos_final.top + 'px';
+  pos_left.value = pos_final.left + 'px';
+  pos_visibility.value = 'visible';
+  } });
+  }} });
+
+  emit('OnUpdate', e)
+}
+
+function HoverItem(i: any): void {
+  selected_index.value = i;
+
+  emit('HoverItem', i)
+}
+
+function SelectItem(i: any): void {
+  let item = filtered.value[i];
+  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+  }
+
+  emit('SelectItem', i)
+}
+
 function OnKeydown(e: any): void {
   if (visible.value) {if (e.detail.event.key == 'ArrowDown') {e.detail.event.preventDefault();
 
 
 
-  let next = selected_index.value + 1;
-  selected_index.value = next % filtered.value.length;
+  let next: number = selected_index.value + 1;
+  selected_index.value = Math.trunc(next %filtered.value.length);
 
 
   nextTick(() => { if (menuEl.value!) {let active = menuEl.value!.querySelector('.autodown-slash-menu-item.active');
@@ -63,8 +107,8 @@ function OnKeydown(e: any): void {
 
   if (props.editor.storage['slash-command'] != null) {props.editor.storage['slash-command'].handled = true;
   }}if (e.detail.event.key == 'ArrowUp') {e.detail.event.preventDefault();
-  let prev = selected_index.value - 1 + filtered.value.length;
-  selected_index.value = prev % filtered.value.length;
+  let prev: number = selected_index.value - 1 + filtered.value.length;
+  selected_index.value = Math.trunc(prev %filtered.value.length);
   nextTick(() => { if (menuEl.value!) {let active = menuEl.value!.querySelector('.autodown-slash-menu-item.active');
   if (active != null) {active.scrollIntoView({ block: 'nearest', behavior: 'auto' });
   }} });
@@ -126,48 +170,6 @@ function OnOpen(e: any): void {
   emit('OnOpen', e)
 }
 
-function HoverItem(i: any): void {
-  selected_index.value = i;
-
-  emit('HoverItem', i)
-}
-
-function SelectItem(i: any): void {
-  let item = filtered.value[i];
-  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-  }
-
-  emit('SelectItem', i)
-}
-
-function OnUpdate(e: any): void {
-  query.value = e.detail.query;
-  range.value = e.detail.range;
-  nextTick(() => { if (range.value != null && props.editor['view']) {let coords = props.editor['view'].coordsAtPos(range.value.from);
-  let editorEl = props.editor['view'].dom.closest('.autodown-editor');
-  if (editorEl != null) {let rect = editorEl.getBoundingClientRect();
-  let trigger = { top: coords.top - rect.top, left: coords.left - rect.left, bottom: coords.bottom - rect.top, right: coords.right - rect.left, width: coords.right - coords.left, height: coords.bottom - coords.top };
-  let container = { width: rect.width, height: rect.height };
-  let initial = computeMenuPosition(trigger, 0, 0, container, 'bottom', 8, 'left');
-  pos_top.value = initial.top + 'px';
-  pos_left.value = initial.left + 'px';
-  pos_visibility.value = 'hidden';
-  nextTick(() => { let menu = editorEl.querySelector('.autodown-slash-menu');
-  if (menu != null) {let menuRect = menu.getBoundingClientRect();
-  let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, 'bottom', 8, 'left');
-  pos_top.value = pos_final.top + 'px';
-  pos_left.value = pos_final.left + 'px';
-  pos_visibility.value = 'visible';
-  } });
-  }} });
-
-  emit('OnUpdate', e)
-}
-
 function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
   OnUpdate(e)
 }
@@ -181,17 +183,17 @@ function __auto_gl_autodown_slash_open_OnOpen(e: any) {
 }
 
 onMounted(() => {
-  document.addEventListener('autodown:slash-close', OnClose)
   document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
   document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
+  document.addEventListener('autodown:slash-close', OnClose)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('autodown:slash-close', OnClose)
   document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
   document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
+  document.removeEventListener('autodown:slash-close', OnClose)
 })
 
 
@@ -199,7 +201,7 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-slash-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
+      <div class="autodown-slash-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
         <div class="autodown-slash-menu-items">
           <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" @click="SelectItem(i)" @mouseenter="HoverItem(i)" v-for="(item, i) in filtered">
             <component :is="(item.icon) as any" class="autodown-slash-menu-icon" :size="16" />

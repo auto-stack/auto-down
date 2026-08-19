@@ -14,9 +14,9 @@ const code_tag = computed<string>(() => 'code')
 const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
 const show_loading = computed<boolean>(() => loading.value)
-const show_error = computed<boolean>(() => !loading.value && error_text.value !== '')
-const show_results = computed<boolean>(() => !loading.value && error_text.value === '' && results.value.length > 0)
-const show_empty = computed<boolean>(() => !loading.value && error_text.value === '' && results.value.length === 0)
+const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
+const show_results = computed<boolean>(() => !loading.value && !(error_text.value) && results.value.length > 0)
+const show_empty = computed<boolean>(() => !loading.value && !(error_text.value) && results.value.length === 0)
 
 const props = defineProps<{
   node: any
@@ -81,7 +81,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :data-query-block="''" :class="'autodown-query-block'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-query-block'" :data-query-block="''" :key="'NodeViewWrapper-1'">
       <div class="query-header">
         <span class="query-label">
           <span>Query</span>

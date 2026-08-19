@@ -23,6 +23,24 @@ const emit = defineEmits<{
   NavNext: []
 }>()
 
+function CloseTab(tab: any): void {
+  closeTab(tabsStore, tab.path);
+
+  emit('CloseTab', tab)
+}
+
+function OpenLocalGraph(): void {
+  openLocalGraphTab(tabsStore);
+
+  emit('OpenLocalGraph')
+}
+
+function SwitchTab(tab: any): void {
+  switchTab(tabsStore, tab.path);
+
+  emit('SwitchTab', tab)
+}
+
 function OpenToday(): void {
   openTodayNote(tabsStore, fileTreeStore);
 
@@ -33,24 +51,6 @@ function NavPrev(): void {
   navigateDailyNote('prev', tabsStore, fileTreeStore);
 
   emit('NavPrev')
-}
-
-function CloseTab(tab: any): void {
-  closeTab(tabsStore, tab.path);
-
-  emit('CloseTab', tab)
-}
-
-function SwitchTab(tab: any): void {
-  switchTab(tabsStore, tab.path);
-
-  emit('SwitchTab', tab)
-}
-
-function OpenLocalGraph(): void {
-  openLocalGraphTab(tabsStore);
-
-  emit('OpenLocalGraph')
 }
 
 function NavNext(): void {
@@ -65,7 +65,7 @@ function NavNext(): void {
 <template>
     <template v-if="has_tabs">
       <div class="flex h-[var(--header-height)] shrink-0 items-center gap-1 border-b bg-card px-2">
-        <button :class="tab.active ? 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors bg-primary/10 text-primary' : 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors text-muted-foreground hover:bg-accent hover:text-foreground'" :type="'button'" @click="SwitchTab(tab)" v-for="tab in items">
+        <button :class="(tab.active ? 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors bg-primary/10 text-primary' : 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors text-muted-foreground hover:bg-accent hover:text-foreground')" :type="'button'" @click="SwitchTab(tab)" v-for="tab in items">
           <template v-if="tab.isGraph">
             <component :is="(Network) as any" class="h-3.5 w-3.5" />
           </template>
@@ -77,13 +77,13 @@ function NavNext(): void {
               <span>●</span>
             </span>
           </template>
-          <span :class="tab.active ? 'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity opacity-100' : 'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity group-hover:opacity-100'" @click.stop="CloseTab(tab)">
+          <span :class="(tab.active ? 'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity opacity-100' : 'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity group-hover:opacity-100')" @click.stop="CloseTab(tab)">
             <component :is="(X) as any" class="h-3 w-3" />
           </span>
         </button>
         <div class="mx-1 h-4 w-px bg-border" />
         <template v-if="can_local_graph">
-          <button class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'当前文档的局部图谱'" @click="OpenLocalGraph">
+          <button class="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'当前文档的局部图谱'" :type="'button'" @click="OpenLocalGraph">
             <component :is="(Focus) as any" class="h-3.5 w-3.5" />
             <span>
               <span>局部图谱</span>
@@ -98,13 +98,13 @@ function NavNext(): void {
         </button>
         <template v-if="has_daily">
           <div class="flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground">
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'前一天'" :type="'button'" @click="NavPrev">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'前一天'" @click="NavPrev">
               <component :is="(ChevronLeft) as any" class="h-3.5 w-3.5" />
             </button>
             <span class="px-1">
               <span>{{ daily_title }}</span>
             </span>
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'后一天'" @click="NavNext">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'后一天'" :type="'button'" @click="NavNext">
               <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
             </button>
           </div>

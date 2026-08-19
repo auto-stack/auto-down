@@ -95,12 +95,12 @@ widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: A
         // view event references is not emitted, so a shared Render handler
         // is not viable.
         .source -> {
-            if .source.value.trim() == "" {
+            if .source.trim() == "" {
                 .svg = ""
                 .error_text = ""
             }
-            if .source.value.trim() != "" {
-                let p = renderMermaidPreview(.source.value)
+            if .source.trim() != "" {
+                let p = renderMermaidPreview(.source)
                 // renderMermaidPreview never rejects (its try/catch returns
                 // the error as data), so a single resolve callback carries
                 // both the original's try and catch branches.
@@ -119,12 +119,12 @@ widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: A
         .Init -> {
             // render() — duplicated in the watch above (see the comment
             // there).
-            if .source.value.trim() == "" {
+            if .source.trim() == "" {
                 .svg = ""
                 .error_text = ""
             }
-            if .source.value.trim() != "" {
-                let p = renderMermaidPreview(.source.value)
+            if .source.trim() != "" {
+                let p = renderMermaidPreview(.source)
                 p.then(res => {
                     .svg = res.svg
                     .error_text = res.error

@@ -5,7 +5,7 @@ import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
 import { strOr, orNull } from '../auto/src/front/utils/node_view_ext'
 
 
-const block = ref<any>(undefined)
+const block = ref<any>(null)
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
 
@@ -16,8 +16,8 @@ const display_label = computed<any>(() => strOr(attr_block_id.value && attr_titl
 const loading_text = computed<any>(() => strOr('Loading ' + display_label.value + '…', 'Loading…'))
 const block_content = computed<any>(() => strOr(block.value && block.value.content, ''))
 const show_loading = computed<boolean>(() => loading.value)
-const show_error = computed<boolean>(() => !loading.value && error_text.value !== '')
-const show_block = computed<boolean>(() => !loading.value && error_text.value === '' && block.value)
+const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
+const show_block = computed<boolean>(() => !loading.value && !(error_text.value) && block.value)
 
 const props = defineProps<{
   node: any
@@ -44,7 +44,7 @@ watch(attr_block_id, () => {
   error_text.value = '';
 
   let clean_id = id;
-  if (id.startsWith('^')) {clean_id = id.slice(1);
+  if (id.startsWith('^')) {clean_id = id.substring(1);
   }let p = loader(clean_id);
 
 
@@ -69,7 +69,7 @@ onMounted(() => {
   }if (loader != null) {loading.value = true;
   error_text.value = '';
   let clean_id = id;
-  if (id.startsWith('^')) {clean_id = id.slice(1);
+  if (id.startsWith('^')) {clean_id = id.substring(1);
   }let p = loader(clean_id);
   p.then((result: any) => { block.value = result;
   if (!result) {error_text.value = 'Block not found';
@@ -85,7 +85,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :data-title="attr_title" :as="'div'" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :data-title="attr_title" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :as="'div'" :key="'NodeViewWrapper-1'">
       <template v-if="show_loading">
         <div class="embed-state">
           <span>{{ loading_text }}</span>

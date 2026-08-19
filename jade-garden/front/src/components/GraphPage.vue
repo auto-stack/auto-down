@@ -18,10 +18,13 @@ const visible_nodes = computed<any>(() => visibleGraphNodes(graphStore.nodes, gr
 const visible_edges = computed<any>(() => visibleGraphEdges(graphStore.nodes, graphStore.edges, props.centerPath, props.depth))
 const center_title = computed<any>(() => centerTitle(graphStore.nodes, props.centerPath))
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   centerPath?: string | null
   depth?: number
-}>()
+}>(), {
+  centerPath: null,
+  depth: 1,
+})
 
 const emit = defineEmits<{
   OpenPage: [any]
@@ -30,10 +33,10 @@ const emit = defineEmits<{
   RelayoutView: []
 }>()
 
-function RelayoutView(): void {
-  relayoutGraphView(graphViewRef.value!);
+function OpenPage(p: any): void {
+  tabsStore.open(p);
 
-  emit('RelayoutView')
+  emit('OpenPage', p)
 }
 
 function FitView(): void {
@@ -42,10 +45,10 @@ function FitView(): void {
   emit('FitView')
 }
 
-function OpenPage(p: any): void {
-  tabsStore.open(p);
+function RelayoutView(): void {
+  relayoutGraphView(graphViewRef.value!);
 
-  emit('OpenPage', p)
+  emit('RelayoutView')
 }
 
 function SwitchToGlobal(): void {
@@ -89,7 +92,7 @@ onMounted(() => {
         </div>
       </div>
       <div class="graph-body">
-        <GraphView :edges="visible_edges" :loading="graphStore.loading" :nodes="visible_nodes" ref="graphViewRef" :highlightQuery="graphStore.searchQuery" :class="'graph-canvas'" :settings="graphStore.settings" :key="'GraphView-1'" @open="OpenPage" />
+        <GraphView :highlightQuery="graphStore.searchQuery" :nodes="visible_nodes" ref="graphViewRef" :settings="graphStore.settings" :loading="graphStore.loading" :edges="visible_edges" :class="'graph-canvas'" :key="'GraphView-1'" @open="OpenPage" />
         <GraphControls :key="'GraphControls-2'" />
       </div>
       <template v-if="graphStore.error">

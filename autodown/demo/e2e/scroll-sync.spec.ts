@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('scroll sync', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173/')
+    await page.goto('/')
     // Wait for both panels to render blocks with data-block-id.
     await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 5000 })
     await page.waitForSelector('.right [data-block-id="block-0"]', { timeout: 5000 })

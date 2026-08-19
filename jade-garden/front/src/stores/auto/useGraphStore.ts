@@ -3,13 +3,13 @@ import { getGraphResult, saveGraphSettings } from '../../../auto/src/front/utils
 
 const nodes = ref<any>([])
 const edges = ref<any>([])
-const loading = ref<any>(false)
-const error = ref<any>(null)
+const loading = ref<boolean>(false)
+const error = ref<string | null>(null)
 const settings = ref<any>({})
-const search_query = ref<any>('')
-const view_mode = ref<any>('editor')
-const center_path = ref<any>(null)
-const depth = ref<any>(1)
+const search_query = ref<string>('')
+const view_mode = ref<string>('editor')
+const center_path = ref<string | null>(null)
+const depth = ref<number>(1)
 
 export function useGraphStore(): any {
     const Load = async () => { loading.value = true;
@@ -22,18 +22,18 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const ToggleView = () => { if (view_mode.value == 'editor') {view_mode.value = 'graph';
-}
-if (view_mode.value == 'graph') {view_mode.value = 'editor';
-}
+    const SaveSettings = async () => { await saveGraphSettings(settings.value);
+ }
+    const ShowGlobal = () => { center_path.value = null;
  }
     const OpenLocal = (args: any) => { center_path.value = args.path;
 depth.value = args.depth;
 view_mode.value = 'graph';
  }
-    const ShowGlobal = () => { center_path.value = null;
- }
-    const SaveSettings = async () => { await saveGraphSettings(settings.value);
+    const ToggleView = () => { if (view_mode.value == 'editor') {view_mode.value = 'graph';
+}
+if (view_mode.value == 'graph') {view_mode.value = 'editor';
+}
  }
     return {
         nodes,
@@ -46,9 +46,9 @@ view_mode.value = 'graph';
         center_path,
         depth,
         Load,
-        ToggleView,
-        OpenLocal,
-        ShowGlobal,
         SaveSettings,
+        ShowGlobal,
+        OpenLocal,
+        ToggleView,
     }
 }

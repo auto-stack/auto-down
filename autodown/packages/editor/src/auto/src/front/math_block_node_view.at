@@ -85,7 +85,7 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
         // run happens in .Init (the DSL watch has no immediate option; the
         // body is DUPLICATED — see mermaid_node_view.at).
         .source -> {
-            let result = renderKatexPreview(.source.value, true)
+            let result = renderKatexPreview(.source, true)
             .html = result.html
             .error_text = result.error
             nextTick(() => {
@@ -97,7 +97,7 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
     on {
         .Init -> {
             // render() — duplicated in the watch above.
-            let result = renderKatexPreview(.source.value, true)
+            let result = renderKatexPreview(.source, true)
             .html = result.html
             .error_text = result.error
             nextTick(() => {

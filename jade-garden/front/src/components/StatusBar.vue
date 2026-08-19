@@ -49,7 +49,7 @@ watch(current_path, () => {
         </span>
       </div>
       <div class="flex items-center gap-3">
-        <span :class="dirty ? 'text-amber-500' : ''">
+        <span :class="(dirty ? 'text-amber-500' : '')">
           <span>{{ save_label }}</span>
         </span>
         <span class="text-border">

@@ -15,7 +15,7 @@ const autoDownEditorBridge = useAutoDownEditorBridge()
 const check_icon = computed<any>(() => editorCheckIcon())
 const x_icon = computed<any>(() => editorXIcon())
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   content: string
   placeholder?: string
   canEdit?: boolean
@@ -42,7 +42,33 @@ const props = defineProps<{
   linkClickCb?: any
   openWikiLinkCb?: any
   editorReadyCb?: any
-}>()
+}>(), {
+  placeholder: '',
+  canEdit: false,
+  autofocus: false,
+  showActions: false,
+  saveLabel: '',
+  cancelLabel: '',
+  imageUrlPrompt: '',
+  linkUrlPrompt: '',
+  pageTitle: '',
+  onOpenWikiLink: null,
+  loadBlock: null,
+  extraSlashItems: (null as any),
+  onAssetUpload: null,
+  taskWorkflow: '',
+  runQuery: null,
+  editor: null,
+  focused: false,
+  saveLabelRender: null,
+  cancelLabelRender: null,
+  updateCb: null,
+  blurCb: null,
+  focusCb: null,
+  linkClickCb: null,
+  openWikiLinkCb: null,
+  editorReadyCb: null,
+})
 
 const emit = defineEmits<{
   SaveRequest: []
@@ -61,13 +87,13 @@ watch(() => props.canEdit, () => {
 })
 
 function SaveRequest(): void {
-  let noop_save = 0;
+  let noop_save: number = 0;
 
   emit('SaveRequest')
 }
 
 function Cancel(): void {
-  let noop_cancel = 0;
+  let noop_cancel: number = 0;
 
   emit('Cancel')
 }
@@ -77,10 +103,10 @@ function Cancel(): void {
 
 <template>
     <div class="autodown-editor" :class="{ 'is-focused': focused }">
-      <EditorContent :editor="editor" :class="'autodown-editor-content-wrapper'" :key="'EditorContent-1'" />
+      <EditorContent :class="'autodown-editor-content-wrapper'" :editor="editor" :key="'EditorContent-1'" />
       <template v-if="editor">
-        <BubbleMenu :linkPrompt="linkUrlPrompt" :editor="editor" :key="'BubbleMenu-2'" />
-        <SlashMenu :editor="editor" :items="autoDownEditorBridge" :key="'SlashMenu-3'" />
+        <BubbleMenu :editor="editor" :linkPrompt="linkUrlPrompt" :key="'BubbleMenu-2'" />
+        <SlashMenu :items="autoDownEditorBridge" :editor="editor" :key="'SlashMenu-3'" />
         <TableMenu :editor="editor" :key="'TableMenu-4'" />
         <CodeBlockMenu :editor="editor" :key="'CodeBlockMenu-5'" />
       </template>

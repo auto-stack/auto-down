@@ -23,28 +23,28 @@ const emit = defineEmits<{
   CloseTheme: []
 }>()
 
-function Select(item: any): void {
-  sidebarStore.setLeftPanel(item.panel);
-
-  emit('Select', item)
-}
-
 function ToggleTheme(): void {
   theme_open.value = !theme_open.value;
 
   emit('ToggleTheme')
 }
 
-function OpenGlobalGraph(): void {
-  tabsStore.openGraph();
+function Select(item: any): void {
+  sidebarStore.setLeftPanel(item.panel);
 
-  emit('OpenGlobalGraph')
+  emit('Select', item)
 }
 
 function OpenToday(): void {
   openTodayNote(tabsStore, fileTreeStore);
 
   emit('OpenToday')
+}
+
+function OpenGlobalGraph(): void {
+  tabsStore.openGraph();
+
+  emit('OpenGlobalGraph')
 }
 
 function CloseTheme(): void {
@@ -64,7 +64,7 @@ function CloseTheme(): void {
           <span class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
         </template>
       </button>
-      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph_active }" :title="'全局图谱'" :type="'button'" @click="OpenGlobalGraph">
+      <button class="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :class="{ 'text-primary bg-primary/10 hover:bg-primary/15': graph_active }" :type="'button'" :title="'全局图谱'" @click="OpenGlobalGraph">
         <component :is="(Network) as any" class="h-[18px] w-[18px]" />
         <template v-if="graph_active">
           <span class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
@@ -74,7 +74,7 @@ function CloseTheme(): void {
         <component :is="(CalendarDays) as any" class="h-[18px] w-[18px]" />
       </button>
       <div class="flex-1" />
-      <button :class="theme_open ? 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground text-primary bg-primary/10' : 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'" :title="'Theme'" :type="'button'" @click="ToggleTheme">
+      <button :class="(theme_open ? 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground text-primary bg-primary/10' : 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground')" :title="'Theme'" :type="'button'" @click="ToggleTheme">
         <component :is="(Palette) as any" class="h-[18px] w-[18px]" />
       </button>
       <ThemePopover :open="theme_open" :key="'ThemePopover-1'" @close="CloseTheme" />

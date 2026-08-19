@@ -21,7 +21,7 @@
 //   expression parentheses are dropped by the transpiler, so method calls
 //   cannot be chained onto a concatenation; an array literal receiver needs
 //   no parens and preserves the original join-then-match semantics.
-// - `.filtered.value` in handlers/computeds: computed refs are not
+// - `.filtered` in handlers/computeds: computed refs are not
 //   auto-unwrapped outside the template (`.filtered` emits the raw
 //   ComputedRef); the explicit `.value` field access emits correctly.
 // - `.editor["view"]` bracket access: a field literally named `view` (a DSL
@@ -58,7 +58,7 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
         filtered => .items.filter(item => [item.title, item.description].concat(item.searchTerms).join(" ").toLowerCase().contains(.query.toLowerCase()))
         // The template codegen mangles `.filtered.length` in a view `if`
         // (renders `filtered.lengthgth`), so emptiness is a named computed.
-        is_empty => .filtered.value.length == 0
+        is_empty => .filtered.length == 0
         empty_text => noResultsOr(.noResultsText)
     }
 
@@ -191,7 +191,7 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
                     // parentheses, so `(x + 1) % len` would mis-emit as
                     // `x + 1 % len` (wrong precedence).
                     let next = .selected_index + 1
-                    .selected_index = next % .filtered.value.length
+                    .selected_index = next % .filtered.length
                     // scrollActiveIntoView: keep the active item visible
                     // inside the scrollable list after keyboard navigation.
                     nextTick(() => {
@@ -210,8 +210,8 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
                 }
                 if e.detail.event.key == "ArrowUp" {
                     e.detail.event.preventDefault()
-                    let prev = .selected_index - 1 + .filtered.value.length
-                    .selected_index = prev % .filtered.value.length
+                    let prev = .selected_index - 1 + .filtered.length
+                    .selected_index = prev % .filtered.length
                     nextTick(() => {
                         if .menuEl {
                             let active = .menuEl.querySelector(".autodown-slash-menu-item.active")
@@ -229,7 +229,7 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
                     // selectItem(selectedIndex): run the item command, close
                     // only when both the item and the range exist (the
                     // original's early return).
-                    let item = .filtered.value[.selected_index]
+                    let item = .filtered[.selected_index]
                     if item != null && .range != null {
                         item.command({ editor: .editor, range: .range })
                         .visible = false
@@ -255,7 +255,7 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
         }
 
         .SelectItem(i) -> {
-            let item = .filtered.value[i]
+            let item = .filtered[i]
             if item != null && .range != null {
                 item.command({ editor: .editor, range: .range })
                 .visible = false

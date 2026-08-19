@@ -41,6 +41,13 @@ const emit = defineEmits<{
 
 import type { FileNode } from '@/lib/api'
 
+function CtxNewFolder(): void {
+  menu_open.value = false;
+  ctxNewFolder(fileTreeStore, props.node);
+
+  emit('CtxNewFolder')
+}
+
 function CtxNewFile(): void {
   menu_open.value = false;
   ctxNewFile(fileTreeStore, props.node);
@@ -48,11 +55,18 @@ function CtxNewFile(): void {
   emit('CtxNewFile')
 }
 
-function CtxDuplicate(): void {
+function CtxRename(): void {
   menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
+  ctxRename(fileTreeStore, props.node);
 
-  emit('CtxDuplicate')
+  emit('CtxRename')
+}
+
+function CtxDelete(): void {
+  menu_open.value = false;
+  ctxDelete(fileTreeStore, props.node);
+
+  emit('CtxDelete')
 }
 
 function RightClick(e: any): void {
@@ -63,11 +77,11 @@ function RightClick(e: any): void {
   emit('RightClick', e)
 }
 
-function CtxDelete(): void {
+function CtxDuplicate(): void {
   menu_open.value = false;
-  ctxDelete(fileTreeStore, props.node);
+  ctxDuplicate(fileTreeStore, props.node);
 
-  emit('CtxDelete')
+  emit('CtxDuplicate')
 }
 
 function Toggle(): void {
@@ -77,20 +91,6 @@ function Toggle(): void {
   }
 
   emit('Toggle')
-}
-
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
-
-  emit('CtxNewFolder')
-}
-
-function CtxRename(): void {
-  menu_open.value = false;
-  ctxRename(fileTreeStore, props.node);
-
-  emit('CtxRename')
 }
 
 onMounted(() => {
@@ -104,7 +104,7 @@ onMounted(() => {
 
 <template>
     <div>
-      <div :class="is_active ? 'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors bg-primary/10 text-primary' : 'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors text-foreground hover:bg-accent hover:text-foreground'" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @click="Toggle" @contextmenu.prevent="RightClick($event)">
+      <div :class="(is_active ? 'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors bg-primary/10 text-primary' : 'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm transition-colors text-foreground hover:bg-accent hover:text-foreground')" :style="({ marginLeft: indent_left, marginRight: '6px' } as any)" @contextmenu.prevent="RightClick($event)" @click="Toggle">
         <span class="flex h-4 w-4 items-center justify-center text-muted-foreground/70">
           <template v-if="show_right">
             <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
@@ -113,13 +113,13 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :expanded="is_expanded" :is_dir="node.is_dir" :active="is_active" />
+        <component :is="(NodeIcon) as any" :active="is_active" :expanded="is_expanded" :is_dir="node.is_dir" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :node="child" :key="child.path" :level="next_level"  v-for="child in node.children"/>
+        <FileTreeNode :key="child.path" :level="next_level" :node="child"  v-for="child in node.children"/>
       </template>
       <Teleport to="body">
         <template v-if="menu_open">

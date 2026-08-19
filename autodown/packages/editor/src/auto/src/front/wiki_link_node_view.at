@@ -60,9 +60,9 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
         attr_block_id => orNull(.node.attrs.blockId)
         // blockId ? `${title}#${blockId}` : title — && / || idiom routed
         // through strOr (ternary emits undefined in computeds).
-        display_label => strOr(.attr_block_id.value && .attr_title.value + "#" + .attr_block_id.value, .attr_title.value)
+        display_label => strOr(.attr_block_id && .attr_title + "#" + .attr_block_id, .attr_title)
         // The label tooltip: `Open ${displayLabel}`.
-        open_title => strOr("Open " + .display_label.value, "Open")
+        open_title => strOr("Open " + .display_label, "Open")
         pencil_icon => wikiLinkPencilIcon()
         // The wrapper class list as one bound string — the class map's
         // hyphenated key ("is-editing") cannot be expressed (quoted keys
@@ -114,14 +114,14 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
         // editing (the original's watch(() => attrs.value.raw, ...)).
         .attr_raw -> {
             if !.editing {
-                .input_value = .attr_raw.value
+                .input_value = .attr_raw
             }
         }
     }
 
     on {
         .StartEdit -> {
-            .input_value = .attr_raw.value
+            .input_value = .attr_raw
             .editing = true
             nextTick(() => {
                 focusAndSelect(.inputEl)
@@ -137,11 +137,11 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
                 handler = opts.openWikiLink
             }
             if handler != null {
-                handler(.attr_title.value, .attr_block_id.value || null)
+                handler(.attr_title, .attr_block_id || null)
             }
             if handler == null {
                 // Fallback: start editing when no opener is provided.
-                .input_value = .attr_raw.value
+                .input_value = .attr_raw
                 .editing = true
                 nextTick(() => {
                     focusAndSelect(.inputEl)
@@ -155,7 +155,7 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
             if value == "" {
                 // cancel() inline.
                 .editing = false
-                .input_value = .attr_raw.value
+                .input_value = .attr_raw
             }
             if value != "" {
                 let parsed = parseWikiLinkRaw(value)
@@ -166,7 +166,7 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
 
         .Cancel -> {
             .editing = false
-            .input_value = .attr_raw.value
+            .input_value = .attr_raw
         }
 
         .OnKeydown(e) -> {
@@ -178,7 +178,7 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
                 let value = .input_value.trim()
                 if value == "" {
                     .editing = false
-                    .input_value = .attr_raw.value
+                    .input_value = .attr_raw
                 }
                 if value != "" {
                     let parsed = parseWikiLinkRaw(value)
@@ -190,7 +190,7 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
                 e.preventDefault()
                 // cancel() inline.
                 .editing = false
-                .input_value = .attr_raw.value
+                .input_value = .attr_raw
             }
         }
 

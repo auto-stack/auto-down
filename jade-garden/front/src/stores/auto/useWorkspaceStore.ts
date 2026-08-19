@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 import { getWorkspaceResult, openWorkspaceResult } from '../../../auto/src/front/utils/workspace_store_ext'
 
-const root = ref<any>(null)
-const wiki_dir = ref<any>(null)
-const loading = ref<any>(false)
-const error = ref<any>(null)
+const root = ref<string | null>(null)
+const wiki_dir = ref<string | null>(null)
+const loading = ref<boolean>(false)
+const error = ref<string | null>(null)
 
 export function useWorkspaceStore(): any {
     const Load = async () => { loading.value = true;
@@ -17,7 +17,7 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const Open = async (path: any) => { loading.value = true;
+    const Open = async (path: string) => { loading.value = true;
 error.value = null;
 let res = await openWorkspaceResult(path);
 if (res.error == '') {root.value = res.root;

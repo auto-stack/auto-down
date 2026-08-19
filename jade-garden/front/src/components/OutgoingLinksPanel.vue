@@ -57,7 +57,7 @@ function OpenTarget(ol: any): void {
       <template v-if="show_list">
         <component :is="(ul_tag) as any" class="space-y-0.5">
           <component :is="(li_tag) as any" class="flex cursor-pointer items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground" @click="OpenTarget(ol)" v-for="ol in links">
-            <span :class="ol.exists ? 'h-1.5 w-1.5 rounded-full shrink-0 bg-[hsl(var(--af-success))]' : 'h-1.5 w-1.5 rounded-full shrink-0 bg-destructive'" />
+            <span :class="(ol.exists ? 'h-1.5 w-1.5 rounded-full shrink-0 bg-[hsl(var(--af-success))]' : 'h-1.5 w-1.5 rounded-full shrink-0 bg-destructive')" />
             <span class="truncate">
               <span>{{ ol.target_title }}</span>
             </span>

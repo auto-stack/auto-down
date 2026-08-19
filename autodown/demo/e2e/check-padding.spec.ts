@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('check padding of left and right content containers', async ({ page }) => {
-  await page.goto('http://localhost:5173/')
+  await page.goto('/')
   await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 5000 })
 
   const leftPadding = await page.evaluate(() => {

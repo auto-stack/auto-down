@@ -14,8 +14,8 @@ const previewEl = ref<HTMLElement | null>(null)
 
 const source = computed<any>(() => strOr(props.node.textContent, ''))
 const code_tag = computed<string>(() => 'code')
-const show_preview = computed<boolean>(() => svg.value !== '')
-const show_error = computed<boolean>(() => svg.value === '' && error_text.value !== '')
+const show_preview = computed<boolean>(() => !!(svg.value))
+const show_error = computed<boolean>(() => !(svg.value) && !!(error_text.value))
 
 const props = defineProps<{
   node: any
@@ -66,7 +66,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :data-mermaid-block="''" :as="'div'" :class="'autodown-mermaid-block'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-mermaid-block'" :data-mermaid-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <div class="autodown-mermaid-preview" ref="previewEl" />
       </template>
@@ -75,7 +75,7 @@ onMounted(() => {
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <NodeViewContent :as="'pre'" :class="'mermaid-source'" :key="'NodeViewContent-2'">
+      <NodeViewContent :class="'mermaid-source'" :as="'pre'" :key="'NodeViewContent-2'">
         <component :is="(code_tag) as any" />
       </NodeViewContent>
     </NodeViewWrapper>

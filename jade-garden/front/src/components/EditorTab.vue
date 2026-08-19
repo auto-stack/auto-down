@@ -40,20 +40,6 @@ watch(() => props.path, () => {
   loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
 
-function CopyBlockLink(): void {
-  let ok = copyBlockLinkSafe(hover_block.value, tab.value);
-  if (ok) {hover_block.value = null;
-  }
-
-  emit('CopyBlockLink')
-}
-
-function OpenWikiLink(title: any, block_id: any): void {
-  openWikiLink(tabsStore, fileTreeStore, title, block_id);
-
-  emit('OpenWikiLink', title, block_id)
-}
-
 function OnScrollToBlock(e: any): void {
   scrollToBlockFromEvent(editorRef.value!, props.path, e);
 
@@ -66,6 +52,20 @@ function OnUpdate(md: any): void {
   f();
 
   emit('OnUpdate', md)
+}
+
+function CopyBlockLink(): void {
+  let ok = copyBlockLinkSafe(hover_block.value, tab.value);
+  if (ok) {hover_block.value = null;
+  }
+
+  emit('CopyBlockLink')
+}
+
+function OpenWikiLink(title: any, block_id: any): void {
+  openWikiLink(tabsStore, fileTreeStore, title, block_id);
+
+  emit('OpenWikiLink', title, block_id)
 }
 
 onMounted(() => {
@@ -103,7 +103,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell :content="body" :showActions="false" :pageTitle="page_title" :runQuery="run_query" :placeholder="'Start typing...'" ref="editorRef" :assetUpload="asset_upload" :class="'h-full w-full'" :loadBlock="load_block" :extraSlashItems="extra_slash" :key="'EditorShell-1'" @open-wiki-link="OpenWikiLink" @update="OnUpdate" />
+      <EditorShell :placeholder="'Start typing...'" :showActions="false" :loadBlock="load_block" :assetUpload="asset_upload" ref="editorRef" :class="'h-full w-full'" :runQuery="run_query" :content="body" :pageTitle="page_title" :extraSlashItems="extra_slash" :key="'EditorShell-1'" @update="OnUpdate" @open-wiki-link="OpenWikiLink" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

@@ -51,7 +51,7 @@ widget MathInlineNodeView(node: Array<str>, editor: Array<str>, updateAttributes
         // || '') — the cast is a no-op at runtime; strOr covers the ||.
         source => strOr(.node.attrs.source, "")
         // The error fallback's ${{ source }}$ interpolation.
-        source_label => "$" + .source.value + "$"
+        source_label => "$" + .source + "$"
         // The original's v-if="!error" / v-else chain (same rendered
         // branch in every state).
         show_preview => .error_text == ""
@@ -83,7 +83,7 @@ widget MathInlineNodeView(node: Array<str>, editor: Array<str>, updateAttributes
         // run happens in .Init (the DSL watch has no immediate option; the
         // body is DUPLICATED — see mermaid_node_view.at).
         .source -> {
-            let result = renderKatexPreview(.source.value, false)
+            let result = renderKatexPreview(.source, false)
             .html = result.html
             .error_text = result.error
             nextTick(() => {
@@ -95,7 +95,7 @@ widget MathInlineNodeView(node: Array<str>, editor: Array<str>, updateAttributes
     on {
         .Init -> {
             // render() — duplicated in the watch above.
-            let result = renderKatexPreview(.source.value, false)
+            let result = renderKatexPreview(.source, false)
             .html = result.html
             .error_text = result.error
             nextTick(() => {

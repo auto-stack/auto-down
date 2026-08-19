@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// Port is overridable so e2e can run while another dev server occupies 5173:
+//   E2E_PORT=5199 pnpm test:e2e
+const port = Number(process.env.E2E_PORT || 5173)
+const baseURL = `http://localhost:${port}`
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,8 +23,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
+    command: `pnpm dev --port ${port} --strictPort`,
+    url: baseURL,
+    reuseExistingServer: !process.env.E2E_PORT,
   },
 })

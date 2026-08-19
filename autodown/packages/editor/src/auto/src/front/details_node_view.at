@@ -66,11 +66,11 @@ widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: A
         // && / || idiom routed through strOr: a bare `a && "x" || "y"`
         // computed is ALSO mis-typed computed<boolean> by the DSL type
         // inference, and vue-tsc then rejects the string-returning getter.
-        marker => strOr(.is_open.value && "▼", "▶")
+        marker => strOr(.is_open && "▼", "▶")
         // v-show replacement: "" is dropped by Vue's style binding
         // (visible), "none" hides — same inline-style toggling as v-show.
         // (Inverted: a && "" || "none" would never yield "".)
-        content_display => strOr(!.is_open.value && "none", "")
+        content_display => strOr(!.is_open && "none", "")
         edit_icon => detailsEditIcon()
         // Reactive watch source for the selected prop (the original watched
         // () => props.selected).
@@ -154,11 +154,11 @@ widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: A
     on {
         .ToggleOpen -> {
             let update_attributes = .updateAttributes
-            update_attributes({ open: !.is_open.value })
+            update_attributes({ open: !.is_open })
         }
 
         .StartEditingSummary -> {
-            .summary_draft = .summary.value
+            .summary_draft = .summary
             .editing_summary = true
             nextTick(() => {
                 focusAndSelect(.summaryInput)

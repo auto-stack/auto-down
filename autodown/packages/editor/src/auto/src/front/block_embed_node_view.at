@@ -2,9 +2,8 @@
 // port of the original hand-written src/node-views/BlockEmbedNodeView.vue.
 // The generated SFC replaces it (see src/auto/README.md). All of the
 // original logic lives here in the DSL — including the async load, written
-// as a two-callback promise .then (the DSL has no async/await/try/finally;
-// the finally's loading=false is duplicated into both callbacks, and the
-// catch branch is the second .then argument). The shared hand-written
+// with real async/await + try/catch/finally (compiler >= plan 013 probe 07
+// level; the old two-callback .then workaround is retired). The shared hand-written
 // extension utils/node_view_ext.ts keeps the tiptap NodeViewWrapper
 // re-export (dual-resolution shim — the gen project has no @tiptap/*
 // dependency) and strOr / orNull (standalone || computeds are mis-typed
@@ -38,7 +37,7 @@
 widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
-        fn: strOr, orNull from "src/front/utils/node_view_ext.ts"
+        fn: strOr, orNull, errorMessage from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -57,7 +56,7 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
         attr_block_id => orNull(.node.attrs.blockId)
         // blockId ? `${title}#${blockId}` : title — && / || idiom routed
         // through strOr (ternary emits undefined in computeds).
-        display_label => strOr(.attr_block_id && .attr_title + "#" + .attr_block_id, .attr_title)
+        display_label => .attr_block_id ? .attr_title + "#" + .attr_block_id : .attr_title
         // `Loading {{ displayLabel }}…` as a component-level computed.
         loading_text => strOr("Loading " + .display_label + "…", "Loading…")
         // block.content, guarded (block is null until loaded). `.block`
@@ -127,20 +126,20 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
                     if id.startsWith("^") {
                         clean_id = id.slice(1)
                     }
-                    let p = loader(clean_id)
-                    // try/catch/finally as a two-callback .then (finally's
-                    // loading=false is duplicated into both callbacks).
-                    p.then(result => {
+                    // Real async/await + try/catch/finally (plan 013;
+                    // the two-callback .then is retired).
+                    try {
+                        var result = loader(clean_id).await
                         .block = result
                         if !result {
                             .error_text = "Block not found"
                         }
-                        .loading = false
-                    }, err => {
-                        .error_text = err.message || String(err)
+                    } catch (e) {
+                        .error_text = errorMessage(e)
                         .block = null
+                    } finally {
                         .loading = false
-                    })
+                    }
                 }
             }
         }
@@ -167,18 +166,20 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
                     if id.startsWith("^") {
                         clean_id = id.slice(1)
                     }
-                    let p = loader(clean_id)
-                    p.then(result => {
+                    // Real async/await + try/catch/finally (plan 013;
+                    // the two-callback .then is retired).
+                    try {
+                        var result = loader(clean_id).await
                         .block = result
                         if !result {
                             .error_text = "Block not found"
                         }
-                        .loading = false
-                    }, err => {
-                        .error_text = err.message || String(err)
+                    } catch (e) {
+                        .error_text = errorMessage(e)
                         .block = null
+                    } finally {
                         .loading = false
-                    })
+                    }
                 }
             }
         }

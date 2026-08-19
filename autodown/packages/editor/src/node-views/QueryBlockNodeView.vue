@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { normalizeQueryResults, strOr } from '../auto/src/front/utils/node_view_ext'
+import { normalizeQueryResults, strOr, errorMessage } from '../auto/src/front/utils/node_view_ext'
 
 
 const results = ref<any[]>([])
@@ -32,7 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 }>()
 
-watch(query_text, () => {
+watch(query_text, async () => {
   let run = null;
   let opts = props.extension.options;
   if (opts != null) {run = opts.runQuery;
@@ -43,20 +43,18 @@ watch(query_text, () => {
   }
   if (run != null && query_text.value != '') {loading.value = true;
   error_text.value = '';
-  let p = run(query_text.value);
 
 
-
-  p.then((res: any) => { results.value = normalizeQueryResults(res);
-  loading.value = false;
-   }, (err: any) => { error_text.value = err.message || String(err);
+  try {let res = (await run(query_text.value));
+  results.value = normalizeQueryResults(res);
+  } catch (e) {error_text.value = errorMessage(e);
   results.value = [];
-  loading.value = false;
-   });
+  } finally {loading.value = false;
+  }
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
 
 
   let run = null;
@@ -67,13 +65,12 @@ onMounted(() => {
   }
   if (run != null && query_text.value != '') {loading.value = true;
   error_text.value = '';
-  let p = run(query_text.value);
-  p.then((res: any) => { results.value = normalizeQueryResults(res);
-  loading.value = false;
-   }, (err: any) => { error_text.value = err.message || String(err);
+  try {let res = (await run(query_text.value));
+  results.value = normalizeQueryResults(res);
+  } catch (e) {error_text.value = errorMessage(e);
   results.value = [];
-  loading.value = false;
-   });
+  } finally {loading.value = false;
+  }
   }
 })
 
@@ -81,7 +78,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :class="'autodown-query-block'" :data-query-block="''" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-query-block'" :data-query-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
       <div class="query-header">
         <span class="query-label">
           <span>Query</span>

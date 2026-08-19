@@ -86,16 +86,16 @@ watch(() => props.canEdit, () => {
   }
 })
 
-function SaveRequest(): void {
-  let noop_save: number = 0;
-
-  emit('SaveRequest')
-}
-
 function Cancel(): void {
   let noop_cancel: number = 0;
 
   emit('Cancel')
+}
+
+function SaveRequest(): void {
+  let noop_save: number = 0;
+
+  emit('SaveRequest')
 }
 
 

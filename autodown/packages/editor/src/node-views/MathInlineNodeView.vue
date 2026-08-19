@@ -2,14 +2,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { nextTick } from 'vue'
-import { renderKatexPreview, setInnerHTML, strOr } from '../auto/src/front/utils/node_view_ext'
+import { renderKatexPreview, strOr } from '../auto/src/front/utils/node_view_ext'
 
 
 const html = ref<string>('')
 const error_text = ref<string>('')
-
-const previewEl = ref<HTMLElement | null>(null)
 
 const source = computed<any>(() => strOr(props.node.attrs.source, ''))
 const source_label = computed<string>(() => '$' + source.value + '$')
@@ -34,8 +31,6 @@ watch(source, () => {
   let result = renderKatexPreview(source.value, false);
   html.value = result.html;
   error_text.value = result.error;
-  nextTick(() => { setInnerHTML(previewEl.value!, result.html);
-   });
 })
 
 onMounted(() => {
@@ -43,17 +38,15 @@ onMounted(() => {
   let result = renderKatexPreview(source.value, false);
   html.value = result.html;
   error_text.value = result.error;
-  nextTick(() => { setInnerHTML(previewEl.value!, result.html);
-   });
 })
 
 
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-math-inline'" :data-math-inline="''" :as="'span'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'span'" :class="'autodown-math-inline'" :data-math-inline="''" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
-        <span class="autodown-math-inline-preview" ref="previewEl" />
+        <span class="autodown-math-inline-preview" v-html="html" />
       </template>
       <template v-if="show_error">
         <span class="autodown-math-inline-error" :title="'Math preview error'">

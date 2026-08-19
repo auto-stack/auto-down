@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { strOr, orNull } from '../auto/src/front/utils/node_view_ext'
+import { strOr, orNull, errorMessage } from '../auto/src/front/utils/node_view_ext'
 
 
 const block = ref<any>(null)
@@ -12,7 +12,7 @@ const error_text = ref<string>('')
 const attr_raw = computed<any>(() => strOr(props.node.attrs.raw, '![[Untitled]]'))
 const attr_title = computed<any>(() => strOr(props.node.attrs.title, 'Untitled'))
 const attr_block_id = computed<any>(() => orNull(props.node.attrs.blockId))
-const display_label = computed<any>(() => strOr(attr_block_id.value && attr_title.value + '#' + attr_block_id.value, attr_title.value))
+const display_label = computed<any>(() => (attr_block_id.value ? attr_title.value + '#' + attr_block_id.value : attr_title.value))
 const loading_text = computed<any>(() => strOr('Loading ' + display_label.value + '…', 'Loading…'))
 const block_content = computed<any>(() => strOr(block.value && block.value.content, ''))
 const show_loading = computed<boolean>(() => loading.value)
@@ -33,7 +33,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 }>()
 
-watch(attr_block_id, () => {
+watch(attr_block_id, async () => {
   let id = attr_block_id.value;
 
   if (id != null) {let loader = null;
@@ -45,20 +45,19 @@ watch(attr_block_id, () => {
 
   let clean_id = id;
   if (id.startsWith('^')) {clean_id = id.substring(1);
-  }let p = loader(clean_id);
+  }
 
-
-  p.then((result: any) => { block.value = result;
+  try {let result = (await loader(clean_id));
+  block.value = result;
   if (!result) {error_text.value = 'Block not found';
-  }loading.value = false;
-   }, (err: any) => { error_text.value = err.message || String(err);
+  }} catch (e) {error_text.value = errorMessage(e);
   block.value = null;
-  loading.value = false;
-   });
+  } finally {loading.value = false;
+  }
   }}
 })
 
-onMounted(() => {
+onMounted(async () => {
 
 
   let id = attr_block_id.value;
@@ -70,14 +69,15 @@ onMounted(() => {
   error_text.value = '';
   let clean_id = id;
   if (id.startsWith('^')) {clean_id = id.substring(1);
-  }let p = loader(clean_id);
-  p.then((result: any) => { block.value = result;
+  }
+
+  try {let result = (await loader(clean_id));
+  block.value = result;
   if (!result) {error_text.value = 'Block not found';
-  }loading.value = false;
-   }, (err: any) => { error_text.value = err.message || String(err);
+  }} catch (e) {error_text.value = errorMessage(e);
   block.value = null;
-  loading.value = false;
-   });
+  } finally {loading.value = false;
+  }
   }}
 })
 
@@ -85,7 +85,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :data-title="attr_title" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :data-title="attr_title" :as="'div'" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
       <template v-if="show_loading">
         <div class="embed-state">
           <span>{{ loading_text }}</span>

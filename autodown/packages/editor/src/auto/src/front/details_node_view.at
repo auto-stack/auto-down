@@ -33,9 +33,8 @@
 //   model var) PLUS an `oninput:` handler folds into
 //   `v-model="summary_draft"` (the SummaryInput handler is emitted but
 //   never called — kept as the fold's write-back target).
-// - NodeViewContent's v-show becomes style_obj display ("" / "none"): the
-//   DSL has no v-show; Vue drops the empty-string style value, so the
-//   rendered inline style toggles exactly like v-show.
+// - NodeViewContent toggles with native v-show via the `show:` prop
+//   (plan 013 probe 04; the old style_obj display shim is retired).
 // - `selected_state` is a computed reading the prop so `watch` gets a
 //   reactive source (the original watched () => props.selected).
 // - The input's bare `@click.stop` becomes onclick.stop: .Noop($event) —
@@ -63,14 +62,10 @@ widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: A
         // undefined in computeds (see header).
         is_open => .node.attrs.open && true || false
         summary => strOr(.node.attrs.summary, "Details")
-        // && / || idiom routed through strOr: a bare `a && "x" || "y"`
-        // computed is ALSO mis-typed computed<boolean> by the DSL type
-        // inference, and vue-tsc then rejects the string-returning getter.
-        marker => strOr(.is_open && "▼", "▶")
-        // v-show replacement: "" is dropped by Vue's style binding
-        // (visible), "none" hides — same inline-style toggling as v-show.
-        // (Inverted: a && "" || "none" would never yield "".)
-        content_display => strOr(!.is_open && "none", "")
+        // Native ternary computed (plan 013 probe 01; the old && / || +
+        // strOr idiom is retired — that form was mis-typed
+        // computed<boolean>, ternaries emit computed<any>).
+        marker => .is_open ? "▼" : "▶"
         edit_icon => detailsEditIcon()
         // Reactive watch source for the selected prop (the original watched
         // () => props.selected).
@@ -131,7 +126,9 @@ widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: A
             // defaults to div anyway; kept explicit for parity.
             NodeViewContent (as: "div") {
                 class: "autodown-details-content",
-                style_obj: { display: .content_display }
+                // v-show is native now (`show:` prop → v-show, plan 013
+                // probe 04); the old style_obj display shim is gone.
+                show: .is_open
             }
         }
     }

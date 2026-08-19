@@ -16,9 +16,6 @@
 //    the original hand-written node views are captured here and returned
 //    as a plain { html/svg, error } result ("" error = success, matching
 //    the originals' falsy null).
-// 3. setInnerHTML — the DSL has no v-html, so the generated SFC fills its
-//    preview element imperatively through a template ref (null-guarded:
-//    the element is unmounted while the error branch renders).
 //
 // The call sequences (mermaid.initialize options, random id shape, katex
 // throwOnError/displayMode options, error message extraction) are verbatim
@@ -66,11 +63,3 @@ export async function renderMermaidPreview(source: string): Promise<RenderedMerm
   }
 }
 
-// setInnerHTML — v-html replacement for the preview elements (the DSL has
-// no v-html). Null-guarded: the preview element is unmounted while the
-// error branch renders, so the template ref is null in that state.
-export function setInnerHTML(el: any, html: string): void {
-  if (el != null) {
-    el.innerHTML = html
-  }
-}

@@ -3,14 +3,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewContent } from '../auto/src/front/utils/node_view_ext'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { nextTick } from 'vue'
-import { renderMermaidPreview, setInnerHTML, strOr } from '../auto/src/front/utils/node_view_ext'
+import { renderMermaidPreview, strOr } from '../auto/src/front/utils/node_view_ext'
 
 
 const svg = ref<string>('')
 const error_text = ref<string>('')
-
-const previewEl = ref<HTMLElement | null>(null)
 
 const source = computed<any>(() => strOr(props.node.textContent, ''))
 const code_tag = computed<string>(() => 'code')
@@ -41,8 +38,6 @@ watch(source, () => {
 
   p.then((res: any) => { svg.value = res.svg;
   error_text.value = res.error;
-  nextTick(() => { setInnerHTML(previewEl.value!, res.svg);
-   });
    });
   }
 })
@@ -56,8 +51,6 @@ onMounted(() => {
   if (source.value.trim() != '') {let p = renderMermaidPreview(source.value);
   p.then((res: any) => { svg.value = res.svg;
   error_text.value = res.error;
-  nextTick(() => { setInnerHTML(previewEl.value!, res.svg);
-   });
    });
   }
 })
@@ -66,16 +59,16 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-mermaid-block'" :data-mermaid-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-mermaid-block'" :as="'div'" :data-mermaid-block="''" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
-        <div class="autodown-mermaid-preview" ref="previewEl" />
+        <div class="autodown-mermaid-preview" v-html="svg" />
       </template>
       <template v-if="show_error">
         <div class="autodown-mermaid-error" :title="'Mermaid render error'">
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <NodeViewContent :class="'mermaid-source'" :as="'pre'" :key="'NodeViewContent-2'">
+      <NodeViewContent :as="'pre'" :class="'mermaid-source'" :key="'NodeViewContent-2'">
         <component :is="(code_tag) as any" />
       </NodeViewContent>
     </NodeViewWrapper>

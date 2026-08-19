@@ -35,6 +35,16 @@ const emit = defineEmits<{
   OutsideClick: [any]
 }>()
 
+function OutsideClick(e: any): void {
+  if (visible.value) {let editorEl = props.editor['view'].dom;
+  let root = editorEl.closest('.autodown-editor');
+  if (root != null) {let menu = root.querySelector('.autodown-table-menu');
+  if (menu != null) {if (!menu["contains"](e.target) && !editorEl["contains"](e.target)) {visible.value = false;
+  }}}}
+
+  emit('OutsideClick', e)
+}
+
 function Run(cmd: any): void {
   let chain = props.editor.chain().focus();
   if (cmd == 'addColumnBefore') {chain.addColumnBefore().run();
@@ -53,16 +63,6 @@ function Run(cmd: any): void {
   }
 
   emit('Run', cmd)
-}
-
-function OutsideClick(e: any): void {
-  if (visible.value) {let editorEl = props.editor['view'].dom;
-  let root = editorEl.closest('.autodown-editor');
-  if (root != null) {let menu = root.querySelector('.autodown-table-menu');
-  if (menu != null) {if (!menu["contains"](e.target) && !editorEl["contains"](e.target)) {visible.value = false;
-  }}}}
-
-  emit('OutsideClick', e)
 }
 
 onMounted(() => {

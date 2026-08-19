@@ -19,9 +19,12 @@
 // keyword), intermediate locals where the transpiler would drop parens,
 // and the `if <cond> { .Helper() }` wrapper for handler-to-handler calls
 // (a statement starting with `.` glues onto the previous line). Also:
-// `.contains(...)` on a DOM element is mis-mapped to `.includes(...)` (the
-// transpiler's array/string method mapping fires on any receiver), so DOM
-// contains checks use bracket notation `el["contains"](x)`.
+// `.contains(...)` on a DOM element still needs bracket notation
+// `el["contains"](x)` in HANDLER bodies: the receiver there is a
+// `let el = null` local, and the transpiler's string/array method map
+// (contains → includes) fires on it. (Computed/map-typed model-var
+// receivers pass through — plan 013 probe 10/10b — but that does not
+// cover these null-init locals.)
 
 widget TableMenu(editor: Array<str>, titles: Array<str> = null) {
     use {

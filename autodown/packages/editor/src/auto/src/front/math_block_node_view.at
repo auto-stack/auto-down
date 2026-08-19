@@ -4,8 +4,8 @@
 // lives here in the DSL; the shared hand-written extension
 // utils/node_view_ext.ts keeps the tiptap NodeViewWrapper/NodeViewContent
 // re-exports (dual-resolution shim) and re-exports
-// renderKatexPreview/setInnerHTML from src/composables/renderPreview.ts
-// (npm imports, try/catch and v-html are inexpressible in the DSL; see
+// renderKatexPreview from src/composables/renderPreview.ts
+// (npm imports and try/catch are inexpressible in the DSL; see
 // renderPreview.ts's header comment).
 //
 // Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
@@ -16,9 +16,8 @@
 // details_node_view.at / query_block_node_view.at / mermaid_node_view.at:
 // - The original's html/error refs become model vars with the "" sentinel
 //   (the originals used null; falsy either way).
-// - The original's v-html becomes an EMPTY preview div filled imperatively
-//   via setInnerHTML(.previewEl, ...) inside nextTick (the DSL has no
-//   v-html; the error branch unmounts the div — setInnerHTML null-guards).
+// - The original's v-html is native now (`html: .html`, plan 013 probe 05);
+//   the empty-div + setInnerHTML + nextTick shim is retired.
 // - The original's v-if="!error" / v-else chain becomes two exclusive
 //   named-boolean computeds. Note !error is TRUE on the empty source too,
 //   so the preview div renders (empty) initially — same as the original.
@@ -34,9 +33,8 @@
 
 widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
-        fn: nextTick from "vue"
         component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
-        fn: renderKatexPreview, setInnerHTML, strOr from "src/front/utils/node_view_ext.ts"
+        fn: renderKatexPreview, strOr from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -62,9 +60,7 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
             data-math-block: "",
 
             if .show_preview {
-                // v-html replacement: empty div, filled imperatively by
-                // setInnerHTML after each render (see header).
-                div { ref: "previewEl", class: "autodown-math-preview" }
+                div { class: "autodown-math-preview", html: .html }
             }
             if .show_error {
                 div {
@@ -88,9 +84,6 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
             let result = renderKatexPreview(.source, true)
             .html = result.html
             .error_text = result.error
-            nextTick(() => {
-                setInnerHTML(.previewEl, result.html)
-            })
         }
     }
 
@@ -100,9 +93,6 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
             let result = renderKatexPreview(.source, true)
             .html = result.html
             .error_text = result.error
-            nextTick(() => {
-                setInnerHTML(.previewEl, result.html)
-            })
         }
     }
 

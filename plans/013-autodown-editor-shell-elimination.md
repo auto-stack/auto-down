@@ -1,6 +1,7 @@
 # Plan: AutoDown 编辑器 Auto 化深化 —— 薄壳消除与缺口回迁
 
 > 前置：plan 010（编辑器 Auto 化复刻，Phase 0-4 全 ✅）、plan 011（jade Auto 化）、plan 012（编译器 backlog，已 CLOSED）。
+> 状态：Phase 0 ✅ / Phase 1 ✅（2026-08-19，批次 1-5 全绿）；Phase 2（薄壳消除）未开工。
 > 调研基础：`autodown/packages/editor/src/auto/README.md` workaround 全清单（2026-07 基线）逐条对照当前编译器（plan 402-410 + 批次 A-G + plan-408/055）。
 > 长期目标不变：消除编辑器包最后一层手写 Vue 壳，缺口能回迁尽回迁，ext 只留真 ext 项。
 
@@ -58,12 +59,13 @@ Plan 408 P4（handler/watch 体 ref 自动解包）后，jade 侧 20 处手写 `
 - **任务 0.3 probe 复核**：对上表"大概率已自愈"逐条写最小 probe（auto-lang worktree 或 tmp/），确认/推翻预判，更新 README 标注。
 - 验收：regen.sh 可重复跑；drift 清单 + probe 结论写入本计划。
 
-## Phase 1：回迁批次（1~2 天，editor 侧为主）
+## Phase 1：回迁批次（1~2 天，editor 侧为主）✅ 完成（2026-08-19）
 
-- **任务 1.1 手写 `.value` 清除**（同 jade gap 40 模式）：按 0.2 清单逐文件清除，注释同步。
-- **任务 1.2 原生能力回迁**：v-show（`show:`）、v-html（`html:`，RenderNV 三个组件去 setInnerHTML）、三元/`!= null`/expose 等 probe 确认项逐批回迁。
-- **任务 1.3 ext 简化**：`strOr`/`orNull`/`noResultsOr`（若 `||`/`??` 类型推断已修）、`getLanguageIconUrl` 重实现改 ext import、CodeBlockMenu `is_empty` 等命名 computed 规避评估。
-- 每批验收：regen 绿 + `packages/editor` vitest 22/22 + demo e2e 截图基线（8 通过 + scroll-sync:141 既有失败不劣化）+ jade regen/e2e 23/23 不回归。
+- **任务 1.1 手写 `.value` 清除**（同 jade gap 40 模式）：按 0.2 清单逐文件清除，注释同步。✅ 残留 `.value` 均为合法形态（`e.target.value` DOM 取值、computed ref 显式 `.filtered.value`、注释）。
+- **任务 1.2 原生能力回迁**：v-show（`show:`）、v-html（`html:`，RenderNV 三个组件去 setInnerHTML）、三元/`!= null`/expose 等 probe 确认项逐批回迁。✅ 批次 1（details `show: .is_open`；`.contains` 试迁后回退——null 初值局部变量仍被字符串方法映射误伤，保留 bracket 写法）、批次 2（三 RenderNV `html:` + setInnerHTML 全删）、批次 3（QueryBlock/BlockEmbed 真 `.await` + try/catch/finally，catch 参数 unknown 经 ext `errorMessage` 收窄）、批次 4（`??`/三元 computed：noResultsOr 删除、marker/display_label 改三元；`||` 语义的 strOr/orNull 全部保留——probe 14 证实独立 `||` computed 误推 `computed<boolean>`）。
+- **任务 1.3 ext 简化**：`strOr`/`orNull`/`noResultsOr`（若 `||`/`??` 类型推断已修）、`getLanguageIconUrl` 重实现改 ext import、CodeBlockMenu `is_empty` 等命名 computed 规避评估。✅ 批次 5：noResultsOr 已删；getLanguageIconUrl 改 `code_language_icon_ext.ts` 再导出真身 + 恢复原生 computed（README Known #1/#2 同步关闭）；strOr/orNull 保留（probe 14）；CodeBlockMenu defineExpose 保真恢复不做（无消费方，README note 10 故意丢）。
+- 每批验收：regen 绿 + `packages/editor` vitest 22/22 + demo e2e 截图基线（8 通过 + scroll-sync:141 既有失败不劣化）+ jade regen/e2e 23/23 不回归。✅ 全部门禁绿（demo e2e 须 `--workers=1` 串行，并发下 scroll-sync 假挂为既有口径）。
+- 记录在案（auto-lang 侧后续修复候选）：括号丢弃（probe 09，`(a+b)*c`→`a+b*c` 静默错语义）；三元条件 `==/!= ""` 坍缩成 `!`/`!!`（probe 14，对 null 有语义差）。
 
 ## Phase 2：薄壳消除（1~2 天，可能含 auto-lang 任务）
 

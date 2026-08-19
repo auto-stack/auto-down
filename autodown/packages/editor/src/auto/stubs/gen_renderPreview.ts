@@ -28,4 +28,3 @@ export function renderMermaidPreview(_source: string): Promise<RenderedMermaid> 
   return Promise.resolve({ svg: '', error: '' })
 }
 
-export function setInnerHTML(_el: any, _html: string): void {}

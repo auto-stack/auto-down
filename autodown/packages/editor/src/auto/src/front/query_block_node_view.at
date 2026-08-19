@@ -2,9 +2,8 @@
 // port of the original hand-written src/node-views/QueryBlockNodeView.vue.
 // The generated SFC replaces it (see src/auto/README.md). All of the
 // original logic lives here in the DSL — including the async load, written
-// as a two-callback promise .then (the DSL has no async/await/try/finally;
-// the finally's loading=false is duplicated into both callbacks, and the
-// catch branch is the second .then argument). The shared hand-written
+// with real async/await + try/catch/finally (compiler >= plan 013 probe 07
+// level; the old two-callback .then workaround is retired). The shared hand-written
 // extension utils/node_view_ext.ts keeps the tiptap NodeViewWrapper
 // re-export (dual-resolution shim — the gen project has no @tiptap/*
 // dependency), normalizeQueryResults (precomputes result.source =
@@ -36,7 +35,7 @@
 widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
-        fn: normalizeQueryResults, strOr from "src/front/utils/node_view_ext.ts"
+        fn: normalizeQueryResults, strOr, errorMessage from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -125,18 +124,17 @@ widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes
             if run != null && .query_text != "" {
                 .loading = true
                 .error_text = ""
-                let p = run(.query_text)
-                // try/catch/finally as a two-callback .then: resolve branch
-                // = try, reject branch = catch, loading=false (finally) is
-                // duplicated into both.
-                p.then(res => {
+                // Real async/await + try/catch/finally (plan 013 probe 07 +
+                // widget-level try probe; the two-callback .then is retired).
+                try {
+                    let res = run(.query_text).await
                     .results = normalizeQueryResults(res)
-                    .loading = false
-                }, err => {
-                    .error_text = err.message || String(err)
+                } catch (e) {
+                    .error_text = errorMessage(e)
                     .results = []
+                } finally {
                     .loading = false
-                })
+                }
             }
         }
     }
@@ -156,15 +154,15 @@ widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes
             if run != null && .query_text != "" {
                 .loading = true
                 .error_text = ""
-                let p = run(.query_text)
-                p.then(res => {
+                try {
+                    let res = run(.query_text).await
                     .results = normalizeQueryResults(res)
-                    .loading = false
-                }, err => {
-                    .error_text = err.message || String(err)
+                } catch (e) {
+                    .error_text = errorMessage(e)
                     .results = []
+                } finally {
                     .loading = false
-                })
+                }
             }
         }
     }

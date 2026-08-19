@@ -32,20 +32,20 @@
 //    expressible in the view.
 // 5. strOr / orNull — `a || b` fallbacks for standalone computeds. A bare
 //    `||` (or `&&`/`||`) computed is mis-typed `computed<boolean>` by the
-//    DSL type inference (the same gap that keeps noResultsOr in
-//    slash_menu_ext), which fails vue-tsc wherever the value is
-//    assigned/compared/concatenated as a string.
+//    DSL type inference (probe 14), which fails vue-tsc wherever the value
+//    is assigned/compared/concatenated as a string.
 // 6. focusAndSelect — the edit-input focus+select pair. DSL template refs
 //    are typed `ref<HTMLElement | null>` and the language has no casts, so
 //    `.select()` (HTMLInputElement-only) fails vue-tsc on the generated
 //    SFC.
-// 7. renderKatexPreview / renderMermaidPreview / setInnerHTML — re-exports
-//    from src/composables/renderPreview.ts via the same dual-resolution
-//    shim as the tiptap components above (the gen project has no
-//    katex/mermaid dependency and resolves stubs/gen_renderPreview.ts).
-//    The npm library calls + try/catch error paths of the three render-type
-//    node views genuinely cannot live in the DSL (no npm imports, no
-//    exceptions, no v-html — see renderPreview.ts's header comment).
+// 7. renderKatexPreview / renderMermaidPreview — re-exports from
+//    src/composables/renderPreview.ts via the same dual-resolution shim as
+//    the tiptap components above (the gen project has no katex/mermaid
+//    dependency and resolves stubs/gen_renderPreview.ts). The npm library
+//    calls + try/catch error paths of the three render-type node views
+//    genuinely cannot live in the DSL (no npm imports, no exceptions — see
+//    renderPreview.ts's header comment). v-html IS expressible now (the
+//    `html:` prop, plan 013), so the old setInnerHTML re-export is gone.
 //
 // No @tiptap imports on purpose: node/extension are typed structurally.
 
@@ -56,7 +56,6 @@ export { NodeViewWrapper, NodeViewContent } from '../../../../composables/tiptap
 export {
   renderKatexPreview,
   renderMermaidPreview,
-  setInnerHTML,
 } from '../../../../composables/renderPreview'
 
 export interface WikiLinkParsed {
@@ -134,12 +133,20 @@ export function normalizeQueryResults(res: any): any[] {
 }
 
 // strOr — string fallback for standalone computeds. A bare `a || b`
-// computed is mis-typed `computed<boolean>` by the DSL type inference (the
-// same gap that keeps noResultsOr in slash_menu_ext), which then fails
-// vue-tsc wherever the value is assigned/compared as a string. Typed
-// `string` here so the computed gets the right type.
+// computed is mis-typed `computed<boolean>` by the DSL type inference
+// (probe 14), which then fails vue-tsc wherever the value is
+// assigned/compared as a string. Typed `string` here so the computed gets
+// the right type.
 export function strOr(value: any, fallback: string): string {
   return value || fallback
+}
+
+// errorMessage — the originals' `err.message || String(err)` catch-branch
+// extraction. TS types the catch param `unknown` under strict mode (no
+// annotation/cast syntax exists for it), and the DSL has no casts, so the
+// narrowing lives here.
+export function errorMessage(e: unknown): string {
+  return (e as any)?.message || String(e)
 }
 
 // orNull — `v || null` for standalone computeds (same mis-typed-boolean

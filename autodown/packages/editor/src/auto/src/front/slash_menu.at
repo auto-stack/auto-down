@@ -4,8 +4,8 @@
 // the DSL; the hand-written extension utils/slash_menu_ext.ts only keeps the
 // computeMenuPosition re-export (a `use` path cannot leave src/, so the real
 // composables/useMenuBounds.ts is re-exported there — single source of
-// truth) and the tiny noResultsOr helper (`??` is not supported in computed
-// expressions, and a `||` computed would be mis-typed `computed<boolean>`).
+// truth). The empty-text fallback is a plain `??` computed in the DSL
+// (probe 14: `??` in computed expressions now emits correctly typed code).
 //
 // Prop types are deliberately wide: `Array<str>` is a generic instance,
 // which the Vue backend maps to TS `any` (bare `any` is rejected by the
@@ -36,7 +36,7 @@
 widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No results") {
     use {
         fn: nextTick from "vue"
-        fn: computeMenuPosition, noResultsOr from "src/front/utils/slash_menu_ext.ts"
+        fn: computeMenuPosition from "src/front/utils/slash_menu_ext.ts"
     }
 
     msg Msg { OnOpen, OnUpdate, OnClose, OnKeydown, SelectItem, HoverItem }
@@ -59,7 +59,7 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
         // The template codegen mangles `.filtered.length` in a view `if`
         // (renders `filtered.lengthgth`), so emptiness is a named computed.
         is_empty => .filtered.length == 0
-        empty_text => noResultsOr(.noResultsText)
+        empty_text => .noResultsText ?? "No results"
     }
 
     view {

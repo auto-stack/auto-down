@@ -14,7 +14,7 @@ const inputEl = ref<HTMLElement | null>(null)
 const attr_raw = computed<any>(() => strOr(props.node.attrs.raw, '[[Untitled]]'))
 const attr_title = computed<any>(() => strOr(props.node.attrs.title, 'Untitled'))
 const attr_block_id = computed<any>(() => orNull(props.node.attrs.blockId))
-const display_label = computed<any>(() => strOr(attr_block_id.value && attr_title.value + '#' + attr_block_id.value, attr_title.value))
+const display_label = computed<any>(() => (attr_block_id.value ? attr_title.value + '#' + attr_block_id.value : attr_title.value))
 const open_title = computed<any>(() => strOr('Open ' + display_label.value, 'Open'))
 const pencil_icon = computed<any>(() => wikiLinkPencilIcon())
 const wrapper_class = computed<any>(() => strOr(editing.value && 'autodown-wikilink-node is-editing', 'autodown-wikilink-node'))
@@ -44,6 +44,12 @@ watch(attr_raw, () => {
   }
 })
 
+function InputInput(e: any): void {
+  input_value.value = e.target.value;
+
+  emit('InputInput', e)
+}
+
 function StartEdit(): void {
   input_value.value = attr_raw.value;
   editing.value = true;
@@ -51,6 +57,11 @@ function StartEdit(): void {
    });
 
   emit('StartEdit')
+}
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
 }
 
 function Commit(): void {
@@ -108,17 +119,6 @@ function OnKeydown(e: any): void {
   emit('OnKeydown', e)
 }
 
-function InputInput(e: any): void {
-  input_value.value = e.target.value;
-
-  emit('InputInput', e)
-}
-
-function Noop(e: any): void {
-
-  emit('Noop', e)
-}
-
 
 </script>
 
@@ -135,7 +135,7 @@ function Noop(e: any): void {
         </span>
       </template>
       <template v-if="editing">
-        <input class="autodown-wikilink-input" :type="'text'" v-model="input_value" ref="inputEl" @click.stop="Noop($event)" @keydown="OnKeydown($event)" @blur="Commit" @input="InputInput($event)" />
+        <input class="autodown-wikilink-input" ref="inputEl" :type="'text'" v-model="input_value" @input="InputInput($event)" @click.stop="Noop($event)" @blur="Commit" @keydown="OnKeydown($event)" />
       </template>
     </NodeViewWrapper>
 

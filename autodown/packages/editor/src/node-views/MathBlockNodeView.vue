@@ -3,14 +3,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewContent } from '../auto/src/front/utils/node_view_ext'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { nextTick } from 'vue'
-import { renderKatexPreview, setInnerHTML, strOr } from '../auto/src/front/utils/node_view_ext'
+import { renderKatexPreview, strOr } from '../auto/src/front/utils/node_view_ext'
 
 
 const html = ref<string>('')
 const error_text = ref<string>('')
-
-const previewEl = ref<HTMLElement | null>(null)
 
 const source = computed<any>(() => strOr(props.node.textContent, ''))
 const code_tag = computed<string>(() => 'code')
@@ -35,8 +32,6 @@ watch(source, () => {
   let result = renderKatexPreview(source.value, true);
   html.value = result.html;
   error_text.value = result.error;
-  nextTick(() => { setInnerHTML(previewEl.value!, result.html);
-   });
 })
 
 onMounted(() => {
@@ -44,24 +39,22 @@ onMounted(() => {
   let result = renderKatexPreview(source.value, true);
   html.value = result.html;
   error_text.value = result.error;
-  nextTick(() => { setInnerHTML(previewEl.value!, result.html);
-   });
 })
 
 
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-math-block'" :data-math-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-math-block'" :data-math-block="''" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
-        <div class="autodown-math-preview" ref="previewEl" />
+        <div class="autodown-math-preview" v-html="html" />
       </template>
       <template v-if="show_error">
         <div class="autodown-math-error" :title="'Math preview error'">
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <NodeViewContent :as="'pre'" :class="'math-block-source'" :key="'NodeViewContent-2'">
+      <NodeViewContent :class="'math-block-source'" :as="'pre'" :key="'NodeViewContent-2'">
         <component :is="(code_tag) as any" />
       </NodeViewContent>
     </NodeViewWrapper>

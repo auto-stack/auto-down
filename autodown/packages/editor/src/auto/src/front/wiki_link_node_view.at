@@ -60,7 +60,7 @@ widget WikiLinkNodeView(node: Array<str>, editor: Array<str>, updateAttributes: 
         attr_block_id => orNull(.node.attrs.blockId)
         // blockId ? `${title}#${blockId}` : title — && / || idiom routed
         // through strOr (ternary emits undefined in computeds).
-        display_label => strOr(.attr_block_id && .attr_title + "#" + .attr_block_id, .attr_title)
+        display_label => .attr_block_id ? .attr_title + "#" + .attr_block_id : .attr_title
         // The label tooltip: `Open ${displayLabel}`.
         open_title => strOr("Open " + .display_label, "Open")
         pencil_icon => wikiLinkPencilIcon()

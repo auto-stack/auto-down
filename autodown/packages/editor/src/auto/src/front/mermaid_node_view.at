@@ -4,7 +4,7 @@
 // lives here in the DSL; the shared hand-written extension
 // utils/node_view_ext.ts keeps the tiptap NodeViewWrapper/NodeViewContent
 // re-exports (dual-resolution shim — the gen project has no @tiptap/*
-// dependency) and re-exports renderMermaidPreview/setInnerHTML from
+// dependency) and re-exports renderMermaidPreview from
 // src/composables/renderPreview.ts (same shim for katex/mermaid — npm
 // imports, try/catch and v-html are inexpressible in the DSL; see
 // renderPreview.ts's header comment).
@@ -18,10 +18,9 @@
 // - The original's svg/error refs become model vars with the "" sentinel
 //   (the originals used null; falsy either way, so the v-if/v-else-if
 //   chain behaves identically).
-// - The original's v-html becomes an EMPTY preview div filled imperatively
-//   via setInnerHTML(.previewEl, ...) inside nextTick (the DSL has no
-//   v-html; the div must re-mount before the ref is set, and the error
-//   branch unmounts it — setInnerHTML null-guards).
+// - The original's v-html is native now: `html: .svg` on the preview div
+//   (plan 013 probe 05). The old empty-div + imperative setInnerHTML +
+//   nextTick shim is retired; the reactive binding needs no remount wait.
 // - The mermaid.render call is async: the DSL has no async/await, so the
 //   promise resolves via a single .then callback (renderMermaidPreview
 //   never rejects — its try/catch returns the error as data).
@@ -38,9 +37,8 @@
 
 widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
-        fn: nextTick from "vue"
         component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
-        fn: renderMermaidPreview, setInnerHTML, strOr from "src/front/utils/node_view_ext.ts"
+        fn: renderMermaidPreview, strOr from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -70,9 +68,10 @@ widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: A
             data-mermaid-block: "",
 
             if .show_preview {
-                // v-html replacement: empty div, filled imperatively by
-                // setInnerHTML after each render (see header).
-                div { ref: "previewEl", class: "autodown-mermaid-preview" }
+                // Native v-html via the `html:` prop (plan 013 probe 05);
+                // the old empty-div + imperative setInnerHTML shim and its
+                // nextTick wait are retired.
+                div { class: "autodown-mermaid-preview", html: .svg }
             }
             if .show_error {
                 div {
@@ -107,9 +106,6 @@ widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: A
                 p.then(res => {
                     .svg = res.svg
                     .error_text = res.error
-                    nextTick(() => {
-                        setInnerHTML(.previewEl, res.svg)
-                    })
                 })
             }
         }
@@ -128,9 +124,6 @@ widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: A
                 p.then(res => {
                     .svg = res.svg
                     .error_text = res.error
-                    nextTick(() => {
-                        setInnerHTML(.previewEl, res.svg)
-                    })
                 })
             }
         }

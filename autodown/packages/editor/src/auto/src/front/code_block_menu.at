@@ -19,11 +19,12 @@
 //
 // Idioms forced by real (probe-verified) codegen gaps — see slash_menu.at
 // and table_menu.at for the full list: `.editor["view"]` bracket access
-// (`view` is a DSL keyword), `el["contains"](x)` bracket access (dot-form
-// `.contains` is mis-mapped to `.includes` by the transpiler's array/string
-// method mapping), `.filtered` in handlers (computed refs are not
-// auto-unwrapped outside the template), emptiness via the named `is_empty`
-// computed (`.filtered.length` inside a view `if` is mangled), explicit
+// (`view` is a DSL keyword), `el["contains"](x)` bracket access in handler
+// bodies (null-init locals still hit the contains→includes string/array
+// method map; only map/model-var receivers pass through), `.filtered` in
+// handlers (computed refs are not auto-unwrapped outside the template),
+// emptiness via the named `is_empty` computed (`.filtered.length` inside a
+// view `if` is mangled), explicit
 // `x = x + 1` (no `+=`), and `if x != null && x.closest != null` guards
 // instead of optional chaining.
 

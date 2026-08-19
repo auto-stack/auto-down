@@ -1,7 +1,7 @@
 <!-- SlashMenu component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { computeMenuPosition, noResultsOr } from '../auto/src/front/utils/slash_menu_ext'
+import { computeMenuPosition } from '../auto/src/front/utils/slash_menu_ext'
 import { nextTick } from 'vue'
 
 
@@ -17,7 +17,7 @@ const menuEl = ref<HTMLElement | null>(null)
 
 const filtered = computed<any>(() => props.items.filter((item) => [item.title, item.description].concat(item.searchTerms).join(' ').toLowerCase().includes(query.value.toLowerCase())))
 const is_empty = computed<boolean>(() => filtered.value.length === 0)
-const empty_text = computed<any>(() => noResultsOr(props.noResultsText))
+const empty_text = computed<any>(() => (props.noResultsText ?? 'No results'))
 
 const props = withDefaults(defineProps<{
   editor: any
@@ -39,15 +39,6 @@ const emit = defineEmits<{
 watch(filtered, () => {
   selected_index.value = 0;
 })
-
-function OnClose(): void {
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-
-  emit('OnClose')
-}
 
 function OnUpdate(e: any): void {
   query.value = e.detail.query;
@@ -71,24 +62,6 @@ function OnUpdate(e: any): void {
   }} });
 
   emit('OnUpdate', e)
-}
-
-function HoverItem(i: any): void {
-  selected_index.value = i;
-
-  emit('HoverItem', i)
-}
-
-function SelectItem(i: any): void {
-  let item = filtered.value[i];
-  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-  }
-
-  emit('SelectItem', i)
 }
 
 function OnKeydown(e: any): void {
@@ -170,6 +143,33 @@ function OnOpen(e: any): void {
   emit('OnOpen', e)
 }
 
+function OnClose(): void {
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+
+  emit('OnClose')
+}
+
+function SelectItem(i: any): void {
+  let item = filtered.value[i];
+  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+  }
+
+  emit('SelectItem', i)
+}
+
+function HoverItem(i: any): void {
+  selected_index.value = i;
+
+  emit('HoverItem', i)
+}
+
 function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
   OnUpdate(e)
 }
@@ -183,17 +183,17 @@ function __auto_gl_autodown_slash_open_OnOpen(e: any) {
 }
 
 onMounted(() => {
+  document.addEventListener('autodown:slash-close', OnClose)
   document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
   document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
-  document.addEventListener('autodown:slash-close', OnClose)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('autodown:slash-close', OnClose)
   document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
   document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
-  document.removeEventListener('autodown:slash-close', OnClose)
 })
 
 
@@ -201,9 +201,9 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-slash-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
+      <div class="autodown-slash-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
         <div class="autodown-slash-menu-items">
-          <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" @click="SelectItem(i)" @mouseenter="HoverItem(i)" v-for="(item, i) in filtered">
+          <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" @mouseenter="HoverItem(i)" @click="SelectItem(i)" v-for="(item, i) in filtered">
             <component :is="(item.icon) as any" class="autodown-slash-menu-icon" :size="16" />
             <div class="autodown-slash-menu-info">
               <div class="autodown-slash-menu-title">

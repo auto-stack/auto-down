@@ -30,11 +30,21 @@ workaround listed below against the current master compiler — see
 `tmp/dsl-probes/plan013/REPORT.md`. 12 of 13 probed capabilities are now
 native (ternary/`??`/`!= null` computed, `show:`, `html:`, `expose {}`,
 async handlers, ext `use { fn }`, withDefaults runtime defaults, DOM
-`.contains`, empty handlers, PascalCase `:key`). The only confirmed
-remaining compiler bug is **dropped parentheses** in mixed-precedence
-expressions (`(a+b)*c` → `a + b * c`, silently wrong) — split such
-expressions into multiple `let` steps instead. Individual workaround notes
-below are the 2026-07 baseline and are being retired batch by batch.
+`.contains`, empty handlers, PascalCase `:key`). Phase 1 then migrated the
+widgets off the retired workarounds: `show:` replaced the `style_obj`
+display toggle, `html:` replaced the imperative `setInnerHTML`,
+`??`/ternary computeds replaced `noResultsOr` and the truthiness-test
+`strOr(cond && x, y)` forms, real `async`/`try`/`catch`/`finally` handlers
+replaced the two-callback `.then`, and `getLanguageIconUrl` is imported
+from the real `codeBlockLanguage.ts` through an extension re-export.
+Still routed through extensions: `strOr`/`orNull` for standalone `||`
+computeds (mis-typed `computed<boolean>`, probe 14) and the tooltip/title
+spread merges (object spread in a computed is unverified). The only
+confirmed remaining compiler bug is **dropped parentheses** in
+mixed-precedence expressions (`(a+b)*c` → `a + b * c`, silently wrong) —
+split such expressions into multiple `let` steps instead. Individual
+workaround notes below are the 2026-07 baseline, kept for reference; the
+migrated ones are marked RETIRED.
 
 ## Layout
 
@@ -74,9 +84,10 @@ below are the 2026-07 baseline and are being retired batch by batch.
   AutoDownEditor section below.
 - `src/composables/renderPreview.ts` (editor tree) — the real KaTeX /
   Mermaid preview rendering for the three render-type node views
-  (`renderKatexPreview`, `renderMermaidPreview`, `setInnerHTML`): the npm
-  library calls, the try/catch error paths and the imperative v-html
-  replacement genuinely cannot live in the DSL. Re-exported through
+  (`renderKatexPreview`, `renderMermaidPreview`): the npm library calls
+  and the try/catch error paths genuinely cannot live in the DSL (the
+  imperative v-html filler `setInnerHTML` was retired in plan 013 Phase 1
+  — the DSL's native `html:` binding replaced it). Re-exported through
   `utils/node_view_ext.ts` via a `../../../../composables/...` path that
   resolves in both trees (same trick as `tiptapNodeView`).
 - `stubs/gen_renderPreview.ts` — gen-project stub for that module (the
@@ -90,10 +101,11 @@ below are the 2026-07 baseline and are being retired batch by batch.
   WikiLink Pencil / Details inline-SVG edit icons (rendered via `dyn`),
   `normalizeQueryResults` (per-item template fallbacks/interpolations are
   not expressible in the view), `strOr`/`orNull` (standalone `||` computeds
-  are mis-typed `computed<boolean>` — the noResultsOr gap) and
+  are mis-typed `computed<boolean>`, probe 14), `errorMessage` (TS types
+  catch params `unknown`; the DSL has no casts) and
   `focusAndSelect` (DSL template refs are typed `HTMLElement`; `.select()`
   needs an input element and there is no cast), and the
-  `renderKatexPreview`/`renderMermaidPreview`/`setInnerHTML` re-exports
+  `renderKatexPreview`/`renderMermaidPreview` re-exports
   from `src/composables/renderPreview.ts` for the three render-type node
   views (same dual-resolution shim). See the extension's header
   comment and the NodeView section below.
@@ -106,15 +118,15 @@ below are the 2026-07 baseline and are being retired batch by batch.
   regen script. Never ships: the copied node-view SFCs resolve the real
   module in the editor tree.
 - `src/front/utils/slash_menu_ext.ts` — hand-written TS extension imported
-  by `slash_menu.at` via `use { fn: ... }`. Only two things remain (both
-  genuinely inexpressible in the DSL — see the SlashMenu section below):
-  the `computeMenuPosition` re-export from the real
+  by `slash_menu.at` via `use { fn: ... }`. Only one thing remains (a
+  genuine DSL limitation — see the SlashMenu section below): the
+  `computeMenuPosition` re-export from the real
   `src/composables/useMenuBounds.ts` (single source of truth; a `use` path
-  cannot leave `src/`), and the tiny `noResultsOr` helper (`??` is not
-  supported in computed expressions). Everything else (filtering, two-phase
-  positioning, scroll-into-view, `markHandled`, command dispatch) lives in
-  the widget DSL itself. It is shared verbatim between the Auto gen project
-  and the editor package build.
+  cannot leave `src/`). Everything else (filtering, two-phase positioning,
+  scroll-into-view, `markHandled`, command dispatch, the
+  `noResultsText ?? 'No results'` fallback) lives in the widget DSL
+  itself. It is shared verbatim between the Auto gen project and the
+  editor package build.
 - `src/front/utils/bubble_menu_ext.ts` — hand-written TS extension for
   `bubble_menu.at`: the tiptap `BubbleMenu` wrapper re-export (as
   `TiptapBubbleMenu`), the static lucide icon set (`bubbleIcon`),
@@ -125,7 +137,9 @@ below are the 2026-07 baseline and are being retired batch by batch.
   live in the widget DSL.
 - `src/front/utils/table_menu_ext.ts` — hand-written TS extension for
   `table_menu.at`: only the `computeMenuPosition` re-export and
-  `tableMenuTitles` remain (the same two gaps as the slash extension).
+  `tableMenuTitles` remain (the same re-export gap as the slash
+  extension, plus the titles spread-merge — object spread in a DSL
+  computed is unverified).
   The visibility/position tracking with its rAF-throttled
   `editor.on('selectionUpdate', ...)` subscription, the document
   outside-click listener and the table command dispatch all live in the
@@ -141,6 +155,12 @@ below are the 2026-07 baseline and are being retired batch by batch.
   keyboard navigation, two-phase positioning, the wheel scroll lock and
   the editor-dom capture listeners are `.Init` closures in the DSL (see
   the CodeBlockMenu section below).
+- `src/front/utils/code_language_icon_ext.ts` — re-export of
+  `getLanguageIconUrl` from the real `src/utils/codeBlockLanguage.ts`
+  (same dual-resolution shim as `computeMenuPosition`; the real module is
+  mirrored into `gen/front/vue/src/utils/` by the regen script). Lets
+  `code_language_icon.at` bind the icon URL as a plain computed instead of
+  reimplementing the mapping.
 - `src/composables/tiptapBubbleMenu.ts` (editor tree) — the real
   re-export of `BubbleMenu` from `@tiptap/vue-3/menus`. The bubble
   extension imports it via a `../../../../composables/...` path that
@@ -191,7 +211,8 @@ bash gen/regen.sh
 
 The script (kept in the gitignored `gen/` directory, like jade's) performs
 the whole pipeline with gating: mirrors the `stubs/` and real modules into
-the gen project (the `useMenuBounds` path trick, the behavior-free tiptap
+the gen project (the `useMenuBounds` and `codeBlockLanguage` path tricks,
+the behavior-free tiptap
 BubbleMenu/NodeViewWrapper/EditorContent stubs, the KaTeX/Mermaid
 renderPreview stub, `gen_slashItem.ts` and the four menu SFC stubs),
 runs `auto build`, aborts without touching the editor tree when the build
@@ -215,27 +236,26 @@ under `gen/.../src/ext/`) in place, then reports success. Always check
 the build output for that warning (or the component's mtime) after
 editing a widget.
 
-## Known Auto language gaps (as of 2026-07, compiler not patched)
+## Known Auto language gaps (as of 2026-08-19, plan 013 Phase 1)
 
-1. **No import of hand-written TS from widget code.** `use` only covers
-   Auto stores/types and `back.api`; plain-function sibling `.at` modules
-   are not transpiled for the `ui` scene, and there is no raw-TS escape
-   hatch. Therefore `getLanguageIconUrl` from
-   `src/utils/codeBlockLanguage.ts` is **reimplemented** in
-   `code_language_icon.at` instead of imported. Keep the two in sync.
-2. **`computed` expressions are too limited for this logic** (bare
-   identifiers and plain function calls like `btoa(x)` fail to parse;
-   `.prop` refs mis-generate as `self.prop`; string concatenation on
-   parenthesized receivers mis-codegen), so the original's reactive
-   `computed(() => ...)` is approximated by computing the URL once in
-   `.Init` (-> `onMounted`). A `language` prop change after mount will
-   not update the icon (the prop is static per code block in practice).
-   (An earlier revision of this note also claimed the DSL had "no
-   `watch`" — wrong; `watch { .x -> { ... } }` exists and is used by
-   `slash_menu.at`. The `computed` limitations above, however, were
-   re-confirmed by probes: see the SlashMenu section.)
-3. Browser globals used by generated code: `btoa` (passes through the
-   a2ts transpiler verbatim; typed by TS DOM lib).
+1. **No direct import of hand-written TS from widget code.** A `use` path
+   cannot leave the project `src/` (auto-man rejects `..`), so widgets
+   reach hand-written TS through an extension re-export (the
+   dual-resolution shim). RESOLVED for `getLanguageIconUrl`:
+   `code_language_icon.at` now imports the real
+   `src/utils/codeBlockLanguage.ts` via `utils/code_language_icon_ext.ts`
+   — the in-DSL reimplementation (and its keep-in-sync hazard) is gone.
+2. **`computed` expression limitations** — mostly retired by probes:
+   bare function calls and `.prop` refs work in computeds, so
+   `url => getLanguageIconUrl(.language)` is a plain reactive computed
+   again (the earlier `.Init`-only approximation and its static-prop
+   caveat are retired). Still standing: parens are dropped in
+   mixed-precedence expressions, and standalone `||`/`&&` computeds are
+   mis-typed `computed<boolean>` (probe 14) — those still route through
+   `strOr`/`orNull`.
+3. Browser globals used by generated code pass through the a2ts
+   transpiler verbatim (typed by the TS DOM lib) — e.g. `btoa` inside
+   `codeBlockLanguage.ts`, reached via the extension.
 
 ## SlashMenu notes (phase3 worktree capabilities used)
 
@@ -262,10 +282,11 @@ bodies. The logic has since flowed back into the widget. What remains in
    the DSL (`nextTick(() => { ... })` in `.OnOpen`/`.OnUpdate`), operating
    on three model vars (`pos_top`/`pos_left`/`pos_visibility`) bound via
    `style_obj` — the earlier `reactive({})` composable is gone.
-2. **`noResultsOr` stays in the extension.** `??` works in handler bodies
-   but NOT in computed expressions (the computed codegen emits `undefined`
-   for `Expr::NullCoalesce`), and a `||` substitute would be mis-typed
-   `computed<boolean>` by the type inference.
+2. **~~`noResultsOr` stays in the extension~~ RETIRED (plan 013 Phase
+   1).** `??` now emits correctly in computed expressions (probe 14), so
+   the widget writes `empty_text => .noResultsText ?? "No results"`
+   directly and the helper was deleted from the extension. (Standalone
+   `||` computeds are still mis-typed — NodeView note 2.)
 3. **Menu element lookup by querySelector** (unchanged): a template ref
    captured at slash-open time is null (the menu has not mounted yet), so
    the phase-2 measurement locates the menu via
@@ -494,15 +515,19 @@ bool`) so nothing falls through as attrs onto the root element, matching
 the originals' `defineProps`. New probe-verified gaps, first hit by these
 widgets:
 
-1. **Ternary emits `undefined` in computeds.** `cond ? a : b` desugars to
-   an If expression the computed codegen does not handle (same class of
-   bug as `??`). The `&&` / `||` idiom is used instead — but see 2.
+1. **~~Ternary emits `undefined` in computeds~~ RETIRED (plan 013 Phase
+   1).** `cond ? a : b` now emits a correctly typed ternary in computeds
+   (probe 14); `marker` and the two `display_label`s use it directly.
+   Standalone `&&` / `||` computeds are still mis-typed — see 2.
 2. **Standalone `&&` / `||` computeds are mis-typed `computed<boolean>`**
-   (extends the noResultsOr note): vue-tsc rejects a string-returning
-   getter under the explicit `<boolean>` generic, and boolean-typed values
-   break downstream string assignments/concatenations. All such fallbacks
-   route through the extension's typed `strOr` / `orNull`
+   (probe 14): vue-tsc rejects a string-returning getter under the
+   explicit `<boolean>` generic, and boolean-typed values break downstream
+   string assignments/concatenations. All such fallbacks route through
+   the extension's typed `strOr` / `orNull`
    (`strOr(cond && "x", "y")`, `strOr(props.node.attrs.summary, "Details")`).
+   Ternaries whose condition is a plain truthiness test are fine (note 1),
+   but `??`-vs-`||` semantics differ on empty string — check the original
+   before migrating.
 3. **An object literal as a computed body emits invalid JS**
    (`() => {raw: ...}` is a block, not an object — and parens are dropped,
    so the object-literal-returning closure form is unavailable too).
@@ -543,12 +568,11 @@ widgets:
     Caveat: the style-block lexer handles `/* */` comments and CSS strings
     but NOT `//` comments — an apostrophe (e.g. `original's`) starts a CSS
     string and fails the build with "unterminated string in style block".
-11. **NodeViewContent's `v-show` becomes `style_obj` display.** The DSL has
-    no v-show; `style_obj: { display: .content_display }` with
-    `content_display => strOr(!.is_open.value && "none", "")` toggles the
-    same inline style (Vue drops the empty-string value). Unmounting the
-    content with `if` is NOT equivalent — it would break ProseMirror's
-    editable content DOM.
+11. **~~NodeViewContent's `v-show` becomes `style_obj` display~~ RETIRED
+    (plan 013 Phase 1).** The DSL has native `show:` (v-show), and
+    DetailsNodeView binds `show: .is_open` on the NodeViewContent
+    directly. Unmounting the content with `if` remains NOT equivalent —
+    it would break ProseMirror's editable content DOM.
 12. **NodeViewWrapper/NodeViewContent via the dual-resolution shim**
     (BubbleMenu note 2 pattern): `src/composables/tiptapNodeView.ts`
     re-exports the real components in the editor tree;
@@ -557,11 +581,13 @@ widgets:
     `== null`** (the DSL has no typeof). Differs only when
     `openWikiLink`/`loadBlock` is configured to a non-function truthy
     value, which never happens.
-14. **Promise-based async without async/await.** The DSL has no
-    async/await/try/finally, so the originals' async `load()` becomes a
-    two-callback `.then(res => { ... }, err => { ... })` (resolve = try,
-    reject = catch, the finally's `loading = false` duplicated into both).
-    `String(err)` passes through verbatim (like `btoa`).
+14. **~~Promise-based async without async/await~~ RETIRED (plan 013 Phase
+    1).** Async handlers with `try`/`catch`/`finally` work
+    (probe-verified), so QueryBlock/BlockEmbed's `load()` is a real
+    `.await` + try/catch/finally again. One helper remains: TS types the
+    catch param `unknown` and the DSL has no casts, so the
+    `err.message || String(err)` narrowing goes through the extension's
+    `errorMessage(e)`.
 15. **The modifier-only `@click.stop` targets a `Noop` handler** (the DSL
     requires a handler); it emits a no-op component event with no
     listener — same behaviour as the original's modifier-only binding.
@@ -586,21 +612,20 @@ these widgets:
    originals' `null`; falsy either way). The call sequences
    (mermaid.initialize options, random id shape, katex
    throwOnError/displayMode, error message extraction) are verbatim.
-2. **v-html becomes imperative innerHTML.** The DSL has no v-html, so the
-   preview element renders EMPTY (`div { ref: "previewEl", ... }`) and is
-   filled by `setInnerHTML(.previewEl, ...)` inside `nextTick(() => ...)`
-   after the model vars flip (the element must re-mount first — the error
-   branch unmounts it, and setInnerHTML null-guards). Rendered DOM
-   identical to the originals' v-html once mounted.
+2. **~~v-html becomes imperative innerHTML~~ RETIRED (plan 013 Phase
+   1).** The DSL has native `html:` (v-html): the preview elements bind
+   `html: .svg` / `html: .html` directly, and `setInnerHTML` was deleted
+   from `renderPreview.ts`, the extension and the gen stub — the
+   empty-element + `nextTick` remount dance is gone with it.
 3. **Mermaid's async render needs only ONE .then callback** —
    renderMermaidPreview never rejects (its try/catch returns the error as
    data), so a single resolve callback carries both the original's try
-   and catch branches (contrast QueryBlock's two-callback .then for a
-   rejecting promise).
+   and catch branches (contrast QueryBlock's rejecting-promise load,
+   which uses a real `try`/`catch` since Phase 1).
 4. **`:deep(...)` passes the style-block lexer verbatim** (first use:
    `.autodown-mermaid-preview :deep(svg)` / `:deep(.katex-display)`) —
-   required because the imperatively filled innerHTML carries no scoped
-   data attribute.
+   required because the v-html-injected content carries no scoped data
+   attribute.
 5. **Bare string concatenation works in computeds** —
    `source_label => "$" + .source.value + "$"` (the MathInline error
    fallback's `${{ source }}$` interpolation) emits
@@ -616,9 +641,7 @@ these widgets:
 
 (behaviorally identical DOM, on top of the NodeView list above):
 
-- The preview element is empty in the template and filled via
-  `setInnerHTML` after mount/update instead of `v-html` (note 2); the
-  `v-if` branches are wrapped in transparent `<template>`s; the error
+- The `v-if` branches are wrapped in transparent `<template>`s; the error
   text renders inside an extra inline `<span>`; `data-mermaid-block` /
   `data-math-block` / `data-math-inline` bind the empty string (identical
   to the originals' valueless attributes); the `<code>` child of

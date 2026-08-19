@@ -19,15 +19,5 @@
 //    (src/auto/src/front/utils → src/composables) and in the gen project
 //    (src/ext/src/front/utils → src/composables, mirrored by the regen
 //    script).
-// 2. noResultsOr. `??` works in handler bodies but NOT in computed
-//    expressions (the computed codegen emits `undefined` for NullCoalesce),
-//    and a `||` substitute would be mis-typed `computed<boolean>`; the
-//    `??` semantics (empty string kept, only null/undefined defaulted) are
-//    preserved here.
 
 export { computeMenuPosition } from '../../../../composables/useMenuBounds'
-
-// noResultsText ?? 'No results'.
-export function noResultsOr(text: string | null | undefined): string {
-  return text ?? 'No results'
-}

@@ -1,36 +1,22 @@
+<!-- AutoDownEditor component - Auto-generated from Auto language -->
 <script setup lang="ts">
-// AutoDownEditor.vue — thin hand-written shell around the Auto-generated
-// AutoDownEditorInner (src/auto/src/front/auto_down_editor.at →
-// src/core/AutoDownEditorInner.vue; the original fully hand-written
-// version is kept as src/core/AutoDownEditor.vue.bak). The shell owns the
-// parts of the public contract the Auto widget DSL cannot express:
-//
-// 1. Emit names — DSL component events are PascalCase-only, so the inner
-//    reports through callback props (updateCb/blurCb/focusCb/linkClickCb/
-//    openWikiLinkCb/editorReadyCb — bridge-originated) and the two
-//    view-originated component events (@SaveRequest/@Cancel); the shell
-//    re-emits the contractual lowercase/hyphenated names (update, save,
-//    cancel, blur, focus, link-click, open-wiki-link).
-// 2. defineExpose — the DSL has no expose support; demo/jade-garden
-//    consume editorRef.value.getBlockMap() and .$el.
-// 3. Slots — the DSL has no slot support, so the save-label/cancel-label
-//    slots are passed to the inner as functional components (rendered via
-//    `dyn`), each falling back to the label prop text exactly like the
-//    original's `<slot name="...">{{ label }}</slot>`.
-// 4. Prop defaults — generated prop defaults are not applied at runtime,
-//    so the original's withDefaults lives here and arrives at the inner
-//    resolved via v-bind="$props".
-//
-// The editor instance is created INSIDE the inner component (tiptap's
-// useEditor must register its lifecycle hooks in the owner's setup) and
-// reported back through editorReadyCb; the shell stores it and passes it
-// straight back down as the `editor` prop that gates the menus.
-import { computed, shallowRef, useSlots } from 'vue'
-import type { Editor } from '@tiptap/core'
-import { appendTableIAL } from '../extensions/tableAttributes'
-import { getBlockMap } from '../extensions/BlockId'
-import AutoDownEditorInner from './AutoDownEditorInner.vue'
-import type { SlashItem } from '../menus/slashItem'
+import { ref, computed, onMounted, watch } from 'vue'
+import { BubbleMenu } from '../auto/src/front/utils/auto_down_editor_ext'
+import { CodeBlockMenu } from '../auto/src/front/utils/auto_down_editor_ext'
+import { EditorContent } from '../auto/src/front/utils/auto_down_editor_ext'
+import { SlashMenu } from '../auto/src/front/utils/auto_down_editor_ext'
+import { TableMenu } from '../auto/src/front/utils/auto_down_editor_ext'
+import { normalizeAnchors, editorCheckIcon, editorXIcon, appendTableIAL, blockMapOf } from '../auto/src/front/utils/auto_down_editor_ext'
+import { useAutoDownEditorBridge } from '../auto/src/front/utils/auto_down_editor_ext'
+
+const autoDownEditorBridge = useAutoDownEditorBridge()
+
+
+const getBlockMap = ref<any>(null)
+
+const check_icon = computed<any>(() => editorCheckIcon())
+const x_icon = computed<any>(() => editorXIcon())
+const focused = computed<any>(() => (autoDownEditorBridge.editor != null ? autoDownEditorBridge.editor.isFocused : false))
 
 const props = withDefaults(defineProps<{
   content: string
@@ -43,13 +29,14 @@ const props = withDefaults(defineProps<{
   imageUrlPrompt?: string
   linkUrlPrompt?: string
   pageTitle?: string
-  onOpenWikiLink?: (title: string, blockId?: string | null) => void
-  loadBlock?: (id: string) => Promise<any | null>
-  extraSlashItems?: SlashItem[]
-  onAssetUpload?: (file: File) => Promise<string>
-  taskWorkflow?: 'todo' | 'now'
-  runQuery?: (q: string) => Promise<any>
+  onOpenWikiLink?: any
+  loadBlock?: any
+  extraSlashItems?: any[]
+  onAssetUpload?: any
+  taskWorkflow?: string
+  runQuery?: any
 }>(), {
+  placeholder: '',
   canEdit: true,
   autofocus: false,
   showActions: true,
@@ -57,67 +44,101 @@ const props = withDefaults(defineProps<{
   cancelLabel: 'Cancel',
   imageUrlPrompt: 'Enter image URL',
   linkUrlPrompt: 'Enter URL',
+  pageTitle: '',
+  onOpenWikiLink: null,
+  loadBlock: null,
+  extraSlashItems: (null as any),
+  onAssetUpload: null,
+  taskWorkflow: '',
+  runQuery: null,
 })
 
 const emit = defineEmits<{
-  update: [markdown: string]
-  save: [markdown: string]
+  update: [string]
+  save: [string]
   cancel: []
   blur: []
   focus: []
-  'link-click': [id: string]
-  'open-wiki-link': [title: string, blockId?: string | null]
+  'link-click': [string]
+  'open-wiki-link': [string]
+  handleSave: []
 }>()
 
-const slots = useSlots()
-
-const editor = shallowRef<Editor>()
-
-// Same semantics as the original's computed over the useEditor ref (it
-// re-evaluates only when the editor instance identity changes — tiptap's
-// isFocused is not Vue-reactive).
-const focused = computed(() => editor.value?.isFocused ?? false)
-
-// Slot bridge: a functional component per label, rendered by the inner
-// via `dyn`. Returns the slot's VNodes when the caller provided the slot,
-// the (defaulted) label text otherwise — identical rendered DOM to the
-// original's slot-with-fallback.
-const saveLabelRender = () => slots['save-label']?.() ?? props.saveLabel
-const cancelLabelRender = () => slots['cancel-label']?.() ?? props.cancelLabel
-
-function onEditorReady(instance: Editor) {
-  editor.value = instance
-}
-
-function handleSave() {
-  if (editor.value) {
-    const md = editor.value.getMarkdown()
-    const mdWithIAL = appendTableIAL(md, editor.value)
-    emit('save', mdWithIAL)
-  }
-}
-
-defineExpose({
-  editor,
-  handleSave,
-  getBlockMap: () => getBlockMap(editor.value),
+watch(() => props.content, () => {
+  if (autoDownEditorBridge.editor != null) {let current = autoDownEditorBridge.editor.getMarkdown();
+  if (normalizeAnchors(current) != normalizeAnchors(props.content)) {autoDownEditorBridge.editor.commands.setContent(props.content, { emitUpdate: false, contentType: 'markdown' });
+  }}
 })
+
+watch(() => props.canEdit, () => {
+  if (autoDownEditorBridge.editor != null) {autoDownEditorBridge.editor.setEditable(props.canEdit);
+  }
+})
+
+function cancel(): void {
+
+  emit('cancel')
+}
+
+function save(md: any): void {
+
+  emit('save', md)
+}
+
+function handleSave(): void {
+  if (autoDownEditorBridge.editor != null) {let md = autoDownEditorBridge.editor.getMarkdown();
+  let md_ial = appendTableIAL(md, autoDownEditorBridge.editor);
+
+
+
+
+
+  save(md_ial);
+  }
+
+  emit('handleSave')
+}
+
+onMounted(() => {
+
+
+  getBlockMap.value = () => blockMapOf(autoDownEditorBridge.editor);
+})
+
+defineExpose({ handleSave, getBlockMap })
+
 </script>
 
 <template>
-  <AutoDownEditorInner
-    v-bind="$props"
-    :editor="editor"
-    :focused="focused"
-    :save-label-render="saveLabelRender"
-    :cancel-label-render="cancelLabelRender"
-    :update-cb="(md: string) => emit('update', md)"
-    :blur-cb="() => emit('blur')"
-    :focus-cb="() => emit('focus')"
-    :link-click-cb="(id: string) => emit('link-click', id)"
-    :open-wiki-link-cb="(title: string, blockId?: string | null) => emit('open-wiki-link', title, blockId)"
-    :editor-ready-cb="onEditorReady"
-    @SaveRequest="handleSave"
-    @Cancel="emit('cancel')"
-  />
+    <div class="autodown-editor" :class="{ 'is-focused': focused }">
+      <EditorContent :editor="autoDownEditorBridge.editor" :class="'autodown-editor-content-wrapper'" :key="'EditorContent-1'" />
+      <template v-if="autoDownEditorBridge.editor">
+        <BubbleMenu :editor="autoDownEditorBridge.editor" :linkPrompt="linkUrlPrompt" :key="'BubbleMenu-2'" />
+        <SlashMenu :items="autoDownEditorBridge.items" :editor="autoDownEditorBridge.editor" :key="'SlashMenu-3'" />
+        <TableMenu :editor="autoDownEditorBridge.editor" :key="'TableMenu-4'" />
+        <CodeBlockMenu :editor="autoDownEditorBridge.editor" :key="'CodeBlockMenu-5'" />
+      </template>
+      <template v-if="showActions">
+        <div class="autodown-editor-actions">
+          <button class="autodown-save-btn" @click="handleSave">
+            <component :is="(check_icon) as any" :size="13" />
+            <slot name="save-label">
+              <span>{{ saveLabel }}</span>
+            </slot>
+          </button>
+          <button class="autodown-cancel-btn" @click="cancel">
+            <component :is="(x_icon) as any" :size="13" />
+            <slot name="cancel-label">
+              <span>{{ cancelLabel }}</span>
+            </slot>
+          </button>
+        </div>
+      </template>
+    </div>
+
 </template>
+
+<style>
+/* Component styles */
+
+</style>

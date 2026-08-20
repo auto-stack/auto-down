@@ -1,74 +1,79 @@
-// auto_down_editor.at — AutoDownEditorInner widget: Auto widget DSL port of
-// the original hand-written src/core/AutoDownEditor.vue assembly component
-// (the original is kept as src/core/AutoDownEditor.vue.bak). The generated
-// SFC is copied to src/core/AutoDownEditorInner.vue (see src/auto/README.md)
-// and wrapped by a THIN hand-written shell (src/core/AutoDownEditor.vue)
-// that keeps the package's public contract: the lowercase/hyphenated emit
-// names (DSL component events are PascalCase-only), defineExpose (the DSL
-// has no expose support; demo/jade-garden consume getBlockMap/$el) and the
-// save-label/cancel-label slots (the DSL has no slot support — the shell
-// passes functional components rendered via `dyn` instead).
+// auto_down_editor.at — AutoDownEditor widget: Auto widget DSL port of the
+// original hand-written src/core/AutoDownEditor.vue assembly component (the
+// original is kept as src/core/AutoDownEditor.vue.bak). Since plan 013
+// Phase 2 the generated SFC IS the public component — it deploys straight
+// to src/core/AutoDownEditor.vue; the hand-written shell is gone:
+//
+// - Emit names: quoted msg variants ("update"/"save"/"cancel"/"blur"/
+//   "focus"/"link-click"/"open-wiki-link") are contractual — always
+//   declared in defineEmits and always trailing-emitted (compiler: quoted
+//   variants carry quoted: true). Bridge-originated events (update/blur/
+//   focus/link-click/open-wiki-link) are emitted by the extension bridge
+//   via getCurrentInstance().emit; view-originated ones (save/cancel) by
+//   the handlers below. `save` uses the computed-payload relay: the
+//   exposed .handleSave handler computes the markdown, then self-calls
+//   ."save"(md) whose trailing emit carries it.
+// - defineExpose: the `expose {}` block exposes { handleSave, getBlockMap };
+//   the bridge merges the editor REF into inst.exposed on mount (the demo
+//   e2e harness reads the raw exposed.editor.value; jade's $el falls
+//   through the expose proxy). The editor cannot be a DSL-exposed model
+//   var: production builds compile <script setup> to an inline render
+//   function, so setupState is empty and extension code cannot reach model
+//   vars — the editor must live in the bridge's reactive return value.
+// - Slots: save-label/cancel-label are native named slot outlets with the
+//   label prop text as fallback children (the "functional component + dyn"
+//   bridge is retired).
+// - Prop defaults: withDefaults runtime defaults are generated from the
+//   widget signature — the values below ARE the public contract.
 //
 // What lives here in the DSL: the whole assembly structure (EditorContent +
-// the four menus gated on the editor instance + the Save/Cancel action
+// the four menus gated on the bridge's editor + the Save/Cancel action
 // buttons), the conditional rendering and class map, the content/canEdit
-// prop watches that re-sync the tiptap editor, and the view-originated
-// component events (SaveRequest/Cancel). What stays in the hand-written
-// extension utils/auto_down_editor_ext.ts:
+// prop watches that re-sync the tiptap editor, and the save/cancel flows.
+// What stays in the hand-written extension utils/auto_down_editor_ext.ts:
 //
 // 1. useAutoDownEditorBridge — the editor-creating composable. The DSL's
 //    `composable:` imports are called with ZERO arguments at setup top
-//    level, so the options object (props + emit-bridging callbacks) cannot
-//    be assembled in the DSL; the bridge reads the component instance's
-//    props via getCurrentInstance() and forwards tiptap's lifecycle
-//    callbacks to callback PROPS passed by the shell (bridge-originated
-//    component events would be undeclared — the codegen only declares
-//    events for view-referenced handlers — and would fall through as
-//    native DOM listeners on the root element). Returns the slash items
-//    for the view's SlashMenu binding. useAutoDownEditor.ts itself is
-//    untouched.
-// 2. getSlashItems — the 30-item static slash command manifest. The items
-//    carry lucide icon components as data (same gap as bubbleIcon) and
-//    several commands are block-body closures with window.prompt /
-//    navigator.clipboard / DOM walking (getCurrentBlockId uses
-//    Node.TEXT_NODE + instanceof HTMLElement + closest — none expressible
-//    in the DSL).
-// 3. normalizeAnchors — the DSL has no regex literals (same gap as the
-//    WikiLink [[title#blockId]] parser in node_view_ext).
+//    level, so the options object cannot be assembled in the DSL; the
+//    bridge reads the component instance's props via getCurrentInstance(),
+//    forwards tiptap's lifecycle callbacks through inst.emit(...) (the
+//    quoted variants above keep them declared) and returns a reactive
+//    `{ items, editor }` bag — reactive() keeps the editor ref linked, so
+//    `.autoDownEditorBridge.editor` is live everywhere below.
+//    useAutoDownEditor.ts itself is untouched.
+// 2. getSlashItems — the 30-item static slash command manifest (lucide
+//    icons as data + block-body command closures with window.prompt /
+//    navigator.clipboard / DOM walking).
+// 3. normalizeAnchors — the DSL has no regex literals.
 // 4. EditorContent / the four menu components — re-exported through the
 //    dual-resolution shim (a `use` path cannot leave src/; the gen project
 //    has no @tiptap dependency and gets stub mirrors). The katex CSS
-//    side-effect import lives in src/composables/tiptapEditorContent.ts
-//    (editor tree only — the gen project has no katex dependency).
+//    side-effect import lives in src/composables/tiptapEditorContent.ts.
 // 5. editorCheckIcon / editorXIcon — lucide re-exports for the `dyn`
-//    render trick (same as codeBlockCheckIcon).
+//    render trick. blockMapOf / appendTableIAL — re-exports of the real
+//    src/extensions/BlockId.ts / tableAttributes.ts helpers (same
+//    dual-resolution shim; gen stubs under stubs/).
 //
 // Prop types are deliberately wide: `Array<str>` maps to TS `any`,
 // `[]str` to `any[]` (bare `any` is rejected by the DSL name checker).
 // All original props are declared so nothing falls through as attrs onto
-// the root element. Runtime defaults are applied by the SHELL's
-// withDefaults and arrive resolved via v-bind="$props" (generated prop
-// defaults are not applied at runtime), so the DSL-side defaults below
-// only affect optionality.
-//
-// The editor INSTANCE arrives as the `editor` prop: the bridge composable
-// creates the editor inside this component (useEditor registers its
-// onMounted/onBeforeUnmount at setup, as required) and reports the
-// instance through the shell's editorReadyCb; the shell passes it back
-// down. That keeps every view binding a plain prop/model reference — the
-// composable local is only referenced once (`.autoDownEditorBridge` for
-// the SlashMenu items, emitted verbatim by the codegen's dot-strip rule).
+// the root element.
 
-widget AutoDownEditorInner(content: str, placeholder: str = "", canEdit: bool = false, autofocus: bool = false, showActions: bool = false, saveLabel: str = "", cancelLabel: str = "", imageUrlPrompt: str = "", linkUrlPrompt: str = "", pageTitle: str = "", onOpenWikiLink: Array<str> = null, loadBlock: Array<str> = null, extraSlashItems: []str = null, onAssetUpload: Array<str> = null, taskWorkflow: str = "", runQuery: Array<str> = null, editor: Array<str> = null, focused: bool = false, saveLabelRender: Array<str> = null, cancelLabelRender: Array<str> = null, updateCb: Array<str> = null, blurCb: Array<str> = null, focusCb: Array<str> = null, linkClickCb: Array<str> = null, openWikiLinkCb: Array<str> = null, editorReadyCb: Array<str> = null) {
+widget AutoDownEditor(content: str, placeholder: str = "", canEdit: bool = true, autofocus: bool = false, showActions: bool = true, saveLabel: str = "Save", cancelLabel: str = "Cancel", imageUrlPrompt: str = "Enter image URL", linkUrlPrompt: str = "Enter URL", pageTitle: str = "", onOpenWikiLink: Array<str> = null, loadBlock: Array<str> = null, extraSlashItems: []str = null, onAssetUpload: Array<str> = null, taskWorkflow: str = "", runQuery: Array<str> = null) {
     use {
-        fn: normalizeAnchors, editorCheckIcon, editorXIcon from "src/front/utils/auto_down_editor_ext.ts"
+        fn: normalizeAnchors, editorCheckIcon, editorXIcon, appendTableIAL, blockMapOf from "src/front/utils/auto_down_editor_ext.ts"
         component: EditorContent, BubbleMenu, SlashMenu, TableMenu, CodeBlockMenu from "src/front/utils/auto_down_editor_ext.ts"
         composable: useAutoDownEditorBridge from "src/front/utils/auto_down_editor_ext.ts"
     }
 
-    msg Msg { SaveRequest, Cancel }
+    msg Msg { "update"(str), "save"(str), "cancel", "blur", "focus", "link-click"(str), "open-wiki-link"(str, Array<str>), handleSave }
 
     model {
+        // The exposed imperative getBlockMap() — a closure over the
+        // bridge's live editor, assigned in .Init (exposed model refs are
+        // unwrapped by Vue's expose proxy, so consumers call
+        // editorRef.getBlockMap()).
+        var getBlockMap Array<str> = null
     }
 
     computed {
@@ -78,6 +83,10 @@ widget AutoDownEditorInner(content: str, placeholder: str = "", canEdit: bool = 
         // <component :is>).
         check_icon => editorCheckIcon()
         x_icon => editorXIcon()
+        // Same semantics as the original's computed over the editor ref
+        // (re-evaluates only when the instance identity changes — tiptap's
+        // isFocused is not Vue-reactive).
+        focused => .autoDownEditorBridge.editor != null ? .autoDownEditorBridge.editor.isFocused : false
     }
 
     view {
@@ -86,26 +95,26 @@ widget AutoDownEditorInner(content: str, placeholder: str = "", canEdit: bool = 
             style: { "is-focused": .focused },
 
             EditorContent {
-                editor: .editor,
+                editor: .autoDownEditorBridge.editor,
                 class: "autodown-editor-content-wrapper"
             }
             // The original gates each menu on `v-if="editor"` with its own
             // directive; one shared `if` renders the identical DOM (the
             // template wrapper is transparent).
-            if .editor {
+            if .autoDownEditorBridge.editor {
                 BubbleMenu {
-                    editor: .editor,
+                    editor: .autoDownEditorBridge.editor,
                     linkPrompt: .linkUrlPrompt
                 }
                 SlashMenu {
-                    editor: .editor,
-                    items: .autoDownEditorBridge
+                    editor: .autoDownEditorBridge.editor,
+                    items: .autoDownEditorBridge.items
                 }
                 TableMenu {
-                    editor: .editor
+                    editor: .autoDownEditorBridge.editor
                 }
                 CodeBlockMenu {
-                    editor: .editor
+                    editor: .autoDownEditorBridge.editor
                 }
             }
             if .showActions {
@@ -113,19 +122,18 @@ widget AutoDownEditorInner(content: str, placeholder: str = "", canEdit: bool = 
                     class: "autodown-editor-actions",
                     button {
                         class: "autodown-save-btn",
-                        onclick: .SaveRequest,
+                        onclick: .handleSave,
                         dyn (.check_icon) { size: 13 }
-                        // The save-label slot fallback text: the shell
-                        // passes a functional component that renders the
-                        // slot content when given, the saveLabel text
-                        // otherwise.
-                        dyn (.saveLabelRender)
+                        // Native named slot with the label prop as fallback
+                        // — the original's <slot name="save-label">{{
+                        // saveLabel }}</slot>.
+                        slot(name: "save-label") { text .saveLabel }
                     }
                     button {
                         class: "autodown-cancel-btn",
-                        onclick: .Cancel,
+                        onclick: ."cancel",
                         dyn (.x_icon) { size: 13 }
-                        dyn (.cancelLabelRender)
+                        slot(name: "cancel-label") { text .cancelLabel }
                     }
                 }
             }
@@ -140,32 +148,56 @@ widget AutoDownEditorInner(content: str, placeholder: str = "", canEdit: bool = 
         // is an inline object-literal argument (the scrollIntoView
         // precedent).
         .content -> {
-            if .editor != null {
-                let current = .editor.getMarkdown()
+            if .autoDownEditorBridge.editor != null {
+                let current = .autoDownEditorBridge.editor.getMarkdown()
                 if normalizeAnchors(current) != normalizeAnchors(.content) {
-                    .editor.commands.setContent(.content, { emitUpdate: false, contentType: "markdown" })
+                    .autoDownEditorBridge.editor.commands.setContent(.content, { emitUpdate: false, contentType: "markdown" })
                 }
             }
         }
         // Plan 360: react to canEdit changes so a single editor instance
         // can toggle between read-only and editable without remounting.
-        // The shell's withDefaults guarantees a defined boolean.
         .canEdit -> {
-            if .editor != null {
-                .editor.setEditable(.canEdit)
+            if .autoDownEditorBridge.editor != null {
+                .autoDownEditorBridge.editor.setEditable(.canEdit)
             }
         }
     }
 
     on {
-        // Pure-emit handlers: the actual work lives in the shell (it owns
-        // the editor instance and the public emit names). The bodies only
-        // exist because an empty handler block does not parse.
-        .SaveRequest -> {
-            let noop_save = 0
+        .Init -> {
+            // Exposed imperative API: getBlockMap closes over the bridge
+            // bag, so it always reads the current editor instance.
+            .getBlockMap = () => blockMapOf(.autoDownEditorBridge.editor)
         }
-        .Cancel -> {
-            let noop_cancel = 0
+        // The original's handleSave, shared by the Save button and the
+        // exposed imperative API (one code path, like the original). The
+        // trailing emit('handleSave') is harmless noise (no listener).
+        .handleSave -> {
+            if .autoDownEditorBridge.editor != null {
+                let md = .autoDownEditorBridge.editor.getMarkdown()
+                let md_ial = appendTableIAL(md, .autoDownEditorBridge.editor)
+
+                // Computed-payload relay: the quoted handler's trailing
+                // emit carries md_ial as the `save` event payload (the
+                // blank line above keeps the leading-dot statement from
+                // gluing onto the `let` — SlashMenu note 8).
+                ."save"(md_ial)
+            }
         }
+        // Pure-emit handler: quoted variant → declared + trailing
+        // emit('cancel'). The body stays empty (no-op handlers parse).
+        ."cancel" -> { }
+        // Relay target for handleSave's computed payload: self-called
+        // (never template-bound), quoted → declared `save: [string]` and
+        // trailing-emits emit('save', md).
+        ."save"(md) -> { }
+    }
+
+    // The public imperative contract (demo/jade consume these through a
+    // template ref; $el falls through Vue's expose proxy). The `editor`
+    // ref is merged into inst.exposed by the bridge (see the header).
+    expose {
+        .handleSave, .getBlockMap
     }
 }

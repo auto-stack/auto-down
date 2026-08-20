@@ -44,26 +44,6 @@ watch(attr_raw, () => {
   }
 })
 
-function InputInput(e: any): void {
-  input_value.value = e.target.value;
-
-  emit('InputInput', e)
-}
-
-function StartEdit(): void {
-  input_value.value = attr_raw.value;
-  editing.value = true;
-  nextTick(() => { focusAndSelect(inputEl.value!);
-   });
-
-  emit('StartEdit')
-}
-
-function Noop(e: any): void {
-
-  emit('Noop', e)
-}
-
 function Commit(): void {
   let update_attributes = props.updateAttributes;
   let value = input_value.value.trim();
@@ -77,6 +57,21 @@ function Commit(): void {
   }
 
   emit('Commit')
+}
+
+function InputInput(e: any): void {
+  input_value.value = e.target.value;
+
+  emit('InputInput', e)
+}
+
+function StartEdit(): void {
+  input_value.value = attr_raw.value;
+  editing.value = true;
+  nextTick(() => { focusAndSelect(inputEl.value!);
+   });
+
+  emit('StartEdit')
 }
 
 function OpenLink(): void {
@@ -96,6 +91,11 @@ function OpenLink(): void {
   }
 
   emit('OpenLink')
+}
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
 }
 
 function OnKeydown(e: any): void {
@@ -123,7 +123,7 @@ function OnKeydown(e: any): void {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'span'" :class="wrapper_class" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="wrapper_class" :as="'span'" :key="'NodeViewWrapper-1'">
       <template v-if="! editing">
         <span class="autodown-wikilink-label" :title="open_title" @click.stop="OpenLink">
           <span>{{ display_label }}</span>
@@ -135,7 +135,7 @@ function OnKeydown(e: any): void {
         </span>
       </template>
       <template v-if="editing">
-        <input class="autodown-wikilink-input" ref="inputEl" :type="'text'" v-model="input_value" @input="InputInput($event)" @click.stop="Noop($event)" @blur="Commit" @keydown="OnKeydown($event)" />
+        <input class="autodown-wikilink-input" ref="inputEl" :type="'text'" v-model="input_value" @blur="Commit" @input="InputInput($event)" @keydown="OnKeydown($event)" @click.stop="Noop($event)" />
       </template>
     </NodeViewWrapper>
 

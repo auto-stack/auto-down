@@ -45,7 +45,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :class="'autodown-math-block'" :data-math-block="''" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-math-block'" :data-math-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <div class="autodown-math-preview" v-html="html" />
       </template>
@@ -54,7 +54,7 @@ onMounted(() => {
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <NodeViewContent :class="'math-block-source'" :as="'pre'" :key="'NodeViewContent-2'">
+      <NodeViewContent :as="'pre'" :class="'math-block-source'" :key="'NodeViewContent-2'">
         <component :is="(code_tag) as any" />
       </NodeViewContent>
     </NodeViewWrapper>

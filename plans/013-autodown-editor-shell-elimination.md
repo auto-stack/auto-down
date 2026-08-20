@@ -67,13 +67,13 @@ Plan 408 P4（handler/watch 体 ref 自动解包）后，jade 侧 20 处手写 `
 - 每批验收：regen 绿 + `packages/editor` vitest 22/22 + demo e2e 截图基线（8 通过 + scroll-sync:141 既有失败不劣化）+ jade regen/e2e 23/23 不回归。✅ 全部门禁绿（demo e2e 须 `--workers=1` 串行，并发下 scroll-sync 假挂为既有口径）。
 - 记录在案（auto-lang 侧后续修复候选）：括号丢弃（probe 09，`(a+b)*c`→`a+b*c` 静默错语义）；三元条件 `==/!= ""` 坍缩成 `!`/`!!`（probe 14，对 null 有语义差）。
 
-## Phase 2：薄壳消除（1~2 天，可能含 auto-lang 任务）
+## Phase 2：薄壳消除（1~2 天，可能含 auto-lang 任务）✅ 完成（2026-08-19）
 
-- **任务 2.1 prop 运行时默认值**：probe `canEdit: bool = true` 类声明的运行时行为；若默认值不进 props 配置，在 auto-lang worktree 修（withDefaults 或默认参数发射），配能力锁测试。
-- **任务 2.2 emit 契约迁移**：inner widget 改 quoted msg variant（`"update"`/`"save"`/`"link-click"`/`"open-wiki-link"` 等）替代 callback props 桥；ext bridge 改 `getCurrentInstance().emit`（已声明 emit，无穿透污染）；注意与 view 源 `@SaveRequest` 既有路径统一。
-- **任务 2.3 expose + slot 迁移**：shell 的 `defineExpose({editor, handleSave, getBlockMap})` 进 inner widget `expose {}`；`save-label`/`cancel-label` 用具名 slot 原生写法（弃函数式组件 + dyn 桥）；`v-bind="$props"` 透传与 class 两层穿透的等价方案设计（可能仍需极薄壳或编译器支持，probe 后定）。
-- **任务 2.4 AutoDownEditor.vue 全生成**：壳删除，demo/jade 消费方（`getBlockMap()`、`$el`、`exposed.editor` 形状）逐一核对。
-- 验收：编辑器包 Vue 层零手写组件；demo e2e + jade e2e 全绿；`src/index.ts` 公共 API 不变。
+- **任务 2.1 prop 运行时默认值** ✅：withDefaults 运行时默认值 probe 11 已实证；widget 签名直接带上契约默认值（`canEdit: bool = true`、`saveLabel: str = "Save"` 等），壳的 withDefaults 删除。
+- **任务 2.2 emit 契约迁移** ✅：probe 15 实证 quoted msg variant 可 self-call 带 payload，但发现两个编译器 gap——① 无 handler/未被 view 引用的 quoted variant 不进 defineEmits；② self-called quoted handler 无尾 emit。worktree 修复（`MsgVariant.quoted` 标记：quoted 恒声明 + 恒尾 emit + 无 handler 也带 payload 类型），能力锁 `cap_quoted_emit_declared_without_view_reference` / `cap_quoted_emit_self_called_relay`。bridge 改 `inst.emit(...)`，callback props 全删；`save` 走"computed-payload relay"（handleSave 算 md → self-call `."save"(md)` 尾 emit 携带）。
+- **任务 2.3 expose + slot 迁移** ✅：`expose { .handleSave, .getBlockMap }`（camelCase handler/model var probe 15c 实证）；`save-label`/`cancel-label` 用具名 slot + fallback 子节点（probe 15b），函数式组件 + dyn 桥删除；`v-bind="$props"` 透传随壳消失（widget 即组件，props 直接声明）。
+- **任务 2.4 AutoDownEditor.vue 全生成** ✅：widget 改名 AutoDownEditor，直接部署到 `src/core/AutoDownEditor.vue`，壳与 AutoDownEditorInner.vue 删除。**关键发现（probe 16）**：生产构建的 `<script setup>` 内联模板使 `setupState` 为空，ext 经 `inst.proxy` 写 model var 落到非响应式 ctx（dev 正常 dist 静默失效）——editor 实例改走 bridge 返回的 `reactive({ items, editor })` 袋（ref 属性保持链接），DSL 全侧用 `.autoDownEditorBridge.editor` 点链；`editor` ref 由 bridge 在 onMounted 合并进 `inst.exposed`（demo e2e 的 `exposed.editor.value` 形状保持）。消费方核对：demo（@save/@cancel/@update + exposed.editor.value + getBlockMap）✓、jade（EditorShell attrs 穿透 + onOpenWikiLink prop 通道 + $el）✓、`src/index.ts` 公共 API 不变 ✓。
+- 验收 ✅：编辑器包 Vue 层零手写组件；demo e2e 串行基线 + jade e2e 23/23 不劣化。
 
 ## Phase 3：收口（0.5 天）
 

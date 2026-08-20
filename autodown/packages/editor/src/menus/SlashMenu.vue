@@ -40,9 +40,16 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function OnUpdate(e: any): void {
+function OnOpen(e: any): void {
   query.value = e.detail.query;
   range.value = e.detail.range;
+  visible.value = true;
+  selected_index.value = 0;
+
+
+
+
+
   nextTick(() => { if (range.value != null && props.editor['view']) {let coords = props.editor['view'].coordsAtPos(range.value.from);
   let editorEl = props.editor['view'].dom.closest('.autodown-editor');
   if (editorEl != null) {let rect = editorEl.getBoundingClientRect();
@@ -52,7 +59,11 @@ function OnUpdate(e: any): void {
   pos_top.value = initial.top + 'px';
   pos_left.value = initial.left + 'px';
   pos_visibility.value = 'hidden';
-  nextTick(() => { let menu = editorEl.querySelector('.autodown-slash-menu');
+  nextTick(() => { 
+
+
+
+  let menu = editorEl.querySelector('.autodown-slash-menu');
   if (menu != null) {let menuRect = menu.getBoundingClientRect();
   let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, 'bottom', 8, 'left');
   pos_top.value = pos_final.top + 'px';
@@ -61,7 +72,16 @@ function OnUpdate(e: any): void {
   } });
   }} });
 
-  emit('OnUpdate', e)
+  emit('OnOpen', e)
+}
+
+function OnClose(): void {
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+
+  emit('OnClose')
 }
 
 function OnKeydown(e: any): void {
@@ -108,16 +128,9 @@ function OnKeydown(e: any): void {
   emit('OnKeydown', e)
 }
 
-function OnOpen(e: any): void {
+function OnUpdate(e: any): void {
   query.value = e.detail.query;
   range.value = e.detail.range;
-  visible.value = true;
-  selected_index.value = 0;
-
-
-
-
-
   nextTick(() => { if (range.value != null && props.editor['view']) {let coords = props.editor['view'].coordsAtPos(range.value.from);
   let editorEl = props.editor['view'].dom.closest('.autodown-editor');
   if (editorEl != null) {let rect = editorEl.getBoundingClientRect();
@@ -127,11 +140,7 @@ function OnOpen(e: any): void {
   pos_top.value = initial.top + 'px';
   pos_left.value = initial.left + 'px';
   pos_visibility.value = 'hidden';
-  nextTick(() => { 
-
-
-
-  let menu = editorEl.querySelector('.autodown-slash-menu');
+  nextTick(() => { let menu = editorEl.querySelector('.autodown-slash-menu');
   if (menu != null) {let menuRect = menu.getBoundingClientRect();
   let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, 'bottom', 8, 'left');
   pos_top.value = pos_final.top + 'px';
@@ -140,16 +149,7 @@ function OnOpen(e: any): void {
   } });
   }} });
 
-  emit('OnOpen', e)
-}
-
-function OnClose(): void {
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-
-  emit('OnClose')
+  emit('OnUpdate', e)
 }
 
 function SelectItem(i: any): void {
@@ -170,12 +170,12 @@ function HoverItem(i: any): void {
   emit('HoverItem', i)
 }
 
-function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
-  OnUpdate(e)
-}
-
 function __auto_gl_autodown_slash_keydown_OnKeydown(e: any) {
   OnKeydown(e)
+}
+
+function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
+  OnUpdate(e)
 }
 
 function __auto_gl_autodown_slash_open_OnOpen(e: any) {
@@ -183,16 +183,16 @@ function __auto_gl_autodown_slash_open_OnOpen(e: any) {
 }
 
 onMounted(() => {
+  document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.addEventListener('autodown:slash-close', OnClose)
   document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
-  document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.removeEventListener('autodown:slash-close', OnClose)
   document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
-  document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
   document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
 })
 
@@ -201,7 +201,7 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-slash-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
+      <div class="autodown-slash-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
         <div class="autodown-slash-menu-items">
           <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" @mouseenter="HoverItem(i)" @click="SelectItem(i)" v-for="(item, i) in filtered">
             <component :is="(item.icon) as any" class="autodown-slash-menu-icon" :size="16" />

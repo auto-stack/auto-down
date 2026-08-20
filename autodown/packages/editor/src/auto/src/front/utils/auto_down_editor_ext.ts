@@ -1,21 +1,23 @@
 // auto_down_editor_ext.ts — Hand-written TS extension for the
-// AutoDownEditorInner widget (../auto_down_editor.at). Imported via
+// AutoDownEditor widget (../auto_down_editor.at). Imported via
 // `use { fn/component/composable: ... }`; the Auto build copies it into the
 // gen project as src/ext/src/front/utils/auto_down_editor_ext.ts, and the
-// generated AutoDownEditorInner.vue (copied to src/core/) imports it from
+// generated AutoDownEditor.vue (copied to src/core/) imports it from
 // ../auto/src/front/utils/auto_down_editor_ext.
 //
 // What remains here genuinely cannot be expressed in the DSL (see the
 // widget's header comment for the full list): the zero-argument editor
 // composable bridge (the DSL's composable imports take no arguments, so
 // the useAutoDownEditor options object is assembled here from the
-// component instance's props; useAutoDownEditor.ts itself is untouched),
+// component instance's props and tiptap's lifecycle callbacks are
+// forwarded through inst.emit; useAutoDownEditor.ts itself is untouched),
 // the 30-item static slash command manifest (lucide icons as data +
 // block-body command closures with window.prompt / navigator.clipboard /
 // DOM walking), normalizeAnchors (no regex literals in the DSL), the
 // EditorContent / menu component re-exports (dual-resolution shim — a
-// `use` path cannot leave src/) and the Check/X lucide re-exports for the
-// `dyn` render trick.
+// `use` path cannot leave src/), the Check/X lucide re-exports for the
+// `dyn` render trick, and the blockMapOf/appendTableIAL re-exports behind
+// the exposed getBlockMap and handleSave.
 //
 // The relative imports below resolve in BOTH trees at the same depth:
 // editor tree src/auto/src/front/utils → src/..., gen tree
@@ -26,7 +28,7 @@
 // No @tiptap imports on purpose (besides the type-only SlashItem): the
 // editor instance is typed structurally as any.
 
-import { getCurrentInstance, watch } from 'vue'
+import { getCurrentInstance, onMounted, reactive } from 'vue'
 import {
   Heading1,
   Heading2,
@@ -70,6 +72,12 @@ export { default as BubbleMenu } from '../../../../menus/BubbleMenu.vue'
 export { default as SlashMenu } from '../../../../menus/SlashMenu.vue'
 export { default as TableMenu } from '../../../../menus/TableMenu.vue'
 export { default as CodeBlockMenu } from '../../../../menus/CodeBlockMenu.vue'
+
+// The exposed imperative getBlockMap and handleSave's IAL post-processing —
+// re-exported from the real extensions modules (same shim; gen stubs under
+// stubs/gen_blockId.ts / gen_tableAttributes.ts).
+export { getBlockMap as blockMapOf } from '../../../../extensions/BlockId'
+export { appendTableIAL } from '../../../../extensions/tableAttributes'
 
 // Lucide icons for the Save/Cancel buttons, rendered via `dyn` (the
 // codeBlockCheckIcon trick).
@@ -350,24 +358,32 @@ export function getSlashItems(props: any): SlashItem[] {
 // The editor-creating composable, imported by the widget via
 // `use { composable: ... }` — the codegen calls it ONCE at <script setup>
 // top level with ZERO arguments, so the options object is assembled here
-// from the component instance's props (resolved, with the shell's
-// withDefaults already applied). tiptap's useEditor registers its
+// from the component instance's props (resolved, with the widget's
+// generated withDefaults applied). tiptap's useEditor registers its
 // onMounted/onBeforeUnmount inside this call, which runs in setup scope
 // as required.
 //
-// tiptap lifecycle callbacks are forwarded to callback PROPS passed by
-// the shell (updateCb/blurCb/focusCb/linkClickCb/openWikiLinkCb/
-// editorReadyCb) instead of component events: bridge-originated component
-// events would not be declared by the codegen (only view-referenced
-// handlers land in defineEmits) and the undeclared listeners would fall
-// through as native DOM listeners on the root element. The props are read
-// live at call time, so identity churn from inline arrow props is
-// harmless.
+// tiptap lifecycle callbacks are forwarded through inst.emit(...) using
+// the widget's QUOTED msg variants (update/blur/focus/link-click/
+// open-wiki-link) — quoted variants are contractual emit names, always
+// declared in defineEmits (plan 013 Phase 2 compiler fix), so the parent
+// listeners no longer fall through as native DOM listeners. The original's
+// `onOpenWikiLink` prop callback is ALSO invoked, matching the original
+// component's dual channel.
 //
-// Returns the slash items — bound to the view's SlashMenu `items` prop
-// via the generated `autoDownEditorBridge` local (this also keeps the
-// composable local referenced).
-export function useAutoDownEditorBridge(): SlashItem[] {
+// Returns a reactive `{ items, editor }` bag. reactive() keeps the editor
+// ref linked (reads/writes unwrap it), so when tiptap's useEditor assigns
+// the instance in its onMounted, `.autoDownEditorBridge.editor` becomes
+// live everywhere in the widget — the ONLY channel that works in
+// production builds (inline-template <script setup> returns a render
+// function, leaving setupState empty; extension code cannot reach the
+// widget's model vars through the component proxy).
+//
+// Also merges the editor REF into the widget's exposed surface on mount
+// (defineExpose runs at setup end, after this composable, so the merge
+// must defer to onMounted). The demo e2e harness reads
+// el.__vueParentComponent.exposed.editor.value — keep the ref shape.
+export function useAutoDownEditorBridge(): { items: SlashItem[]; editor: any } {
   const inst = getCurrentInstance()!
   const props = inst.props as any
 
@@ -384,41 +400,28 @@ export function useAutoDownEditorBridge(): SlashItem[] {
     taskWorkflow: props.taskWorkflow,
     runQuery: props.runQuery,
     onUpdate: (editorInstance: any) => {
-      props.updateCb?.(editorInstance.getMarkdown())
+      inst.emit('update', editorInstance.getMarkdown())
     },
     onBlur: () => {
-      props.blurCb?.()
+      inst.emit('blur')
     },
     onFocus: () => {
-      props.focusCb?.()
+      inst.emit('focus')
     },
     onLinkClick: (id: string) => {
-      props.linkClickCb?.(id)
+      inst.emit('link-click', id)
     },
     onOpenWikiLink: (title: string, blockId?: string | null) => {
-      props.openWikiLinkCb?.(title, blockId)
+      inst.emit('open-wiki-link', title, blockId)
       props.onOpenWikiLink?.(title, blockId)
     },
   })
 
-  // Report the created editor instance to the shell (it owns defineExpose,
-  // the focused computed and passes the instance back down as the
-  // `editor` prop that gates the menus). tiptap's useEditor assigns the
-  // instance in its onMounted; the watch fires on that assignment.
-  watch(editor, (instance) => {
-    if (instance) {
-      props.editorReadyCb?.(instance)
+  onMounted(() => {
+    if (inst.exposed) {
+      ;(inst.exposed as any).editor = editor
     }
   })
 
-  // Manual equivalent of defineExpose({ editor }) on the INNER component
-  // (the DSL has no expose support): the original component's root
-  // `.autodown-editor` div was owned by the component that exposed the
-  // editor, and consumers reaching through the DOM — the demo e2e harness
-  // reads `el.__vueParentComponent.exposed.editor.value` — depend on that
-  // shape. The div is now the inner's root, so the inner exposes the
-  // editor ref the same way. Unrelated to the shell's own defineExpose.
-  inst.exposed = { editor }
-
-  return slashItems
+  return reactive({ items: slashItems, editor })
 }

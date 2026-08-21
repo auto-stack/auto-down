@@ -44,25 +44,6 @@ watch(attr_raw, () => {
   }
 })
 
-function OpenLink(): void {
-
-
-  let handler = null;
-  let opts = props.extension.options;
-  if (opts != null) {handler = opts.openWikiLink;
-  }
-  if (handler != null) {handler(attr_title.value, attr_block_id.value || null);
-  }
-  if (handler == null) {
-  input_value.value = attr_raw.value;
-  editing.value = true;
-  nextTick(() => { focusAndSelect(inputEl.value!);
-   });
-  }
-
-  emit('OpenLink')
-}
-
 function StartEdit(): void {
   input_value.value = attr_raw.value;
   editing.value = true;
@@ -70,6 +51,17 @@ function StartEdit(): void {
    });
 
   emit('StartEdit')
+}
+
+function InputInput(e: any): void {
+  input_value.value = e.target.value;
+
+  emit('InputInput', e)
+}
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
 }
 
 function OnKeydown(e: any): void {
@@ -93,10 +85,23 @@ function OnKeydown(e: any): void {
   emit('OnKeydown', e)
 }
 
-function InputInput(e: any): void {
-  input_value.value = e.target.value;
+function OpenLink(): void {
 
-  emit('InputInput', e)
+
+  let handler = null;
+  let opts = props.extension.options;
+  if (opts != null) {handler = opts.openWikiLink;
+  }
+  if (handler != null) {handler(attr_title.value, attr_block_id.value || null);
+  }
+  if (handler == null) {
+  input_value.value = attr_raw.value;
+  editing.value = true;
+  nextTick(() => { focusAndSelect(inputEl.value!);
+   });
+  }
+
+  emit('OpenLink')
 }
 
 function Commit(): void {
@@ -114,16 +119,11 @@ function Commit(): void {
   emit('Commit')
 }
 
-function Noop(e: any): void {
-
-  emit('Noop', e)
-}
-
 
 </script>
 
 <template>
-    <NodeViewWrapper :class="wrapper_class" :as="'span'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'span'" :class="wrapper_class" :key="'NodeViewWrapper-1'">
       <template v-if="! editing">
         <span class="autodown-wikilink-label" :title="open_title" @click.stop="OpenLink">
           <span>{{ display_label }}</span>
@@ -135,7 +135,7 @@ function Noop(e: any): void {
         </span>
       </template>
       <template v-if="editing">
-        <input class="autodown-wikilink-input" :type="'text'" ref="inputEl" v-model="input_value" @click.stop="Noop($event)" @input="InputInput($event)" @keydown="OnKeydown($event)" @blur="Commit" />
+        <input class="autodown-wikilink-input" v-model="input_value" ref="inputEl" :type="'text'" @input="InputInput($event)" @keydown="OnKeydown($event)" @blur="Commit" @click.stop="Noop($event)" />
       </template>
     </NodeViewWrapper>
 

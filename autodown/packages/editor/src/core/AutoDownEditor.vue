@@ -75,16 +75,6 @@ watch(() => props.canEdit, () => {
   }
 })
 
-function save(md: any): void {
-
-  emit('save', md)
-}
-
-function cancel(): void {
-
-  emit('cancel')
-}
-
 function handleSave(): void {
   if (autoDownEditorBridge.editor != null) {let md = autoDownEditorBridge.editor.getMarkdown();
   let md_ial = appendTableIAL(md, autoDownEditorBridge.editor);
@@ -99,6 +89,16 @@ function handleSave(): void {
   emit('handleSave')
 }
 
+function cancel(): void {
+
+  emit('cancel')
+}
+
+function save(md: any): void {
+
+  emit('save', md)
+}
+
 onMounted(() => {
 
 
@@ -111,10 +111,10 @@ defineExpose({ handleSave, getBlockMap })
 
 <template>
     <div class="autodown-editor" :class="{ 'is-focused': focused }">
-      <EditorContent :editor="autoDownEditorBridge.editor" :class="'autodown-editor-content-wrapper'" :key="'EditorContent-1'" />
+      <EditorContent :class="'autodown-editor-content-wrapper'" :editor="autoDownEditorBridge.editor" :key="'EditorContent-1'" />
       <template v-if="autoDownEditorBridge.editor">
         <BubbleMenu :linkPrompt="linkUrlPrompt" :editor="autoDownEditorBridge.editor" :key="'BubbleMenu-2'" />
-        <SlashMenu :items="autoDownEditorBridge.items" :editor="autoDownEditorBridge.editor" :key="'SlashMenu-3'" />
+        <SlashMenu :editor="autoDownEditorBridge.editor" :items="autoDownEditorBridge.items" :key="'SlashMenu-3'" />
         <TableMenu :editor="autoDownEditorBridge.editor" :key="'TableMenu-4'" />
         <CodeBlockMenu :editor="autoDownEditorBridge.editor" :key="'CodeBlockMenu-5'" />
       </template>

@@ -45,21 +45,10 @@ watch(selected_state, () => {
   }
 })
 
-function CancelSummary(): void {
-  editing_summary.value = false;
-
-  emit('CancelSummary')
-}
-
 function SummaryInput(e: any): void {
   summary_draft.value = e.target.value;
 
   emit('SummaryInput', e)
-}
-
-function Noop(e: any): void {
-
-  emit('Noop', e)
 }
 
 function ToggleOpen(): void {
@@ -88,13 +77,24 @@ function CommitSummary(): void {
   emit('CommitSummary')
 }
 
+function CancelSummary(): void {
+  editing_summary.value = false;
+
+  emit('CancelSummary')
+}
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
+}
+
 
 </script>
 
 <template>
     <NodeViewWrapper :data-open="is_open" :class="'autodown-details'" :key="'NodeViewWrapper-1'">
       <div class="autodown-details-summary">
-        <span class="autodown-details-marker" :title="'点击展开详细内容'" :aria-hidden="'true'" @click.stop="ToggleOpen">
+        <span class="autodown-details-marker" :aria-hidden="'true'" :title="'点击展开详细内容'" @click.stop="ToggleOpen">
           <span>{{ marker }}</span>
         </span>
         <template v-if="! editing_summary">
@@ -103,7 +103,7 @@ function CommitSummary(): void {
           </span>
         </template>
         <template v-if="editing_summary">
-          <input class="autodown-details-summary-input" v-model="summary_draft" :type="'text'" ref="summaryInput" @blur="CommitSummary" @click.stop="Noop($event)" @keydown.enter.prevent="CommitSummary" @keydown.esc.prevent="CancelSummary" @input="SummaryInput($event)" />
+          <input class="autodown-details-summary-input" ref="summaryInput" :type="'text'" v-model="summary_draft" @click.stop="Noop($event)" @input="SummaryInput($event)" @keydown.enter.prevent="CommitSummary" @blur="CommitSummary" @keydown.esc.prevent="CancelSummary" />
         </template>
         <template v-if="! editing_summary">
           <button class="autodown-details-edit-btn" :aria-label="'编辑摘要'" :title="'编辑摘要'" :type="'button'" @click.stop="StartEditingSummary">
@@ -111,7 +111,7 @@ function CommitSummary(): void {
           </button>
         </template>
       </div>
-      <NodeViewContent :class="'autodown-details-content'" v-show="is_open" :as="'div'" :key="'NodeViewContent-2'" />
+      <NodeViewContent :as="'div'" v-show="is_open" :class="'autodown-details-content'" :key="'NodeViewContent-2'" />
     </NodeViewWrapper>
 
 </template>

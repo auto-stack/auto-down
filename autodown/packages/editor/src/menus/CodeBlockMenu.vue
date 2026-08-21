@@ -45,10 +45,13 @@ const emit = defineEmits<{
   OutsideClick: [any]
 }>()
 
-function HoverItem(i: any): void {
-  highlighted_index.value = i;
+function Close(): void {
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
 
-  emit('HoverItem', i)
+  emit('Close')
 }
 
 function OutsideClick(e: any): void {
@@ -63,13 +66,23 @@ function OutsideClick(e: any): void {
   emit('OutsideClick', e)
 }
 
-function Close(): void {
+function SelectHighlighted(): void {
+  if (filtered.value.length == 1) {let only = filtered.value[0];
+  props.editor.chain().focus().setCodeBlock({ language: only.id }).run();
   visible.value = false;
   search.value = '';
   highlighted_index.value = 0;
   active_code_block.value = null;
+  }
+  if (filtered.value.length != 1) {let lang = filtered.value[highlighted_index.value];
+  if (lang != null) {props.editor.chain().focus().setCodeBlock({ language: lang.id }).run();
+  visible.value = false;
+  search.value = '';
+  highlighted_index.value = 0;
+  active_code_block.value = null;
+  }}
 
-  emit('Close')
+  emit('SelectHighlighted')
 }
 
 function SelectItem(lang: any): void {
@@ -80,12 +93,6 @@ function SelectItem(lang: any): void {
   active_code_block.value = null;
 
   emit('SelectItem', lang)
-}
-
-function SearchInput(e: any): void {
-  search.value = e.target.value;
-
-  emit('SearchInput', e)
 }
 
 function MoveUp(): void {
@@ -120,23 +127,16 @@ function MoveDown(): void {
   emit('MoveDown')
 }
 
-function SelectHighlighted(): void {
-  if (filtered.value.length == 1) {let only = filtered.value[0];
-  props.editor.chain().focus().setCodeBlock({ language: only.id }).run();
-  visible.value = false;
-  search.value = '';
-  highlighted_index.value = 0;
-  active_code_block.value = null;
-  }
-  if (filtered.value.length != 1) {let lang = filtered.value[highlighted_index.value];
-  if (lang != null) {props.editor.chain().focus().setCodeBlock({ language: lang.id }).run();
-  visible.value = false;
-  search.value = '';
-  highlighted_index.value = 0;
-  active_code_block.value = null;
-  }}
+function SearchInput(e: any): void {
+  search.value = e.target.value;
 
-  emit('SelectHighlighted')
+  emit('SearchInput', e)
+}
+
+function HoverItem(i: any): void {
+  highlighted_index.value = i;
+
+  emit('HoverItem', i)
 }
 
 onMounted(() => {
@@ -391,10 +391,10 @@ onUnmounted(() => {
     <template v-if="visible">
       <div class="autodown-codeblock-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
         <div class="autodown-codeblock-menu-header">
-          <input class="autodown-codeblock-menu-search" ref="searchEl" v-model="search" :placeholder="'Search language…'" @keydown.up.prevent="MoveUp" @keydown.down.prevent="MoveDown" @input="SearchInput($event)" @keydown.enter.prevent="SelectHighlighted" @keydown.esc="Close" />
+          <input class="autodown-codeblock-menu-search" ref="searchEl" :placeholder="'Search language…'" v-model="search" @keydown.esc="Close" @input="SearchInput($event)" @keydown.down.prevent="MoveDown" @keydown.up.prevent="MoveUp" @keydown.enter.prevent="SelectHighlighted" />
         </div>
         <div class="autodown-codeblock-menu-list" ref="listEl">
-          <button class="autodown-codeblock-menu-item" :class="{ active: i == highlighted_index, selected: lang.id == current_language }" @mouseenter="HoverItem(i)" @click="SelectItem(lang)" v-for="(lang, i) in filtered">
+          <button class="autodown-codeblock-menu-item" :class="{ active: i == highlighted_index, selected: lang.id == current_language }" @click="SelectItem(lang)" @mouseenter="HoverItem(i)" v-for="(lang, i) in filtered">
             <span class="autodown-codeblock-menu-item-label">
               <span>{{ lang.label }}</span>
             </span>

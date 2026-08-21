@@ -15,14 +15,14 @@ package's Vue component layer is 100% Auto-generated — the hand-written
 shell and the `AutoDownEditorInner.vue` split are gone (Tiptap
 extensions and CSS stay hand-written by design).
 
-**Compiler**: use the worktree binary
-`D:/autostack/auto-lang/.worktree/auto-down/target/debug/auto.exe`
-(branch `auto-down`). It carries the plan 013 Phase 2 quoted-msg-variant
-fix (`quoted` variants are always declared in `defineEmits` and always
-tail-emit, even when self-called with no view reference — commit
-`ecc9c841`, pending merge back to auto-lang master by the auto-lang
-side). The master binary still works for every other widget but will
-mis-compile `auto_down_editor.at` (missing emit declarations).
+**Compiler**: use the master binary
+`D:/autostack/auto-lang/target/debug/auto.exe`. All compiler fixes this
+project relies on are on auto-lang master — the 3.0a/3.0b DSL
+capabilities (merge `1ecc13e3`) and the plan 013 fixes (quoted msg
+variants `ecc9c841`, Bina/receiver parens + `||`/`&&` operand-type
+inference `b38ddb16`/`09d7b800`, merged via `86cc11c0` + conflict fix
+`8eae1323`). The `auto-down` worktree branch remains the designated
+channel for future auto-lang changes from this project.
 
 **Workaround status (2026-08-19, post plan 013)**: the widget set is
 fully migrated to native DSL capabilities — plan 013 Phase 0.3 re-probed
@@ -32,8 +32,8 @@ the retired ones (`show:`, `html:`, ternary/`??` computeds, real
 Phase 2 eliminated the AutoDownEditor shell (quoted msg variants carry
 the lowercase/hyphenated emit contract; `expose {}` + named slots +
 withDefaults runtime defaults are all native). The plan 013 follow-up
-then fixed the last two confirmed compiler bugs on the auto-lang
-`auto-down` branch: **dropped parentheses** (probe 09 — emitters now
+then fixed the last two confirmed compiler bugs (now on auto-lang
+master): **dropped parentheses** (probe 09 — emitters now
 re-derive parens from precedence/associativity, capability-locked by
 `cap_bina_parens_*`) and the **mis-typed `computed<boolean>` for
 standalone `||`/`&&`** (probe 14 — operand-type inference now,
@@ -228,13 +228,11 @@ reference; the migrated ones are marked RETIRED.
 From `autodown/packages/editor/src/auto`:
 
 ```sh
-AUTO=D:/autostack/auto-lang/.worktree/auto-down/target/debug/auto.exe bash gen/regen.sh
+bash gen/regen.sh
 ```
 
-(The `AUTO` override points at the worktree binary — see the Compiler
-note at the top. Without it the script uses the master binary, which
-mis-compiles `auto_down_editor.at` until the quoted-variant fix lands on
-auto-lang master.)
+(The script defaults to the master binary. To test a worktree compiler,
+override with `AUTO=D:/autostack/auto-lang/.worktree/auto-down/target/debug/auto.exe`.)
 
 The script (kept in the gitignored `gen/` directory, like jade's) performs
 the whole pipeline with gating: mirrors the `stubs/` and real modules into

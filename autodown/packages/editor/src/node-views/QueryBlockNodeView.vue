@@ -78,7 +78,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :class="'autodown-query-block'" :data-query-block="''" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :data-query-block="''" :class="'autodown-query-block'" :key="'NodeViewWrapper-1'">
       <div class="query-header">
         <span class="query-label">
           <span>Query</span>

@@ -31,7 +31,7 @@ function RunButton(btn: any): void {
 
 <template>
     <template v-if="editor">
-      <TiptapBubbleMenu :editor="editor" :options="{placement: 'top'}" :class="'autodown-bubble-menu'" :shouldShow="bubbleShouldShow" :key="'TiptapBubbleMenu-1'">
+      <TiptapBubbleMenu :editor="editor" :options="{placement: 'top'}" :shouldShow="bubbleShouldShow" :class="'autodown-bubble-menu'" :key="'TiptapBubbleMenu-1'">
         <button class="autodown-bubble-btn" :class="{ active: btn.active }" :title="btn.title" @click="RunButton(btn)" v-for="btn in buttons">
           <component :is="(btn.icon) as any" :size="14" />
         </button>

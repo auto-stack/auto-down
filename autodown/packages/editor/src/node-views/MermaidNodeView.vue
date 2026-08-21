@@ -59,7 +59,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-mermaid-block'" :data-mermaid-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :data-mermaid-block="''" :class="'autodown-mermaid-block'" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <div class="autodown-mermaid-preview" v-html="svg" />
       </template>
@@ -68,7 +68,7 @@ onMounted(() => {
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <NodeViewContent :class="'mermaid-source'" :as="'pre'" :key="'NodeViewContent-2'">
+      <NodeViewContent :as="'pre'" :class="'mermaid-source'" :key="'NodeViewContent-2'">
         <component :is="(code_tag) as any" />
       </NodeViewContent>
     </NodeViewWrapper>

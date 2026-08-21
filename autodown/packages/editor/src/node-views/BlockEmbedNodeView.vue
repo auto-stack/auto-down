@@ -85,7 +85,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-block-embed'" :as="'div'" :data-title="attr_title" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-block-embed'" :data-title="attr_title" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
       <template v-if="show_loading">
         <div class="embed-state">
           <span>{{ loading_text }}</span>

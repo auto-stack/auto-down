@@ -69,7 +69,7 @@ Plan 408 P4（handler/watch 体 ref 自动解包）后，jade 侧 20 处手写 `
 
 ## 后续修复（CLOSED 后追加，2026-08-19）
 
-- **括号丢弃已修**（auto-lang `auto-down` 分支）：三个 TS/Vue 表达式发射点（ts_adapter `transpile_expr`、vue.rs `expr_to_js` / `expr_to_vue_bound_value`）按优先级/结合性重推括号（`bina_child_needs_parens`），含右操作数同级重括号与一元 `!`/`-` 操作数。能力锁 `cap_bina_parens_*` ×3。未覆盖：方法/字段调用 receiver 的括号（Dot/Call 子节点），README SlashMenu note 6 已更新。
+- **括号丢弃已修**（auto-lang `auto-down` 分支）：三个 TS/Vue 表达式发射点（ts_adapter `transpile_expr`、vue.rs `expr_to_js` / `expr_to_vue_bound_value`）按优先级/结合性重推括号（`bina_child_needs_parens`），含右操作数同级重括号与一元 `!`/`-` 操作数；方法/字段调用 receiver 亦覆盖（`transpile_receiver` + 各 emitter 的 Dot/Call 臂，`(.first+" "+.last).to_upper()` → `(first.value + ' ' + last.value).toUpperCase()`）。能力锁 `cap_bina_parens_*` ×3 + `cap_bina_parens_on_call_receiver`。editor 全量 regen 零漂移（现有 .at 无 Bina receiver 形态），SlashMenu filter/环绕导航的既有规避保留不折腾。
 - **独立 `||`/`&&` computed 误型已修**（probe 14①）：`expr_to_ts_type` 对 `||`/`&&` 改推操作数类型（同型取该型、异型 `any`），能力锁 `cap_logical_computed_infers_operand_type`。`strOr`/`orNull` 从 `node_view_ext.ts` 删除，7 个 node view 全部回迁原生 `||`（`computed<string>`/`<any>` 正确发出）。
 - **三元 `==/!= ""` 坍缩定性为故意设计**（PLAN-026：`undefined !== ''` 误判缺失字段），不修，README/probe 报告已注明。
 - 门禁：auto-lang 3021 过 + 1 既有环境挂（route::discovery）；editor vue-tsc/vitest 22/22/build ✓；demo e2e 8 过 + scroll-sync:141 基线；jade e2e 23/23。

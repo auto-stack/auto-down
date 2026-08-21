@@ -341,17 +341,14 @@ bodies. The logic has since flowed back into the widget. What remains in
    is fine (templates unwrap), but `.filtered.length` inside a view `if`
    is mangled by the template codegen (renders `filtered.lengthgth`) — so
    emptiness goes through the named `is_empty` computed.
-6. **~~Expression parentheses are dropped by the transpiler~~ FIXED for
-   mixed-precedence binops (plan 013 follow-up: emitters re-derive parens
-   from precedence/associativity, `cap_bina_parens_*`).** `(x + 1) % len`
-   now emits correctly. STILL OPEN: parens on a method-call RECEIVER are
-   not restored (`(a + b).toLowerCase()` still loses them — the receiver
-   is a `Dot`/`Call` child, not a `Bina` operand), so the filter keeps
-   its array-literal receiver — `[item.title, item.description].concat(
-   item.searchTerms).join(" ")` — which needs no parens and preserves the
-   original join-then-match semantics exactly (empty query still returns
-   all items, via `''.includes('')`). The ArrowUp/ArrowDown wrap-around
-   keeps its intermediate `let` locals (works either way; no churn).
+6. **~~Expression parentheses are dropped by the transpiler~~ FIXED
+   (plan 013 follow-up).** Mixed-precedence binops re-derive parens from
+   precedence/associativity (`cap_bina_parens_*`), and binop/unary
+   method-call receivers keep theirs (`cap_bina_parens_on_call_receiver`
+   — `(a + b).toLowerCase()` now emits correctly). The filter keeps its
+   array-literal receiver (`[item.title, item.description].concat(
+   item.searchTerms).join(" ")`) and the ArrowUp/ArrowDown wrap-around
+   keeps its intermediate `let` locals — both work either way; no churn.
 7. **A field literally named `view` cannot follow a dot-chain.**
    `.editor.view` is swallowed by the parser/codegen (`view` is a DSL
    keyword), so editor-view access uses bracket notation:

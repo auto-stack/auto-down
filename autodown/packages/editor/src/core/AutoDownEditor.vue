@@ -75,14 +75,14 @@ watch(() => props.canEdit, () => {
   }
 })
 
-function cancel(): void {
-
-  emit('cancel')
-}
-
 function save(md: any): void {
 
   emit('save', md)
+}
+
+function cancel(): void {
+
+  emit('cancel')
 }
 
 function handleSave(): void {
@@ -113,7 +113,7 @@ defineExpose({ handleSave, getBlockMap })
     <div class="autodown-editor" :class="{ 'is-focused': focused }">
       <EditorContent :editor="autoDownEditorBridge.editor" :class="'autodown-editor-content-wrapper'" :key="'EditorContent-1'" />
       <template v-if="autoDownEditorBridge.editor">
-        <BubbleMenu :editor="autoDownEditorBridge.editor" :linkPrompt="linkUrlPrompt" :key="'BubbleMenu-2'" />
+        <BubbleMenu :linkPrompt="linkUrlPrompt" :editor="autoDownEditorBridge.editor" :key="'BubbleMenu-2'" />
         <SlashMenu :items="autoDownEditorBridge.items" :editor="autoDownEditorBridge.editor" :key="'SlashMenu-3'" />
         <TableMenu :editor="autoDownEditorBridge.editor" :key="'TableMenu-4'" />
         <CodeBlockMenu :editor="autoDownEditorBridge.editor" :key="'CodeBlockMenu-5'" />

@@ -44,7 +44,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'span'" :data-math-inline="''" :class="'autodown-math-inline'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'span'" :class="'autodown-math-inline'" :data-math-inline="''" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <span class="autodown-math-inline-preview" v-html="html" />
       </template>

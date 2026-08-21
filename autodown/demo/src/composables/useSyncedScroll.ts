@@ -27,6 +27,20 @@ function normalizeBlocks(blocks: MeasuredBlock[]): MeasuredBlock[] {
   return blocks.map((b) => ({ ...b, top: b.top - minTop }))
 }
 
+/**
+ * Absolute scroll coordinate of the first block's top edge, i.e. how far the
+ * content is pushed down by container padding and the first block's margin.
+ * Block tops are normalized to start at 0 (see normalizeBlocks), so scroll
+ * coordinates must be shifted by this offset before comparing them against
+ * measured block tops.
+ */
+function firstBlockAbsTop(container: HTMLElement, selector: string): number {
+  const first = container.querySelector(selector) as HTMLElement | null
+  if (!first) return 0
+  const containerRect = container.getBoundingClientRect()
+  return first.getBoundingClientRect().top - containerRect.top + container.scrollTop
+}
+
 function measureRightBlocks(container: HTMLElement): MeasuredBlock[] {
   const containerRect = container.getBoundingClientRect()
   const blocks = Array.from(container.querySelectorAll('.node-slot[data-block-slot-id]')).map((el) => {
@@ -77,10 +91,23 @@ function findBlockPosition(blocks: MeasuredBlock[], scrollTop: number) {
 function computeScrollTopFromSource(
   sourceBlocks: MeasuredBlock[],
   targetBlocks: MeasuredBlock[],
-  sourceScrollTop: number
+  sourceScrollTop: number,
+  sourceFirstOffset: number,
+  targetFirstOffset: number
 ): number {
-  const pos = findBlockPosition(sourceBlocks, sourceScrollTop)
-  if (!pos || targetBlocks.length === 0) return sourceScrollTop
+  if (targetBlocks.length === 0) return sourceScrollTop
+
+  // Above the first block both sides show container padding; interpolate
+  // between the two first-block offsets so 0 maps to 0 and the first block
+  // top maps to the first block top.
+  if (sourceScrollTop <= sourceFirstOffset) {
+    return sourceFirstOffset > 0
+      ? (sourceScrollTop / sourceFirstOffset) * targetFirstOffset
+      : sourceScrollTop
+  }
+
+  const pos = findBlockPosition(sourceBlocks, sourceScrollTop - sourceFirstOffset)
+  if (!pos) return sourceScrollTop
 
   const sourceBlock = sourceBlocks[pos.index]
   // Prefer matching by block ID so missing or differently-rendered blocks
@@ -91,7 +118,7 @@ function computeScrollTopFromSource(
   }
   if (!targetBlock) return sourceScrollTop
 
-  return targetBlock.top + targetBlock.height * pos.ratio
+  return targetFirstOffset + targetBlock.top + targetBlock.height * pos.ratio
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -155,15 +182,19 @@ function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlo
     // The distance from one block top to the next should be the same on both
     // sides: the taller block's height plus a guaranteed minimum gap. We zero
     // the next block's margin-top so this bottom margin is the only thing that
-    // controls the gap.
-    const commonDistance = Math.max(left.height, right.height) + MIN_BLOCK_GAP
-    const leftMarginBottom = commonDistance - left.height
-    const rightMarginBottom = commonDistance - right.height
+    // controls the gap. The last matched pair has no next block, so a bottom
+    // margin there would only add dead scroll range below the content (worse,
+    // asymmetric dead range, since the shorter side gets the bigger margin).
+    if (leftNext && rightNext) {
+      const commonDistance = Math.max(left.height, right.height) + MIN_BLOCK_GAP
+      const leftMarginBottom = commonDistance - left.height
+      const rightMarginBottom = commonDistance - right.height
 
-    rules.push(
-      `.autodown-editor-content [data-block-id="${left.id}"] { margin-bottom: ${leftMarginBottom}px !important; }`,
-      `.streaming-document .node-slot[data-block-slot-id="${right.id}"] { margin-bottom: ${rightMarginBottom}px !important; }`
-    )
+      rules.push(
+        `.autodown-editor-content [data-block-id="${left.id}"] { margin-bottom: ${leftMarginBottom}px !important; }`,
+        `.streaming-document .node-slot[data-block-slot-id="${right.id}"] { margin-bottom: ${rightMarginBottom}px !important; }`
+      )
+    }
 
     if (leftNext) {
       rules.push(
@@ -189,6 +220,8 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
 
   const leftBlocks = ref<MeasuredBlock[]>([])
   const rightBlocks = ref<MeasuredBlock[]>([])
+  const leftFirstOffset = ref(0)
+  const rightFirstOffset = ref(0)
   const leftScrollHeight = ref(0)
   const rightScrollHeight = ref(0)
 
@@ -199,6 +232,10 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
   let observedLeftEl: HTMLElement | null = null
   let observedRightEl: HTMLElement | null = null
   let observedActionsEl: HTMLElement | null = null
+  let observedResizeLeftEl: HTMLElement | null = null
+  let observedResizeRightEl: HTMLElement | null = null
+  let observedResizeLeftContent: HTMLElement | null = null
+  let observedResizeRightContent: HTMLElement | null = null
   const mutationObserver = new MutationObserver(() => {
     measure()
     syncContainers()
@@ -242,8 +279,11 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
 
     if (leftEl !== observedLeftEl || rightEl !== observedRightEl) {
       mutationObserver.disconnect()
-      mutationObserver.observe(leftEl, { childList: true, subtree: true })
-      mutationObserver.observe(rightEl, { childList: true, subtree: true })
+      // characterData matters: the streaming renderer grows blocks by
+      // appending text, which changes block heights without any childList
+      // mutation — without it the block map and sync spacer go stale.
+      mutationObserver.observe(leftEl, { childList: true, subtree: true, characterData: true })
+      mutationObserver.observe(rightEl, { childList: true, subtree: true, characterData: true })
       observedLeftEl = leftEl
       observedRightEl = rightEl
     }
@@ -261,8 +301,31 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
         syncContainers()
       })
     }
-    if (leftEl !== observedLeftEl) blockResizeObserver.observe(leftEl)
-    if (rightEl !== observedRightEl) blockResizeObserver.observe(rightEl)
+    // Observe the content roots, not just the fixed-height wrappers: the
+    // content box resizes on any reflow of the rendered document (streaming,
+    // web fonts, images, async highlighting), including changes that produce
+    // no DOM mutation. Without this the block map and sync spacer go stale
+    // once the document settles after the last mutation. Only re-observe when
+    // the targets actually change — observe() re-fires an initial
+    // notification, so re-observing on every measure would loop forever.
+    const leftContent = leftEl.querySelector('.autodown-editor-content') as HTMLElement | null
+    const rightContent = rightEl.querySelector('.markdown-renderer') as HTMLElement | null
+    if (
+      leftEl !== observedResizeLeftEl ||
+      rightEl !== observedResizeRightEl ||
+      leftContent !== observedResizeLeftContent ||
+      rightContent !== observedResizeRightContent
+    ) {
+      blockResizeObserver.disconnect()
+      blockResizeObserver.observe(leftEl)
+      blockResizeObserver.observe(rightEl)
+      if (leftContent) blockResizeObserver.observe(leftContent)
+      if (rightContent) blockResizeObserver.observe(rightContent)
+      observedResizeLeftEl = leftEl
+      observedResizeRightEl = rightEl
+      observedResizeLeftContent = leftContent
+      observedResizeRightContent = rightContent
+    }
   }
 
   function measure() {
@@ -315,6 +378,8 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
     // positions used for scroll mapping.
     leftBlocks.value = measureLeftBlocks(leftEl)
     rightBlocks.value = measureRightBlocks(renderer.containerRef)
+    leftFirstOffset.value = firstBlockAbsTop(leftEl, '.autodown-editor-content [data-block-id]')
+    rightFirstOffset.value = firstBlockAbsTop(renderer.containerRef, '.node-slot[data-block-slot-id]')
 
     // Add an invisible spacer on the shorter side so both containers have the
     // same total scroll range. Reset it first so the diff is calculated from
@@ -354,9 +419,24 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
       ? rightBlocks.value[rightBlocks.value.length - 1].top + rightBlocks.value[rightBlocks.value.length - 1].height
       : 0
 
+    const leftMaxScrollTop = Math.max(0, leftEl.scrollHeight - leftEl.clientHeight)
+
     let targetRightScrollTop: number
-    if (editorActionsHeight.value <= 0 || targetLeftScrollTop <= leftContentBottom) {
-      targetRightScrollTop = computeScrollTopFromSource(leftBlocks.value, rightBlocks.value, targetLeftScrollTop)
+    if (targetLeftScrollTop >= leftMaxScrollTop - 1) {
+      // At the bottom edge the block mapping cannot express "scrolled to the
+      // end" (the viewport top still sits inside an earlier block, and each
+      // side's content ends at a slightly different height). Snap both panes
+      // to their own maximum so the shared scrollbar's bottom always means
+      // both sides are at their bottom.
+      targetRightScrollTop = Math.max(0, rightEl.scrollHeight - rightEl.clientHeight)
+    } else if (editorActionsHeight.value <= 0 || targetLeftScrollTop <= leftContentBottom) {
+      targetRightScrollTop = computeScrollTopFromSource(
+        leftBlocks.value,
+        rightBlocks.value,
+        targetLeftScrollTop,
+        leftFirstOffset.value,
+        rightFirstOffset.value
+      )
     } else {
       const ratio = (targetLeftScrollTop - leftContentBottom) / editorActionsHeight.value
       targetRightScrollTop = rightContentBottom + ratio * editorActionsHeight.value
@@ -405,6 +485,10 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
       observedLeftEl = null
       observedRightEl = null
       observedActionsEl = null
+      observedResizeLeftEl = null
+      observedResizeRightEl = null
+      observedResizeLeftContent = null
+      observedResizeRightContent = null
     })
   })
 

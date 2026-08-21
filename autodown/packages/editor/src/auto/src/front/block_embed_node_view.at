@@ -6,8 +6,8 @@
 // level; the old two-callback .then workaround is retired). The shared hand-written
 // extension utils/node_view_ext.ts keeps the tiptap NodeViewWrapper
 // re-export (dual-resolution shim — the gen project has no @tiptap/*
-// dependency) and strOr / orNull (standalone || computeds are mis-typed
-// computed<boolean>).
+// dependency). strOr / orNull are retired: standalone || computeds now
+// infer the operand type (plan 013 follow-up, probe 14 fix).
 //
 // Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
 // to `any[]`. All eight NodeViewProps fields are declared (the original
@@ -37,7 +37,7 @@
 widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
-        fn: strOr, orNull, errorMessage from "src/front/utils/node_view_ext.ts"
+        fn: errorMessage from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -51,17 +51,16 @@ widget BlockEmbedNodeView(node: Array<str>, editor: Array<str>, updateAttributes
     computed {
         // The original's attrs computed as three scalars (an object literal
         // as a computed body emits invalid JS — see wiki_link_node_view.at).
-        attr_raw => strOr(.node.attrs.raw, "![[Untitled]]")
-        attr_title => strOr(.node.attrs.title, "Untitled")
-        attr_block_id => orNull(.node.attrs.blockId)
-        // blockId ? `${title}#${blockId}` : title — && / || idiom routed
-        // through strOr (ternary emits undefined in computeds).
+        attr_raw => .node.attrs.raw || "![[Untitled]]"
+        attr_title => .node.attrs.title || "Untitled"
+        attr_block_id => .node.attrs.blockId || null
+        // blockId ? `${title}#${blockId}` : title as a native ternary.
         display_label => .attr_block_id ? .attr_title + "#" + .attr_block_id : .attr_title
         // `Loading {{ displayLabel }}…` as a component-level computed.
-        loading_text => strOr("Loading " + .display_label + "…", "Loading…")
+        loading_text => "Loading " + .display_label + "…" || "Loading…"
         // block.content, guarded (block is null until loaded). `.block`
         // auto-unwraps to block.value in computeds.
-        block_content => strOr(.block && .block.content, "")
+        block_content => .block && .block.content || ""
         // The three mutually exclusive view states (the original's
         // v-if / v-else-if / v-else-if, no else). show_block uses bare
         // truthiness, NOT `.block != null` — the computed codegen emits

@@ -30,10 +30,9 @@
 //    bindings, an object-literal-returning map closure is ambiguous with a
 //    block-body closure in the DSL, and `||` on a loop var field is not
 //    expressible in the view.
-// 5. strOr / orNull — `a || b` fallbacks for standalone computeds. A bare
-//    `||` (or `&&`/`||`) computed is mis-typed `computed<boolean>` by the
-//    DSL type inference (probe 14), which fails vue-tsc wherever the value
-//    is assigned/compared/concatenated as a string.
+// 5. ~~strOr / orNull~~ RETIRED (plan 013 follow-up): standalone `||`/`&&`
+//    computeds now infer the operand type instead of `computed<boolean>`
+//    (the probe 14 mis-typing is fixed in the compiler).
 // 6. focusAndSelect — the edit-input focus+select pair. DSL template refs
 //    are typed `ref<HTMLElement | null>` and the language has no casts, so
 //    `.select()` (HTMLInputElement-only) fails vue-tsc on the generated
@@ -132,28 +131,12 @@ export function normalizeQueryResults(res: any): any[] {
   }))
 }
 
-// strOr — string fallback for standalone computeds. A bare `a || b`
-// computed is mis-typed `computed<boolean>` by the DSL type inference
-// (probe 14), which then fails vue-tsc wherever the value is
-// assigned/compared as a string. Typed `string` here so the computed gets
-// the right type.
-export function strOr(value: any, fallback: string): string {
-  return value || fallback
-}
-
 // errorMessage — the originals' `err.message || String(err)` catch-branch
 // extraction. TS types the catch param `unknown` under strict mode (no
 // annotation/cast syntax exists for it), and the DSL has no casts, so the
 // narrowing lives here.
 export function errorMessage(e: unknown): string {
   return (e as any)?.message || String(e)
-}
-
-// orNull — `v || null` for standalone computeds (same mis-typed-boolean
-// gap as strOr, but the fallback is null so the value keeps its any type —
-// used for the nullable blockId attr).
-export function orNull(value: any): any {
-  return value || null
 }
 
 // focusAndSelect — the edit-input focus+select pair. DSL template refs are

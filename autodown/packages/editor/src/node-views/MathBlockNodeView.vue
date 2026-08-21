@@ -3,13 +3,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewContent } from '../auto/src/front/utils/node_view_ext'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { renderKatexPreview, strOr } from '../auto/src/front/utils/node_view_ext'
+import { renderKatexPreview } from '../auto/src/front/utils/node_view_ext'
 
 
 const html = ref<string>('')
 const error_text = ref<string>('')
 
-const source = computed<any>(() => strOr(props.node.textContent, ''))
+const source = computed<any>(() => props.node.textContent || '')
 const code_tag = computed<string>(() => 'code')
 const show_preview = computed<boolean>(() => !(error_text.value))
 const show_error = computed<boolean>(() => !!(error_text.value))
@@ -45,7 +45,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-math-block'" :data-math-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :data-math-block="''" :as="'div'" :class="'autodown-math-block'" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <div class="autodown-math-preview" v-html="html" />
       </template>

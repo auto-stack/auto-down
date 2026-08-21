@@ -2,14 +2,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { normalizeQueryResults, strOr, errorMessage } from '../auto/src/front/utils/node_view_ext'
+import { normalizeQueryResults, errorMessage } from '../auto/src/front/utils/node_view_ext'
 
 
 const results = ref<any[]>([])
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
 
-const query_text = computed<any>(() => strOr(props.node.attrs.query, ''))
+const query_text = computed<any>(() => props.node.attrs.query || '')
 const code_tag = computed<string>(() => 'code')
 const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
@@ -78,7 +78,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-query-block'" :data-query-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-query-block'" :data-query-block="''" :key="'NodeViewWrapper-1'">
       <div class="query-header">
         <span class="query-label">
           <span>Query</span>

@@ -34,7 +34,7 @@
 widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
-        fn: renderKatexPreview, strOr from "src/front/utils/node_view_ext.ts"
+        fn: renderKatexPreview from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -46,7 +46,7 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
 
     computed {
         // The original's computed(() => props.node.textContent || '').
-        source => strOr(.node.textContent, "")
+        source => .node.textContent || ""
         code_tag => "code"
         // The original's v-if="!error" / v-else chain (same rendered
         // branch in every state, including the initial empty source).

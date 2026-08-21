@@ -33,7 +33,7 @@
 widget MathInlineNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
-        fn: renderKatexPreview, strOr from "src/front/utils/node_view_ext.ts"
+        fn: renderKatexPreview from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -45,8 +45,8 @@ widget MathInlineNodeView(node: Array<str>, editor: Array<str>, updateAttributes
 
     computed {
         // The original's computed(() => props.node.attrs.source as string
-        // || '') — the cast is a no-op at runtime; strOr covers the ||.
-        source => strOr(.node.attrs.source, "")
+        // || '') — the cast is a no-op at runtime; the || is native now.
+        source => .node.attrs.source || ""
         // The error fallback's ${{ source }}$ interpolation.
         source_label => "$" + .source + "$"
         // The original's v-if="!error" / v-else chain (same rendered

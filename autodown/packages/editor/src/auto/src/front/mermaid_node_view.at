@@ -38,7 +38,7 @@
 widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
-        fn: renderMermaidPreview, strOr from "src/front/utils/node_view_ext.ts"
+        fn: renderMermaidPreview from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -49,10 +49,8 @@ widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: A
     }
 
     computed {
-        // The original's computed(() => props.node.textContent || '') —
-        // routed through strOr: a standalone `||` computed is mis-typed
-        // computed<boolean> by the DSL type inference.
-        source => strOr(.node.textContent, "")
+        // The original's computed(() => props.node.textContent || '').
+        source => .node.textContent || ""
         // <code> is not in the DSL element table (falls back to div, which
         // loses the UA monospace) — render a real <code> via dyn.
         code_tag => "code"

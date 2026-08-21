@@ -2,22 +2,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { strOr, orNull, errorMessage } from '../auto/src/front/utils/node_view_ext'
+import { errorMessage } from '../auto/src/front/utils/node_view_ext'
 
 
 const block = ref<any>(null)
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
 
-const attr_raw = computed<any>(() => strOr(props.node.attrs.raw, '![[Untitled]]'))
-const attr_title = computed<any>(() => strOr(props.node.attrs.title, 'Untitled'))
-const attr_block_id = computed<any>(() => orNull(props.node.attrs.blockId))
+const attr_raw = computed<any>(() => props.node.attrs.raw || '![[Untitled]]')
+const attr_title = computed<any>(() => props.node.attrs.title || 'Untitled')
+const attr_block_id = computed<any>(() => props.node.attrs.blockId || null)
 const display_label = computed<any>(() => (attr_block_id.value ? attr_title.value + '#' + attr_block_id.value : attr_title.value))
-const loading_text = computed<any>(() => strOr('Loading ' + display_label.value + '…', 'Loading…'))
-const block_content = computed<any>(() => strOr(block.value && block.value.content, ''))
+const loading_text = computed<string>(() => 'Loading ' + display_label.value + '…' || 'Loading…')
+const block_content = computed<any>(() => block.value && block.value.content || '')
 const show_loading = computed<boolean>(() => loading.value)
 const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
-const show_block = computed<boolean>(() => !loading.value && !(error_text.value) && block.value)
+const show_block = computed<any>(() => !loading.value && !(error_text.value) && block.value)
 
 const props = defineProps<{
   node: any
@@ -85,7 +85,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <NodeViewWrapper :data-title="attr_title" :class="'autodown-block-embed'" :as="'div'" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-block-embed'" :as="'div'" :data-title="attr_title" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
       <template v-if="show_loading">
         <div class="embed-state">
           <span>{{ loading_text }}</span>

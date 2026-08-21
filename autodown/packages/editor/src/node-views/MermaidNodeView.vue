@@ -3,13 +3,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewContent } from '../auto/src/front/utils/node_view_ext'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
-import { renderMermaidPreview, strOr } from '../auto/src/front/utils/node_view_ext'
+import { renderMermaidPreview } from '../auto/src/front/utils/node_view_ext'
 
 
 const svg = ref<string>('')
 const error_text = ref<string>('')
 
-const source = computed<any>(() => strOr(props.node.textContent, ''))
+const source = computed<any>(() => props.node.textContent || '')
 const code_tag = computed<string>(() => 'code')
 const show_preview = computed<boolean>(() => !!(svg.value))
 const show_error = computed<boolean>(() => !(svg.value) && !!(error_text.value))
@@ -68,7 +68,7 @@ onMounted(() => {
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <NodeViewContent :as="'pre'" :class="'mermaid-source'" :key="'NodeViewContent-2'">
+      <NodeViewContent :class="'mermaid-source'" :as="'pre'" :key="'NodeViewContent-2'">
         <component :is="(code_tag) as any" />
       </NodeViewContent>
     </NodeViewWrapper>

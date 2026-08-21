@@ -10,8 +10,9 @@
 // `title || page_path` and result.priority_label = `[#${priority}]` —
 // per-item template fallbacks/interpolations are not expressible in the
 // view: Call expressions emit null in bindings and an object-literal-
-// returning map closure is ambiguous with a block-body closure) and strOr
-// (a standalone `a || b` computed is mis-typed computed<boolean>).
+// returning map closure is ambiguous with a block-body closure). strOr is
+// retired: standalone `a || b` computeds now infer the operand type
+// (plan 013 follow-up, probe 14 fix).
 //
 // Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
 // to `any[]`. All eight NodeViewProps fields are declared (the original
@@ -35,7 +36,7 @@
 widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper from "src/front/utils/node_view_ext.ts"
-        fn: normalizeQueryResults, strOr, errorMessage from "src/front/utils/node_view_ext.ts"
+        fn: normalizeQueryResults, errorMessage from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -47,7 +48,7 @@ widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes
     }
 
     computed {
-        query_text => strOr(.node.attrs.query, "")
+        query_text => .node.attrs.query || ""
         // Native tags the DSL maps to div (code/ul/li are not in its
         // element table) are rendered via dyn with a string tag —
         // <component :is="'code'"> renders a real <code> element.

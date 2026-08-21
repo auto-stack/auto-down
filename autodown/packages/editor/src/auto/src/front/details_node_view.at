@@ -5,9 +5,10 @@
 // keeps the tiptap NodeViewWrapper/NodeViewContent re-exports (the gen
 // project has no @tiptap/* dependency — dual-resolution shim, same trick as
 // the BubbleMenu wrapper), the inline-SVG edit icon (the DSL has no svg/path
-// view elements, rendered via `dyn`), strOr (a standalone `a || b` computed
-// is mis-typed computed<boolean>) and focusAndSelect (DSL template refs are
-// typed HTMLElement; .select() needs an input element and there is no cast).
+// view elements, rendered via `dyn`) and focusAndSelect (DSL template refs
+// are typed HTMLElement; .select() needs an input element and there is no
+// cast). strOr is retired: standalone `a || b` computeds now infer the
+// operand type (plan 013 follow-up, probe 14 fix).
 //
 // Prop types are deliberately wide: `Array<str>` is a generic instance,
 // which the Vue backend maps to TS `any` (bare `any` is rejected by the
@@ -45,7 +46,7 @@ widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: A
     use {
         fn: nextTick from "vue"
         component: NodeViewWrapper, NodeViewContent from "src/front/utils/node_view_ext.ts"
-        fn: detailsEditIcon, strOr, focusAndSelect from "src/front/utils/node_view_ext.ts"
+        fn: detailsEditIcon, focusAndSelect from "src/front/utils/node_view_ext.ts"
     }
 
     msg Msg { ToggleOpen, StartEditingSummary, CommitSummary, CancelSummary, SummaryInput, Noop }
@@ -61,7 +62,7 @@ widget DetailsNodeView(node: Array<str>, updateAttributes: Array<str>, editor: A
         // keys off [data-open='true']). && / || idiom — ternary emits
         // undefined in computeds (see header).
         is_open => .node.attrs.open && true || false
-        summary => strOr(.node.attrs.summary, "Details")
+        summary => .node.attrs.summary || "Details"
         // Native ternary computed (plan 013 probe 01; the old && / || +
         // strOr idiom is retired — that form was mis-typed
         // computed<boolean>, ternaries emit computed<any>).

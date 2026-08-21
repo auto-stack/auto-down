@@ -3,7 +3,7 @@
 import { ref, computed, watch } from 'vue'
 import { NodeViewWrapper } from '../auto/src/front/utils/node_view_ext'
 import { nextTick } from 'vue'
-import { parseWikiLinkRaw, wikiLinkPencilIcon, strOr, orNull, focusAndSelect } from '../auto/src/front/utils/node_view_ext'
+import { parseWikiLinkRaw, wikiLinkPencilIcon, focusAndSelect } from '../auto/src/front/utils/node_view_ext'
 
 
 const editing = ref<boolean>(false)
@@ -11,13 +11,13 @@ const input_value = ref<string>('')
 
 const inputEl = ref<HTMLElement | null>(null)
 
-const attr_raw = computed<any>(() => strOr(props.node.attrs.raw, '[[Untitled]]'))
-const attr_title = computed<any>(() => strOr(props.node.attrs.title, 'Untitled'))
-const attr_block_id = computed<any>(() => orNull(props.node.attrs.blockId))
+const attr_raw = computed<any>(() => props.node.attrs.raw || '[[Untitled]]')
+const attr_title = computed<any>(() => props.node.attrs.title || 'Untitled')
+const attr_block_id = computed<any>(() => props.node.attrs.blockId || null)
 const display_label = computed<any>(() => (attr_block_id.value ? attr_title.value + '#' + attr_block_id.value : attr_title.value))
-const open_title = computed<any>(() => strOr('Open ' + display_label.value, 'Open'))
+const open_title = computed<string>(() => 'Open ' + display_label.value || 'Open')
 const pencil_icon = computed<any>(() => wikiLinkPencilIcon())
-const wrapper_class = computed<any>(() => strOr(editing.value && 'autodown-wikilink-node is-editing', 'autodown-wikilink-node'))
+const wrapper_class = computed<any>(() => editing.value && 'autodown-wikilink-node is-editing' || 'autodown-wikilink-node')
 
 const props = defineProps<{
   node: any
@@ -44,60 +44,6 @@ watch(attr_raw, () => {
   }
 })
 
-function Commit(): void {
-  let update_attributes = props.updateAttributes;
-  let value = input_value.value.trim();
-  if (value == '') {
-  editing.value = false;
-  input_value.value = attr_raw.value;
-  }
-  if (value != '') {let parsed = parseWikiLinkRaw(value);
-  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
-  editing.value = false;
-  }
-
-  emit('Commit')
-}
-
-function InputInput(e: any): void {
-  input_value.value = e.target.value;
-
-  emit('InputInput', e)
-}
-
-function StartEdit(): void {
-  input_value.value = attr_raw.value;
-  editing.value = true;
-  nextTick(() => { focusAndSelect(inputEl.value!);
-   });
-
-  emit('StartEdit')
-}
-
-function OpenLink(): void {
-
-
-  let handler = null;
-  let opts = props.extension.options;
-  if (opts != null) {handler = opts.openWikiLink;
-  }
-  if (handler != null) {handler(attr_title.value, attr_block_id.value || null);
-  }
-  if (handler == null) {
-  input_value.value = attr_raw.value;
-  editing.value = true;
-  nextTick(() => { focusAndSelect(inputEl.value!);
-   });
-  }
-
-  emit('OpenLink')
-}
-
-function Noop(e: any): void {
-
-  emit('Noop', e)
-}
-
 function OnKeydown(e: any): void {
   if (e.key == 'Enter') {e.preventDefault();
 
@@ -119,11 +65,65 @@ function OnKeydown(e: any): void {
   emit('OnKeydown', e)
 }
 
+function StartEdit(): void {
+  input_value.value = attr_raw.value;
+  editing.value = true;
+  nextTick(() => { focusAndSelect(inputEl.value!);
+   });
+
+  emit('StartEdit')
+}
+
+function InputInput(e: any): void {
+  input_value.value = e.target.value;
+
+  emit('InputInput', e)
+}
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
+}
+
+function Commit(): void {
+  let update_attributes = props.updateAttributes;
+  let value = input_value.value.trim();
+  if (value == '') {
+  editing.value = false;
+  input_value.value = attr_raw.value;
+  }
+  if (value != '') {let parsed = parseWikiLinkRaw(value);
+  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
+  editing.value = false;
+  }
+
+  emit('Commit')
+}
+
+function OpenLink(): void {
+
+
+  let handler = null;
+  let opts = props.extension.options;
+  if (opts != null) {handler = opts.openWikiLink;
+  }
+  if (handler != null) {handler(attr_title.value, attr_block_id.value || null);
+  }
+  if (handler == null) {
+  input_value.value = attr_raw.value;
+  editing.value = true;
+  nextTick(() => { focusAndSelect(inputEl.value!);
+   });
+  }
+
+  emit('OpenLink')
+}
+
 
 </script>
 
 <template>
-    <NodeViewWrapper :class="wrapper_class" :as="'span'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'span'" :class="wrapper_class" :key="'NodeViewWrapper-1'">
       <template v-if="! editing">
         <span class="autodown-wikilink-label" :title="open_title" @click.stop="OpenLink">
           <span>{{ display_label }}</span>
@@ -135,7 +135,7 @@ function OnKeydown(e: any): void {
         </span>
       </template>
       <template v-if="editing">
-        <input class="autodown-wikilink-input" ref="inputEl" :type="'text'" v-model="input_value" @blur="Commit" @input="InputInput($event)" @keydown="OnKeydown($event)" @click.stop="Noop($event)" />
+        <input class="autodown-wikilink-input" v-model="input_value" :type="'text'" ref="inputEl" @input="InputInput($event)" @keydown="OnKeydown($event)" @click.stop="Noop($event)" @blur="Commit" />
       </template>
     </NodeViewWrapper>
 

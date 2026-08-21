@@ -31,16 +31,20 @@ the retired ones (`show:`, `html:`, ternary/`??` computeds, real
 `async`/`try`/`catch`, extension-imported `getLanguageIconUrl`), and
 Phase 2 eliminated the AutoDownEditor shell (quoted msg variants carry
 the lowercase/hyphenated emit contract; `expose {}` + named slots +
-withDefaults runtime defaults are all native). **Current true residue**:
+withDefaults runtime defaults are all native). The plan 013 follow-up
+then fixed the last two confirmed compiler bugs on the auto-lang
+`auto-down` branch: **dropped parentheses** (probe 09 — emitters now
+re-derive parens from precedence/associativity, capability-locked by
+`cap_bina_parens_*`) and the **mis-typed `computed<boolean>` for
+standalone `||`/`&&`** (probe 14 — operand-type inference now,
+`cap_logical_computed_infers_operand_type`), so `strOr`/`orNull` are
+deleted from the extensions and all seven node views use native `||`.
+**Current true residue**:
 
-- **Dropped parentheses** in mixed-precedence expressions
-  (`(a+b)*c` → `a + b * c`, silently wrong) — split such expressions
-  into multiple `let` steps. Confirmed compiler bug (probe 09), fix
-  candidate on the auto-lang side.
-- **Ternary condition `==/!= ""` collapses to `!`/`!!`** (probe 14) —
-  semantics differ for `null`; and standalone `||`/`&&` computeds are
-  mis-typed `computed<boolean>`, so `strOr`/`orNull` stay in the
-  extensions.
+- **Ternary condition `==/!= ""` collapses to `!`/`!!`** (probe 14③) —
+  deliberate PLAN-026 semantics (`undefined !== ''` misjudged missing
+  fields; `!!x` covers null/undefined/empty alike). Not a bug, but mind
+  it when porting a literal `x !== ''` check.
 - Tooltip/title spread merges route through extensions (object spread
   in a computed is unverified).
 - Statement-initial dot needs a blank line before it (the parser glues
@@ -105,8 +109,7 @@ reference; the migrated ones are marked RETIRED.
   the `[[title#blockId]]` regex parser (the DSL has no regex literals), the
   WikiLink Pencil / Details inline-SVG edit icons (rendered via `dyn`),
   `normalizeQueryResults` (per-item template fallbacks/interpolations are
-  not expressible in the view), `strOr`/`orNull` (standalone `||` computeds
-  are mis-typed `computed<boolean>`, probe 14), `errorMessage` (TS types
+  not expressible in the view), `errorMessage` (TS types
   catch params `unknown`; the DSL has no casts) and
   `focusAndSelect` (DSL template refs are typed `HTMLElement`; `.select()`
   needs an input element and there is no cast), and the
@@ -278,14 +281,10 @@ stale deployed copy) manually.
    `code_language_icon.at` now imports the real
    `src/utils/codeBlockLanguage.ts` via `utils/code_language_icon_ext.ts`
    — the in-DSL reimplementation (and its keep-in-sync hazard) is gone.
-2. **`computed` expression limitations** — mostly retired by probes:
-   bare function calls and `.prop` refs work in computeds, so
-   `url => getLanguageIconUrl(.language)` is a plain reactive computed
-   again (the earlier `.Init`-only approximation and its static-prop
-   caveat are retired). Still standing: parens are dropped in
-   mixed-precedence expressions, and standalone `||`/`&&` computeds are
-   mis-typed `computed<boolean>` (probe 14) — those still route through
-   `strOr`/`orNull`.
+2. **`computed` expression limitations** — retired: bare function calls,
+   `.prop` refs, ternaries, `??`, `||`/`&&` with operand-type inference
+   and mixed-precedence parentheses all work natively now (plan 013 +
+   follow-up; `strOr`/`orNull` are deleted).
 3. Browser globals used by generated code pass through the a2ts
    transpiler verbatim (typed by the TS DOM lib) — e.g. `btoa` inside
    `codeBlockLanguage.ts`, reached via the extension.
@@ -342,15 +341,17 @@ bodies. The logic has since flowed back into the widget. What remains in
    is fine (templates unwrap), but `.filtered.length` inside a view `if`
    is mangled by the template codegen (renders `filtered.lengthgth`) — so
    emptiness goes through the named `is_empty` computed.
-6. **Expression parentheses are dropped by the transpiler** (unchanged):
-   `(x + 1) % len` mis-emits as `x + 1 % len`, so the ArrowUp/ArrowDown
-   wrap-around uses intermediate `let` locals. This also shapes the
-   filter: method calls cannot chain onto a concatenation
-   (`(a + b).toLowerCase()` loses the parens), so the filter joins via an
-   array literal receiver — `[item.title, item.description].concat(
+6. **~~Expression parentheses are dropped by the transpiler~~ FIXED for
+   mixed-precedence binops (plan 013 follow-up: emitters re-derive parens
+   from precedence/associativity, `cap_bina_parens_*`).** `(x + 1) % len`
+   now emits correctly. STILL OPEN: parens on a method-call RECEIVER are
+   not restored (`(a + b).toLowerCase()` still loses them — the receiver
+   is a `Dot`/`Call` child, not a `Bina` operand), so the filter keeps
+   its array-literal receiver — `[item.title, item.description].concat(
    item.searchTerms).join(" ")` — which needs no parens and preserves the
    original join-then-match semantics exactly (empty query still returns
-   all items, via `''.includes('')`).
+   all items, via `''.includes('')`). The ArrowUp/ArrowDown wrap-around
+   keeps its intermediate `let` locals (works either way; no churn).
 7. **A field literally named `view` cannot follow a dot-chain.**
    `.editor.view` is swallowed by the parser/codegen (`view` is a DSL
    keyword), so editor-view access uses bracket notation:
@@ -395,8 +396,8 @@ bodies. The logic has since flowed back into the widget. What remains in
    (tiptap state is not reactive), so the original's closures were
    effectively also evaluated only at mount.
 4. **Tooltip/linkPrompt defaults use the `&&`/`||` idiom in the DSL.**
-   `??` is unsupported in computed expressions and `(tips || {}).k`
-   needs parens (which are dropped), so the buttons computed writes
+   `(tips || {}).k` needs receiver parens (still dropped for method/field
+   receivers — see SlashMenu note 6), so the buttons computed writes
    `.tooltips && .tooltips.bold || "Bold"`. Difference vs the original's
    spread merge + `??`: an explicitly empty-string tooltip or linkPrompt
    falls back to the default instead of staying empty. The link action's
@@ -551,22 +552,16 @@ widgets:
 1. **~~Ternary emits `undefined` in computeds~~ RETIRED (plan 013 Phase
    1).** `cond ? a : b` now emits a correctly typed ternary in computeds
    (probe 14); `marker` and the two `display_label`s use it directly.
-   Standalone `&&` / `||` computeds are still mis-typed — see 2.
-2. **Standalone `&&` / `||` computeds are mis-typed `computed<boolean>`**
-   (probe 14): vue-tsc rejects a string-returning getter under the
-   explicit `<boolean>` generic, and boolean-typed values break downstream
-   string assignments/concatenations. All such fallbacks route through
-   the extension's typed `strOr` / `orNull`
-   (`strOr(cond && "x", "y")`, `strOr(props.node.attrs.summary, "Details")`).
-   Ternaries whose condition is a plain truthiness test are fine (note 1),
-   but `??`-vs-`||` semantics differ on empty string — check the original
-   before migrating.
+2. **~~Standalone `&&` / `||` computeds are mis-typed
+   `computed<boolean>`~~ RETIRED (plan 013 follow-up, probe 14 fix).**
+   `||`/`&&` infer the operand type now (`cap_logical_computed_infers_operand_type`),
+   all seven node views use native `||` fallbacks, and `strOr`/`orNull`
+   are deleted from the extension.
 3. **An object literal as a computed body emits invalid JS**
-   (`() => {raw: ...}` is a block, not an object — and parens are dropped,
-   so the object-literal-returning closure form is unavailable too).
-   Object-literals INSIDE an array literal are fine (the BubbleMenu
-   buttons computed). The originals' `attrs` computed objects become
-   scalar computeds (`attr_raw` / `attr_title` / `attr_block_id`).
+   (`() => {raw: ...}` is a block, not an object). Object-literals INSIDE
+   an array literal are fine (the BubbleMenu buttons computed). The
+   originals' `attrs` computed objects become scalar computeds
+   (`attr_raw` / `attr_title` / `attr_block_id`).
 4. **`type:` and `as:` are keyword tokens, not valid brace-form prop
    names.** The brace-form prop check requires an Ident, so
    `type: "text"` / `as: "div"` mis-parse into junk `<div>` children. The
@@ -585,10 +580,10 @@ widgets:
    BlockEmbed `load()` (original: `watch(..., load, { immediate: true })`)
    is therefore DUPLICATED in `.Init` (onMounted) and the `watch` body —
    same constraint as SlashMenu's duplicated positioning block.
-8. **`!= null` in a computed emits `!== undefined`** (handlers emit
-   `!= null` correctly). For a model var that can be null this is wrong
-   (`null !== undefined` is true) — BlockEmbed's `show_block` uses bare
-   truthiness (`.block`) instead, matching the original's `v-else-if="block"`.
+8. **~~`!= null` in a computed emits `!== undefined`~~ RETIRED (plan 012
+   Batch A gap 47; plan 013 probe 03 confirmed the loose `!= null`
+   emission).** BlockEmbed's `show_block` still uses bare truthiness
+   (`.block`) — equivalent and simpler, no reason to churn it.
 9. **`code` / `ul` / `li` are not in the DSL element table** and fall back
    to `<div>`. `ul`/`li` would be pixel-identical as divs (the scoped CSS
    resets list-style/padding/margin), but `<code>` gets its monospace from

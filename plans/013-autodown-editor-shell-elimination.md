@@ -1,7 +1,7 @@
 # Plan: AutoDown 编辑器 Auto 化深化 —— 薄壳消除与缺口回迁
 
 > 前置：plan 010（编辑器 Auto 化复刻，Phase 0-4 全 ✅）、plan 011（jade Auto 化）、plan 012（编译器 backlog，已 CLOSED）。
-> 状态：Phase 0 ✅ / Phase 1 ✅（2026-08-19，批次 1-5 全绿）；Phase 2（薄壳消除）未开工。
+> 状态：**CLOSED ✅（2026-08-19）**——Phase 0/1/2/3 全部完成。编辑器包 Vue 组件层 100% Auto 生成，薄壳与 Inner 分割已消除。
 > 调研基础：`autodown/packages/editor/src/auto/README.md` workaround 全清单（2026-07 基线）逐条对照当前编译器（plan 402-410 + 批次 A-G + plan-408/055）。
 > 长期目标不变：消除编辑器包最后一层手写 Vue 壳，缺口能回迁尽回迁，ext 只留真 ext 项。
 
@@ -75,9 +75,9 @@ Plan 408 P4（handler/watch 体 ref 自动解包）后，jade 侧 20 处手写 `
 - **任务 2.4 AutoDownEditor.vue 全生成** ✅：widget 改名 AutoDownEditor，直接部署到 `src/core/AutoDownEditor.vue`，壳与 AutoDownEditorInner.vue 删除。**关键发现（probe 16）**：生产构建的 `<script setup>` 内联模板使 `setupState` 为空，ext 经 `inst.proxy` 写 model var 落到非响应式 ctx（dev 正常 dist 静默失效）——editor 实例改走 bridge 返回的 `reactive({ items, editor })` 袋（ref 属性保持链接），DSL 全侧用 `.autoDownEditorBridge.editor` 点链；`editor` ref 由 bridge 在 onMounted 合并进 `inst.exposed`（demo e2e 的 `exposed.editor.value` 形状保持）。消费方核对：demo（@save/@cancel/@update + exposed.editor.value + getBlockMap）✓、jade（EditorShell attrs 穿透 + onOpenWikiLink prop 通道 + $el）✓、`src/index.ts` 公共 API 不变 ✓。
 - 验收 ✅：编辑器包 Vue 层零手写组件；demo e2e 串行基线 + jade e2e 23/23 不劣化。
 
-## Phase 3：收口（0.5 天）
+## Phase 3：收口（0.5 天）✅ 完成（2026-08-19）
 
-- README workaround 章节重写为"当前真实残留"清单（仿 jade README 收工模式）；plan 013 状态关闭；plan 010 补记深化结果。
+- README workaround 章节重写为"当前真实残留"清单（头部状态块：括号丢弃 / 三元 `==/!= ""` 坍缩 + 独立 `||` computed 误型 / spread 合并未验证 / 句首点需空行）；AutoDownEditor 章节重写为"全生成装配组件"（quoted emit 契约 + computed-payload relay + expose + 具名 slot + withDefaults + probe 16 reactive 袋模式）；Layout/Regenerate 同步（新 stub、AUTO 环境变量指向 worktree 二进制、改名不清 stale 产物 caveat）；plan 013 关闭；plan 010 补记深化结果。
 
 ## 风险与对策
 

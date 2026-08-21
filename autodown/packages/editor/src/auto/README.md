@@ -6,45 +6,48 @@
 `src/node-views/DetailsNodeView.vue`, `WikiLinkNodeView.vue`,
 `QueryBlockNodeView.vue`, `BlockEmbedNodeView.vue`,
 `MermaidNodeView.vue`, `MathBlockNodeView.vue`,
-`MathInlineNodeView.vue` and the top-level assembly component's inner
-half `src/core/AutoDownEditorInner.vue` are
+`MathInlineNodeView.vue` and the top-level assembly component
+`src/core/AutoDownEditor.vue` are
 generated from Auto language widget DSL sources in this directory by the
-Auto compiler. The public `src/core/AutoDownEditor.vue` is a thin
-hand-written shell around the generated inner (see the AutoDownEditor
-section below); the original fully hand-written version is kept as
-`src/core/AutoDownEditor.vue.bak`. With this, the editor package's Vue
-component layer is 100% Auto-generated except that shell (Tiptap
+Auto compiler. The original fully hand-written version is kept as
+`src/core/AutoDownEditor.vue.bak`. Since plan 013 Phase 2 the editor
+package's Vue component layer is 100% Auto-generated — the hand-written
+shell and the `AutoDownEditorInner.vue` split are gone (Tiptap
 extensions and CSS stay hand-written by design).
 
-**Compiler**: use the master binary
-`D:/autostack/auto-lang/target/debug/auto.exe`. The 3.0a/3.0b DSL
-capabilities this project relies on (quoted custom events, `style_obj`,
-`dyn`, `watch`, `use { fn/composable }`, closures) were merged back to
-master (merge commit `1ecc13e3`); the phase3 worktree binary
-`D:/autostack/auto-lang/.worktree/phase3-dsl-capabilities/target/debug/auto.exe`
-also works but is no longer required.
+**Compiler**: use the worktree binary
+`D:/autostack/auto-lang/.worktree/auto-down/target/debug/auto.exe`
+(branch `auto-down`). It carries the plan 013 Phase 2 quoted-msg-variant
+fix (`quoted` variants are always declared in `defineEmits` and always
+tail-emit, even when self-called with no view reference — commit
+`ecc9c841`, pending merge back to auto-lang master by the auto-lang
+side). The master binary still works for every other widget but will
+mis-compile `auto_down_editor.at` (missing emit declarations).
 
-**Workaround status (2026-08-19)**: plan 013 Phase 0.3 re-probed every
-workaround listed below against the current master compiler — see
-`plans/013-autodown-editor-shell-elimination.md` and
-`tmp/dsl-probes/plan013/REPORT.md`. 12 of 13 probed capabilities are now
-native (ternary/`??`/`!= null` computed, `show:`, `html:`, `expose {}`,
-async handlers, ext `use { fn }`, withDefaults runtime defaults, DOM
-`.contains`, empty handlers, PascalCase `:key`). Phase 1 then migrated the
-widgets off the retired workarounds: `show:` replaced the `style_obj`
-display toggle, `html:` replaced the imperative `setInnerHTML`,
-`??`/ternary computeds replaced `noResultsOr` and the truthiness-test
-`strOr(cond && x, y)` forms, real `async`/`try`/`catch`/`finally` handlers
-replaced the two-callback `.then`, and `getLanguageIconUrl` is imported
-from the real `codeBlockLanguage.ts` through an extension re-export.
-Still routed through extensions: `strOr`/`orNull` for standalone `||`
-computeds (mis-typed `computed<boolean>`, probe 14) and the tooltip/title
-spread merges (object spread in a computed is unverified). The only
-confirmed remaining compiler bug is **dropped parentheses** in
-mixed-precedence expressions (`(a+b)*c` → `a + b * c`, silently wrong) —
-split such expressions into multiple `let` steps instead. Individual
-workaround notes below are the 2026-07 baseline, kept for reference; the
-migrated ones are marked RETIRED.
+**Workaround status (2026-08-19, post plan 013)**: the widget set is
+fully migrated to native DSL capabilities — plan 013 Phase 0.3 re-probed
+every workaround (12 of 13 now native), Phase 1 migrated the widgets off
+the retired ones (`show:`, `html:`, ternary/`??` computeds, real
+`async`/`try`/`catch`, extension-imported `getLanguageIconUrl`), and
+Phase 2 eliminated the AutoDownEditor shell (quoted msg variants carry
+the lowercase/hyphenated emit contract; `expose {}` + named slots +
+withDefaults runtime defaults are all native). **Current true residue**:
+
+- **Dropped parentheses** in mixed-precedence expressions
+  (`(a+b)*c` → `a + b * c`, silently wrong) — split such expressions
+  into multiple `let` steps. Confirmed compiler bug (probe 09), fix
+  candidate on the auto-lang side.
+- **Ternary condition `==/!= ""` collapses to `!`/`!!`** (probe 14) —
+  semantics differ for `null`; and standalone `||`/`&&` computeds are
+  mis-typed `computed<boolean>`, so `strOr`/`orNull` stay in the
+  extensions.
+- Tooltip/title spread merges route through extensions (object spread
+  in a computed is unverified).
+- Statement-initial dot needs a blank line before it (the parser glues
+  `foo\n.bar` onto the previous statement) — seen in the save relay.
+
+Individual workaround notes below are the 2026-07 baseline, kept for
+reference; the migrated ones are marked RETIRED.
 
 ## Layout
 
@@ -76,12 +79,14 @@ migrated ones are marked RETIRED.
   (port, original kept as `src/node-views/MathBlockNodeView.vue.bak`)
 - `src/front/math_inline_node_view.at` — the `MathInlineNodeView` widget
   (port, original kept as `src/node-views/MathInlineNodeView.vue.bak`)
-- `src/front/auto_down_editor.at` — the `AutoDownEditorInner` widget (port
+- `src/front/auto_down_editor.at` — the `AutoDownEditor` widget (port
   of the original hand-written `src/core/AutoDownEditor.vue` assembly
   component, kept as `src/core/AutoDownEditor.vue.bak`). The generated
-  SFC is copied to `src/core/AutoDownEditorInner.vue` and wrapped by the
-  thin hand-written shell `src/core/AutoDownEditor.vue` — see the
-  AutoDownEditor section below.
+  SFC IS the public component — it deploys straight to
+  `src/core/AutoDownEditor.vue` with the full contract (props with
+  runtime defaults, the seven quoted lowercase/hyphenated emits, named
+  slots, `expose { handleSave, getBlockMap }`) — see the AutoDownEditor
+  section below.
 - `src/composables/renderPreview.ts` (editor tree) — the real KaTeX /
   Mermaid preview rendering for the three render-type node views
   (`renderKatexPreview`, `renderMermaidPreview`): the npm library calls
@@ -174,14 +179,24 @@ migrated ones are marked RETIRED.
   for `auto_down_editor.at`: the `useAutoDownEditorBridge` composable
   (the DSL's `composable:` imports are called with ZERO arguments, so the
   `useAutoDownEditor` options object is assembled there from the component
-  instance's props; `useAutoDownEditor.ts` itself is untouched), the
-  30-item static slash command manifest `getSlashItems` (lucide icons as
-  data + block-body command closures with `window.prompt` /
-  `navigator.clipboard` / DOM walking — same class of gap as
-  `bubbleIcon`), `normalizeAnchors` (no regex literals in the DSL), the
-  `EditorContent` / four-menu component re-exports (dual-resolution shim)
-  and the Check/X lucide re-exports for the `dyn` render trick. See the
-  AutoDownEditor section below.
+  instance's props; `useAutoDownEditor.ts` itself is untouched). The
+  bridge emits the contractual events straight through
+  `getCurrentInstance().emit` (`update`/`blur`/`focus`/`link-click`/
+  `open-wiki-link` — declared via quoted msg variants since plan 013
+  Phase 2, no more callback props) and returns a `reactive({ items,
+  editor })` bag so refs stay linked when the DSL reads
+  `.autoDownEditorBridge.editor` (probe 16: in production builds the
+  `<script setup>` setupState is empty, so writing a model var through
+  `inst.proxy` lands on a non-reactive ctx — the reactive bag is the
+  working channel). Also here: the 30-item static slash command manifest
+  `getSlashItems` (lucide icons as data + block-body command closures
+  with `window.prompt` / `navigator.clipboard` / DOM walking — same
+  class of gap as `bubbleIcon`), `normalizeAnchors` (no regex literals
+  in the DSL), the `EditorContent` / four-menu component re-exports
+  (dual-resolution shim), the Check/X lucide re-exports for the `dyn`
+  render trick, and the `getBlockMap` / `appendTableIAL` re-exports from
+  the real `extensions/BlockId` / `extensions/tableAttributes` (same
+  dual-resolution shim). See the AutoDownEditor section below.
 - `src/composables/tiptapEditorContent.ts` (editor tree) — the real
   re-export of `EditorContent` from `@tiptap/vue-3`, plus the
   `katex/dist/katex.min.css` side-effect import (the original
@@ -189,11 +204,15 @@ migrated ones are marked RETIRED.
   katex dependency, so the stub omits it). Same dual-resolution trick as
   `tiptapBubbleMenu`.
 - `stubs/gen_tiptapEditorContent.ts`, `stubs/gen_useAutoDownEditor.ts`,
-  `stubs/gen_slashItem.ts`, `stubs/gen_menus/*.vue` — gen-project stubs
-  for `tiptapEditorContent.ts`, `useAutoDownEditor.ts`,
-  `src/menus/slashItem.ts` (the real one imports `@tiptap/core` types)
-  and the four menu SFCs re-exported by `auto_down_editor_ext.ts`;
-  mirrored into `gen/front/vue/src/composables/` resp.
+  `stubs/gen_slashItem.ts`, `stubs/gen_blockId.ts`,
+  `stubs/gen_tableAttributes.ts`, `stubs/gen_menus/*.vue` — gen-project
+  stubs for `tiptapEditorContent.ts`, `useAutoDownEditor.ts`,
+  `src/menus/slashItem.ts` (the real one imports `@tiptap/core` types),
+  `extensions/BlockId` (`getBlockMap`) resp.
+  `extensions/tableAttributes` (`appendTableIAL`) — the gen project has
+  no tiptap extension tree — and the four menu SFCs re-exported by
+  `auto_down_editor_ext.ts`; mirrored into
+  `gen/front/vue/src/composables/`, `gen/front/vue/src/extensions/` resp.
   `gen/front/vue/src/menus/` by the regen script. Never ship.
 - `src/front/app.at` — placeholder root widget. The generator always emits
   the root widget as `App.vue`; secondary widgets land in
@@ -206,15 +225,21 @@ migrated ones are marked RETIRED.
 From `autodown/packages/editor/src/auto`:
 
 ```sh
-bash gen/regen.sh
+AUTO=D:/autostack/auto-lang/.worktree/auto-down/target/debug/auto.exe bash gen/regen.sh
 ```
+
+(The `AUTO` override points at the worktree binary — see the Compiler
+note at the top. Without it the script uses the master binary, which
+mis-compiles `auto_down_editor.at` until the quoted-variant fix lands on
+auto-lang master.)
 
 The script (kept in the gitignored `gen/` directory, like jade's) performs
 the whole pipeline with gating: mirrors the `stubs/` and real modules into
 the gen project (the `useMenuBounds` and `codeBlockLanguage` path tricks,
 the behavior-free tiptap
 BubbleMenu/NodeViewWrapper/EditorContent stubs, the KaTeX/Mermaid
-renderPreview stub, `gen_slashItem.ts` and the four menu SFC stubs),
+renderPreview stub, the `BlockId`/`tableAttributes` extension stubs,
+`gen_slashItem.ts` and the four menu SFC stubs),
 runs `auto build`, aborts without touching the editor tree when the build
 or the `vue-tsc` gate fails (no stale output left behind), then rewrites
 the gen-only `@/ext/...` import aliases to editor-relative paths and copies
@@ -236,7 +261,15 @@ under `gen/.../src/ext/`) in place, then reports success. Always check
 the build output for that warning (or the component's mtime) after
 editing a widget.
 
-## Known Auto language gaps (as of 2026-08-19, plan 013 Phase 1)
+**Caveat 2:** regen does NOT clean up after a widget is renamed or
+deleted — the old generated SFC stays in `gen/front/vue/src/components/`
+and gets type-checked by the gate (this bit once when
+`AutoDownEditorInner` was renamed to `AutoDownEditor`: the stale
+`AutoDownEditorInner.vue` failed vue-tsc until deleted by hand). After
+renaming/removing a widget, delete its old output under `gen/` (and any
+stale deployed copy) manually.
+
+## Known Auto language gaps (as of 2026-08-19, plan 013 closed)
 
 1. **No direct import of hand-written TS from widget code.** A `use` path
    cannot leave the project `src/` (auto-man rejects `..`), so widgets
@@ -682,103 +715,89 @@ these widgets:
   `filteredLanguages.length === 0`.
 
 
-## AutoDownEditor (Inner) notes — the assembly component + shell split
+## AutoDownEditor notes — the fully generated assembly component
 
 `auto_down_editor.at` ports the original `src/core/AutoDownEditor.vue`
 (421 lines, kept as `.bak`): EditorContent + the four menus gated on the
 editor instance + the Save/Cancel action buttons, the content/canEdit
-prop watches and the view-originated events all live in the DSL. The
-generated SFC is copied to `src/core/AutoDownEditorInner.vue`; the
-public `src/core/AutoDownEditor.vue` is a ~130-line hand-written SHELL
-around it that owns the four things the DSL cannot express (contract
-unchanged — demo's `getBlockMap()`/`@update` and jade-garden's `$el`/
-`@open-wiki-link` consume them):
+prop watches and the save/cancel flows all live in the DSL. Since plan
+013 Phase 2 the generated SFC deploys straight to
+`src/core/AutoDownEditor.vue` — there is NO shell and no Inner split;
+the editor package's Vue layer is 100% generated. The four historical
+hard gaps are all natively expressed now:
 
-1. **Emit names.** DSL component events are PascalCase-only, so the
-   contractual lowercase/hyphenated names (`update`, `save`, `cancel`,
-   `blur`, `focus`, `link-click`, `open-wiki-link`) are re-emitted by the
-   shell. Two channels connect inner and shell (see 2 below for why):
-   view-originated clicks use normal DSL msg events (`@SaveRequest`,
-   `@Cancel` — view-referenced, so they ARE declared in `defineEmits`),
-   while bridge-originated callbacks (tiptap's onUpdate/onBlur/onFocus/
-   onLinkClick/onOpenWikiLink + the editor-instance report) travel
-   through callback PROPS (`updateCb`, `blurCb`, ..., `editorReadyCb`)
-   read live from the component instance.
-2. **`defineEmits` only declares view-referenced handlers** (Plan 367
-   P1-4). A component event emitted from OUTSIDE the view (the
-   extension's bridge, via `getCurrentInstance().emit`) would be
-   undeclared — and with `defineEmits` present, undeclared `@Foo`
-   listeners fall through as attrs onto the single root element, where
-   Vue registers them as NATIVE DOM listeners (`blur`/`focus` don't
-   bubble, but the pollution and the double-delivery risk are real).
-   Hence callback props for everything the bridge originates.
-3. **defineExpose.** The DSL has no expose support; the shell exposes
-   `{ editor, handleSave, getBlockMap }` verbatim. It also means the
-   exposed `handleSave` and the Save button share ONE code path (the
-   button emits `SaveRequest`, the shell's `handleSave` computes
-   `getMarkdown` + `appendTableIAL` and emits `save`) — the original
-   could share it directly.
-4. **Slots + runtime prop defaults.** The DSL has no slot support and
-   generated prop defaults are not applied at runtime. The shell keeps
-   the original `withDefaults` (arriving resolved via `v-bind="$props"`)
-   and passes the `save-label`/`cancel-label` slots as FUNCTIONAL
-   COMPONENTS (`() => slots['save-label']?.() ?? props.saveLabel`),
-   rendered by the inner via `dyn` — identical rendered DOM to the
-   original's `<slot name="save-label">{{ saveLabel }}</slot>`.
+1. **Emit names.** Quoted msg variants carry the contractual
+   lowercase/hyphenated names (`"update"`, `"save"`, `"cancel"`,
+   `"blur"`, `"focus"`, `"link-click"`, `"open-wiki-link"`). The
+   compiler treats quoted variants as contractual (plan 013 Phase 2 fix,
+   auto-lang branch `auto-down`): always declared in `defineEmits` and
+   always trailing-emitted, even with no view reference. View-originated
+   events (`save`/`cancel` via the buttons) emit from the handlers;
+   bridge-originated ones (tiptap's onUpdate/onBlur/onFocus/onLinkClick/
+   onOpenWikiLink) emit from the extension through
+   `getCurrentInstance().emit`. The callback-props channel
+   (`updateCb`/`blurCb`/.../`editorReadyCb`) is deleted.
+2. **The `save` payload uses a computed-payload relay.** The exposed
+   `.handleSave` handler computes `getMarkdown` + `appendTableIAL`, then
+   self-calls `."save"(md_ial)` whose trailing emit carries the payload
+   — so the Save button and the imperative `handleSave()` share ONE code
+   path, like the original. (Mind the parser quirk: a statement-initial
+   dot needs a blank line before it, or it glues onto the previous
+   statement.)
+3. **defineExpose.** The native `expose { .handleSave, .getBlockMap }`
+   block covers the imperative contract; `getBlockMap` is a model var
+   assigned a closure over the bridge bag in `.Init`. The `editor` ref
+   is merged into `inst.exposed` by the bridge on mount (the demo e2e
+   reads the raw `__vueParentComponent.exposed.editor.value`; jade's
+   `$el` falls through Vue's expose proxy).
+4. **Slots + runtime prop defaults.** `slot(name: "save-label")` /
+   `slot(name: "cancel-label")` are native named slot outlets with the
+   label prop text as fallback children (the functional-component +
+   `dyn` bridge is retired), and the widget signature's defaults
+   (`canEdit: bool = true`, `saveLabel: str = "Save"`, ...) generate the
+   original `withDefaults` — the values in the `.at` signature ARE the
+   public contract.
 
-New probe/codegen-confirmed gaps first hit by this widget:
+Remaining architecture notes (probe/codegen-confirmed):
 
 5. **`use { composable: ... }` calls take ZERO arguments.** The codegen
    emits `const x = useX()` at `<script setup>` top level, so the
    `useAutoDownEditor` options object (props + emit-bridging callbacks)
-   cannot be assembled in the DSL. The extension's
-   `useAutoDownEditorBridge` reads the resolved props (and callback
-   props) from `getCurrentInstance()` and returns the slash items; the
-   timing still satisfies tiptap's `useEditor` (its onMounted/
-   onBeforeUnmount register inside this setup-scope call).
-   `useAutoDownEditor.ts` itself is untouched.
-6. **The composable local name is derived, not choosable.** `useFooBar`
+   is assembled in the extension's `useAutoDownEditorBridge`, which
+   reads the resolved props from `getCurrentInstance()`. The timing
+   still satisfies tiptap's `useEditor` (its onMounted/onBeforeUnmount
+   register inside this setup-scope call). `useAutoDownEditor.ts`
+   itself is untouched.
+6. **Production builds hide model vars from extension code (probe
+   16).** Vite compiles `<script setup>` to an inline render function,
+   so `setupState` is empty — writing a model var through `inst.proxy`
+   lands on a non-reactive ctx and silently does nothing (dev builds
+   work, which made this nasty to catch). The bridge therefore returns a
+   `reactive({ items, editor })` bag — `reactive()` keeps the editor ref
+   linked, and the DSL reads `.autoDownEditorBridge.editor` everywhere
+   (view/computed/watch/handler all verified). The same applies to the
+   slash items: `items: .autoDownEditorBridge.items`.
+7. **The composable local name is derived, not choosable.** `useFooBar`
    binds to `fooBar` (strip `use`, lowercase first letter) — view code
-   must reference THAT name (a first draft referenced an imagined
-   `slashItemsBridge` and vue-tsc rejected it). A composable local CAN be
-   referenced in a view prop binding: `items: .autoDownEditorBridge`
-   hits the codegen's dot-strip rule and emits the bare local verbatim
-   (`:items="autoDownEditorBridge"`), which is exactly what a setup-scope
-   plain-array const needs. (Refs would NOT auto-unwrap through such a
-   nested path — the bridge deliberately returns a plain array, and the
-   editor instance travels as a PROP instead: bridge creates it, reports
-   it via `editorReadyCb`, the shell passes it back down as `editor`,
-   which gates the menus via `if .editor`.)
-7. **An empty msg handler body does not parse.** The pure-emit handlers
-   (`SaveRequest`/`Cancel` — all the work lives in the shell) carry a
-   `let noop = 0` statement (`noUnusedLocals` is off in the gen tsconfig,
-   so it is inert).
-8. **Bare `dyn (.someProp)` with no props block parses fine** and emits
-   `<component :is="(someProp) as any" />` — used for the slot-bridging
-   functional components (passing extra attrs to them would warn about
-   extraneous attrs on fragment roots, so they get none).
-9. **All original props must be declared on the inner widget** (26 of
-   them, wide `Array<str>`/`[]str` types as usual) — anything undeclared
-   would fall through as an attr onto the root `.autodown-editor` div.
-   The shell's `class="fill"` (demo) DOES intentionally fall through two
-   levels (shell → inner → root div), matching the original's single-root
-   fallthrough; jade-garden's `editorRef.value.$el` likewise resolves to
-   the same root element.
-10. **The katex CSS side-effect import moved to
+   must reference THAT name.
+8. **Empty msg handler bodies parse fine** — the pure-emit/relay
+   handlers (`."cancel" -> { }`, `."save"(md) -> { }`) carry no
+   statements at all.
+9. **All original props are declared on the widget** (16 of them, wide
+   `Array<str>`/`[]str` types as usual, nullable callback-ish props
+   default to `null`) — anything undeclared would fall through as an
+   attr onto the root `.autodown-editor` div. The demo's `class="fill"`
+   intentionally falls through onto that root (single root, same as the
+   original); jade-garden's `editorRef.value.$el` likewise resolves to
+   it. jade's `onOpenWikiLink` is consumed as a PROP channel (declared
+   `onOpenWikiLink: Array<str> = null`) which takes precedence over the
+   emit listener — no double delivery (gap 51 avoidance).
+10. **The katex CSS side-effect import lives in
     `src/composables/tiptapEditorContent.ts`** (the dual-resolution
     EditorContent shim) — the gen project's stub omits it (no katex
     dependency), the editor tree bundles it exactly as before.
-11. **The inner manually sets `inst.exposed = { editor }`** (in the
-    bridge) — the defineExpose equivalent the DSL cannot emit. The
-    original component's root `.autodown-editor` div belonged to the
-    component that exposed the editor, and consumers reaching through the
-    DOM (the demo e2e reads
-    `el.__vueParentComponent.exposed.editor.value`) depend on that shape;
-    the div is now the inner's root, so the inner exposes the editor ref.
-    This is independent of the shell's own defineExpose (which serves
-    template-ref consumers: demo's `getBlockMap()`, jade-garden's `$el`).
 
-### Minor generated-output differences (AutoDownEditorInner)
+### Minor generated-output differences (AutoDownEditor)
 
 (behaviorally identical DOM):
 
@@ -786,13 +805,11 @@ New probe/codegen-confirmed gaps first hit by this widget:
   transparent `<template v-if>` wrapper; the action buttons' `if` is a
   transparent template too; EditorContent and each menu get an
   auto-generated `:key` (harmless); EditorContent's static class is bound
-  (`:class="'autodown-editor-content-wrapper'"`); the Save/Cancel labels
-  render through `<component :is>` functional components instead of
-  literal `<slot>` tags (same nodes); the handlers carry inert
-  `let noop` statements; `==`/`!=` are emitted instead of `===`/`!==`;
-  the menus mount one prop-hop later than the original (editor created in
-  the inner's onMounted → reported to the shell → passed back down as a
-  prop — same tick cascade, indistinguishable in the e2e screenshots).
+  (`:class="'autodown-editor-content-wrapper'"`); `==`/`!=` are emitted
+  instead of `===`/`!==`; every msg handler carries a trailing
+  `emit('handleSave')`-style self-event (harmless noise — no listener);
+  the `save` relay means the emitted `save` payload is computed one call
+  earlier than in the original (same value, same tick).
 
 ## Minor generated-output differences vs the original hand-written SFCs
 

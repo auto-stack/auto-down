@@ -157,11 +157,11 @@ Phase 3/4 的组件大量依赖手写 TS（`useMenuBounds`、lucide 图标、`co
 
 - [x] `@autodown/editor` 的 Vue 组件层 100% 由 Auto 生成（Tiptap 扩展与 CSS 除外）。
   - 7 个 NodeView 全部 Auto 化（交互型 4 + 渲染型 3），`VueNodeViewRenderer` 适配层保持手写；mermaid/katex 渲染收进 `composables/renderPreview.ts`（npm 库 + try/catch + v-html 属真实 ext 项）。
-  - 顶层 `AutoDownEditor.vue` 采用 **Inner（Auto 生成）+ 薄壳（手写 130 行）**架构——四个硬缺口叠加：小写/连字符 emit 名（`update`/`save`/`link-click` 等）、defineExpose（`getBlockMap()`/`$el` 被 demo 和 jade-garden 消费）、slot（save-label/cancel-label）、withDefaults。30 项 slash 清单留 ext（图标数据携带 + 块体闭包含 prompt/clipboard，BubbleMenu 同款取舍）。
+  - 顶层 `AutoDownEditor.vue` ~~采用 Inner（Auto 生成）+ 薄壳（手写 130 行）架构~~ **plan 013 Phase 2（2026-08-19）已消除薄壳**：quoted msg variant 携带小写/连字符 emit 契约（auto-lang 侧补 `quoted` 标记：恒声明恒尾 emit），`expose {}`、具名 slot、withDefaults 运行时默认值全部原生回迁，`src/core/AutoDownEditor.vue` 整个由 Auto 生成，编辑器包 Vue 组件层真正 100% Auto。30 项 slash 清单仍留 ext（图标数据携带 + 块体闭包含 prompt/clipboard，BubbleMenu 同款取舍）。
   - 全量 regen 刷新全部 13 个生成组件（消除了中间态滞留 diff），editor build + 22/22 vitest + e2e 全量基线；**像素级对拍：.bak 原版与 Auto 版的 initial-viewport.png 字节级相同**。
 - [x] demo 全量 e2e + 截图 diff 全绿，达到像素级一致目标。（8 通过 + 1 个既有失败 scroll-sync:141，与本计划无关的手写 useSyncedScroll 既有 bug）
 - [x] CSS 整体搬运：`autodown-editor.css` 1124 行零改动（组件 class 名全部保持，无需搬运）。
-- Phase 4 实证的新 DSL 缺口（约 25 条，记录在 `src/auto/README.md`）：**slot 与 defineExpose 成为真实需求**（薄壳方案可绕但每个顶层组件都要壳）；computed 三元/对象字面量体/`||` 推断；watch immediate；非视图引用 handler 不发射等——为后续编译器迭代提供了精确清单。
+- Phase 4 实证的新 DSL 缺口（约 25 条，记录在 `src/auto/README.md`）：~~slot 与 defineExpose 成为真实需求~~（plan 013 实证已原生支持并回迁）；computed 三元/对象字面量体/`||` 推断、watch immediate、非视图引用 handler 不发射等——**plan 013（2026-08-19，已 CLOSED）逐条复核并消化了绝大部分**：12/13 probe 项已自愈并回迁，quoted emit 契约缺口由 auto-lang 编译器修复（`quoted` variant 标记）关闭；真实残留仅 4 条（括号丢弃、三元 `==/!= ""` 坍缩、独立 `||` computed 误型、spread 合并未验证），清单见 `src/auto/README.md` 头部状态块。
 
 ---
 

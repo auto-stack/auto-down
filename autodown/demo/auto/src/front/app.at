@@ -1,20 +1,257 @@
-// app.at — Placeholder root widget.
+// app.at — the demo root widget: Auto widget DSL port of the original
+// hand-written demo/src/App.vue. The generated SFC IS the demo app — regen
+// (gen/regen.sh) deploys it straight to demo/src/App.vue.
 //
-// The Auto Vue generator always emits the project's root widget as `App.vue`;
-// every other widget lands in `gen/front/vue/src/components/<Name>.vue`.
-// This dummy App exists only so that `CustomScrollbar` is generated as a
-// standalone component SFC. Its own output is discarded.
+// What lives here in the DSL: the whole layout (toolbar / editor+renderer
+// panels / splitter hover zone / CustomScrollbar), the component prop and
+// event wiring, and the splitter hover state. What stays hand-written:
+//
+// - demo/src/content.ts — the initial markdown document (the DSL has no
+//   multi-line template literals).
+// - demo/src/app.css — the global html/body/#app styles (the DSL only emits
+//   <style scoped>); imported by main.ts.
+// - utils/app_ext.ts — the useDemoAppBridge composable (owns the initial
+//   content, the three template refs, useSyncedScroll and
+//   useTableColumnResize; the DSL's composable imports are called with zero
+//   arguments at setup top level, before template refs exist, so the refs
+//   live in the bridge and .Init assigns the mounted values into the bag)
+//   plus the AutoDownEditor / StreamingRenderer re-exports (workspace
+//   packages, resolved in the gen project via pac.at npm_deps link:) and the
+//   console log handlers.
+// - CustomScrollbar is a sibling widget of this project (custom_scrollbar.at)
+//   and is referenced as a sub-widget directly.
+//
+// Interface notes vs the hand-written App.vue (behaviorally identical):
+//
+// - `hoveringScrollbar` is gone: it was dead state (CustomScrollbar tracks
+//   its own hover internally; the handwritten App.vue even had a type error
+//   on the assignment). Only `hoveringSplitter` drives `visible`.
+// - `editingBlock` (reserved, always null) moved into the bridge; the
+//   placeholder-block-id/-height bindings use ternary computeds instead of
+//   optional chaining.
+// - Handlers emit noise events on the root component (nobody listens).
 
 widget App {
-    msg Msg { Init }
+    use {
+        fn: logSave, logCancel from "src/front/utils/app_ext.ts"
+        component: AutoDownEditor, StreamingRenderer from "src/front/utils/app_ext.ts"
+        composable: useDemoAppBridge from "src/front/utils/app_ext.ts"
+    }
+
+    msg Msg { Init, handleSave(str), handleCancel, handleUpdate(str), SetScrollTop(f64), SplitterHover(int) }
 
     model {
+        var hovering_splitter int = 0
+    }
+
+    computed {
+        // The original's editingBlock?.id / editingBlock?.height (the state is
+        // reserved and always null today).
+        placeholder_id => .demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.id : null
+        placeholder_height => .demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.height : null
     }
 
     view {
-        text "demo-widgets"
+        div {
+            class: "app",
+            header {
+                class: "toolbar",
+                text "AutoDown v0.1"
+            }
+            main {
+                ref: "workspaceRef",
+                class: "workspace",
+                div {
+                    class: "panels",
+                    section {
+                        class: "panel left",
+                        AutoDownEditor {
+                            ref: "editorRef",
+                            content: .demoAppBridge.content,
+                            placeholder: "Start typing...",
+                            class: "fill",
+                            on"save": .handleSave($event),
+                            on"cancel": .handleCancel,
+                            on"update": .handleUpdate($event)
+                        }
+                    }
+                    section {
+                        class: "panel right",
+                        StreamingRenderer {
+                            ref: "rendererRef",
+                            source: .demoAppBridge.content,
+                            streaming: false,
+                            placeholderBlockId: .placeholder_id,
+                            placeholderHeight: .placeholder_height,
+                            class: "fill"
+                        }
+                    }
+                }
+                div {
+                    class: "splitter-hover-zone",
+                    onmouseenter: .SplitterHover(1),
+                    onmouseleave: .SplitterHover(0)
+                }
+                CustomScrollbar {
+                    scrollTop: .demoAppBridge.scrollTop,
+                    scrollHeight: .demoAppBridge.scrollHeight,
+                    clientHeight: .demoAppBridge.clientHeight,
+                    visible: .hovering_splitter == 1,
+                    on_UpdateScrollTop: .SetScrollTop($event)
+                }
+            }
+        }
     }
 
     on {
+        // Feed the mounted elements/component instances into the bridge bag
+        // (template refs are populated before mounted hooks; useSyncedScroll
+        // picks the workspace up lazily via its watch).
+        .Init -> {
+            .demoAppBridge.workspaceRef = .workspaceRef
+            .demoAppBridge.editorRef = .editorRef
+            .demoAppBridge.rendererRef = .rendererRef
+        }
+        .SplitterHover(v) -> {
+            .hovering_splitter = v
+        }
+        .SetScrollTop(v) -> {
+            .demoAppBridge.setScrollTop(v)
+        }
+        .handleSave(md) -> {
+            logSave(md)
+        }
+        .handleCancel -> {
+            logCancel()
+        }
+        .handleUpdate(md) -> {
+            .demoAppBridge.content = md
+        }
+    }
+
+    style {
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+            color: #111827;
+        }
+
+        .toolbar {
+            flex-shrink: 0;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .workspace {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .panels {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .panel {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .panel {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .left {
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .left :deep(.autodown-editor) {
+            border: none;
+            border-radius: 0;
+        }
+
+        .left :deep(.autodown-editor-content-wrapper) {
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .left :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
+            display: none;
+        }
+
+        .right :deep(.streaming-document) {
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            /* Create a block formatting context so child margins do not collapse
+               through the top padding of the scrolling container. */
+            display: flow-root;
+        }
+
+        .right :deep(.streaming-document)::-webkit-scrollbar {
+            display: none;
+        }
+
+        .right .fill {
+            padding: 1rem 1.25rem;
+        }
+
+        .fill {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .splitter-hover-zone {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 16px;
+            transform: translateX(-50%);
+            z-index: 11;
+            cursor: default;
+            background: transparent;
+            pointer-events: auto;
+        }
+
+        .splitter-hover-zone::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(0, 0, 0, 0.12);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .splitter-hover-zone:hover::after {
+            opacity: 1;
+        }
     }
 }

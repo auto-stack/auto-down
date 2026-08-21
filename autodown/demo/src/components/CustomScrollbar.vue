@@ -29,38 +29,10 @@ const emit = defineEmits<{
   SyncThumb: []
 }>()
 
-function StartDrag(e: any): void {
-  dragging.value = 1;
-  drag_start.value = e.clientY;
-  scroll_start.value = props.scrollTop;
-
-  emit('StartDrag', e)
-}
-
 function ScrollSync(): void {
   let _ = SyncThumb();
 
   emit('ScrollSync')
-}
-
-function TrackDown(e: any): void {
-  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
-  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
-  let rel_y = e.clientY - rect.top - thumb_h.value / 2;
-  let ratio = rel_y / track_avail;
-  if (ratio < 0) {ratio = 0;
-  }if (ratio > 1) {ratio = 1;
-  }let max_scroll = props.scrollHeight - props.clientHeight;
-  let _ = UpdateScrollTop(ratio * max_scroll);
-  }}}
-
-  emit('TrackDown', e)
-}
-
-function UpdateScrollTop(v: any): void {
-  let _ = v;
-
-  emit('UpdateScrollTop', v)
 }
 
 function HoverChange(v: any): void {
@@ -68,30 +40,6 @@ function HoverChange(v: any): void {
   let _ = SyncThumb();
 
   emit('HoverChange', v)
-}
-
-function EndDrag(): void {
-  dragging.value = 0;
-
-  emit('EndDrag')
-}
-
-function SyncThumb(): void {
-  if (props.scrollHeight > props.clientHeight) {let h = props.clientHeight / props.scrollHeight * props.clientHeight;
-  if (h < 32) {h = 32;
-  }thumb_h.value = h;
-  let max_scroll = props.scrollHeight - props.clientHeight;
-  let track_avail = props.clientHeight - h;
-  let thumb_t = 0;
-  if (max_scroll > 0) {if (track_avail > 0) {thumb_t = props.scrollTop / max_scroll * track_avail;
-  }}thumbEl.value!.style.height = `${h}px`;
-  thumbEl.value!.style.transform = `translateY(${thumb_t}px)`;
-  } else {thumb_h.value = 0;
-  thumbEl.value!.style.height = '0px';
-  thumbEl.value!.style.transform = 'translateY(0px)';
-  }
-
-  emit('SyncThumb')
 }
 
 function DragMove(e: any): void {
@@ -108,6 +56,58 @@ function DragMove(e: any): void {
   emit('DragMove', e)
 }
 
+function SyncThumb(): void {
+  if (props.scrollHeight > props.clientHeight) {let h = props.clientHeight / props.scrollHeight * props.clientHeight;
+  if (h < 32) {h = 32;
+  }thumb_h.value = h;
+  let max_scroll = props.scrollHeight - props.clientHeight;
+  let track_avail = props.clientHeight - h;
+  let thumb_t: number = 0;
+  if (max_scroll > 0) {if (track_avail > 0) {thumb_t = props.scrollTop / max_scroll * track_avail;
+  }}thumbEl.value!.style.height = `${h}px`;
+  thumbEl.value!.style.transform = `translateY(${thumb_t}px)`;
+  } else {thumb_h.value = 0;
+  thumbEl.value!.style.height = '0px';
+  thumbEl.value!.style.transform = 'translateY(0px)';
+  }
+
+  emit('SyncThumb')
+}
+
+function EndDrag(): void {
+  dragging.value = 0;
+
+  emit('EndDrag')
+}
+
+function StartDrag(e: any): void {
+  dragging.value = 1;
+  drag_start.value = e.clientY;
+  scroll_start.value = props.scrollTop;
+
+  emit('StartDrag', e)
+}
+
+function TrackDown(e: any): void {
+  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
+  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
+  let rel_y: number = e.clientY - rect.top - thumb_h.value / 2;
+  let ratio: number = rel_y / track_avail;
+  if (ratio < 0) {ratio = 0;
+  }if (ratio > 1) {ratio = 1;
+  }let max_scroll = props.scrollHeight - props.clientHeight;
+  let _ = UpdateScrollTop(ratio * max_scroll);
+  }}}
+
+  emit('TrackDown', e)
+}
+
+function UpdateScrollTop(v: any): void {
+  let _ = v;
+
+  emit('UpdateScrollTop', v)
+}
+
 onMounted(() => {
   let _ = SyncThumb();
 })
@@ -117,14 +117,14 @@ function __auto_gl_mousemove_DragMove(e: any) {
 }
 
 onMounted(() => {
-  window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
   window.addEventListener('mouseup', EndDrag)
+  window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
   window.addEventListener('scroll', ScrollSync, { capture: true })
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
   window.removeEventListener('mouseup', EndDrag)
+  window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
   window.removeEventListener('scroll', ScrollSync, { capture: true })
 })
 

@@ -15,12 +15,22 @@ root {
     apps: [
         
     ]
+    bags: [
+        
+    ]
+    tests: [
+        
+    ]
     files: [
         
     ]
     name: "demo-widgets"
     scene: "ui"
     render: "vue"
+    npm_deps: {
+        @autodown/vue: "link:../../../../../../packages/vue",
+        @autodown/editor: "link:../../../../../../packages/editor"
+    }
     defines: [
         
     ]

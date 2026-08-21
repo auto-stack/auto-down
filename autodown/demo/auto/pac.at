@@ -2,3 +2,7 @@ name: "demo-widgets"
 version: "1.0.0"
 scene: "ui"
 render: "vue"
+npm_deps: {
+  "@autodown/editor": "link:../../../../../../packages/editor"
+  "@autodown/vue": "link:../../../../../../packages/vue"
+}

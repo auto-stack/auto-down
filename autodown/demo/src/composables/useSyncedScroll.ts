@@ -457,15 +457,16 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
     setScrollTop(scrollTop.value + event.deltaY)
   }
 
-  onMounted(() => {
-    const workspace = options.workspaceRef.value
-    if (!workspace) return
+  let observedWorkspace: HTMLElement | null = null
+  let workspaceResizeObserver: ResizeObserver | null = null
 
-    const resizeObserver = new ResizeObserver(() => {
+  function initWorkspace(workspace: HTMLElement) {
+    observedWorkspace = workspace
+    workspaceResizeObserver = new ResizeObserver(() => {
       measure()
       setScrollTop(scrollTop.value)
     })
-    resizeObserver.observe(workspace)
+    workspaceResizeObserver.observe(workspace)
 
     workspace.addEventListener('wheel', onWheel, { passive: false, capture: true })
 
@@ -474,22 +475,39 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
       measure()
       setScrollTop(0)
     })
+  }
 
-    onUnmounted(() => {
-      resizeObserver.disconnect()
-      mutationObserver.disconnect()
-      actionsResizeObserver.disconnect()
-      blockResizeObserver?.disconnect()
-      blockResizeObserver = null
-      workspace.removeEventListener('wheel', onWheel, true)
-      observedLeftEl = null
-      observedRightEl = null
-      observedActionsEl = null
-      observedResizeLeftEl = null
-      observedResizeRightEl = null
-      observedResizeLeftContent = null
-      observedResizeRightContent = null
-    })
+  onMounted(() => {
+    const workspace = options.workspaceRef.value
+    if (workspace) initWorkspace(workspace)
+  })
+
+  // Lazy init: when the composable is wired through a generated bridge (plan
+  // 014), the workspace ref is populated by the widget's own onMounted, which
+  // runs AFTER this composable's. Pick the element up as soon as it appears.
+  watch(
+    () => options.workspaceRef.value,
+    (workspace) => {
+      if (workspace && !observedWorkspace) initWorkspace(workspace)
+    },
+    { flush: 'post' }
+  )
+
+  onUnmounted(() => {
+    workspaceResizeObserver?.disconnect()
+    mutationObserver.disconnect()
+    actionsResizeObserver.disconnect()
+    blockResizeObserver?.disconnect()
+    blockResizeObserver = null
+    observedWorkspace?.removeEventListener('wheel', onWheel, true)
+    observedWorkspace = null
+    observedLeftEl = null
+    observedRightEl = null
+    observedActionsEl = null
+    observedResizeLeftEl = null
+    observedResizeRightEl = null
+    observedResizeLeftContent = null
+    observedResizeRightContent = null
   })
 
   watch(

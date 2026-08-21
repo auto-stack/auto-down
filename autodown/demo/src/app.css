@@ -1,0 +1,9 @@
+/* app.css — global styles for the demo app. Extracted from App.vue's
+   unscoped <style> block (plan 014): the Auto widget DSL only emits
+   <style scoped>, so global rules live here and are imported by main.ts. */
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}

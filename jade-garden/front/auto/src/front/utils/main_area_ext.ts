@@ -3,11 +3,9 @@
 // Only what the DSL genuinely cannot express lives here:
 // - the tabs store facade re-export (dual-resolution shim),
 // - editorTabs (the original's `tabs.tabs.filter(t => !t.isGraph)` PLUS the
-//   per-tab v-show display value precomputed from tabs.activePath — v-show
-//   has no DSL form, so each EditorTab gets `:style="{ display }"`, which is
-//   behaviorally identical: v-show only toggles inline display and the
-//   components stay mounted either way, which is what the e2e 03-tabs
-//   keep-alive contract guards),
+//   per-tab active flag precomputed from tabs.activePath for the native
+//   v-show keep-alive switch — `show:` is native since plan 013 Phase 1;
+//   the `:style="{ display }"` replication was retired in plan 015 batch B),
 // - the v-if guards and key/prop derivations (optional chaining, ||, ===
 //   have no exact DSL form — and `!= null` compiles to `!== undefined`,
 //   README gap 47),
@@ -22,12 +20,11 @@ import { useTabsStore } from '../../../../src/stores/tabs'
 export { useTabsStore }
 
 /** Original: editorTabs = computed(() => tabs.tabs.filter(t => !t.isGraph)),
- *  plus the per-tab v-show display: visible ('' — the absolute inset-0 CSS
- *  applies) when tabs.activePath === tab.path, hidden ('none') otherwise. */
+ *  plus the per-tab v-show active flag (native `show:` on EditorTab). */
 export function editorTabs(tabs: any[], activePath: string | null): any[] {
   return (tabs ?? [])
     .filter((t) => !t.isGraph)
-    .map((t) => ({ ...t, display: activePath === t.path ? '' : 'none' }))
+    .map((t) => ({ ...t, active: activePath === t.path }))
 }
 
 /** Original: activeGraphTab = tabs.activeTab?.isGraph ? tabs.activeTab : null

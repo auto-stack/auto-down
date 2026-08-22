@@ -46,16 +46,16 @@ function Open(p: any): void {
   emit('Open', p)
 }
 
-function Fit(): void {
-  graphFit(handle.value);
-
-  emit('Fit')
-}
-
 function Relayout(): void {
   graphRelayout(handle.value, props.settings);
 
   emit('Relayout')
+}
+
+function Fit(): void {
+  graphFit(handle.value);
+
+  emit('Fit')
 }
 
 onMounted(() => {

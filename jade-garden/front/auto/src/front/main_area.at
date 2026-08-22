@@ -14,15 +14,12 @@
 //     gen/front/vue/src/components/MainArea.vue > ../src/components/MainArea.vue
 //
 // Idioms forced by DSL codegen gaps (see README's gap list):
-// - v-show has NO DSL form. The per-tab `v-show="tabs.activePath ===
-//   tab.path"` keep-alive switch is replicated with
-//   `:style="{ display: tab.display }"` on each EditorTab — behaviorally
-//   identical (v-show only toggles inline display; the components stay
-//   MOUNTED either way, which is what the e2e 03-tabs contract guards).
-//   The display value is precomputed per tab by the extension's editorTabs
-//   (the Call-with-loop-var form in style_obj is unverified; the mapper
-//   also keeps the original's `!t.isGraph` filter verbatim — whiteboard
-//   tabs DO get a hidden/covered EditorTab in the original too).
+// - Per-tab keep-alive uses native v-show (`show:` prop, plan 013 Phase 1;
+//   plan 015 batch B retired the `:style="{ display }"` replication, jade
+//   gap 52). The per-tab active flag is precomputed by the extension's
+//   editorTabs (the Call-with-loop-var form in view props is unverified;
+//   the mapper also keeps the original's `!t.isGraph` filter verbatim —
+//   whiteboard tabs DO get a hidden/covered EditorTab in the original too).
 // - The v-if guards and their key/prop derivations (activeGraphTab /
 //   activeWhiteboardTab / tabs.length === 0) go through the extension
 //   (optional chaining / || / === have no exact DSL form — and `!= null`
@@ -45,7 +42,7 @@ widget MainArea {
 
     computed {
         // Original: editorTabs = tabs.tabs.filter(t => !t.isGraph), plus the
-        // per-tab v-show display precomputed from tabs.activePath.
+        // per-tab v-show active flag precomputed from tabs.activePath.
         editor_tabs => editorTabs(.tabsStore.tabs, .tabsStore.activePath)
         // Original: v-if="activeGraphTab" where activeGraphTab =
         // tabs.activeTab?.isGraph ? tabs.activeTab : null.
@@ -70,13 +67,13 @@ widget MainArea {
             div {
                 class: "relative flex flex-1 overflow-hidden",
                 // Keep all editor tabs mounted; only the active one is
-                // visible (v-show keep-alive → display style, see header).
+                // visible (native v-show via `show:`, plan 015 batch B).
                 for tab in .editor_tabs {
                     EditorTab {
                         key: tab.path,
                         path: tab.path,
                         class: "absolute inset-0",
-                        style_obj: { display: tab.display }
+                        show: tab.active
                     }
                 }
                 // Graph tab is mounted on demand so Cytoscape gets a sized

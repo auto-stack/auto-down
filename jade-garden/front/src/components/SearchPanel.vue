@@ -34,6 +34,12 @@ watch(query, () => {
   f();
 })
 
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
+}
+
 function OpenResult(r: any): void {
   if (r.type == 'Page' && r.path != null) {tabsStore.open(r.path, r.title);
   }
@@ -43,12 +49,6 @@ function OpenResult(r: any): void {
   }
 
   emit('OpenResult', r)
-}
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
 }
 
 onMounted(() => {

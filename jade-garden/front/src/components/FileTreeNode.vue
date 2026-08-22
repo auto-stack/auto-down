@@ -16,9 +16,9 @@ const menu_y = ref<number>(0)
 
 const is_expanded = computed<any>(() => isNodeExpanded(fileTreeStore, props.node.path))
 const is_active = computed<boolean>(() => tabsStore.activePath === props.node.path)
-const show_right = computed<boolean>(() => props.node.is_dir && !is_expanded.value)
-const show_down = computed<boolean>(() => props.node.is_dir && is_expanded.value)
-const show_children = computed<boolean>(() => props.node.is_dir && is_expanded.value && props.node.children != null)
+const show_right = computed<any>(() => props.node.is_dir && !is_expanded.value)
+const show_down = computed<any>(() => props.node.is_dir && is_expanded.value)
+const show_children = computed<any>(() => props.node.is_dir && is_expanded.value && props.node.children != null)
 const next_level = computed<number>(() => props.level + 1)
 const indent_left = computed<any>(() => nodeIndent(props.level))
 const menu_left = computed<any>(() => px(menu_x.value))
@@ -41,11 +41,26 @@ const emit = defineEmits<{
 
 import type { FileNode } from '@/lib/api'
 
-function CtxNewFolder(): void {
-  menu_open.value = false;
-  ctxNewFolder(fileTreeStore, props.node);
+function RightClick(e: any): void {
+  menu_x.value = e.clientX;
+  menu_y.value = e.clientY;
+  menu_open.value = true;
 
-  emit('CtxNewFolder')
+  emit('RightClick', e)
+}
+
+function CtxDuplicate(): void {
+  menu_open.value = false;
+  ctxDuplicate(fileTreeStore, props.node);
+
+  emit('CtxDuplicate')
+}
+
+function CtxDelete(): void {
+  menu_open.value = false;
+  ctxDelete(fileTreeStore, props.node);
+
+  emit('CtxDelete')
 }
 
 function CtxNewFile(): void {
@@ -62,26 +77,11 @@ function CtxRename(): void {
   emit('CtxRename')
 }
 
-function CtxDelete(): void {
+function CtxNewFolder(): void {
   menu_open.value = false;
-  ctxDelete(fileTreeStore, props.node);
+  ctxNewFolder(fileTreeStore, props.node);
 
-  emit('CtxDelete')
-}
-
-function RightClick(e: any): void {
-  menu_x.value = e.clientX;
-  menu_y.value = e.clientY;
-  menu_open.value = true;
-
-  emit('RightClick', e)
-}
-
-function CtxDuplicate(): void {
-  menu_open.value = false;
-  ctxDuplicate(fileTreeStore, props.node);
-
-  emit('CtxDuplicate')
+  emit('CtxNewFolder')
 }
 
 function Toggle(): void {
@@ -113,13 +113,13 @@ onMounted(() => {
             <component :is="(ChevronDown) as any" class="h-3.5 w-3.5" />
           </template>
         </span>
-        <component :is="(NodeIcon) as any" :active="is_active" :expanded="is_expanded" :is_dir="node.is_dir" />
+        <component :is="(NodeIcon) as any" :expanded="is_expanded" :is_dir="node.is_dir" :active="is_active" />
         <span class="truncate">
           <span>{{ node.name }}</span>
         </span>
       </div>
       <template v-if="show_children">
-        <FileTreeNode :key="child.path" :level="next_level" :node="child"  v-for="child in node.children"/>
+        <FileTreeNode :node="child" :key="child.path" :level="next_level"  v-for="child in node.children"/>
       </template>
       <Teleport to="body">
         <template v-if="menu_open">

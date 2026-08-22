@@ -23,28 +23,10 @@ const emit = defineEmits<{
   NavNext: []
 }>()
 
-function CloseTab(tab: any): void {
-  closeTab(tabsStore, tab.path);
-
-  emit('CloseTab', tab)
-}
-
 function OpenLocalGraph(): void {
   openLocalGraphTab(tabsStore);
 
   emit('OpenLocalGraph')
-}
-
-function SwitchTab(tab: any): void {
-  switchTab(tabsStore, tab.path);
-
-  emit('SwitchTab', tab)
-}
-
-function OpenToday(): void {
-  openTodayNote(tabsStore, fileTreeStore);
-
-  emit('OpenToday')
 }
 
 function NavPrev(): void {
@@ -57,6 +39,24 @@ function NavNext(): void {
   navigateDailyNote('next', tabsStore, fileTreeStore);
 
   emit('NavNext')
+}
+
+function CloseTab(tab: any): void {
+  closeTab(tabsStore, tab.path);
+
+  emit('CloseTab', tab)
+}
+
+function SwitchTab(tab: any): void {
+  switchTab(tabsStore, tab.path);
+
+  emit('SwitchTab', tab)
+}
+
+function OpenToday(): void {
+  openTodayNote(tabsStore, fileTreeStore);
+
+  emit('OpenToday')
 }
 
 
@@ -98,13 +98,13 @@ function NavNext(): void {
         </button>
         <template v-if="has_daily">
           <div class="flex items-center gap-0.5 rounded-md border bg-card px-1 text-xs text-muted-foreground">
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'前一天'" @click="NavPrev">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'前一天'" :type="'button'" @click="NavPrev">
               <component :is="(ChevronLeft) as any" class="h-3.5 w-3.5" />
             </button>
             <span class="px-1">
               <span>{{ daily_title }}</span>
             </span>
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'后一天'" :type="'button'" @click="NavNext">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'后一天'" @click="NavNext">
               <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
             </button>
           </div>

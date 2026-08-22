@@ -40,18 +40,10 @@ watch(() => props.path, () => {
   loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
 
-function OnScrollToBlock(e: any): void {
-  scrollToBlockFromEvent(editorRef.value!, props.path, e);
+function OpenWikiLink(title: any, block_id: any): void {
+  openWikiLink(tabsStore, fileTreeStore, title, block_id);
 
-  emit('OnScrollToBlock', e)
-}
-
-function OnUpdate(md: any): void {
-  tabsStore.setBody(props.path, md);
-  let f = debounced_save.value;
-  f();
-
-  emit('OnUpdate', md)
+  emit('OpenWikiLink', title, block_id)
 }
 
 function CopyBlockLink(): void {
@@ -62,10 +54,18 @@ function CopyBlockLink(): void {
   emit('CopyBlockLink')
 }
 
-function OpenWikiLink(title: any, block_id: any): void {
-  openWikiLink(tabsStore, fileTreeStore, title, block_id);
+function OnUpdate(md: any): void {
+  tabsStore.setBody(props.path, md);
+  let f = debounced_save.value;
+  f();
 
-  emit('OpenWikiLink', title, block_id)
+  emit('OnUpdate', md)
+}
+
+function OnScrollToBlock(e: any): void {
+  scrollToBlockFromEvent(editorRef.value!, props.path, e);
+
+  emit('OnScrollToBlock', e)
 }
 
 onMounted(() => {
@@ -103,7 +103,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell :placeholder="'Start typing...'" :showActions="false" :loadBlock="load_block" :assetUpload="asset_upload" ref="editorRef" :class="'h-full w-full'" :runQuery="run_query" :content="body" :pageTitle="page_title" :extraSlashItems="extra_slash" :key="'EditorShell-1'" @update="OnUpdate" @open-wiki-link="OpenWikiLink" />
+      <EditorShell :content="body" :extraSlashItems="extra_slash" :assetUpload="asset_upload" :showActions="false" :runQuery="run_query" :pageTitle="page_title" :loadBlock="load_block" ref="editorRef" :placeholder="'Start typing...'" :class="'h-full w-full'" :key="'EditorShell-1'" @open-wiki-link="OpenWikiLink" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

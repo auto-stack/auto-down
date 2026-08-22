@@ -40,6 +40,34 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
+function SelectCurrent(): void {
+  let file = filtered.value[selected_index.value];
+  if (file != null) {tabsStore.open(file.path);
+  open.value = false;
+  }
+
+  emit('SelectCurrent')
+}
+
+function CloseOverlay(): void {
+  open.value = false;
+
+  emit('CloseOverlay')
+}
+
+function SelectFile(file: any): void {
+  tabsStore.open(file.path);
+  open.value = false;
+
+  emit('SelectFile', file)
+}
+
+function NextItem(): void {
+  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
+
+  emit('NextItem')
+}
+
 function PrevItem(): void {
   selected_index.value = prevIndex(selected_index.value, filtered.value.length);
 
@@ -52,38 +80,10 @@ function HoverFile(file: any): void {
   emit('HoverFile', file)
 }
 
-function NextItem(): void {
-  selected_index.value = nextIndex(selected_index.value, filtered.value.length);
-
-  emit('NextItem')
-}
-
 function QueryInput(e: any): void {
   query.value = e.target.value;
 
   emit('QueryInput', e)
-}
-
-function CloseOverlay(): void {
-  open.value = false;
-
-  emit('CloseOverlay')
-}
-
-function SelectCurrent(): void {
-  let file = filtered.value[selected_index.value];
-  if (file != null) {tabsStore.open(file.path);
-  open.value = false;
-  }
-
-  emit('SelectCurrent')
-}
-
-function SelectFile(file: any): void {
-  tabsStore.open(file.path);
-  open.value = false;
-
-  emit('SelectFile', file)
 }
 
 onMounted(() => {
@@ -109,14 +109,14 @@ onUnmounted(() => {
           <div class="w-full max-w-lg overflow-hidden rounded-lg border bg-card shadow-lg">
             <div class="flex items-center gap-2 border-b px-3 py-2">
               <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Search files...'" v-model="query" :type="'text'" @keydown.up.prevent="PrevItem" @input="QueryInput($event)" @keydown.enter.prevent="SelectCurrent" @keydown.down.prevent="NextItem" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" v-model="query" :type="'text'" :placeholder="'Search files...'" @keydown.up.prevent="PrevItem" @keydown.down.prevent="NextItem" @keydown.enter.prevent="SelectCurrent" @input="QueryInput($event)" />
               <span class="text-xs text-muted-foreground">
                 <span>Ctrl+O</span>
               </span>
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
-                <component :is="(li_tag) as any" :class="(file.idx == selected_index ? 'cursor-pointer px-3 py-1.5 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-1.5 text-sm text-foreground hover:bg-accent/50')" @mouseenter="HoverFile(file)" @click="SelectFile(file)" v-for="file in filtered">
+                <component :is="(li_tag) as any" :class="(file.idx == selected_index ? 'cursor-pointer px-3 py-1.5 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-1.5 text-sm text-foreground hover:bg-accent/50')" @click="SelectFile(file)" @mouseenter="HoverFile(file)" v-for="file in filtered">
                   <span>{{ file.name }}</span>
                   <span class="ml-2 text-xs text-muted-foreground">
                     <span>{{ file.path }}</span>

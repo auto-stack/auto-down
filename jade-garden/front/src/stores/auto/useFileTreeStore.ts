@@ -16,7 +16,15 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const Toggle = async (path: string) => { await toggleExpanded(expanded.value, path);
+    const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
+loading.value = true;
+error.value = null;
+let res = await listFilesResult();
+if (res.error == '') {files.value = res.files;
+}
+if (res.error != '') {error.value = res.error;
+}
+loading.value = false;
  }
     const CreateFile = async (args: any) => { await createFileRaw(args.path, args.isDir);
 loading.value = true;
@@ -48,15 +56,7 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
-    const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
-loading.value = true;
-error.value = null;
-let res = await listFilesResult();
-if (res.error == '') {files.value = res.files;
-}
-if (res.error != '') {error.value = res.error;
-}
-loading.value = false;
+    const Toggle = async (path: string) => { await toggleExpanded(expanded.value, path);
  }
     return {
         files,
@@ -64,10 +64,10 @@ loading.value = false;
         loading,
         error,
         Load,
-        Toggle,
+        DuplicateFile,
         CreateFile,
         RenameFile,
         DeleteFile,
-        DuplicateFile,
+        Toggle,
     }
 }

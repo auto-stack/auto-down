@@ -49,7 +49,7 @@ function NewFile(): void {
             <span>Loading...</span>
           </div>
         </template>
-        <FileTreeNode :level="0" :key="node.path" :node="node"  v-for="node in fileTreeStore.files"/>
+        <FileTreeNode :key="node.path" :node="node" :level="0"  v-for="node in fileTreeStore.files"/>
       </div>
     </div>
 

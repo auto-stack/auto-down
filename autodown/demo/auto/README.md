@@ -158,5 +158,6 @@ CustomScrollbar thumb (e2e scroll-sync:29 red). Fixed on the
 operands are proven int (int literals or int-typed state/props via the new
 `typed_ints` context set); float-typed and unknown-type operands keep native
 JS division. Locked by `cap_div_mod_trunc_only_for_proven_int` in
-`crates/auto-lang/tests/vue_capabilities.rs`. **Until that branch is merged
-to auto-lang master, regen MUST use the worktree binary** (see `AUTO=` above).
+`crates/auto-lang/tests/vue_capabilities.rs`. Merged to auto-lang master as
+327462e4; the stock master binary (`target/debug/auto.exe`) is again the
+default for regen.

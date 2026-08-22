@@ -28,22 +28,10 @@ const emit = defineEmits<{
   SplitterHover: [number]
 }>()
 
-function SplitterHover(v: any): void {
-  hovering_splitter.value = v;
+function handleUpdate(md: any): void {
+  demoAppBridge.content = md;
 
-  emit('SplitterHover', v)
-}
-
-function handleSave(md: any): void {
-  logSave(md);
-
-  emit('handleSave', md)
-}
-
-function handleCancel(): void {
-  logCancel();
-
-  emit('handleCancel')
+  emit('handleUpdate', md)
 }
 
 function SetScrollTop(v: any): void {
@@ -52,10 +40,22 @@ function SetScrollTop(v: any): void {
   emit('SetScrollTop', v)
 }
 
-function handleUpdate(md: any): void {
-  demoAppBridge.content = md;
+function handleSave(md: any): void {
+  logSave(md);
 
-  emit('handleUpdate', md)
+  emit('handleSave', md)
+}
+
+function SplitterHover(v: any): void {
+  hovering_splitter.value = v;
+
+  emit('SplitterHover', v)
+}
+
+function handleCancel(): void {
+  logCancel();
+
+  emit('handleCancel')
 }
 
 onMounted(() => {
@@ -75,14 +75,14 @@ onMounted(() => {
       <main class="workspace" ref="workspaceRef">
         <div class="panels">
           <section class="panel left">
-            <AutoDownEditor :placeholder="'Start typing...'" ref="editorRef" :class="'fill'" :content="demoAppBridge.content" :key="'AutoDownEditor-1'" @save="handleSave($event)" @update="handleUpdate($event)" @cancel="handleCancel" />
+            <AutoDownEditor :class="'fill'" ref="editorRef" :content="demoAppBridge.content" :placeholder="'Start typing...'" :key="'AutoDownEditor-1'" @save="handleSave($event)" @cancel="handleCancel" @update="handleUpdate($event)" />
           </section>
           <section class="panel right">
-            <StreamingRenderer :source="demoAppBridge.content" :streaming="false" ref="rendererRef" :placeholderBlockId="placeholder_id" :placeholderHeight="placeholder_height" :class="'fill'" :key="'StreamingRenderer-2'" />
+            <StreamingRenderer :source="demoAppBridge.content" ref="rendererRef" :placeholderBlockId="placeholder_id" :class="'fill'" :placeholderHeight="placeholder_height" :streaming="false" :key="'StreamingRenderer-2'" />
           </section>
         </div>
-        <div class="splitter-hover-zone" @mouseleave="SplitterHover(0)" @mouseenter="SplitterHover(1)" />
-        <CustomScrollbar :scrollHeight="demoAppBridge.scrollHeight" :visible="hovering_splitter == 1" :scrollTop="demoAppBridge.scrollTop" :clientHeight="demoAppBridge.clientHeight" :key="'CustomScrollbar-3'" @UpdateScrollTop="SetScrollTop($event)" />
+        <div class="splitter-hover-zone" @mouseenter="SplitterHover(1)" @mouseleave="SplitterHover(0)" />
+        <CustomScrollbar :scrollTop="demoAppBridge.scrollTop" :scrollHeight="demoAppBridge.scrollHeight" :clientHeight="demoAppBridge.clientHeight" :visible="hovering_splitter == 1" :key="'CustomScrollbar-3'" @UpdateScrollTop="SetScrollTop($event)" />
       </main>
     </div>
 

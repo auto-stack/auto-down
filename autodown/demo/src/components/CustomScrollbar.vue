@@ -29,19 +29,6 @@ const emit = defineEmits<{
   SyncThumb: []
 }>()
 
-function ScrollSync(): void {
-  let _ = SyncThumb();
-
-  emit('ScrollSync')
-}
-
-function HoverChange(v: any): void {
-  hovering.value = v;
-  let _ = SyncThumb();
-
-  emit('HoverChange', v)
-}
-
 function DragMove(e: any): void {
   if (dragging.value == 1) {let track_avail = props.clientHeight - thumb_h.value;
   if (track_avail > 0) {let max_scroll = props.scrollHeight - props.clientHeight;
@@ -74,10 +61,17 @@ function SyncThumb(): void {
   emit('SyncThumb')
 }
 
-function EndDrag(): void {
-  dragging.value = 0;
+function ScrollSync(): void {
+  let _ = SyncThumb();
 
-  emit('EndDrag')
+  emit('ScrollSync')
+}
+
+function HoverChange(v: any): void {
+  hovering.value = v;
+  let _ = SyncThumb();
+
+  emit('HoverChange', v)
 }
 
 function StartDrag(e: any): void {
@@ -86,6 +80,18 @@ function StartDrag(e: any): void {
   scroll_start.value = props.scrollTop;
 
   emit('StartDrag', e)
+}
+
+function UpdateScrollTop(v: any): void {
+  let _ = v;
+
+  emit('UpdateScrollTop', v)
+}
+
+function EndDrag(): void {
+  dragging.value = 0;
+
+  emit('EndDrag')
 }
 
 function TrackDown(e: any): void {
@@ -102,12 +108,6 @@ function TrackDown(e: any): void {
   emit('TrackDown', e)
 }
 
-function UpdateScrollTop(v: any): void {
-  let _ = v;
-
-  emit('UpdateScrollTop', v)
-}
-
 onMounted(() => {
   let _ = SyncThumb();
 })
@@ -118,21 +118,21 @@ function __auto_gl_mousemove_DragMove(e: any) {
 
 onMounted(() => {
   window.addEventListener('mouseup', EndDrag)
-  window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
   window.addEventListener('scroll', ScrollSync, { capture: true })
+  window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
 })
 
 onUnmounted(() => {
   window.removeEventListener('mouseup', EndDrag)
-  window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
   window.removeEventListener('scroll', ScrollSync, { capture: true })
+  window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
 })
 
 
 </script>
 
 <template>
-    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @scroll="UpdateScrollTop" @mousedown="TrackDown($event)" @mouseenter="HoverChange(1)" @mouseleave="HoverChange(0)">
+    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @mouseenter="HoverChange(1)" @scroll="UpdateScrollTop" @mousedown="TrackDown($event)" @mouseleave="HoverChange(0)">
       <div class="custom-scrollbar-thumb" ref="thumbEl" @mousedown.stop="StartDrag($event)" @scroll="SyncThumb" />
     </div>
 

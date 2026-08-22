@@ -4,22 +4,25 @@
 // demo/src/components/CustomScrollbar.vue. Regenerate with:
 //
 //   cd autodown/demo/auto
-//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   cp gen/front/vue/src/components/CustomScrollbar.vue ../src/components/CustomScrollbar.vue
+//   bash gen/regen.sh
 //
-// See README.md for the interface differences vs the original SFC.
+// Plan 015 batch A (declarative rewrite): the imperative SyncThumb geometry
+// (thumbEl ref + window scroll capture + inert-registration handlers) is
+// gone — thumb height/position are now computeds bound via style_obj, so
+// prop changes update the thumb reactively (the old "scrollHeight changes
+// without a scroll/mouse event leave the thumb stale" residual bug is
+// eliminated). Emits restored to the original literal names via quoted msg
+// variants ("update:scrollTop" / "hover-change"); `visible` is optional
+// again (withDefaults).
 
-widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool) {
+widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool = false) {
     msg Msg {
-        Init,
-        UpdateScrollTop(f64),
-        HoverChange(int),
+        "update:scrollTop"(f64),
+        "hover-change"(int),
         TrackDown,
         StartDrag,
         DragMove,
-        EndDrag,
-        ScrollSync,
-        SyncThumb
+        EndDrag
     }
 
     model {
@@ -27,7 +30,15 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
         var hovering int = 0
         var drag_start f64 = 0
         var scroll_start f64 = 0
-        var thumb_h f64 = 32
+    }
+
+    computed {
+        // Original: thumbHeight = scrollHeight <= clientHeight ? 0 :
+        // max(32, clientHeight / scrollHeight * clientHeight).
+        thumb_h => .scrollHeight > .clientHeight ? (.clientHeight / .scrollHeight * .clientHeight < 32 ? 32 : .clientHeight / .scrollHeight * .clientHeight) : 0
+        // Original: thumbTop = 0 unless maxScroll > 0 && trackAvailable > 0,
+        // then scrollTop / maxScroll * trackAvailable.
+        thumb_t => .scrollHeight > .clientHeight && .clientHeight - .thumb_h > 0 ? .scrollTop / (.scrollHeight - .clientHeight) * (.clientHeight - .thumb_h) : 0
     }
 
     view {
@@ -36,72 +47,34 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
             class: "custom-scrollbar",
             style: { visible: props.visible || .hovering == 1 || .dragging == 1, dragging: .dragging == 1 },
             onmousedown: .TrackDown($event),
-            onmouseenter: .HoverChange(1),
-            onmouseleave: .HoverChange(0),
+            onmouseenter: ."hover-change"(1),
+            onmouseleave: ."hover-change"(0),
             onmousemove.window: .DragMove($event),
             onmouseup.window: .EndDrag,
-            onscroll.window.capture: .ScrollSync,
             // Inert binding: the track never scrolls, so this never fires.
-            // It registers UpdateScrollTop as a used handler so the generator
-            // emits the function + defineEmits declaration.
-            onscroll: .UpdateScrollTop
+            // It registers "update:scrollTop" as a used handler so the
+            // generator emits the function + defineEmits declaration
+            // (unreferenced-handler filter, plan 015 P1#4).
+            onscroll: ."update:scrollTop"
 
             div {
-                ref: "thumbEl",
                 class: "custom-scrollbar-thumb",
-                onmousedown.stop: .StartDrag($event),
-                // Inert binding (the thumb never scrolls): registers
-                // SyncThumb as a used handler so the generator emits it.
-                onscroll: .SyncThumb
+                style_obj: { height: f"${.thumb_h}px", transform: f"translateY(${.thumb_t}px)" },
+                onmousedown.stop: .StartDrag($event)
             }
         }
     }
 
     on {
-        .Init -> {
-            let _ = .SyncThumb()
-        }
-
-        // Central geometry refresh: recompute thumb height/position from the
-        // current props and write them imperatively to the thumb element.
-        // Called on mount, on window scroll (capture), on hover and on drag.
-        .SyncThumb -> {
-            if .scrollHeight > .clientHeight {
-                var h = .clientHeight / .scrollHeight * .clientHeight
-                if h < 32 {
-                    h = 32
-                }
-                .thumb_h = h
-                let max_scroll = .scrollHeight - .clientHeight
-                let track_avail = .clientHeight - h
-                var thumb_t = 0
-                if max_scroll > 0 {
-                    if track_avail > 0 {
-                        thumb_t = .scrollTop / max_scroll * track_avail
-                    }
-                }
-                .thumbEl.style.height = f"${h}px"
-                .thumbEl.style.transform = f"translateY(${thumb_t}px)"
-            } else {
-                .thumb_h = 0
-                .thumbEl.style.height = "0px"
-                .thumbEl.style.transform = "translateY(0px)"
-            }
-        }
-
-        .ScrollSync -> {
-            let _ = .SyncThumb()
-        }
-
-        // Emit-only msg: the body is a no-op, the generator appends
-        // emit('UpdateScrollTop', v) after the body.
-        .UpdateScrollTop(v) -> {
-            let _ = v
-        }
-
-        .HoverChange(v) -> {
+        // Emit-only msgs: empty bodies, the generator appends
+        // emit('update:scrollTop', v) / emit('hover-change', v) after them.
+        ."update:scrollTop"(v) -> {}
+        ."hover-change"(v) -> {
             .hovering = v
-            let _ = .SyncThumb()
+            // Original emit contract is boolean; the DSL can't pass bool
+            // literals as view event args (plan 015 P1#5), so call sites
+            // pass int 1/0 and we reassign before the trailing emit.
+            v = v == 1
         }
 
         .TrackDown(e) -> {
@@ -119,7 +92,7 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
                             ratio = 1
                         }
                         let max_scroll = .scrollHeight - .clientHeight
-                        let _ = .UpdateScrollTop(ratio * max_scroll)
+                        let _ = ."update:scrollTop"(ratio * max_scroll)
                     }
                 }
             }
@@ -145,7 +118,7 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
                     if v > max_scroll {
                         v = max_scroll
                     }
-                    let _ = .UpdateScrollTop(v)
+                    let _ = ."update:scrollTop"(v)
                 }
             }
         }

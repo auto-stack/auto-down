@@ -1,33 +1,53 @@
 <!-- CustomScrollbar component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const dragging = ref<number>(0)
 const hovering = ref<number>(0)
 const drag_start = ref<number>(0)
 const scroll_start = ref<number>(0)
-const thumb_h = ref<number>(32)
 
 const trackEl = ref<HTMLElement | null>(null)
-const thumbEl = ref<HTMLElement | null>(null)
 
-const props = defineProps<{
+const thumb_h = computed<any>(() => (props.scrollHeight > props.clientHeight ? (props.clientHeight / props.scrollHeight * props.clientHeight < 32 ? 32 : props.clientHeight / props.scrollHeight * props.clientHeight) : 0))
+const thumb_t = computed<any>(() => (props.scrollHeight > props.clientHeight && props.clientHeight - thumb_h.value > 0 ? props.scrollTop / (props.scrollHeight - props.clientHeight) * (props.clientHeight - thumb_h.value) : 0))
+
+const props = withDefaults(defineProps<{
   scrollTop: number
   scrollHeight: number
   clientHeight: number
-  visible: boolean
-}>()
+  visible?: boolean
+}>(), {
+  visible: false,
+})
 
 const emit = defineEmits<{
-  UpdateScrollTop: [number]
-  HoverChange: [number]
+  'update:scrollTop': [number]
+  'hover-change': [number]
   TrackDown: [any]
   StartDrag: [any]
   DragMove: [any]
   EndDrag: []
-  ScrollSync: []
-  SyncThumb: []
 }>()
+
+function TrackDown(e: any): void {
+  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
+  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
+  let rel_y: number = e.clientY - rect.top - thumb_h.value / 2;
+  let ratio: number = rel_y / track_avail;
+  if (ratio < 0) {ratio = 0;
+  }if (ratio > 1) {ratio = 1;
+  }let max_scroll = props.scrollHeight - props.clientHeight;
+  let _ = update_scrollTop(ratio * max_scroll);
+  }}}
+
+  emit('TrackDown', e)
+}
+
+function update_scrollTop(v: any): void {
+
+  emit('update:scrollTop', v)
+}
 
 function DragMove(e: any): void {
   if (dragging.value == 1) {let track_avail = props.clientHeight - thumb_h.value;
@@ -37,41 +57,16 @@ function DragMove(e: any): void {
   let v = scroll_start.value + ratio * max_scroll;
   if (v < 0) {v = 0;
   }if (v > max_scroll) {v = max_scroll;
-  }let _ = UpdateScrollTop(v);
+  }let _ = update_scrollTop(v);
   }}
 
   emit('DragMove', e)
 }
 
-function SyncThumb(): void {
-  if (props.scrollHeight > props.clientHeight) {let h = props.clientHeight / props.scrollHeight * props.clientHeight;
-  if (h < 32) {h = 32;
-  }thumb_h.value = h;
-  let max_scroll = props.scrollHeight - props.clientHeight;
-  let track_avail = props.clientHeight - h;
-  let thumb_t: number = 0;
-  if (max_scroll > 0) {if (track_avail > 0) {thumb_t = props.scrollTop / max_scroll * track_avail;
-  }}thumbEl.value!.style.height = `${h}px`;
-  thumbEl.value!.style.transform = `translateY(${thumb_t}px)`;
-  } else {thumb_h.value = 0;
-  thumbEl.value!.style.height = '0px';
-  thumbEl.value!.style.transform = 'translateY(0px)';
-  }
+function EndDrag(): void {
+  dragging.value = 0;
 
-  emit('SyncThumb')
-}
-
-function ScrollSync(): void {
-  let _ = SyncThumb();
-
-  emit('ScrollSync')
-}
-
-function HoverChange(v: any): void {
-  hovering.value = v;
-  let _ = SyncThumb();
-
-  emit('HoverChange', v)
+  emit('EndDrag')
 }
 
 function StartDrag(e: any): void {
@@ -82,35 +77,15 @@ function StartDrag(e: any): void {
   emit('StartDrag', e)
 }
 
-function UpdateScrollTop(v: any): void {
-  let _ = v;
+function hover_change(v: any): void {
+  hovering.value = v;
 
-  emit('UpdateScrollTop', v)
+
+
+  v = v == 1;
+
+  emit('hover-change', v)
 }
-
-function EndDrag(): void {
-  dragging.value = 0;
-
-  emit('EndDrag')
-}
-
-function TrackDown(e: any): void {
-  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
-  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
-  let rel_y: number = e.clientY - rect.top - thumb_h.value / 2;
-  let ratio: number = rel_y / track_avail;
-  if (ratio < 0) {ratio = 0;
-  }if (ratio > 1) {ratio = 1;
-  }let max_scroll = props.scrollHeight - props.clientHeight;
-  let _ = UpdateScrollTop(ratio * max_scroll);
-  }}}
-
-  emit('TrackDown', e)
-}
-
-onMounted(() => {
-  let _ = SyncThumb();
-})
 
 function __auto_gl_mousemove_DragMove(e: any) {
   DragMove(e)
@@ -118,13 +93,11 @@ function __auto_gl_mousemove_DragMove(e: any) {
 
 onMounted(() => {
   window.addEventListener('mouseup', EndDrag)
-  window.addEventListener('scroll', ScrollSync, { capture: true })
   window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
 })
 
 onUnmounted(() => {
   window.removeEventListener('mouseup', EndDrag)
-  window.removeEventListener('scroll', ScrollSync, { capture: true })
   window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
 })
 
@@ -132,8 +105,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @mouseenter="HoverChange(1)" @scroll="UpdateScrollTop" @mousedown="TrackDown($event)" @mouseleave="HoverChange(0)">
-      <div class="custom-scrollbar-thumb" ref="thumbEl" @mousedown.stop="StartDrag($event)" @scroll="SyncThumb" />
+    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @mouseenter="hover_change(1)" @scroll="update_scrollTop" @mousedown="TrackDown($event)" @mouseleave="hover_change(0)">
+      <div class="custom-scrollbar-thumb" :style="({ height: `${thumb_h}px`, transform: `translateY(${thumb_t}px)` } as any)" @mousedown.stop="StartDrag($event)" />
     </div>
 
 </template>

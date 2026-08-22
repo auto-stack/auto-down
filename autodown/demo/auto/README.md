@@ -72,20 +72,16 @@ D:/autostack/auto-lang/target/debug/auto.exe src/front/app.at
 
 ## Interface differences vs the original hand-written SFC
 
-The Auto widget DSL derives Vue emits from msg variants (PascalCase only)
-and cannot produce literal emit names. `CustomScrollbar`'s emit interface
-changed accordingly (the App root widget, also generated, binds them
-directly):
+Plan 015 batch A restored the original emit contract via quoted msg
+variants — `update:scrollTop` (number) and `hover-change` (boolean) are
+verbatim again, and `visible` is optional (`withDefaults`) as in the
+original. One residual deviation:
 
-| original                     | generated                |
-| ---------------------------- | ------------------------ |
-| `update:scrollTop` (number)  | `UpdateScrollTop` (number) |
-| `hover-change` (boolean)     | `HoverChange` (number, 1/0) |
+- `hover-change` call sites pass int `1`/`0` (the DSL still can't pass bool
+  literals as view event args — plan 015 P1#5); the handler reassigns
+  `v = v == 1` so the emitted payload is a proper boolean.
 
-Parent bindings changed from `@update:scroll-top` / `@hover-change` to
-`@UpdateScrollTop` / `@HoverChange`. Behavior is unchanged.
-
-Other differences (behaviorally invisible):
+Remaining differences (behaviorally invisible):
 
 - Dynamic classes are `visible` / `dragging` instead of `is-visible` /
   `is-dragging`: the DSL style-map codegen does not quote hyphenated keys,
@@ -93,21 +89,18 @@ Other differences (behaviorally invisible):
   e2e selectors (`.custom-scrollbar`, `.custom-scrollbar-thumb`) are
   unaffected.
 - The generated SFC also declares/emits the internal msgs (`TrackDown`,
-  `StartDrag`, `DragMove`, `EndDrag`, `ScrollSync`, `SyncThumb`) — noise
-  the parent simply never listens to.
-- Thumb geometry (`height` / `transform` inline styles) is written
-  imperatively via the `thumbEl` ref from a `SyncThumb` handler, because
-  the DSL has no `:style` object binding and no `watch`. `SyncThumb` runs
-  on: mount, window `scroll` (capture phase — catches any panel scroll,
-  which is how prop changes manifest), hover, and thumb drag.
-  Residual gap: an edit that changes `scrollHeight` without firing any
-  scroll/mouse event leaves the thumb stale until the next such event
-  (in practice a mousemove follows any edit immediately).
-- `visible` prop is required, not optional (the parent always passes it).
-- The track/thumb carry inert `@scroll` bindings (`@scroll="UpdateScrollTop"`
-  / `@scroll="SyncThumb"`). Neither element can scroll, so they never fire;
-  they exist only so the Auto generator marks those handlers as "used" and
-  emits the corresponding functions + `defineEmits` entries.
+  `StartDrag`, `DragMove`, `EndDrag`) — noise the parent never listens to.
+- The track carries an inert `@scroll="update_scrollTop"` binding. The
+  track never scrolls, so it never fires; it exists only so the Auto
+  generator marks the handler as "used" and emits the function +
+  `defineEmits` entry (plan 015 P1#4, compiler fix pending).
+
+Plan 015 batch A also retired the imperative thumb geometry: thumb
+`height`/`transform` are computeds bound via `style_obj:` (native `:style`),
+replacing the `thumbEl` ref + `SyncThumb` handler + window-scroll capture.
+The old residual gap — an edit changing `scrollHeight` without a
+scroll/mouse event left the thumb stale — is gone: props now propagate
+reactively.
 
 ## DSL gotchas discovered (compiler not patched)
 
@@ -146,6 +139,10 @@ New probe conclusions (probe project: `tmp/dsl-probes/plan014/`, gitignored):
     handler bodies (with a no-op) all work as expected.
 13. The dead `hoveringScrollbar` state from the hand-written App.vue was
     dropped in the Auto version (it was write-only; no behavior change).
+14. f-strings are NOT supported as computed bodies (silently emit
+    `computed<any>(() => undefined)` — plan 015 batch A). Put the f-string
+    inline in the `style_obj:` value instead; string-returning computeds
+    otherwise need an ext helper (jade `sidebarLeftWidth` precedent).
 
 ### auto-lang division regression (fixed in worktree)
 

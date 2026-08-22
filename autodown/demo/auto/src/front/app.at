@@ -97,7 +97,7 @@ widget App {
                     scrollHeight: .demoAppBridge.scrollHeight,
                     clientHeight: .demoAppBridge.clientHeight,
                     visible: .hovering_splitter == 1,
-                    on_UpdateScrollTop: .SetScrollTop($event)
+                    on "update:scrollTop": .SetScrollTop($event)
                 }
             }
         }

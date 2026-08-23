@@ -108,20 +108,36 @@ setCustomComponents 兼容，切换无行为变化）。
 - `@autodown/editor` 分层契约文档化（.at 应用层 API / Tiptap 平台层边界）；
   发包形态（npm 或 workspace file:）定版；musk PLAN-041 Phase 2 接入验证。
 
-## 验收标准
+> **进度（2026-08-23）**：Phase 4 完成（本仓侧）。分层契约定版于
+> `packages/editor/ARCHITECTURE.md`（.at 应用层组件面 = 公开 API 契约；
+> Tiptap 扩展/composables 平台层边界规则；重能力降级原则）。发包形态定版
+> 为 **vendor 快照通道**（musk T11 实测裁定：`workspace:*` 阻塞 file: 直链，
+> 现行 vendor 脚本模式已跑通；editor 接入循同一模式；npm 发包登记为升级路径
+> 而非本计划内）。版本定版：`@autodown/editor 0.2.0` 维持、`@autodown/vue`
+> 0.1.1→**0.2.0**（markstream 消灭升版，对应待澄清 4：musk 消费锁 ~0.2 跟进
+> vendor 快照）。musk 侧接入验证（PLAN-041 Phase 2 + T10 端到端）待 musk
+> 会话执行——本仓 dist 新鲜、契约文档与出口面就绪。
 
-1. `@autodown/vue` 的 dependencies 不再含 markstream-vue 及其传递链（解析/渲染自研）。
-2. 解析层与渲染语义对拍全绿（musk 真实内容 fixtures）。
-3. katex/mermaid/highlight 缺席时库可用（降级渲染路径有测试）。
-4. musk 侧切换（PLAN-038 T13）与编辑器接入（PLAN-041 T10）各有一次端到端验证记录。
-5. `auto trans` 产物与手写 TS 行为等价（Phase 1 对拍绿）。
+## 验收对照（2026-08-23 全计划收口）
 
-## 待澄清事项
+1. ✅ `@autodown/vue` dependencies 不含 markstream-vue 及传递链（仅剩
+   @autodown/core/lowlight/hast-util-to-html；stream-markdown-parser 降为
+   devDep 仅对拍测试用）。
+2. ✅ 解析层与渲染语义对拍全绿（markdown-parity 43 例：最终态 + 逐字符流式
+   前缀双断言，musk 真实内容 fixtures）。
+3. ✅ katex/mermaid/highlight 缺席时库可用（optional-capabilities 注册式 +
+   降级测试在册）。
+4. ◻ musk 侧端到端：T13 渲染切换与 T10 编辑器接入各一次记录——**本仓侧
+   就绪，待 musk 会话执行**（唯一未闭环项）。
+5. ✅ `auto trans` 产物与手写 TS 行为等价（Phase 1 streaming-parity 21 例）。
 
-1. **解析层路线**：从零自研 vs 锚定 markdown-it 语义子集对拍（推荐后者——验收口径
-   客观，且 musk 侧 PLAN-038 原方案的 fixtures 设计可直接复用）。
-2. **Tiptap 的 VM 后端命运**：编辑库融合只承诺"vue 轨可用 + 分层契约稳定"；VM/Rust
-   后端的编辑器（自绘文本编辑器路线，auto-lang 041-auto-edit/code_editor 已有内核）
-   是否作为后续独立计划——建议明确切出，不在本计划内展开。
-3. **发包形态**：npm 发布 vs workspace file: 链接（musk T11 接入方式的对应决策）。
-4. **版本策略**：消灭 markstream 后是否升 0.2 并锁 musk 消费版本范围。
+## 待澄清事项（全部落定）
+
+1. **解析层路线** → 落定：markdown-it 语义子集对拍（Phase 2 按此实施，
+   语义投影对拍口径在册）。
+2. **Tiptap 的 VM 后端命运** → 落定：明确切出本计划，作为后续独立计划
+   （自绘文本编辑器路线承接，auto-lang 041-auto-edit/code_editor 内核在）。
+3. **发包形态** → 落定：vendor 快照通道（musk T11 实测裁定；详见
+   packages/editor/ARCHITECTURE.md「发包形态」；npm 发包登记为升级路径）。
+4. **版本策略** → 落定：`@autodown/vue` 升 **0.2.0**（markstream 消灭后），
+   musk 消费锁 ~0.2 跟进 vendor 快照；`@autodown/editor` 0.2.0 维持。

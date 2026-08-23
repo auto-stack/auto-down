@@ -1,0 +1,38 @@
+// @autodown/vue — render scheduler decisions (plan 008, Phase 3 batch B).
+//
+// Pure decision logic for the streaming render pipeline: batch progression,
+// max-live-nodes windowing, and typewriter character stepping. Time itself is
+// NOT here — the Vue side injects a timer port (setTimeout/clearTimeout), so
+// a VM backend can supply its own adapter.
+//
+// Transpiled to src/render-scheduler.generated.ts by auto/gen.mjs.
+
+// How many nodes are visible after the next batch tick.
+fn nextBatchCount(visible int, total int, batchSize int) int {
+    var remaining = total - visible
+    if remaining <= 0 { return visible }
+    if batchSize <= 0 { return total }
+    if remaining > batchSize {
+        return visible + batchSize
+    }
+    return total
+}
+
+// Start index of the live window keeping at most maxLive nodes mounted
+// (0 or negative maxLive disables windowing).
+fn liveWindowStart(visibleEnd int, maxLive int) int {
+    if maxLive <= 0 { return 0 }
+    var start = visibleEnd - maxLive
+    if start < 0 { return 0 }
+    return start
+}
+
+// Characters visible after the next typewriter tick (chunk <= 0 reveals all).
+fn typewriterNextChars(visible int, total int, chunk int) int {
+    var remaining = total - visible
+    if remaining <= 0 { return total }
+    if chunk <= 0 { return total }
+    var next = visible + chunk
+    if next > total { return total }
+    return next
+}

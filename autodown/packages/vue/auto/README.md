@@ -1,8 +1,12 @@
 # Auto sources of `@autodown/vue` (plan 008, Phase 1)
 
-The streaming segmentation and table normalization logic of this package is
-**generated from Auto language sources** — the hand-written TS versions were
-retired in plan 008 Phase 1 after parity was proven.
+The streaming segmentation, table normalization, markdown parsing, and
+render scheduling logic of this package is **generated from Auto language
+sources** — the hand-written TS versions were retired in plan 008 after
+parity was proven. Since Phase 3 the package also renders markdown itself
+(`MarkdownRender.vue` + `render-node.ts` + `use-render-scheduler.ts` are
+hand-written Vue layers over the generated logic); markstream-vue is no
+longer a dependency.
 
 ## Layout
 
@@ -29,6 +33,11 @@ In this directory:
   `:::` containers, html blocks, linkify, the escapes-become-emphasis
   quirk, indented code (stays a paragraph, matching the reference's
   fixIndentedCodeBlock).
+- `render_scheduler.at` — render scheduling decisions (Phase 3 batch B):
+  batch progression (`nextBatchCount`), max-live-nodes windowing
+  (`liveWindowStart`), typewriter stepping (`typewriterNextChars`). Pure
+  math only — time comes from an injectable timer port
+  (`useRenderScheduler` in src/, VM backends supply their own adapter).
 - `gen.mjs` — build pipeline: runs `auto trans` per source, keeps the raw
   compiler output at `*.raw.ts` for inspection, applies the documented
   post-fixes (listed at the top of `gen.mjs`), and writes the generated files.

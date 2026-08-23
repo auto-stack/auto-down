@@ -28,10 +28,7 @@
   "dependencies": {
     "@autodown/core": "workspace:*",
     "hast-util-to-html": "9.0.5",
-    "katex": "^0.16.0",
-    "lowlight": "^3.3.0",
-    "markstream-vue": "^0.0.14-beta.8",
-    "mermaid": "^11.16.0"
+    "lowlight": "^3.3.0"
   },
   "devDependencies": {
     "@microsoft/api-extractor": "^7.58.12",
@@ -44,6 +41,8 @@
     "vitest": "^3.2.7",
     "vue-tsc": "^3.3.8",
     "@types/node": "^22.0.0",
-    "stream-markdown-parser": "0.0.95"
+    "stream-markdown-parser": "0.0.95",
+    "@vue/server-renderer": "^3.5.35",
+    "vue": "^3.5.35"
   }
 }

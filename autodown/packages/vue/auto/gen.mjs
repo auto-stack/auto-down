@@ -162,3 +162,22 @@ writeFileSync(join(pkgRoot, 'src', 'markdown-parser.generated.ts'), mdHeader + m
 console.log(
   '[gen] auto/markdown_parser.at -> src/markdown-parser.generated.ts (raw kept at auto/markdown_parser.raw.ts)'
 )
+
+// render_scheduler.at (plan 008 Phase 3): pure scheduling decisions, no
+// post-fixes today.
+const schedOut = transpile('render_scheduler')
+const schedHeader = `/**
+ * @autodown/vue — render scheduler decisions (batch / live-window /
+ * typewriter stepping).
+ *
+ * GENERATED FILE — do not edit by hand.
+ * Source: auto/render_scheduler.at (Auto language). Regenerate with: pnpm gen
+ * (see auto/README.md for the pipeline and the applied post-fixes)
+ */
+
+`
+
+writeFileSync(join(pkgRoot, 'src', 'render-scheduler.generated.ts'), schedHeader + schedOut)
+console.log(
+  '[gen] auto/render_scheduler.at -> src/render-scheduler.generated.ts (raw kept at auto/render_scheduler.raw.ts)'
+)

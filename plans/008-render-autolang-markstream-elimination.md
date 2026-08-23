@@ -88,6 +88,21 @@ setCustomComponents 兼容，切换无行为变化）。
 - katex/mermaid/highlight 改可选注册 + 降级路径；`MarkdownRender` 兼容出口。
 - musk PLAN-038 Phase 3 在此阶段完成后切换消费。
 
+> **进度（2026-08-23）**：Phase 3 完成（本仓侧）。
+> ① `MarkdownRender.vue` + `render-node.ts` 自研渲染层——DOM 契约与 markstream
+> 对齐（node-slot/node-content 包裹、data-node-type、pre[data-language]、
+> table-node、code-block-header、嵌套 markdown-renderer），下游滚动同步/代码头
+> 注入/CSS override 零改动。② 调度内化：`auto/render_scheduler.at`（batch 推进/
+> max-live-nodes 窗口/typewriter 步进的纯决策）+ `use-render-scheduler.ts`
+> （定时器注入端口，VM adapter 可换装）；MarkdownRender 集成（SSR 全量树 +
+> hydration 后调度接管）。③ 重能力可选化：`optional-capabilities.ts` 注册式
+> enableKatex/enableMermaid/enableHighlight，缺席时库可用（降级测试在册）；
+> katex/mermaid 移出 dependencies。④ **markstream-vue 及 katex/mermaid 移出
+> dependencies（验收 1 达成）**；`MarkdownRender`/`parseDocument`/enable* 进
+> `@autodown/vue` 出口（musk T13 切换面就绪）。测试 82 例全绿（+渲染 DOM 契约
+> 11 + 调度器 7）；demo 消费链与 SSR 冒烟通过。musk 侧 T13 端到端切换验证待
+> musk 会话执行（其 render-switch 白名单机制现成）。
+
 ### Phase 4 — 编辑库定版
 
 - `@autodown/editor` 分层契约文档化（.at 应用层 API / Tiptap 平台层边界）；

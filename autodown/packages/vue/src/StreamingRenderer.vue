@@ -25,7 +25,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { MarkdownRender, enableKatex, enableMermaid } from 'markstream-vue'
+import MarkdownRender from './MarkdownRender.vue'
+import { enableKatex, enableMermaid } from './optional-capabilities'
 import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
@@ -33,6 +34,8 @@ import StreamingTable from './StreamingTable.vue'
 
 const lowlight = createLowlight(common)
 
+// heavy capabilities are opt-in registrations (plan 008 Phase 3); math and
+// mermaid nodes are outside the current parse subset, so these record intent
 enableKatex()
 enableMermaid()
 

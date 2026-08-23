@@ -205,21 +205,9 @@ importers:
       hast-util-to-html:
         specifier: 9.0.5
         version: 9.0.5
-      katex:
-        specifier: ^0.16.0
-        version: 0.16.47
       lowlight:
         specifier: ^3.3.0
         version: 3.3.0
-      markstream-vue:
-        specifier: ^0.0.14-beta.8
-        version: 0.0.14-beta.8(katex@0.16.47)(mermaid@11.16.0)(vue@3.5.35(typescript@5.9.3))
-      mermaid:
-        specifier: ^11.16.0
-        version: 11.16.0
-      vue:
-        specifier: ^3.4.0
-        version: 3.5.35(typescript@5.9.3)
     devDependencies:
       '@microsoft/api-extractor':
         specifier: ^7.58.12
@@ -233,6 +221,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^5.0.0
         version: 5.2.4(vite@6.4.3(@types/node@22.20.1))(vue@3.5.35(typescript@5.9.3))
+      '@vue/server-renderer':
+        specifier: ^3.5.35
+        version: 3.5.35(vue@3.5.35(typescript@5.9.3))
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
@@ -251,6 +242,9 @@ importers:
       vitest:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@22.20.1)
+      vue:
+        specifier: ^3.5.35
+        version: 3.5.35(typescript@5.9.3)
       vue-tsc:
         specifier: ^3.3.8
         version: 3.3.8(typescript@5.9.3)
@@ -338,9 +332,6 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
-
-  '@chenglou/pretext@0.0.5':
-    resolution: {integrity: sha512-A8GZN10REdFGsyuiUgLV8jjPDDFMg5GmgxGWV0I3igxBOnzj+jgz2VMmVD7g+SFyoctfeqHFxbNatKSzVRWtRg==}
 
   '@chevrotain/types@11.1.2':
     resolution: {integrity: sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw==}
@@ -2032,37 +2023,6 @@ packages:
     engines: {node: '>= 20'}
     hasBin: true
 
-  markstream-core@0.0.1:
-    resolution: {integrity: sha512-Ka4PUJPe3nyY+oUsdUs/qp7vQsd/53LuyLqeQci1h8ao7SRcTi6hgEfVRpPDDv5Y/cHz25TaYSLIE2dYvKtl4g==}
-
-  markstream-vue@0.0.14-beta.8:
-    resolution: {integrity: sha512-LAnP/uRu6IrowmAdJSxz9aVhr+VBIvFUQeotmlaICK6QKNoB9CLd5bD/m3By/tys3uCddJ8cy7STXzd6CKqRuw==}
-    hasBin: true
-    peerDependencies:
-      '@antv/infographic': ^0.2.3
-      '@terrastruct/d2': '>=0.1.33'
-      katex: '>=0.16.22'
-      mermaid: '>=11'
-      stream-markdown: '>=0.0.15'
-      stream-monaco: '>=0.0.40'
-      vue: '>=3.0.0'
-      vue-i18n: '>=9'
-    peerDependenciesMeta:
-      '@antv/infographic':
-        optional: true
-      '@terrastruct/d2':
-        optional: true
-      katex:
-        optional: true
-      mermaid:
-        optional: true
-      stream-markdown:
-        optional: true
-      stream-monaco:
-        optional: true
-      vue-i18n:
-        optional: true
-
   mdast-util-to-hast@13.2.1:
     resolution: {integrity: sha512-cctsq2wp5vTsLIcaymblUriiTcZd0CwWtCbLvrOzYCDZoWyMNV8sZ7krj09FSnsiJi3WVsHLM4k6Dq/yaPyCXA==}
 
@@ -2842,8 +2802,6 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.2.0
       prettier: 2.8.8
-
-  '@chenglou/pretext@0.0.5': {}
 
   '@chevrotain/types@11.1.2': {}
 
@@ -4465,19 +4423,6 @@ snapshots:
   marked@16.4.2: {}
 
   marked@17.0.6: {}
-
-  markstream-core@0.0.1: {}
-
-  markstream-vue@0.0.14-beta.8(katex@0.16.47)(mermaid@11.16.0)(vue@3.5.35(typescript@5.9.3)):
-    dependencies:
-      '@chenglou/pretext': 0.0.5
-      '@floating-ui/dom': 1.8.0
-      markstream-core: 0.0.1
-      stream-markdown-parser: 0.0.95
-      vue: 3.5.35(typescript@5.9.3)
-    optionalDependencies:
-      katex: 0.16.47
-      mermaid: 11.16.0
 
   mdast-util-to-hast@13.2.1:
     dependencies:

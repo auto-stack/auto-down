@@ -1,5 +1,8 @@
 # Plan: AutoDown 编辑器 Auto 化深化 —— 薄壳消除与缺口回迁
 
+## Status: COMPLETE
+
+
 > 前置：plan 010（编辑器 Auto 化复刻，Phase 0-4 全 ✅）、plan 011（jade Auto 化）、plan 012（编译器 backlog，已 CLOSED）。
 > 状态：**CLOSED ✅（2026-08-19）**——Phase 0/1/2/3 全部完成。编辑器包 Vue 组件层 100% Auto 生成，薄壳与 Inner 分割已消除。
 > 调研基础：`autodown/packages/editor/src/auto/README.md` workaround 全清单（2026-07 基线）逐条对照当前编译器（plan 402-410 + 批次 A-G + plan-408/055）。

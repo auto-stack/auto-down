@@ -5,6 +5,12 @@
 > 恢复，demo e2e 9/9；jade MainArea v-show 回迁，jade e2e 23/23）。
 > 编译器修复已合并回 auto-lang master（`e332c4d3`，quoted msg variant
 > on-block 调用净化 + used_handlers 注册）。
+> **复审补记（2026-08-24）**：批次 B 复盘发现两处遗留并已修复——
+> ① df880ac 误入无引用的 `CodeEditor.vue`（依赖未进 package.json，致
+> jade vue-tsc 8 错）→ 已删除；② Phase 5.1 起 fileTree/blocks 两 store 的
+> `?str` 占位类型（DSL 无 Map/Set 标注，facade 注入真值）在 ext 签名处
+> 类型冲突 → ext 侧按运行时形态收宽（instanceof 分流，行为不变）。
+> 修复后 jade vue-tsc build + e2e 23/23 全绿。
 > 剩余：批次 C（零星回迁）、Phase 2（P0 工程化）、Phase 3（P1 编译器
 > 批次）——下一会话继续。
 > 调研来源：demo/editor/jade 三份 auto README 的 gotchas 全量盘点 +

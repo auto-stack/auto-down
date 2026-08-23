@@ -16,19 +16,25 @@ export interface PageBlocks {
 
 /** The original parse(): parse, cache.set with timestamp, return blocks.
  *  Called directly by the facade (msg handlers cannot return values). */
+/** cache arrives as the ?str placeholder (typed string | null, really a Map
+ *  once the facade assigns it) -- DSL has no Map type annotation. */
 export function parseIntoCache(
-  cache: Map<string, PageBlocks>,
+  cache: Map<string, PageBlocks> | string | null,
   path: string,
   body: string,
 ): ParsedBlock[] {
   const blocks = parseBlocks(body)
-  cache.set(path, { path, blocks, updatedAt: Date.now() })
+  const liveCache = cache instanceof Map ? cache : null
+  liveCache?.set(path, { path, blocks, updatedAt: Date.now() })
   return blocks
 }
 
 /** The original clear(): delete one entry, or clear all when path is the
  *  empty-string sentinel (facade maps the optional arg to ""). */
-export function cacheClear(cache: Map<string, PageBlocks>, path: string): void {
+export function cacheClear(cache: Map<string, PageBlocks> | string | null, path: string): void {
+  if (!(cache instanceof Map)) {
+    return
+  }
   if (path === '') {
     cache.clear()
   } else {

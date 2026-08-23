@@ -1,5 +1,8 @@
 # Plan 014：demo app 的 Auto 化
 
+## Status: COMPLETE
+
+
 > 状态：**CLOSED**（2026-08-21）。Phase 0-2 全部完成：app.at 真实化，
 > `demo/src/App.vue` 与 `CustomScrollbar.vue` 均由 Auto 编译器生成，
 > demo e2e 9/9 全绿，vue-tsc 无新增错误（仅剩 6 条既有 TS6133 基线）。

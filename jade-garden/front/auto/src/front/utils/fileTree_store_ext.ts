@@ -60,10 +60,14 @@ export async function deleteFileRaw(path: string): Promise<void> {
 }
 
 /** The original toggle(): has/delete/add on the reactive Set. */
-export function toggleExpanded(expanded: Set<string>, path: string): void {
-  if (expanded.has(path)) {
-    expanded.delete(path)
+/** expanded arrives as the ?str placeholder (typed string | null, really a
+ *  Set once the facade assigns it) -- DSL has no Set type annotation. */
+export function toggleExpanded(expanded: Set<string> | string | null, path: string): Set<string> {
+  const set = expanded instanceof Set ? expanded : new Set<string>()
+  if (set.has(path)) {
+    set.delete(path)
   } else {
-    expanded.add(path)
+    set.add(path)
   }
+  return set
 }

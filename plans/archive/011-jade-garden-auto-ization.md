@@ -1,5 +1,8 @@
 # Plan: Jade-Garden 应用 Auto 化
 
+## Status: COMPLETE
+
+
 > 状态：✅ 已完成（2026-07-31，0a56e4b → d7e3643 + 收尾 545c477/cb41e8c；最终验证 e2e 19/19）。
 > 前置：plan 010（AutoDown 编辑器 Auto 化）已完成，编译器能力基线 = auto-lang master（闭包/watch/dyn/style_obj/自定义事件/use import/ref DOM 逃生舱/块体闭包）。
 > 调研结论：Jade-Garden 名义是 Auto 工程，实际 99% 手写——`front/` 约 6600 行手写 Vue 3 + Pinia + Tailwind（26 组件 + 10 store + lib 层 + 704 行 CSS），`back/server/` 3706 行手写 Rust Axum。`.at` 文件（app.at/api.at 等）全是占位，且**`auto run` 会用占位覆盖真实 `src/App.vue`，必须先行隔离**。

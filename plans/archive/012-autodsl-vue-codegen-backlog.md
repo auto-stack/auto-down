@@ -1,5 +1,8 @@
 # Plan: Auto DSL → Vue codegen 编译器 Backlog
 
+## Status: COMPLETE
+
+
 > 状态：✅ **收工 CLOSED**（2026-08-12）。P0 全 13 项修复；P1 测试债回填（vue_capabilities 真实管线锁）；P2 高价值项全落地（v-show/try-catch/保留字治理/else-if/裸 return/store 表达力/v-html/Teleport/报错定位/check_symbol span），jade 侧规避随编译器自愈逐一回迁（gap 37 多参数、5.3c emit 多实参、gap 40 手写 .value、ext teleport/v-html 迁移）。**残留全部有稳定规避且无需求驱动，重开条件=出现实际需求方**：P2 niche（Map/Set=11、$patch=14、正则字面量=5、scoped slot、model 初值 ext 调用=16、prop 类型透传=43/48、shadcn 过度映射=38、关键字 prop=53、保留字换名=18/29/34、code/svg 降级=31、text Call=46、import 常量 computed=28、quoted v-model payload=41、on* prop 名=51、key 启发式告警=39 剩余、空 style 块=42）；P3 长尾（双重 src 镜像=32/50/55、pac.at 版本分隔符=49、反斜杠四倍=35 等）；**唯一 🔲 缺陷** = cap_vmodel_fold master 回归（P1 表 #5，master 侧 pre-existing，与本计划批次无关）。
 > 来源：plan 011（Jade-Garden Auto 化）全程实证，55 条编译器缺口/陷阱记录在 `jade-garden/front/auto/README.md`（编号 1-16 为 store 模式，17-55 为 widget 批次；另含 editor 包 plan 010 期间已记录的 D1-D3 旧 bug）。
 > 执行对象：auto-lang（`D:/autostack/auto-lang`，`crates/auto-lang/src/ui_gen/vue.rs`）。本文件只做优先级梳理与修复方向建议，不涉实现排期。

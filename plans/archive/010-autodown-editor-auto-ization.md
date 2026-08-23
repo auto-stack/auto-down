@@ -1,5 +1,8 @@
 # Plan: AutoDown 编辑器 Auto 化复刻
 
+## Status: COMPLETE
+
+
 > 调研基础：auto-lang 仓库（`D:/autostack/auto-lang`，Rust 编译器 + `crates/auto-lang/src/ui_gen/vue.rs` 约 9800 行的 Vue 生成器）与 `autodown/` monorepo 全量调研。
 > 长期目标：AutoDown 编辑器组件层、乃至 Jade-Garden 应用壳的完整 Auto 化。
 

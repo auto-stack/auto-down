@@ -1,0 +1,229 @@
+// @autodown/vue — streaming document segmentation, written in Auto (plan 008, Phase 1).
+//
+// Transpiled to src/streaming.generated.ts by auto/gen.mjs (`pnpm gen` from
+// packages/vue). Behavioral parity with the previous hand-written
+// useStreamingDocument.ts is asserted by src/__tests__/streaming-parity.test.ts.
+//
+// Auto constructs / a2ts workarounds used here:
+// - try/catch is not transpilable -> JSON.parse goes through the hand-written
+//   safeJsonParse bridge in auto/helpers.ts (imported via `use helpers:`)
+// - `typeof` is not expressible   -> typeOf bridge in auto/helpers.ts
+// - truthiness coercion (value && ...) -> isTruthy bridge in auto/helpers.ts
+// - `const { type, ...props } = value` rest destructuring does not parse
+//   -> explicit copy loop skipping the "type" key
+// - `new Set` does not parse -> List + .includes()
+// - ternaries transpile to an error -> pre-declared var + if/else
+// - a2ts drops parentheses around nested binary expressions -> intermediate
+//   variables wherever the TS source needed grouping
+// - object keys "type"/"final" parse fine in literals; keyword-adjacent member
+//   access uses bracket form (value["type"])
+
+use helpers: safeJsonParse, typeOf, isTruthy
+
+type JSONBlock {
+    start int
+    end int
+    content str
+    closed bool
+}
+
+var COMPONENT_TYPES List<str> = ["table"]
+
+// Sticky props cache: remembers the last successful props for each block
+// position so that a transient parse failure doesn't reset the component to
+// empty state. (Module-level mutable state — a2ts keeps top-level var at
+// module scope.) Keyed by block.start like the TS original.
+var stickyPropsCache Map<str, any> = {}
+
+fn parsePartialJSON(text str) any {
+    let trimmed = text.trim()
+    if trimmed == "" { return {value: None, valid: false} }
+
+    // Try parsing as-is first
+    let direct = safeJsonParse(trimmed)
+    if direct.ok { return {value: direct.value, valid: true} }
+
+    // Recovery: complete open braces, brackets, and strings
+    var inString bool = false
+    var escape bool = false
+    var stack List<str> = []
+    var i int = 0
+
+    while i < trimmed.length {
+        let ch = trimmed[i]
+        if escape {
+            escape = false
+            i += 1
+            continue
+        }
+        if ch == "\\" {
+            escape = true
+            i += 1
+            continue
+        }
+        if ch == "\"" {
+            inString = !inString
+            i += 1
+            continue
+        }
+        if inString {
+            i += 1
+            continue
+        }
+
+        if ch == "{" || ch == "[" {
+            if ch == "{" {
+                stack.push("}")
+            } else {
+                stack.push("]")
+            }
+            i += 1
+            continue
+        }
+
+        var isCloser bool = false
+        if ch == "}" { isCloser = true }
+        if ch == "]" { isCloser = true }
+        if isCloser {
+            // Only pop when the closing bracket matches the expected one
+            if stack.length > 0 {
+                let expected = stack[stack.length - 1]
+                if ch == expected {
+                    stack.pop()
+                }
+            }
+        }
+        i += 1
+    }
+
+    var completion str = ""
+    if inString { completion = completion + "\"" }
+    completion = completion + stack.reverse().join("")
+
+    let repaired = safeJsonParse(trimmed + completion)
+    if repaired.ok { return {value: repaired.value, valid: false} }
+    return {value: None, valid: false}
+}
+
+fn findJSONBlocks(text str) List<JSONBlock> {
+    var blocks List<JSONBlock> = []
+    var i int = 0
+    while i < text.length {
+        let fenceStart = text.indexOf("```json\n", i)
+        if fenceStart == -1 { break }
+
+        let contentStart = fenceStart + 8
+        let fenceEnd = text.indexOf("\n```", contentStart)
+
+        if fenceEnd != -1 {
+            let end = fenceEnd + 4
+            let content = text.slice(contentStart, fenceEnd)
+            blocks.push({start: fenceStart, end: end, content: content, closed: true})
+            i = end
+        } else {
+            let tail = text.slice(contentStart)
+            blocks.push({start: fenceStart, end: text.length, content: tail, closed: false})
+            break
+        }
+    }
+    return blocks
+}
+
+fn isComponentJSON(value any) bool {
+    if !isTruthy(value) { return false }
+    let kind = typeOf(value)
+    if kind != "object" { return false }
+    let t = value["type"]
+    let tk = typeOf(t)
+    if tk != "string" { return false }
+    return COMPONENT_TYPES.includes(t)
+}
+
+// Detect component type from raw (possibly incomplete) JSON text.
+// Uses prefix matching so `"type": "tabl"` matches `"table"` — this prevents
+// the segment from flipping between markdown and component while the type
+// value is still being streamed character by character.
+fn detectComponentType(raw str) str? {
+    let re = RegExp("\"type\"\\s*:\\s*\"([^\"]*)\"")
+    let m = raw.match(re)
+    if m == nil { return None }
+    let partial = m[1]
+    for t in COMPONENT_TYPES {
+        let a = t.startsWith(partial)
+        let b = partial.startsWith(t)
+        if a || b { return Some(t) }
+    }
+    return None
+}
+
+fn buildSegments(text str) List<any> {
+    let blocks = findJSONBlocks(text)
+    var segments List<any> = []
+    var cursor int = 0
+
+    for block in blocks {
+        let cacheKey = block.start.to(str)
+        // Markdown before this block
+        if block.start > cursor {
+            segments.push({type: "markdown", text: text.slice(cursor, block.start)})
+        }
+
+        // Try to parse block content as component JSON
+        let parsed = parsePartialJSON(block.content)
+        let value = parsed.value
+        let valid = parsed.valid
+        let hintedType = detectComponentType(block.content)
+
+        if isComponentJSON(value) {
+            // rest-destructure workaround: copy every key except "type"
+            var props Map<str, any> = {}
+            for (k, v) in value {
+                if k != "type" {
+                    props[k] = v
+                }
+            }
+            stickyPropsCache[cacheKey] = props
+            segments.push({type: "component", componentType: value["type"], props: props, final: valid && block.closed})
+        } else {
+            if hintedType != None {
+                // Pre-emptively render as component even if JSON is not yet
+                // valid. Prevents markdown->component flicker while the JSON
+                // is still streaming. Use sticky cache so transient parse
+                // failures don't reset data.
+                var sticky = stickyPropsCache[cacheKey]
+                var defaults Map<str, any> = {}
+                if hintedType == "table" {
+                    defaults = {columns: [], rows: []}
+                }
+                // value ?? sticky ?? defaults (nullish coalescing chain)
+                var props2 = value
+                if props2 == nil {
+                    props2 = sticky
+                }
+                if props2 == nil {
+                    props2 = defaults
+                }
+                if isTruthy(value) {
+                    stickyPropsCache[cacheKey] = value
+                }
+                segments.push({type: "component", componentType: hintedType, props: props2, final: valid && block.closed})
+            } else {
+                // Not a recognized component — render as normal markdown code block
+                var fence str = text.slice(block.start, block.end)
+                if !block.closed {
+                    fence = fence + "\n```"
+                }
+                segments.push({type: "markdown", text: fence})
+            }
+        }
+
+        cursor = block.end
+    }
+
+    // Trailing markdown
+    if cursor < text.length {
+        segments.push({type: "markdown", text: text.slice(cursor)})
+    }
+
+    return segments
+}

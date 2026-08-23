@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { normalizeTableProps } from './streaming-table.generated'
 
 const props = withDefaults(
   defineProps<{
@@ -36,8 +37,12 @@ const props = withDefaults(
   }
 )
 
-const safeColumns = computed(() => props.columns ?? [])
-const safeRows = computed(() => props.rows ?? [])
+// normalization logic lives in auto/streaming_table.at (plan 008, Phase 1);
+// `withDefaults` above keeps the component prop defaults, this is the same
+// `columns ?? []` / `rows ?? []` belt-and-suspenders as before
+const normalized = computed(() => normalizeTableProps(props.columns, props.rows))
+const safeColumns = computed(() => normalized.value[0])
+const safeRows = computed(() => normalized.value[1])
 </script>
 
 <style scoped>

@@ -57,6 +57,14 @@ setCustomComponents 兼容，切换无行为变化）。
 - 对拍：与现 TS 实现行为全等（fixtures 从 musk `scripts/lib-parity/fixtures/`
   引用或复制）。
 
+> **进度（2026-08-23）**：Phase 1 完成。`auto/streaming.at`（分段逻辑全量）与
+> `auto/streaming_table.at`（表格 props 归一化）落地，经 `pnpm gen` 生成
+> `src/streaming.generated.ts` / `src/streaming-table.generated.ts`；手写 JS 语义桥
+> （try/catch/typeof/truthiness，a2ts 表达不了的三件）收敛在 `src/auto-helpers.ts`。
+> 对拍测试 `streaming-parity.test.ts` 21 例全绿（musk render fixtures 逐字符前缀
+> 扫描 + 定向 edge + sticky 缓存序列），dist 运行时冒烟与 demo 消费链验证通过。
+> 详见 `packages/vue/auto/README.md`。
+
 ### Phase 2 — 增量 markdown 解析层（markstream 消灭核心）
 
 - 块级/行内/GFM 围栏解析 + 流式 loading 态，`.at` 实现；语义对拍

@@ -1,6 +1,8 @@
 # 008 渲染库 Auto 化与 markstream-vue 消灭（含编辑库对外融合路线）
 
-> 立项：2026-08-23，来自 auto-musk [PLAN-038](../../auto-musk/docs/plans/038-auto-native-third-party-libs.md)
+## Status: COMPLETE（Phase 1-4 本仓侧全毕；验收 4 的 musk 端到端 → DEBTS.md 延期）
+
+> 立项：2026-08-23，来自 auto-musk [PLAN-038](../../../auto-musk/docs/plans/038-auto-native-third-party-libs.md)
 > T14 的落地草稿（跨平台迁移线缺口 1）。上游消费方：auto-musk（PLAN-038 Phase 3
 > 将把 `ports/renderer` 从 markstream-vue 直依赖切到 `@autodown/vue`；PLAN-041
 > web 轨退役依赖本计划的编辑库路线）。

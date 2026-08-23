@@ -71,6 +71,17 @@ setCustomComponents 兼容，切换无行为变化）。
   stream-markdown-parser（最终态树 + 流式前缀态树双断言）。
 - 决策点（见待澄清 1）：从零实现 vs markdown-it 语义子集对拍——以后者验收口径为准。
 
+> **进度（2026-08-23）**：Phase 2 解析层完成（决策点 1 落地：markdown-it 语义子集
+> 对拍口径）。`auto/markdown_parser.at` 实现块级（heading ATX+setext/paragraph/fence
+> +流式 loading/blockquote/列表族/thematic_break/table+流式预解析）与行内
+> （strong/emphasis/inline_code/link/image/strikethrough/hardbreak）+ typographer
+> 智能引号 + 流式尾部半成品修剪。对拍 `markdown-parity.test.ts` 43 例全绿：定向
+> 36 × 双模式 + musk fixtures 5 × 双模式 + 逐字符流式前缀扫描 2 条（含真实截断
+> 中间态全序列）。验收为**语义投影对拍**（显式剔除 raw/center/text/diff 等噪音
+> 字段——投影函数在测试侧可审）。超集能力（math/footnote/mark/sub/sup/insert/
+> `:::` 容器/html 块/linkify）白名单登记后置。注入侧（MarkdownRender 出口接线）
+> 归 Phase 3。
+
 ### Phase 3 — 渲染语义内化 + 可选能力
 
 - batch/typewriter/max-live-nodes 调度内化（定时器经注入端口，VM 侧由 adapter 提供）。

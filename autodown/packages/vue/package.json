@@ -43,6 +43,7 @@
     "vite-plugin-dts": "^5.0.3",
     "vitest": "^3.2.7",
     "vue-tsc": "^3.3.8",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "stream-markdown-parser": "0.0.95"
   }
 }

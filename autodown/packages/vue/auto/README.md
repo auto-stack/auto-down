@@ -13,11 +13,27 @@ In this directory:
   scanning, component-type detection, sticky props cache, `buildSegments`).
 - `streaming_table.at` — StreamingTable prop normalization (the former
   `columns ?? []` / `rows ?? []` script logic, as `normalizeTableProps`).
+- `markdown_parser.at` — incremental markdown parser (plan 008, Phase 2):
+  semantic subset of stream-markdown-parser 0.0.95 — blocks heading(ATX+
+  setext)/paragraph/fence(+loading)/blockquote/list(ul/ol/start/nested/
+  lazy/empty item)/thematic_break/table(+streaming pre-parse), inline
+  text/strong/emphasis/inline_code/link/image/strikethrough/hardbreak,
+  typographer smart quotes, streaming tail-fragment trimming (dangling
+  `(`/`*`/`|`/html-like/`- ` markers), loading-link href extraction.
+  Parity: `src/__tests__/markdown-parity.test.ts` asserts deep equality
+  with the real package under a documented semantic projection (raw/
+  center/text/diff/maybeCheckbox/startLine/endLine/attrs dropped,
+  undefined-valued keys dropped) — directed cases × 2 modes, 5 musk
+  fixtures × 2 modes, and character-by-character streaming prefix scans.
+  Out of subset (whitelisted): math, footnotes, mark/sub/sup/insert,
+  `:::` containers, html blocks, linkify, the escapes-become-emphasis
+  quirk, indented code (stays a paragraph, matching the reference's
+  fixIndentedCodeBlock).
 - `gen.mjs` — build pipeline: runs `auto trans` per source, keeps the raw
   compiler output at `*.raw.ts` for inspection, applies the documented
   post-fixes (listed at the top of `gen.mjs`), and writes the generated files.
-- `streaming.raw.ts` / `streaming_table.raw.ts` — raw compiler output, kept
-  for inspection only (not compiled, not imported).
+- `streaming.raw.ts` / `streaming_table.raw.ts` / `markdown_parser.raw.ts` —
+  raw compiler output, kept for inspection only (not compiled, not imported).
 
 On the `src/` side (generated or bridge — do not edit by hand):
 
@@ -78,3 +94,18 @@ still required workarounds in `streaming.at`:
 
 Method calls pass through verbatim, so the `.at` sources use TS method names
 (`.length`, `.startsWith()`, `.slice()`, `.indexOf()`), never Rust-style ones.
+
+## a2ts gaps first hit by markdown_parser.at (Phase 2)
+
+- `let` transpiles to TS `const` — reassignable locals must be declared `var`
+- a bare `return` in a void function emits `return null;` (invalid TS) —
+  restructure with conditionals instead of early returns
+- string literals cannot contain curly quotes or other non-CJK "unknown
+  characters" — build them from `String.fromCharCode(code)` (see
+  CURLY_LDQUO etc.); likewise sentinel escapes via fromCharCode
+- `\uXXXX` escapes are NOT supported in Auto string literals (lexer error)
+- `s[i]` on a string sometimes annotates as `number` in the output — use
+  `s.charAt(i)` when the value feeds a typed comparison
+- `String.raw`-style patterns are unavailable; keep regex patterns
+  double-escaped (`"\\p{P}"`) — they pass through to JS RegExp verbatim,
+  including the `u` flag and property escapes

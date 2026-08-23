@@ -144,3 +144,21 @@ writeFileSync(join(pkgRoot, 'src', 'streaming-table.generated.ts'), tableHeader 
 console.log(
   '[gen] auto/streaming_table.at -> src/streaming-table.generated.ts (raw kept at auto/streaming_table.raw.ts)'
 )
+
+// markdown_parser.at (plan 008 Phase 2): no post-fixes today; parity against
+// stream-markdown-parser is asserted by src/__tests__/markdown-parity.test.ts.
+const mdOut = transpile('markdown_parser')
+const mdHeader = `/**
+ * @autodown/vue — incremental markdown parser (semantic subset).
+ *
+ * GENERATED FILE — do not edit by hand.
+ * Source: auto/markdown_parser.at (Auto language). Regenerate with: pnpm gen
+ * (see auto/README.md for the pipeline and the applied post-fixes)
+ */
+
+`
+
+writeFileSync(join(pkgRoot, 'src', 'markdown-parser.generated.ts'), mdHeader + mdOut)
+console.log(
+  '[gen] auto/markdown_parser.at -> src/markdown-parser.generated.ts (raw kept at auto/markdown_parser.raw.ts)'
+)

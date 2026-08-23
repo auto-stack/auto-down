@@ -128,8 +128,14 @@ setCustomComponents 兼容，切换无行为变化）。
 3. ✅ katex/mermaid/highlight 缺席时库可用（optional-capabilities 注册式 +
    降级测试在册）。
 4. ◻ musk 侧端到端：T13 渲染切换与 T10 编辑器接入各一次记录——**本仓侧
-   就绪，待 musk 会话执行**（唯一未闭环项）。
+   就绪，待 musk 会话执行**（唯一未闭环项，→ DEBTS.md 延期登记）。
 5. ✅ `auto trans` 产物与手写 TS 行为等价（Phase 1 streaming-parity 21 例）。
+
+> **finish-plan 复审（2026-08-24）**：全部验证命令重跑——vue 82/82 测试 +
+> build + deps guard CLEAN（markstream/katex/mermaid 均出依赖）、editor
+> 22/22 + build、demo vite build、四个 .at 单源与 gen.mjs/ARCHITECTURE.md
+> 交付物在册。Phase 1-4 逐阶段 pass。验收 4 为外部仓验证动作
+> （auto-musk T13/T10），本仓无法执行，记 DEBTS.md 延期行。
 
 ## 待澄清事项（全部落定）
 

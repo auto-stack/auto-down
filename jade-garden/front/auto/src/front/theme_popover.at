@@ -81,6 +81,7 @@ widget ThemePopover(open: bool) {
                             class: "grid grid-cols-5 gap-1.5",
                             for accent in .accents {
                                 button (type: "button") {
+                                    key: accent.key,
                                     title: accent.label,
                                     class: .themeStore.accent == accent.key ? "flex h-7 items-center justify-center rounded-md border transition-all border-primary ring-1 ring-primary" : "flex h-7 items-center justify-center rounded-md border transition-all border-border hover:border-muted-foreground",
                                     onclick: .SetAccent(accent),

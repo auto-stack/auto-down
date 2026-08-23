@@ -88,6 +88,7 @@ widget SearchPanel {
                     class: "mt-2 flex-1 space-y-1 overflow-y-auto",
                     for r in .display_results {
                         dyn (.li_tag) {
+                            key: r.page_path,
                             class: "cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent",
                             onclick: .OpenResult(r),
                             div {

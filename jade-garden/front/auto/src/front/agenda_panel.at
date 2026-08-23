@@ -74,11 +74,13 @@ widget AgendaPanel {
                         class: "space-y-3",
                         for g in .display_groups {
                             div {
+                                key: g.formatted_date,
                                 div { class: "sticky top-0 bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground", text g.formatted_date }
                                 dyn (.ul_tag) {
                                     class: "space-y-1",
                                     for tk in g.tasks {
                                         dyn (.li_tag) {
+                                            key: tk.page_path,
                                             class: "cursor-pointer rounded px-2 py-1 text-xs hover:bg-accent",
                                             onclick: .OpenTask(tk),
                                             div {

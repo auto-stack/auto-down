@@ -80,6 +80,7 @@ widget SlashMenu(editor: Array<str>, items: []str, noResultsText: str = "No resu
                     for i, item in .filtered {
                         button {
                             class: "autodown-slash-menu-item",
+                            key: item.title,
                             style: { active: i == .selected_index },
                             onclick: .SelectItem(i),
                             onmouseenter: .HoverItem(i),

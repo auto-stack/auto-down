@@ -11,8 +11,22 @@
 > `?str` 占位类型（DSL 无 Map/Set 标注，facade 注入真值）在 ext 签名处
 > 类型冲突 → ext 侧按运行时形态收宽（instanceof 分流，行为不变）。
 > 修复后 jade vue-tsc build + e2e 23/23 全绿。
-> 剩余：批次 C（零星回迁）、Phase 2（P0 工程化）、Phase 3（P1 编译器
-> 批次）——下一会话继续。
+> **批次 C 销号（2026-08-24）**：核验 key 规避/空 handler/手写 `.value`
+> 三类回迁对象——源内实际残留为零（012 自愈 + 批次 A/B 已消化），仅存
+> 注释级历史记录，无需执行。
+> **Phase 2 完成（2026-08-24，auto-lang 分支 plan-015-p0 @ 44afea19，
+> 待 auto-lang 侧合并 master）**：P0 三件套落地——①`auto build` 默认
+> strict（`--lenient` 逃生门），暴露并清掉三仓存量 R006 共 16 处
+> （jade 12 + editor 4，全部为 v-for 补显式 key）；②stale SFC 清理
+> （UICache 认领制，auto run 增量路径；三仓 gen 树中 df880ac 遗留的
+> CodeEditor.vue 孤儿已手工清除；build 全量路径的 cache 集成为已知边界
+> → DEBTS.md）；③确定性发射：aura Widget.handlers HashMap→BTreeMap +
+> vue.rs props/events 迭代 12 处排序 + stub 循环排序（gap 56 销号）；
+> 附带修复 R005 对 quoted event 键名的误报。验收全绿：auto-lang
+> 3129/3129、三仓 regen 两连跑逐字节一致（jade/demo 全流程、editor
+> gen-only）、jade e2e 23/23、demo e2e 9/9（1 例浏览器启动超时为环境
+> flake，单跑通过）。
+> 剩余：Phase 3（P1 编译器批次）——下一会话继续。
 > 调研来源：demo/editor/jade 三份 auto README 的 gotchas 全量盘点 +
 > plans/010-014 workaround 记录 + auto-lang master（c8ae053a）代码现状核对。
 

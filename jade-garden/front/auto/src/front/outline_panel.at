@@ -46,6 +46,7 @@ widget OutlinePanel {
                     class: "space-y-0.5",
                     for h in .headings {
                         dyn (.li_tag) {
+                            key: h.content,
                             class: "cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground",
                             style_obj: { paddingLeft: h.pad },
                             title: h.content,

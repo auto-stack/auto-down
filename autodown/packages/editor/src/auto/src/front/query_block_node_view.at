@@ -87,6 +87,7 @@ widget QueryBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes
                     for idx, result in .results {
                         dyn (.li_tag) {
                             class: "query-result",
+                            key: idx,
                             span { class: "result-marker", text result.marker }
                             if result.priority {
                                 span { class: "result-priority", text result.priority_label }

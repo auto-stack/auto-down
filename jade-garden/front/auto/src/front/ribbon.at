@@ -52,6 +52,7 @@ widget Ribbon {
             class: "flex w-11 flex-col items-center gap-1 border-r bg-card py-2",
             for item in .items {
                 button (type: "button") {
+                    key: item.label,
                     title: item.label,
                     class: "relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
                     style: { "text-primary bg-primary/10 hover:bg-primary/15": item.active },

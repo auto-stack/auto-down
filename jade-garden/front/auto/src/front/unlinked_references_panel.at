@@ -54,6 +54,7 @@ widget UnlinkedReferencesPanel {
                     class: "space-y-1",
                     for r in .refs {
                         dyn (.li_tag) {
+                            key: r.page_path,
                             class: "cursor-pointer rounded px-1.5 py-1 text-xs hover:bg-accent",
                             onclick: .OpenRef(r),
                             div { class: "mb-0.5 truncate text-[10px] text-muted-foreground", text r.page_path }

@@ -91,6 +91,7 @@ widget PropertiesPanel {
                     class: "space-y-2",
                     for entry in .display_entries {
                         div {
+                            key: entry.key,
                             class: "group",
                             div {
                                 class: "mb-0.5 flex items-center justify-between",

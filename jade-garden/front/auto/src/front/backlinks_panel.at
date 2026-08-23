@@ -71,6 +71,7 @@ widget BacklinksPanel {
                     // and mis-parses ("Expected term, got RBrace").
                     for bl in .links {
                         dyn (.li_tag) {
+                            key: bl.source_path,
                             class: "cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground",
                             title: bl.context,
                             onclick: .OpenSource(bl),

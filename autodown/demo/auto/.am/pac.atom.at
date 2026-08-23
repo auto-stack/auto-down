@@ -28,8 +28,8 @@ root {
     scene: "ui"
     render: "vue"
     npm_deps: {
-        @autodown/editor: "link:../../../../../../packages/editor",
-        @autodown/vue: "link:../../../../../../packages/vue"
+        @autodown/vue: "link:../../../../../../packages/vue",
+        @autodown/editor: "link:../../../../../../packages/editor"
     }
     defines: [
         

@@ -8,3 +8,4 @@
 | 008 | 风险/绕道 | 未来增强 | 📋 | 发包走 vendor 快照而非 npm publish（workspace:* 阻塞 file: 直链） | npm 通道前置：@autodown/core 与 @autodown/vue 去workspace 依赖并建立 publish 流程；达成后 musk 退役 vendor 脚本 | packages/editor/ARCHITECTURE.md「发包形态」 | 2026-08-24 |
 | 012 | 风险/绕道 | 已知限制 | 🟢 | DSL→Vue codegen 残留缺口全清单（P2 niche ~16 项 + P3 长尾），均有稳定规避；唯一 🔲 cap_vmodel_fold master 回归单列排查 | 残留无需求驱动，重开条件=出现实际需求方（详单在计划文件内） | plans/archive/012（CLOSED 记录） | 2026-08-24 |
 | 013 | 风险/绕道 | 已知限制 | 🟢 | 编辑器 DSL 真实残留 4 条：括号丢弃（后已修复）、三元 `==/!= ""` 坍缩（设计性）、spread 合并未验证、语句首点号需前置空行 | 全部有稳定规避，清单在 packages/editor/src/auto/README.md 头部状态块 | packages/editor/src/auto/README.md | 2026-08-24 |
+| 015 | 风险/绕道 | 已知限制 | 🟢 | stale SFC 清理仅覆盖 auto run 增量路径（incremental_compile_changed）；auto build 全量路径（VueProject::generate）无 UICache 集成，孤儿产物需手工清理（本轮三仓 gen 树 CodeEditor.vue 已手工清） | 全量路径 cache 集成是独立工程（generate 重写全部产物但无历史清单）；增量路径机制已验证有效 | auto-man/src/vue.rs incremental_compile_changed vs VueProject::generate | 2026-08-24 |

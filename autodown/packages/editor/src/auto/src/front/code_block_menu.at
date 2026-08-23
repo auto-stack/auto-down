@@ -111,6 +111,7 @@ widget CodeBlockMenu(editor: Array<str>) {
                     for i, lang in .filtered {
                         button {
                             class: "autodown-codeblock-menu-item",
+                            key: lang.id,
                             style: { active: i == .highlighted_index, selected: lang.id == .current_language },
                             onclick: .SelectItem(lang),
                             onmouseenter: .HoverItem(i),

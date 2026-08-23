@@ -66,6 +66,7 @@ widget BubbleMenu(editor: Array<str>, linkPrompt: str = "Enter URL", tooltips: A
                 for btn in .buttons {
                     button {
                         class: "autodown-bubble-btn",
+                        key: btn.title,
                         style: { active: btn.active },
                         title: btn.title,
                         onclick: .RunButton(btn),

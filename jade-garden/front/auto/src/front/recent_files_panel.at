@@ -66,6 +66,7 @@ widget RecentFilesPanel {
                         class: "space-y-0.5 px-1",
                         for rf in .files {
                             dyn (.li_tag) {
+                                key: rf.path,
                                 class: "group flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground",
                                 onclick: .Open(rf),
                                 div {

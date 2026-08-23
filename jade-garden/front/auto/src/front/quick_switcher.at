@@ -76,6 +76,7 @@ widget QuickSwitcher {
                                 class: "max-h-[50vh] overflow-y-auto py-1",
                                 for file in .filtered {
                                     dyn (.li_tag) {
+                                        key: file.idx,
                                         class: file.idx == .selected_index ? "cursor-pointer px-3 py-1.5 text-sm bg-accent text-accent-foreground" : "cursor-pointer px-3 py-1.5 text-sm text-foreground hover:bg-accent/50",
                                         onclick: .SelectFile(file),
                                         onmouseenter: .HoverFile(file),

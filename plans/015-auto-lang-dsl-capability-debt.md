@@ -38,7 +38,21 @@
 > capabilities 53/54（唯一失败为 012 遗留 cap_vmodel_fold master 回归，
 > 预存）；三仓 regen gen 树 vue-tsc 全绿（editor gen 树顺带清除 shadcn
 > 残留 ui/ 目录）。
-> 剩余：Phase 3 的 #8、Phase 4（P2/P3 立项登记）。
+> 剩余：~~Phase 3 的 #8~~、~~Phase 4（P2/P3 立项登记）~~——均已收口
+> （2026-08-24 续：#8 落地为 R016 + 顶层裸兄弟 parser 缺陷修复，在
+> auto-lang worktree `auto-down` 分支待合并；Phase 4 登记见下）。
+> 当前唯一在途项：PLAN-037 defineModel 语义变更的三仓 regen 验证
+> （见 Phase 4 末尾），完成后本计划可 CLOSED。
+> **PLAN-037 验证结果（2026-08-24）：阻断，产物不采用**——
+> ①TS2440（defineModel 编译宏被生成 import，与 Volar shim 冲突）
+> **已修**（auto-lang worktree `auto-down` 分支：不再 import
+> defineModel + needs_ref 收窄防 TS6133 + a2vue golden 8 例更新，
+> editor regen 后 vue-tsc --force 绿）；②深 mutation 响应性断裂
+> （defineModel 未绑定态 get 返回裸 localValue，`doc.value.shapes
+> .push()` 不触发 computed，jade e2e 白板红 22/23）**未修，上报
+> auto-lang 侧**——正确修法需 T5 channel 绑定信息收窄 T4 降级范围，
+> 属 roadmap 语义决策。三仓部署文件已全部回退 HEAD（editor/jade
+> vue-tsc 绿，基线 e2e 不受影响）。详证见 DEBTS.md 015 阻断行。
 > 调研来源：demo/editor/jade 三份 auto README 的 gotchas 全量盘点 +
 > plans/010-014 workaround 记录 + auto-lang master（c8ae053a）代码现状核对。
 
@@ -129,8 +143,7 @@ auto-lang master 代码实证：
 - 三元条件 `==/!= ""` 坍缩为 `!`/`!!`（PLAN-026 故意语义）。
 - composable 导入零参限制（bridge 模式已是惯例，改动面过大）。
 - import 通道封闭（ext/dual-resolution 是政策，非缺陷）。
-- cap_vmodel_fold master 回归（plan 012 P1 #5，疑似 plan 399/ash-gui
-  引入）——单列排查，不在本计划。
+- ~~cap_vmodel_fold master 回归~~ —— 已在 plan-015-p0 轮自愈（现绿）。
 
 ## 三、需探针仲裁的记述冲突 —— 已仲裁（Phase 0 结论）
 
@@ -179,7 +192,36 @@ auto-lang master 代码实证：
 三仓 regen 验证 → 对应 workaround 回迁（inert @scroll、map 归一化、
 bracket 写法等）。每项独立提交。
 
-## Phase 4：P2/P3 按需排期（本计划内只做立项登记，不展开）
+## Phase 4：P2/P3 立项登记（不展开实施）
+
+P2 #9-11 与 P3 #12-19 逐条登记如下；统一重开条件 = 出现实际需求方
+（新组件/新功能被缺口卡住且无低成本规避）。台账汇总行在
+`DEBTS.md` 的 012 行（P2 niche + P3 长尾均有稳定规避）。
+
+| # | 条目 | 现状规避 | 重开信号 |
+| --- | --- | --- | --- |
+| 9 | prop 类型透传损坏（`map` 坏 import、`Array<User>` 丢类型） | 真实 TS interface 名 + 双侧 stub | 组件需要精确 prop 类型契约 |
+| 10 | SFC 不能导出类型 | interface 留手写 ext 文件 | 跨包复用组件类型 |
+| 11 | widget/store msg payload 规则相反（gap 17） | 文档化 | store/widget 统一重构时 |
+| 12 | 全局 style 通道（只出 scoped） | demo app.css 手写 | 第二个需要全局样式的根组件 |
+| 13 | 元素表不全（code/ul/li/svg/select） | `dyn` + ext 函数式组件 | 富文本/表单密集 UI |
+| 14 | 无 JS 可选链 `?.`；`??` 模板绑定不支持 | ext mapper / 命名 computed | 深层可选字段访问增多 |
+| 15 | check_symbol span（表达式无定位） | —— | 编译器报错体验专项 |
+| 16 | shadcn 过度映射（select/option 丢原生属性） | dyn + ext | 原生表单控件需求 |
+| 17 | view text/attr 无 Call；computed 指 import 常量误推 number | ext mapper 预计算 | 展示逻辑复杂化 |
+| 18 | 无正则/early return/`+=`/多行模板串/Map-Set/model 初值调 ext | ext/facade | 对应语法真实需求 |
+| 19 | jade 双重 src 镜像 | regen.sh 双层 cp | gen 树布局调整时 |
+
+PLAN-037 联动项（非本计划修复对象，登记跟踪）：widget model var 自
+auto-lang PLAN-037 T4（c696a729，08-22 并入 master）起无条件降
+`defineModel`——`cap_widget_map_model_init`（jade 5.3d 的 `ref<any>({})`
+契约）因此在 master 红。含义变化：每个 widget 的 model var 都新增同名
+prop + `update:x` emit，且 `{}` 默认值存在跨实例共享风险。处置：三仓用
+master 二进制 regen 验证（vue-tsc + e2e）后按新契约改写该能力测试，或
+向 auto-lang 侧反馈收窄。**这是三仓下次 regen 的前置闸门。**
+
+cap_vmodel_fold 的 master 回归已在 plan-015-p0 轮自愈（现绿），从挂账
+移除。
 
 ## 验收
 

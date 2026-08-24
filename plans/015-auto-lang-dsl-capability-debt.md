@@ -26,7 +26,19 @@
 > 3129/3129、三仓 regen 两连跑逐字节一致（jade/demo 全流程、editor
 > gen-only）、jade e2e 23/23、demo e2e 9/9（1 例浏览器启动超时为环境
 > flake，单跑通过）。
-> 剩余：Phase 3（P1 编译器批次）——下一会话继续。
+> **Phase 3 批次（2026-08-24，auto-lang 分支 plan-015-p0 @ 690abfc2）**：
+> P1 #4-#7 完成——#4 msg handler 全发射（函数+defineEmits 去 used 门，
+> ext 调用 handler 不再静默丢，inert @scroll 诱饵根因消除）；#5 view 事件
+> 实参 bool/float 字面量（.HoverChange(true)）；#6 defineEmits 完整 payload
+> 元组（不再截断首类型）；#7 let x = nil 局部变量 .contains/.remove 不再
+> 误映射（null_init_locals 追踪）。每项配 cap_* 测试。**#8（保留字撞名
+> 响亮报错）设计已定（validator 路线）未实现，剩余继续**。附带发现登记
+> （→ DEBTS.md）：顶层裸兄弟元素+带参事件的组合在 master 即解析失败
+> （col 内正常），与 #5 邻接的预存缺陷。验证：lib 3129/3129 +
+> capabilities 53/54（唯一失败为 012 遗留 cap_vmodel_fold master 回归，
+> 预存）；三仓 regen gen 树 vue-tsc 全绿（editor gen 树顺带清除 shadcn
+> 残留 ui/ 目录）。
+> 剩余：Phase 3 的 #8、Phase 4（P2/P3 立项登记）。
 > 调研来源：demo/editor/jade 三份 auto README 的 gotchas 全量盘点 +
 > plans/010-014 workaround 记录 + auto-lang master（c8ae053a）代码现状核对。
 

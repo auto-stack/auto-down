@@ -1,7 +1,20 @@
 # Plan 016：统一块模型内核（block_model + serializer + 双端发射探针）
 
-> 状态：**草案（待立项）**。设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
+> 状态：**Phase 0 完成（2026-08-25）**，Phase 1 待开工。
+> 设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
 > 立项：2026-08-25。
+> Phase 0 产物：
+> - **a2r 探针 REPORT**：`tmp/dsl-probes/plan016/REPORT.md`——总结论
+>   **Go（带条件）**：块模型+序列化器可行（ADT+match/递归类型原生过；
+>   Map/Set 走 `use.rust HashMap/HashSet` 路线 + set/get/cloned 纪律；
+>   内核纯函数风格规避 a2r 值语义陷阱）；auto-lang 侧 5 个发射器小修
+>   可清零变通（不阻塞）；`markdown_parser.at` 原样不过 a2r（285 错
+>   归 10 类，结构性缺口=匿名对象字面量/`any`/JS 风格 RegExp）——
+>   按既定方向节点类型化 + 正则改 `use.rust regex` 重写，源码侧中修。
+>   a2r 调用：`auto.exe trans --path file.at rust -e 100`（产物在源旁
+>   `<name>.a2r.rs`）；工程级 `auto build -r rust`。
+> - **yjs 死依赖清理**：editor 8 个死依赖出 package.json（yjs 系 6 个 +
+>   `tiptap-markdown` + `extension-node-range`），editor 22/22 + vue-tsc 绿。
 > 前置：~~plan 015 CLOSED 或 PLAN-037 裁定落地~~ **已解除（2026-08-25）**——
 > 015 CLOSED；PLAN-037 经 auto-lang plan 443（`38adb1ef4`，defineModel 降级
 > 收窄）裁定落地；auto-lang worktree `auto-down` 分支修复已全部合并 master

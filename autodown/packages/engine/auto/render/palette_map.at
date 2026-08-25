@@ -29,7 +29,7 @@ pub fn panelHeading(level int) PanelSpec {
     var l = level
     if l < 1 { l = 1 }
     if l > 6 { l = 6 }
-    return PanelSpec("H" + l.to(str), "h" + l.to(str), "heading-node", "", false)
+    return PanelSpec("H" + l.to(str), "h" + l.to(str), "heading-node", "Heading", false)
 }
 
 // Total mapping: any block type (including future / extension types the
@@ -41,17 +41,17 @@ pub fn panelOfBlock(blockType str) PanelSpec {
     if blockType == "text" { return PanelSpec("Text", "span", "text-node", "Text", false) }
     if blockType == "heading" { return panelHeading(1) }
     if blockType == "thematic_break" { return PanelSpec("Separator", "hr", "hr-node", "Separator", false) }
-    if blockType == "code_block" { return PanelSpec("Codeblock", "div", "code-block-container", "", false) }
-    if blockType == "blockquote" { return PanelSpec("Quote", "blockquote", "blockquote", "", false) }
-    if blockType == "list" { return PanelSpec("List", "ul", "list-node", "", false) }
-    if blockType == "table" { return PanelSpec("Table", "table", "table-node", "", false) }
+    if blockType == "code_block" { return PanelSpec("Codeblock", "div", "code-block-container", "Codeblock", false) }
+    if blockType == "blockquote" { return PanelSpec("Quote", "blockquote", "blockquote", "Quote", false) }
+    if blockType == "list" { return PanelSpec("List", "ul", "list-node", "List", false) }
+    if blockType == "table" { return PanelSpec("Table", "table", "table-node", "Table", false) }
     // extension slots: consumer-pluggable panels (plan 017 待澄清 #2 — 注册位)
-    if blockType == "callout" { return PanelSpec("Callout", "div", "callout-node", "", true) }
-    if blockType == "details" { return PanelSpec("Details", "div", "details-node", "", true) }
-    if blockType == "math_block" { return PanelSpec("MathBlock", "div", "math-block", "", true) }
+    if blockType == "callout" { return PanelSpec("Callout", "div", "callout-node", "Callout", true) }
+    if blockType == "details" { return PanelSpec("Details", "div", "details-node", "Details", true) }
+    if blockType == "math_block" { return PanelSpec("MathBlock", "div", "math-block", "MathBlock", true) }
     if blockType == "mermaid" { return PanelSpec("Mermaid", "div", "mermaid-block-container", "Mermaid", true) }
-    if blockType == "query" { return PanelSpec("Query", "div", "query-block", "", true) }
-    if blockType == "embed" { return PanelSpec("Embed", "div", "embed-block", "", true) }
+    if blockType == "query" { return PanelSpec("Query", "div", "query-block", "Query", true) }
+    if blockType == "embed" { return PanelSpec("Embed", "div", "embed-block", "Embed", true) }
     return PanelSpec("Unknown", "div", "unknown-node", "", false)
 }
 

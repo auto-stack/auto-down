@@ -40,9 +40,11 @@ describe('palette map (auto/palette_map.at)', () => {
     expect(panelOfBlock('paragraph').registry).toBe('Text')
     expect(panelOfBlock('thematic_break').registry).toBe('Separator')
     expect(panelOfBlock('mermaid').registry).toBe('Mermaid')
-    // heading/codeblock/quote/list/table have no registry widget yet (019)
-    expect(panelOfBlock('heading').registry).toBe('')
-    expect(panelOfBlock('code_block').registry).toBe('')
+    // plan 450 (auto-lang) registered the panel family — names now resolve
+    expect(panelOfBlock('heading').registry).toBe('Heading')
+    expect(panelOfBlock('code_block').registry).toBe('Codeblock')
+    expect(panelOfBlock('list').registry).toBe('List')
+    expect(panelOfBlock('table').registry).toBe('Table')
   })
 
   it('is total: unknown types degrade to the Unknown panel', () => {

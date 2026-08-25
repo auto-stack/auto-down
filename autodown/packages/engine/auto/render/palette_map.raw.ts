@@ -22,7 +22,7 @@ export function panelHeading(level: number): PanelSpec {
     if (l > 6) {
         l = 6;
     }
-    return PanelSpec("H" + String(l), "h" + String(l), "heading-node", "", false);
+    return PanelSpec("H" + String(l), "h" + String(l), "heading-node", "Heading", false);
 }
 
 export function panelOfBlock(blockType: string): PanelSpec {
@@ -39,36 +39,36 @@ export function panelOfBlock(blockType: string): PanelSpec {
         return PanelSpec("Separator", "hr", "hr-node", "Separator", false);
     }
     if (blockType == "code_block") {
-        return PanelSpec("Codeblock", "div", "code-block-container", "", false);
+        return PanelSpec("Codeblock", "div", "code-block-container", "Codeblock", false);
     }
     if (blockType == "blockquote") {
-        return PanelSpec("Quote", "blockquote", "blockquote", "", false);
+        return PanelSpec("Quote", "blockquote", "blockquote", "Quote", false);
     }
     if (blockType == "list") {
-        return PanelSpec("List", "ul", "list-node", "", false);
+        return PanelSpec("List", "ul", "list-node", "List", false);
     }
     if (blockType == "table") {
-        return PanelSpec("Table", "table", "table-node", "", false);
+        return PanelSpec("Table", "table", "table-node", "Table", false);
     }
     
 
     if (blockType == "callout") {
-        return PanelSpec("Callout", "div", "callout-node", "", true);
+        return PanelSpec("Callout", "div", "callout-node", "Callout", true);
     }
     if (blockType == "details") {
-        return PanelSpec("Details", "div", "details-node", "", true);
+        return PanelSpec("Details", "div", "details-node", "Details", true);
     }
     if (blockType == "math_block") {
-        return PanelSpec("MathBlock", "div", "math-block", "", true);
+        return PanelSpec("MathBlock", "div", "math-block", "MathBlock", true);
     }
     if (blockType == "mermaid") {
         return PanelSpec("Mermaid", "div", "mermaid-block-container", "Mermaid", true);
     }
     if (blockType == "query") {
-        return PanelSpec("Query", "div", "query-block", "", true);
+        return PanelSpec("Query", "div", "query-block", "Query", true);
     }
     if (blockType == "embed") {
-        return PanelSpec("Embed", "div", "embed-block", "", true);
+        return PanelSpec("Embed", "div", "embed-block", "Embed", true);
     }
     return PanelSpec("Unknown", "div", "unknown-node", "", false);
 }

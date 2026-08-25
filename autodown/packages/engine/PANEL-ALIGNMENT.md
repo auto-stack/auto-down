@@ -1,4 +1,6 @@
-# 面板 ↔ AURA Registry 对齐表（plan 017 Phase 2 验收产物）
+# 面板 ↔ AURA Registry 对齐表（plan 017 Phase 2 验收产物；registry 登记完成于 auto-lang plan-450 / 019 批次一，2026-08-26）
+
+> 登记裁定：Heading（level prop）承接 H1–H6；**List/Table 直接对齐 registry 既有的 Data 类同名 widget**（语义同一，避免重复登记）；其余 8 面板新登记为 Display 类。vue/iced backend 映射随 019 后续批次。
 
 单源：`auto/render/palette_map.at`（生成 `src/render/palette-map.generated.ts`）。
 本表是映射的人类可读视图与 019（rust 平台）的对齐输入；registry 列指

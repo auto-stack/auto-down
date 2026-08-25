@@ -11,7 +11,7 @@ export interface TableAttr {
     rows: (number | null)[];
 }
 
-function parseValue(s: string): number | null {
+export function parseValue(s: string): number | null {
     const trimmed = s.trim().replace(RegExp("^[\"']|[\"']$", "g"), "");
     if (trimmed == "auto") {
         return null;
@@ -23,11 +23,11 @@ function parseValue(s: string): number | null {
     return num;
 }
 
-function parseArray(s: string): (number | null)[] {
+export function parseArray(s: string): (number | null)[] {
     return s.split(",").map((v) => parseValue(v));
 }
 
-function parseRows(s: string): (number | null)[] {
+export function parseRows(s: string): (number | null)[] {
     if (s == null || s == "") {
         return [];
     }
@@ -71,4 +71,4 @@ export function buildIAL(colwidth: (number | null)[], rowheight: (number | null)
     }
     return "{" + parts.join(", ") + "}\n";
 }
-
+export * from './block-model.js'

@@ -1,8 +1,25 @@
 # Plan 016：统一块模型内核（block_model + serializer + 双端发射探针）
 
-> 状态：**Phase 0 完成（2026-08-25）**，Phase 1 待开工。
+> 状态：**Phase 1 完成（2026-08-25）**，Phase 2 待开工。
 > 设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
 > 立项：2026-08-25。
+> Phase 1 产物：
+> - `autodown/packages/core/auto/block_model.at`（723 行）：BlockNode/
+>   InlineSpan/Mark/BlockType（17 变体含扩展块）/Attr/Value/BlockPos/
+>   Selection + 查找遍历（findBlock/parentOf/pathOf）+ 树手术原语
+>   （spliceChildren/spliceRange/replaceNode）+ 7 操作 applyOp +
+>   invertOp undo 反演；发射 `src/block-model.ts`（913 行）经
+>   `src/index.ts` 导出。
+> - 测试 43/43 绿（每操作 ≥ 正/反/边界 3 例 + 6 个 invertOp
+>   roundtrip + 1 快照）；core tsc 绿；消费面零回归（vue 82/82、
+>   editor 22/22）。
+> - **设计偏离追认**：attrs 用 `List<Attr>`、marks 用 `List<Mark>`
+>   （非 §5.1 示意的 `Map<str, Value>`/`Set<Mark>`）——a2ts 把 Map 发成
+>   Record 但 `.contains` 透传坏 JS、a2r 原生 map 下标断裂，列表扫描
+>   在小集合上双端全通，定为双端约束下的正式形态。
+> - gen.mjs 管线扩展为双源发射 + 断言式后修（B1 return/let 位置补
+>   `new`、B2 const enum→enum）；a2ts/a2r 新缺口 T1-T4/R1/R4 已登记
+>   DEBTS（均不阻塞，R 类为 Phase 4 前置）。
 > Phase 0 产物：
 > - **a2r 探针 REPORT**：`tmp/dsl-probes/plan016/REPORT.md`——总结论
 >   **Go（带条件）**：块模型+序列化器可行（ADT+match/递归类型原生过；

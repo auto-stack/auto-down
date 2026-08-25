@@ -1,14 +1,14 @@
-class TableAttr {
-    cols: number | null[];
-    rows: number | null[];
+export class TableAttr {
+    cols: (number | null)[];
+    rows: (number | null)[];
 
-    constructor(cols: number | null[], rows: number | null[]) {
+    constructor(cols: (number | null)[], rows: (number | null)[]) {
         this.cols = cols;
         this.rows = rows;
     }
 }
 
-function parseValue(s: string): number | null {
+export function parseValue(s: string): number | null {
     const trimmed = s.trim().replace(RegExp("^[\"']|[\"']$", "g"), "");
     if (trimmed == "auto") {
         return null;
@@ -20,40 +20,40 @@ function parseValue(s: string): number | null {
     return num;
 }
 
-function parseArray(s: string): number | null[] {
+export function parseArray(s: string): (number | null)[] {
     return s.split(",").map((v) => parseValue(v));
 }
 
-function parseRows(s: string): number | null[] {
+export function parseRows(s: string): (number | null)[] {
     if (s == null || s == "") {
         return [];
     }
     return parseArray(s);
 }
 
-function formatValue(v: number | null): string {
+export function formatValue(v: number | null): string {
     if (v == null) {
         return "\"auto\"";
     }
     return String(v);
 }
 
-function formatArray(arr: number | null[]): string {
+export function formatArray(arr: (number | null)[]): string {
     return arr.map((v) => formatValue(v)).join(",");
 }
 
-function hasAnyValue(arr: number | null[]): boolean {
+export function hasAnyValue(arr: (number | null)[]): boolean {
     return arr.some((v) => v != null);
 }
 
-function preprocessMarkdown(md: string): any {
+export function preprocessMarkdown(md: string): any {
     let tableAttrs = [];
     const re = RegExp("(\\|[^\\n]*\\|[ \\t]*\\n\\|[-:\\| \\t]+\\|[ \\t]*\\n(?:\\|[^\\n]*\\|[ \\t]*\\n)+)\\{cols:\\[(.*?)\\](?:,\\s*rows:\\[(.*?)\\])?\\}[ \\t]*(?:\\n|$)", "g");
     const cleaned = md.replace(re, (m, tableBody, colsStr, rowsStr) => {tableAttrs.push({ cols: parseArray(colsStr), rows: parseRows(rowsStr) });return tableBody;});
     return { md: cleaned, tableAttrs: tableAttrs };
 }
 
-function buildIAL(colwidth: number | null[], rowheight: number | null[]): string | null {
+export function buildIAL(colwidth: (number | null)[], rowheight: (number | null)[]): string | null {
     const hasCols = hasAnyValue(colwidth);
     const hasRows = hasAnyValue(rowheight);
     if (!hasCols && !hasRows) {
@@ -68,24 +68,3 @@ function buildIAL(colwidth: number | null[], rowheight: number | null[]): string
     }
     return "{" + parts.join(", ") + "}\n";
 }
-
-function main(): void {
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-}
-
-main();

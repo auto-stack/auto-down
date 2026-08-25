@@ -54,7 +54,7 @@ use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, attrGet, a
 
 // ---------- small string helpers ----------
 
-fn repeatStr(s str, n int) str {
+pub fn repeatStr(s str, n int) str {
     var out str = ""
     for i in 0..n {
         out = out + s
@@ -62,14 +62,14 @@ fn repeatStr(s str, n int) str {
     return out
 }
 
-fn endsWith(hay str, needle str) bool {
+pub fn endsWith(hay str, needle str) bool {
     let hl = hay.length.to(int)
     let nl = needle.length.to(int)
     if hl < nl { return false }
     return hay.slice(hl - nl, hl) == needle
 }
 
-fn hasNewline(s str) bool {
+pub fn hasNewline(s str) bool {
     for i in 0..s.length.to(int) {
         if s.slice(i, i + 1) == "\n" { return true }
     }
@@ -78,7 +78,7 @@ fn hasNewline(s str) bool {
 
 // ---------- inline spans ----------
 
-fn spanMd(s InlineSpan) str {
+pub fn spanMd(s InlineSpan) str {
     // hardbreak: emit the two-space form so reparse yields a hardbreak again;
     // marks on a bare newline are meaningless, so no wrappers.
     if s.text == "\n" { return "  \n" }
@@ -108,7 +108,7 @@ fn spanMd(s InlineSpan) str {
     return t
 }
 
-fn inlinesMd(spans List<InlineSpan>) str {
+pub fn inlinesMd(spans List<InlineSpan>) str {
     var out str = ""
     for s in spans {
         out = out + spanMd(s)
@@ -118,14 +118,14 @@ fn inlinesMd(spans List<InlineSpan>) str {
 
 // ---------- table ----------
 
-fn alignMarker(align str) str {
+pub fn alignMarker(align str) str {
     if align == "left" { return ":---" }
     if align == "center" { return ":---:" }
     if align == "right" { return "---:" }
     return "---"
 }
 
-fn tableRowMd(row BlockNode) str {
+pub fn tableRowMd(row BlockNode) str {
     var out str = "|"
     for c in row.children {
         out = out + " " + inlinesMd(c.inlines) + " |"
@@ -133,7 +133,7 @@ fn tableRowMd(row BlockNode) str {
     return out
 }
 
-fn tableDelimMd(headerRow BlockNode) str {
+pub fn tableDelimMd(headerRow BlockNode) str {
     var out str = "|"
     for c in headerRow.children {
         out = out + " " + alignMarker(attrGetStr(c.attrs, "align", "")) + " |"
@@ -143,7 +143,7 @@ fn tableDelimMd(headerRow BlockNode) str {
 
 // ---------- IAL (table col/row sizing) ----------
 
-fn listOfValue(v Value) List<Value> {
+pub fn listOfValue(v Value) List<Value> {
     is v {
         Value.Null -> return []
         Value.Str(s) -> return []
@@ -155,7 +155,7 @@ fn listOfValue(v Value) List<Value> {
     return []
 }
 
-fn attrsOfValue(v Value) List<Attr> {
+pub fn attrsOfValue(v Value) List<Attr> {
     is v {
         Value.Null -> return []
         Value.Str(s) -> return []
@@ -167,7 +167,7 @@ fn attrsOfValue(v Value) List<Attr> {
     return []
 }
 
-fn intOfValue(v Value) int? {
+pub fn intOfValue(v Value) int? {
     is v {
         Value.Null -> return None
         Value.Str(s) -> return None
@@ -179,7 +179,7 @@ fn intOfValue(v Value) int? {
     return None
 }
 
-fn valueToIntList(v Value) List<int?> {
+pub fn valueToIntList(v Value) List<int?> {
     let items = listOfValue(v)
     var out List<int?> = []
     for i in 0..items.length.to(int) {
@@ -188,14 +188,14 @@ fn valueToIntList(v Value) List<int?> {
     return out
 }
 
-fn hasAnyInt(arr List<int?>) bool {
+pub fn hasAnyInt(arr List<int?>) bool {
     for i in 0..arr.length.to(int) {
         if arr[i] != None { return true }
     }
     return false
 }
 
-fn formatIntList(arr List<int?>) str {
+pub fn formatIntList(arr List<int?>) str {
     var out str = ""
     for i in 0..arr.length.to(int) {
         if i > 0 { out = out + "," }
@@ -212,7 +212,7 @@ fn formatIntList(arr List<int?>) str {
 
 // Body of the `{...}` IAL line (without braces), "" when nothing to emit.
 // Same format as ial.at buildIAL: `cols:[120,"auto"], rows:[40,"auto"]`.
-fn ialText(ialAttrs List<Attr>) str {
+pub fn ialText(ialAttrs List<Attr>) str {
     let colsFound = attrGet(ialAttrs, "cols")
     let rowsFound = attrGet(ialAttrs, "rows")
     let cols = valueToIntList(colsFound ?? Value.Null())
@@ -228,7 +228,7 @@ fn ialText(ialAttrs List<Attr>) str {
     return out
 }
 
-fn tableMd(node BlockNode) str {
+pub fn tableMd(node BlockNode) str {
     if node.children.length.to(int) == 0 { return "" }
     var out str = ""
     for i in 0..node.children.length.to(int) {
@@ -254,7 +254,7 @@ fn tableMd(node BlockNode) str {
 
 // Serialize a list of child blocks for blockquote/list-item/extension bodies:
 // blank line between blocks, single newline before a nested list (tight form).
-fn joinChildren(kids List<BlockNode>) str {
+pub fn joinChildren(kids List<BlockNode>) str {
     var out str = ""
     for i in 0..kids.length.to(int) {
         if i > 0 {
@@ -269,7 +269,7 @@ fn joinChildren(kids List<BlockNode>) str {
     return out
 }
 
-fn quoteMd(node BlockNode) str {
+pub fn quoteMd(node BlockNode) str {
     let body = joinChildren(node.children)
     let lines = body.split("\n")
     var out str = ""
@@ -284,7 +284,7 @@ fn quoteMd(node BlockNode) str {
     return out
 }
 
-fn listMd(node BlockNode) str {
+pub fn listMd(node BlockNode) str {
     let ordered = attrGetBool(node.attrs, "ordered", false)
     let start = attrGetInt(node.attrs, "start", 1)
     var out str = ""
@@ -312,7 +312,7 @@ fn listMd(node BlockNode) str {
     return out
 }
 
-fn fenceMd(node BlockNode) str {
+pub fn fenceMd(node BlockNode) str {
     let lang = attrGetStr(node.attrs, "language", "")
     let code = spansText(node.inlines)
     var out str = "```" + lang + "\n" + code
@@ -327,7 +327,7 @@ fn fenceMd(node BlockNode) str {
 // yields "\n" inside a heading) must round-trip as setext — an ATX line
 // cannot contain a soft break. Level 1/2 only; deeper multi-line headings
 // cannot arise from the parser (ATX is single-line), they degrade to ATX.
-fn headingMd(node BlockNode, withId bool) str {
+pub fn headingMd(node BlockNode, withId bool) str {
     let level = attrGetInt(node.attrs, "level", 1)
     var t str = inlinesMd(node.inlines)
     if withId { t = withIdSuffix(t, node.id) }
@@ -343,12 +343,12 @@ fn headingMd(node BlockNode, withId bool) str {
 
 // ---------- extended block placeholders ----------
 
-fn componentBlockMd(name str, argName str, node BlockNode) str {
+pub fn componentBlockMd(name str, argName str, node BlockNode) str {
     let arg = attrGetStr(node.attrs, argName, "")
     return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children) + "\n}"
 }
 
-fn wikilinkMd(node BlockNode) str {
+pub fn wikilinkMd(node BlockNode) str {
     let target = attrGetStr(node.attrs, "target", "")
     let anchor = attrGetStr(node.attrs, "anchor", "")
     if anchor.length.to(int) > 0 {
@@ -359,7 +359,7 @@ fn wikilinkMd(node BlockNode) str {
 
 // ---------- block dispatch ----------
 
-fn blockMd(node BlockNode, withId bool) str {
+pub fn blockMd(node BlockNode, withId bool) str {
     let k = node.kind
     if k == BlockType.Heading { return headingMd(node, withId) }
     if k == BlockType.Fence { return fenceMd(node) }
@@ -388,14 +388,14 @@ fn blockMd(node BlockNode, withId bool) str {
 // Append ` ^<id>` unless the text already ends with that anchor token
 // (parse_blocks extracts the anchor from the last whitespace token; keeping
 // it in the text means ids survive serialization even with emitIds=false).
-fn withIdSuffix(text str, id str) str {
+pub fn withIdSuffix(text str, id str) str {
     let tok = "^" + id
     if id.length.to(int) == 0 { return text }
     if endsWith(text, tok) { return text }
     return text + " " + tok
 }
 
-fn serializeBlocks(blocks List<BlockNode>, emitIds bool) str {
+pub fn serializeBlocks(blocks List<BlockNode>, emitIds bool) str {
     var out str = ""
     for i in 0..blocks.length.to(int) {
         if i > 0 { out = out + "\n\n" }
@@ -415,7 +415,7 @@ fn serializeBlocks(blocks List<BlockNode>, emitIds bool) str {
 
 // Serialize a parse_blocks doc root (id "doc", children are the top-level
 // blocks). Empty tree -> "". Non-empty output ends with a single "\n".
-fn serialize(root BlockNode, emitIds bool) str {
+pub fn serialize(root BlockNode, emitIds bool) str {
     let body = serializeBlocks(root.children, emitIds)
     if body.length.to(int) == 0 { return "" }
     return body + "\n"

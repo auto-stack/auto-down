@@ -50,8 +50,12 @@ cd packages/core
 pnpm gen        # = node auto/gen.mjs
 pnpm build      # = tsc, emits dist/ (src/__tests__ excluded from the build)
 pnpm test       # = vitest run (block-model 43 + block-parser 15
-                #   + serializer-roundtrip 46 = 104)
+                #   + serializer-roundtrip 46 + rust-parity-gen 1 = 105)
 ```
+
+Regenerate the Rust pilot crate after changing `block_model.at` or
+`serializer.at`: see `rust/README.md` (two `auto trans … rust` calls + copy),
+then `cd rust && cargo test` (smoke + TS-parity).
 
 The Auto compiler binary comes from a local checkout of the auto-lang repo
 (`D:/autostack/auto-lang`); override with `AUTO_EXE=/path/to/auto.exe`.
@@ -69,9 +73,12 @@ isolatedModules safety).
 ## Dual-emission discipline (block_model.at)
 
 `block_model.at` is written to compile through BOTH a2ts (acceptance here) and
-a2r (plan 016 Phase 4 rust crate). The rules are documented at the top of the
-.at file and verified by `tmp/dsl-probes/plan016/` probes; highlights:
+a2r (the rust crate at `packages/core/rust/`). The rules are documented at the
+top of the .at file and verified by `tmp/dsl-probes/plan016/` probes; highlights:
 
+- every top-level `fn`/`type`/`enum` carries an explicit `pub` — a2ts exports
+  everything anyway (no TS-side change), and a2r follows the explicit `pub`
+  when the modules land in a multi-module crate;
 - enum payloads in paren form; `Op` variants carry single-field payload structs
   (a2ts emits broken multi-arg calls for multi-payload variants);
 - no `else ->` arm in `is` (broken in a2ts); no `is` on optionals (consume via
@@ -84,16 +91,28 @@ a2r (plan 016 Phase 4 rust crate). The rules are documented at the top of the
 - `.length.to(int)` wherever a length feeds arithmetic or `<`;
 - field names avoid Rust keywords (`kind`, not `type`).
 
-## Known a2r (Auto -> Rust backend) gaps remaining against block_model.at
+## a2r status (plan 016 Phase 4, 2026-08-25)
 
-`auto trans --path auto/block_model.at rust` emits, but `cargo check` still
-reports 24 errors in two emitter-bug classes (both small, localized auto-lang
-fixes — see tmp/dsl-probes/plan016/REPORT.md addendum):
+`block_model.at` + `serializer.at` emit through a2r and compile clean
+(`cargo check` zero errors) into the pilot crate at `packages/core/rust/`
+(crate `autodown-core`, zero deps). The Phase-1-recorded emitter gaps are
+fixed in the a2r backend itself (auto-lang side, uncommitted — see
+tmp/dsl-probes/plan016/REPORT.md Phase 4 addendum):
 
-- R1 (21× E0308): `String` struct-enum field args (match-binding dot chains like
-  `a.aId`, `a.text`) miss the `.as_str()`/borrow treatment that plain locals get;
-- R4 (2× E0382): an owned `Vec` local passed as a fn arg inside a loop is moved
-  instead of cloned (`repl` in `spliceChildren`/`spliceRange` recursion).
+- R1 (21× E0308): root cause was `borrowed_iter_vars`/`by_value_iter_bindings`
+  leaking across function boundaries (a `for a in …` loop poisoned same-named
+  match bindings in later functions) — fixed by clearing both sets at fn
+  entry; the 1-level dot-chain `.as_str()` treatment then works as designed;
+- R4 (2× E0382): owned `Vec` args passed to by-value `List` params are now
+  cloned (initially loop-scoped, then generalized to all call sites after
+  non-loop reuse surfaced in `ialText`);
+- new Phase-4 classes fixed along the way: imported-module signatures/struct
+  fields/enum variants registration, unit-variant calls (`Value.Null()` →
+  `Value::Null`), string-concat detection for method calls/str fields/str-ret
+  fns, Dot-arg moves (E0382/E0507), struct-literal field moves, `vec![x]`
+  element moves, and `unwrap_or`/fn-ret type inference.
+
+Regenerate the rust crate with the commands in `rust/README.md`.
 
 ## Known a2ts (Auto -> TypeScript backend) gaps worked around here
 

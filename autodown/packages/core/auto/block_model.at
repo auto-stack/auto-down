@@ -44,12 +44,12 @@
 
 // ------------------------------------------------------------------ ranges
 
-type SourceRange {
+pub type SourceRange {
     start int
     end int
 }
 
-fn rng(s int, e int) SourceRange {
+pub fn rng(s int, e int) SourceRange {
     return SourceRange(s, e)
 }
 
@@ -57,7 +57,7 @@ fn rng(s int, e int) SourceRange {
 
 // Null covers IAL-style "auto"/absent values (e.g. table cols spec) that are
 // distinct from a zero/empty value.
-enum Value {
+pub enum Value {
     Null
     Str(str)
     Int(int)
@@ -66,19 +66,19 @@ enum Value {
     AttrsV(List<Attr>)
 }
 
-type Attr {
+pub type Attr {
     key str
     value Value
 }
 
-fn attrGet(attrs List<Attr>, key str) Value? {
+pub fn attrGet(attrs List<Attr>, key str) Value? {
     for i in 0..attrs.length.to(int) {
         if attrs[i].key == key { return Some(attrs[i].value) }
     }
     return None
 }
 
-fn attrGetStr(attrs List<Attr>, key str, dflt str) str {
+pub fn attrGetStr(attrs List<Attr>, key str, dflt str) str {
     let found = attrGet(attrs, key)
     let v = found ?? Value.Str(dflt)
     is v {
@@ -92,7 +92,7 @@ fn attrGetStr(attrs List<Attr>, key str, dflt str) str {
     return dflt
 }
 
-fn attrGetInt(attrs List<Attr>, key str, dflt int) int {
+pub fn attrGetInt(attrs List<Attr>, key str, dflt int) int {
     let found = attrGet(attrs, key)
     let v = found ?? Value.Int(dflt)
     is v {
@@ -106,7 +106,7 @@ fn attrGetInt(attrs List<Attr>, key str, dflt int) int {
     return dflt
 }
 
-fn attrGetBool(attrs List<Attr>, key str, dflt bool) bool {
+pub fn attrGetBool(attrs List<Attr>, key str, dflt bool) bool {
     let found = attrGet(attrs, key)
     let v = found ?? Value.Bool(dflt)
     is v {
@@ -120,7 +120,7 @@ fn attrGetBool(attrs List<Attr>, key str, dflt bool) bool {
     return dflt
 }
 
-fn attrSet(attrs List<Attr>, key str, value Value) List<Attr> {
+pub fn attrSet(attrs List<Attr>, key str, value Value) List<Attr> {
     // Index-then-write shape: moving `value` inside a for-in loop is rejected
     // by a2r (move in loop), so the replacement happens exactly once via a
     // list index write or a tail push.
@@ -138,7 +138,7 @@ fn attrSet(attrs List<Attr>, key str, value Value) List<Attr> {
     return out
 }
 
-fn attrDel(attrs List<Attr>, key str) List<Attr> {
+pub fn attrDel(attrs List<Attr>, key str) List<Attr> {
     var out List<Attr> = []
     for a in attrs {
         if a.key != key { out.push(a) }
@@ -146,7 +146,7 @@ fn attrDel(attrs List<Attr>, key str) List<Attr> {
     return out
 }
 
-fn dupAttrs(attrs List<Attr>) List<Attr> {
+pub fn dupAttrs(attrs List<Attr>) List<Attr> {
     var out List<Attr> = []
     for a in attrs { out.push(a) }
     return out
@@ -154,7 +154,7 @@ fn dupAttrs(attrs List<Attr>) List<Attr> {
 
 // ------------------------------------------------------------------ marks
 
-enum Mark {
+pub enum Mark {
     Strong
     Em
     Code
@@ -166,14 +166,14 @@ enum Mark {
 // Mark ops use index loops, not for-in: a2r iterates Vec by reference and
 // does not deref-clone the binding in `==` position (probe: E0277 &Mark vs
 // Mark).
-fn hasMark(marks List<Mark>, m Mark) bool {
+pub fn hasMark(marks List<Mark>, m Mark) bool {
     for i in 0..marks.length.to(int) {
         if marks[i] == m { return true }
     }
     return false
 }
 
-fn addMark(marks List<Mark>, m Mark) List<Mark> {
+pub fn addMark(marks List<Mark>, m Mark) List<Mark> {
     var out List<Mark> = []
     var found bool = false
     for i in 0..marks.length.to(int) {
@@ -184,7 +184,7 @@ fn addMark(marks List<Mark>, m Mark) List<Mark> {
     return out
 }
 
-fn delMark(marks List<Mark>, m Mark) List<Mark> {
+pub fn delMark(marks List<Mark>, m Mark) List<Mark> {
     var out List<Mark> = []
     for i in 0..marks.length.to(int) {
         if marks[i] != m { out.push(marks[i]) }
@@ -196,31 +196,31 @@ fn delMark(marks List<Mark>, m Mark) List<Mark> {
 
 // attrs carries mark payloads that don't fit the unit Mark enum: link
 // href/title, image src/alt/title (Phase 2 parser wiring).
-type InlineSpan {
+pub type InlineSpan {
     text str
     marks List<Mark>
     attrs List<Attr>
 }
 
-fn span(text str) InlineSpan {
+pub fn span(text str) InlineSpan {
     return InlineSpan(text, [], [])
 }
 
-fn markedSpan(text str, marks List<Mark>) InlineSpan {
+pub fn markedSpan(text str, marks List<Mark>) InlineSpan {
     return InlineSpan(text, marks, [])
 }
 
-fn spanWith(text str, marks List<Mark>, attrs List<Attr>) InlineSpan {
+pub fn spanWith(text str, marks List<Mark>, attrs List<Attr>) InlineSpan {
     return InlineSpan(text, marks, attrs)
 }
 
-fn spansText(spans List<InlineSpan>) str {
+pub fn spansText(spans List<InlineSpan>) str {
     var t str = ""
     for s in spans { t = t + s.text }
     return t
 }
 
-fn dupSpans(spans List<InlineSpan>) List<InlineSpan> {
+pub fn dupSpans(spans List<InlineSpan>) List<InlineSpan> {
     var out List<InlineSpan> = []
     for s in spans { out.push(s) }
     return out
@@ -230,7 +230,7 @@ fn dupSpans(spans List<InlineSpan>) List<InlineSpan> {
 // that contains it (extending that span's marks); an offset at a span
 // boundary goes into the left span. Offset beyond the end appends a plain
 // span at the tail.
-fn spansInsert(spans List<InlineSpan>, offset int, text str) List<InlineSpan> {
+pub fn spansInsert(spans List<InlineSpan>, offset int, text str) List<InlineSpan> {
     var out List<InlineSpan> = []
     var pos int = 0
     var done bool = false
@@ -257,7 +257,7 @@ fn spansInsert(spans List<InlineSpan>, offset int, text str) List<InlineSpan> {
 // Delete the flattened-text range [lo, hi). Spans left empty are dropped.
 // Keep-branches push the span as-is (a2r cannot move `s.text` out of the
 // for-in reference binding; pushing the whole span gets an auto-clone).
-fn spansDelete(spans List<InlineSpan>, lo int, hi int) List<InlineSpan> {
+pub fn spansDelete(spans List<InlineSpan>, lo int, hi int) List<InlineSpan> {
     var out List<InlineSpan> = []
     var pos int = 0
     for s in spans {
@@ -279,14 +279,14 @@ fn spansDelete(spans List<InlineSpan>, lo int, hi int) List<InlineSpan> {
     return out
 }
 
-type SpanSplit {
+pub type SpanSplit {
     before List<InlineSpan>
     after List<InlineSpan>
 }
 
 // Split a span list at a flattened-text offset; a split inside a span divides
 // it into two spans with the same marks (empty halves are dropped).
-fn spansSplitAt(spans List<InlineSpan>, offset int) SpanSplit {
+pub fn spansSplitAt(spans List<InlineSpan>, offset int) SpanSplit {
     var before List<InlineSpan> = []
     var after List<InlineSpan> = []
     var pos int = 0
@@ -319,7 +319,7 @@ fn spansSplitAt(spans List<InlineSpan>, offset int) SpanSplit {
 
 // ------------------------------------------------------------------ blocks
 
-enum BlockType {
+pub enum BlockType {
     Heading
     Paragraph
     Fence
@@ -339,7 +339,7 @@ enum BlockType {
     MathBlock
 }
 
-type BlockNode {
+pub type BlockNode {
     id str
     kind BlockType
     attrs List<Attr>
@@ -348,31 +348,31 @@ type BlockNode {
     source SourceRange
 }
 
-fn block(id str, kind BlockType) BlockNode {
+pub fn block(id str, kind BlockType) BlockNode {
     return BlockNode(id, kind, [], [], [], rng(0, 0))
 }
 
-fn leafBlock(id str, kind BlockType, text str) BlockNode {
+pub fn leafBlock(id str, kind BlockType, text str) BlockNode {
     return BlockNode(id, kind, [], [], [span(text)], rng(0, text.length.to(int)))
 }
 
-fn blockText(node BlockNode) str {
+pub fn blockText(node BlockNode) str {
     return spansText(node.inlines)
 }
 
-fn withInlines(node BlockNode, spans List<InlineSpan>) BlockNode {
+pub fn withInlines(node BlockNode, spans List<InlineSpan>) BlockNode {
     return BlockNode(node.id, node.kind, node.attrs, node.children, spans, node.source)
 }
 
-fn withKind(node BlockNode, kind BlockType) BlockNode {
+pub fn withKind(node BlockNode, kind BlockType) BlockNode {
     return BlockNode(node.id, kind, node.attrs, node.children, node.inlines, node.source)
 }
 
-fn withChildren(node BlockNode, kids List<BlockNode>) BlockNode {
+pub fn withChildren(node BlockNode, kids List<BlockNode>) BlockNode {
     return BlockNode(node.id, node.kind, node.attrs, kids, node.inlines, node.source)
 }
 
-fn dupNodes(nodes List<BlockNode>) List<BlockNode> {
+pub fn dupNodes(nodes List<BlockNode>) List<BlockNode> {
     var out List<BlockNode> = []
     for n in nodes { out.push(n) }
     return out
@@ -380,7 +380,7 @@ fn dupNodes(nodes List<BlockNode>) List<BlockNode> {
 
 // ------------------------------------------------------------------ lookup
 
-fn findBlock(node BlockNode, id str) BlockNode? {
+pub fn findBlock(node BlockNode, id str) BlockNode? {
     if node.id == id { return Some(node) }
     for i in 0..node.children.length.to(int) {
         let r = findBlock(node.children[i], id)
@@ -389,7 +389,7 @@ fn findBlock(node BlockNode, id str) BlockNode? {
     return None
 }
 
-fn parentOf(node BlockNode, id str) BlockNode? {
+pub fn parentOf(node BlockNode, id str) BlockNode? {
     for i in 0..node.children.length.to(int) {
         if node.children[i].id == id { return Some(node) }
         let r = parentOf(node.children[i], id)
@@ -399,7 +399,7 @@ fn parentOf(node BlockNode, id str) BlockNode? {
 }
 
 // Ids from the given node down to the target (inclusive); empty when absent.
-fn pathOf(node BlockNode, id str) List<str> {
+pub fn pathOf(node BlockNode, id str) List<str> {
     if node.id == id { return [node.id] }
     for i in 0..node.children.length.to(int) {
         let sub = pathOf(node.children[i], id)
@@ -412,7 +412,7 @@ fn pathOf(node BlockNode, id str) List<str> {
     return []
 }
 
-fn childIndex(node BlockNode, id str) int {
+pub fn childIndex(node BlockNode, id str) int {
     for i in 0..node.children.length.to(int) {
         if node.children[i].id == id { return i }
     }
@@ -423,7 +423,7 @@ fn childIndex(node BlockNode, id str) int {
 
 // Replace the child with the given id (anywhere in the subtree) by a list of
 // zero or more replacement blocks. Pure: returns a rebuilt spine.
-fn spliceChildren(node BlockNode, id str, repl List<BlockNode>) BlockNode {
+pub fn spliceChildren(node BlockNode, id str, repl List<BlockNode>) BlockNode {
     let idx = childIndex(node, id)
     if idx >= 0 {
         var kids List<BlockNode> = []
@@ -443,7 +443,7 @@ fn spliceChildren(node BlockNode, id str, repl List<BlockNode>) BlockNode {
 
 // Same, plus the degenerate case where the target is the node itself (only a
 // single replacement node is meaningful there; an empty list is a no-op).
-fn replaceNode(node BlockNode, id str, repl List<BlockNode>) BlockNode {
+pub fn replaceNode(node BlockNode, id str, repl List<BlockNode>) BlockNode {
     if node.id == id {
         if repl.length.to(int) > 0 { return repl[0] }
         return node
@@ -452,7 +452,7 @@ fn replaceNode(node BlockNode, id str, repl List<BlockNode>) BlockNode {
 }
 
 // Replace children [lo, hi) of the node with the given parent id.
-fn spliceRange(node BlockNode, parentId str, lo int, hi int, repl List<BlockNode>) BlockNode {
+pub fn spliceRange(node BlockNode, parentId str, lo int, hi int, repl List<BlockNode>) BlockNode {
     if node.id == parentId {
         var kids List<BlockNode> = []
         for i in 0..node.children.length.to(int) {
@@ -471,21 +471,21 @@ fn spliceRange(node BlockNode, parentId str, lo int, hi int, repl List<BlockNode
 
 // ------------------------------------------------------------------ selection
 
-type BlockPos {
+pub type BlockPos {
     blockId str
     offset int
 }
 
-type Selection {
+pub type Selection {
     anchor BlockPos
     head BlockPos
 }
 
-fn collapsedSel(blockId str, offset int) Selection {
+pub fn collapsedSel(blockId str, offset int) Selection {
     return Selection(BlockPos(blockId, offset), BlockPos(blockId, offset))
 }
 
-fn pos(blockId str, offset int) BlockPos {
+pub fn pos(blockId str, offset int) BlockPos {
     return BlockPos(blockId, offset)
 }
 
@@ -496,42 +496,42 @@ fn pos(blockId str, offset int) BlockPos {
 // emits multi-arg calls at construction sites (TS2554) — probe t_ts2. Single
 // struct payloads construct and destructure cleanly on both targets.
 
-type InsertTextOp {
+pub type InsertTextOp {
     pos BlockPos
     text str
 }
 
-type SplitBlockOp {
+pub type SplitBlockOp {
     pos BlockPos
     newId str
 }
 
-type MergeBlocksOp {
+pub type MergeBlocksOp {
     aId str
     bId str
 }
 
-type SetBlockTypeOp {
+pub type SetBlockTypeOp {
     id str
     kind BlockType
 }
 
-type LiftBlockOp {
+pub type LiftBlockOp {
     id str
 }
 
-type WrapBlockOp {
+pub type WrapBlockOp {
     id str
     kind BlockType
     newId str
 }
 
-type ReplaceRangeOp {
+pub type ReplaceRangeOp {
     sel Selection
     text str
 }
 
-enum Op {
+pub enum Op {
     InsertText(InsertTextOp)
     SplitBlock(SplitBlockOp)
     MergeBlocks(MergeBlocksOp)
@@ -541,16 +541,16 @@ enum Op {
     ReplaceRange(ReplaceRangeOp)
 }
 
-type EditResult {
+pub type EditResult {
     tree BlockNode
     selection Selection
 }
 
-fn missingBlock() BlockNode {
+pub fn missingBlock() BlockNode {
     return block("", BlockType.Paragraph)
 }
 
-fn applyOp(tree BlockNode, selection Selection, op Op) EditResult {
+pub fn applyOp(tree BlockNode, selection Selection, op Op) EditResult {
     is op {
         Op.InsertText(a) -> {
             let found = findBlock(tree, a.pos.blockId)
@@ -676,7 +676,7 @@ fn applyOp(tree BlockNode, selection Selection, op Op) EditResult {
 // Text covered by a selection (for undo inversion). Exact within one block;
 // cross-block returns the concatenated full texts of anchor and head blocks
 // (documented MVP approximation).
-fn textInRange(tree BlockNode, sel Selection) str {
+pub fn textInRange(tree BlockNode, sel Selection) str {
     if sel.anchor.blockId == sel.head.blockId {
         let found = findBlock(tree, sel.anchor.blockId)
         let target = found ?? missingBlock()
@@ -699,7 +699,7 @@ fn textInRange(tree BlockNode, sel Selection) str {
 
 // Invert an op against the pre-op tree; applying the result to the post-op
 // tree undoes the edit (with the documented cross-block caveat above).
-fn invertOp(tree BlockNode, op Op) Op {
+pub fn invertOp(tree BlockNode, op Op) Op {
     is op {
         Op.InsertText(a) -> {
             return Op.ReplaceRange(ReplaceRangeOp(Selection(a.pos, BlockPos(a.pos.blockId, a.pos.offset + a.text.length.to(int))), ""))

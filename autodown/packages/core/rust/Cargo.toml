@@ -1,0 +1,11 @@
+[package]
+name = "autodown-core"
+version = "0.1.0"
+edition = "2021"
+description = "AutoDown unified block core — a2r-emitted block model + serializer (plan 016 Phase 4 pilot)"
+license = "MIT"
+
+[dependencies]
+
+# Standalone crate (not part of any enclosing workspace).
+[workspace]

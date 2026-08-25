@@ -1,8 +1,26 @@
 # Plan 016：统一块模型内核（block_model + serializer + 双端发射探针）
 
-> 状态：**Phase 3 完成（2026-08-25）**，Phase 4 待开工。
-> 设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
-> 立项：2026-08-25。
+## Status: CLOSED
+
+> 状态：**CLOSED（2026-08-25）**。Phase 0-4 全部完成，五项验收标准全过：
+> 三源在册 vue-tsc 绿 ✓；操作快照测试（每操作 ≥3 例 + roundtrip）✓；
+> parity 43 不破 + roundtrip 三层验收 ✓；a2r 探针 REPORT + crate 骨架 ✓；
+> 三仓 regen 不受影响 ✓。
+> Phase 4 产物：
+> - **auto-lang a2r 发射器修复 8 组**（`trans/rust.rs` +315/-8，均以
+>   "Plan 016" 注释）：R1 迭代变量跨函数泄漏清场、R4 owned List 实参
+>   补 clone（is_owned_list_arg 全调用点）、unit 变体零参去括号、
+>   import 签名全量注册基础设施、expr_contains_string 三扩、Dot-arg
+>   move 分派（param_takes_ownership）、struct 字面量字段 move 补
+>   clone、vec! 元素 move + 推断补强；全量回归 3172/0 + 342 个
+>   .expected.rs golden 零改动（纯增量）。
+> - **`autodown-core` crate 试点**：`packages/core/rust/`（零依赖独立
+>   workspace），block_model + serializer 干净发射（cargo check 0 错，
+>   从 35 错逐轮收敛）；`cargo test` 5/5（smoke 4 + parity 1）。
+> - **TS/rust 双端对拍落地**：rust-parity-gen.test.ts 生成 golden +
+>   parity.rs 逐字节比对，随 core `pnpm test` 常跑。
+> - .at 源加 `pub` 注解（58+27 处，TS 侧零 diff 实证）；markdown_parser
+>   不进 crate（RegExp/any 索引缺口）登记 plan 019 Phase 1。
 > Phase 3 产物：
 > - `serializer.at`（~350 行）：块树 → `.ad` 文本，`serialize(root,
 >   emitIds)` / `serializeBlocks` 出口；只依赖 block_model（IAL 内置

@@ -11,6 +11,7 @@
     @compositionstart="onCompositionStart"
     @compositionupdate="onCompositionUpdate"
     @compositionend="onCompositionEnd"
+    @paste="onPaste"
   >{{ initialText }}</div>
 </template>
 
@@ -47,6 +48,18 @@ function onKeydown(e: KeyboardEvent): void {
     if (prev) e.preventDefault()
     props.controller.onBackspaceAtStart(prev)
   }
+}
+
+function onPaste(ev: ClipboardEvent): void {
+  const text = ev.clipboardData?.getData('text/plain') ?? ''
+  if (!text) return
+  ev.preventDefault()
+  const md = text.trim()
+  if (!md.includes('\n') && !/^[#>*`\-\d]/.test(md)) {
+    props.controller.onInput(props.controller.text + md)
+    return
+  }
+  props.controller.onPasteMarkdown(md)
 }
 
 function onCompositionStart(): void {

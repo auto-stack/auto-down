@@ -43,6 +43,8 @@ export interface ChainLike {
   focus(): ChainLike
   setHeading(opts: { level: number }): ChainLike
   insertContent(content: string): ChainLike
+  deleteRange(range: { from: number; to: number }): ChainLike
+  insertTable(opts: unknown): ChainLike
   setImage(opts: Record<string, unknown>): ChainLike
   run(): boolean
 }
@@ -78,6 +80,23 @@ function createChain(engine: EditorEngine): ChainLike {
     },
     insertContent: (content: string) => {
       pending.push((tree) => insertMarkdown(tree, engine, String(content ?? '')))
+      return chain
+    },
+    deleteRange: (range: { from: number; to: number }) => {
+      // v1: ranges always live inside the focused block — drop the trailing
+      // (to - from) characters (the typed /query)
+      pending.push((tree) => {
+        const id = currentBlockId(engine)
+        const found = findBlock(tree, id)
+        if (!found) return tree
+        const text = blockText(found)
+        const len = Math.max(0, Math.min(range.to - range.from, text.length))
+        return replaceNode(tree, id, [leafBlock(id, found.kind, text.slice(0, text.length - len))])
+      })
+      return chain
+    },
+    insertTable: (_opts: unknown) => {
+      pending.push((tree) => insertMarkdown(tree, engine, '| a | b |\n| --- | --- |\n|  |  |\n|  |  |'))
       return chain
     },
     setImage: (opts: Record<string, unknown>) => {

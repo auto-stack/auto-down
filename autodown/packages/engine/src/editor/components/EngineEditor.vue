@@ -11,6 +11,9 @@
         />
       </div>
     </div>
+    <div class="autodown-editor-actions">
+      <button type="button" class="autodown-editor-save" @click="emitSave">Save</button>
+    </div>
   </div>
 </template>
 
@@ -33,7 +36,7 @@ import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
 import BlockHost from './BlockHost.vue'
-import { SlashMenu, getSlashItems } from '../auto/src/front/utils/auto_down_editor_ext'
+import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
 
 const props = defineProps<{
@@ -43,7 +46,7 @@ const props = defineProps<{
   extraSlashItems?: unknown[]
 }>()
 
-const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void }>()
+const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', target: string): void }>()
 
 const root = ref<HTMLElement | null>(null)
 const wrapper = ref<HTMLElement | null>(null)
@@ -109,6 +112,7 @@ const views = computed<BlockView[]>(() => {
         render: () =>
           h('div', { class: 'node-slot', 'data-node-index': String(previewIdx - 1), 'data-node-type': BlockType[node.kind], 'data-block-id': node.id }, [
             h('div', { class: 'node-content' }, [vnode ?? h('div', { class: 'unknown-node' }, '')]),
+            h('div', { class: 'autodown-block-boundary', 'data-boundary-for': node.id }),
           ]),
       },
       props: {},
@@ -178,5 +182,9 @@ function focusFirstBlock(): void {
 
 if (!engine.selection.anchor.blockId) focusFirstBlock()
 
-defineExpose({ getBlockMap, handleSave: emitUpdate })
+function emitSave(): void {
+  emit('save', serialize(engine.doc, false))
+}
+
+defineExpose({ getBlockMap, handleSave: emitSave })
 </script>

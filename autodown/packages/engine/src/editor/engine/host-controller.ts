@@ -18,7 +18,9 @@ import {
   SplitBlockOp,
   blockText,
   findBlock,
+  withChildren,
 } from '../../parser/block-model'
+import { parse_blocks } from '../../parser/markdown-parser'
 import { EditorEngine } from './editor-engine'
 import { CompositionSession } from './composition'
 import { diffToOp } from './text-diff'
@@ -102,6 +104,21 @@ export class BlockHostController {
 
   compositionCancel(): void {
     this.composition.cancel()
+  }
+
+  /** Markdown / multiline paste: parse to blocks and insert after this one
+   *  (plan 018 目标 5 — paste is v1-mandatory; HTML paste degrades to
+   *  text/plain per 待澄清 5). */
+  onPasteMarkdown(md: string): void {
+    const parsed = parse_blocks(md, true)
+    const kids = parsed.children.length > 0 ? parsed.children : []
+    if (kids.length === 0) return
+    const before = this.engine.doc
+    const siblings = before.children
+    const idx = siblings.findIndex((c) => c.id === this.blockId)
+    const next = [...siblings.slice(0, idx + 1), ...kids, ...siblings.slice(idx + 1)]
+    this.engine.applyTree(() => withChildren(before, next))
+    this.syncFromModel()
   }
 }
 

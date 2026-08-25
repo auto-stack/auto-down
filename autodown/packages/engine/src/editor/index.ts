@@ -1,17 +1,16 @@
 import './styles/autodown-editor.css'
 
-export { default as AutoDownEditor } from './core/AutoDownEditor.vue'
-export { useAutoDownEditor } from './composables/useAutoDownEditor'
-export { createExtensions } from './extensions'
-export { getBlockMap, BLOCK_ID_PREFIX } from './extensions/BlockId'
-export type { BlockInfo } from './extensions/BlockId'
-export { default as CodeBlockMenu } from './menus/CodeBlockMenu.vue'
-export type { SlashItem } from './menus/slashItem'
+// @autodown/engine ./editor exit (plan 018 Phase 4): the self-built editing
+// engine assembly. Tiptap is retired — createExtensions and the Tiptap
+// AutoDownEditor are GONE (breaking, engine 0.4.0; see CHANGELOG for the
+// migration guide). The frozen external contract (EDITOR-CONTRACT.md) is
+// preserved: .autodown-editor* classes, [data-block-id], getBlockMap,
+// autodown:slash-* events.
 
-// plan 018: self-built editing engine (experimental parallel assembly —
-// AutoDownEditor switches here in Phase 4, Tiptap retires)
-export { default as AutoDownEditorEngine } from './components/EngineEditor.vue'
-export type { BlockInfo as EngineBlockInfo } from './components/EngineEditor.vue'
+export { default as AutoDownEditor } from './components/EngineEditor.vue'
+export type { BlockInfo } from './components/EngineEditor.vue'
+export type { SlashItem } from './menus/slashItem'
+export { getBlockMap, BLOCK_ID_PREFIX } from './block-map'
 export {
   EditorEngine,
   BlockHostController,
@@ -24,4 +23,5 @@ export {
   tableDeleteColumn,
   moveBlock,
   setBlockAttrs,
+  createEditorAdapter,
 } from './engine'

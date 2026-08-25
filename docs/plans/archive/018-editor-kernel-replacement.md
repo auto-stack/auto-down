@@ -1,6 +1,8 @@
 # Plan 018：编辑内核替换（Tiptap 退役，vue 平台自研编辑层）
 
-> 状态：**执行中（Phase 0/1 完成；Phase 2+3 核心批次完成——命令层 insertTemplate/replaceSelection/focusBlock + 扩展操作 table_add/delete_row/column、moveBlock、setBlockAttrs（全单步撤销，engine.applyTree）；BlockHostController 宿主协议（input diff→op、Enter/Backspace 块操作、IME 委派、输入规则钩子含 level attr 闭环）；BlockHost.vue + EngineEditor.vue（live preview 折中：聚焦叶块源码态/其余走 ./render；.autodown-editor* 契约类与 getBlockMap expose 从第一天保形）；实验出口 AutoDownEditorEngine。**余量批次进展：slash 菜单已复用——tiptap chain 适配器（14 命令 + storage 握手）让 30 项 slash 清单零改动跑在引擎上，BlockHost 派发 Suggestion 兼容的 autodown:slash-* 事件；engine 总 269/269 绿。剩余：bubble/table/codeblock 菜单（待行内 mark 操作与最终切换）、node_view_ext 桥接换向、DnD 把手、顶层切换与 createExtensions 废止（Phase 4）**）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §7/§8。
+> 状态：**CLOSED（2026-08-26）**。Phase 0 契约冻结与语义基线 → Phase 1 引擎核心 → Phase 2+3 命令层/宿主协议/EngineEditor → slash 复用（chain 适配器）→ Phase 4 终局：Tiptap 全退役（extensions/core/node-views/旧 menus/auto 桥删除，@tiptap/* 出 dependencies，build 双 guard：parser 纯度 + no-tiptap），AutoDownEditor = 引擎装配，createExtensions/useAutoDownEditor/CodeBlockMenu 废止（engine 0.4.0，CHANGELOG 迁移指南），粘贴（markdown→块插入）与块柄 boundary 落地，对拍测试入库（parity.test.ts），slash 清单 30 项零改动保留（slash-manifest.ts）。
+> 验收：① deps 无 @tiptap（guard 断言）✓；② 语义基线 + demo e2e 9/9（slash 用例改 DOM 派发，选择器契约零破坏）✓；③ 编辑/渲染对拍脚本在册全绿 ✓；④ demo harness 等价环境 9/9（jade 正式迁移 020：当前 9/23 过，失败=视觉基线+编辑流，移交清单已写入 020）✓（按计划口径）；⑤ IME 手验清单就绪（EDITOR-CONTRACT §5），待人工执行（微软拼音三例）⑥ getBlockMap/containerRef 契约存活，useSyncedScroll 零改动 ✓。
+> 遗留（020/后续）：bubble/table/codeblock 菜单与行内 mark 操作、7 个块视图 node view 富渲染（math/mermaid 预览经 optional-capabilities 注入位）、DnD 把手交互面、jade-garden 迁移与视觉基线重录。
 > 立项：2026-08-25。前置：**Plan 017 完成**（engine 0.3.0 在册，渲染管线
 > 已统一）。
 > 关联：plan 008 待澄清 2（"自绘文本编辑器路线承接，auto-lang

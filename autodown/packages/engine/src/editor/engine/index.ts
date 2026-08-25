@@ -7,6 +7,7 @@ export { INPUT_RULES, matchInputRule, inputRuleOps, applyRuleAttrs, fireRuleOn, 
 export { CompositionSession } from './composition'
 export { diffToOp } from './text-diff'
 export { BlockHostController, isEditableLeaf } from './host-controller'
+export { createEditorAdapter, type EditorAdapter, type ChainLike } from './tiptap-adapter'
 export {
   insertTemplate,
   replaceSelection,

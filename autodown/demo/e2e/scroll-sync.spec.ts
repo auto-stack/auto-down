@@ -200,12 +200,13 @@ test.describe('scroll sync', () => {
     await page.waitForTimeout(200)
 
     // Open the slash menu at the end of the document via the slash-open event.
+    // (plan 018: the editor no longer exposes a Tiptap view — derive the end
+    // offset from the DOM blocks instead; same intent, engine-native.)
     await page.evaluate(() => {
-      const editorEl = document.querySelector('.left .autodown-editor') as any
-      const editor = editorEl?.__vueParentComponent?.exposed?.editor?.value
-      if (!editor) throw new Error('editor not found')
-      const view = editor.view
-      const endPos = view.state.doc.content.size
+      const blocks = document.querySelectorAll('.left [data-block-id]')
+      const last = blocks[blocks.length - 1] as HTMLElement | undefined
+      if (!last) throw new Error('editor blocks not found')
+      const endPos = last.textContent?.length ?? 0
       const range = { from: endPos, to: endPos }
       document.dispatchEvent(
         new CustomEvent('autodown:slash-open', { detail: { query: '', range, items: [] } })

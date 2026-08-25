@@ -23,5 +23,6 @@ export type {
   PanelRenderer,
   PanelSpec,
 } from './render'
-export { AutoDownEditor, useAutoDownEditor, getBlockMap, BLOCK_ID_PREFIX } from './editor'
+export { AutoDownEditor, getBlockMap, BLOCK_ID_PREFIX } from './editor'
+export { insertTemplate, replaceSelection, focusBlock, moveBlock, setBlockAttrs, tableAddRow, tableDeleteRow, tableAddColumn, tableDeleteColumn, createEditorAdapter } from './editor'
 export type { BlockInfo, SlashItem } from './editor'

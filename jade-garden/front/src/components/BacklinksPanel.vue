@@ -58,7 +58,7 @@ function OpenSource(bl: any): void {
       </template>
       <template v-if="show_list">
         <component :is="(ul_tag) as any" class="space-y-0.5">
-          <component :is="(li_tag) as any" class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground" :title="bl.context" @click="OpenSource(bl)" v-for="bl in links">
+          <component :is="(li_tag) as any" class="cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-accent hover:text-foreground" :key="bl.source_path" :title="bl.context" @click="OpenSource(bl)" v-for="bl in links">
             <span>{{ bl.source_title }}</span>
           </component>
         </component>

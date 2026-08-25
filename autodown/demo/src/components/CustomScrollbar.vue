@@ -30,25 +30,6 @@ const emit = defineEmits<{
   EndDrag: []
 }>()
 
-function TrackDown(e: any): void {
-  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
-  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
-  let rel_y: number = e.clientY - rect.top - thumb_h.value / 2;
-  let ratio: number = rel_y / track_avail;
-  if (ratio < 0) {ratio = 0;
-  }if (ratio > 1) {ratio = 1;
-  }let max_scroll = props.scrollHeight - props.clientHeight;
-  let _ = update_scrollTop(ratio * max_scroll);
-  }}}
-
-  emit('TrackDown', e)
-}
-
-function update_scrollTop(v: any): void {
-
-  emit('update:scrollTop', v)
-}
-
 function DragMove(e: any): void {
   if (dragging.value == 1) {let track_avail = props.clientHeight - thumb_h.value;
   if (track_avail > 0) {let max_scroll = props.scrollHeight - props.clientHeight;
@@ -77,6 +58,20 @@ function StartDrag(e: any): void {
   emit('StartDrag', e)
 }
 
+function TrackDown(e: any): void {
+  if (e.target == e.currentTarget) {if (props.scrollHeight > props.clientHeight) {let track_avail = props.clientHeight - thumb_h.value;
+  if (track_avail > 0) {let rect = trackEl.value!.getBoundingClientRect();
+  let rel_y: number = e.clientY - rect.top - thumb_h.value / 2;
+  let ratio: number = rel_y / track_avail;
+  if (ratio < 0) {ratio = 0;
+  }if (ratio > 1) {ratio = 1;
+  }let max_scroll = props.scrollHeight - props.clientHeight;
+  let _ = update_scrollTop(ratio * max_scroll);
+  }}}
+
+  emit('TrackDown', e)
+}
+
 function hover_change(v: any): void {
   hovering.value = v;
 
@@ -87,25 +82,30 @@ function hover_change(v: any): void {
   emit('hover-change', v)
 }
 
+function update_scrollTop(v: any): void {
+
+  emit('update:scrollTop', v)
+}
+
 function __auto_gl_mousemove_DragMove(e: any) {
   DragMove(e)
 }
 
 onMounted(() => {
-  window.addEventListener('mouseup', EndDrag)
   window.addEventListener('mousemove', __auto_gl_mousemove_DragMove)
+  window.addEventListener('mouseup', EndDrag)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mouseup', EndDrag)
   window.removeEventListener('mousemove', __auto_gl_mousemove_DragMove)
+  window.removeEventListener('mouseup', EndDrag)
 })
 
 
 </script>
 
 <template>
-    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @mouseenter="hover_change(1)" @scroll="update_scrollTop" @mousedown="TrackDown($event)" @mouseleave="hover_change(0)">
+    <div class="custom-scrollbar" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @mousedown="TrackDown($event)" @mouseenter="hover_change(1)" @mouseleave="hover_change(0)" @scroll="update_scrollTop">
       <div class="custom-scrollbar-thumb" :style="({ height: `${thumb_h}px`, transform: `translateY(${thumb_t}px)` } as any)" @mousedown.stop="StartDrag($event)" />
     </div>
 

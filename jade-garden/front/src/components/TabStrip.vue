@@ -23,16 +23,10 @@ const emit = defineEmits<{
   NavNext: []
 }>()
 
-function OpenLocalGraph(): void {
-  openLocalGraphTab(tabsStore);
+function CloseTab(tab: any): void {
+  closeTab(tabsStore, tab.path);
 
-  emit('OpenLocalGraph')
-}
-
-function NavPrev(): void {
-  navigateDailyNote('prev', tabsStore, fileTreeStore);
-
-  emit('NavPrev')
+  emit('CloseTab', tab)
 }
 
 function NavNext(): void {
@@ -41,16 +35,16 @@ function NavNext(): void {
   emit('NavNext')
 }
 
-function CloseTab(tab: any): void {
-  closeTab(tabsStore, tab.path);
+function NavPrev(): void {
+  navigateDailyNote('prev', tabsStore, fileTreeStore);
 
-  emit('CloseTab', tab)
+  emit('NavPrev')
 }
 
-function SwitchTab(tab: any): void {
-  switchTab(tabsStore, tab.path);
+function OpenLocalGraph(): void {
+  openLocalGraphTab(tabsStore);
 
-  emit('SwitchTab', tab)
+  emit('OpenLocalGraph')
 }
 
 function OpenToday(): void {
@@ -59,13 +53,19 @@ function OpenToday(): void {
   emit('OpenToday')
 }
 
+function SwitchTab(tab: any): void {
+  switchTab(tabsStore, tab.path);
+
+  emit('SwitchTab', tab)
+}
+
 
 </script>
 
 <template>
     <template v-if="has_tabs">
       <div class="flex h-[var(--header-height)] shrink-0 items-center gap-1 border-b bg-card px-2">
-        <button :class="(tab.active ? 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors bg-primary/10 text-primary' : 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors text-muted-foreground hover:bg-accent hover:text-foreground')" :type="'button'" @click="SwitchTab(tab)" v-for="tab in items">
+        <button :class="(tab.active ? 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors bg-primary/10 text-primary' : 'group relative flex h-7 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-xs transition-colors text-muted-foreground hover:bg-accent hover:text-foreground')" :key="tab.path" :type="'button'" @click="SwitchTab(tab)" v-for="tab in items">
           <template v-if="tab.isGraph">
             <component :is="(Network) as any" class="h-3.5 w-3.5" />
           </template>
@@ -90,7 +90,7 @@ function OpenToday(): void {
             </span>
           </button>
         </template>
-        <button class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :type="'button'" :title="'今日笔记'" @click="OpenToday">
+        <button class="ml-auto flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'今日笔记'" :type="'button'" @click="OpenToday">
           <component :is="(CalendarDays) as any" class="h-3.5 w-3.5" />
           <span>
             <span>今日笔记</span>
@@ -104,7 +104,7 @@ function OpenToday(): void {
             <span class="px-1">
               <span>{{ daily_title }}</span>
             </span>
-            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :type="'button'" :title="'后一天'" @click="NavNext">
+            <button class="flex h-6 w-6 items-center justify-center rounded hover:bg-accent hover:text-foreground" :title="'后一天'" :type="'button'" @click="NavNext">
               <component :is="(ChevronRight) as any" class="h-3.5 w-3.5" />
             </button>
           </div>

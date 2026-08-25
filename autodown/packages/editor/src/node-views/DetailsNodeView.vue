@@ -45,6 +45,36 @@ watch(selected_state, () => {
   }
 })
 
+function CancelSummary(): void {
+  editing_summary.value = false;
+
+  emit('CancelSummary')
+}
+
+function CommitSummary(): void {
+  let update_attributes = props.updateAttributes;
+  let value = summary_draft.value.trim();
+  if (value != '') {update_attributes({ summary: value });
+  }
+  editing_summary.value = false;
+
+  emit('CommitSummary')
+}
+
+function Noop(e: any): void {
+
+  emit('Noop', e)
+}
+
+function StartEditingSummary(): void {
+  summary_draft.value = summary.value;
+  editing_summary.value = true;
+  nextTick(() => { focusAndSelect(summaryInput.value!);
+   });
+
+  emit('StartEditingSummary')
+}
+
 function SummaryInput(e: any): void {
   summary_draft.value = e.target.value;
 
@@ -58,41 +88,11 @@ function ToggleOpen(): void {
   emit('ToggleOpen')
 }
 
-function StartEditingSummary(): void {
-  summary_draft.value = summary.value;
-  editing_summary.value = true;
-  nextTick(() => { focusAndSelect(summaryInput.value!);
-   });
-
-  emit('StartEditingSummary')
-}
-
-function CommitSummary(): void {
-  let update_attributes = props.updateAttributes;
-  let value = summary_draft.value.trim();
-  if (value != '') {update_attributes({ summary: value });
-  }
-  editing_summary.value = false;
-
-  emit('CommitSummary')
-}
-
-function CancelSummary(): void {
-  editing_summary.value = false;
-
-  emit('CancelSummary')
-}
-
-function Noop(e: any): void {
-
-  emit('Noop', e)
-}
-
 
 </script>
 
 <template>
-    <NodeViewWrapper :data-open="is_open" :class="'autodown-details'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :class="'autodown-details'" :data-open="is_open" :key="'NodeViewWrapper-1'">
       <div class="autodown-details-summary">
         <span class="autodown-details-marker" :aria-hidden="'true'" :title="'点击展开详细内容'" @click.stop="ToggleOpen">
           <span>{{ marker }}</span>
@@ -103,7 +103,7 @@ function Noop(e: any): void {
           </span>
         </template>
         <template v-if="editing_summary">
-          <input class="autodown-details-summary-input" ref="summaryInput" :type="'text'" v-model="summary_draft" @click.stop="Noop($event)" @input="SummaryInput($event)" @keydown.enter.prevent="CommitSummary" @blur="CommitSummary" @keydown.esc.prevent="CancelSummary" />
+          <input class="autodown-details-summary-input" ref="summaryInput" :type="'text'" v-model="summary_draft" @blur="CommitSummary" @click.stop="Noop($event)" @input="SummaryInput($event)" @keydown.enter.prevent="CommitSummary" @keydown.esc.prevent="CancelSummary" />
         </template>
         <template v-if="! editing_summary">
           <button class="autodown-details-edit-btn" :aria-label="'编辑摘要'" :title="'编辑摘要'" :type="'button'" @click.stop="StartEditingSummary">
@@ -111,7 +111,7 @@ function Noop(e: any): void {
           </button>
         </template>
       </div>
-      <NodeViewContent :as="'div'" v-show="is_open" :class="'autodown-details-content'" :key="'NodeViewContent-2'" />
+      <NodeViewContent :as="'div'" :class="'autodown-details-content'" v-show="is_open" :key="'NodeViewContent-2'" />
     </NodeViewWrapper>
 
 </template>

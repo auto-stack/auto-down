@@ -24,6 +24,8 @@ const has_root = computed<any>(() => hasWorkspaceRoot(workspaceStore))
 const no_root = computed<any>(() => noWorkspaceRoot(workspaceStore))
 
 const emit = defineEmits<{
+  Init: []
+  Destroy: []
   FlashcardOpenChanged: [any]
 }>()
 

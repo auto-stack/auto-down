@@ -31,6 +31,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
 }>()
 
 watch(attr_block_id, async () => {
@@ -85,7 +86,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-block-embed'" :as="'div'" :data-title="attr_title" :data-block-id="attr_block_id" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :data-title="attr_title" :key="'NodeViewWrapper-1'">
       <template v-if="show_loading">
         <div class="embed-state">
           <span>{{ loading_text }}</span>

@@ -35,6 +35,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
+  Destroy: []
   SearchInput: [any]
   MoveDown: []
   MoveUp: []
@@ -54,6 +56,44 @@ function Close(): void {
   emit('Close')
 }
 
+function HoverItem(i: any): void {
+  highlighted_index.value = i;
+
+  emit('HoverItem', i)
+}
+
+function MoveDown(): void {
+  if (highlighted_index.value < filtered.value.length - 1) {highlighted_index.value = highlighted_index.value + 1;
+  nextTick(() => { let s_menu = null;
+  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
+  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
+  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
+  let itemRect = s_item.getBoundingClientRect();
+  let offset: number = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  s_list.scrollTop = s_list.scrollTop + offset;
+  }} });
+  }
+
+  emit('MoveDown')
+}
+
+function MoveUp(): void {
+  if (highlighted_index.value > 0) {highlighted_index.value = highlighted_index.value - 1;
+  nextTick(() => { let s_menu = null;
+  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
+  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
+  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
+  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
+  let itemRect = s_item.getBoundingClientRect();
+  let offset: number = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
+  s_list.scrollTop = s_list.scrollTop + offset;
+  }} });
+  }
+
+  emit('MoveUp')
+}
+
 function OutsideClick(e: any): void {
   if (visible.value) {let menu = null;
   if (editor_el.value != null) {menu = editor_el.value.querySelector('.autodown-codeblock-menu');
@@ -64,6 +104,12 @@ function OutsideClick(e: any): void {
   }}}
 
   emit('OutsideClick', e)
+}
+
+function SearchInput(e: any): void {
+  search.value = e.target.value;
+
+  emit('SearchInput', e)
 }
 
 function SelectHighlighted(): void {
@@ -93,50 +139,6 @@ function SelectItem(lang: any): void {
   active_code_block.value = null;
 
   emit('SelectItem', lang)
-}
-
-function MoveUp(): void {
-  if (highlighted_index.value > 0) {highlighted_index.value = highlighted_index.value - 1;
-  nextTick(() => { let s_menu = null;
-  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
-  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
-  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
-  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
-  let itemRect = s_item.getBoundingClientRect();
-  let offset: number = itemRect.top - listRect.top - Math.trunc(listRect.height / 2) + Math.trunc(itemRect.height / 2);
-  s_list.scrollTop = s_list.scrollTop + offset;
-  }} });
-  }
-
-  emit('MoveUp')
-}
-
-function MoveDown(): void {
-  if (highlighted_index.value < filtered.value.length - 1) {highlighted_index.value = highlighted_index.value + 1;
-  nextTick(() => { let s_menu = null;
-  if (editor_el.value != null) {s_menu = editor_el.value.querySelector('.autodown-codeblock-menu');
-  }if (s_menu != null) {let s_list = s_menu.querySelector('.autodown-codeblock-menu-list');
-  let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
-  if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
-  let itemRect = s_item.getBoundingClientRect();
-  let offset: number = itemRect.top - listRect.top - Math.trunc(listRect.height / 2) + Math.trunc(itemRect.height / 2);
-  s_list.scrollTop = s_list.scrollTop + offset;
-  }} });
-  }
-
-  emit('MoveDown')
-}
-
-function SearchInput(e: any): void {
-  search.value = e.target.value;
-
-  emit('SearchInput', e)
-}
-
-function HoverItem(i: any): void {
-  highlighted_index.value = i;
-
-  emit('HoverItem', i)
 }
 
 onMounted(() => {
@@ -342,7 +344,7 @@ onMounted(() => {
   let s_item = s_menu.querySelector('.autodown-codeblock-menu-item.active');
   if (s_list != null && s_item != null) {let listRect = s_list.getBoundingClientRect();
   let itemRect = s_item.getBoundingClientRect();
-  let offset: number = itemRect.top - listRect.top - Math.trunc(listRect.height / 2) + Math.trunc(itemRect.height / 2);
+  let offset: number = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2;
   s_list.scrollTop = s_list.scrollTop + offset;
   }} });
    });
@@ -389,12 +391,12 @@ onUnmounted(() => {
 
 <template>
     <template v-if="visible">
-      <div class="autodown-codeblock-menu" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)" ref="menuEl">
+      <div class="autodown-codeblock-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
         <div class="autodown-codeblock-menu-header">
-          <input class="autodown-codeblock-menu-search" ref="searchEl" :placeholder="'Search language…'" v-model="search" @keydown.esc="Close" @input="SearchInput($event)" @keydown.down.prevent="MoveDown" @keydown.up.prevent="MoveUp" @keydown.enter.prevent="SelectHighlighted" />
+          <input class="autodown-codeblock-menu-search" :placeholder="'Search language…'" ref="searchEl" v-model="search" @input="SearchInput($event)" @keydown.down.prevent="MoveDown" @keydown.enter.prevent="SelectHighlighted" @keydown.esc="Close" @keydown.up.prevent="MoveUp" />
         </div>
         <div class="autodown-codeblock-menu-list" ref="listEl">
-          <button class="autodown-codeblock-menu-item" :class="{ active: i == highlighted_index, selected: lang.id == current_language }" @click="SelectItem(lang)" @mouseenter="HoverItem(i)" v-for="(lang, i) in filtered">
+          <button class="autodown-codeblock-menu-item" :class="{ active: i == highlighted_index, selected: lang.id == current_language }" :key="lang.id" @click="SelectItem(lang)" @mouseenter="HoverItem(i)" v-for="(lang, i) in filtered">
             <span class="autodown-codeblock-menu-item-label">
               <span>{{ lang.label }}</span>
             </span>

@@ -34,6 +34,7 @@ const emit = defineEmits<{
   StartEdit: []
   OpenLink: []
   Commit: []
+  Cancel: []
   OnKeydown: [any]
   InputInput: [any]
   Noop: [any]
@@ -44,13 +45,24 @@ watch(attr_raw, () => {
   }
 })
 
-function StartEdit(): void {
+function Cancel(): void {
+  editing.value = false;
   input_value.value = attr_raw.value;
-  editing.value = true;
-  nextTick(() => { focusAndSelect(inputEl.value!);
-   });
+}
 
-  emit('StartEdit')
+function Commit(): void {
+  let update_attributes = props.updateAttributes;
+  let value = input_value.value.trim();
+  if (value == '') {
+  editing.value = false;
+  input_value.value = attr_raw.value;
+  }
+  if (value != '') {let parsed = parseWikiLinkRaw(value);
+  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
+  editing.value = false;
+  }
+
+  emit('Commit')
 }
 
 function InputInput(e: any): void {
@@ -104,19 +116,13 @@ function OpenLink(): void {
   emit('OpenLink')
 }
 
-function Commit(): void {
-  let update_attributes = props.updateAttributes;
-  let value = input_value.value.trim();
-  if (value == '') {
-  editing.value = false;
+function StartEdit(): void {
   input_value.value = attr_raw.value;
-  }
-  if (value != '') {let parsed = parseWikiLinkRaw(value);
-  update_attributes({ raw: parsed.raw, title: parsed.title, blockId: parsed.blockId });
-  editing.value = false;
-  }
+  editing.value = true;
+  nextTick(() => { focusAndSelect(inputEl.value!);
+   });
 
-  emit('Commit')
+  emit('StartEdit')
 }
 
 
@@ -135,7 +141,7 @@ function Commit(): void {
         </span>
       </template>
       <template v-if="editing">
-        <input class="autodown-wikilink-input" v-model="input_value" ref="inputEl" :type="'text'" @input="InputInput($event)" @keydown="OnKeydown($event)" @blur="Commit" @click.stop="Noop($event)" />
+        <input class="autodown-wikilink-input" ref="inputEl" :type="'text'" v-model="input_value" @blur="Commit" @click.stop="Noop($event)" @input="InputInput($event)" @keydown="OnKeydown($event)" />
       </template>
     </NodeViewWrapper>
 

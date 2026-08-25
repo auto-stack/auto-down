@@ -30,6 +30,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
+  Destroy: []
   OnUpdate: [any]
   CopyBlockLink: []
   OnScrollToBlock: [any]
@@ -40,18 +42,18 @@ watch(() => props.path, () => {
   loadTabIfNeeded(tabsStore, tab.value, props.path);
 }, { immediate: true })
 
-function OpenWikiLink(title: any, block_id: any): void {
-  openWikiLink(tabsStore, fileTreeStore, title, block_id);
-
-  emit('OpenWikiLink', title, block_id)
-}
-
 function CopyBlockLink(): void {
   let ok = copyBlockLinkSafe(hover_block.value, tab.value);
   if (ok) {hover_block.value = null;
   }
 
   emit('CopyBlockLink')
+}
+
+function OnScrollToBlock(e: any): void {
+  scrollToBlockFromEvent(editorRef.value!, props.path, e);
+
+  emit('OnScrollToBlock', e)
 }
 
 function OnUpdate(md: any): void {
@@ -62,10 +64,10 @@ function OnUpdate(md: any): void {
   emit('OnUpdate', md)
 }
 
-function OnScrollToBlock(e: any): void {
-  scrollToBlockFromEvent(editorRef.value!, props.path, e);
+function OpenWikiLink(title: any, block_id: any): void {
+  openWikiLink(tabsStore, fileTreeStore, title, block_id);
 
-  emit('OnScrollToBlock', e)
+  emit('OpenWikiLink', title, block_id)
 }
 
 onMounted(() => {
@@ -103,7 +105,7 @@ onUnmounted(() => {
 
 <template>
     <div class="editor-workspace">
-      <EditorShell :content="body" :extraSlashItems="extra_slash" :assetUpload="asset_upload" :showActions="false" :runQuery="run_query" :pageTitle="page_title" :loadBlock="load_block" ref="editorRef" :placeholder="'Start typing...'" :class="'h-full w-full'" :key="'EditorShell-1'" @open-wiki-link="OpenWikiLink" @update="OnUpdate" />
+      <EditorShell :assetUpload="asset_upload" :class="'h-full w-full'" :content="body" :extraSlashItems="extra_slash" :loadBlock="load_block" :pageTitle="page_title" :placeholder="'Start typing...'" ref="editorRef" :runQuery="run_query" :showActions="false" :key="'EditorShell-1'" @open-wiki-link="OpenWikiLink" @update="OnUpdate" />
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 text-muted-foreground" :style="({ display: overlay_display } as any)">
         <span>Loading…</span>
       </div>

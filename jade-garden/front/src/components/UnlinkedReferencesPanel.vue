@@ -55,7 +55,7 @@ function OpenRef(r: any): void {
       </template>
       <template v-if="show_list">
         <component :is="(ul_tag) as any" class="space-y-1">
-          <component :is="(li_tag) as any" class="cursor-pointer rounded px-1.5 py-1 text-xs hover:bg-accent" @click="OpenRef(r)" v-for="r in refs">
+          <component :is="(li_tag) as any" class="cursor-pointer rounded px-1.5 py-1 text-xs hover:bg-accent" :key="r.page_path" @click="OpenRef(r)" v-for="r in refs">
             <div class="mb-0.5 truncate text-[10px] text-muted-foreground">
               <span>{{ r.page_path }}</span>
             </div>

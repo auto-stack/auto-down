@@ -25,6 +25,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
 }>()
 
 watch(source, () => {
@@ -44,7 +45,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-math-inline'" :as="'span'" :data-math-inline="''" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'span'" :class="'autodown-math-inline'" :data-math-inline="''" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <span class="autodown-math-inline-preview" v-html="html" />
       </template>

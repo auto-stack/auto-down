@@ -14,7 +14,7 @@ const props = defineProps<{
 </script>
 
 <template>
-    <img class="code-language-icon" :width="16" :height="16" :alt="language" :src="url" />
+    <img class="code-language-icon" :alt="language" :height="16" :src="url" :width="16" />
 
 </template>
 

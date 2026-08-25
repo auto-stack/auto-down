@@ -20,6 +20,19 @@ const emit = defineEmits<{
   Reset: []
 }>()
 
+function DepthChanged(e: any): void {
+  graphStore.depth = eventNumber(e);
+
+  emit('DepthChanged', e)
+}
+
+function FlagChanged(key: any, evt: any): void {
+  setGraphFlag(graphStore, key, eventChecked(evt));
+  graphStore.saveSettings();
+
+  emit('FlagChanged', key, evt)
+}
+
 function Reset(): void {
   resetGraphSettings(graphStore);
 
@@ -32,10 +45,10 @@ function SearchInput(e: any): void {
   emit('SearchInput', e)
 }
 
-function DepthChanged(e: any): void {
-  graphStore.depth = eventNumber(e);
+function ShowGlobal(): void {
+  graphStore.showGlobal();
 
-  emit('DepthChanged', e)
+  emit('ShowGlobal')
 }
 
 function SliderChanged(key: any, evt: any): void {
@@ -43,19 +56,6 @@ function SliderChanged(key: any, evt: any): void {
   graphStore.saveSettings();
 
   emit('SliderChanged', key, evt)
-}
-
-function ShowGlobal(): void {
-  graphStore.showGlobal();
-
-  emit('ShowGlobal')
-}
-
-function FlagChanged(key: any, evt: any): void {
-  setGraphFlag(graphStore, key, eventChecked(evt));
-  graphStore.saveSettings();
-
-  emit('FlagChanged', key, evt)
 }
 
 
@@ -70,7 +70,7 @@ function FlagChanged(key: any, evt: any): void {
             <span>搜索</span>
           </span>
         </div>
-        <input class="graph-input" :type="'text'" :value="graphStore.searchQuery" :placeholder="'搜索节点…'" @input="SearchInput($event)" />
+        <input class="graph-input" :placeholder="'搜索节点…'" :type="'text'" :value="graphStore.searchQuery" @input="SearchInput($event)" />
       </div>
       <template v-if="graphStore.centerPath">
         <div class="section">
@@ -87,7 +87,7 @@ function FlagChanged(key: any, evt: any): void {
             <span>
               <span>深度</span>
             </span>
-            <RangeInput :step="'1'" :max="'3'" :value="graphStore.depth" :min="'1'" :key="'RangeInput-1'" @input="DepthChanged($event)" />
+            <RangeInput :max="'3'" :min="'1'" :step="'1'" :value="graphStore.depth" :key="'RangeInput-1'" @input="DepthChanged($event)" />
             <span class="value">
               <span>{{ graphStore.depth }}</span>
             </span>
@@ -128,7 +128,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>节点大小</span>
           </span>
-          <RangeInput :step="'1'" :value="graphStore.settings.nodeSize" :min="'4'" :max="'40'" :key="'RangeInput-2'" @input="SliderChanged('nodeSize', $event)" />
+          <RangeInput :max="'40'" :min="'4'" :step="'1'" :value="graphStore.settings.nodeSize" :key="'RangeInput-2'" @input="SliderChanged('nodeSize', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.nodeSize }}</span>
           </span>
@@ -137,7 +137,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>文本透明度</span>
           </span>
-          <RangeInput :step="'0.05'" :max="'1'" :value="graphStore.settings.textOpacity" :min="'0'" :key="'RangeInput-3'" @input="SliderChanged('textOpacity', $event)" />
+          <RangeInput :max="'1'" :min="'0'" :step="'0.05'" :value="graphStore.settings.textOpacity" :key="'RangeInput-3'" @input="SliderChanged('textOpacity', $event)" />
           <span class="value">
             <span>{{ opacity_label }}</span>
           </span>
@@ -146,7 +146,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>连线粗细</span>
           </span>
-          <RangeInput :min="'0.5'" :max="'5'" :value="graphStore.settings.edgeWidth" :step="'0.5'" :key="'RangeInput-4'" @input="SliderChanged('edgeWidth', $event)" />
+          <RangeInput :max="'5'" :min="'0.5'" :step="'0.5'" :value="graphStore.settings.edgeWidth" :key="'RangeInput-4'" @input="SliderChanged('edgeWidth', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.edgeWidth }}</span>
           </span>
@@ -169,7 +169,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>图谱向心力</span>
           </span>
-          <RangeInput :max="'0.5'" :step="'0.01'" :value="graphStore.settings.gravity" :min="'0'" :key="'RangeInput-5'" @input="SliderChanged('gravity', $event)" />
+          <RangeInput :max="'0.5'" :min="'0'" :step="'0.01'" :value="graphStore.settings.gravity" :key="'RangeInput-5'" @input="SliderChanged('gravity', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.gravity }}</span>
           </span>
@@ -178,7 +178,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>节点排斥力</span>
           </span>
-          <RangeInput :max="'20000'" :step="'500'" :min="'1000'" :value="graphStore.settings.repulsion" :key="'RangeInput-6'" @input="SliderChanged('repulsion', $event)" />
+          <RangeInput :max="'20000'" :min="'1000'" :step="'500'" :value="graphStore.settings.repulsion" :key="'RangeInput-6'" @input="SliderChanged('repulsion', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.repulsion }}</span>
           </span>
@@ -187,7 +187,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>相连节点吸引力</span>
           </span>
-          <RangeInput :min="'0.001'" :value="graphStore.settings.attraction" :max="'0.5'" :step="'0.001'" :key="'RangeInput-7'" @input="SliderChanged('attraction', $event)" />
+          <RangeInput :max="'0.5'" :min="'0.001'" :step="'0.001'" :value="graphStore.settings.attraction" :key="'RangeInput-7'" @input="SliderChanged('attraction', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.attraction }}</span>
           </span>
@@ -196,7 +196,7 @@ function FlagChanged(key: any, evt: any): void {
           <span>
             <span>连线长度</span>
           </span>
-          <RangeInput :max="'300'" :step="'10'" :min="'30'" :value="graphStore.settings.linkLength" :key="'RangeInput-8'" @input="SliderChanged('linkLength', $event)" />
+          <RangeInput :max="'300'" :min="'30'" :step="'10'" :value="graphStore.settings.linkLength" :key="'RangeInput-8'" @input="SliderChanged('linkLength', $event)" />
           <span class="value">
             <span>{{ graphStore.settings.linkLength }}</span>
           </span>

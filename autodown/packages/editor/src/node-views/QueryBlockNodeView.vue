@@ -30,6 +30,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
 }>()
 
 watch(query_text, async () => {
@@ -78,7 +79,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :data-query-block="''" :class="'autodown-query-block'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-query-block'" :data-query-block="''" :key="'NodeViewWrapper-1'">
       <div class="query-header">
         <span class="query-label">
           <span>Query</span>
@@ -99,7 +100,7 @@ onMounted(async () => {
       </template>
       <template v-if="show_results">
         <component :is="(ul_tag) as any" class="query-results">
-          <component :is="(li_tag) as any" class="query-result" v-for="(result, idx) in results">
+          <component :is="(li_tag) as any" class="query-result" :key="idx" v-for="(result, idx) in results">
             <span class="result-marker">
               <span>{{ result.marker }}</span>
             </span>

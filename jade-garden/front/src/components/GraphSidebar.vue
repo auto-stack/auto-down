@@ -14,6 +14,7 @@ const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
 
 const emit = defineEmits<{
+  Init: []
   OpenNode: [any]
 }>()
 

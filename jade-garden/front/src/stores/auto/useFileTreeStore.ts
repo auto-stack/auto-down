@@ -7,36 +7,7 @@ const loading = ref<boolean>(false)
 const error = ref<string | null>(null)
 
 export function useFileTreeStore(): any {
-    const Load = async () => { loading.value = true;
-error.value = null;
-let res = await listFilesResult();
-if (res.error == '') {files.value = res.files;
-}
-if (res.error != '') {error.value = res.error;
-}
-loading.value = false;
- }
-    const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
-loading.value = true;
-error.value = null;
-let res = await listFilesResult();
-if (res.error == '') {files.value = res.files;
-}
-if (res.error != '') {error.value = res.error;
-}
-loading.value = false;
- }
     const CreateFile = async (args: any) => { await createFileRaw(args.path, args.isDir);
-loading.value = true;
-error.value = null;
-let res = await listFilesResult();
-if (res.error == '') {files.value = res.files;
-}
-if (res.error != '') {error.value = res.error;
-}
-loading.value = false;
- }
-    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
 loading.value = true;
 error.value = null;
 let res = await listFilesResult();
@@ -56,6 +27,35 @@ if (res.error != '') {error.value = res.error;
 }
 loading.value = false;
  }
+    const DuplicateFile = async (args: any) => { await duplicateFileRaw(args.sourcePath, args.targetPath);
+loading.value = true;
+error.value = null;
+let res = await listFilesResult();
+if (res.error == '') {files.value = res.files;
+}
+if (res.error != '') {error.value = res.error;
+}
+loading.value = false;
+ }
+    const Load = async () => { loading.value = true;
+error.value = null;
+let res = await listFilesResult();
+if (res.error == '') {files.value = res.files;
+}
+if (res.error != '') {error.value = res.error;
+}
+loading.value = false;
+ }
+    const RenameFile = async (args: any) => { await renameFileRaw(args.oldPath, args.newPath);
+loading.value = true;
+error.value = null;
+let res = await listFilesResult();
+if (res.error == '') {files.value = res.files;
+}
+if (res.error != '') {error.value = res.error;
+}
+loading.value = false;
+ }
     const Toggle = async (path: string) => { await toggleExpanded(expanded.value, path);
  }
     return {
@@ -63,11 +63,11 @@ loading.value = false;
         expanded,
         loading,
         error,
-        Load,
-        DuplicateFile,
         CreateFile,
-        RenameFile,
         DeleteFile,
+        DuplicateFile,
+        Load,
+        RenameFile,
         Toggle,
     }
 }

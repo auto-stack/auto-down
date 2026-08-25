@@ -26,6 +26,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
 }>()
 
 watch(source, () => {
@@ -59,7 +60,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <NodeViewWrapper :class="'autodown-mermaid-block'" :data-mermaid-block="''" :as="'div'" :key="'NodeViewWrapper-1'">
+    <NodeViewWrapper :as="'div'" :class="'autodown-mermaid-block'" :data-mermaid-block="''" :key="'NodeViewWrapper-1'">
       <template v-if="show_preview">
         <div class="autodown-mermaid-preview" v-html="svg" />
       </template>

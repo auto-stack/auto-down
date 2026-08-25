@@ -25,6 +25,7 @@ const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
 
 const emit = defineEmits<{
+  Init: []
   QueryInput: [any]
   OpenResult: [any]
 }>()
@@ -33,12 +34,6 @@ watch(query, () => {
   let f = debounced_search.value;
   f();
 })
-
-function QueryInput(e: any): void {
-  query.value = e.target.value;
-
-  emit('QueryInput', e)
-}
 
 function OpenResult(r: any): void {
   if (r.type == 'Page' && r.path != null) {tabsStore.open(r.path, r.title);
@@ -49,6 +44,12 @@ function OpenResult(r: any): void {
   }
 
   emit('OpenResult', r)
+}
+
+function QueryInput(e: any): void {
+  query.value = e.target.value;
+
+  emit('QueryInput', e)
 }
 
 onMounted(() => {
@@ -73,7 +74,7 @@ onMounted(() => {
     <div class="flex h-full flex-col p-3">
       <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
         <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" :placeholder="'Search pages and blocks...'" v-model="query" @input="QueryInput($event)" />
+        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Search pages and blocks...'" :type="'text'" v-model="query" @input="QueryInput($event)" />
       </div>
       <template v-if="show_loading">
         <div class="mt-4 text-center text-xs text-muted-foreground">
@@ -87,7 +88,7 @@ onMounted(() => {
       </template>
       <template v-if="show_results">
         <component :is="(ul_tag) as any" class="mt-2 flex-1 space-y-1 overflow-y-auto">
-          <component :is="(li_tag) as any" class="cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent" @click="OpenResult(r)" v-for="r in display_results">
+          <component :is="(li_tag) as any" class="cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-accent" :key="r.page_path" @click="OpenResult(r)" v-for="r in display_results">
             <div class="flex items-center gap-1.5">
               <template v-if="r.is_page">
                 <component :is="(FileText) as any" class="h-3.5 w-3.5 text-muted-foreground" />

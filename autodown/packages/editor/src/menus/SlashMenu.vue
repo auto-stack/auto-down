@@ -40,22 +40,19 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function SelectItem(i: any): void {
-  let item = filtered.value[i];
-  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-  }
-
-  emit('SelectItem', i)
-}
-
 function HoverItem(i: any): void {
   selected_index.value = i;
 
   emit('HoverItem', i)
+}
+
+function OnClose(): void {
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+
+  emit('OnClose')
 }
 
 function OnKeydown(e: any): void {
@@ -64,7 +61,7 @@ function OnKeydown(e: any): void {
 
 
   let next: number = selected_index.value + 1;
-  selected_index.value = Math.trunc(next %filtered.value.length);
+  selected_index.value = next %filtered.value.length;
 
 
   nextTick(() => { if (menuEl.value!) {let active = menuEl.value!.querySelector('.autodown-slash-menu-item.active');
@@ -75,7 +72,7 @@ function OnKeydown(e: any): void {
   if (props.editor.storage['slash-command'] != null) {props.editor.storage['slash-command'].handled = true;
   }}if (e.detail.event.key == 'ArrowUp') {e.detail.event.preventDefault();
   let prev: number = selected_index.value - 1 + filtered.value.length;
-  selected_index.value = Math.trunc(prev %filtered.value.length);
+  selected_index.value = prev %filtered.value.length;
   nextTick(() => { if (menuEl.value!) {let active = menuEl.value!.querySelector('.autodown-slash-menu-item.active');
   if (active != null) {active.scrollIntoView({ block: 'nearest', behavior: 'auto' });
   }} });
@@ -100,15 +97,6 @@ function OnKeydown(e: any): void {
   }}}
 
   emit('OnKeydown', e)
-}
-
-function OnClose(): void {
-  visible.value = false;
-  query.value = '';
-  range.value = null;
-  selected_index.value = 0;
-
-  emit('OnClose')
 }
 
 function OnOpen(e: any): void {
@@ -170,30 +158,42 @@ function OnUpdate(e: any): void {
   emit('OnUpdate', e)
 }
 
-function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
-  OnUpdate(e)
-}
+function SelectItem(i: any): void {
+  let item = filtered.value[i];
+  if (item != null && range.value != null) {item.command({ editor: props.editor, range: range.value });
+  visible.value = false;
+  query.value = '';
+  range.value = null;
+  selected_index.value = 0;
+  }
 
-function __auto_gl_autodown_slash_open_OnOpen(e: any) {
-  OnOpen(e)
+  emit('SelectItem', i)
 }
 
 function __auto_gl_autodown_slash_keydown_OnKeydown(e: any) {
   OnKeydown(e)
 }
 
+function __auto_gl_autodown_slash_open_OnOpen(e: any) {
+  OnOpen(e)
+}
+
+function __auto_gl_autodown_slash_update_OnUpdate(e: any) {
+  OnUpdate(e)
+}
+
 onMounted(() => {
-  document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
   document.addEventListener('autodown:slash-close', OnClose)
-  document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
   document.addEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
+  document.addEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
+  document.addEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
   document.removeEventListener('autodown:slash-close', OnClose)
-  document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
   document.removeEventListener('autodown:slash-keydown', __auto_gl_autodown_slash_keydown_OnKeydown)
+  document.removeEventListener('autodown:slash-open', __auto_gl_autodown_slash_open_OnOpen)
+  document.removeEventListener('autodown:slash-update', __auto_gl_autodown_slash_update_OnUpdate)
 })
 
 
@@ -203,7 +203,7 @@ onUnmounted(() => {
     <template v-if="visible">
       <div class="autodown-slash-menu" ref="menuEl" :style="({ top: pos_top, left: pos_left, visibility: pos_visibility } as any)">
         <div class="autodown-slash-menu-items">
-          <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" @mouseenter="HoverItem(i)" @click="SelectItem(i)" v-for="(item, i) in filtered">
+          <button class="autodown-slash-menu-item" :class="{ active: i == selected_index }" :key="item.title" @click="SelectItem(i)" @mouseenter="HoverItem(i)" v-for="(item, i) in filtered">
             <component :is="(item.icon) as any" class="autodown-slash-menu-icon" :size="16" />
             <div class="autodown-slash-menu-info">
               <div class="autodown-slash-menu-title">

@@ -61,12 +61,12 @@ function OpenTask(tk: any): void {
         </template>
         <template v-if="show_groups">
           <div class="space-y-3">
-            <div v-for="g in display_groups">
+            <div :key="g.formatted_date" v-for="g in display_groups">
               <div class="sticky top-0 bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground">
                 <span>{{ g.formatted_date }}</span>
               </div>
               <component :is="(ul_tag) as any" class="space-y-1">
-                <component :is="(li_tag) as any" class="cursor-pointer rounded px-2 py-1 text-xs hover:bg-accent" @click="OpenTask(tk)" v-for="tk in g.tasks">
+                <component :is="(li_tag) as any" class="cursor-pointer rounded px-2 py-1 text-xs hover:bg-accent" :key="tk.page_path" @click="OpenTask(tk)" v-for="tk in g.tasks">
                   <div class="flex items-start gap-1.5">
                     <span class="font-semibold" :class="{ 'text-muted-foreground': tk.marker_muted, 'text-primary': tk.marker_primary, 'text-emerald-600 line-through': tk.marker_done }">
                       <span>{{ tk.marker }}</span>

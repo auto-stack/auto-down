@@ -26,6 +26,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
 }>()
 
 watch(source, () => {

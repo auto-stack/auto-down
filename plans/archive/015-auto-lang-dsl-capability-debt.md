@@ -1,6 +1,11 @@
 # Plan 015：Auto 语言 DSL 能力债消除
 
-> 状态：Phase 0 完成（探针仲裁 5/5，REPORT 在 tmp/dsl-probes/plan015/）；
+## Status: CLOSED
+
+> 状态：**CLOSED**（2026-08-25）。Phase 0-4 全部收口：探针仲裁、
+> 回迁批次 A/B（批次 C 核验为零残留销号）、编译器 P0 三件套 +
+> P1 #4-#8（#8 落地为 R016）、Phase 4 P2/P3 立项登记；唯一在途的
+> PLAN-037 联动项经 auto-lang plan 443 清偿后三仓复验全绿。
 > Phase 1 批次 A/B 完成并已提交（CustomScrollbar 声明式重写 + 原名 emit
 > 恢复，demo e2e 9/9；jade MainArea v-show 回迁，jade e2e 23/23）。
 > 编译器修复已合并回 auto-lang master（`e332c4d3`，quoted msg variant
@@ -41,18 +46,19 @@
 > 剩余：~~Phase 3 的 #8~~、~~Phase 4（P2/P3 立项登记）~~——均已收口
 > （2026-08-24 续：#8 落地为 R016 + 顶层裸兄弟 parser 缺陷修复，在
 > auto-lang worktree `auto-down` 分支待合并；Phase 4 登记见下）。
-> 当前唯一在途项：PLAN-037 defineModel 语义变更的三仓 regen 验证
-> （见 Phase 4 末尾），完成后本计划可 CLOSED。
-> **PLAN-037 验证结果（2026-08-24）：阻断，产物不采用**——
+> ~~当前唯一在途项：PLAN-037 defineModel 语义变更的三仓 regen 验证~~
+> **PLAN-037 验证收口（2026-08-24/25）：已解决，计划 CLOSED**——
 > ①TS2440（defineModel 编译宏被生成 import，与 Volar shim 冲突）
-> **已修**（auto-lang worktree `auto-down` 分支：不再 import
-> defineModel + needs_ref 收窄防 TS6133 + a2vue golden 8 例更新，
-> editor regen 后 vue-tsc --force 绿）；②深 mutation 响应性断裂
-> （defineModel 未绑定态 get 返回裸 localValue，`doc.value.shapes
-> .push()` 不触发 computed，jade e2e 白板红 22/23）**未修，上报
-> auto-lang 侧**——正确修法需 T5 channel 绑定信息收窄 T4 降级范围，
-> 属 roadmap 语义决策。三仓部署文件已全部回退 HEAD（editor/jade
-> vue-tsc 绿，基线 e2e 不受影响）。详证见 DEBTS.md 015 阻断行。
+> 已由本侧修复并入 auto-lang master（73861f8d：不再 import
+> defineModel + needs_ref 收窄防 TS6133 + a2vue golden 8 例更新）；
+> ②深 mutation 响应性断裂（defineModel 未绑定态 get 返回裸
+> localValue，`doc.value.shapes.push()` 不触发 computed）由
+> auto-lang 侧 plan 443 清偿（38adb1ef4）：降级收窄——仅父级实际
+> 绑定的 model channel 降 defineModel，未绑定保持 ref，字面量默认值
+> 工厂包裹，与本侧建议修法一致；新增 canary 041-model-deep-reactivity，
+> cap_widget_map_model_init 自动回绿。本侧三仓 regen 复验全绿：
+> jade e2e 23/23（白板回绿）、demo 9/9、editor vue-tsc 零错，
+> 部署产物已采用提交。
 > 调研来源：demo/editor/jade 三份 auto README 的 gotchas 全量盘点 +
 > plans/010-014 workaround 记录 + auto-lang master（c8ae053a）代码现状核对。
 

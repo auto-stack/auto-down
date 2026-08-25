@@ -27,6 +27,8 @@ const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
 
 const emit = defineEmits<{
+  Init: []
+  Destroy: []
   CloseOverlay: []
   QueryInput: [any]
   Execute: [any]
@@ -47,10 +49,10 @@ watch(filtered, () => {
   selected_index.value = 0;
 })
 
-function QueryInput(e: any): void {
-  query.value = e.target.value;
+function CloseOverlay(): void {
+  open.value = false;
 
-  emit('QueryInput', e)
+  emit('CloseOverlay')
 }
 
 function Execute(item: any): void {
@@ -60,10 +62,13 @@ function Execute(item: any): void {
   emit('Execute', item)
 }
 
-function PrevItem(): void {
-  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
+function ExecuteSelected(): void {
+  let item = filtered.value[selected_index.value];
+  if (item != null) {runPaletteItem(item, tabsStore);
+  open.value = false;
+  }
 
-  emit('PrevItem')
+  emit('ExecuteSelected')
 }
 
 function HoverItem(item: any): void {
@@ -78,19 +83,16 @@ function NextItem(): void {
   emit('NextItem')
 }
 
-function ExecuteSelected(): void {
-  let item = filtered.value[selected_index.value];
-  if (item != null) {runPaletteItem(item, tabsStore);
-  open.value = false;
-  }
+function PrevItem(): void {
+  selected_index.value = prevIndex(selected_index.value, filtered.value.length);
 
-  emit('ExecuteSelected')
+  emit('PrevItem')
 }
 
-function CloseOverlay(): void {
-  open.value = false;
+function QueryInput(e: any): void {
+  query.value = e.target.value;
 
-  emit('CloseOverlay')
+  emit('QueryInput', e)
 }
 
 onMounted(() => {
@@ -118,11 +120,11 @@ onUnmounted(() => {
               <span class="text-xs text-muted-foreground">
                 <span>⌘/Ctrl+P</span>
               </span>
-              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :type="'text'" v-model="query" :placeholder="'Type a command or recent file...'" @keydown.up.prevent="PrevItem" @input="QueryInput($event)" @keydown.enter.prevent="ExecuteSelected" @keydown.down.prevent="NextItem" />
+              <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Type a command or recent file...'" :type="'text'" v-model="query" @input="QueryInput($event)" @keydown.down.prevent="NextItem" @keydown.enter.prevent="ExecuteSelected" @keydown.up.prevent="PrevItem" />
             </div>
             <template v-if="has_results">
               <component :is="(ul_tag) as any" class="max-h-[50vh] overflow-y-auto py-1">
-                <component :is="(li_tag) as any" :class="(item.idx == selected_index ? 'cursor-pointer px-3 py-2 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-accent/50')" @click="Execute(item)" @mouseenter="HoverItem(item)" v-for="item in filtered">
+                <component :is="(li_tag) as any" :class="(item.idx == selected_index ? 'cursor-pointer px-3 py-2 text-sm bg-accent text-accent-foreground' : 'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-accent/50')" :key="item.idx" @click="Execute(item)" @mouseenter="HoverItem(item)" v-for="item in filtered">
                   <div class="flex items-center gap-2">
                     <PaletteIcon :class="'h-4 w-4 shrink-0 opacity-70'" :icon="item.icon" :key="'PaletteIcon-1-' + (((item as any)?.id ?? item))" />
                     <div class="min-w-0 flex-1">

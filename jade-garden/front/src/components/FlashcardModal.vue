@@ -26,6 +26,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  Init: []
   Reveal: []
   Rate: [any]
   'update:open': [boolean]
@@ -43,18 +44,6 @@ watch(is_open, () => {
    });
   }
 })
-
-function update_open(v: any): void {
-  v = false;
-
-  emit('update:open', v)
-}
-
-function Reveal(): void {
-  show_answer.value = true;
-
-  emit('Reveal')
-}
 
 function Rate(grade: any): void {
   let card = current.value;
@@ -75,6 +64,18 @@ function Rate(grade: any): void {
   }
 
   emit('Rate', grade)
+}
+
+function Reveal(): void {
+  show_answer.value = true;
+
+  emit('Reveal')
+}
+
+function update_open(v: any): void {
+  v = false;
+
+  emit('update:open', v)
 }
 
 onMounted(() => {

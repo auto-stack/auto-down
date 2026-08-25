@@ -2,12 +2,17 @@
 
 > 状态：**草案（待立项）**。设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
 > 立项：2026-08-25。
-> 前置：**plan 015 CLOSED 或 PLAN-037 裁定落地**（defineModel 深响应性 🔴 阻断项
-> 上报 auto-lang 侧待修，且 auto-lang worktree `auto-down` 分支有未合并修复——
-> 三仓 regen 逐字节一致是现行工作模式，本计划大量新增 .at 源，必须避开 regen
-> 冲突窗口）。
+> 前置：~~plan 015 CLOSED 或 PLAN-037 裁定落地~~ **已解除（2026-08-25）**——
+> 015 CLOSED；PLAN-037 经 auto-lang plan 443（`38adb1ef4`，defineModel 降级
+> 收窄）裁定落地；auto-lang worktree `auto-down` 分支修复已全部合并 master
+> （`73861f8d`）。三仓 regen 已采用 plan-443 形态（`767c2dc`），无 regen
+> 冲突窗口。
+> 开发模式：本计划执行在 auto-down worktree（`.worktree/plan-016`）进行，
+> 完成合并回 master；a2r 探针若暴露 auto-lang 侧缺口，在 auto-lang 的
+> `.worktree/auto-down` worktree 修复并合并（沿用既有约定）。
 > 关联：plan 008（渲染自研奠基，`markdown_parser.at` 为本计划吸收对象）、
-> auto-lang Plan 413（rust 通道蓝本）。
+> auto-lang Plan 413（rust 通道蓝本）、auto-lang plan 032（a2r 通道硬化，
+> G1/G2.1 已于 2026-08-25 合入——探针清单以其后现状为准）。
 
 ## 背景
 
@@ -47,11 +52,15 @@
 
 ### Phase 0 — 前置与探针
 
-- 确认 015 状态：PLAN-037 裁定 + auto-lang worktree `auto-down` 分支
-  （`e332c4d3`/`690abfc2`/R016 等）合并 master 与否。
+- ~~确认 015 状态~~ **已解除**（见文头前置段：015 CLOSED + plan 443 落地 +
+  worktree 已合并 master `73861f8d`）。
 - **a2r 探针**：块模型需要的语言特性清单（代数数据类型/模式匹配/
   `Map<str, Value>`/递归类型/`Set<Mark>`）逐项在 rust 发射通道跑通或
   记缺口——产出 `tmp/dsl-probes/plan016/REPORT.md`（循 015 模式）。
+  注意以 plan 032 G1/G2.1 合入后的最新 a2r 现状为基准。
+- **parser 全量 a2r 冒烟**（修订新增）：`markdown_parser.at`（1282 行，
+  零 ext）整文件过 a2r 发射通道 + `cargo check`——整文件过一遍暴露真实
+  缺口比逐项特性探针更快；缺口清单同样进 REPORT。
 - 顺手清理：editor `package.json` 的 8 个 yjs/collaboration 死依赖出依赖
   （零行为变更，`pnpm i` + editor 22/22 测试回归）。
 

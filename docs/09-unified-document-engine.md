@@ -304,7 +304,7 @@ Table/Codeblock/Image/Separator…`。这一映射是"渲染走 AURA"的落点�
 | 跨块选区/光标几何是块编辑器经典硬骨 | 🔴 | 操作序列模型先行（纯函数可穷举测试）；v1 折中见 §8 |
 | IME（vue contenteditable + rust 413 同源） | 🟡 | composition 自治模式；413 手验清单复用 |
 | e2e 安全网破坏 | 🟡 | DOM 三契约 + 选择器冻结清单进各计划验收 |
-| plan 015 在途（PLAN-037 defineModel 阻断 + auto-lang worktree 未合并） | 🔴 | 016 前置 = 015 CLOSED 或 PLAN-037 裁定，避免 regen 冲突 |
+| plan 015 在途（PLAN-037 defineModel 阻断 + auto-lang worktree 未合并） | ~~🔴~~ 已解除 | 2026-08-25 收口：015 CLOSED；PLAN-037 经 auto-lang plan 443（38adb1ef4）裁定落地（defineModel 降级收窄）；worktree 修复已合并 master（73861f8d）。016 无前置阻断 |
 | musk 008 欠账（T13/T10 未验证）叠加 | 🟡 | 迁移顺序强制先清欠账 |
 | 行内 WYSIWYG 复杂度 | 🟢 | 分级路线隔离（§8） |
 | a2r 通道覆盖块模型所需语言特性 | 🟡 | Plan 016 Phase 0 探针先行（循 015 模式） |
@@ -315,7 +315,7 @@ Table/Codeblock/Image/Separator…`。这一映射是"渲染走 AURA"的落点�
 - plan 008（archived）：渲染自研路线的奠基，本设计是其"编辑侧续篇"——
   待澄清 2 预留的自绘编辑器路线在此落地。
 - plan 013（archived）：editor `.at` 化 100%，第 1 层组件资产直接复用。
-- plan 015（active）：DSL 能力债，016 的硬前置。
+- plan 015（archived，2026-08-25 CLOSED）：DSL 能力债已清偿，016 前置解除。
 - auto-lang Plan 413/421：rust 编辑内核蓝本与 vue 编辑器契约经验。
 - auto-lang widget registry（`ui_gen/widget/registry.rs` 的
   `Markdown`/`AutoDownEditor` spec）：Plan 019 中 codegen 臂重定向到

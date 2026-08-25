@@ -35,7 +35,9 @@ ProseMirror：
 4. **命令层 API**：`insertTemplate(blocks)`/`replaceSelection(blocks)`/
    `focusBlock(id)` 等，替代 `editor.chain()` 旁路（jade-garden 迁移点）。
 5. **交互语义保全**：输入规则（`# `/`- `/``` 等 markdown 快捷）、undo/redo、
-   拖拽块、slash 菜单、表格行列操作、IME。
+   拖拽块、slash 菜单、表格行列操作、IME、**粘贴**（paste：纯文本/markdown
+   经 016 parser 转块插入为 v1 必备；HTML 富粘贴裁定见待澄清 5——
+   ProseMirror 现默默兜底此能力，替换时必须显式承接，不可遗漏）。
 6. **第三方出清**：`@tiptap/*` 全系 + katex/mermaid/lowlight 降为可选
    注入（katex/mermaid 本就走 optional-capabilities，编辑层不再直连）。
 
@@ -134,3 +136,8 @@ ProseMirror：
    高级操作是否随 v1（倾向后置，现 Tiptap 表格用法盘点后裁定）。
 4. **`createExtensions` 消费面盘点**：musk PLAN-041 是否直接消费该
    出口（若是，0.4.0 需给 musk 侧迁移窗口——020 协调项）。
+5. **粘贴深度**（修订新增）：v1 必备 = 纯文本/markdown 粘贴经 016 parser
+   转块插入（含多行拆块）；HTML 富粘贴（clipboardData text/html → 块树）
+   是否随 v1——倾向后置（降级为取 text/plain 走 markdown 路径），现 Tiptap
+   粘贴行为盘点后裁定。另：018 Phase 1 前建议加一次性 spike（contenteditable
+   宿主 + 016 操作序列闭环原型）验证主线可行性，再全量投入。

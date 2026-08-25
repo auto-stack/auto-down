@@ -12,7 +12,10 @@
     "noEmit": true,
     "jsx": "preserve",
     "strict": true,
-    "noUnusedLocals": true,
+    // noUnusedLocals off: App.vue/CustomScrollbar.vue are auto-lang emitted and
+    // discard widget-method results via `let _ =` (bare statement calls emit
+    // broken TS — auto-lang emitter gap, see DEBTS.md plan 015).
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },

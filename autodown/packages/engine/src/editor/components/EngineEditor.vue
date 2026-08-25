@@ -2,6 +2,7 @@
   <div ref="root" class="autodown-editor">
     <div ref="wrapper" class="autodown-editor-content-wrapper">
       <div class="autodown-editor-content" data-engine-editor>
+        <SlashMenu :editor="adapter" :items="slashItems" />
         <component
           :is="block.view"
           v-for="block in views"
@@ -32,11 +33,14 @@ import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
 import BlockHost from './BlockHost.vue'
+import { SlashMenu, getSlashItems } from '../auto/src/front/utils/auto_down_editor_ext'
+import { createEditorAdapter } from '../engine/tiptap-adapter'
 
 const props = defineProps<{
   content?: string
   modelValue?: string
   placeholder?: string
+  extraSlashItems?: unknown[]
 }>()
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void }>()
@@ -51,6 +55,8 @@ function docFromMarkdown(md: string) {
 }
 
 const engine = new EditorEngine(docFromMarkdown(props.modelValue ?? props.content ?? ''))
+const adapter = createEditorAdapter(engine)
+const slashItems = getSlashItems({ extraSlashItems: props.extraSlashItems })
 
 engine.onChange((change) => {
   if (change.history) repaintVersion.value++

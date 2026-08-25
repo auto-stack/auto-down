@@ -1,6 +1,6 @@
 # Plan 018：编辑内核替换（Tiptap 退役，vue 平台自研编辑层）
 
-> 状态：**执行中（Phase 0/1 完成；Phase 2+3 核心批次完成——命令层 insertTemplate/replaceSelection/focusBlock + 扩展操作 table_add/delete_row/column、moveBlock、setBlockAttrs（全单步撤销，engine.applyTree）；BlockHostController 宿主协议（input diff→op、Enter/Backspace 块操作、IME 委派、输入规则钩子含 level attr 闭环）；BlockHost.vue + EngineEditor.vue（live preview 折中：聚焦叶块源码态/其余走 ./render；.autodown-editor* 契约类与 getBlockMap expose 从第一天保形）；实验出口 AutoDownEditorEngine。**余量：菜单系统（slash/bubble/table/codeblock）接引擎事件源、node_view_ext/auto_down_editor_ext 桥接换向、DnD 把手、顶层切换与 createExtensions 废止（Phase 4）。**engine 总 261/261 绿**）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §7/§8。
+> 状态：**执行中（Phase 0/1 完成；Phase 2+3 核心批次完成——命令层 insertTemplate/replaceSelection/focusBlock + 扩展操作 table_add/delete_row/column、moveBlock、setBlockAttrs（全单步撤销，engine.applyTree）；BlockHostController 宿主协议（input diff→op、Enter/Backspace 块操作、IME 委派、输入规则钩子含 level attr 闭环）；BlockHost.vue + EngineEditor.vue（live preview 折中：聚焦叶块源码态/其余走 ./render；.autodown-editor* 契约类与 getBlockMap expose 从第一天保形）；实验出口 AutoDownEditorEngine。**余量批次进展：slash 菜单已复用——tiptap chain 适配器（14 命令 + storage 握手）让 30 项 slash 清单零改动跑在引擎上，BlockHost 派发 Suggestion 兼容的 autodown:slash-* 事件；engine 总 269/269 绿。剩余：bubble/table/codeblock 菜单（待行内 mark 操作与最终切换）、node_view_ext 桥接换向、DnD 把手、顶层切换与 createExtensions 废止（Phase 4）**）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §7/§8。
 > 立项：2026-08-25。前置：**Plan 017 完成**（engine 0.3.0 在册，渲染管线
 > 已统一）。
 > 关联：plan 008 待澄清 2（"自绘文本编辑器路线承接，auto-lang

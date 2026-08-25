@@ -21,6 +21,7 @@
 // host → model); the engine repaint happens on focus leave / history only.
 import { computed, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
+import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 
 const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
 
@@ -28,7 +29,11 @@ const el = ref<HTMLElement | null>(null)
 const initialText = computed(() => props.controller.text)
 
 function onInput(): void {
-  props.controller.onInput(el.value?.textContent ?? '')
+  const text = el.value?.textContent ?? ''
+  props.controller.onInput(text)
+  if (typeof document !== 'undefined') {
+    dispatchSlashState(slashQueryAt(text, caretOffset()), props.controller.id, caretOffset())
+  }
 }
 
 function onKeydown(e: KeyboardEvent): void {

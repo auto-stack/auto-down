@@ -1,6 +1,8 @@
 # Plan 017：渲染统一与包合并（@autodown/engine 0.3.0）
 
-> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §3/§6。
+> 状态：**CLOSED（2026-08-25）**。Phase 1 包吸收（8f8d494）→ Phase 2 面板映射与注册表渲染器（7033b64）→ Phase 3 出口冻结与 shim 定版（fc093cf）→ Phase 4 回归定版。
+> 验收：① engine 四出口 + style.css + vue-tsc 绿 + `./parser` 无 vue import（build 内断言）✓；② 既有测试全量迁入 engine 全绿（209 + 新增 7 = 216）✓；③ 面板↔AURA registry 对齐表在册（`packages/engine/PANEL-ALIGNMENT.md`，评审随 019 立项）✓；④ demo 经 shim 与直连 engine 出口双路构建 + e2e 9/9 ✓；⑤ renderPreview 结构合一（katex/mermaid 单实现于 `src/render/preview.ts`；输出对拍待解析子集扩展 math/mermaid 后取得实义）✓；⑥ 三 regen 管线零漂移（parser/render/editor/demo）✓。
+> 过程修正：Phase 1 的 shim 构建存在 noEmit 静默零输出缺陷（demo 验证实际依赖旧产物），Phase 2 修复并重验。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §3/§6。
 > 立项：2026-08-25。前置：**Plan 016 完成**（块模型 + 强类型解析在册）。
 > 关联：plan 008（markstream 消灭，本计划是其渲染层收口）、plan 013
 > （editor `.at` 化，第 1 层组件资产在本计划后归 engine）。

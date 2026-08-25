@@ -3,7 +3,7 @@ import type { Editor } from '@tiptap/core'
 import { createExtensions } from '../extensions'
 import type { EditorOptions as AutoDownEditorOptions } from '../extensions'
 import type { SlashItem } from '../menus/slashItem'
-import { preprocessMarkdown } from '@autodown/core'
+import { preprocessMarkdown } from '../../parser/index'
 import { applyTableAttrs } from '../extensions/tableAttributes'
 import { cycleTaskMarker, type TaskWorkflow } from '../utils/tasks'
 

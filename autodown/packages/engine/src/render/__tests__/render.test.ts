@@ -71,8 +71,9 @@ describe('MarkdownRender DOM contract', () => {
     expect(html).toContain('<ul class="list-node list-disc"')
     expect(html).toContain('class="list-item"')
     expect(html).toContain('<blockquote class="blockquote"')
-    // the embedded renderer class appears for nested content
-    const matches = html.match(/markstream-vue markdown-renderer/g)
+    // the embedded renderer class appears for nested content (root class
+    // dropped its legacy markstream-vue segment in plan 017 Phase 3)
+    const matches = html.match(/"markdown-renderer"/g)
     expect(matches!.length).toBeGreaterThanOrEqual(3)
   })
 

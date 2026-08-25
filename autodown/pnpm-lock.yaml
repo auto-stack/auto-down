@@ -62,22 +62,39 @@ importers:
         version: 3.3.8(typescript@5.9.3)
 
   packages/core:
+    dependencies:
+      '@autodown/engine':
+        specifier: workspace:*
+        version: link:../engine
     devDependencies:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
-      vite:
-        specifier: ^6.4.3
-        version: 6.4.3(@types/node@22.20.1)
       vitest:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@22.20.1)
 
   packages/editor:
     dependencies:
-      '@autodown/core':
+      '@autodown/engine':
         specifier: workspace:*
-        version: link:../core
+        version: link:../engine
+      lucide-vue-next:
+        specifier: ^0.460.0
+        version: 0.460.0(vue@3.5.35(typescript@5.9.3))
+      vue:
+        specifier: ^3.4.0
+        version: 3.5.35(typescript@5.9.3)
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)
+
+  packages/engine:
+    dependencies:
       '@tiptap/core':
         specifier: ^3.27.0
         version: 3.28.0(@tiptap/pm@3.28.0)
@@ -132,58 +149,18 @@ importers:
       '@tiptap/vue-3':
         specifier: ^3.27.0
         version: 3.28.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.28.0(@tiptap/pm@3.28.0))(@tiptap/pm@3.28.0)(vue@3.5.35(typescript@5.9.3))
+      hast-util-to-html:
+        specifier: 9.0.5
+        version: 9.0.5
       katex:
         specifier: ^0.16.0
         version: 0.16.47
       lowlight:
         specifier: ^3.3.0
         version: 3.3.0
-      lucide-vue-next:
-        specifier: ^0.460.0
-        version: 0.460.0(vue@3.5.35(typescript@5.9.3))
       mermaid:
         specifier: ^11.16.0
         version: 11.16.0
-      vue:
-        specifier: ^3.4.0
-        version: 3.5.35(typescript@5.9.3)
-    devDependencies:
-      '@microsoft/api-extractor':
-        specifier: ^7.58.12
-        version: 7.58.12(@types/node@22.20.1)
-      '@vitejs/plugin-vue':
-        specifier: ^5.0.0
-        version: 5.2.4(vite@6.4.3(@types/node@22.20.1))(vue@3.5.35(typescript@5.9.3))
-      esbuild:
-        specifier: ^0.28.1
-        version: 0.28.1
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-      vite:
-        specifier: ^6.4.3
-        version: 6.4.3(@types/node@22.20.1)
-      vite-plugin-dts:
-        specifier: ^5.0.3
-        version: 5.0.3(@microsoft/api-extractor@7.58.12(@types/node@22.20.1))(@vue/language-core@3.3.8)(esbuild@0.28.1)(rollup@4.62.2)(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.1))
-      vitest:
-        specifier: ^3.2.7
-        version: 3.2.7(@types/node@22.20.1)
-      vue-tsc:
-        specifier: ^3.3.8
-        version: 3.3.8(typescript@5.9.3)
-
-  packages/vue:
-    dependencies:
-      '@autodown/core':
-        specifier: workspace:*
-        version: link:../core
-      hast-util-to-html:
-        specifier: 9.0.5
-        version: 9.0.5
-      lowlight:
-        specifier: ^3.3.0
-        version: 3.3.0
     devDependencies:
       '@microsoft/api-extractor':
         specifier: ^7.58.12
@@ -203,6 +180,9 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      lucide-vue-next:
+        specifier: ^0.460.0
+        version: 0.460.0(vue@3.5.35(typescript@5.9.3))
       stream-markdown-parser:
         specifier: 0.0.95
         version: 0.0.95
@@ -219,11 +199,27 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@22.20.1)
       vue:
-        specifier: ^3.5.35
+        specifier: ^3.4.0
         version: 3.5.35(typescript@5.9.3)
       vue-tsc:
         specifier: ^3.3.8
         version: 3.3.8(typescript@5.9.3)
+
+  packages/vue:
+    dependencies:
+      '@autodown/engine':
+        specifier: workspace:*
+        version: link:../engine
+      vue:
+        specifier: ^3.4.0
+        version: 3.5.35(typescript@5.9.3)
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)
 
 packages:
 

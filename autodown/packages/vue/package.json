@@ -1,7 +1,7 @@
 {
   "name": "@autodown/vue",
-  "version": "0.2.0",
-  "description": "AutoDown Vue renderer — streaming and static document rendering for AutoDown",
+  "version": "0.3.0",
+  "description": "AutoDown Vue renderer — re-export shim for @autodown/engine/render (plan 017)",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -17,33 +17,17 @@
     "dist"
   ],
   "scripts": {
-    "build": "vue-tsc -b && vite build",
-    "pretest": "pnpm --filter @autodown/core build",
-    "test": "vitest run --passWithNoTests",
-    "lint": "eslint src",
-    "gen": "node auto/gen.mjs"
+    "build": "node -e \"require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && tsc && node build-shim.mjs",
+    "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {
     "vue": "^3.4.0"
   },
   "dependencies": {
-    "@autodown/core": "workspace:*",
-    "hast-util-to-html": "9.0.5",
-    "lowlight": "^3.3.0"
+    "@autodown/engine": "workspace:*"
   },
   "devDependencies": {
-    "@microsoft/api-extractor": "^7.58.12",
-    "@types/hast": "^3.0.4",
-    "@vitejs/plugin-vue": "^5.0.0",
-    "esbuild": "^0.28.1",
     "typescript": "^5.4.0",
-    "vite": "^6.4.3",
-    "vite-plugin-dts": "^5.0.3",
-    "vitest": "^3.2.7",
-    "vue-tsc": "^3.3.8",
-    "@types/node": "^22.0.0",
-    "stream-markdown-parser": "0.0.95",
-    "@vue/server-renderer": "^3.5.35",
-    "vue": "^3.5.35"
+    "vitest": "^3.2.7"
   }
 }

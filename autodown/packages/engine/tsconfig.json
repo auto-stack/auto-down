@@ -3,9 +3,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "preserve",
-    "noEmit": false,
-    "declaration": true
+    "jsx": "preserve"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/editor/auto/gen"]
 }

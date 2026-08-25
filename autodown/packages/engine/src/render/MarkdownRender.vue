@@ -1,5 +1,5 @@
 <template>
-  <div class="markstream-vue markdown-renderer">
+  <div class="markdown-renderer">
     <template v-for="(vnode, i) in rendered" :key="i">
       <component :is="vnode" />
     </template>

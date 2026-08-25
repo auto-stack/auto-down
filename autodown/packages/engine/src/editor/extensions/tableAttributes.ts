@@ -13,10 +13,10 @@ import {
   buildIAL,
   formatArray,
   hasAnyValue,
-} from '@autodown/core'
+} from '../../parser/index'
 
 export type { TableAttr }
-export { preprocessMarkdown } from '@autodown/core'
+export { preprocessMarkdown } from '../../parser/index'
 
 /** Apply extracted IAL attrs to editor tables (colwidth on cells, rowheight on rows). */
 export function applyTableAttrs(editor: Editor, tableAttrs: TableAttr[]): void {

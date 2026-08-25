@@ -153,6 +153,12 @@ InlineSpan { marks: Set<Mark>, text: str }   # strong/em/code/link/image/del…
 Selection { anchor: BlockPos, head: BlockPos }   # BlockPos = {blockId, offset}
 ```
 
+> 实施形态修订（Plan 016 Phase 1，2026-08-25）：`attrs` 实为 `List<Attr>`
+> 列表扫描、`marks` 实为 `List<Mark>`——a2ts 将 Map 发成 Record 且
+> `.contains` 透传为坏 JS、a2r 原生 map 下标断裂；小集合上列表扫描双端
+> 全通，定为双端约束下的正式形态（待 auto-lang Map 发射修复后可回迁，
+> DEBTS 016 行在册）。
+
 要点：
 
 - **强类型块树**替代现 `parseDocument -> List<any>` 弱类型渲染树；渲染树

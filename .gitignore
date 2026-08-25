@@ -55,3 +55,9 @@ autodown/test-results/
 # pnpm store
 .pnpm-store/
 .worktree/
+
+# a2r 发射中间产物（rust/src/ 副本来源，无下游消费者）
+*.a2r.rs
+
+# Rust crate 构建产物
+autodown/packages/core/rust/target/

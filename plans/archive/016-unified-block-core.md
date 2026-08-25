@@ -1,7 +1,83 @@
 # Plan 016：统一块模型内核（block_model + serializer + 双端发射探针）
 
-> 状态：**草案（待立项）**。设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
-> 立项：2026-08-25。
+## Status: CLOSED
+
+> 状态：**CLOSED（2026-08-25）**。Phase 0-4 全部完成，五项验收标准全过：
+> 三源在册 vue-tsc 绿 ✓；操作快照测试（每操作 ≥3 例 + roundtrip）✓；
+> parity 43 不破 + roundtrip 三层验收 ✓；a2r 探针 REPORT + crate 骨架 ✓；
+> 三仓 regen 不受影响 ✓。
+> Phase 4 产物：
+> - **auto-lang a2r 发射器修复 8 组**（`trans/rust.rs` +315/-8，均以
+>   "Plan 016" 注释）：R1 迭代变量跨函数泄漏清场、R4 owned List 实参
+>   补 clone（is_owned_list_arg 全调用点）、unit 变体零参去括号、
+>   import 签名全量注册基础设施、expr_contains_string 三扩、Dot-arg
+>   move 分派（param_takes_ownership）、struct 字面量字段 move 补
+>   clone、vec! 元素 move + 推断补强；全量回归 3172/0 + 342 个
+>   .expected.rs golden 零改动（纯增量）。
+> - **`autodown-core` crate 试点**：`packages/core/rust/`（零依赖独立
+>   workspace），block_model + serializer 干净发射（cargo check 0 错，
+>   从 35 错逐轮收敛）；`cargo test` 5/5（smoke 4 + parity 1）。
+> - **TS/rust 双端对拍落地**：rust-parity-gen.test.ts 生成 golden +
+>   parity.rs 逐字节比对，随 core `pnpm test` 常跑。
+> - .at 源加 `pub` 注解（58+27 处，TS 侧零 diff 实证）；markdown_parser
+>   不进 crate（RegExp/any 索引缺口）登记 plan 019 Phase 1。
+> Phase 3 产物：
+> - `serializer.at`（~350 行）：块树 → `.ad` 文本，`serialize(root,
+>   emitIds)` / `serializeBlocks` 出口；只依赖 block_model（IAL 内置
+>   `ialText` 复刻 `buildIAL` 有对拍），留在 Phase 4 a2r 无缺口子集。
+> - roundtrip 三层验收全过：①语义等价 5 musk fixtures + 22 定向
+>   （强树归一化对拍 + fixpoint 三轮）；②字节稳定（快照 + 二轮
+>   serialize 逐字节相等）——S1 setext 多行 heading 保真回退已修，
+>   S2 表格分隔行归一（`:---`）为风格登记项；③BlockId roundtrip：
+>   `^anchor` 随文本保留，emitIds=true 追加 ` ^<id>` 重解析不漂移。
+> - 扩展块（callout/details/wikilink/query/embed/mermaid/math）定向
+>   构造序列化快照钉死（AutoDown 方言表面语法）。
+> - 门：core 104/104（43+15+46）、vue 82/82、editor 22/22；gen
+>   确定性两连跑一致。
+> - 保真限制登记（REPORT S 补记）：span 内字面字符/attr 值不转义
+>   （占位级）、rows-only IAL 不回环、`loading` 标志不序列化。
+> Phase 2 产物：
+> - `markdown_parser.at`（1505 行）从 vue 包迁入 `packages/core/auto/`，
+>   尾部新增强类型转换层：`parse_blocks(src, final) -> BlockTree` +
+>   convertBlock/convertInlines/attachIAL；IAL 预处理接入 `parse_blocks`
+>   （`parseDocument` 不接 IAL，字节级旧行为钉死）。
+> - 块 id 策略落地：`^anchor` 优先，否则 `block-<i>`/`<parent>-<j>`；
+>   SourceRange 暂零占位（Phase 3+ 缺口登记）。
+> - vue 包消费面零改动：`markdown-parser.generated.ts` 替换为 re-export
+>   redirect（`export { parseDocument } from '@autodown/core'`）。
+> - gen.mjs 三源发射 + 新后修 M1（use 导入改写置顶）；探针报告追加 T5
+>   （零 payload 变体裸引用 TS2345）。
+> - 门全绿：core 58/58、vue 82/82（parity 43 经 redirect 打 core）、
+>   editor 22/22、demo e2e 9/9；gen 两连跑 md5 一致。
+> Phase 1 产物：
+> - `autodown/packages/core/auto/block_model.at`（723 行）：BlockNode/
+>   InlineSpan/Mark/BlockType（17 变体含扩展块）/Attr/Value/BlockPos/
+>   Selection + 查找遍历（findBlock/parentOf/pathOf）+ 树手术原语
+>   （spliceChildren/spliceRange/replaceNode）+ 7 操作 applyOp +
+>   invertOp undo 反演；发射 `src/block-model.ts`（913 行）经
+>   `src/index.ts` 导出。
+> - 测试 43/43 绿（每操作 ≥ 正/反/边界 3 例 + 6 个 invertOp
+>   roundtrip + 1 快照）；core tsc 绿；消费面零回归（vue 82/82、
+>   editor 22/22）。
+> - **设计偏离追认**：attrs 用 `List<Attr>`、marks 用 `List<Mark>`
+>   （非 §5.1 示意的 `Map<str, Value>`/`Set<Mark>`）——a2ts 把 Map 发成
+>   Record 但 `.contains` 透传坏 JS、a2r 原生 map 下标断裂，列表扫描
+>   在小集合上双端全通，定为双端约束下的正式形态。
+> - gen.mjs 管线扩展为双源发射 + 断言式后修（B1 return/let 位置补
+>   `new`、B2 const enum→enum）；a2ts/a2r 新缺口 T1-T4/R1/R4 已登记
+>   DEBTS（均不阻塞，R 类为 Phase 4 前置）。
+> Phase 0 产物：
+> - **a2r 探针 REPORT**：`tmp/dsl-probes/plan016/REPORT.md`——总结论
+>   **Go（带条件）**：块模型+序列化器可行（ADT+match/递归类型原生过；
+>   Map/Set 走 `use.rust HashMap/HashSet` 路线 + set/get/cloned 纪律；
+>   内核纯函数风格规避 a2r 值语义陷阱）；auto-lang 侧 5 个发射器小修
+>   可清零变通（不阻塞）；`markdown_parser.at` 原样不过 a2r（285 错
+>   归 10 类，结构性缺口=匿名对象字面量/`any`/JS 风格 RegExp）——
+>   按既定方向节点类型化 + 正则改 `use.rust regex` 重写，源码侧中修。
+>   a2r 调用：`auto.exe trans --path file.at rust -e 100`（产物在源旁
+>   `<name>.a2r.rs`）；工程级 `auto build -r rust`。
+> - **yjs 死依赖清理**：editor 8 个死依赖出 package.json（yjs 系 6 个 +
+>   `tiptap-markdown` + `extension-node-range`），editor 22/22 + vue-tsc 绿。
 > 前置：~~plan 015 CLOSED 或 PLAN-037 裁定落地~~ **已解除（2026-08-25）**——
 > 015 CLOSED；PLAN-037 经 auto-lang plan 443（`38adb1ef4`，defineModel 降级
 > 收窄）裁定落地；auto-lang worktree `auto-down` 分支修复已全部合并 master

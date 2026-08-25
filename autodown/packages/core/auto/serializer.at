@@ -1,0 +1,422 @@
+// serializer.at — unified block tree -> .ad text (plan 016 Phase 3).
+//
+// Emitted per block from the strong BlockNode tree (block_model.at). Covers
+// the plan-008 whitelist block set (heading/paragraph/fence/blockquote/
+// list*/table/thematic_break + inline marks/link/image) plus structural
+// placeholders for the AutoDown extended blocks (callout/details/wikilink/
+// query/embed/mermaid/math) — the scanner never produces extended blocks
+// (whitelist), so these arms exist so that a tree containing them (e.g.
+// directed construction, future engine ops) serializes structure-losslessly.
+//
+// Conventions (pinned by src/__tests__/serializer-roundtrip.test.ts):
+// - Blocks join with a blank line; document ends with a single "\n"
+//   (empty tree -> "").
+// - Setext headings normalize to ATX; list markers normalize to "- " /
+//   "N. "; thematic break to "---"; hardbreak spans to "  \n".
+// - Soft-break "\n" inside span text passes through verbatim (reparse keeps
+//   it inside the same paragraph).
+// - Mark wrap order (inner->outer): Code, Strong, Em, Del, Link, Image.
+// - Table IAL: the table's `ial` attr (AttrsV[cols, rows], int? nulls as
+//   Value.Null) is re-emitted as `{cols:[...], rows:[...]}` on the line
+//   after the table — the exact shape preprocessMarkdown extracts, so IAL
+//   roundtrips. Mirrors ial.at buildIAL's format; reimplemented here so
+//   serializer.at depends on block_model ONLY (ial.at is a2ts-only: RegExp —
+//   serializer stays inside the a2r-clean Phase 4 subset).
+// - Block ids (emitIds): editor BlockId convention — a top-level
+//   Paragraph/Heading gets ` ^<id>` appended unless its text already ends
+//   with that token; reparse re-extracts the anchor, so ids do not drift.
+//   Only Paragraph/Heading carry inlines the anchor extractor reads.
+// - Extended block placeholder surface syntax (AutoDown dialect,
+//   auto-lang docs/design/raw/auto-down.md):
+//     Callout      -> $callout(type: "<type>") { <children md> }
+//     Details      -> $details(summary: "<summary>") { <children md> }
+//     WikilinkBlock-> [[<target>]]  (optional attr anchor -> [[t#anchor]])
+//     QueryBlock   -> $query(<query>)
+//     BlockEmbed   -> $embed(src: "<src>")
+//     Mermaid      -> ```mermaid fence
+//     MathBlock    -> %{ <text> }%
+//   Attr values are emitted unescaped (placeholder level).
+//
+// Known fidelity limits (registered, Phase 3 acceptance unaffected):
+// - No markdown escaping of literal markup chars in text spans (`*`, `[`,
+//   `|` in table cells, ``` inside fence code): such text reparses as
+//   markup. Fixtures + directed cases avoid them; a full escaper is a
+//   follow-up if real content needs it.
+// - `loading` streaming flags are not serialized (output is always final).
+//
+// Dual-end discipline: same rules as block_model.at (see its header) — no
+// regex, no `any`, string ops limited to .slice(a,b)/.length/+/==/.split/
+// .trim, `.length.to(int)` before arithmetic, optionals consumed via `??`
+// on plain identifiers, `is` arms are single `return` expressions with all
+// variants covered + trailing fallback.
+
+use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, attrGet, attrGetStr, attrGetInt, attrGetBool, hasMark, spansText
+
+// ---------- small string helpers ----------
+
+pub fn repeatStr(s str, n int) str {
+    var out str = ""
+    for i in 0..n {
+        out = out + s
+    }
+    return out
+}
+
+pub fn endsWith(hay str, needle str) bool {
+    let hl = hay.length.to(int)
+    let nl = needle.length.to(int)
+    if hl < nl { return false }
+    return hay.slice(hl - nl, hl) == needle
+}
+
+pub fn hasNewline(s str) bool {
+    for i in 0..s.length.to(int) {
+        if s.slice(i, i + 1) == "\n" { return true }
+    }
+    return false
+}
+
+// ---------- inline spans ----------
+
+pub fn spanMd(s InlineSpan) str {
+    // hardbreak: emit the two-space form so reparse yields a hardbreak again;
+    // marks on a bare newline are meaningless, so no wrappers.
+    if s.text == "\n" { return "  \n" }
+    var t str = s.text
+    if hasMark(s.marks, Mark.Code) { t = "`" + t + "`" }
+    if hasMark(s.marks, Mark.Strong) { t = "**" + t + "**" }
+    if hasMark(s.marks, Mark.Em) { t = "*" + t + "*" }
+    if hasMark(s.marks, Mark.Del) { t = "~~" + t + "~~" }
+    if hasMark(s.marks, Mark.Link) {
+        let href = attrGetStr(s.attrs, "href", "")
+        let title = attrGetStr(s.attrs, "title", "")
+        if title.length.to(int) > 0 {
+            t = "[" + t + "](" + href + " \"" + title + "\")"
+        } else {
+            t = "[" + t + "](" + href + ")"
+        }
+    }
+    if hasMark(s.marks, Mark.Image) {
+        let src = attrGetStr(s.attrs, "src", "")
+        let ititle = attrGetStr(s.attrs, "title", "")
+        if ititle.length.to(int) > 0 {
+            t = "![" + t + "](" + src + " \"" + ititle + "\")"
+        } else {
+            t = "![" + t + "](" + src + ")"
+        }
+    }
+    return t
+}
+
+pub fn inlinesMd(spans List<InlineSpan>) str {
+    var out str = ""
+    for s in spans {
+        out = out + spanMd(s)
+    }
+    return out
+}
+
+// ---------- table ----------
+
+pub fn alignMarker(align str) str {
+    if align == "left" { return ":---" }
+    if align == "center" { return ":---:" }
+    if align == "right" { return "---:" }
+    return "---"
+}
+
+pub fn tableRowMd(row BlockNode) str {
+    var out str = "|"
+    for c in row.children {
+        out = out + " " + inlinesMd(c.inlines) + " |"
+    }
+    return out
+}
+
+pub fn tableDelimMd(headerRow BlockNode) str {
+    var out str = "|"
+    for c in headerRow.children {
+        out = out + " " + alignMarker(attrGetStr(c.attrs, "align", "")) + " |"
+    }
+    return out
+}
+
+// ---------- IAL (table col/row sizing) ----------
+
+pub fn listOfValue(v Value) List<Value> {
+    is v {
+        Value.Null -> return []
+        Value.Str(s) -> return []
+        Value.Int(i) -> return []
+        Value.Bool(b) -> return []
+        Value.ListV(l) -> return l
+        Value.AttrsV(m) -> return []
+    }
+    return []
+}
+
+pub fn attrsOfValue(v Value) List<Attr> {
+    is v {
+        Value.Null -> return []
+        Value.Str(s) -> return []
+        Value.Int(i) -> return []
+        Value.Bool(b) -> return []
+        Value.ListV(l) -> return []
+        Value.AttrsV(m) -> return m
+    }
+    return []
+}
+
+pub fn intOfValue(v Value) int? {
+    is v {
+        Value.Null -> return None
+        Value.Str(s) -> return None
+        Value.Int(i) -> return Some(i)
+        Value.Bool(b) -> return None
+        Value.ListV(l) -> return None
+        Value.AttrsV(m) -> return None
+    }
+    return None
+}
+
+pub fn valueToIntList(v Value) List<int?> {
+    let items = listOfValue(v)
+    var out List<int?> = []
+    for i in 0..items.length.to(int) {
+        out.push(intOfValue(items[i]))
+    }
+    return out
+}
+
+pub fn hasAnyInt(arr List<int?>) bool {
+    for i in 0..arr.length.to(int) {
+        if arr[i] != None { return true }
+    }
+    return false
+}
+
+pub fn formatIntList(arr List<int?>) str {
+    var out str = ""
+    for i in 0..arr.length.to(int) {
+        if i > 0 { out = out + "," }
+        let v = arr[i]
+        if v == None {
+            out = out + "\"auto\""
+        } else {
+            let n = v ?? 0
+            out = out + n.to(str)
+        }
+    }
+    return out
+}
+
+// Body of the `{...}` IAL line (without braces), "" when nothing to emit.
+// Same format as ial.at buildIAL: `cols:[120,"auto"], rows:[40,"auto"]`.
+pub fn ialText(ialAttrs List<Attr>) str {
+    let colsFound = attrGet(ialAttrs, "cols")
+    let rowsFound = attrGet(ialAttrs, "rows")
+    let cols = valueToIntList(colsFound ?? Value.Null())
+    let rows = valueToIntList(rowsFound ?? Value.Null())
+    var parts List<str> = []
+    if hasAnyInt(cols) { parts.push("cols:[" + formatIntList(cols) + "]") }
+    if hasAnyInt(rows) { parts.push("rows:[" + formatIntList(rows) + "]") }
+    var out str = ""
+    for i in 0..parts.length.to(int) {
+        if i > 0 { out = out + ", " }
+        out = out + parts[i]
+    }
+    return out
+}
+
+pub fn tableMd(node BlockNode) str {
+    if node.children.length.to(int) == 0 { return "" }
+    var out str = ""
+    for i in 0..node.children.length.to(int) {
+        if i > 0 { out = out + "\n" }
+        let row = node.children[i]
+        if i == 0 {
+            out = out + tableRowMd(row) + "\n" + tableDelimMd(row)
+        } else {
+            out = out + tableRowMd(row)
+        }
+    }
+    let ialFound = attrGet(node.attrs, "ial")
+    if ialFound != None {
+        let body = ialText(attrsOfValue(ialFound ?? Value.Null()))
+        if body.length.to(int) > 0 {
+            out = out + "\n{" + body + "}"
+        }
+    }
+    return out
+}
+
+// ---------- container blocks ----------
+
+// Serialize a list of child blocks for blockquote/list-item/extension bodies:
+// blank line between blocks, single newline before a nested list (tight form).
+pub fn joinChildren(kids List<BlockNode>) str {
+    var out str = ""
+    for i in 0..kids.length.to(int) {
+        if i > 0 {
+            if kids[i].kind == BlockType.ListBlock {
+                out = out + "\n"
+            } else {
+                out = out + "\n\n"
+            }
+        }
+        out = out + blockMd(kids[i], false)
+    }
+    return out
+}
+
+pub fn quoteMd(node BlockNode) str {
+    let body = joinChildren(node.children)
+    let lines = body.split("\n")
+    var out str = ""
+    for i in 0..lines.length.to(int) {
+        if i > 0 { out = out + "\n" }
+        if lines[i].length.to(int) > 0 {
+            out = out + "> " + lines[i]
+        } else {
+            out = out + ">"
+        }
+    }
+    return out
+}
+
+pub fn listMd(node BlockNode) str {
+    let ordered = attrGetBool(node.attrs, "ordered", false)
+    let start = attrGetInt(node.attrs, "start", 1)
+    var out str = ""
+    for i in 0..node.children.length.to(int) {
+        if i > 0 { out = out + "\n" }
+        var marker str = "- "
+        if ordered {
+            let n = start + i
+            marker = n.to(str) + ". "
+        }
+        let body = joinChildren(node.children[i].children)
+        let lines = body.split("\n")
+        let pad = repeatStr(" ", marker.length.to(int))
+        for j in 0..lines.length.to(int) {
+            if j > 0 { out = out + "\n" }
+            if j == 0 {
+                out = out + marker + lines[j]
+            } else {
+                if lines[j].length.to(int) > 0 {
+                    out = out + pad + lines[j]
+                }
+            }
+        }
+    }
+    return out
+}
+
+pub fn fenceMd(node BlockNode) str {
+    let lang = attrGetStr(node.attrs, "language", "")
+    let code = spansText(node.inlines)
+    var out str = "```" + lang + "\n" + code
+    if code.length.to(int) > 0 {
+        if !endsWith(code, "\n") { out = out + "\n" }
+    }
+    out = out + "```"
+    return out
+}
+
+// Multi-line heading text (produced via setext: the only way the parser
+// yields "\n" inside a heading) must round-trip as setext — an ATX line
+// cannot contain a soft break. Level 1/2 only; deeper multi-line headings
+// cannot arise from the parser (ATX is single-line), they degrade to ATX.
+pub fn headingMd(node BlockNode, withId bool) str {
+    let level = attrGetInt(node.attrs, "level", 1)
+    var t str = inlinesMd(node.inlines)
+    if withId { t = withIdSuffix(t, node.id) }
+    if level <= 2 {
+        if hasNewline(t) {
+            var underline str = "---"
+            if level == 1 { underline = "===" }
+            return t + "\n" + underline
+        }
+    }
+    return repeatStr("#", level) + " " + t
+}
+
+// ---------- extended block placeholders ----------
+
+pub fn componentBlockMd(name str, argName str, node BlockNode) str {
+    let arg = attrGetStr(node.attrs, argName, "")
+    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children) + "\n}"
+}
+
+pub fn wikilinkMd(node BlockNode) str {
+    let target = attrGetStr(node.attrs, "target", "")
+    let anchor = attrGetStr(node.attrs, "anchor", "")
+    if anchor.length.to(int) > 0 {
+        return "[[" + target + "#" + anchor + "]]"
+    }
+    return "[[" + target + "]]"
+}
+
+// ---------- block dispatch ----------
+
+pub fn blockMd(node BlockNode, withId bool) str {
+    let k = node.kind
+    if k == BlockType.Heading { return headingMd(node, withId) }
+    if k == BlockType.Fence { return fenceMd(node) }
+    if k == BlockType.Blockquote { return quoteMd(node) }
+    if k == BlockType.ListBlock { return listMd(node) }
+    if k == BlockType.ListItem { return joinChildren(node.children) }
+    if k == BlockType.Table { return tableMd(node) }
+    if k == BlockType.TableRow { return tableRowMd(node) }
+    if k == BlockType.TableCell { return inlinesMd(node.inlines) }
+    if k == BlockType.ThematicBreak { return "---" }
+    if k == BlockType.Callout { return componentBlockMd("callout", "type", node) }
+    if k == BlockType.Details { return componentBlockMd("details", "summary", node) }
+    if k == BlockType.WikilinkBlock { return wikilinkMd(node) }
+    if k == BlockType.QueryBlock { return "$query(" + attrGetStr(node.attrs, "query", "") + ")" }
+    if k == BlockType.BlockEmbed { return "$embed(src: \"" + attrGetStr(node.attrs, "src", "") + "\")" }
+    if k == BlockType.Mermaid { return "```mermaid\n" + spansText(node.inlines) + "\n```" }
+    if k == BlockType.MathBlock { return "%{\n" + spansText(node.inlines) + "\n}%" }
+    // Paragraph and any future leaf with inlines.
+    let t = inlinesMd(node.inlines)
+    if withId { return withIdSuffix(t, node.id) }
+    return t
+}
+
+// ---------- document entry ----------
+
+// Append ` ^<id>` unless the text already ends with that anchor token
+// (parse_blocks extracts the anchor from the last whitespace token; keeping
+// it in the text means ids survive serialization even with emitIds=false).
+pub fn withIdSuffix(text str, id str) str {
+    let tok = "^" + id
+    if id.length.to(int) == 0 { return text }
+    if endsWith(text, tok) { return text }
+    return text + " " + tok
+}
+
+pub fn serializeBlocks(blocks List<BlockNode>, emitIds bool) str {
+    var out str = ""
+    for i in 0..blocks.length.to(int) {
+        if i > 0 { out = out + "\n\n" }
+        let b = blocks[i]
+        // Only Paragraph/Heading carry inlines the anchor extractor reads;
+        // other kinds ignore the flag inside blockMd.
+        if b.kind == BlockType.Paragraph {
+            out = out + blockMd(b, emitIds)
+        } else if b.kind == BlockType.Heading {
+            out = out + blockMd(b, emitIds)
+        } else {
+            out = out + blockMd(b, false)
+        }
+    }
+    return out
+}
+
+// Serialize a parse_blocks doc root (id "doc", children are the top-level
+// blocks). Empty tree -> "". Non-empty output ends with a single "\n".
+pub fn serialize(root BlockNode, emitIds bool) str {
+    let body = serializeBlocks(root.children, emitIds)
+    if body.length.to(int) == 0 { return "" }
+    return body + "\n"
+}

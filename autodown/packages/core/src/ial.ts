@@ -1,11 +1,14 @@
-export class TableAttr {
+/**
+ * AutoDown Core — Shared types and IAL (Inline Attribute List) utilities.
+ *
+ * GENERATED FILE — do not edit by hand.
+ * Source: auto/ial.at (Auto language). Regenerate with: pnpm gen
+ * (see auto/README.md for the pipeline and the applied post-fixes)
+ */
+
+export interface TableAttr {
     cols: (number | null)[];
     rows: (number | null)[];
-
-    constructor(cols: (number | null)[], rows: (number | null)[]) {
-        this.cols = cols;
-        this.rows = rows;
-    }
 }
 
 export function parseValue(s: string): number | null {
@@ -46,8 +49,8 @@ export function hasAnyValue(arr: (number | null)[]): boolean {
     return arr.some((v) => v != null);
 }
 
-export function preprocessMarkdown(md: string): any {
-    let tableAttrs = [];
+export function preprocessMarkdown(md: string): { md: string; tableAttrs: TableAttr[] } {
+    const tableAttrs: TableAttr[] = [];
     const re = RegExp("(\\|[^\\n]*\\|[ \\t]*\\n\\|[-:\\| \\t]+\\|[ \\t]*\\n(?:\\|[^\\n]*\\|[ \\t]*\\n)+)\\{cols:\\[(.*?)\\](?:,\\s*rows:\\[(.*?)\\])?\\}[ \\t]*(?:\\n|$)", "g");
     const cleaned = md.replace(re, (m, tableBody, colsStr, rowsStr) => {tableAttrs.push({ cols: parseArray(colsStr), rows: parseRows(rowsStr) });return tableBody;});
     return { md: cleaned, tableAttrs: tableAttrs };

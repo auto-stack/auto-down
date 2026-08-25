@@ -1280,3 +1280,226 @@ fn scanLink(line str, i int, final bool, seenCode bool) any {
     }
     return [end + 1, text, href, false, title, ""]
 }
+
+// ================================================================ plan 016
+// Phase 2: strong-typed block-tree output layer.
+//
+// parse_blocks(src, isFinal) parses through the legacy weak tree above and
+// converts it to the unified block model (block_model.at). The weak-tree
+// reads (`any` indexing) are inherently a2ts-only, same as the rest of this
+// file; everything that CONSTRUCTS model values follows the dual-emission
+// discipline (see block_model.at header / REPORT.md Phase 1 addendum).
+//
+// Mapping decisions:
+// - weak `code_block` -> BlockType.Fence with language/loading attrs; the
+//   AutoDown extension variants (Callout/Details/WikilinkBlock/QueryBlock/
+//   BlockEmbed/Mermaid/MathBlock) are NOT produced here because the current
+//   scanner emits none of them (out-of-subset per the file header). They
+//   remain reachable for hand-built trees; mermaid/math stay Fence +
+//   language attr, matching the render layer's existing branching.
+// - link/image carry their href/src/title in InlineSpan.attrs (Mark stays a
+//   unit enum).
+// - hardbreak -> InlineSpan("\n").
+// - Block ids: editor BlockId convention — explicit `^anchor` suffix wins,
+//   else `block-<top-index>`; nested blocks get `<parentId>-<childIndex>`.
+// - SourceRange: the scanner tracks no positions (startLine/endLine are
+//   dropped in the semantic projection), so source is a zero placeholder —
+//   registered gap, Phase 3+.
+// - IAL: preprocessMarkdown runs as a pre-step here (kernel path only;
+//   parseDocument keeps byte-identical legacy behavior), and extracted table
+//   attrs attach to top-level Table blocks as the `ial` attr.
+
+use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText
+use ial: preprocessMarkdown
+
+fn extractAnchorBlock(text str) str {
+    // Dual-clean ^anchor extraction (no regex, no char indexing): last
+    // whitespace-separated token of the trimmed text, must start with ^ and
+    // contain only [a-zA-Z0-9_-]. Looser than the editor regex on tabs —
+    // documented divergence.
+    let t = text.trim()
+    let parts = t.split(" ")
+    let n = parts.length.to(int)
+    if n < 2 { return "" }
+    let last = parts[n - 1]
+    if last.length.to(int) < 2 { return "" }
+    if last.slice(0, 1) != "^" { return "" }
+    let body = last.slice(1)
+    let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+    for i in 0..body.length.to(int) {
+        let ch = body.slice(i, i + 1)
+        var ok bool = false
+        for j in 0..alphabet.length.to(int) {
+            if alphabet.slice(j, j + 1) == ch { ok = true }
+        }
+        if !ok { return "" }
+    }
+    return body
+}
+
+fn convertInlines(wnodes List<any>, marks List<Mark>) List<InlineSpan> {
+    var out List<InlineSpan> = []
+    for w in wnodes {
+        let t = w["type"]
+        if t == "text" {
+            out.push(InlineSpan(w["content"], marks, []))
+        }
+        if t == "strong" {
+            for s in convertInlines(w["children"], addMark(marks, Mark.Strong)) { out.push(s) }
+        }
+        if t == "emphasis" {
+            for s in convertInlines(w["children"], addMark(marks, Mark.Em)) { out.push(s) }
+        }
+        if t == "strikethrough" {
+            for s in convertInlines(w["children"], addMark(marks, Mark.Del)) { out.push(s) }
+        }
+        if t == "inline_code" {
+            out.push(InlineSpan(w["code"], addMark(marks, Mark.Code), []))
+        }
+        if t == "hardbreak" {
+            out.push(InlineSpan("\n", marks, []))
+        }
+        if t == "link" {
+            var lattrs List<Attr> = []
+            lattrs = attrSet(lattrs, "href", Value.Str(w["href"]))
+            let title = w["title"]
+            if title != None { lattrs = attrSet(lattrs, "title", Value.Str(title)) }
+            for s in convertInlines(w["children"], addMark(marks, Mark.Link)) {
+                out.push(InlineSpan(s.text, s.marks, lattrs))
+            }
+        }
+        if t == "image" {
+            var iattrs List<Attr> = []
+            iattrs = attrSet(iattrs, "src", Value.Str(w["src"]))
+            iattrs = attrSet(iattrs, "alt", Value.Str(w["alt"]))
+            let ititle = w["title"]
+            if ititle != None { iattrs = attrSet(iattrs, "title", Value.Str(ititle)) }
+            out.push(InlineSpan(w["alt"], addMark(marks, Mark.Image), iattrs))
+        }
+    }
+    return out
+}
+
+fn convertTableCell(wnode any, id str) BlockNode {
+    var attrs List<Attr> = []
+    attrs = attrSet(attrs, "header", Value.Bool(wnode["header"]))
+    attrs = attrSet(attrs, "align", Value.Str(wnode["align"]))
+    return BlockNode(id, BlockType.TableCell, attrs, [], convertInlines(wnode["children"], []), rng(0, 0))
+}
+
+fn convertTableRow(wnode any, id str) BlockNode {
+    let cells = wnode["cells"]
+    var kids List<BlockNode> = []
+    for ci in 0..cells.length.to(int) {
+        kids.push(convertTableCell(cells[ci], id + "-c" + ci.to(str)))
+    }
+    return BlockNode(id, BlockType.TableRow, [], kids, [], rng(0, 0))
+}
+
+fn convertBlock(wnode any, id str) BlockNode {
+    let t = wnode["type"]
+    if t == "heading" {
+        var attrs List<Attr> = []
+        attrs = attrSet(attrs, "level", Value.Int(wnode["level"]))
+        return BlockNode(id, BlockType.Heading, attrs, [], convertInlines(wnode["children"], []), rng(0, 0))
+    }
+    if t == "code_block" {
+        var attrs2 List<Attr> = []
+        attrs2 = attrSet(attrs2, "language", Value.Str(wnode["language"]))
+        attrs2 = attrSet(attrs2, "loading", Value.Bool(wnode["loading"]))
+        return BlockNode(id, BlockType.Fence, attrs2, [], [span(wnode["code"])], rng(0, 0))
+    }
+    if t == "blockquote" {
+        return BlockNode(id, BlockType.Blockquote, [], convertChildren(wnode["children"], id), [], rng(0, 0))
+    }
+    if t == "list" {
+        var attrs3 List<Attr> = []
+        attrs3 = attrSet(attrs3, "ordered", Value.Bool(wnode["ordered"]))
+        let start = wnode["start"]
+        if start != None { attrs3 = attrSet(attrs3, "start", Value.Int(start)) }
+        return BlockNode(id, BlockType.ListBlock, attrs3, convertChildren(wnode["items"], id), [], rng(0, 0))
+    }
+    if t == "list_item" {
+        return BlockNode(id, BlockType.ListItem, [], convertChildren(wnode["children"], id), [], rng(0, 0))
+    }
+    if t == "table" {
+        var kids List<BlockNode> = []
+        kids.push(convertTableRow(wnode["header"], id + "-h"))
+        let rows = wnode["rows"]
+        for ri in 0..rows.length.to(int) {
+            kids.push(convertTableRow(rows[ri], id + "-r" + ri.to(str)))
+        }
+        var attrs4 List<Attr> = []
+        attrs4 = attrSet(attrs4, "loading", Value.Bool(wnode["loading"]))
+        return BlockNode(id, BlockType.Table, attrs4, kids, [], rng(0, 0))
+    }
+    if t == "thematic_break" {
+        return BlockNode(id, BlockType.ThematicBreak, [], [], [], rng(0, 0))
+    }
+    // paragraph and anything unrecognized degrade to Paragraph
+    return BlockNode(id, BlockType.Paragraph, [], [], convertInlines(wnode["children"], []), rng(0, 0))
+}
+
+fn convertChildren(wchildren List<any>, parentId str) List<BlockNode> {
+    var out List<BlockNode> = []
+    for i in 0..wchildren.length.to(int) {
+        out.push(convertBlock(wchildren[i], parentId + "-" + i.to(str)))
+    }
+    return out
+}
+
+fn intListToValue(arr List<any>) Value {
+    var out List<Value> = []
+    for v in arr {
+        if v == None {
+            out.push(Value.Null())
+        } else {
+            out.push(Value.Int(v))
+        }
+    }
+    return Value.ListV(out)
+}
+
+// Attach extracted IAL table attrs to top-level Table blocks (document order).
+fn attachIAL(blocks List<BlockNode>, ialAttrs List<any>) List<BlockNode> {
+    var out List<BlockNode> = []
+    var ti int = 0
+    for b in blocks {
+        if b.kind == BlockType.Table {
+            if ti < ialAttrs.length.to(int) {
+                let ta = ialAttrs[ti]
+                let cols = intListToValue(ta["cols"])
+                let rows = intListToValue(ta["rows"])
+                var ialPair List<Attr> = []
+                ialPair.push(Attr("cols", cols))
+                ialPair.push(Attr("rows", rows))
+                out.push(BlockNode(b.id, b.kind, attrSet(b.attrs, "ial", Value.AttrsV(ialPair)), b.children, b.inlines, b.source))
+                ti += 1
+            } else {
+                out.push(b)
+            }
+        } else {
+            out.push(b)
+        }
+    }
+    return out
+}
+
+// Assign or override the id from an explicit ^anchor in the block's own text.
+fn withAnchorId(node BlockNode, fallbackId str) BlockNode {
+    let anchor = extractAnchorBlock(spansText(node.inlines))
+    if anchor == "" { return node }
+    return BlockNode(anchor, node.kind, node.attrs, node.children, node.inlines, node.source)
+}
+
+fn parse_blocks(src str, isFinal bool) BlockNode {
+    let pre = preprocessMarkdown(src)
+    let weak = parseDocument(pre["md"], isFinal)
+    var kids List<BlockNode> = []
+    for i in 0..weak.length.to(int) {
+        let fallback = "block-" + i.to(str)
+        kids.push(withAnchorId(convertBlock(weak[i], fallback), fallback))
+    }
+    let withIal = attachIAL(kids, pre["tableAttrs"])
+    return BlockNode("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0))
+}

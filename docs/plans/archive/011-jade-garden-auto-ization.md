@@ -85,7 +85,7 @@
 - ✅ 组件层盘点：`front/src/` 共 31 个 `.vue` —— 29 个由 `.at` 生成（`components/*.vue`，均含生成标记，与 `front/auto/src/front/*.at` 一一对应）；2 个特许手写：`App.vue`（7 行根壳，仅挂载 AppShell，属 bootstrap）与 `PluginFrame.vue`（iframe sandbox/postMessage RPC，milestone 7 遗留，当前**零引用**死代码，未翻译，建议另行清理）。`auto/stubs/gen_components/` 已清空。
 - ✅ store 层盘点：9 个 store 全部翻译（注：5.0 调研口径"10 store"有误，0a56e4b 基线实际即 9 个），生成 composable 在 `src/stores/auto/`，手写 facade 在 `src/stores/`。
 - ✅ 704 行 CSS 保持手写资产原样引入；lib 层（api/blockParser/dailyNote/templates/wikiLink）保持手写 TS。
-- ✅ 编译器缺口回填 plan 012（`plans/012-autodsl-vue-codegen-backlog.md`，55 条缺口分级 + 三批修复建议）；各 README 已随各批次同步。
+- ✅ 编译器缺口回填 plan 012（`docs/plans/archive/012-autodsl-vue-codegen-backlog.md`，55 条缺口分级 + 三批修复建议）；各 README 已随各批次同步。
 
 ## Phase 5 总结
 

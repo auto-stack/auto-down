@@ -10,7 +10,7 @@
 > 在 auto-lang `.worktree/auto-down` 分支，待 auto-lang 侧合并回 master
 > （合并前 regen 须用 worktree 二进制，见 `demo/auto/README.md`）。
 >
-> 执行前先将本文件落入 `plans/014-demo-app-auto-ization.md`（沿用 010-013 编号）。
+> 执行前先将本文件落入 `docs/plans/archive/014-demo-app-auto-ization.md`（沿用 010-013 编号）。
 
 ## 背景与现状
 

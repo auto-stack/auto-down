@@ -13,11 +13,11 @@
 
 交付物：
 
-- `docs/01-vision.md`
-- `docs/02-ad-format.md`
-- `docs/03-architecture.md`
-- `docs/04-auto-ai-integration.md`
-- `docs/05-indexing-research.md`
+- `docs/designs/01-vision.md`
+- `docs/designs/02-ad-format.md`
+- `docs/designs/03-architecture.md`
+- `docs/designs/04-auto-ai-integration.md`
+- `docs/designs/05-indexing-research.md`
 
 ## Phase 1：.ad 格式与解析器
 

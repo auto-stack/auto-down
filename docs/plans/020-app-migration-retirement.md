@@ -1,6 +1,6 @@
 # Plan 020：应用迁移与退役收口（demo / jade-garden / musk / 旧包）
 
-> 状态：**草案（待立项）**。设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §10。
+> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §10。
 > 立项：2026-08-25。前置：**Plan 017 完成**（迁移最低门限：渲染统一 +
    shim 可用）；**018/019 完成为 1.0.0 门限**。
 > 关联：DEBTS.md 008 行（musk T13/T10 欠账，本计划强制先清）。
@@ -86,9 +86,9 @@
 
 ### Phase 5 — 文档与台账收口
 
-- `docs/README.md` 索引 + 关键决策表更新（engine 单包、ProseMirror
-  AST 决策废止记录）；`docs/03-architecture.md` 前端组件表改 engine；
-  `docs/06-roadmap.md` Phase 1 修订（canonical AST 改统一块模型，
+- `docs/designs/README.md` 索引 + 关键决策表更新（engine 单包、ProseMirror
+  AST 决策废止记录）；`docs/designs/03-architecture.md` 前端组件表改 engine；
+  `docs/designs/06-roadmap.md` Phase 1 修订（canonical AST 改统一块模型，
   标注修订历史）。
 - `packages/engine/ARCHITECTURE.md`：吸收并改写 editor 分层契约文档
   （三层架构 + 出口契约 + 发包形态）。

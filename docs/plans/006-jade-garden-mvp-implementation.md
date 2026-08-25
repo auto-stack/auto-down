@@ -1,7 +1,7 @@
 # Plan: Jade Garden MVP 实施计划
 
-> 对应设计文档：`docs/07-jade-garden-mvp-design.md`  
-> 对应路线图：`docs/06-roadmap.md` Phase 2
+> 对应设计文档：`docs/designs/07-jade-garden-mvp-design.md`  
+> 对应路线图：`docs/designs/06-roadmap.md` Phase 2
 
 ## 目标
 
@@ -56,7 +56,7 @@
 
 ### 任务 2.1 设计 `.ad` 文件在磁盘上的结构
 
-沿用 `docs/03-architecture.md` 的目录约定：
+沿用 `docs/designs/03-architecture.md` 的目录约定：
 
 ```text
 my-wiki/
@@ -199,7 +199,7 @@ src/stores/
 
 ### 验收标准
 
-- [ ] 界面与 `docs/07-jade-garden-mvp-design.md` 布局一致：Ribbon + 左侧边栏 + 主区域 + 底栏。
+- [ ] 界面与 `docs/designs/07-jade-garden-mvp-design.md` 布局一致：Ribbon + 左侧边栏 + 主区域 + 底栏。
 - [ ] 点击文件树中的文件，主区域打开对应页签（内容先用占位文本）。
 - [ ] 可以新建/重命名/删除 `.ad` 文件，文件树实时刷新。
 - [ ] 底栏显示当前工作区名。

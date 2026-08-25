@@ -1,6 +1,6 @@
 # Plan 017：渲染统一与包合并（@autodown/engine 0.3.0）
 
-> 状态：**草案（待立项）**。设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §3/§6。
+> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §3/§6。
 > 立项：2026-08-25。前置：**Plan 016 完成**（块模型 + 强类型解析在册）。
 > 关联：plan 008（markstream 消灭，本计划是其渲染层收口）、plan 013
 > （editor `.at` 化，第 1 层组件资产在本计划后归 engine）。

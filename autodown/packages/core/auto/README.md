@@ -84,7 +84,7 @@ top of the .at file and verified by `tmp/dsl-probes/plan016/` probes; highlights
 - no `else ->` arm in `is` (broken in a2ts); no `is` on optionals (consume via
   `??` on plain identifiers);
 - attrs are `List<Attr>` and marks `List<Mark>` — deliberately NOT
-  `Map<str, Value>`/`Set<Mark>` from the docs/09 §5.1 sketch: a2ts maps `Map`
+  `Map<str, Value>`/`Set<Mark>` from the docs/designs/09 §5.1 sketch: a2ts maps `Map`
   to `Record` but passes `.contains` through unmapped, and a2r cannot index
   maps (probe A3). List scans over tiny sets are portable on both targets;
 - string ops restricted to `.slice(a, b)` / `.length` / `+` / `==`;

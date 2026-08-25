@@ -55,7 +55,7 @@
 
 ### 2.2 非目标
 
-- 不改 `.ad` 文本格式（`docs/02-ad-format.md` 不动，roundtrip 测试存活）。
+- 不改 `.ad` 文本格式（`docs/designs/02-ad-format.md` 不动，roundtrip 测试存活）。
 - 不做协同编辑（yjs 系为死依赖，本设计直接清理；OT/CRDT 留架构钩子不实现）。
 - 不在本设计内做 musk 侧迁移执行（musk 自有 PLAN-041，本仓只保证出口就绪，
   见 §10）。
@@ -166,7 +166,7 @@ Selection { anchor: BlockPos, head: BlockPos }   # BlockPos = {blockId, offset}
 - **BlockId 进内核**：现为 editor 的 BlockId 装饰（`data-block-id` DOM +
   `getBlockMap()` expose），jade-garden 滚动定位/块链复制与后端索引都锚定
   它。收编为模型一等公民后，`.ad` 侧沿用"解析时注入、序列化时可选输出"
-  策略（`docs/02-ad-format.md` §3.1）。
+  策略（`docs/designs/02-ad-format.md` §3.1）。
 - **IAL 预处理保留**：core 的 `preprocessMarkdown`/`buildIAL` 迁入 parser
   前置步骤。
 
@@ -298,7 +298,7 @@ Table/Codeblock/Image/Separator…`。这一映射是"渲染走 AURA"的落点�
 
 ### 10.3 路线图修订
 
-`docs/06-roadmap.md` Phase 1 的"canonical AST 基于 ProseMirror JSON"决策
+`docs/designs/06-roadmap.md` Phase 1 的"canonical AST 基于 ProseMirror JSON"决策
 **废止**，改为"基于统一块模型（本文档 §5）"；jade-garden 前端
 `lib/blockParser.ts` 与后端 `parser.rs` 的块语义对齐到内核序列化器输出
 （保持 API 形状，Plan 020 校准）。
@@ -317,7 +317,7 @@ Table/Codeblock/Image/Separator…`。这一映射是"渲染走 AURA"的落点�
 
 ## 12. 与既有文档/计划的关系
 
-- `docs/03-architecture.md`：前端组件表更新为 engine 单包（020 收口时改）。
+- `docs/designs/03-architecture.md`：前端组件表更新为 engine 单包（020 收口时改）。
 - plan 008（archived）：渲染自研路线的奠基，本设计是其"编辑侧续篇"——
   待澄清 2 预留的自绘编辑器路线在此落地。
 - plan 013（archived）：editor `.at` 化 100%，第 1 层组件资产直接复用。
@@ -331,7 +331,7 @@ Table/Codeblock/Image/Separator…`。这一映射是"渲染走 AURA"的落点�
 
 | 计划 | 主题 | 交付 |
 |---|---|---|
-| [Plan 016](../plans/016-unified-block-core.md) | 统一块模型内核 | 强类型块树 + 选区/操作 + 序列化 + rust 发射探针 |
+| [Plan 016](../plans/archive/016-unified-block-core.md) | 统一块模型内核 | 强类型块树 + 选区/操作 + 序列化 + rust 发射探针 |
 | [Plan 017](../plans/017-render-unify-package-merge.md) | 渲染统一与包合并 | `@autodown/engine` 0.3.0 + 面板渲染器 + DOM 契约保持 |
 | [Plan 018](../plans/018-editor-kernel-replacement.md) | 编辑内核替换（vue） | Tiptap 退役 + 自研编辑层 + 命令层 API |
 | [Plan 019](../plans/019-rust-platform.md) | rust 平台落地 | autodown-core crate + iced 渲染 + 编辑壳 + registry 重定向 |

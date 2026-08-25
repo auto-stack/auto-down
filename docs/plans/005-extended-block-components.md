@@ -503,7 +503,7 @@ Phase 1 已在 `@autodown/editor` 和 `@autodown/vue` 中实现并合并。
 - `packages/vue/src/StreamingRenderer.vue`
 - `packages/vue/package.json`
 - `demo/src/main.ts`
-- `plans/005-extended-block-components.md`
+- `docs/plans/005-extended-block-components.md`
 
 ### 验证
 

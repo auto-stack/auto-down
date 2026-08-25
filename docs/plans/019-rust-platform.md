@@ -1,6 +1,6 @@
 # Plan 019：rust 平台落地（autodown-core crate + iced 渲染 + 编辑壳）
 
-> 状态：**草案（待立项）**。设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §4/§6.1/§7.2。
+> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §4/§6.1/§7.2。
 > 立项：2026-08-25。前置：**Plan 016 完成**（块模型 + a2r 探针裁定）、
 > **Plan 017 完成**（面板映射 + AURA registry 对齐表，本计划的直接输入）。
 > 与 Plan 018 并行（不同端不同仓，汇合点在 020）。

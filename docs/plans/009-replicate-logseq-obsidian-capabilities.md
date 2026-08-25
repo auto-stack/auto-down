@@ -1,7 +1,7 @@
 # Plan: Replicate Logseq 0.10.15 / Obsidian-like capabilities in Jade Garden
 
 ## Context
-- We have documented the current state in `docs/08-logseq-obsidian-feature-research.md`.
+- We have documented the current state in `docs/designs/08-logseq-obsidian-feature-research.md`.
 - The reference implementation is **Logseq 0.10.15** (`D:/github/logseq-0.10.15`), the last file-based release. It proves that a one-file-per-page Markdown model can support block IDs, block refs, embeds, `{{query}}`, tasks/SCHEDULED/repeaters, flashcards, whiteboards, and graph view without a database-as-source-of-truth.
 - **Strategic decision (locked)**: stay file-model-first. Files are the source of truth; we add a persistent SQLite index for queries, backlinks, FTS, and block lookups.
 - **Block anchor decision (locked)**: primary syntax is **Obsidian-style `^id`** (short readable anchor). Internally we also accept/emit Logseq-style `id:: <uuid>` for compatibility, mapping both to a stable UUID in the index.

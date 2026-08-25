@@ -114,7 +114,7 @@
 3. **序列化器**：`serializer.at`（块树 → `.ad` 文本），吸收
    `@tiptap/markdown` 角色；roundtrip 验收。
 4. **BlockId 内核化**：块 ID 生成/复用/持久化策略（解析注入、序列化可选
-   输出，按 `docs/02-ad-format.md` §3.1）进模型层。
+   输出，按 `docs/designs/02-ad-format.md` §3.1）进模型层。
 5. **双端发射探针**：a2r（Auto → Rust crate）对块模型所需语言特性的
    覆盖探针 + 裁定报告（循 plan 015 Phase 0 探针模式）。
 

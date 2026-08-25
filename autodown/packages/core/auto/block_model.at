@@ -16,7 +16,7 @@
 // - attrs are `List<Attr>` and marks are `List<Mark>`, NOT Map/Set: a2ts maps
 //   `Map` to Record but passes `.contains` through unmapped (broken JS), and
 //   a2r cannot index maps natively (probe A3); list scan is O(n) over tiny
-//   sets and is 100% portable. This deviates from docs/09 §5.1's schematic
+//   sets and is 100% portable. This deviates from docs/designs/09 §5.1's schematic
 //   `Map<str, Value>`/`Set<Mark>` deliberately.
 // - string ops limited to `.slice(a, b)` / `.slice(a)` / `.length` / `+` /
 //   `==` (verified dual-safe); no char indexing `s[i]` (broken in a2r, B5)

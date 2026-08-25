@@ -1,6 +1,6 @@
 # Plan 020：应用迁移与退役收口（demo / jade-garden / musk / 旧包）
 
-> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §10。
+> 状态：**执行中（2026-08-26 批次一：jade 迁移核心完成——异步内容重渲染修复、块点击聚焦/Ctrl+End/宿主自动聚焦、chain 模板插入经适配器多行化；jade e2e 21/23 + 视觉基线重录；demo 9/9 无回归。余：wikilink 点击交互（旧 node view，需编辑器侧 [[..]] span + open-wiki-link 发射）、bubble/表格/代码块菜单、019 rust 平台门限与 1.0.0 收口）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §10。
 > 立项：2026-08-25。前置：**Plan 017 完成**（迁移最低门限：渲染统一 +
    shim 可用）；**018/019 完成为 1.0.0 门限**。
 > 关联：DEBTS.md 008 行（musk T13/T10 欠账，本计划强制先清）。

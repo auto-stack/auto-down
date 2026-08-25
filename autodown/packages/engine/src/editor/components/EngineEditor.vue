@@ -1,7 +1,7 @@
 <template>
   <div ref="root" class="autodown-editor">
     <div ref="wrapper" class="autodown-editor-content-wrapper">
-      <div class="autodown-editor-content" data-engine-editor>
+      <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
         <component
           :is="block.view"
@@ -61,8 +61,8 @@ const engine = new EditorEngine(docFromMarkdown(props.modelValue ?? props.conten
 const adapter = createEditorAdapter(engine)
 const slashItems = getSlashItems({ extraSlashItems: props.extraSlashItems })
 
-engine.onChange((change) => {
-  if (change.history) repaintVersion.value++
+engine.onChange(() => {
+  repaintVersion.value++ // async content loads / every change repaints
   emitUpdate()
 })
 
@@ -110,7 +110,7 @@ const views = computed<BlockView[]>(() => {
       id: node.id,
       view: {
         render: () =>
-          h('div', { class: 'node-slot', 'data-node-index': String(previewIdx - 1), 'data-node-type': BlockType[node.kind], 'data-block-id': node.id }, [
+          h('div', { class: 'node-slot', 'data-node-index': String(previewIdx - 1), 'data-node-type': BlockType[node.kind], 'data-block-id': node.id, onClick: () => selectBlock(node.id) }, [
             h('div', { class: 'node-content' }, [vnode ?? h('div', { class: 'unknown-node' }, '')]),
             h('div', { class: 'autodown-block-boundary', 'data-boundary-for': node.id }),
           ]),
@@ -173,6 +173,23 @@ function getBlockMap(): BlockInfo[] {
     })
   })
   return out
+}
+
+function selectBlock(id: string): void {
+  const found = engine.doc.children.find((c) => c.id === id)
+  if (found) {
+    const p = new BlockPos(id, 0)
+    engine.select(new Selection(p, p))
+    repaintVersion.value++
+  }
+}
+
+function onContentKeydown(e: KeyboardEvent): void {
+  if (e.ctrlKey && e.key === 'End') {
+    e.preventDefault()
+    const last = engine.doc.children[engine.doc.children.length - 1]
+    if (last) selectBlock(last.id)
+  }
 }
 
 function focusFirstBlock(): void {

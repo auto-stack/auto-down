@@ -11,6 +11,7 @@
 // the inline-mark op extension in Phase 4.
 
 import {
+  withChildren,
   BlockNode,
   attrSet,
   replaceNode,
@@ -23,6 +24,7 @@ import {
   leafBlock,
 } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
+
 import type { EditorEngine } from './editor-engine'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
@@ -79,7 +81,22 @@ function createChain(engine: EditorEngine): ChainLike {
       return chain
     },
     insertContent: (content: string) => {
-      pending.push((tree) => insertMarkdown(tree, engine, String(content ?? '')))
+      const md = String(content ?? '')
+      pending.push((tree) => {
+        if (!md.includes('\n')) return insertMarkdown(tree, engine, md)
+        // multiline template: parse to blocks, insert after the current one
+        const parsed = parse_blocks(md, true)
+        const kids = parsed.children
+        if (kids.length === 0) return tree
+        const id = currentBlockId(engine)
+        const found = findBlock(tree, id)
+        if (!found) return tree
+        const siblings = tree.children
+        const idx = siblings.findIndex((c) => c.id === id)
+        const emptied = blockText(found) === '' ? [] : [found]
+        const next = [...siblings.slice(0, idx), ...emptied, ...kids, ...siblings.slice(idx + 1)]
+        return withChildren(tree, next)
+      })
       return chain
     },
     deleteRange: (range: { from: number; to: number }) => {

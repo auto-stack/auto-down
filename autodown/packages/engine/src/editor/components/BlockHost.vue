@@ -20,13 +20,27 @@
 // All logic lives in BlockHostController (headless); this file only wires
 // DOM events. While focused, the host owns its DOM text (model updates flow
 // host → model); the engine repaint happens on focus leave / history only.
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 
 const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
 
 const el = ref<HTMLElement | null>(null)
+
+// when the host mounts it IS the newly focused block — take DOM focus with
+// the caret at the end (append-at-end flows, Ctrl+End parity)
+onMounted(() => {
+  const node = el.value
+  if (!node) return
+  node.focus()
+  const range = document.createRange()
+  range.selectNodeContents(node)
+  range.collapse(false)
+  const sel = window.getSelection()
+  sel?.removeAllRanges()
+  sel?.addRange(range)
+})
 const initialText = computed(() => props.controller.text)
 
 function onInput(): void {

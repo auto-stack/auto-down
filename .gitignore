@@ -54,3 +54,4 @@ autodown/test-results/
 
 # pnpm store
 .pnpm-store/
+.worktree/

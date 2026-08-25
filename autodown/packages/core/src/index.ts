@@ -8,3 +8,4 @@
 export * from './ial.js'
 export * from './block-model.js'
 export * from './markdown-parser.js'
+export * from './serializer.js'

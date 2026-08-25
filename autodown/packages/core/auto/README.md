@@ -25,6 +25,17 @@ generated pure re-export barrel (`export * from` the three modules).
   Generated to `src/markdown-parser.ts`; post-fix M1 rewrites the
   `use block_model:` / `use ial:` imports to `./block-model.js` / `./ial.js`
   and hoists them to the top of the file, plus B1 (struct-`new`).
+- `serializer.at` — block tree → `.ad` text (plan 016 Phase 3):
+  `serialize(root, emitIds)` / `serializeBlocks(blocks, emitIds)`. Covers the
+  plan-008 whitelist set plus structural placeholders for the extended blocks
+  (`$callout(type: …) {…}` / `$details(…)` / `[[wikilink]]` / `$query(…)` /
+  `$embed(…)` / mermaid fence / `%{…}%` math). Re-emits table IAL in the
+  exact `preprocessMarkdown` shape (ialText mirrors `buildIAL`; reimplemented
+  so the serializer depends on block_model ONLY and stays in the a2r-clean
+  Phase 4 subset). Multi-line (setext) headings round-trip as setext.
+  Roundtrip-pinned by `src/__tests__/serializer-roundtrip.test.ts` (three
+  layers: semantic equivalence / byte-stable snapshots / BlockId roundtrip).
+  Post-fixes: M1 (shared helper `hoistUseImports`), B1 lenient.
 - `gen.mjs` — build pipeline: runs `auto trans --path auto/X.at ts` per source,
   keeps the raw compiler output at `X.raw.ts`, applies the documented post-fixes
   (listed at the top of `gen.mjs`), writes `src/*.ts` and the `src/index.ts`
@@ -38,7 +49,8 @@ generated pure re-export barrel (`export * from` the three modules).
 cd packages/core
 pnpm gen        # = node auto/gen.mjs
 pnpm build      # = tsc, emits dist/ (src/__tests__ excluded from the build)
-pnpm test       # = vitest run (block-model.test.ts 43 + block-parser.test.ts 15)
+pnpm test       # = vitest run (block-model 43 + block-parser 15
+                #   + serializer-roundtrip 46 = 104)
 ```
 
 The Auto compiler binary comes from a local checkout of the auto-lang repo

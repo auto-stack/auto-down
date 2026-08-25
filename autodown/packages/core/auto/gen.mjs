@@ -4,6 +4,7 @@
 //   auto/ial.at             -> src/ial.ts
 //   auto/block_model.at     -> src/block-model.ts
 //   auto/markdown_parser.at -> src/markdown-parser.ts
+//   auto/serializer.at      -> src/serializer.ts
 //   (barrel)                -> src/index.ts  (pure re-exports)
 //
 // Usage:  pnpm gen           (from packages/core)
@@ -37,9 +38,15 @@
 // markdown_parser.at (plan 016 Phase 2, moved from packages/vue/auto):
 //   M1  `use block_model:` / `use ial:` emit bare module specifiers mid-file
 //       (at the `use` site) -> rewrite to "./block-model.js" / "./ial.js" and
-//       hoist both import lines to the top of the file.
+//       hoist both import lines to the top of the file. M1 is shared via
+//       hoistUseImports(label, src, {from: to}).
 //   B1  same struct-`new` fix as block_model (the converter section
 //       constructs BlockNode/InlineSpan/Attr in return/let positions).
+//
+// serializer.at (plan 016 Phase 3):
+//   M1  `use block_model:` -> "./block-model.js", hoisted (same helper).
+//   B1  applied leniently (no-op today: the serializer constructs no structs
+//       outside argument position).
 //
 // Historical note (2026-08-25): the pre-existing F1 (`number | null[]`
 // precedence) and F2 (missing `export`) fixes were retired — current auto.exe
@@ -172,21 +179,26 @@ console.log('[gen] auto/block_model.at -> src/block-model.ts (raw kept at auto/b
 
 // ------------------------------------------------------------- markdown_parser.at
 
+// M1 (shared): a2ts emits `use x:` as `import {...} from "x"` at the use
+// site (mid-file) with a bare module specifier -> rewrite the specifier per
+// the given mapping and hoist the import lines to the top of the file.
+const hoistUseImports = (label, s, mapping) =>
+  apply(label, s, (src) => {
+    let hoisted = ''
+    let stripped = src
+    for (const [from, to] of Object.entries(mapping)) {
+      const m = new RegExp(`import \\{[^}]+\\} from "${from}";`).exec(stripped)
+      if (!m) return src
+      hoisted += m[0].replace(`from "${from}"`, `from "${to}"`) + '\n'
+      stripped = stripped.replace(m[0], '')
+    }
+    return hoisted + stripped
+  })
+
 let md = transpile('markdown_parser')
 
 // M1: rewrite + hoist the `use` imports
-md = apply('M1', md, (s) => {
-  const bmImport = /import \{[^}]+\} from "block_model";/.exec(s)
-  const ialImport = /import \{[^}]+\} from "ial";/.exec(s)
-  if (!bmImport || !ialImport) return s
-  const hoisted =
-    bmImport[0].replace('from "block_model"', 'from "./block-model.js"') +
-    '\n' +
-    ialImport[0].replace('from "ial"', 'from "./ial.js"') +
-    '\n'
-  const stripped = s.replace(bmImport[0], '').replace(ialImport[0], '')
-  return hoisted + stripped
-})
+md = hoistUseImports('M1', md, { block_model: './block-model.js', ial: './ial.js' })
 
 // B1: struct constructions need `new` outside argument position
 md = apply('B1', md, addNewToStructCtors)
@@ -196,6 +208,22 @@ writeFileSync(
   headerFor('AutoDown Core — incremental markdown parser (semantic subset) + strong block-tree output.', 'markdown_parser.at') + md
 )
 console.log('[gen] auto/markdown_parser.at -> src/markdown-parser.ts (raw kept at auto/markdown_parser.raw.ts)')
+
+// ------------------------------------------------------------- serializer.at
+
+let ser = transpile('serializer')
+
+// M1: rewrite + hoist the `use block_model:` import
+ser = hoistUseImports('M1', ser, { block_model: './block-model.js' })
+// B1: serializer.at constructs no structs outside argument position today;
+// run the fix leniently (no-op is fine here, unlike the parser above).
+ser = addNewToStructCtors(ser)
+
+writeFileSync(
+  join(pkgRoot, 'src', 'serializer.ts'),
+  headerFor('AutoDown Core — block tree -> .ad text serializer (roundtrip-pinned).', 'serializer.at') + ser
+)
+console.log('[gen] auto/serializer.at -> src/serializer.ts (raw kept at auto/serializer.raw.ts)')
 
 // ------------------------------------------------------------- barrel
 
@@ -209,6 +237,7 @@ const barrel = `/**
 export * from './ial.js'
 export * from './block-model.js'
 export * from './markdown-parser.js'
+export * from './serializer.js'
 `
 
 writeFileSync(join(pkgRoot, 'src', 'index.ts'), barrel)

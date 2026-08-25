@@ -1,8 +1,23 @@
 # Plan 016：统一块模型内核（block_model + serializer + 双端发射探针）
 
-> 状态：**Phase 2 完成（2026-08-25）**，Phase 3 待开工。
+> 状态：**Phase 3 完成（2026-08-25）**，Phase 4 待开工。
 > 设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
 > 立项：2026-08-25。
+> Phase 3 产物：
+> - `serializer.at`（~350 行）：块树 → `.ad` 文本，`serialize(root,
+>   emitIds)` / `serializeBlocks` 出口；只依赖 block_model（IAL 内置
+>   `ialText` 复刻 `buildIAL` 有对拍），留在 Phase 4 a2r 无缺口子集。
+> - roundtrip 三层验收全过：①语义等价 5 musk fixtures + 22 定向
+>   （强树归一化对拍 + fixpoint 三轮）；②字节稳定（快照 + 二轮
+>   serialize 逐字节相等）——S1 setext 多行 heading 保真回退已修，
+>   S2 表格分隔行归一（`:---`）为风格登记项；③BlockId roundtrip：
+>   `^anchor` 随文本保留，emitIds=true 追加 ` ^<id>` 重解析不漂移。
+> - 扩展块（callout/details/wikilink/query/embed/mermaid/math）定向
+>   构造序列化快照钉死（AutoDown 方言表面语法）。
+> - 门：core 104/104（43+15+46）、vue 82/82、editor 22/22；gen
+>   确定性两连跑一致。
+> - 保真限制登记（REPORT S 补记）：span 内字面字符/attr 值不转义
+>   （占位级）、rows-only IAL 不回环、`loading` 标志不序列化。
 > Phase 2 产物：
 > - `markdown_parser.at`（1505 行）从 vue 包迁入 `packages/core/auto/`，
 >   尾部新增强类型转换层：`parse_blocks(src, final) -> BlockTree` +

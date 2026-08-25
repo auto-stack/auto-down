@@ -1,0 +1,76 @@
+// AutoDown Engine — palette map (plan 017 Phase 2).
+//
+// Pure mapping: markdown block type -> view panel spec. The panel
+// vocabulary is aligned with the auto-lang AURA widget registry
+// (crates/auto-lang/src/ui_gen/widget/registry.rs); kinds with no registry
+// counterpart yet carry an empty registry field and are to be registered on
+// the rust side in plan 019 (see packages/engine/PANEL-ALIGNMENT.md).
+//
+// Data + total functions only — no DOM, no vue; dual-target portable
+// (a2ts today, a2r input for plan 019).
+//
+// Auto constructs used (all proven in block_model.at / ial.at):
+// - `type X { field ty }` struct + positional constructor X(a, b, ...)
+// - `var` for locals reassigned after declaration
+// - `List<str>` literals; `str + str` concatenation; `.to(str)` casts
+
+type PanelSpec {
+    kind str
+    tag str
+    class_token str
+    registry str
+    extension bool
+}
+
+// Panel spec for a heading block. The parser emits one "heading" block type
+// with a level attribute; the panel vocabulary splits it into H1..H6 (the
+// registry has no heading widget yet — 019 registers the family).
+pub fn panelHeading(level int) PanelSpec {
+    var l = level
+    if l < 1 { l = 1 }
+    if l > 6 { l = 6 }
+    return PanelSpec("H" + l.to(str), "h" + l.to(str), "heading-node", "", false)
+}
+
+// Total mapping: any block type (including future / extension types the
+// parser may grow) resolves to a panel spec. Unknown types degrade to the
+// Unknown panel; extension panels resolve here but have no builtin renderer
+// and degrade unless a consumer registers one (panel-registry).
+pub fn panelOfBlock(blockType str) PanelSpec {
+    if blockType == "paragraph" { return PanelSpec("Text", "p", "paragraph-node", "Text", false) }
+    if blockType == "text" { return PanelSpec("Text", "span", "text-node", "Text", false) }
+    if blockType == "heading" { return panelHeading(1) }
+    if blockType == "thematic_break" { return PanelSpec("Separator", "hr", "hr-node", "Separator", false) }
+    if blockType == "code_block" { return PanelSpec("Codeblock", "div", "code-block-container", "", false) }
+    if blockType == "blockquote" { return PanelSpec("Quote", "blockquote", "blockquote", "", false) }
+    if blockType == "list" { return PanelSpec("List", "ul", "list-node", "", false) }
+    if blockType == "table" { return PanelSpec("Table", "table", "table-node", "", false) }
+    // extension slots: consumer-pluggable panels (plan 017 待澄清 #2 — 注册位)
+    if blockType == "callout" { return PanelSpec("Callout", "div", "callout-node", "", true) }
+    if blockType == "details" { return PanelSpec("Details", "div", "details-node", "", true) }
+    if blockType == "math_block" { return PanelSpec("MathBlock", "div", "math-block", "", true) }
+    if blockType == "mermaid" { return PanelSpec("Mermaid", "div", "mermaid-block-container", "Mermaid", true) }
+    if blockType == "query" { return PanelSpec("Query", "div", "query-block", "", true) }
+    if blockType == "embed" { return PanelSpec("Embed", "div", "embed-block", "", true) }
+    return PanelSpec("Unknown", "div", "unknown-node", "", false)
+}
+
+pub fn isExtensionPanel(kind str) bool {
+    if kind == "Callout" { return true }
+    if kind == "Details" { return true }
+    if kind == "MathBlock" { return true }
+    if kind == "Mermaid" { return true }
+    if kind == "Query" { return true }
+    if kind == "Embed" { return true }
+    return false
+}
+
+// Canonical order matters: PANEL-ALIGNMENT.md and the 019 alignment review
+// consume these lists as the single enumeration of the panel vocabulary.
+pub fn builtinPanelKinds() List<str> {
+    return ["Text", "H1", "H2", "H3", "H4", "H5", "H6", "Separator", "Codeblock", "Quote", "List", "Table"]
+}
+
+pub fn extensionPanelKinds() List<str> {
+    return ["Callout", "Details", "MathBlock", "Mermaid", "Query", "Embed"]
+}

@@ -3,8 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "noEmit": false,
+    "declaration": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/auto/gen"]
+  "include": ["src/**/*"]
 }

@@ -1,21 +1,24 @@
 // Node tree -> VNode renderer for the self-hosted MarkdownRender
-// (plan 008, Phase 3). Functional and recursive — no component recursion
-// limits. The DOM shape mirrors what the retired markstream-vue renderer
-// produced (node-slot/node-content wrappers, data-node-type,
-// pre[data-language], table-node, code-block-header, embedded
-// markdown-renderer containers) so downstream chrome (scroll sync via
-// .node-slot, code-header injection via pre[data-language], CSS overrides)
-// keeps working unchanged.
+// (plan 008, Phase 3; registry-driven since plan 017 Phase 2).
+//
+// Block-level dispatch goes through the panel registry: the palette map
+// (auto/palette_map.at, single source) resolves the block type to a panel
+// spec, panel-registry resolves the spec to a renderer (custom → builtin →
+// degrade). Inline rendering and the streaming typewriter budget stay here.
+//
+// The DOM shape mirrors what the retired markstream-vue renderer produced
+// (node-slot/node-content wrappers, data-node-type, pre[data-language],
+// table-node, embedded markdown-renderer containers) so downstream chrome
+// (scroll sync via .node-slot, code-header injection via
+// pre[data-language], CSS overrides) keeps working unchanged.
 
 import { h, type VNode } from 'vue'
+import { resolvePanelRenderer, specForNode, type RevealBudget } from './panel-registry'
 
-export interface RevealBudget {
-  /** characters of inline text still revealable (typewriter); Infinity = all */
-  remaining: number
-}
+export type { RevealBudget } from './panel-registry'
 
 export function renderNodes(nodes: any[], final: boolean | undefined, reveal?: number): VNode[] {
-  const budget: RevealBudget | undefined =
+  const budget =
     reveal !== undefined && Number.isFinite(reveal) ? { remaining: reveal } : undefined
   return (nodes ?? []).map((node: any, i: number) => {
     // the typewriter budget applies only to the LAST top-level node
@@ -38,6 +41,8 @@ function renderEmbedded(children: any[], final: boolean | undefined, budget?: Re
     const isLast = i === (children?.length ?? 0) - 1
     return renderBlockNode(node, i, final, isLast ? budget : undefined)
   })
+  // root class keeps the legacy `markstream-vue` segment until plan 017
+  // Phase 3 (the only sanctioned DOM break — see the plan)
   return h('div', { class: 'markstream-vue markdown-renderer' }, inner)
 }
 
@@ -100,105 +105,14 @@ function renderInlineNode(node: any, final: boolean | undefined, budget?: Reveal
   }
 }
 
-function alignClass(cell: any): string {
-  if (cell.align === 'center') return 'text-center'
-  if (cell.align === 'right') return 'text-right'
-  return 'text-left'
-}
-
+/** Registry dispatch: palette map resolves the panel spec, the registry
+ *  resolves the renderer (custom → builtin), unregistered extension panels
+ *  and unknown types degrade to the unknown-node div. */
 function renderNodeElement(node: any, final: boolean | undefined, budget?: RevealBudget): VNode {
-  switch (node.type) {
-    case 'heading': {
-      const level = Math.min(6, Math.max(1, node.level))
-      return h(`h${level}`, { class: `heading-node heading-${level}`, dir: 'auto' }, [
-        ...renderInlineChildren(node.children, final, budget),
-      ])
-    }
-    case 'paragraph':
-      return h('p', { class: 'paragraph-node', dir: 'auto' }, renderInlineChildren(node.children, final, budget))
-    case 'text':
-      // a bare text block (e.g. inside a table cell)
-      return h('span', { class: 'whitespace-pre-wrap break-words text-node' }, [h('span', node.content)])
-    case 'thematic_break':
-      return h('hr', { class: 'hr-node' })
-    case 'code_block':
-      return renderCodeBlock(node)
-    case 'blockquote':
-      return h('blockquote', { class: 'blockquote', dir: 'auto' }, [
-        renderEmbedded(node.children, final, budget),
-      ])
-    case 'list': {
-      const tag = node.ordered ? 'ol' : 'ul'
-      return h(
-        tag,
-        { class: node.ordered ? 'list-node list-decimal' : 'list-node list-disc' },
-        (node.items ?? []).map((item: any) =>
-          h('li', { class: 'list-item', dir: 'auto' }, [renderEmbedded(item.children ?? [], final, budget)])
-        )
-      )
-    }
-    case 'table':
-      return h('table', { class: 'table-node', 'aria-busy': 'false' }, [
-        h('thead', {}, [
-          h(
-            'tr',
-            {},
-            (node.header?.cells ?? []).map((cell: any) =>
-              h('th', { dir: 'auto', class: alignClass(cell) }, [
-                renderEmbedded(cell.children ?? [], final, budget),
-                h('button', { type: 'button', class: 'table-node__resize-handle' }),
-              ])
-            )
-          ),
-        ]),
-        h(
-          'tbody',
-          {},
-          (node.rows ?? []).map((row: any) =>
-            h(
-              'tr',
-              {},
-              (row.cells ?? []).map((cell: any) =>
-                h('td', { dir: 'auto', class: alignClass(cell) }, [
-                  renderEmbedded(cell.children ?? [], final, budget),
-                ])
-              )
-            )
-          )
-        ),
-      ])
-    default:
-      return h('div', { class: 'unknown-node' }, String(node.type))
+  const spec = specForNode(node)
+  const renderer = resolvePanelRenderer(spec)
+  if (renderer) {
+    return renderer({ node, final, budget, spec, renderEmbedded, renderInlineChildren })
   }
-}
-
-/**
- * Code block chrome: header (language label + actions area) over a
- * pre[data-language] > code pair. The pre attributes (data-language) are the
- * contract for downstream highlighters and header injection.
- * Optional capability degradation (plan 008 goal 3): without a highlighter
- * factory the code renders as plain text inside the same structure.
- */
-function renderCodeBlock(node: any): VNode {
-  const language = node.language ? String(node.language) : ''
-  return h('div', { class: 'code-block-container rounded-lg border' }, [
-    h('div', { class: 'code-block-header flex justify-between items-center' }, [
-      h('div', { class: 'code-header-main' }, [
-        h('div', { class: 'code-header-copy' }, [
-          h('div', { class: 'code-header-title' }, language),
-        ]),
-      ]),
-      h('div', { class: 'flex items-center gap-0.5' }),
-    ]),
-    h(
-      'pre',
-      {
-        class: `language-${language || 'text'} code-pre-fallback is-wrap`,
-        'data-language': language,
-        'aria-busy': 'false',
-        tabindex: '0',
-      },
-      [h('code', { translate: 'no' }, node.code)]
-    ),
-  ])
+  return h('div', { class: 'unknown-node' }, String(node.type))
 }

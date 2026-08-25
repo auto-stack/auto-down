@@ -17,7 +17,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && node build-shim.mjs",
+    "build": "node -e \"require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && tsc && node build-shim.mjs",
     "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {

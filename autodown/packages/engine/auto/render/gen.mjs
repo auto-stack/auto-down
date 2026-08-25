@@ -169,3 +169,56 @@ writeFileSync(join(pkgRoot, 'src', 'render', 'render-scheduler.generated.ts'), s
 console.log(
   '[gen] auto/render_scheduler.at -> src/render/render-scheduler.generated.ts (raw kept at auto/render_scheduler.raw.ts)'
 )
+
+// palette_map.at (plan 017 Phase 2): block type -> view panel spec, the
+// single source of the panel vocabulary (see PANEL-ALIGNMENT.md). Pure data
+// + total functions.
+let paletteOut = transpile('palette_map')
+
+// PP1: a2ts emits structs as classes but CALLS them without `new` (same
+// emitter quirk streaming's JSONBlock fix hit). Convert to an interface +
+// factory; call sites are all `return PanelSpec(...)`.
+{
+  const applyPalette = (label, fn) => {
+    const next = fn(paletteOut)
+    if (next === paletteOut) {
+      console.error(`palette post-fix ${label} did not match anything; compiler output changed?`)
+      process.exit(1)
+    }
+    paletteOut = next
+  }
+  applyPalette('PP1a', (s) =>
+    s.replace(
+      /export class PanelSpec \{[\s\S]*?\n\}/,
+      [
+        'export interface PanelSpec {',
+        '    kind: string;',
+        '    tag: string;',
+        '    class_token: string;',
+        '    registry: string;',
+        '    extension: boolean;',
+        '}',
+        '',
+        'function mkPanelSpec(kind: string, tag: string, class_token: string, registry: string, extension: boolean): PanelSpec {',
+        '    return { kind, tag, class_token, registry, extension }',
+        '}',
+      ].join('\n')
+    )
+  )
+  applyPalette('PP1b', (s) => s.split('return PanelSpec(').join('return mkPanelSpec('))
+}
+
+const paletteHeader = `/**
+ * @autodown/engine — palette map (render layer).
+ *
+ * GENERATED FILE — do not edit by hand.
+ * Source: auto/palette_map.at (Auto language). Regenerate with: pnpm gen:render
+ * (see auto/README.md for the pipeline and the applied post-fixes)
+ */
+
+`
+
+writeFileSync(join(pkgRoot, 'src', 'render', 'palette-map.generated.ts'), paletteHeader + paletteOut)
+console.log(
+  '[gen] auto/palette_map.at -> src/render/palette-map.generated.ts (raw kept at auto/palette_map.raw.ts)'
+)

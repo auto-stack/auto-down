@@ -1,4 +1,4 @@
-// Regenerate src/streaming.generated.ts + src/streaming-table.generated.ts
+// Regenerate src/render/streaming.generated.ts + src/render/streaming-table.generated.ts
 // from the Auto language sources in this directory (plan 008, Phase 1).
 //
 // Usage:  pnpm gen           (from packages/vue)
@@ -34,8 +34,8 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const here = dirname(fileURLToPath(import.meta.url)) // packages/vue/auto
-const pkgRoot = join(here, '..')
+const here = dirname(fileURLToPath(import.meta.url)) // packages/engine/auto/render
+const pkgRoot = join(here, '../..')
 
 const candidates = [
   process.env.AUTO_EXE,
@@ -124,8 +124,8 @@ const streamingHeader = `/**
 
 `
 
-writeFileSync(join(pkgRoot, 'src', 'streaming.generated.ts'), streamingHeader + out)
-console.log('[gen] auto/streaming.at -> src/streaming.generated.ts (raw kept at auto/streaming.raw.ts)')
+writeFileSync(join(pkgRoot, 'src', 'render', 'streaming.generated.ts'), streamingHeader + out)
+console.log('[gen] auto/streaming.at -> src/render/streaming.generated.ts (raw kept at auto/streaming.raw.ts)')
 
 // streaming_table.at needs no post-fixes today; still run through the same
 // pipeline so the raw output stays inspectable.
@@ -140,9 +140,9 @@ const tableHeader = `/**
 
 `
 
-writeFileSync(join(pkgRoot, 'src', 'streaming-table.generated.ts'), tableHeader + tableOut)
+writeFileSync(join(pkgRoot, 'src', 'render', 'streaming-table.generated.ts'), tableHeader + tableOut)
 console.log(
-  '[gen] auto/streaming_table.at -> src/streaming-table.generated.ts (raw kept at auto/streaming_table.raw.ts)'
+  '[gen] auto/streaming_table.at -> src/render/streaming-table.generated.ts (raw kept at auto/streaming_table.raw.ts)'
 )
 
 // markdown_parser.at moved to @autodown/core in plan 016 Phase 2
@@ -165,7 +165,7 @@ const schedHeader = `/**
 
 `
 
-writeFileSync(join(pkgRoot, 'src', 'render-scheduler.generated.ts'), schedHeader + schedOut)
+writeFileSync(join(pkgRoot, 'src', 'render', 'render-scheduler.generated.ts'), schedHeader + schedOut)
 console.log(
-  '[gen] auto/render_scheduler.at -> src/render-scheduler.generated.ts (raw kept at auto/render_scheduler.raw.ts)'
+  '[gen] auto/render_scheduler.at -> src/render/render-scheduler.generated.ts (raw kept at auto/render_scheduler.raw.ts)'
 )

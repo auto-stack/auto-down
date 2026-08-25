@@ -62,8 +62,8 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const here = dirname(fileURLToPath(import.meta.url)) // packages/core/auto
-const pkgRoot = join(here, '..')
+const here = dirname(fileURLToPath(import.meta.url)) // packages/engine/auto/parser
+const pkgRoot = join(here, '../..')
 
 const candidates = [
   process.env.AUTO_EXE,
@@ -157,7 +157,7 @@ ial = apply('I2b', ial, (s) =>
 )
 
 writeFileSync(
-  join(pkgRoot, 'src', 'ial.ts'),
+  join(pkgRoot, 'src', 'parser', 'ial.ts'),
   headerFor('AutoDown Core — Shared types and IAL (Inline Attribute List) utilities.', 'ial.at') + ial
 )
 console.log('[gen] auto/ial.at -> src/ial.ts (raw kept at auto/ial.raw.ts)')
@@ -172,7 +172,7 @@ bm = apply('B2', bm, (s) => s.replaceAll('export const enum', 'export enum'))
 bm = apply('B1', bm, addNewToStructCtors)
 
 writeFileSync(
-  join(pkgRoot, 'src', 'block-model.ts'),
+  join(pkgRoot, 'src', 'parser', 'block-model.ts'),
   headerFor('AutoDown Core — unified block model (block tree, selection, op sequence).', 'block_model.at') + bm
 )
 console.log('[gen] auto/block_model.at -> src/block-model.ts (raw kept at auto/block_model.raw.ts)')
@@ -204,7 +204,7 @@ md = hoistUseImports('M1', md, { block_model: './block-model.js', ial: './ial.js
 md = apply('B1', md, addNewToStructCtors)
 
 writeFileSync(
-  join(pkgRoot, 'src', 'markdown-parser.ts'),
+  join(pkgRoot, 'src', 'parser', 'markdown-parser.ts'),
   headerFor('AutoDown Core — incremental markdown parser (semantic subset) + strong block-tree output.', 'markdown_parser.at') + md
 )
 console.log('[gen] auto/markdown_parser.at -> src/markdown-parser.ts (raw kept at auto/markdown_parser.raw.ts)')
@@ -220,7 +220,7 @@ ser = hoistUseImports('M1', ser, { block_model: './block-model.js' })
 ser = addNewToStructCtors(ser)
 
 writeFileSync(
-  join(pkgRoot, 'src', 'serializer.ts'),
+  join(pkgRoot, 'src', 'parser', 'serializer.ts'),
   headerFor('AutoDown Core — block tree -> .ad text serializer (roundtrip-pinned).', 'serializer.at') + ser
 )
 console.log('[gen] auto/serializer.at -> src/serializer.ts (raw kept at auto/serializer.raw.ts)')
@@ -240,5 +240,5 @@ export * from './markdown-parser.js'
 export * from './serializer.js'
 `
 
-writeFileSync(join(pkgRoot, 'src', 'index.ts'), barrel)
+writeFileSync(join(pkgRoot, 'src', 'parser', 'index.ts'), barrel)
 console.log('[gen] wrote src/index.ts barrel')

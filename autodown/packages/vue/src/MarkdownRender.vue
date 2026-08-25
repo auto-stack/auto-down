@@ -9,7 +9,8 @@
 <script setup lang="ts">
 // Self-hosted markdown renderer (plan 008, Phase 3): replaces the
 // markstream-vue MarkdownRender dependency. The parse layer is the
-// Auto-generated parser (auto/markdown_parser.at -> markdown-parser.generated);
+// Auto-generated parser (moved to @autodown/core in plan 016 Phase 2;
+// markdown-parser.generated is a compatibility redirect);
 // the VNode rendering lives in render-node.ts and keeps the DOM structure
 // (node-slot/node-content wrappers, data-node-type, pre[data-language],
 // table-node, code-block-header) compatible so downstream chrome (scroll

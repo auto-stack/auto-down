@@ -3,8 +3,7 @@
  *
  * GENERATED FILE — do not edit by hand.
  * Source: auto/block_model.at (Auto language). Regenerate with: pnpm gen
- * (see auto/README.md for the pipeline, dual-emission discipline, and the
- * applied post-fixes)
+ * (see auto/README.md for the pipeline and the applied post-fixes)
  */
 
 export class SourceRange {
@@ -22,13 +21,15 @@ export function rng(s: number, e: number): SourceRange {
 }
 
 export type Value =
-    { _tag: "Str", value: string }
+    { _tag: "Null" }
+    | { _tag: "Str", value: string }
     | { _tag: "Int", value: number }
     | { _tag: "Bool", value: boolean }
     | { _tag: "ListV", value: Value[] }
     | { _tag: "AttrsV", value: Attr[] };
 
 export const Value = {
+    Null: () => ({ _tag: "Null" as const }),
     Str: (value: string) => ({ _tag: "Str" as const, value }),
     Int: (value: number) => ({ _tag: "Int" as const, value }),
     Bool: (value: boolean) => ({ _tag: "Bool" as const, value }),
@@ -60,7 +61,10 @@ export function attrGetStr(attrs: Attr[], key: string, dflt: string): string {
     const found = attrGet(attrs, key);
     const v = found ?? Value.Str(dflt);
         const __auto_is_0 = v;
-    if (__auto_is_0._tag === "Str") {
+    if (__auto_is_0._tag === "Null") {
+        return dflt;
+    }
+    else if (__auto_is_0._tag === "Str") {
         const s = __auto_is_0.value;
         return s;
     }
@@ -87,7 +91,10 @@ export function attrGetInt(attrs: Attr[], key: string, dflt: number): number {
     const found = attrGet(attrs, key);
     const v = found ?? Value.Int(dflt);
         const __auto_is_1 = v;
-    if (__auto_is_1._tag === "Str") {
+    if (__auto_is_1._tag === "Null") {
+        return dflt;
+    }
+    else if (__auto_is_1._tag === "Str") {
         const s = __auto_is_1.value;
         return dflt;
     }
@@ -114,7 +121,10 @@ export function attrGetBool(attrs: Attr[], key: string, dflt: boolean): boolean 
     const found = attrGet(attrs, key);
     const v = found ?? Value.Bool(dflt);
         const __auto_is_2 = v;
-    if (__auto_is_2._tag === "Str") {
+    if (__auto_is_2._tag === "Null") {
+        return dflt;
+    }
+    else if (__auto_is_2._tag === "Str") {
         const s = __auto_is_2.value;
         return dflt;
     }
@@ -222,19 +232,25 @@ export function delMark(marks: Mark[], m: Mark): Mark[] {
 export class InlineSpan {
     text: string;
     marks: Mark[];
+    attrs: Attr[];
 
-    constructor(text: string, marks: Mark[]) {
+    constructor(text: string, marks: Mark[], attrs: Attr[]) {
         this.text = text;
         this.marks = marks;
+        this.attrs = attrs;
     }
 }
 
 export function span(text: string): InlineSpan {
-    return new InlineSpan(text, []);
+    return new InlineSpan(text, [], []);
 }
 
 export function markedSpan(text: string, marks: Mark[]): InlineSpan {
-    return new InlineSpan(text, marks);
+    return new InlineSpan(text, marks, []);
+}
+
+export function spanWith(text: string, marks: Mark[], attrs: Attr[]): InlineSpan {
+    return new InlineSpan(text, marks, attrs);
 }
 
 export function spansText(spans: InlineSpan[]): string {
@@ -265,7 +281,7 @@ export function spansInsert(spans: InlineSpan[], offset: number, text: string): 
             if (offset <= pos + sLen) {
                 const at: number = offset - pos;
                 const nt: string = s.text.slice(0, at) + text + s.text.slice(at);
-                out.push(new InlineSpan(nt, s.marks));
+                out.push(new InlineSpan(nt, s.marks, s.attrs));
                 done = true;
             } else {
                 out.push(s);
@@ -301,7 +317,7 @@ export function spansDelete(spans: InlineSpan[], lo: number, hi: number): Inline
                 nt = nt + s.text.slice(hi - pos);
             }
             if (Number(nt.length) > 0) {
-                out.push(new InlineSpan(nt, s.marks));
+                out.push(new InlineSpan(nt, s.marks, s.attrs));
             }
         } else {
             out.push(s);
@@ -342,10 +358,10 @@ export function spansSplitAt(spans: InlineSpan[], offset: number): SpanSplit {
                     const lt = s.text.slice(0, offset - pos);
                     const rt = s.text.slice(offset - pos);
                     if (Number(lt.length) > 0) {
-                        before.push(new InlineSpan(lt, s.marks));
+                        before.push(new InlineSpan(lt, s.marks, s.attrs));
                     }
                     if (Number(rt.length) > 0) {
-                        after.push(new InlineSpan(rt, s.marks));
+                        after.push(new InlineSpan(rt, s.marks, s.attrs));
                     }
                     done = true;
                 }

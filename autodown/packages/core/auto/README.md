@@ -1,7 +1,8 @@
 # Auto source of `@autodown/core`
 
-`src/index.ts` and `src/block-model.ts` are **generated from Auto source** — do not
-edit them by hand.
+`src/ial.ts`, `src/block-model.ts` and `src/markdown-parser.ts` are
+**generated from Auto source** — do not edit them by hand. `src/index.ts` is a
+generated pure re-export barrel (`export * from` the three modules).
 
 - `ial.at` — the Auto language source of the IAL (Inline Attribute List) utilities
   (`TableAttr`, `preprocessMarkdown`, `buildIAL`, `formatValue`, `formatArray`,
@@ -11,10 +12,23 @@ edit them by hand.
   `Selection`, tree lookup/surgery helpers, the `Op` operation set
   (`InsertText`/`SplitBlock`/`MergeBlocks`/`SetBlockType`/`LiftBlock`/`WrapBlock`/
   `ReplaceRange`) as pure functions (`applyOp`), and `invertOp` for undo.
-  Generated to `src/block-model.ts`; `src/index.ts` re-exports it.
+  Generated to `src/block-model.ts`.
+- `markdown_parser.at` — the incremental markdown parser (plan 016 Phase 2,
+  moved here from `packages/vue/auto`): unchanged weak-tree `parseDocument`
+  (byte-identical legacy behavior, no IAL), plus a strong typed-tree output
+  layer appended at the end of the file: `parse_blocks(src, isFinal)` runs
+  `preprocessMarkdown` as a pre-step, converts the weak tree to `BlockNode`
+  (`convertBlock`/`convertInlines`/table converters), attaches extracted IAL
+  table attrs to top-level `Table` blocks (`ial` attr, `AttrsV[cols, rows]`,
+  `int?` nulls → `Value.Null`), and assigns editor-convention block ids
+  (`^anchor` wins, else `block-<i>` top-level / `<parent>-<j>` nested).
+  Generated to `src/markdown-parser.ts`; post-fix M1 rewrites the
+  `use block_model:` / `use ial:` imports to `./block-model.js` / `./ial.js`
+  and hoists them to the top of the file, plus B1 (struct-`new`).
 - `gen.mjs` — build pipeline: runs `auto trans --path auto/X.at ts` per source,
   keeps the raw compiler output at `X.raw.ts`, applies the documented post-fixes
-  (listed at the top of `gen.mjs`), and writes `src/*.ts`.
+  (listed at the top of `gen.mjs`), writes `src/*.ts` and the `src/index.ts`
+  barrel (a barrel, not a module the parser imports — avoids an ESM cycle).
 - `index.handwritten.ts.bak` — the original hand-written `src/index.ts`, kept for
   reference/comparison only (not compiled, not imported).
 
@@ -24,7 +38,7 @@ edit them by hand.
 cd packages/core
 pnpm gen        # = node auto/gen.mjs
 pnpm build      # = tsc, emits dist/ (src/__tests__ excluded from the build)
-pnpm test       # = vitest run (src/__tests__/block-model.test.ts)
+pnpm test       # = vitest run (block-model.test.ts 43 + block-parser.test.ts 15)
 ```
 
 The Auto compiler binary comes from a local checkout of the auto-lang repo
@@ -77,4 +91,17 @@ fixes — see tmp/dsl-probes/plan016/REPORT.md addendum):
   (post-fix I1 for `TableAttr`; block-model keeps the generated classes).
 - `parseInt` / `isNaN` / string methods (`.trim()/.split()/.replace()/.map()/.join()/.some()`)
   are not Auto builtins but pass through transparently to their JS equivalents
-  (ial.at only — block_model.at avoids them for a2r compatibility).
+  (ial.at and markdown_parser.at only — block_model.at avoids them for a2r
+  compatibility; the parser is a2ts-only territory, it also reads the weak tree
+  via `any` indexing which a2r cannot do).
+
+## Parser migration note (plan 016 Phase 2)
+
+`markdown_parser.at` lived in `packages/vue/auto/` under plan 008 and moved
+here in plan 016 Phase 2 so both the vue renderer and the editor share one
+parser. The vue package keeps `src/markdown-parser.generated.ts` as a
+hand-maintained redirect (`export { parseDocument } from '@autodown/core'`) so
+existing import sites did not change; the vue parity suite (43 cases) now
+exercises the core build through that redirect. `parse_blocks` is the new
+strong-typed entry; its invariants are pinned by
+`src/__tests__/block-parser.test.ts`.

@@ -55,7 +55,10 @@ fn rng(s int, e int) SourceRange {
 
 // ------------------------------------------------------------------ values
 
+// Null covers IAL-style "auto"/absent values (e.g. table cols spec) that are
+// distinct from a zero/empty value.
 enum Value {
+    Null
     Str(str)
     Int(int)
     Bool(bool)
@@ -79,6 +82,7 @@ fn attrGetStr(attrs List<Attr>, key str, dflt str) str {
     let found = attrGet(attrs, key)
     let v = found ?? Value.Str(dflt)
     is v {
+        Value.Null -> return dflt
         Value.Str(s) -> return s
         Value.Int(i) -> return dflt
         Value.Bool(b) -> return dflt
@@ -92,6 +96,7 @@ fn attrGetInt(attrs List<Attr>, key str, dflt int) int {
     let found = attrGet(attrs, key)
     let v = found ?? Value.Int(dflt)
     is v {
+        Value.Null -> return dflt
         Value.Str(s) -> return dflt
         Value.Int(i) -> return i
         Value.Bool(b) -> return dflt
@@ -105,6 +110,7 @@ fn attrGetBool(attrs List<Attr>, key str, dflt bool) bool {
     let found = attrGet(attrs, key)
     let v = found ?? Value.Bool(dflt)
     is v {
+        Value.Null -> return dflt
         Value.Str(s) -> return dflt
         Value.Int(i) -> return dflt
         Value.Bool(b) -> return b
@@ -188,17 +194,24 @@ fn delMark(marks List<Mark>, m Mark) List<Mark> {
 
 // ------------------------------------------------------------------ spans
 
+// attrs carries mark payloads that don't fit the unit Mark enum: link
+// href/title, image src/alt/title (Phase 2 parser wiring).
 type InlineSpan {
     text str
     marks List<Mark>
+    attrs List<Attr>
 }
 
 fn span(text str) InlineSpan {
-    return InlineSpan(text, [])
+    return InlineSpan(text, [], [])
 }
 
 fn markedSpan(text str, marks List<Mark>) InlineSpan {
-    return InlineSpan(text, marks)
+    return InlineSpan(text, marks, [])
+}
+
+fn spanWith(text str, marks List<Mark>, attrs List<Attr>) InlineSpan {
+    return InlineSpan(text, marks, attrs)
 }
 
 fn spansText(spans List<InlineSpan>) str {
@@ -229,7 +242,7 @@ fn spansInsert(spans List<InlineSpan>, offset int, text str) List<InlineSpan> {
             if offset <= pos + sLen {
                 let at = offset - pos
                 let nt = s.text.slice(0, at) + text + s.text.slice(at)
-                out.push(InlineSpan(nt, s.marks))
+                out.push(InlineSpan(nt, s.marks, s.attrs))
                 done = true
             } else {
                 out.push(s)
@@ -257,7 +270,7 @@ fn spansDelete(spans List<InlineSpan>, lo int, hi int) List<InlineSpan> {
             var nt str = ""
             if lo > pos { nt = s.text.slice(0, lo - pos) }
             if hi < sEnd { nt = nt + s.text.slice(hi - pos) }
-            if nt.length.to(int) > 0 { out.push(InlineSpan(nt, s.marks)) }
+            if nt.length.to(int) > 0 { out.push(InlineSpan(nt, s.marks, s.attrs)) }
         } else {
             out.push(s)
         }
@@ -293,8 +306,8 @@ fn spansSplitAt(spans List<InlineSpan>, offset int) SpanSplit {
                 } else {
                     let lt = s.text.slice(0, offset - pos)
                     let rt = s.text.slice(offset - pos)
-                    if lt.length.to(int) > 0 { before.push(InlineSpan(lt, s.marks)) }
-                    if rt.length.to(int) > 0 { after.push(InlineSpan(rt, s.marks)) }
+                    if lt.length.to(int) > 0 { before.push(InlineSpan(lt, s.marks, s.attrs)) }
+                    if rt.length.to(int) > 0 { after.push(InlineSpan(rt, s.marks, s.attrs)) }
                     done = true
                 }
             }

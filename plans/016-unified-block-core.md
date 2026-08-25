@@ -1,8 +1,21 @@
 # Plan 016：统一块模型内核（block_model + serializer + 双端发射探针）
 
-> 状态：**Phase 1 完成（2026-08-25）**，Phase 2 待开工。
+> 状态：**Phase 2 完成（2026-08-25）**，Phase 3 待开工。
 > 设计依据：[docs/09-unified-document-engine.md](../docs/09-unified-document-engine.md) §5。
 > 立项：2026-08-25。
+> Phase 2 产物：
+> - `markdown_parser.at`（1505 行）从 vue 包迁入 `packages/core/auto/`，
+>   尾部新增强类型转换层：`parse_blocks(src, final) -> BlockTree` +
+>   convertBlock/convertInlines/attachIAL；IAL 预处理接入 `parse_blocks`
+>   （`parseDocument` 不接 IAL，字节级旧行为钉死）。
+> - 块 id 策略落地：`^anchor` 优先，否则 `block-<i>`/`<parent>-<j>`；
+>   SourceRange 暂零占位（Phase 3+ 缺口登记）。
+> - vue 包消费面零改动：`markdown-parser.generated.ts` 替换为 re-export
+>   redirect（`export { parseDocument } from '@autodown/core'`）。
+> - gen.mjs 三源发射 + 新后修 M1（use 导入改写置顶）；探针报告追加 T5
+>   （零 payload 变体裸引用 TS2345）。
+> - 门全绿：core 58/58、vue 82/82（parity 43 经 redirect 打 core）、
+>   editor 22/22、demo e2e 9/9；gen 两连跑 md5 一致。
 > Phase 1 产物：
 > - `autodown/packages/core/auto/block_model.at`（723 行）：BlockNode/
 >   InlineSpan/Mark/BlockType（17 变体含扩展块）/Attr/Value/BlockPos/

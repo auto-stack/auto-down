@@ -1409,3 +1409,223 @@ export function scanLink(line: string, i: number, final: boolean, seenCode: bool
     }
     return [end + 1, text, href, false, title, ""];
 }
+
+import { BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText } from "block_model";
+
+import { preprocessMarkdown } from "ial";
+
+export function extractAnchorBlock(text: string): string {
+    
+
+
+
+
+    const t = text.trim();
+    const parts = t.split(" ");
+    const n: number = Number(parts.length);
+    if (n < 2) {
+        return "";
+    }
+    const last = parts[n - 1];
+    if (Number(last.length) < 2) {
+        return "";
+    }
+    if (last.slice(0, 1) != "^") {
+        return "";
+    }
+    const body = last.slice(1);
+    const alphabet: string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
+    for (let i = 0; i < Number(body.length); i++) {
+        const ch = body.slice(i, i + 1);
+        let ok: boolean = false;
+        for (let j = 0; j < Number(alphabet.length); j++) {
+            if (alphabet.slice(j, j + 1) == ch) {
+                ok = true;
+            }
+        }
+        if (!ok) {
+            return "";
+        }
+    }
+    return body;
+}
+
+export function convertInlines(wnodes: any[], marks: Mark[]): InlineSpan[] {
+    let out: InlineSpan[] = [];
+    for (const w of wnodes) {
+        const t = w["type"];
+        if (t == "text") {
+            out.push(InlineSpan(w["content"], marks, []));
+        }
+        if (t == "strong") {
+            for (const s of convertInlines(w["children"], addMark(marks, Mark.Strong))) {
+                out.push(s);
+            }
+        }
+        if (t == "emphasis") {
+            for (const s of convertInlines(w["children"], addMark(marks, Mark.Em))) {
+                out.push(s);
+            }
+        }
+        if (t == "strikethrough") {
+            for (const s of convertInlines(w["children"], addMark(marks, Mark.Del))) {
+                out.push(s);
+            }
+        }
+        if (t == "inline_code") {
+            out.push(InlineSpan(w["code"], addMark(marks, Mark.Code), []));
+        }
+        if (t == "hardbreak") {
+            out.push(InlineSpan("\n", marks, []));
+        }
+        if (t == "link") {
+            let lattrs: Attr[] = [];
+            lattrs = attrSet(lattrs, "href", Value.Str(w["href"]));
+            const title = w["title"];
+            if (title != null) {
+                lattrs = attrSet(lattrs, "title", Value.Str(title));
+            }
+            for (const s of convertInlines(w["children"], addMark(marks, Mark.Link))) {
+                out.push(InlineSpan(s.text, s.marks, lattrs));
+            }
+        }
+        if (t == "image") {
+            let iattrs: Attr[] = [];
+            iattrs = attrSet(iattrs, "src", Value.Str(w["src"]));
+            iattrs = attrSet(iattrs, "alt", Value.Str(w["alt"]));
+            const ititle = w["title"];
+            if (ititle != null) {
+                iattrs = attrSet(iattrs, "title", Value.Str(ititle));
+            }
+            out.push(InlineSpan(w["alt"], addMark(marks, Mark.Image), iattrs));
+        }
+    }
+    return out;
+}
+
+export function convertTableCell(wnode: any, id: string): BlockNode {
+    let attrs: Attr[] = [];
+    attrs = attrSet(attrs, "header", Value.Bool(wnode["header"]));
+    attrs = attrSet(attrs, "align", Value.Str(wnode["align"]));
+    return BlockNode(id, BlockType.TableCell, attrs, [], convertInlines(wnode["children"], []), rng(0, 0));
+}
+
+export function convertTableRow(wnode: any, id: string): BlockNode {
+    const cells = wnode["cells"];
+    let kids: BlockNode[] = [];
+    for (let ci = 0; ci < Number(cells.length); ci++) {
+        kids.push(convertTableCell(cells[ci], id + "-c" + String(ci)));
+    }
+    return BlockNode(id, BlockType.TableRow, [], kids, [], rng(0, 0));
+}
+
+export function convertBlock(wnode: any, id: string): BlockNode {
+    const t = wnode["type"];
+    if (t == "heading") {
+        let attrs: Attr[] = [];
+        attrs = attrSet(attrs, "level", Value.Int(wnode["level"]));
+        return BlockNode(id, BlockType.Heading, attrs, [], convertInlines(wnode["children"], []), rng(0, 0));
+    }
+    if (t == "code_block") {
+        let attrs2: Attr[] = [];
+        attrs2 = attrSet(attrs2, "language", Value.Str(wnode["language"]));
+        attrs2 = attrSet(attrs2, "loading", Value.Bool(wnode["loading"]));
+        return BlockNode(id, BlockType.Fence, attrs2, [], [span(wnode["code"])], rng(0, 0));
+    }
+    if (t == "blockquote") {
+        return BlockNode(id, BlockType.Blockquote, [], convertChildren(wnode["children"], id), [], rng(0, 0));
+    }
+    if (t == "list") {
+        let attrs3: Attr[] = [];
+        attrs3 = attrSet(attrs3, "ordered", Value.Bool(wnode["ordered"]));
+        const start = wnode["start"];
+        if (start != null) {
+            attrs3 = attrSet(attrs3, "start", Value.Int(start));
+        }
+        return BlockNode(id, BlockType.ListBlock, attrs3, convertChildren(wnode["items"], id), [], rng(0, 0));
+    }
+    if (t == "list_item") {
+        return BlockNode(id, BlockType.ListItem, [], convertChildren(wnode["children"], id), [], rng(0, 0));
+    }
+    if (t == "table") {
+        let kids: BlockNode[] = [];
+        kids.push(convertTableRow(wnode["header"], id + "-h"));
+        const rows = wnode["rows"];
+        for (let ri = 0; ri < Number(rows.length); ri++) {
+            kids.push(convertTableRow(rows[ri], id + "-r" + String(ri)));
+        }
+        let attrs4: Attr[] = [];
+        attrs4 = attrSet(attrs4, "loading", Value.Bool(wnode["loading"]));
+        return BlockNode(id, BlockType.Table, attrs4, kids, [], rng(0, 0));
+    }
+    if (t == "thematic_break") {
+        return BlockNode(id, BlockType.ThematicBreak, [], [], [], rng(0, 0));
+    }
+    
+
+    return BlockNode(id, BlockType.Paragraph, [], [], convertInlines(wnode["children"], []), rng(0, 0));
+}
+
+export function convertChildren(wchildren: any[], parentId: string): BlockNode[] {
+    let out: BlockNode[] = [];
+    for (let i = 0; i < Number(wchildren.length); i++) {
+        out.push(convertBlock(wchildren[i], parentId + "-" + String(i)));
+    }
+    return out;
+}
+
+export function intListToValue(arr: any[]): Value {
+    let out: Value[] = [];
+    for (const v of arr) {
+        if (v == null) {
+            out.push(Value.Null());
+        } else {
+            out.push(Value.Int(v));
+        }
+    }
+    return Value.ListV(out);
+}
+
+export function attachIAL(blocks: BlockNode[], ialAttrs: any[]): BlockNode[] {
+    let out: BlockNode[] = [];
+    let ti: number = 0;
+    for (const b of blocks) {
+        if (b.kind == BlockType.Table) {
+            if (ti < Number(ialAttrs.length)) {
+                const ta = ialAttrs[ti];
+                const cols = intListToValue(ta["cols"]);
+                const rows = intListToValue(ta["rows"]);
+                let ialPair: Attr[] = [];
+                ialPair.push(Attr("cols", cols));
+                ialPair.push(Attr("rows", rows));
+                out.push(BlockNode(b.id, b.kind, attrSet(b.attrs, "ial", Value.AttrsV(ialPair)), b.children, b.inlines, b.source));
+                ti += 1;
+            } else {
+                out.push(b);
+            }
+        } else {
+            out.push(b);
+        }
+    }
+    return out;
+}
+
+export function withAnchorId(node: BlockNode, fallbackId: string): BlockNode {
+    const anchor = extractAnchorBlock(spansText(node.inlines));
+    if (anchor == "") {
+        return node;
+    }
+    return BlockNode(anchor, node.kind, node.attrs, node.children, node.inlines, node.source);
+}
+
+export function parse_blocks(src: string, isFinal: boolean): BlockNode {
+    const pre = preprocessMarkdown(src);
+    const weak = parseDocument(pre["md"], isFinal);
+    let kids: BlockNode[] = [];
+    for (let i = 0; i < Number(weak.length); i++) {
+        const fallback: string = "block-" + String(i);
+        kids.push(withAnchorId(convertBlock(weak[i], fallback), fallback));
+    }
+    const withIal = attachIAL(kids, pre["tableAttrs"]);
+    return BlockNode("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0));
+}

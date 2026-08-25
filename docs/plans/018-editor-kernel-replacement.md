@@ -1,6 +1,6 @@
 # Plan 018：编辑内核替换（Tiptap 退役，vue 平台自研编辑层）
 
-> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §7/§8。
+> 状态：**执行中（2026-08-25 立项，Phase 0 完成——契约冻结清单 `packages/engine/EDITOR-CONTRACT.md` + 语义基线 `semantics.test.ts` 15 用例跑在 016 操作模型上全绿）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §7/§8。
 > 立项：2026-08-25。前置：**Plan 017 完成**（engine 0.3.0 在册，渲染管线
 > 已统一）。
 > 关联：plan 008 待澄清 2（"自绘文本编辑器路线承接，auto-lang

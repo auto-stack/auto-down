@@ -1,6 +1,6 @@
 {
   "name": "@autodown/core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "AutoDown core utilities — re-export shim for @autodown/engine/parser (plan 017)",
   "type": "module",
   "main": "./dist/index.js",

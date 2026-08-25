@@ -1,5 +1,11 @@
 # @autodown/editor
 
+## 0.4.0
+
+### Minor Changes
+
+- plan 018: BREAKING — the Tiptap editor is retired. `AutoDownEditor` now mounts the self-built editing engine (per-leaf-block contenteditable + 016 op sequences + live-preview). `createExtensions`, `useAutoDownEditor` and `CodeBlockMenu` are GONE; migrate `editor.chain()` templates to the command layer (`insertTemplate` / `replaceSelection` / `focusBlock` — see plan 020 for the jade-garden migration). DOM contract per EDITOR-CONTRACT.md preserved.
+
 ## 0.3.0
 
 ### Minor Changes

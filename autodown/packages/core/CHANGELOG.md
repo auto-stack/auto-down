@@ -1,5 +1,11 @@
 # @autodown/core
 
+## 0.4.0
+
+### Minor Changes
+
+- plan 018: forwards @autodown/engine 0.4.0 (editor kernel replaced — see engine changelog).
+
 ## 0.3.0
 
 ### Minor Changes

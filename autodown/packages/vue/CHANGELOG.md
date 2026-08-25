@@ -1,5 +1,11 @@
 # @autodown/vue
 
+## 0.3.0
+
+### Minor Changes
+
+- plan 017: this package is now a re-export shim forwarding to `@autodown/engine` (same public surface, zero consumer changes). The parser/render/editor sources live in the engine package; retirement is planned with plan 020.
+
 ## 0.1.1
 
 ### Patch Changes

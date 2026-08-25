@@ -4,6 +4,9 @@
 > 立项：2026-08-25。前置：**Plan 017 完成**（迁移最低门限：渲染统一 +
    shim 可用）；**018/019 完成为 1.0.0 门限**。
 > 关联：DEBTS.md 008 行（musk T13/T10 欠账，本计划强制先清）。
+> 协调项（017 Phase 3 移交）：engine 渲染根 class 已去掉 `markstream-vue`
+> 历史段（现为 `markdown-renderer`）——musk 重新 vendor 时须在对拍脚本中确认
+> 无该 class 依赖（本仓侧审计：demo/jade-garden 选择器干净）。
 
 ## 背景
 

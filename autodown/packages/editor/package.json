@@ -1,6 +1,6 @@
 {
   "name": "@autodown/editor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AutoDown editor — re-export shim for @autodown/engine/editor (plan 017)",
   "type": "module",
   "main": "./dist/index.js",

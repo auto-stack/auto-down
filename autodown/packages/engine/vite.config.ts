@@ -35,10 +35,6 @@ export default defineConfig({
         'mermaid',
         'lowlight',
         'hast-util-to-html',
-        'markstream-vue',
-        /^yjs$/,
-        /^y-prosemirror$/,
-        /^y-protocols$/,
       ],
       output: {
         globals: {

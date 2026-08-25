@@ -41,9 +41,10 @@ function renderEmbedded(children: any[], final: boolean | undefined, budget?: Re
     const isLast = i === (children?.length ?? 0) - 1
     return renderBlockNode(node, i, final, isLast ? budget : undefined)
   })
-  // root class keeps the legacy `markstream-vue` segment until plan 017
-  // Phase 3 (the only sanctioned DOM break — see the plan)
-  return h('div', { class: 'markstream-vue markdown-renderer' }, inner)
+  // root class dropped the legacy `markstream-vue` segment in plan 017
+  // Phase 3 — the only sanctioned DOM break (see the plan); consumers
+  // audited clean (demo/jade-garden), musk noted as a plan 020 item
+  return h('div', { class: 'markdown-renderer' }, inner)
 }
 
 function renderInlineChildren(children: any[] | undefined, final: boolean | undefined, budget?: RevealBudget): VNode[] {

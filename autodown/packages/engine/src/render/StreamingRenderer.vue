@@ -336,7 +336,7 @@ defineExpose({
 }
 
 /* ---------- Base typography (match @autodown/editor) ---------- */
-.streaming-document :deep(.markstream-vue) {
+.streaming-document :deep(.markdown-renderer) {
   font-size: 0.95rem;
   line-height: 1.6;
   color: #111827;

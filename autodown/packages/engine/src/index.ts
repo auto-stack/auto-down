@@ -1,5 +1,27 @@
-// @autodown/engine — root exit (plan 017). Composes the public surface of
-// all layers; per-layer exits live at ./parser, ./render, ./editor.
-export * from './parser'
-export * from './render'
-export * from './editor'
+// @autodown/engine — root exit, frozen in plan 017 Phase 3. Curated
+// composition of the layer exits; the full per-layer surfaces stay at
+// ./parser, ./render and ./editor.
+export {
+  MarkdownRender,
+  StreamingRenderer,
+  StreamingTable,
+  useStreamingDocument,
+  enableKatex,
+  enableMermaid,
+  enableHighlight,
+  isCapabilityEnabled,
+  clearOptionalCapabilities,
+  registerPanel,
+  unregisterPanel,
+  clearPanelRegistry,
+} from './render'
+export type {
+  MarkdownSegment,
+  ComponentSegment,
+  StreamingSegment,
+  PanelRenderCtx,
+  PanelRenderer,
+  PanelSpec,
+} from './render'
+export { AutoDownEditor, useAutoDownEditor, getBlockMap, BLOCK_ID_PREFIX } from './editor'
+export type { BlockInfo, SlashItem } from './editor'

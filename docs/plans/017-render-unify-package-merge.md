@@ -1,6 +1,6 @@
 # Plan 017：渲染统一与包合并（@autodown/engine 0.3.0）
 
-> 状态：**执行中（2026-08-25 立项；Phase 1 完成 8f8d494，Phase 2 完成——palette_map.at 单源 + 注册表化渲染器 + renderPreview 合一 + 对齐表 + parser 纯度断言）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §3/§6。
+> 状态：**执行中（Phase 1 8f8d494 / Phase 2 7033b64 / Phase 3 完成——出口冻结 + 根 class 破坏点执行 + shim 0.3.0 + changeset；余 Phase 4 回归定版）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §3/§6。
 > 立项：2026-08-25。前置：**Plan 016 完成**（块模型 + 强类型解析在册）。
 > 关联：plan 008（markstream 消灭，本计划是其渲染层收口）、plan 013
 > （editor `.at` 化，第 1 层组件资产在本计划后归 engine）。

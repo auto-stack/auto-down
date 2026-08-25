@@ -26,6 +26,9 @@ interface HistoryEntry {
   preSel: Selection
   /** ops replayed (threaded) on redo, in order */
   ops: Op[]
+  /** optional tree transform applied after the ops (commands / extended ops);
+   *  redo = thread ops then apply fn; undo = restore the snapshot */
+  after?: (tree: BlockNode) => BlockNode
 }
 
 export interface EngineChange {
@@ -97,14 +100,26 @@ export class EditorEngine {
   }
 
   /** Apply a composed op group as ONE undo step (input rules etc.). */
-  applyGroup(ops: Op[]): void {
-    if (ops.length === 0) return
-    this.undoStack.push({ preTree: this.tree, preSel: this.sel, ops: [...ops] })
+  applyGroup(ops: Op[], after?: (tree: BlockNode) => BlockNode): void {
+    if (ops.length === 0 && after == null) return
+    this.undoStack.push({ preTree: this.tree, preSel: this.sel, ops: [...ops], after })
     this.redoStack = []
-    this.thread(ops)
+    this.thread(ops, after)
   }
 
-  private thread(ops: Op[]): void {
+  /** Apply a pure tree transform as ONE undo step (command layer:
+   *  insertTemplate / table ops / moveBlock — Phase 3). */
+  applyTree(fn: (tree: BlockNode) => BlockNode): void {
+    this.applyGroup([], fn)
+  }
+
+  /** Set the selection without a document change (focus moves). */
+  select(sel: Selection): void {
+    this.sel = sel
+    this.emit(false)
+  }
+
+  private thread(ops: Op[], after?: (tree: BlockNode) => BlockNode): void {
     let t = this.tree
     let s = this.sel
     for (const op of ops) {
@@ -112,6 +127,7 @@ export class EditorEngine {
       t = r.tree
       s = r.selection
     }
+    if (after) t = after(t)
     this.tree = t
     this.sel = s
   }
@@ -133,7 +149,7 @@ export class EditorEngine {
     const preSel = this.sel
     this.thread(entry.ops)
     // the entry stays reusable for another undo→redo cycle
-    this.undoStack.push({ preTree, preSel, ops: entry.ops })
+    this.undoStack.push({ preTree: this.tree, preSel: this.sel, ops: entry.ops, after: entry.after })
     this.emit(true)
     return true
   }

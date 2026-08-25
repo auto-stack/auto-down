@@ -89,15 +89,14 @@ export function applyRuleAttrs(tree: BlockNode, blockId: string, rule: InputRule
 }
 
 /** Convenience orchestrator: fire the matching rule on the engine block as
- *  ONE undo step. Heading LEVEL attr is deferred to the Phase 3 extended-op
- *  (SetBlockAttrs) — v1 sets the kind only (serializer defaults level 1). */
-export function fireRuleOn(engine: { applyGroup(ops: Op[]): void; doc: BlockNode }, blockId: string): boolean {
+ *  ONE undo step (marker ops + heading-level attr patch via tree fn). */
+export function fireRuleOn(engine: { applyGroup(ops: Op[], after?: (tree: import('../../parser/block-model').BlockNode) => import('../../parser/block-model').BlockNode): void; doc: import('../../parser/block-model').BlockNode }, blockId: string): boolean {
   const found = findBlock(engine.doc, blockId)
   if (!found) return false
   const rule = matchInputRule(blockText(found))
   if (!rule) return false
   const res = inputRuleOps(engine.doc, blockId, rule)
   if (!res) return false
-  engine.applyGroup(res.ops)
+  engine.applyGroup(res.ops, (tree) => applyRuleAttrs(tree, blockId, rule))
   return true
 }

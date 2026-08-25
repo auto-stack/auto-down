@@ -1,5 +1,7 @@
 # 003 — 左右面板同步滚动与自定义滚动条
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：BlockId/getBlockMap/containerRef、demo CustomScrollbar/useSyncedScroll 在位；渲染端 BlockWrapper 已由自研渲染器的 data-block-id 机制承接；scroll-sync e2e 单 worker 复跑 4/4 绿，此前失败为浏览器并发启动抖动）。
+
 ## 背景
 
 当前 `demo/src/App.vue` 采用左右分栏布局：

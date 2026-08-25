@@ -1,5 +1,7 @@
 # Plan: i18n, Icon Decoupling, Playground, and Changeset Setup
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：i18n props/slots、lucide peerDep、changeset、demo/ 与表格列宽指示器全部在位；editor 22 测试、demo 构建与 e2e 绿）。
+
 ## 1. i18n — Hard-coded text → props/slots
 
 ### AutoDownEditor.vue

@@ -1,5 +1,7 @@
 # Jade Garden 关系图谱模块计划
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：/api/graph + GraphView/GraphControls/GraphSidebar 在位，cytoscape/fcose 已打包（构建产物可见）；e2e 07-graph 在基线内；cargo links 测试绿）。
+
 ## 现状分析
 
 Jade Garden 已经具备 wiki 链接的基础设施：

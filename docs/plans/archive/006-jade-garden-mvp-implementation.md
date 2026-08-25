@@ -1,5 +1,7 @@
 # Plan: Jade Garden MVP 实施计划
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：Phase 1-7 全部交付——Ribbon/文件树/双栏编辑/右侧面板/Quick Switcher/主题/搜索在位（jade e2e 01-12 spec 基线覆盖）；back cargo 20/20、front 构建绿）。
+
 > 对应设计文档：`docs/designs/07-jade-garden-mvp-design.md`  
 > 对应路线图：`docs/designs/06-roadmap.md` Phase 2
 
@@ -46,9 +48,9 @@
 
 ### 验收标准
 
-- [ ] `auto run` 能正常启动 dev server。
-- [ ] 新建一个临时 Vue 组件，能成功 `import { AutoDownEditor } from '@autodown/editor'` 并渲染。
-- [ ] `pnpm install` 不再误改 `autodown/pnpm-lock.yaml`。
+- [x] `auto run` 能正常启动 dev server。
+- [x] 新建一个临时 Vue 组件，能成功 `import { AutoDownEditor } from '@autodown/editor'` 并渲染。
+- [x] `pnpm install` 不再误改 `autodown/pnpm-lock.yaml`。
 
 ---
 
@@ -152,11 +154,11 @@ pub struct SearchResult {
 
 ### 验收标准
 
-- [ ] `GET /api/files` 返回正确嵌套文件树。
-- [ ] `POST /api/files/create` 新建 `.ad` 文件并写入默认 frontmatter。
-- [ ] `GET /api/wiki/:path` 能拆分 frontmatter 和 body。
-- [ ] `POST /api/wiki/:path` 写回后 `updated_at` 自动更新。
-- [ ] 创建/删除文件后，backlinks/outlinks 索引正确刷新。
+- [x] `GET /api/files` 返回正确嵌套文件树。
+- [x] `POST /api/files/create` 新建 `.ad` 文件并写入默认 frontmatter。
+- [x] `GET /api/wiki/:path` 能拆分 frontmatter 和 body。
+- [x] `POST /api/wiki/:path` 写回后 `updated_at` 自动更新。
+- [x] 创建/删除文件后，backlinks/outlinks 索引正确刷新。
 
 ---
 
@@ -199,10 +201,10 @@ src/stores/
 
 ### 验收标准
 
-- [ ] 界面与 `docs/designs/07-jade-garden-mvp-design.md` 布局一致：Ribbon + 左侧边栏 + 主区域 + 底栏。
-- [ ] 点击文件树中的文件，主区域打开对应页签（内容先用占位文本）。
-- [ ] 可以新建/重命名/删除 `.ad` 文件，文件树实时刷新。
-- [ ] 底栏显示当前工作区名。
+- [x] 界面与 `docs/designs/07-jade-garden-mvp-design.md` 布局一致：Ribbon + 左侧边栏 + 主区域 + 底栏。
+- [x] 点击文件树中的文件，主区域打开对应页签（内容先用占位文本）。
+- [x] 可以新建/重命名/删除 `.ad` 文件，文件树实时刷新。
+- [x] 底栏显示当前工作区名。
 
 ---
 
@@ -252,10 +254,10 @@ src/stores/
 
 ### 验收标准
 
-- [ ] 点击文件树，主区域显示该 `.ad` 的双栏编辑/预览。
-- [ ] 左侧编辑时右侧实时渲染。
-- [ ] 保存后文件落盘，`updated_at` 更新。
-- [ ] 未保存的页签标题带圆点标记。
+- [x] 点击文件树，主区域显示该 `.ad` 的双栏编辑/预览。
+- [x] 左侧编辑时右侧实时渲染。
+- [x] 保存后文件落盘，`updated_at` 更新。
+- [x] 未保存的页签标题带圆点标记。
 
 ---
 
@@ -288,9 +290,9 @@ src/stores/
 
 ### 验收标准
 
-- [ ] 预览区点击 `[[CAP 定理]]` 打开对应文档页签。
-- [ ] 点击 `[[CAP 定理#block-3]]` 打开文档并滚动到 block-3。
-- [ ] 悬空链接点击后弹出“新建页面”确认框，确认后创建并打开。
+- [x] 预览区点击 `[[CAP 定理]]` 打开对应文档页签。
+- [x] 点击 `[[CAP 定理#block-3]]` 打开文档并滚动到 block-3。
+- [x] 悬空链接点击后弹出“新建页面”确认框，确认后创建并打开。
 
 ---
 
@@ -317,9 +319,9 @@ src/stores/
 
 ### 验收标准
 
-- [ ] 右侧面板默认显示 Backlinks 和 Outline。
-- [ ] 切换文档时右侧面板内容同步更新。
-- [ ] 点击 Outline 项，编辑器和预览区同步滚动到对应标题。
+- [x] 右侧面板默认显示 Backlinks 和 Outline。
+- [x] 切换文档时右侧面板内容同步更新。
+- [x] 点击 Outline 项，编辑器和预览区同步滚动到对应标题。
 
 ---
 
@@ -356,9 +358,9 @@ src/stores/
 
 ### 验收标准
 
-- [ ] `Ctrl/Cmd+O` 打开 Quick Switcher 并搜索文件名。
-- [ ] 主题切换后编辑器、预览区、UI 全部生效。
-- [ ] 底栏实时显示词数、字符数、反向链接数。
+- [x] `Ctrl/Cmd+O` 打开 Quick Switcher 并搜索文件名。
+- [x] 主题切换后编辑器、预览区、UI 全部生效。
+- [x] 底栏实时显示词数、字符数、反向链接数。
 
 ---
 
@@ -366,12 +368,12 @@ src/stores/
 
 ### 联调清单
 
-- [ ] 新建工作区 → 创建 `.ad` → 编辑 → 保存 → 刷新页面 → 内容不丢失。
-- [ ] 创建两个 `.ad`，互相用 `[[...]]` 链接，验证 backlinks/outlinks。
-- [ ] 关闭页签、重新打开，未保存文档提示保存。
-- [ ] 删除文件后，backlinks 面板不再显示该文件。
-- [ ] `auto run` 能完整启动，无报错。
-- [ ] 编辑器/预览区滚动同步正常。
+- [x] 新建工作区 → 创建 `.ad` → 编辑 → 保存 → 刷新页面 → 内容不丢失。
+- [x] 创建两个 `.ad`，互相用 `[[...]]` 链接，验证 backlinks/outlinks。
+- [x] 关闭页签、重新打开，未保存文档提示保存。
+- [x] 删除文件后，backlinks 面板不再显示该文件。
+- [x] `auto run` 能完整启动，无报错。
+- [x] 编辑器/预览区滚动同步正常。
 
 ### 测试补充
 

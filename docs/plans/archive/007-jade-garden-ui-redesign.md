@@ -1,5 +1,7 @@
 # Jade Garden 视觉与主题重构计划
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：主题系统（indigo/emerald 等 CSS 变量预设 + dark + ThemePopover）与 shell 组件全面在位；front 构建 + e2e 基线绿）。
+
 ## 现状分析
 
 ### 1. 编辑器样式

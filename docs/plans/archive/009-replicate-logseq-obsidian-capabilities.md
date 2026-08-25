@@ -1,5 +1,7 @@
 # Plan: Replicate Logseq 0.10.15 / Obsidian-like capabilities in Jade Garden
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25 确认：M0-M7 后端模块（search/blocks/tasks/query/srs/whiteboard/import_export/unlinked/sync）与前端组件全部在位；tag `jade-garden-v0.2` 在史；cargo 20/20 + front 构建绿；jade e2e 基线 23/23 于最后一次代码变更时验证）。
+
 ## Context
 - We have documented the current state in `docs/designs/08-logseq-obsidian-feature-research.md`.
 - The reference implementation is **Logseq 0.10.15** (`D:/github/logseq-0.10.15`), the last file-based release. It proves that a one-file-per-page Markdown model can support block IDs, block refs, embeds, `{{query}}`, tasks/SCHEDULED/repeaters, flashcards, whiteboards, and graph view without a database-as-source-of-truth.

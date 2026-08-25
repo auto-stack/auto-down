@@ -1,5 +1,7 @@
 # 005 — 扩展 Block 组件支持
 
+> 状态：**COMPLETE（Phase 1）**（finish-plan 复审 2026-08-25：Callout/Details/Math/Mermaid 四 block + roundtrip 在位，editor 22 测试/vue-tsc/构建绿）。Phase 2/3 为"后续可继续"的未立项愿景，实质已由 plan 009（Footnote/MathInline/MermaidBlock/BlockEmbed/QueryBlock 等编辑器扩展落地）与 plan 017-020（引擎化收口）承接，不再单独立项。
+
 ## 背景
 
 当前 AutoDown 已经实现了基础 block 的编辑与同步渲染：

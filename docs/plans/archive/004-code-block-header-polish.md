@@ -1,5 +1,7 @@
 # 004 — Code Block 标题栏交互完善
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：8 个 commit 在史；复制按钮/语言徽标/高亮在自研渲染器中在位——render-node.ts code-header-copy、StreamingRenderer highlightCodeBlocks；editor 22 测试绿）。
+
 ## 背景
 
 在完成 002（语言选择器）和 003（同步滚动条）之后，Code Block 的核心功能已经可用，但在实际使用中发现若干细节问题：

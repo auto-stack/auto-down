@@ -1,5 +1,7 @@
 # 002 — Code Block 优化：语言选择 + 渲染端语言显示
 
+> 状态：**COMPLETE**（finish-plan 复审 2026-08-25：CustomCodeBlock/CodeBlockMenu 在位；渲染端 markstream-vue 方案已由 plan 008 自研 MarkdownRender 承接，代码头/复制/高亮在 render-node.ts 与 StreamingRenderer 中在位）。
+
 ## 背景
 
 当前 Code Block 存在两个问题：

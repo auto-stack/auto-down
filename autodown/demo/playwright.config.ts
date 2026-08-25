@@ -10,7 +10,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Serial: concurrent chrome-headless-shell launches intermittently hang
+  // >180s on loaded dev machines (observed 2026-08-25), while the whole
+  // 9-test suite runs in ~22s with one worker.
+  workers: 1,
   reporter: 'list',
   use: {
     baseURL,

@@ -40,5 +40,9 @@ auto-lang `crates/auto-lang/src/ui_gen/widget/registry.rs` 中的 widget 名。
   `pre[data-language]`）不受本表影响；根 class 的 `markstream-vue`
   历史段移除是 Phase 3 唯一显式破坏点。
 - rust 侧（019）：palette_map.at 按双端可发射编写（无 vue/DOM 依赖），
-  a2r 发射后即成为 iced 面板渲染器的映射单源；本表 registry 列的空位
-  即 019 需要在 registry.rs 登记的 widget 清单。
+  a2r 发射后即成为 iced 面板渲染器的映射单源（**已落地**：crate 模块
+  `packages/core/rust/src/palette_map.rs`，经 `pnpm gen:render` 再生；
+  双端金标对拍 `tests/palette_parity.rs` ↔ engine
+  `rust-palette-parity-gen.test.ts`；iced 面板渲染臂见 auto-lang plan-450
+  批次三）；本表 registry 列的空位
+  即 019 需要在 registry.rs 登记的 widget 清单（批次一已登记）。

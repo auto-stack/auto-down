@@ -1,0 +1,52 @@
+# palette-map cross-target parity golden (plan 019 Phase 1 / auto-lang plan-450).
+# Rewritten by engine src/render/__tests__/rust-palette-parity-gen.test.ts on
+# every `pnpm test`; asserted by rust tests/palette_parity.rs. Do not edit.
+
+panelOfBlock paragraph Text p paragraph-node Text false
+panelOfBlock text Text span text-node Text false
+panelOfBlock heading H1 h1 heading-node Heading false
+panelOfBlock thematic_break Separator hr hr-node Separator false
+panelOfBlock code_block Codeblock div code-block-container Codeblock false
+panelOfBlock blockquote Quote blockquote blockquote Quote false
+panelOfBlock list List ul list-node List false
+panelOfBlock table Table table table-node Table false
+panelOfBlock callout Callout div callout-node Callout true
+panelOfBlock details Details div details-node Details true
+panelOfBlock math_block MathBlock div math-block MathBlock true
+panelOfBlock mermaid Mermaid div mermaid-block-container Mermaid true
+panelOfBlock query Query div query-block Query true
+panelOfBlock embed Embed div embed-block Embed true
+panelOfBlock no_such_block Unknown div unknown-node  false
+panelOfBlock future_panel Unknown div unknown-node  false
+panelHeading -2 H1
+panelHeading 0 H1
+panelHeading 1 H1
+panelHeading 2 H2
+panelHeading 3 H3
+panelHeading 4 H4
+panelHeading 5 H5
+panelHeading 6 H6
+panelHeading 7 H6
+panelHeading 100 H6
+isExtensionPanel Unknown false
+isExtensionPanel NotAKind false
+isExtensionPanel Text false
+isExtensionPanel H1 false
+isExtensionPanel H2 false
+isExtensionPanel H3 false
+isExtensionPanel H4 false
+isExtensionPanel H5 false
+isExtensionPanel H6 false
+isExtensionPanel Separator false
+isExtensionPanel Codeblock false
+isExtensionPanel Quote false
+isExtensionPanel List false
+isExtensionPanel Table false
+isExtensionPanel Callout true
+isExtensionPanel Details true
+isExtensionPanel MathBlock true
+isExtensionPanel Mermaid true
+isExtensionPanel Query true
+isExtensionPanel Embed true
+builtinPanelKinds Text,H1,H2,H3,H4,H5,H6,Separator,Codeblock,Quote,List,Table
+extensionPanelKinds Callout,Details,MathBlock,Mermaid,Query,Embed

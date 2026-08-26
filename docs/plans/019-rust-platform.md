@@ -1,12 +1,25 @@
 # Plan 019：rust 平台落地（autodown-core crate + iced 渲染 + 编辑壳）
 
-> 状态：**草案（待立项）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §4/§6.1/§7.2。
+> 状态：**执行中（Phase 1 首石落地，2026-08-26）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §4/§6.1/§7.2。
 > 立项：2026-08-25。前置：**Plan 016 完成**（块模型 + a2r 探针裁定）、
 > **Plan 017 完成**（面板映射 + AURA registry 对齐表，本计划的直接输入）。
 > 与 Plan 018 并行（不同端不同仓，汇合点在 020）。
 > 仓库分工：本计划主体在 **auto-lang 仓**（渲染器/widget registry/codegen），
 > 本仓侧负责 crate 源发射与对拍；本文件为跨仓协调计划，落地时在
 > auto-lang 侧立对应计划并互链。
+>
+> **进度（2026-08-26）**：
+> - auto-lang 侧（plan-450，已合 master）：批次一 registry 登记、批次三
+>   iced backend 面板映射（VM 七面板臂 + a2r 同族发射）、批次四 codegen
+>   臂确认；
+> - 本仓侧（本批）：palette_map.at a2r 发射并入 `packages/core/rust/`
+>   autodown-core crate（`src/palette_map.rs`，RP1 pub-struct 后修，经
+>   `pnpm gen:render` 一键再生）+ 双端金标对拍闭环（engine
+>   `rust-palette-parity-gen.test.ts` 每次 `pnpm test` 重写
+>   `tests/golden/palette-map.golden.txt`，crate `tests/palette_parity.rs`
+>   断言同一金标）——PANEL-ALIGNMENT.md "a2r 发射后即成为 iced 面板渲染器
+>   的映射单源" 落地。注意 crate 宿主为 `packages/core/rust/`（016 试点
+>   就位处），非本文件 Phase 1 原文的 `packages/engine/rust/`。
 
 ## 背景
 

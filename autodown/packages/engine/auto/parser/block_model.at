@@ -352,6 +352,18 @@ pub fn block(id str, kind BlockType) BlockNode {
     return BlockNode(id, kind, [], [], [], rng(0, 0))
 }
 
+// Full-field constructor (plan 019 Phase 1): cross-module constructions of
+// BlockNode fall back to call syntax in a2r (the emitter only knows the
+// field list of same-file structs) — importing modules construct through
+// these factories instead.
+pub fn blockFull(id str, kind BlockType, attrs List<Attr>, children List<BlockNode>, inlines List<InlineSpan>, source SourceRange) BlockNode {
+    return BlockNode(id, kind, attrs, children, inlines, source)
+}
+
+pub fn attrOf(key str, value Value) Attr {
+    return Attr(key, value)
+}
+
 pub fn leafBlock(id str, kind BlockType, text str) BlockNode {
     return BlockNode(id, kind, [], [], [span(text)], rng(0, text.length.to(int)))
 }

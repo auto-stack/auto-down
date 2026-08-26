@@ -406,6 +406,14 @@ export function block(id: string, kind: BlockType): BlockNode {
     return BlockNode(id, kind, [], [], [], rng(0, 0));
 }
 
+export function blockFull(id: string, kind: BlockType, attrs: Attr[], children: BlockNode[], inlines: InlineSpan[], source: SourceRange): BlockNode {
+    return BlockNode(id, kind, attrs, children, inlines, source);
+}
+
+export function attrOf(key: string, value: Value): Attr {
+    return Attr(key, value);
+}
+
 export function leafBlock(id: string, kind: BlockType, text: string): BlockNode {
     return BlockNode(id, kind, [], [], [span(text)], rng(0, Number(text.length)));
 }

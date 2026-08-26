@@ -112,6 +112,12 @@ const structNames = [
   'LiftBlockOp',
   'WrapBlockOp',
   'ReplaceRangeOp',
+  // plan 019 Phase 1 dual-portable rewrite: weak-tree + ial structs
+  'TableAttr',
+  'PreDoc',
+  'WNode',
+  'DelimScan',
+  'LinkScan',
 ]
 const ctorRe = new RegExp(`(?<!new )\\b(${structNames.join('|')})\\(`, 'g')
 const addNewToStructCtors = (s) =>
@@ -121,6 +127,10 @@ const addNewToStructCtors = (s) =>
       line.startsWith('export class ') ? line : line.replace(ctorRe, 'new $1(')
     )
     .join('\n')
+
+// C1 (plan 019): Auto's snake_case `char_at` is not a JS string method —
+// a2ts passes member calls through verbatim, so rewrite to charCodeAt.
+const charAtFix = (s) => s.split('.char_at(').join('.charCodeAt(')
 
 const headerFor = (title, src) => `/**
  * ${title}
@@ -136,25 +146,13 @@ const headerFor = (title, src) => `/**
 
 let ial = transpile('ial')
 
-// I1: class TableAttr -> interface TableAttr (dead constructor removed)
-ial = apply('I1', ial, (s) =>
-  s.replace(
-    /export class TableAttr \{[\s\S]*?\n\}/,
-    'export interface TableAttr {\n    cols: (number | null)[];\n    rows: (number | null)[];\n}'
-  )
-)
+// plan 019 Phase 1: ial.at is now dual-portable (typed TableAttr/PreDoc
+// structs, no regex) — the retired I1 (class->interface) and I2 (any ->
+// precise return type) fixes are obsolete: the compiler output now carries
+// real types. Only C1 (char_at -> charCodeAt) still applies.
 
-// I2a: precise return type for preprocessMarkdown
-ial = apply('I2a', ial, (s) =>
-  s.replace(
-    'export function preprocessMarkdown(md: string): any {',
-    'export function preprocessMarkdown(md: string): { md: string; tableAttrs: TableAttr[] } {'
-  )
-)
-// I2b: annotate the accumulator
-ial = apply('I2b', ial, (s) =>
-  s.replace('let tableAttrs = [];', 'const tableAttrs: TableAttr[] = [];')
-)
+ial = charAtFix(ial)
+ial = apply('B1-ial', ial, addNewToStructCtors)
 
 writeFileSync(
   join(pkgRoot, 'src', 'parser', 'ial.ts'),
@@ -199,6 +197,9 @@ let md = transpile('markdown_parser')
 
 // M1: rewrite + hoist the `use` imports
 md = hoistUseImports('M1', md, { block_model: './block-model.js', ial: './ial.js' })
+
+// C1: char_at -> charCodeAt (plan 019)
+md = charAtFix(md)
 
 // B1: struct constructions need `new` outside argument position
 md = apply('B1', md, addNewToStructCtors)

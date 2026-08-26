@@ -10,17 +10,17 @@ pub fn repeatStr(s: &str, n: i64) -> String {
 }
 
 pub fn endsWith(hay: &str, needle: &str) -> bool {
-    let hl: i64 = (hay.len() as i64);
-    let nl: i64 = (needle.len() as i64);
+    let hl: i64 = (hay.chars().count() as i64);
+    let nl: i64 = (needle.chars().count() as i64);
     if hl < nl {
         return false;
     }
-    return hay[(hl - nl) as usize..(hl) as usize].to_string() == needle;
+    return hay.chars().take((hl) as usize).skip((hl - nl) as usize).collect::<String>() == needle;
 }
 
 pub fn hasNewline(s: &str) -> bool {
-    for i in 0..(s.len() as i64) {
-        if s[(i) as usize..(i + 1) as usize].to_string() == "\n" {
+    for i in 0..(s.chars().count() as i64) {
+        if s.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>() == "\n" {
             return true;
         }
     }
@@ -49,7 +49,7 @@ pub fn spanMd(mut s: InlineSpan) -> String {
     if hasMark(s.marks.clone(), Mark::Link.clone()) {
         let href = attrGetStr(s.attrs.clone(), "href", "");
         let title = attrGetStr(s.attrs.clone(), "title", "");
-        if (title.len() as i64) > 0 {
+        if (title.chars().count() as i64) > 0 {
             t = format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "[", t), "]("), href), " \""), title), "\")");
         } else {
             t = format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "[", t), "]("), href), ")");
@@ -58,7 +58,7 @@ pub fn spanMd(mut s: InlineSpan) -> String {
     if hasMark(s.marks.clone(), Mark::Image.clone()) {
         let src = attrGetStr(s.attrs.clone(), "src", "");
         let ititle = attrGetStr(s.attrs.clone(), "title", "");
-        if (ititle.len() as i64) > 0 {
+        if (ititle.chars().count() as i64) > 0 {
             t = format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "![", t), "]("), src), " \""), ititle), "\")");
         } else {
             t = format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "![", t), "]("), src), ")");
@@ -218,7 +218,7 @@ pub fn tableMd(node: BlockNode) -> String {
     let ialFound = attrGet(node.attrs.clone(), "ial");
     if ialFound != None {
         let body = ialText(attrsOfValue(ialFound.unwrap_or(Value::Null)));
-        if (body.len() as i64) > 0 {
+        if (body.chars().count() as i64) > 0 {
             out = format!("{}{}", format!("{}{}", format!("{}{}", out, "\n{"), body), "}");
         }    }
     return out;
@@ -241,7 +241,7 @@ pub fn joinChildren(mut kids: Vec<BlockNode>) -> String {
 
 pub fn quoteMd(node: BlockNode) -> String {
     let body = joinChildren(node.children.clone());
-    let lines = body.split("\n").collect::<Vec<_>>();
+    let lines = body.split("\n").map(|s| s.to_string()).collect::<Vec<String>>();
     let mut out: String = "".to_string();
     for i in 0..(lines.len() as i64) {
         if i > 0 {
@@ -271,8 +271,8 @@ pub fn listMd(node: BlockNode) -> String {
             marker = format!("{}{}", format!("{:?}", n), ". ");
         }
         let body = joinChildren(node.children[(i) as usize].clone().children.clone());
-        let lines = body.split("\n").collect::<Vec<_>>();
-        let pad = repeatStr(" ", (marker.len() as i64));
+        let lines = body.split("\n").map(|s| s.to_string()).collect::<Vec<String>>();
+        let pad = repeatStr(" ", (marker.chars().count() as i64));
         for j in 0..(lines.len() as i64) {
             if j > 0 {
                 out = format!("{}{}", out, "\n");
@@ -293,7 +293,7 @@ pub fn fenceMd(node: BlockNode) -> String {
     let lang = attrGetStr(node.attrs.clone(), "language", "");
     let code = spansText(node.inlines.clone());
     let mut out: String = format!("{}{}", format!("{}{}", format!("{}{}", "```", lang), "\n"), code);
-    if (code.len() as i64) > 0 {
+    if (code.chars().count() as i64) > 0 {
         if !(endsWith(code.as_str(), "\n")) {
             out = format!("{}{}", out, "\n");
         }    }
@@ -325,7 +325,7 @@ pub fn componentBlockMd(name: &str, argName: &str, node: BlockNode) -> String {
 pub fn wikilinkMd(node: BlockNode) -> String {
     let target = attrGetStr(node.attrs.clone(), "target", "");
     let anchor = attrGetStr(node.attrs.clone(), "anchor", "");
-    if (anchor.len() as i64) > 0 {
+    if (anchor.chars().count() as i64) > 0 {
         return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "[[", target), "#"), anchor), "]]");
     }
     return format!("{}{}", format!("{}{}", "[[", target), "]]");
@@ -391,7 +391,7 @@ pub fn blockMd(mut node: BlockNode, withId: bool) -> String {
 
 pub fn withIdSuffix(text: &str, id: &str) -> String {
     let tok: String = format!("{}{}", "^", id);
-    if (id.len() as i64) == 0 {
+    if (id.chars().count() as i64) == 0 {
         return text.to_string();
     }
     if endsWith(text, tok.as_str()) {
@@ -423,7 +423,7 @@ pub fn serializeBlocks(mut blocks: Vec<BlockNode>, emitIds: bool) -> String {
 
 pub fn serialize(root: BlockNode, emitIds: bool) -> String {
     let body = serializeBlocks(root.children.clone(), emitIds);
-    if (body.len() as i64) == 0 {
+    if (body.chars().count() as i64) == 0 {
         return "".to_string();
     }
     return format!("{}{}", body, "\n");

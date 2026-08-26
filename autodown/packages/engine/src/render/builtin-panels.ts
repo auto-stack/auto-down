@@ -59,7 +59,8 @@ function renderTablePanel({ node, final, budget, renderEmbedded }: PanelRenderCt
       h(
         'tr',
         {},
-        (node.header?.cells ?? []).map((cell: any) =>
+        // plan 019: WNode carries the table header as a 0-or-1 array
+        ((node.header ?? [])[0]?.cells ?? []).map((cell: any) =>
           h('th', { dir: 'auto', class: alignClass(cell) }, [
             renderEmbedded(cell.children ?? [], final, budget),
             h('button', { type: 'button', class: 'table-node__resize-handle' }),

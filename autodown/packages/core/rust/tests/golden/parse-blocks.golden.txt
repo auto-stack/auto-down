@@ -1,0 +1,282 @@
+# parse-blocks cross-target parity golden (plan 019 Phase 1).
+# Rewritten by engine src/parser/__tests__/rust-parse-parity-gen.test.ts on
+# every `pnpm test`; asserted by rust tests/parse_parity.rs. Do not edit.
+
+=== heading-para final=false ===
+block block-0 Heading
+  attr level Int(1)
+  span Hello []
+block block-1 Paragraph
+  span world  []
+  span bold [Strong]
+  span  and  []
+  span em [Em]
+  span  text. []
+=== heading-para final=true ===
+block block-0 Heading
+  attr level Int(1)
+  span Hello []
+block block-1 Paragraph
+  span world  []
+  span bold [Strong]
+  span  and  []
+  span em [Em]
+  span  text. []
+=== setext final=false ===
+block block-0 Heading
+  attr level Int(1)
+  span 标题 setext []
+block block-1 Paragraph
+  span 第一段\n第二段 []
+=== setext final=true ===
+block block-0 Heading
+  attr level Int(1)
+  span 标题 setext []
+block block-1 Paragraph
+  span 第一段\n第二段 []
+=== fence-closed final=false ===
+block block-0 Fence
+  attr language Str(rust)
+  attr loading Bool(false)
+  span fn main() {\n    println!(\"hi\");\n}\n []
+=== fence-closed final=true ===
+block block-0 Fence
+  attr language Str(rust)
+  attr loading Bool(false)
+  span fn main() {\n    println!(\"hi\");\n}\n []
+=== fence-tilde-open final=false ===
+block block-0 Fence
+  attr language Str(py)
+  attr loading Bool(true)
+  span x = 1\n []
+=== fence-tilde-open final=true ===
+block block-0 Fence
+  attr language Str(py)
+  attr loading Bool(false)
+  span x = 1\n []
+=== blockquote final=false ===
+block block-0 Blockquote
+  block block-0-0 Paragraph
+    span 引用一行\n引用二行 []
+block block-1 Paragraph
+  span 普通段落 []
+=== blockquote final=true ===
+block block-0 Blockquote
+  block block-0-0 Paragraph
+    span 引用一行\n引用二行 []
+block block-1 Paragraph
+  span 普通段落 []
+=== blockquote-lazy final=false ===
+block block-0 Blockquote
+  block block-0-0 Paragraph
+    span 引用\n懒惰续行 []
+=== blockquote-lazy final=true ===
+block block-0 Blockquote
+  block block-0-0 Paragraph
+    span 引用\n懒惰续行 []
+=== ul-nested final=false ===
+block block-0 ListBlock
+  attr ordered Bool(false)
+  block block-0-0 ListItem
+    block block-0-0-0 Paragraph
+      span 甲 []
+    block block-0-0-1 ListBlock
+      attr ordered Bool(false)
+      block block-0-0-1-0 ListItem
+        block block-0-0-1-0-0 Paragraph
+          span 甲子 []
+      block block-0-0-1-1 ListItem
+        block block-0-0-1-1-0 Paragraph
+          span 甲丑 []
+  block block-0-1 ListItem
+    block block-0-1-0 Paragraph
+      span 乙 []
+=== ul-nested final=true ===
+block block-0 ListBlock
+  attr ordered Bool(false)
+  block block-0-0 ListItem
+    block block-0-0-0 Paragraph
+      span 甲 []
+    block block-0-0-1 ListBlock
+      attr ordered Bool(false)
+      block block-0-0-1-0 ListItem
+        block block-0-0-1-0-0 Paragraph
+          span 甲子 []
+      block block-0-0-1-1 ListItem
+        block block-0-0-1-1-0 Paragraph
+          span 甲丑 []
+  block block-0-1 ListItem
+    block block-0-1-0 Paragraph
+      span 乙 []
+=== ul-empty-item final=false ===
+block block-0 ListBlock
+  attr ordered Bool(false)
+  block block-0-0 ListItem
+  block block-0-1 ListItem
+    block block-0-1-0 Paragraph
+      span 有内容 []
+=== ul-empty-item final=true ===
+block block-0 ListBlock
+  attr ordered Bool(false)
+  block block-0-0 ListItem
+  block block-0-1 ListItem
+    block block-0-1-0 Paragraph
+      span 有内容 []
+=== ol-start final=false ===
+block block-0 ListBlock
+  attr ordered Bool(true)
+  attr start Int(3)
+  block block-0-0 ListItem
+    block block-0-0-0 Paragraph
+      span 第三 []
+  block block-0-1 ListItem
+    block block-0-1-0 Paragraph
+      span 第四 []
+=== ol-start final=true ===
+block block-0 ListBlock
+  attr ordered Bool(true)
+  attr start Int(3)
+  block block-0-0 ListItem
+    block block-0-0-0 Paragraph
+      span 第三 []
+  block block-0-1 ListItem
+    block block-0-1-0 Paragraph
+      span 第四 []
+=== table-ial final=false ===
+block block-0 Table
+  attr loading Bool(false)
+  attr ial Attrs(cols=List(Int(120),Null),rows=List())
+  block block-0-h TableRow
+    block block-0-h-c0 TableCell
+      attr header Bool(true)
+      attr align Str(left)
+      span a []
+    block block-0-h-c1 TableCell
+      attr header Bool(true)
+      attr align Str(right)
+      span b []
+  block block-0-r0 TableRow
+    block block-0-r0-c0 TableCell
+      attr header Bool(false)
+      attr align Str(left)
+      span 1 []
+    block block-0-r0-c1 TableCell
+      attr header Bool(false)
+      attr align Str(right)
+      span 2 []
+=== table-ial final=true ===
+block block-0 Table
+  attr loading Bool(false)
+  attr ial Attrs(cols=List(Int(120),Null),rows=List())
+  block block-0-h TableRow
+    block block-0-h-c0 TableCell
+      attr header Bool(true)
+      attr align Str(left)
+      span a []
+    block block-0-h-c1 TableCell
+      attr header Bool(true)
+      attr align Str(right)
+      span b []
+  block block-0-r0 TableRow
+    block block-0-r0-c0 TableCell
+      attr header Bool(false)
+      attr align Str(left)
+      span 1 []
+    block block-0-r0-c1 TableCell
+      attr header Bool(false)
+      attr align Str(right)
+      span 2 []
+=== thematic final=false ===
+block block-0 ThematicBreak
+block block-1 ThematicBreak
+block block-2 Paragraph
+  span 尾段 []
+=== thematic final=true ===
+block block-0 ThematicBreak
+block block-1 ThematicBreak
+block block-2 Paragraph
+  span 尾段 []
+=== inline-zoo final=false ===
+block block-0 Paragraph
+  span 链接  []
+  span 文本 [Link] {href=Str(https://example.com),title=Str(标题)}
+  span  图  []
+  span alt [Image] {src=Str(img.png),alt=Str(alt)}
+  span  删除  []
+  span 删 [Del]
+  span  码  []
+  span x = y [Code]
+  span  硬断行 []
+  span \n []
+  span 转义 *字面* 智能 “引号” 与 撇号 ‘don’t’ 以及中英混排 “已经弯的”。 []
+=== inline-zoo final=true ===
+block block-0 Paragraph
+  span 链接  []
+  span 文本 [Link] {href=Str(https://example.com),title=Str(标题)}
+  span  图  []
+  span alt [Image] {src=Str(img.png),alt=Str(alt)}
+  span  删除  []
+  span 删 [Del]
+  span  码  []
+  span x = y [Code]
+  span  硬断行 []
+  span \n []
+  span 转义 *字面* 智能 “引号” 与 撇号 ‘don’t’ 以及中英混排 “已经弯的”。 []
+=== anchor final=false ===
+block my-anchor Paragraph
+  span 带锚点块 ^my-anchor []
+=== anchor final=true ===
+block my-anchor Paragraph
+  span 带锚点块 ^my-anchor []
+=== streaming-heading final=false ===
+block block-0 Heading
+  attr level Int(2)
+  span 编辑中的标题 []
+block block-1 ListBlock
+  attr ordered Bool(false)
+  block block-1-0 ListItem
+    block block-1-0-0 Paragraph
+      span 列表项 []
+=== streaming-heading final=true ===
+block block-0 Heading
+  attr level Int(2)
+  span 编辑中的标题 []
+block block-1 ListBlock
+  attr ordered Bool(false)
+  block block-1-0 ListItem
+    block block-1-0-0 Paragraph
+      span 列表项 []
+  block block-1-1 ListItem
+=== streaming-link final=false ===
+block block-0 Paragraph
+  span 半截链接  []
+  span 文本 [Link] {href=Str(https://example),title=Str()}
+  span . []
+=== streaming-link final=true ===
+block block-0 Paragraph
+  span 半截链接  []
+  span 文本 [Link] {href=Str(https://example),title=Str()}
+  span . []
+=== streaming-pretable final=false ===
+block block-0 Table
+  attr loading Bool(true)
+  block block-0-h TableRow
+    block block-0-h-c0 TableCell
+      attr header Bool(true)
+      attr align Str(left)
+      span a []
+    block block-0-h-c1 TableCell
+      attr header Bool(true)
+      attr align Str(left)
+      span b []
+=== streaming-pretable final=true ===
+block block-0 Paragraph
+  span | a | b |\n| --- | []
+=== streaming-partial-paren final=false ===
+block block-0 Paragraph
+  span 流式前缀构造:截断的标题（ []
+=== streaming-partial-paren final=true ===
+block block-0 Paragraph
+  span 流式前缀构造:截断的标题（ []
+=== empty final=false ===
+=== empty final=true ===

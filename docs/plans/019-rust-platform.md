@@ -8,7 +8,25 @@
 > 本仓侧负责 crate 源发射与对拍；本文件为跨仓协调计划，落地时在
 > auto-lang 侧立对应计划并互链。
 >
-> **进度（2026-08-26）**：
+> **进度（2026-08-26，批次六 Phase 1 收口）**：
+> - 本仓侧：markdown_parser.at + ial.at 全面类型化重写（WNode 结构体替
+>   `any` 弱节点、28 处 RegExp 全部手工扫描化、scanDelim/scanLink 返回具名
+>   结构、preprocessMarkdown 返回 PreDoc）——TS 行为零漂移（engine 255/255，
+>   含对真实 stream-markdown-parser 的逐字符流式对拍）；
+> - auto-lang 侧（worktree feat/plan-019-a2r-parser，8 组发射器修复）：
+>   r# 保留字转义（type 字段）、String.fromCharCode 映射、str length/slice
+>   字符语义（字节→chars，Auto 码元语义对齐）、split 收集 Vec<String>、
+>   NullCoalesce 类型剥离与借用、Some(&str 参数) 物化、mut 参数 &mut 透传
+>   （parseList/tableConsume 累加器）——auto-lang 自身 3211/0 零回归；
+> - crate：`src/markdown_parser.rs` + `src/ial.rs` 入库（全模块经新编译器
+>   重发），tests/parse_parity.rs + engine
+>   rust-parse-parity-gen.test.ts 金标对拍闭环（18 组 fixtures ×
+>   final/streaming 双模式，双端逐字节一致）——**Phase 1 的 parse 双端对拍
+>   交付完成**（016 遗留的"parser 不进 crate"欠账就此清偿，DEBTS 行更新）。
+>   已登记偏差：isPunctuation 的 \p{P} 近似范围、表格行必须顶格、str
+>   chars 计数的 O(n) 性能债。
+>
+> **进度（2026-08-26，早前批次）**：
 > - auto-lang 侧（plan-450，已合 master）：批次一 registry 登记、批次三
 >   iced backend 面板映射（VM 七面板臂 + a2r 同族发射）、批次四 codegen
 >   臂确认；

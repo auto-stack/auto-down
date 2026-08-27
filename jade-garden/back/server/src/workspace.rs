@@ -29,10 +29,13 @@ pub async fn get_workspace(State(state): State<Arc<AppState>>) -> Json<Workspace
 pub async fn open_workspace(
     State(state): State<Arc<AppState>>,
     Json(req): Json<OpenWorkspaceRequest>,
-) -> Result<Json<WorkspaceInfo>, String> {
+) -> Result<Json<WorkspaceInfo>, crate::error::ApiError> {
     let root = std::path::PathBuf::from(&req.root);
     if !root.exists() {
-        return Err(format!("Directory does not exist: {}", req.root));
+        return Err(crate::error::ApiError::bad_request(format!(
+            "Directory does not exist: {}",
+            req.root
+        )));
     }
     state
         .set_workspace_root(root)

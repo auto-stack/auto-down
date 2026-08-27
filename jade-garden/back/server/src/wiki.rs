@@ -19,10 +19,10 @@ pub struct WikiDoc {
 pub async fn read_wiki(
     State(state): State<Arc<AppState>>,
     Path(path): Path<String>,
-) -> Result<Json<WikiDoc>, String> {
+) -> Result<Json<WikiDoc>, crate::error::ApiError> {
     let target = state.resolve_wiki_path(&path).ok_or("Invalid path")?;
     if !target.exists() {
-        return Err(format!("File not found: {path}"));
+        return Err(format!("File not found: {path}").into());
     }
     let text = std::fs::read_to_string(&target).map_err(|e| format!("Failed to read file: {e}"))?;
     let (frontmatter, body) = split_ad(&text)?;
@@ -33,7 +33,7 @@ pub async fn write_wiki(
     State(state): State<Arc<AppState>>,
     Path(path): Path<String>,
     Json(doc): Json<WikiDoc>,
-) -> Result<Json<WikiDoc>, String> {
+) -> Result<Json<WikiDoc>, crate::error::ApiError> {
     let target = state.resolve_wiki_path(&path).ok_or("Invalid path")?;
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create parent: {e}"))?;

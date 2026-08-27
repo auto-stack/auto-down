@@ -316,7 +316,7 @@ fn default_limit() -> usize {
 pub async fn get_due_cards(
     State(state): State<Arc<AppState>>,
     Query(q): Query<DueQuery>,
-) -> Result<Json<CardsResponse>, String> {
+) -> Result<Json<CardsResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let today = chrono::Local::now().date_naive();
     let mut cards: Vec<Card> = scan_wiki_cards(&wiki)
@@ -348,7 +348,7 @@ pub struct ReviewResponse {
 pub async fn review_card(
     State(state): State<Arc<AppState>>,
     AxumJson(req): AxumJson<ReviewRequest>,
-) -> Result<Json<ReviewResponse>, String> {
+) -> Result<Json<ReviewResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let path = state.resolve_wiki_path(&req.page_path).ok_or("Invalid path")?;
     let text = std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {e}"))?;

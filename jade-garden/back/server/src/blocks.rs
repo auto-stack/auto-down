@@ -29,7 +29,7 @@ pub struct BlockResponse {
 pub async fn get_block(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
-) -> Result<Json<BlockResponse>, String> {
+) -> Result<Json<BlockResponse>, crate::error::ApiError> {
     let block = state
         .with_index(|idx| idx.find_block(&id).unwrap_or_default())
         .ok_or("Index not available")?;
@@ -52,7 +52,7 @@ pub async fn get_block(
 pub async fn get_block_in_page(
     State(state): State<Arc<AppState>>,
     Path((title, block_id)): Path<(String, String)>,
-) -> Result<Json<BlockResponse>, String> {
+) -> Result<Json<BlockResponse>, crate::error::ApiError> {
     let block = state
         .with_index(|idx| idx.find_block_in_page(&title, &block_id).unwrap_or_default())
         .ok_or("Index not available")?;

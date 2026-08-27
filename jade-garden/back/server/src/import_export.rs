@@ -35,7 +35,7 @@ pub struct ExportManifest {
     pub files: Vec<String>,
 }
 
-pub async fn export_markdown(State(state): State<Arc<AppState>>) -> Result<Response, String> {
+pub async fn export_markdown(State(state): State<Arc<AppState>>) -> Result<Response, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let mut zip_buf = Vec::new();
     {
@@ -91,7 +91,7 @@ pub async fn export_markdown(State(state): State<Arc<AppState>>) -> Result<Respo
 pub async fn import_markdown(
     State(state): State<Arc<AppState>>,
     mut multipart: Multipart,
-) -> Result<impl IntoResponse, String> {
+) -> Result<impl IntoResponse, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let mut imported = 0;
 

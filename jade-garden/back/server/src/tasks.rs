@@ -119,7 +119,7 @@ pub struct TasksResponse {
     pub tasks: Vec<TaskItem>,
 }
 
-pub async fn get_tasks(State(state): State<Arc<AppState>>) -> Result<Json<TasksResponse>, String> {
+pub async fn get_tasks(State(state): State<Arc<AppState>>) -> Result<Json<TasksResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
     Ok(Json(TasksResponse { tasks }))
@@ -149,7 +149,7 @@ pub struct AgendaResponse {
 pub async fn get_agenda(
     State(state): State<Arc<AppState>>,
     Query(q): Query<AgendaQuery>,
-) -> Result<Json<AgendaResponse>, String> {
+) -> Result<Json<AgendaResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
     let today = chrono::Local::now().date_naive();

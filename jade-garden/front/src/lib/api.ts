@@ -15,9 +15,22 @@ export interface WorkspaceInfo {
   wiki_dir: string | null
 }
 
+/** Error bodies are JSON `{"error": "..."}` (ApiError); fall back to raw
+ * text for anything else. */
+async function errorMessage(res: Response): Promise<string> {
+  const text = await res.text()
+  try {
+    const data = JSON.parse(text)
+    if (data && typeof data.error === 'string') return data.error
+  } catch {
+    // plain-text body — use it verbatim
+  }
+  return text || `HTTP ${res.status}`
+}
+
 export async function getWorkspace(): Promise<WorkspaceInfo> {
   const res = await fetch('/api/workspace')
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -27,14 +40,14 @@ export async function openWorkspace(root: string): Promise<WorkspaceInfo> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ root }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function listFiles(path = '', recursive = true): Promise<FileNode[]> {
   const params = new URLSearchParams({ path, recursive: recursive ? 'true' : 'false' })
   const res = await fetch(`/api/files?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -44,7 +57,7 @@ export async function createFile(path: string, isDir = false): Promise<FileNode>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path, is_dir: isDir }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -54,7 +67,7 @@ export async function renameFile(oldPath: string, newPath: string): Promise<void
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ old_path: oldPath, new_path: newPath }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
 }
 
 export async function deleteFile(path: string): Promise<void> {
@@ -63,12 +76,12 @@ export async function deleteFile(path: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
 }
 
 export async function readWiki(path: string): Promise<WikiDoc> {
   const res = await fetch(`/api/wiki/${encodeURIComponent(path)}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -78,7 +91,7 @@ export async function writeWiki(path: string, doc: WikiDoc): Promise<WikiDoc> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(doc),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -139,19 +152,19 @@ export interface LinksResponse<T> {
 
 export async function getGraph(): Promise<GraphData> {
   const res = await fetch('/api/graph')
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function getBacklinks(title: string): Promise<LinksResponse<Backlink>> {
   const res = await fetch(`/api/backlinks/${encodeURIComponent(title)}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function getOutlinks(title: string): Promise<LinksResponse<Outlink>> {
   const res = await fetch(`/api/outlinks/${encodeURIComponent(title)}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -174,21 +187,21 @@ export interface SearchResponse {
 export async function search(query: string, limit = 20): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query, limit: String(limit) })
   const res = await fetch(`/api/search?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function searchPages(query: string, limit = 20): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query, limit: String(limit) })
   const res = await fetch(`/api/search/pages?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function searchBlocks(query: string, limit = 20): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query, limit: String(limit) })
   const res = await fetch(`/api/search/blocks?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -206,13 +219,13 @@ export interface UnlinkedRefsResponse {
 
 export async function getUnlinkedRefs(title: string): Promise<UnlinkedRefsResponse> {
   const res = await fetch(`/api/unlinked/${encodeURIComponent(title)}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function getBlock(id: string): Promise<{ found: boolean; block?: BlockInfo }> {
   const res = await fetch(`/api/blocks/${encodeURIComponent(id)}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -240,7 +253,7 @@ export async function uploadAsset(file: File): Promise<string> {
     method: 'POST',
     body: formData,
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   const data = await res.json()
   return data.path as string
 }
@@ -263,7 +276,7 @@ export interface TasksResponse {
 
 export async function getTasks(): Promise<TasksResponse> {
   const res = await fetch('/api/tasks')
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -279,7 +292,7 @@ export interface AgendaResponse {
 export async function getAgenda(days = 14): Promise<AgendaResponse> {
   const params = new URLSearchParams({ days: String(days) })
   const res = await fetch(`/api/agenda?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -290,7 +303,7 @@ export interface QueryResponse {
 export async function runQuery(q: string): Promise<QueryResponse> {
   const params = new URLSearchParams({ q })
   const res = await fetch(`/api/query?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -317,7 +330,7 @@ export interface CardsResponse {
 export async function getDueCards(limit = 50): Promise<CardsResponse> {
   const params = new URLSearchParams({ limit: String(limit) })
   const res = await fetch(`/api/cards/due?${params}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -327,13 +340,13 @@ export async function reviewCard(pagePath: string, blockId: string, grade: numbe
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ page_path: pagePath, block_id: blockId, grade }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 export async function exportMarkdown(): Promise<Blob> {
   const res = await fetch('/api/export/markdown')
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.blob()
 }
 
@@ -345,7 +358,7 @@ export async function importMarkdown(zipFile: File): Promise<{ imported: number 
     method: 'POST',
     body: formData,
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -366,7 +379,7 @@ export interface WhiteboardDoc {
 
 export async function readWhiteboard(path: string): Promise<WhiteboardDoc> {
   const res = await fetch(`/api/whiteboard/${encodeURIComponent(path)}`)
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
@@ -376,6 +389,6 @@ export async function writeWhiteboard(path: string, doc: WhiteboardDoc): Promise
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(doc),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }

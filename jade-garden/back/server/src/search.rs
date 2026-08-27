@@ -45,7 +45,7 @@ pub struct SearchResponse {
 pub async fn search(
     State(state): State<Arc<AppState>>,
     Query(q): Query<SearchQuery>,
-) -> Result<Json<SearchResponse>, String> {
+) -> Result<Json<SearchResponse>, crate::error::ApiError> {
     let results = state
         .with_index(|idx| idx.search(&q.q, q.limit.max(1).min(100)).unwrap_or_default())
         .ok_or("Index not available")?;
@@ -83,7 +83,7 @@ pub async fn search(
 pub async fn search_pages(
     State(state): State<Arc<AppState>>,
     Query(q): Query<SearchQuery>,
-) -> Result<Json<SearchResponse>, String> {
+) -> Result<Json<SearchResponse>, crate::error::ApiError> {
     let all = state
         .with_index(|idx| idx.search(&q.q, q.limit.max(1).min(100)).unwrap_or_default())
         .ok_or("Index not available")?;
@@ -105,7 +105,7 @@ pub async fn search_pages(
 pub async fn search_blocks(
     State(state): State<Arc<AppState>>,
     Query(q): Query<SearchQuery>,
-) -> Result<Json<SearchResponse>, String> {
+) -> Result<Json<SearchResponse>, crate::error::ApiError> {
     let all = state
         .with_index(|idx| idx.search(&q.q, q.limit.max(1).min(100)).unwrap_or_default())
         .ok_or("Index not available")?;

@@ -97,7 +97,7 @@ pub async fn get_backlinks(
 
 pub async fn get_graph(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<GraphData>, String> {
+) -> Result<Json<GraphData>, crate::error::ApiError> {
     let data = state
         .with_index(|idx| idx.graph_data().unwrap_or_else(|_| crate::index::GraphData {
             nodes: Vec::new(),

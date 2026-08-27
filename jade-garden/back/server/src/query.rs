@@ -35,7 +35,7 @@ enum Expr {
 pub async fn query(
     State(state): State<Arc<AppState>>,
     Query(req): Query<QueryRequest>,
-) -> Result<Json<QueryResponse>, String> {
+) -> Result<Json<QueryResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
     let expr = parse_expr(&req.q).map_err(|e| format!("Parse error: {e}"))?;

@@ -1,6 +1,7 @@
 mod assets;
 mod block;
 mod blocks;
+mod error;
 mod files;
 mod import_export;
 mod index;

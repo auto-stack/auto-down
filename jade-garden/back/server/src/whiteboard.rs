@@ -46,12 +46,12 @@ fn normalize_path(path: &Path) -> std::path::PathBuf {
 pub async fn read_whiteboard(
     State(state): State<Arc<AppState>>,
     AxumPath(path): AxumPath<String>,
-) -> Result<Json<WhiteboardDoc>, String> {
+) -> Result<Json<WhiteboardDoc>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let target = wiki.join("whiteboards").join(&path);
     let target = normalize_path(&target);
     if !target.starts_with(&wiki) {
-        return Err("Invalid path".to_string());
+        return Err(crate::error::ApiError::bad_request("Invalid path"));
     }
     if !target.exists() {
         return Ok(Json(WhiteboardDoc::default()));
@@ -70,14 +70,14 @@ pub async fn write_whiteboard(
     State(state): State<Arc<AppState>>,
     AxumPath(path): AxumPath<String>,
     Json(req): Json<WriteWhiteboardRequest>,
-) -> Result<Json<WhiteboardDoc>, String> {
+) -> Result<Json<WhiteboardDoc>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let dir = wiki.join("whiteboards");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let target = dir.join(&path);
     let target = normalize_path(&target);
     if !target.starts_with(&wiki) {
-        return Err("Invalid path".to_string());
+        return Err(crate::error::ApiError::bad_request("Invalid path"));
     }
     let doc = WhiteboardDoc { shapes: req.shapes };
     let text = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;

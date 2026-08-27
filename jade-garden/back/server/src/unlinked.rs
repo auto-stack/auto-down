@@ -26,7 +26,7 @@ pub struct UnlinkedRefsResponse {
 pub async fn get_unlinked_refs(
     State(state): State<Arc<AppState>>,
     Path(title): Path<String>,
-) -> Result<Json<UnlinkedRefsResponse>, String> {
+) -> Result<Json<UnlinkedRefsResponse>, crate::error::ApiError> {
     let names = state
         .with_index(|idx| {
             let mut names = vec![title.clone()];

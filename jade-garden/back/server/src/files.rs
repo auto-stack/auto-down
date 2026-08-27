@@ -45,12 +45,12 @@ pub struct DeleteFileRequest {
 pub async fn list_files(
     State(state): State<Arc<AppState>>,
     Query(q): Query<ListFilesQuery>,
-) -> Result<Json<Vec<FileNode>>, String> {
+) -> Result<Json<Vec<FileNode>>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let base = wiki.join(&q.path);
     let base = normalize_path(&base);
     if !base.starts_with(&wiki) {
-        return Err("Invalid path".to_string());
+        return Err(crate::error::ApiError::bad_request("Invalid path"));
     }
 
     if q.recursive {
@@ -121,7 +121,7 @@ fn file_node_from_entry(entry: &std::fs::DirEntry, wiki: &std::path::Path) -> Fi
 pub async fn create_file(
     State(state): State<Arc<AppState>>,
     Json(req): Json<CreateFileRequest>,
-) -> Result<Json<FileNode>, String> {
+) -> Result<Json<FileNode>, crate::error::ApiError> {
     let target = state.resolve_wiki_path(&req.path).ok_or("Invalid path")?;
     if req.is_dir {
         std::fs::create_dir_all(&target).map_err(|e| format!("Failed to create directory: {e}"))?;
@@ -156,7 +156,7 @@ fn default_ad_content(path: &std::path::Path) -> String {
 pub async fn rename_file(
     State(state): State<Arc<AppState>>,
     Json(req): Json<RenameFileRequest>,
-) -> Result<Json<()>, String> {
+) -> Result<Json<()>, crate::error::ApiError> {
     let old = state.resolve_wiki_path(&req.old_path).ok_or("Invalid old path")?;
     let new = state.resolve_wiki_path(&req.new_path).ok_or("Invalid new path")?;
     std::fs::rename(&old, &new).map_err(|e| format!("Failed to rename: {e}"))?;
@@ -167,7 +167,7 @@ pub async fn rename_file(
 pub async fn delete_file(
     State(state): State<Arc<AppState>>,
     Json(req): Json<DeleteFileRequest>,
-) -> Result<Json<()>, String> {
+) -> Result<Json<()>, crate::error::ApiError> {
     let target = state.resolve_wiki_path(&req.path).ok_or("Invalid path")?;
     if target.is_dir() {
         std::fs::remove_dir_all(&target).map_err(|e| format!("Failed to delete directory: {e}"))?;

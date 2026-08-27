@@ -16,7 +16,7 @@ pub struct UploadAssetResponse {
 pub async fn upload_asset(
     State(state): State<Arc<AppState>>,
     mut multipart: Multipart,
-) -> Result<Json<UploadAssetResponse>, String> {
+) -> Result<Json<UploadAssetResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let assets_dir = wiki.join("assets");
     std::fs::create_dir_all(&assets_dir).map_err(|e| format!("Failed to create assets dir: {e}"))?;
@@ -44,7 +44,7 @@ pub async fn upload_asset(
         return Ok(Json(UploadAssetResponse { path: rel }));
     }
 
-    Err("No file uploaded".to_string())
+    Err(crate::error::ApiError::bad_request("No file uploaded"))
 }
 
 fn sanitize_filename(name: &str) -> String {

@@ -87,7 +87,12 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > （rust parse_gen_parity_fixtures + node tests/parity.mjs 双侧断言）。
 > 登记偏差：有序列表统一为「数字串 + . 」（原 parse_list_item 只认
 > 1./0.，与 is_block_start 的 ORDERED_RE 不一致，"12. x" 行会进空段落
-> 死循环——顺带修复）。后续 slice：links 索引 → search/tasks/query → srs。
+> 死循环——顺带修复）。
+>
+> **进度（2026-08-28 slice 2 完成）**：back/auto/links.at 单源落地——
+> wikilink/block-ref/tag 三个正则扫描器与 extract_links/extract_tags 行级
+> 编排退役 index.rs 正则；alias [[a|b]] 不匹配、空标题丢弃、中文标签
+> 不支持等边界逐项对齐旧语义。后续 slice：search/tasks/query → srs。
 >
 - **前置（过渡期工具链依赖，2026-08-27 登记）**：a2r 转译须用含
   plan-019 发射器修复（r# 保留字转义等 8 组）的 auto.exe。该修复

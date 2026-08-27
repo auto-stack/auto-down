@@ -251,20 +251,40 @@ function generateHeadingId(content: string, used: Set<string>): string {
 }
 
 function generateBlockId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
+  // Obsidian-style short anchor: 7 base62 chars (~2e12 space; collisions
+  // resolved by the caller's used-set). Full UUIDs are overkill for block
+  // refs and made every line look machine-generated.
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const buf = new Uint32Array(7)
+    crypto.getRandomValues(buf)
+    let id = ''
+    for (let i = 0; i < 7; i++) id += alphabet[buf[i]! % alphabet.length]
+    return id
   }
-  return `b${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  let id = ''
+  for (let i = 0; i < 7; i++) id += alphabet[Math.floor(Math.random() * alphabet.length)]
+  return id
 }
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** Append persistent `^id` anchors to every anchor-able block that does not already have one.
- *  Headings get readable slug ids so `[[Page#Heading Text]]` links work out of the box.
- *  When `previousBody` is supplied, ids for blocks whose kind+content are unchanged are
- *  reused; otherwise a new id is generated. */
+// Blocks that self-identify as flashcards must carry an anchor or the SRS
+// scanner (back/server srs.rs extract_cards) skips them.
+const CARD_TAG_RE = /#card\b|\[\[card\]\]/
+const CLOZE_RE = /\{\{cloze\s/
+
+/** Obsidian-compatible lazy anchoring. The editor (engine) preserves existing
+ *  ^anchors through parse→edit→serialize on its own, so save-time anchor
+ *  generation is limited to blocks that NEED an id to function:
+ *  - headings: `[[Page#Heading Text]]` resolves via the heading's ^slug
+ *  - flashcard blocks (`#card` / `[[card]]` / `{{cloze …}}`): the SRS
+ *    scanner requires block_id
+ * Everything else stays unanchored until something references it (copy
+ * block link assigns one on demand). Unchanged blocks reuse the id from
+ * `previousBody` so re-save never churns existing anchors. */
 export function ensureBlockAnchors(body: string, previousBody?: string): string {
   const lines = body.split('\n')
   const blocks = parseBlocks(body)
@@ -276,7 +296,11 @@ export function ensureBlockAnchors(body: string, previousBody?: string): string 
   }
   const usedIds = new Set(blocks.map((b) => b.blockId).filter(Boolean) as string[])
   for (const block of blocks) {
-    if (block.blockId || !ANCHORABLE_KINDS.has(block.kind)) continue
+    if (block.blockId) continue
+    // Lazy policy: only functionally-required blocks get an id at save time.
+    const needsAnchor =
+      block.kind === 'heading' || CARD_TAG_RE.test(block.content) || CLOZE_RE.test(block.content)
+    if (!needsAnchor || !ANCHORABLE_KINDS.has(block.kind)) continue
     const key = `${block.kind}:${block.content}`
     const id = idByContent.get(key)
       || (block.kind === 'heading' ? generateHeadingId(block.content, usedIds) : generateBlockId())

@@ -1,29 +1,30 @@
 ---
-title: Hello World
-tags:
-  - demo
 status: draft
 summary: 最基础的 AutoDown 文档示例
-updated_at: 2026-06-16T07:00:00Z
+tags:
+- demo
+title: Hello World
+updated_at: 2026-08-27T01:35:05
 ---
-# Hello World
 
-这是一段示例文本，包含 **粗体**、*斜体* 和 `行内代码`。
+# Hello World ^hello-world
 
-## 列表
+这是一段示例文本，包含 **粗体**、*斜体* 和 `行内代码`。 ^384bb695-4bac-4618-a34a-1eab4c6fa82e
 
-- 项目一
-- 项目二
-  - 子项目 A
-  - 子项目 B
+## 列表 ^heading
 
-## 任务列表
+- 项目一 ^4517d73f-c7fd-4f20-8987-1ef5dcee0370
+- 项目二 ^d6ffab27-459f-40ee-a794-2ec0b2e2408f
+  - 子项目 A ^c00221ad-44e1-4b8d-b152-af4c3877ad29
+  - 子项目 B ^e6c05cec-2560-4a2f-9291-e233babc7519
 
-- [x] 创建知识库
-- [ ] 学习 AutoDown 语法
-- [ ] 探索 [[CAP 定理]]
+## 任务列表 ^heading-1
 
-## 代码块
+- [x] 创建知识库 ^f8ddf99a-e16b-41a6-b3c4-414c52b450ac
+- [x] 学习 AutoDown 语法 ^d2be7ed2-c0b0-47d5-869c-42e526128a77
+- [ ] 探索 [[CAP 定理]] ^8c13bf06-8121-435b-82e6-7ef71d429204
+
+## 代码块 ^heading-2
 
 ```rust
 fn main() {
@@ -31,4 +32,4 @@ fn main() {
 }
 ```
 
-返回 [[首页]]。
+返回 [[首页]]。 ^b15b3cce-c55b-4826-8630-287584e8f330

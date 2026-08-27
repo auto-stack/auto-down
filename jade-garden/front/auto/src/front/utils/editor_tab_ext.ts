@@ -293,11 +293,20 @@ export function unlistenEditorHover(handle: any): void {
 
 /** Original copyBlockLink, verbatim; returns whether the link was written
  *  (the widget clears hover_block only in that case, like the original's
- *  early return). */
+ *  early return).
+ *  Obsidian-mode tweak: engine-internal fallback ids (`block-N` from the
+ *  parser, `b-xxxxxx` from splits) are NOT persistent anchors — copying one
+ *  would produce a link that dies on reload. For not-yet-anchored blocks
+ *  degrade to the page link; the slash "Block link" command assigns a real
+ *  anchor on demand. */
 export function copyBlockLinkSafe(hb: any, tab: any): boolean {
   const id = hb?.id
   const title = tab?.title
   if (!id || !title) return false
+  if (/^(block-\d+|b-[a-z0-9]+)$/.test(id)) {
+    navigator.clipboard.writeText(`[[${title}]]`).catch(() => {})
+    return true
+  }
   const link = `[[${title}#^${id}]]`
   navigator.clipboard.writeText(link).catch(() => {})
   return true

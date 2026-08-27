@@ -1,25 +1,26 @@
 ---
-title: Projects
-tags:
-  - project-management
 status: active
 summary: 项目总览与任务追踪
-updated_at: 2026-06-16T07:00:00Z
+tags:
+- project-management
+title: Projects
+updated_at: 2026-08-27T00:40:36
 ---
-# Projects
 
-当前进行中的项目：
+# P~~r~~ojects ^projects
 
-## 项目 A
+当前进行中的项目： ^ca0d5ee0-0d7d-41e9-890b-f609f03f63c1
 
-- 负责人：张三
-- 状态：进行中
-- 相关任务：[[Tasks#block-project-a]]
+## 项目 A ^-a
 
-## 项目 B
+- 负责人：张三 ^4404d43e-6ac9-4182-9175-e3d8c7993f16
+- 状态：进行中 ^55d64a0e-5ef5-43d6-a469-15c64c121a0f
+- 相关任务：\[\[Tasks#block-project-a\]\] ^137674ea-d609-4ec8-a317-35bc9818c7e0
 
-- 负责人：李四
-- 状态：待启动
-- 相关任务：[[Tasks#block-project-b]]
+## 项目 B ^-b
 
-返回 [[首页]]。
+- 负责人：李四 ^46de3d6f-aac0-47cb-bb66-51988b24deda
+- 状态：待启动 ^4913bf5b-c99d-4d57-9198-b349656542a7
+- 相关任务：\[\[Tasks#block-project-b\]\] ^95649dec-3315-4150-b03e-3aadd0fd6341
+
+返回 \[\[首页\]\]。 ^ecf9c195-a9cf-4432-bf1a-a9e3b0200485

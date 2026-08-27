@@ -8,6 +8,57 @@
 > 本仓侧负责 crate 源发射与对拍；本文件为跨仓协调计划，落地时在
 > auto-lang 侧立对应计划并互链。
 >
+> **执行规则（2026-08-27 起）**：Phase 3 编辑壳深水区及其余量、连同
+> 归入 Plan 020 的各 phase（demo/jade 迁移、旧包退役等），改按新规则
+> 执行：**单 worktree + 每 phase 合回同步**——单条 worktree 分支承载
+> 当前 phase，完成即合回 master，双仓同步到同相位后再开下一 phase；
+> 停用批次六~八式多 worktree/多分支并行（该方式曾引入跨仓合并顺序
+> 约束，见批次七注）。
+>
+> **进度（2026-08-27，批次十 Phase 3 第三轨：结构编辑引擎）**：
+> - auto-lang 侧（同 worktree `auto-down-dev` 续）：① 关键回环缺陷修正——
+>   sync_external 补自回显快速路径（on_change→绑定回写不再整树重建清
+>   焦点，敲一键丢一次光标的根因）；② Enter 输入规则：段落/引用内按
+>   光标字节偏移拆块、列表项末尾续出空项、空项上 Enter 退出列表
+>   （Notion 式惯例）、fence 维持软换行；③ Backspace 块首合并（同宿主
+>   相邻两叶，跨容器边界与 fence 登记不做）+ 块表压缩重编号（创建序
+>   单调性）；④ ↑↓ 水平落点锚 nav_goal_x（横向/点击/结构操作重置，
+>   邻块同 x Click 就近落位）；⑤ cosmic 光标口径修正——Cursor.index 为
+>   行内【字节】偏移，拆分/接缝/软尾全线字节制；动作原语前置整形。
+> - 验证：核单测 24/24（新增 10 项覆盖上述语义）。全量 lib 另现
+>   clipboard set_then_get_roundtrip 失败——主检出同样必现，master 在册。
+> - 余量登记：选区不跨块、IME 手验清单（微软拼音 413 清单）、标题拆分
+>   降级行为、列表项内多段续项边界。
+>
+> **进度（2026-08-27，批次九 Phase 3 第二轨：AutodownEditorCore 编辑壳 v1）**：
+> - auto-lang 侧（新规则首跑：单 worktree `.worktrees/auto-down-dev`
+>   分支 `auto-down-dev`，Phase 未完不合回 master；worktree 内 cargo
+>   构建依赖跨仓相对路径，已建目录联接
+>   `auto-lang/.worktrees/auto-down → 主检出`）：新增
+>   `ui/autodown_editor/` 后端中立核 + iced widget——块表模型
+>   （parse_blocks 文本叶子 Paragraph/Heading/Fence 各挂 cosmic-text
+>   ViEditor；quote/list/table/hr 骨架化只读、`emit_document` 全文重发），
+>   焦点块编辑管线（字符/退格（块首不跨块合并）/Delete/Enter 软换行/
+>   undo-redo/剪贴板最小集），↑↓ 首/末物理行跨块迁焦，点击命中聚焦 +
+>   多击节律，IME preedit/commit 通道；
+> - 行内 marks→样式段叠加层：解析快照 byte 区间 × layout run 求交切样
+>   （strong/em/code/del/link→bold/italic/mono/strike/link 色），本地编辑
+>   暂态整块退化基础色、回写重建复活（428 P2 Attrs-span 切片同路）；
+> - `View::AutodownEditor` 变体入列（key 注册表/差分回写/on_change 契约
+>   同 CodeEditor §5.4 口径）——iced renderer 双匹配臂 + 泛型 builder +
+>   INPUT_TEXT payload 版 VM 臂、gpui textarea-div 降级、vnode/snapshot
+>   探针臂；VM 臂拆分：`autodown_editor` 别名走可编辑变体，
+>   `markdown`/`autodown` 维持只读真渲染（feature 门控
+>   `all(autodown, code-editor)`，缺一退旧链）；
+> - natives 2956 `auto.autodown_editor.text` 四层接入（catalog/native.rs
+>   导入/codegen intrinsics ×2/shim），on_change 回环 payload 口；
+> - 验证：核单测 16/16 + VM 臂产物测试 1/1；全量 lib 3745 过 /1 败为
+>   master 在册项（`test_md_hidden_classes_parse`，主检出复跑同样失败，
+>   非本计划引入）；CLI bin 带 feature 构建通过（实机点击/键入待人工）；
+> - 余量登记：markdown 输入规则（~~Enter 不拆块~~批次十已实现拆块/
+>   续项/退列）、选区不跨块、水平落点 x 保留（~~登记~~批次十已实现
+>   nav_goal_x 锚）、IME 手验清单（微软拼音 413 清单）。
+>
 > **进度（2026-08-27，批次八 Phase 3 第一轨：`autodown_*` VM natives）**：
 > - auto-lang 侧（续 feat/plan-019-vm-render）：六个 natives 入册
 >   （catalog 2950-2955 + codegen intrinsics ×2 轨 + shim）——

@@ -28,15 +28,15 @@ cd packages/engine && pnpm gen:render
 
 # block_model / serializer / ial / markdown_parser — manual trans + copy.
 # NOTE (plan 019 Phase 1): the parser/ial sources need the a2r emitter
-# fixes from auto-lang worktree feat/plan-019-a2r-parser (r# keyword
-# escaping, String.fromCharCode, char-based str length/slice, split ->
-# Vec<String>, NullCoalesce typing) — build that branch's auto.exe and use
-# it here (AUTO_EXE or the explicit path below):
+# fixes (r# keyword escaping, String.fromCharCode, char-based str
+# length/slice, split -> Vec<String>, NullCoalesce typing) — merged to
+# auto-lang master with plan 019; use a locally built auto.exe that
+# includes them (AUTO_EXE or the explicit path below):
 cd packages/engine/auto/parser
-D:/autostack/auto-lang/worktree/plan-019-a2r/target/debug/auto.exe trans --path block_model.at rust
-D:/autostack/auto-lang/worktree/plan-019-a2r/target/debug/auto.exe trans --path serializer.at rust
-D:/autostack/auto-lang/worktree/plan-019-a2r/target/debug/auto.exe trans --path ial.at rust
-D:/autostack/auto-lang/worktree/plan-019-a2r/target/debug/auto.exe trans --path markdown_parser.at rust
+D:/autostack/auto-lang/target/debug/auto.exe trans --path block_model.at rust
+D:/autostack/auto-lang/target/debug/auto.exe trans --path serializer.at rust
+D:/autostack/auto-lang/target/debug/auto.exe trans --path ial.at rust
+D:/autostack/auto-lang/target/debug/auto.exe trans --path markdown_parser.at rust
 cp block_model.a2r.rs ../../../core/rust/src/block_model.rs
 cp serializer.a2r.rs ../../../core/rust/src/serializer.rs
 cp ial.a2r.rs ../../../core/rust/src/ial.rs

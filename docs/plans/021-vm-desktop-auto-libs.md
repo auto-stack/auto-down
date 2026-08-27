@@ -81,6 +81,15 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 
 ### Phase 2 — 后端纯逻辑 .at 化（a2r-clean subset）
 
+- **前置（过渡期工具链依赖，2026-08-27 登记）**：a2r 转译须用含
+  plan-019 发射器修复（r# 保留字转义等 8 组）的 auto.exe。该修复
+  2026-08-27 13:46 才合入 auto-lang master（`45b005d01`）；主检出
+  `target/debug/auto.exe` 构建于修复之前（产出缺 r# 转义的损坏 Rust）。
+  过渡期统一使用隔离构建：
+  `D:\autostack\auto-lang-wt\target\debug\auto.exe trans --path X.at rust`
+  （worktree 钉在 `45b005d01`，仅含构建产物，无独有提交——主检出
+  `cargo build -p auto` 成功重建后即可
+  `git worktree remove D:\autostack\auto-lang-wt` 撤除）。
 - 迁移顺序（纯逻辑 → 副作用薄壳）：
   1. wiki 读写 + 块解析（`parser.rs` 退役第一枪；`ANCHOR_SUFFIX_RE` /
      `PROPERTY_RE` 等正则改手写字符扫描——先例：engine `extractAnchorBlock`）；

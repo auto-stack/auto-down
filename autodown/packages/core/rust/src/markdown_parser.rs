@@ -1313,7 +1313,10 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
     let mut buf: String = "".to_string();
     let mut i: i64 = 0;
     let mut seenCode: bool = false;
-    while i < (line.chars().count() as i64) {
+
+
+    let lineLen: i64 = (line.chars().count() as i64);
+    while i < lineLen {
         let cs = line.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>();
         
 
@@ -1878,7 +1881,8 @@ fn CURLY_RSQUO() -> String {
 fn smartQuotes(s: &str) -> String {
     let mut out: String = "".to_string();
     let mut i: i64 = 0;
-    while i < (s.chars().count() as i64) {
+    let sLen: i64 = (s.chars().count() as i64);
+    while i < sLen {
         let cs = s.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>();
         if cs == "\"" {
             let mut prevIsOpenCtx: bool = false;

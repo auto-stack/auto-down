@@ -1210,7 +1210,10 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
     var buf str = ""
     var i int = 0
     var seenCode bool = false
-    while i < line.length.to(int) {
+    // 热路径：长度提升为局部（a2r 的 str length 是 chars().count()，
+    // 每次迭代重数为 O(n²)——plan 019 批次七 perf 基线配套）
+    let lineLen int = line.length.to(int)
+    while i < lineLen {
         let cs = line.slice(i, i + 1)
 
         // newline: >=2 trailing spaces = hardbreak, else soft merge
@@ -1734,7 +1737,8 @@ fn CURLY_RSQUO() str { return String.fromCharCode(8217) }
 fn smartQuotes(s str) str {
     var out = ""
     var i int = 0
-    while i < s.length.to(int) {
+    let sLen int = s.length.to(int)
+    while i < sLen {
         let cs = s.slice(i, i + 1)
         if cs == "\"" {
             var prevIsOpenCtx bool = false

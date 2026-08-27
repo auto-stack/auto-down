@@ -98,25 +98,29 @@ pub fn hasChar(s str, code int) bool {
 }
 
 pub fn findStr(s str, needle str) int {
-    if needle.length.to(int) == 0 { return 0 }
-    if s.length.to(int) < needle.length.to(int) { return -1 }
+    let nLen int = needle.length.to(int)
+    let sLen int = s.length.to(int)
+    if nLen == 0 { return 0 }
+    if sLen < nLen { return -1 }
     var i int = 0
-    while i + needle.length.to(int) <= s.length.to(int) {
-        if s.slice(i, i + needle.length.to(int)) == needle { return i }
+    while i + nLen <= sLen {
+        if s.slice(i, i + nLen) == needle { return i }
         i += 1
     }
     return -1
 }
 
 pub fn findStrFrom(s str, needle str, from int) int {
-    if needle.length.to(int) == 0 {
-        if from <= s.length.to(int) { return from }
+    let nLen int = needle.length.to(int)
+    let sLen int = s.length.to(int)
+    if nLen == 0 {
+        if from <= sLen { return from }
         return -1
     }
     var i int = from
     if i < 0 { i = 0 }
-    while i + needle.length.to(int) <= s.length.to(int) {
-        if s.slice(i, i + needle.length.to(int)) == needle { return i }
+    while i + nLen <= sLen {
+        if s.slice(i, i + nLen) == needle { return i }
         i += 1
     }
     return -1

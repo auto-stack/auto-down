@@ -98,15 +98,17 @@ pub fn hasChar(s: &str, code: i64) -> bool {
 }
 
 pub fn findStr(s: &str, needle: &str) -> i64 {
-    if (needle.chars().count() as i64) == 0 {
+    let nLen: i64 = (needle.chars().count() as i64);
+    let sLen: i64 = (s.chars().count() as i64);
+    if nLen == 0 {
         return 0;
     }
-    if (s.chars().count() as i64) < (needle.chars().count() as i64) {
+    if sLen < nLen {
         return -1;
     }
     let mut i: i64 = 0;
-    while i + (needle.chars().count() as i64) <= (s.chars().count() as i64) {
-        if s.chars().take((i + (needle.chars().count() as i64)) as usize).skip((i) as usize).collect::<String>() == needle {
+    while i + nLen <= sLen {
+        if s.chars().take((i + nLen) as usize).skip((i) as usize).collect::<String>() == needle {
             return i;
         }
         i += 1;
@@ -115,8 +117,10 @@ pub fn findStr(s: &str, needle: &str) -> i64 {
 }
 
 pub fn findStrFrom(s: &str, needle: &str, from: i64) -> i64 {
-    if (needle.chars().count() as i64) == 0 {
-        if from <= (s.chars().count() as i64) {
+    let nLen: i64 = (needle.chars().count() as i64);
+    let sLen: i64 = (s.chars().count() as i64);
+    if nLen == 0 {
+        if from <= sLen {
             return from;
         }        return -1;
     }
@@ -124,8 +128,8 @@ pub fn findStrFrom(s: &str, needle: &str, from: i64) -> i64 {
     if i < 0 {
         i = 0;
     }
-    while i + (needle.chars().count() as i64) <= (s.chars().count() as i64) {
-        if s.chars().take((i + (needle.chars().count() as i64)) as usize).skip((i) as usize).collect::<String>() == needle {
+    while i + nLen <= sLen {
+        if s.chars().take((i + nLen) as usize).skip((i) as usize).collect::<String>() == needle {
             return i;
         }
         i += 1;

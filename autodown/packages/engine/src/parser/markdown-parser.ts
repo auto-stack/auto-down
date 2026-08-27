@@ -757,7 +757,7 @@ export function splitRowCells(line: string): string[] {
     if (startsWithStr(t, "|")) {
         t = t.slice(1);
     }
-    if (endsWithStr(t, "|")) {
+    if (endsWithTokSeq(t, "|")) {
         t = t.slice(0, Number(t.length) - 1);
     }
     const raw = t.split("|");
@@ -773,7 +773,7 @@ export function splitRowCells(line: string): string[] {
 export function delimiterAlign(cell: string): string {
     const t = cell.trim();
     const left = startsWithStr(t, ":");
-    const right = endsWithStr(t, ":");
+    const right = endsWithTokSeq(t, ":");
     if (left) {
         if (right) {
             return "center";
@@ -1052,7 +1052,7 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
                 if (preOk) {
                     const head = para[0];
                     if (isTableRow(head)) {
-                        if (endsWithStr(head.trim(), "|")) {
+                        if (endsWithTokSeq(head.trim(), "|")) {
                             const preCells = splitRowCells(head);
                             if (Number(preCells.length) >= 2) {
                                 let allPipes: boolean = true;
@@ -1492,7 +1492,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (close != -1) {
                 let inner = line.slice(i + run, close);
                 if (startsWithStr(inner, " ")) {
-                    if (endsWithStr(inner, " ")) {
+                    if (endsWithTokSeq(inner, " ")) {
                         if (inner.trim() != "") {
                             inner = inner.slice(1, Number(inner.length) - 1);
                         }
@@ -1784,7 +1784,7 @@ export function trimLastTextNode(last: WNode, nodes: WNode[]): void {
     if (c2 == c) {
         
 
-        if (endsWithStr(c, "<")) {
+        if (endsWithTokSeq(c, "<")) {
             c2 = c.slice(0, Number(c.length) - 1);
         }
     }
@@ -1799,8 +1799,8 @@ export function trimLastTextNode(last: WNode, nodes: WNode[]): void {
     c = c3;
     let c4 = stripTrailingStarSpaces(c);
     if (c4 == c) {
-        if (endsWithStr(c, "*")) {
-            if (!endsWithStr(c, "**")) {
+        if (endsWithTokSeq(c, "*")) {
+            if (!endsWithTokSeq(c, "**")) {
                 c4 = c.slice(0, Number(c.length) - 1);
             }
         }
@@ -2343,7 +2343,7 @@ export function scanLink(line: string, i: number, isFinal: boolean, seenCode: bo
     if (sp != -1) {
         href = inner.slice(0, sp);
         const titlePart = inner.slice(sp + 2);
-        if (endsWithStr(titlePart, "\"")) {
+        if (endsWithTokSeq(titlePart, "\"")) {
             title = titlePart.slice(0, Number(titlePart.length) - 1);
         }
     } else {
@@ -2567,7 +2567,7 @@ export function withAnchorId(node: BlockNode, fallbackId: string): BlockNode {
     return blockFull(anchor, node.kind, node.attrs, node.children, node.inlines, node.source);
 }
 
-export function endsWithStr(hay: string, needle: string): boolean {
+export function endsWithTokSeq(hay: string, needle: string): boolean {
     const hl: number = Number(hay.length);
     const nl: number = Number(needle.length);
     if (nl > hl) {
@@ -2652,7 +2652,7 @@ export function stripLineAnchor(l: string): string {
     }
     const tok: string = "^" + cand;
     const tokLen: number = Number(tok.length);
-    if (!endsWithStr(l, tok)) {
+    if (!endsWithTokSeq(l, tok)) {
         return l;
     }
     const before: number = n - tokLen;

@@ -653,7 +653,7 @@ fn isTableDelimiter(line str) bool {
 fn splitRowCells(line str) List<str> {
     var t = line.trim()
     if startsWithStr(t, "|") { t = t.slice(1) }
-    if endsWithStr(t, "|") { t = t.slice(0, t.length.to(int) - 1) }
+    if endsWithTokSeq(t, "|") { t = t.slice(0, t.length.to(int) - 1) }
     let raw = t.split("|")
     var out List<str> = []
     var i int = 0
@@ -667,7 +667,7 @@ fn splitRowCells(line str) List<str> {
 fn delimiterAlign(cell str) str {
     let t = cell.trim()
     let left = startsWithStr(t, ":")
-    let right = endsWithStr(t, ":")
+    let right = endsWithTokSeq(t, ":")
     if left {
         if right { return "center" }
         return "left"
@@ -915,7 +915,7 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
                 if preOk {
                     let head = para[0]
                     if isTableRow(head) {
-                        if endsWithStr(head.trim(), "|") {
+                        if endsWithTokSeq(head.trim(), "|") {
                             let preCells = splitRowCells(head)
                             if preCells.length.to(int) >= 2 {
                                 var allPipes bool = true
@@ -1318,7 +1318,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
             if close != -1 {
                 var inner = line.slice(i + run, close)
                 if startsWithStr(inner, " ") {
-                    if endsWithStr(inner, " ") {
+                    if endsWithTokSeq(inner, " ") {
                         if inner.trim() != "" {
                             inner = inner.slice(1, inner.length.to(int) - 1)
                         }
@@ -1590,7 +1590,7 @@ fn trimLastTextNode(last WNode, nodes List<WNode>) {
     var c2 = stripTrailingPartialTag(c)
     if c2 == c {
         // "<$" — a trailing lone '<'
-        if endsWithStr(c, "<") {
+        if endsWithTokSeq(c, "<") {
             c2 = c.slice(0, c.length.to(int) - 1)
         }
     }
@@ -1605,8 +1605,8 @@ fn trimLastTextNode(last WNode, nodes List<WNode>) {
     c = c3
     var c4 = stripTrailingStarSpaces(c)
     if c4 == c {
-        if endsWithStr(c, "*") {
-            if !endsWithStr(c, "**") {
+        if endsWithTokSeq(c, "*") {
+            if !endsWithTokSeq(c, "**") {
                 c4 = c.slice(0, c.length.to(int) - 1)
             }
         }
@@ -2026,7 +2026,7 @@ fn scanLink(line str, i int, isFinal bool, seenCode bool) LinkScan? {
     if sp != -1 {
         href = inner.slice(0, sp)
         let titlePart = inner.slice(sp + 2)
-        if endsWithStr(titlePart, "\"") {
+        if endsWithTokSeq(titlePart, "\"") {
             title = Some(titlePart.slice(0, titlePart.length.to(int) - 1))
         }
     } else {
@@ -2252,7 +2252,7 @@ fn withAnchorId(node BlockNode, fallbackId str) BlockNode {
 // re-emits the token from the `anchor` attr (withIdSuffix), making the
 // parse -> edit -> serialize round trip anchor-preserving.
 
-fn endsWithStr(hay str, needle str) bool {
+fn endsWithTokSeq(hay str, needle str) bool {
     let hl = hay.length.to(int)
     let nl = needle.length.to(int)
     if nl > hl { return false }
@@ -2329,7 +2329,7 @@ fn stripLineAnchor(l str) str {
     if cand == "" { return l }
     let tok = "^" + cand
     let tokLen = tok.length.to(int)
-    if !endsWithStr(l, tok) { return l }
+    if !endsWithTokSeq(l, tok) { return l }
     let before = n - tokLen
     if before <= 0 { return l }
     let ws = l.slice(before - 1, before)

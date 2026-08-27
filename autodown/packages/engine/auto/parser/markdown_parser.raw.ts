@@ -371,7 +371,7 @@ export function fenceMarkerRun(line: string): string {
     }
     while (i < Number(t.length)) {
         if (t.char_at(i) == first) {
-            run = run + t.slice(i, i + 1);
+            run += t.slice(i, i + 1);
             i += 1;
         } else {
             break;
@@ -870,7 +870,7 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
             let code = body.join("\n");
             if (closed) {
                 if (Number(body.length) > 0) {
-                    code = code + "\n";
+                    code += "\n";
                 } else {
                     code = "";
                 }
@@ -1370,7 +1370,11 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
     let buf: string = "";
     let i: number = 0;
     let seenCode: boolean = false;
-    while (i < Number(line.length)) {
+    
+
+
+    const lineLen: number = Number(line.length);
+    while (i < lineLen) {
         const cs = line.slice(i, i + 1);
         
 
@@ -1395,7 +1399,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 if (sp > 0) {
                     buf = buf.slice(0, Number(buf.length) - sp);
                 }
-                buf = buf + "\n";
+                buf += "\n";
             }
             i += 1;
             continue;
@@ -1428,7 +1432,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 i = scEm.next;
                 continue;
             }
-            buf = buf + cs;
+            buf += cs;
             i += 1;
             continue;
         }
@@ -1444,7 +1448,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 i = scU.next;
                 continue;
             }
-            buf = buf + cs;
+            buf += cs;
             i += 1;
             continue;
         }
@@ -1462,7 +1466,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                     continue;
                 }
             }
-            buf = buf + cs;
+            buf += cs;
             i += 1;
             continue;
         }
@@ -1526,8 +1530,8 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             
 
 
-            buf = buf + line.slice(i, i + run);
-            i = i + run;
+            buf += line.slice(i, i + run);
+            i += run;
             continue;
         }
         
@@ -1547,7 +1551,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                     continue;
                 }
             }
-            buf = buf + cs;
+            buf += cs;
             i += 1;
             continue;
         }
@@ -1575,7 +1579,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 i = lk.next;
                 continue;
             }
-            buf = buf + cs;
+            buf += cs;
             i += 1;
             continue;
         }
@@ -1588,12 +1592,12 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 const nc = line.char_at(i + 1);
                 if (isPunctuationCode(nc)) {
                     if (nc == 34) {
-                        buf = buf + String.fromCharCode(1);
+                        buf += String.fromCharCode(1);
                     } else {
                         if (nc == 39) {
-                            buf = buf + String.fromCharCode(2);
+                            buf += String.fromCharCode(2);
                         } else {
-                            buf = buf + line.slice(i + 1, i + 2);
+                            buf += line.slice(i + 1, i + 2);
                         }
                     }
                     i += 2;
@@ -1603,7 +1607,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
         }
         
 
-        buf = buf + cs;
+        buf += cs;
         i += 1;
     }
     if (buf != "") {
@@ -1994,7 +1998,8 @@ export function CURLY_RSQUO(): string {
 export function smartQuotes(s: string): string {
     let out: string = "";
     let i: number = 0;
-    while (i < Number(s.length)) {
+    const sLen: number = Number(s.length);
+    while (i < sLen) {
         const cs = s.slice(i, i + 1);
         if (cs == "\"") {
             let prevIsOpenCtx: boolean = false;
@@ -2019,28 +2024,28 @@ export function smartQuotes(s: string): string {
                 }
             }
             if (prevIsOpenCtx) {
-                out = out + CURLY_LDQUO();
+                out += CURLY_LDQUO();
                 i += 1;
                 continue;
             }
             
 
             if (i + 1 >= Number(s.length)) {
-                out = out + CURLY_RDQUO();
+                out += CURLY_RDQUO();
                 i += 1;
                 continue;
             }
             const nc = s.char_at(i + 1);
             if (nc == 32) {
-                out = out + CURLY_RDQUO();
+                out += CURLY_RDQUO();
             } else {
                 if (nc == 10) {
-                    out = out + CURLY_RDQUO();
+                    out += CURLY_RDQUO();
                 } else {
                     if (isClosePunctCode(nc)) {
-                        out = out + CURLY_RDQUO();
+                        out += CURLY_RDQUO();
                     } else {
-                        out = out + cs;
+                        out += cs;
                     }
                 }
             }
@@ -2063,7 +2068,7 @@ export function smartQuotes(s: string): string {
                 }
             }
             if (apostrophe) {
-                out = out + CURLY_RSQUO();
+                out += CURLY_RSQUO();
             } else {
                 let openS: boolean = false;
                 if (out == "") {
@@ -2084,15 +2089,15 @@ export function smartQuotes(s: string): string {
                     }
                 }
                 if (openS) {
-                    out = out + CURLY_LSQUO();
+                    out += CURLY_LSQUO();
                 } else {
-                    out = out + CURLY_RSQUO();
+                    out += CURLY_RSQUO();
                 }
             }
             i += 1;
             continue;
         }
-        out = out + cs;
+        out += cs;
         i += 1;
     }
     return out;
@@ -2163,7 +2168,7 @@ export function findBacktickRun(line: string, from: number, count: number): numb
         if (run == count) {
             return i;
         }
-        i = i + run;
+        i += run;
     }
     return -1;
 }
@@ -2604,7 +2609,7 @@ export function applyAnchorsDeep(node: BlockNode): BlockNode {
     for (let i = 0; i < Number(node.children.length); i++) {
         kids.push(applyAnchorsDeep(node.children[i]));
     }
-    let out: BlockNode = BlockNode(node.id, node.kind, node.attrs, kids, node.inlines, node.source);
+    let out: BlockNode = blockFull(node.id, node.kind, node.attrs, kids, node.inlines, node.source);
     if (isAnchorableLeafKind(node.kind)) {
         if (Number(node.inlines.length) > 0) {
             const text = spansText(node.inlines);
@@ -2617,7 +2622,7 @@ export function applyAnchorsDeep(node: BlockNode): BlockNode {
                     const ws = text.slice(spaceIdx, spaceIdx + 1);
                     if (ws == " " || ws == "\t") {
                         const stripped = stripAnchorSpans(node.inlines, spaceIdx);
-                        out = BlockNode(anchor, node.kind, attrSet(node.attrs, "anchor", Value.Str(anchor)), kids, stripped, node.source);
+                        out = blockFull(anchor, node.kind, attrSet(node.attrs, "anchor", Value.Str(anchor)), kids, stripped, node.source);
                     }
                 }
             }

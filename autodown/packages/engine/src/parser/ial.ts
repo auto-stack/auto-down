@@ -110,15 +110,17 @@ export function hasChar(s: string, code: number): boolean {
 }
 
 export function findStr(s: string, needle: string): number {
-    if (Number(needle.length) == 0) {
+    const nLen: number = Number(needle.length);
+    const sLen: number = Number(s.length);
+    if (nLen == 0) {
         return 0;
     }
-    if (Number(s.length) < Number(needle.length)) {
+    if (sLen < nLen) {
         return -1;
     }
     let i: number = 0;
-    while (i + Number(needle.length) <= Number(s.length)) {
-        if (s.slice(i, i + Number(needle.length)) == needle) {
+    while (i + nLen <= sLen) {
+        if (s.slice(i, i + nLen) == needle) {
             return i;
         }
         i += 1;
@@ -127,8 +129,10 @@ export function findStr(s: string, needle: string): number {
 }
 
 export function findStrFrom(s: string, needle: string, from: number): number {
-    if (Number(needle.length) == 0) {
-        if (from <= Number(s.length)) {
+    const nLen: number = Number(needle.length);
+    const sLen: number = Number(s.length);
+    if (nLen == 0) {
+        if (from <= sLen) {
             return from;
         }
         return -1;
@@ -137,8 +141,8 @@ export function findStrFrom(s: string, needle: string, from: number): number {
     if (i < 0) {
         i = 0;
     }
-    while (i + Number(needle.length) <= Number(s.length)) {
-        if (s.slice(i, i + Number(needle.length)) == needle) {
+    while (i + nLen <= sLen) {
+        if (s.slice(i, i + nLen) == needle) {
             return i;
         }
         i += 1;

@@ -1,22 +1,24 @@
+//! `.ad` page parsing shell (Plan 021 Phase 2 slice 1).
+//!
+//! The pure segmentation/anchor/property logic lives in the single-source
+//! `back/auto/parser.at` and arrives generated as [`crate::parser_gen`] —
+//! dual-emitted (a2ts twin feeds the node parity test, a2r feeds this crate).
+//! This shell only owns the Rust-side concerns: uuid stamping, the
+//! serde_yaml frontmatter decode, and the BlockKind enum mapping.
+
 use crate::block::{generate_uuid, Block, BlockKind, ParsedPage};
-use regex::Regex;
+use crate::parser_gen;
 use std::collections::HashMap;
 
 /// Split an `.ad` file into YAML frontmatter and Markdown body.
 /// Returns `(frontmatter_json, body)`.
 pub fn split_frontmatter(text: &str) -> (serde_json::Value, String) {
-    let trimmed = text.trim_start();
-    if !trimmed.starts_with("---") {
-        return (serde_json::Value::Object(serde_json::Map::new()), text.to_string());
+    let scan = parser_gen::splitFrontmatterScan(text);
+    if !scan.hasMarker {
+        return (serde_json::Value::Object(serde_json::Map::new()), scan.body);
     }
-    let rest = &trimmed[3..];
-    let Some(end) = rest.find("\n---") else {
-        return (serde_json::Value::Object(serde_json::Map::new()), text.to_string());
-    };
-    let yaml_text = &rest[..end];
-    let body = &rest[end + 4..];
-    let frontmatter: serde_json::Value = serde_yaml::from_str(yaml_text).unwrap_or_default();
-    (frontmatter, body.trim_start().to_string())
+    let frontmatter: serde_json::Value = serde_yaml::from_str(&scan.yaml).unwrap_or_default();
+    (frontmatter, scan.body)
 }
 
 /// Join frontmatter and body back into `.ad` text.
@@ -24,12 +26,6 @@ pub fn split_frontmatter(text: &str) -> (serde_json::Value, String) {
 pub fn join_frontmatter(frontmatter: &serde_json::Value, body: &str) -> String {
     let yaml_text = serde_yaml::to_string(frontmatter).unwrap_or_default();
     format!("---\n{}---\n\n{}", yaml_text, body.trim_start())
-}
-
-lazy_static::lazy_static! {
-    static ref ANCHOR_SUFFIX_RE: Regex = Regex::new(r"\s+\^([a-zA-Z0-9_-]+)\s*$").unwrap();
-    static ref ID_PROPERTY_RE: Regex = Regex::new(r"^\s*id::\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\s*$").unwrap();
-    static ref PROPERTY_RE: Regex = Regex::new(r"^\s*([a-zA-Z_][a-zA-Z0-9_\-]*)::\s*(.*)$").unwrap();
 }
 
 /// Parse an `.ad` file into a `ParsedPage`.
@@ -40,246 +36,32 @@ pub fn parse_page(text: &str) -> ParsedPage {
 }
 
 fn parse_body(body: &str) -> Vec<Block> {
-    let lines: Vec<&str> = body.lines().collect();
-    let mut blocks: Vec<Block> = Vec::new();
-    let mut i = 0;
-
-    while i < lines.len() {
-        let line = lines[i];
-
-        // Fence: code blocks / callouts / details
-        if line.starts_with("```") {
-            let (block, next_i) = parse_fenced_block(&lines, i, BlockKind::Code);
-            blocks.push(block);
-            i = next_i;
-            continue;
-        }
-
-        if line.starts_with(":::") {
-            let kind = if line.starts_with(":::details") || line.starts_with("::: details") {
-                BlockKind::Details
-            } else {
-                BlockKind::Callout
-            };
-            let (block, next_i) = parse_fenced_block(&lines, i, kind);
-            blocks.push(block);
-            i = next_i;
-            continue;
-        }
-
-        // Horizontal rule
-        if line.trim() == "---" || line.trim() == "***" || line.trim() == "___" {
-            blocks.push(Block {
-                uuid: generate_uuid(),
-                block_id: None,
-                kind: BlockKind::HorizontalRule,
-                content: line.to_string(),
-                properties: HashMap::new(),
-                line_start: i,
-                line_end: i + 1,
-            });
-            i += 1;
-            continue;
-        }
-
-        // Heading
-        if let Some(heading) = parse_heading(line, i) {
-            blocks.push(heading);
-            i += 1;
-            continue;
-        }
-
-        // List item
-        if let Some(list) = parse_list_item(line, i) {
-            blocks.push(list);
-            i += 1;
-            continue;
-        }
-
-        // Blockquote
-        if line.starts_with('>') {
-            let (block, next_i) = parse_blockquote(&lines, i);
-            blocks.push(block);
-            i = next_i;
-            continue;
-        }
-
-        // Blank line: skip, but do not consume it as a block.
-        if line.trim().is_empty() {
-            i += 1;
-            continue;
-        }
-
-        // Paragraph: consume consecutive non-block lines.
-        let (block, next_i) = parse_paragraph(&lines, i);
-        blocks.push(block);
-        i = next_i;
-    }
-
-    blocks
-}
-
-fn parse_heading(line: &str, line_idx: usize) -> Option<Block> {
-    let trimmed = line.trim_start();
-    let level = trimmed.chars().take_while(|c| *c == '#').count();
-    if level == 0 || level > 6 || !trimmed.chars().nth(level).map(|c| c == ' ').unwrap_or(false) {
-        return None;
-    }
-    let content = trimmed[level + 1..].trim().to_string();
-    let (content, block_id) = extract_anchor(&content);
-    Some(Block {
-        uuid: generate_uuid(),
-        block_id,
-        kind: BlockKind::Heading,
-        content,
-        properties: HashMap::new(),
-        line_start: line_idx,
-        line_end: line_idx + 1,
-    })
-}
-
-fn parse_list_item(line: &str, line_idx: usize) -> Option<Block> {
-    let trimmed = line.trim_start();
-    let kind = if trimmed.starts_with("- [ ] ") || trimmed.starts_with("- [x] ") || trimmed.starts_with("- [X] ") {
-        BlockKind::Task
-    } else if trimmed.starts_with("- ") {
-        BlockKind::Bullet
-    } else if trimmed.starts_with("1. ") || trimmed.starts_with("0. ") {
-        // Naive ordered-list detection; any `N. ` prefix counts.
-        BlockKind::Ordered
-    } else {
-        return None;
-    };
-
-    let prefix_len = match kind {
-        BlockKind::Task => "- [ ] ".len(),
-        BlockKind::Bullet => "- ".len(),
-        BlockKind::Ordered => {
-            let dot = trimmed.find(". ")?;
-            dot + 2
-        }
-        _ => unreachable!(),
-    };
-
-    let content = trimmed[prefix_len..].trim().to_string();
-    let (content, block_id) = extract_anchor(&content);
-
-    Some(Block {
-        uuid: generate_uuid(),
-        block_id,
-        kind,
-        content,
-        properties: HashMap::new(),
-        line_start: line_idx,
-        line_end: line_idx + 1,
-    })
-}
-
-fn parse_paragraph(lines: &[&str], start: usize) -> (Block, usize) {
-    let mut end = start;
-    while end < lines.len()
-        && !lines[end].trim().is_empty()
-        && !is_block_start(lines[end])
-    {
-        end += 1;
-    }
-    let content = lines[start..end].join("\n");
-    let (content, block_id) = extract_anchor(&content);
-    (
-        Block {
+    parser_gen::parseBody(body)
+        .into_iter()
+        .map(|b| Block {
             uuid: generate_uuid(),
-            block_id,
-            kind: BlockKind::Paragraph,
-            content,
+            block_id: (!b.blockId.is_empty()).then_some(b.blockId),
+            kind: kind_from_str(&b.kind),
+            content: b.content,
             properties: HashMap::new(),
-            line_start: start,
-            line_end: end,
-        },
-        end,
-    )
+            line_start: b.lineStart as usize,
+            line_end: b.lineEnd as usize,
+        })
+        .collect()
 }
 
-fn parse_blockquote(lines: &[&str], start: usize) -> (Block, usize) {
-    let mut end = start;
-    while end < lines.len() && lines[end].starts_with('>') {
-        end += 1;
-    }
-    let content: String = lines[start..end]
-        .iter()
-        .map(|l| l.strip_prefix("> ").unwrap_or(&l[1..]).to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
-    let (content, block_id) = extract_anchor(&content);
-    (
-        Block {
-            uuid: generate_uuid(),
-            block_id,
-            kind: BlockKind::Blockquote,
-            content,
-            properties: HashMap::new(),
-            line_start: start,
-            line_end: end,
-        },
-        end,
-    )
-}
-
-fn parse_fenced_block(lines: &[&str], start: usize, kind: BlockKind) -> (Block, usize) {
-    let _opener = lines[start];
-    let fence = if kind == BlockKind::Code {
-        "```".to_string()
-    } else {
-        ":::".to_string()
-    };
-    let mut end = start + 1;
-    while end < lines.len() && !lines[end].trim_start().starts_with(&fence) {
-        end += 1;
-    }
-    if end < lines.len() {
-        end += 1; // include closing fence
-    }
-    let content = lines[start..end].join("\n");
-    (
-        Block {
-            uuid: generate_uuid(),
-            block_id: None,
-            kind,
-            content,
-            properties: HashMap::new(),
-            line_start: start,
-            line_end: end,
-        },
-        end,
-    )
-}
-
-fn is_block_start(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    trimmed.starts_with('#')
-        || trimmed.starts_with("- ")
-        || trimmed.starts_with("- [")
-        || trimmed.starts_with(">")
-        || trimmed.starts_with("```")
-        || trimmed.starts_with(":::")
-        || trimmed.starts_with("---")
-        || trimmed.starts_with("***")
-        || trimmed.starts_with("___")
-        || ORDERED_RE.is_match(trimmed)
-}
-
-lazy_static::lazy_static! {
-    static ref ORDERED_RE: Regex = Regex::new(r"^\d+\.\s").unwrap();
-}
-
-/// Extract `^id` suffix from the end of a block's text.
-fn extract_anchor(content: &str) -> (String, Option<String>) {
-    let content = content.trim_end();
-    if let Some(cap) = ANCHOR_SUFFIX_RE.captures(content) {
-        let id = cap[1].to_string();
-        let stripped = content[..content.len() - cap[0].len()].trim_end().to_string();
-        (stripped, Some(id))
-    } else {
-        (content.to_string(), None)
+fn kind_from_str(s: &str) -> BlockKind {
+    match s {
+        "heading" => BlockKind::Heading,
+        "task" => BlockKind::Task,
+        "bullet" => BlockKind::Bullet,
+        "ordered" => BlockKind::Ordered,
+        "code" => BlockKind::Code,
+        "blockquote" => BlockKind::Blockquote,
+        "callout" => BlockKind::Callout,
+        "details" => BlockKind::Details,
+        "hr" => BlockKind::HorizontalRule,
+        _ => BlockKind::Paragraph,
     }
 }
 
@@ -288,8 +70,9 @@ fn extract_anchor(content: &str) -> (String, Option<String>) {
 #[allow(dead_code)]
 pub fn find_id_property(lines: &[&str]) -> Option<String> {
     for line in lines.iter().take(8) {
-        if let Some(cap) = ID_PROPERTY_RE.captures(line) {
-            return Some(cap[1].to_string());
+        let id = parser_gen::findIdPropertyLine(line);
+        if !id.is_empty() {
+            return Some(id);
         }
     }
     None
@@ -299,10 +82,8 @@ pub fn find_id_property(lines: &[&str]) -> Option<String> {
 #[allow(dead_code)]
 pub fn parse_block_properties(lines: &[&str]) -> HashMap<String, String> {
     let mut props = HashMap::new();
-    for line in lines {
-        if let Some(cap) = PROPERTY_RE.captures(line) {
-            props.insert(cap[1].to_string(), cap[2].trim().to_string());
-        }
+    for pair in parser_gen::parseBlockPropertiesLines(lines.iter().map(|l| l.to_string()).collect::<Vec<_>>()) {
+        props.insert(pair.key, pair.value);
     }
     props
 }
@@ -339,4 +120,37 @@ mod tests {
         assert_eq!(page.frontmatter["title"], "Foo");
         assert_eq!(page.blocks[0].kind, BlockKind::Heading);
     }
+
+    // ---- cross-language parity with the TS twin (gen-ts/parser_gen.ts) ----
+    // The node twin test (../auto/tests/parity.mjs) runs the same fixtures
+    // through the generated TS; both sides must agree field-for-field.
+
+    #[test]
+    fn parse_gen_parity_fixtures() {
+        let fixtures: serde_json::Value =
+            serde_json::from_str(include_str!("../../auto/tests/fixtures.json")).unwrap();
+        for case in fixtures["cases"].as_array().unwrap() {
+            let page = parse_page(case["text"].as_str().unwrap());
+            let expected = case["expected"].as_array().unwrap();
+            assert_eq!(
+                page.blocks.len(),
+                expected.len(),
+                "case `{}`: block count",
+                case["name"].as_str().unwrap()
+            );
+            for (b, e) in page.blocks.iter().zip(expected.iter()) {
+                assert_eq!(b.kind_str(), e["kind"].as_str().unwrap(), "case `{}`", case["name"]);
+                assert_eq!(b.content, e["content"].as_str().unwrap(), "case `{}`", case["name"]);
+                assert_eq!(
+                    b.block_id.as_deref().unwrap_or(""),
+                    e["blockId"].as_str().unwrap(),
+                    "case `{}`",
+                    case["name"]
+                );
+                assert_eq!(b.line_start as i64, e["lineStart"].as_i64().unwrap());
+                assert_eq!(b.line_end as i64, e["lineEnd"].as_i64().unwrap());
+            }
+        }
+    }
 }
+

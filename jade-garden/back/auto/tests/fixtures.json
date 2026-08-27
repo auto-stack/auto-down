@@ -1,0 +1,55 @@
+{
+  "cases": [
+    {
+      "name": "mixed",
+      "text": "# 标题 ^my-id\n\n第一段内容。\n\n- [ ] 任务 ^t1\n- 无锚点\n\n> 引用行\n> 第二行\n\n```js\ncode\n```\n\n---\n\n1. 有序甲\n12. 伪有序\n",
+      "expected": [
+        { "kind": "heading", "content": "标题", "blockId": "my-id", "lineStart": 0, "lineEnd": 1 },
+        { "kind": "paragraph", "content": "第一段内容。", "blockId": "", "lineStart": 2, "lineEnd": 3 },
+        { "kind": "task", "content": "任务", "blockId": "t1", "lineStart": 4, "lineEnd": 5 },
+        { "kind": "bullet", "content": "无锚点", "blockId": "", "lineStart": 5, "lineEnd": 6 },
+        { "kind": "blockquote", "content": "引用行\n第二行", "blockId": "", "lineStart": 7, "lineEnd": 9 },
+        { "kind": "code", "content": "```js\ncode\n```", "blockId": "", "lineStart": 10, "lineEnd": 13 },
+        { "kind": "hr", "content": "---", "blockId": "", "lineStart": 14, "lineEnd": 15 },
+        { "kind": "ordered", "content": "有序甲", "blockId": "", "lineStart": 16, "lineEnd": 17 },
+        { "kind": "ordered", "content": "伪有序", "blockId": "", "lineStart": 17, "lineEnd": 18 }
+      ]
+    },
+    {
+      "name": "callout-details",
+      "text": ":::details 折叠\n内容行\n:::\n\n::: note 提示\nhi\n:::\n",
+      "expected": [
+        { "kind": "details", "content": ":::details 折叠\n内容行\n:::", "blockId": "", "lineStart": 0, "lineEnd": 3 },
+        { "kind": "callout", "content": "::: note 提示\nhi\n:::", "blockId": "", "lineStart": 4, "lineEnd": 7 }
+      ]
+    },
+    {
+      "name": "unclosed-fence",
+      "text": "```js\ncode\n",
+      "expected": [
+        { "kind": "code", "content": "```js\ncode", "blockId": "", "lineStart": 0, "lineEnd": 2 }
+      ]
+    },
+    {
+      "name": "frontmatter-body",
+      "text": "---\ntitle: Foo\n---\n\n# Body ^b1\n",
+      "expected": [
+        { "kind": "heading", "content": "Body", "blockId": "b1", "lineStart": 0, "lineEnd": 1 }
+      ]
+    },
+    {
+      "name": "paragraph-multiline",
+      "text": "第一行\n第二行\n第三行 ^tail-id\n",
+      "expected": [
+        { "kind": "paragraph", "content": "第一行\n第二行\n第三行", "blockId": "tail-id", "lineStart": 0, "lineEnd": 3 }
+      ]
+    },
+    {
+      "name": "no-frontmatter",
+      "text": "纯段落，无头部。\n",
+      "expected": [
+        { "kind": "paragraph", "content": "纯段落，无头部。", "blockId": "", "lineStart": 0, "lineEnd": 1 }
+      ]
+    }
+  ]
+}

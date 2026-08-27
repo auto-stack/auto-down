@@ -41,6 +41,24 @@ pub enum BlockKind {
 }
 
 impl Block {
+    /// snake_case kind name — the string the .at parser twin (parser_gen)
+    /// emits; used by the cross-language parity fixtures.
+    pub fn kind_str(&self) -> &'static str {
+        match self.kind {
+            BlockKind::Root => "root",
+            BlockKind::Heading => "heading",
+            BlockKind::Paragraph => "paragraph",
+            BlockKind::Bullet => "bullet",
+            BlockKind::Ordered => "ordered",
+            BlockKind::Task => "task",
+            BlockKind::Code => "code",
+            BlockKind::Blockquote => "blockquote",
+            BlockKind::Callout => "callout",
+            BlockKind::Details => "details",
+            BlockKind::HorizontalRule => "hr",
+        }
+    }
+
     #[allow(dead_code)]
     pub fn is_list_item(&self) -> bool {
         matches!(self.kind, BlockKind::Bullet | BlockKind::Ordered | BlockKind::Task)

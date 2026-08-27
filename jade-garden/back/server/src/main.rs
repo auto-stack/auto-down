@@ -7,6 +7,7 @@ mod import_export;
 mod index;
 mod links;
 mod parser;
+mod parser_gen;
 mod query;
 mod search;
 mod srs;

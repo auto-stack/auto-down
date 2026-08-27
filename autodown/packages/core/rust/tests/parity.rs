@@ -99,8 +99,11 @@ fn case_table_with_ial() -> String {
 }
 
 fn case_emit_ids() -> String {
-    let mut h = block("block-0", BlockType::Heading);
+    // New anchor semantics: only the  attr (lifted ^token) re-emits
+    // under emitIds=true; fallback ids stay internal.
+    let mut h = block("title-1", BlockType::Heading);
     h.attrs = attrSet(h.attrs, "level", Value::Int(2));
+    h.attrs = attrSet(h.attrs, "anchor", Value::Str("title-1".to_string()));
     h.inlines = vec![span("Title")];
     let anchored = para("my-anchor", "kept ^my-anchor");
     serialize(doc(vec![h, anchored]), true)

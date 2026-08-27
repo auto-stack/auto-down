@@ -438,6 +438,47 @@ pub fn dupNodes(nodes: Vec<BlockNode>) -> Vec<BlockNode> {
     return out;
 }
 
+pub fn anchorOf(node: BlockNode) -> String {
+    return attrGetStr(node.attrs.clone(), "anchor", "");
+}
+
+pub fn withBlockAnchor(node: BlockNode, newId: &str) -> BlockNode {
+    return BlockNode { id: newId.to_string(), kind: node.kind.clone(), attrs: attrSet(node.attrs.clone(), "anchor", Value::Str(newId.to_string())), children: node.children.clone(), inlines: node.inlines.clone(), source: node.source.clone() };
+}
+
+pub fn withIdAndAnchor(node: BlockNode, newId: &str) -> BlockNode {
+    return BlockNode { id: newId.to_string(), kind: node.kind.clone(), attrs: attrSet(node.attrs.clone(), "anchor", Value::Str(newId.to_string())), children: node.children.clone(), inlines: node.inlines.clone(), source: node.source.clone() };
+}
+
+pub fn hasIdDeep(mut tree: BlockNode, id: &str) -> bool {
+    if tree.id == id {
+        return true;
+    }
+    for i in 0..(tree.children.len() as i64) {
+        if hasIdDeep(tree.children[(i) as usize].clone(), id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+pub fn retargetAnchor(mut tree: BlockNode, id: &str, newId: &str) -> BlockNode {
+    if !(hasIdDeep(tree.clone(), id)) {
+        return tree;
+    }
+    if tree.id == id {
+        return withBlockAnchor(tree.clone(), newId);
+    }
+    if (tree.children.len() as i64) == 0 {
+        return tree;
+    }
+    let mut out: Vec<BlockNode> = vec![];
+    for i in 0..(tree.children.len() as i64) {
+        out.push(retargetAnchor(tree.children[(i) as usize].clone(), id, newId));
+    }
+    return BlockNode { id: tree.id.to_string(), kind: tree.kind.clone(), attrs: tree.attrs.clone(), children: out, inlines: tree.inlines.clone(), source: tree.source.clone() };
+}
+
 pub fn findBlock(mut node: BlockNode, id: &str) -> Option<BlockNode> {
     if node.id == id {
         return Some(node);

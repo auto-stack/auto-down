@@ -224,10 +224,12 @@ block block-0 Paragraph
   span 转义 *字面* 智能 “引号” 与 撇号 ‘don’t’ 以及中英混排 “已经弯的”。 []
 === anchor final=false ===
 block my-anchor Paragraph
-  span 带锚点块 ^my-anchor []
+  attr anchor Str(my-anchor)
+  span 带锚点块 []
 === anchor final=true ===
 block my-anchor Paragraph
-  span 带锚点块 ^my-anchor []
+  attr anchor Str(my-anchor)
+  span 带锚点块 []
 === streaming-heading final=false ===
 block block-0 Heading
   attr level Int(2)

@@ -6,7 +6,7 @@
  * (see auto/README.md for the pipeline and the applied post-fixes)
  */
 
-import { BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText, spanWith, blockFull, attrOf } from "./block-model.js";
+import { BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText, spanWith, blockFull, attrOf, withIdAndAnchor } from "./block-model.js";
 import { preprocessMarkdown, startsWithStr, startsWithAt, endsWithStr, trimStartStr, trimEndStr, hasChar, findStr, findStrFrom, rfindChar, scanIntPrefix, TableAttr } from "./ial.js";
 
 
@@ -2593,7 +2593,7 @@ export function stripAnchorSpans(spans: InlineSpan[], cut: number): InlineSpan[]
             } else {
                 const keepLen: number = cut - start;
                 if (keepLen > 0) {
-                    out.push(new InlineSpan(t.slice(0, keepLen), spans[i].marks, spans[i].attrs));
+                    out.push(spanWith(t.slice(0, keepLen), spans[i].marks, spans[i].attrs));
                 }
             }
         }
@@ -2632,7 +2632,8 @@ export function applyAnchorsDeep(node: BlockNode): BlockNode {
                     const ws = text.slice(spaceIdx, spaceIdx + 1);
                     if (ws == " " || ws == "\t") {
                         const stripped = stripAnchorSpans(node.inlines, spaceIdx);
-                        out = blockFull(anchor, node.kind, attrSet(node.attrs, "anchor", Value.Str(anchor)), kids, stripped, node.source);
+                        const base = blockFull(node.id, node.kind, node.attrs, kids, stripped, node.source);
+                        out = withIdAndAnchor(base, anchor);
                     }
                 }
             }

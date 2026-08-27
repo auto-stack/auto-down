@@ -224,7 +224,7 @@ pub fn tableMd(node: BlockNode) -> String {
     return out;
 }
 
-pub fn joinChildren(mut kids: Vec<BlockNode>) -> String {
+pub fn joinChildren(mut kids: Vec<BlockNode>, withId: bool) -> String {
     let mut out: String = "".to_string();
     for i in 0..(kids.len() as i64) {
         if i > 0 {
@@ -234,13 +234,13 @@ pub fn joinChildren(mut kids: Vec<BlockNode>) -> String {
                 out = format!("{}{}", out, "\n\n");
             }
         }
-        out = format!("{}{}", out, blockMd(kids[(i) as usize].clone(), false));
+        out = format!("{}{}", out, blockMd(kids[(i) as usize].clone(), withId));
     }
     return out;
 }
 
-pub fn quoteMd(node: BlockNode) -> String {
-    let body = joinChildren(node.children.clone());
+pub fn quoteMd(node: BlockNode, withId: bool) -> String {
+    let body = joinChildren(node.children.clone(), withId);
     let lines = body.split("\n").map(|s| s.to_string()).collect::<Vec<String>>();
     let mut out: String = "".to_string();
     for i in 0..(lines.len() as i64) {
@@ -257,7 +257,7 @@ pub fn quoteMd(node: BlockNode) -> String {
     return out;
 }
 
-pub fn listMd(node: BlockNode) -> String {
+pub fn listMd(node: BlockNode, withId: bool) -> String {
     let ordered = attrGetBool(node.attrs.clone(), "ordered", false);
     let start = attrGetInt(node.attrs.clone(), "start", 1);
     let mut out: String = "".to_string();
@@ -270,7 +270,7 @@ pub fn listMd(node: BlockNode) -> String {
             let n: i64 = start + i;
             marker = format!("{}{}", format!("{:?}", n), ". ");
         }
-        let body = joinChildren(node.children[(i) as usize].clone().children.clone());
+        let body = joinChildren(node.children[(i) as usize].clone().children.clone(), withId);
         let lines = body.split("\n").map(|s| s.to_string()).collect::<Vec<String>>();
         let pad = repeatStr(" ", (marker.chars().count() as i64));
         for j in 0..(lines.len() as i64) {
@@ -305,7 +305,7 @@ pub fn headingMd(node: BlockNode, withId: bool) -> String {
     let level = attrGetInt(node.attrs.clone(), "level", 1);
     let mut t: String = inlinesMd(node.inlines.clone());
     if withId {
-        t = withIdSuffix(t.as_str(), node.id.as_str());
+        t = withIdSuffix(t.as_str(), attrGetStr(node.attrs.clone(), "anchor", "").as_str());
     }
     if level <= 2 {
         if hasNewline(t.as_str()) {
@@ -317,9 +317,9 @@ pub fn headingMd(node: BlockNode, withId: bool) -> String {
     return format!("{}{}", format!("{}{}", repeatStr("#", level), " "), t);
 }
 
-pub fn componentBlockMd(name: &str, argName: &str, node: BlockNode) -> String {
+pub fn componentBlockMd(name: &str, argName: &str, node: BlockNode, withId: bool) -> String {
     let arg = attrGetStr(node.attrs.clone(), argName, "");
-    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$", name), "("), argName), ": \""), arg), "\") {\n"), joinChildren(node.children.clone())), "\n}");
+    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$", name), "("), argName), ": \""), arg), "\") {\n"), joinChildren(node.children.clone(), withId)), "\n}");
 }
 
 pub fn wikilinkMd(node: BlockNode) -> String {
@@ -340,13 +340,13 @@ pub fn blockMd(mut node: BlockNode, withId: bool) -> String {
         return fenceMd(node.clone());
     }
     if k == BlockType::Blockquote {
-        return quoteMd(node.clone());
+        return quoteMd(node.clone(), withId);
     }
     if k == BlockType::ListBlock {
-        return listMd(node.clone());
+        return listMd(node.clone(), withId);
     }
     if k == BlockType::ListItem {
-        return joinChildren(node.children.clone());
+        return joinChildren(node.children.clone(), withId);
     }
     if k == BlockType::Table {
         return tableMd(node.clone());
@@ -361,10 +361,10 @@ pub fn blockMd(mut node: BlockNode, withId: bool) -> String {
         return "---".to_string();
     }
     if k == BlockType::Callout {
-        return componentBlockMd("callout", "type", node.clone());
+        return componentBlockMd("callout", "type", node.clone(), withId);
     }
     if k == BlockType::Details {
-        return componentBlockMd("details", "summary", node.clone());
+        return componentBlockMd("details", "summary", node.clone(), withId);
     }
     if k == BlockType::WikilinkBlock {
         return wikilinkMd(node.clone());
@@ -384,7 +384,7 @@ pub fn blockMd(mut node: BlockNode, withId: bool) -> String {
 
     let t = inlinesMd(node.inlines.clone());
     if withId {
-        return withIdSuffix(t.as_str(), node.id.as_str());
+        return withIdSuffix(t.as_str(), attrGetStr(node.attrs.clone(), "anchor", "").as_str());
     }
     return t;
 }
@@ -406,17 +406,10 @@ pub fn serializeBlocks(mut blocks: Vec<BlockNode>, emitIds: bool) -> String {
         if i > 0 {
             out = format!("{}{}", out, "\n\n");
         }
-        let mut b = blocks[(i) as usize].clone();
+        let b = blocks[(i) as usize].clone();
         
 
-        if b.kind == BlockType::Paragraph {
-            out = format!("{}{}", out, blockMd(b.clone(), emitIds));
-        } else if b.kind == BlockType::Heading {
-            out = format!("{}{}", out, blockMd(b.clone(), emitIds));
-        } else {
-            out = format!("{}{}", out, blockMd(b.clone(), false));
-        }
-
+        out = format!("{}{}", out, blockMd(b.clone(), emitIds));
     }
     return out;
 }

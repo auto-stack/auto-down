@@ -32,7 +32,7 @@
 //   last '>' of the line, matching the regex's [^>]* anchor semantics.
 
 use ial: preprocessMarkdown, startsWithStr, startsWithAt, endsWithStr, trimStartStr, trimEndStr, hasChar, findStr, findStrFrom, rfindChar, scanIntPrefix, TableAttr
-use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText, spanWith, blockFull, attrOf
+use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText, spanWith, blockFull, attrOf, withIdAndAnchor
 
 // ---------------------------------------------------------------- weak tree
 // The parser-internal node representation. Field order (20 fields):
@@ -2278,7 +2278,7 @@ fn stripAnchorSpans(spans List<InlineSpan>, cut int) List<InlineSpan> {
             } else {
                 let keepLen = cut - start
                 if keepLen > 0 {
-                    out.push(InlineSpan(t.slice(0, keepLen), spans[i].marks, spans[i].attrs))
+                    out.push(spanWith(t.slice(0, keepLen), spans[i].marks, spans[i].attrs))
                 }
             }
         }
@@ -2311,7 +2311,8 @@ pub fn applyAnchorsDeep(node BlockNode) BlockNode {
                     let ws = text.slice(spaceIdx, spaceIdx + 1)
                     if ws == " " || ws == "\t" {
                         let stripped = stripAnchorSpans(node.inlines, spaceIdx)
-                        out = blockFull(anchor, node.kind, attrSet(node.attrs, "anchor", Value.Str(anchor)), kids, stripped, node.source)
+                        let base = blockFull(node.id, node.kind, node.attrs, kids, stripped, node.source)
+                        out = withIdAndAnchor(base, anchor)
                     }
                 }
             }

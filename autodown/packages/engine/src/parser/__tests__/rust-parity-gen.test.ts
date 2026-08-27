@@ -80,8 +80,11 @@ function caseTableWithIal(): string {
 }
 
 function caseEmitIds(): string {
-  const h = block("block-0", BlockType.Heading);
+  // New anchor semantics: only the  attr (lifted ^token) re-emits
+  // under emitIds=true; fallback ids stay internal.
+  const h = block("title-1", BlockType.Heading);
   h.attrs = attrSet(h.attrs, "level", Value.Int(2));
+  h.attrs = attrSet(h.attrs, "anchor", Value.Str("title-1"));
   h.inlines = [span("Title")];
   const anchored = para("my-anchor", "kept ^my-anchor");
   return serialize(doc([h, anchored]), true);

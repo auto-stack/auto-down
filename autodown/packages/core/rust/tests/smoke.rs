@@ -104,13 +104,14 @@ fn smoke_table_with_ial() {
 
 #[test]
 fn smoke_emit_ids() {
-    let mut h = block("block-0", BlockType::Heading);
+    let mut h = block("title-1", BlockType::Heading);
     h.attrs = attrSet(h.attrs, "level", Value::Int(2));
     h.inlines = vec![span("Title")];
+    h.attrs = attrSet(h.attrs, "anchor", Value::Str("title-1".to_string()));
     let anchored = para("my-anchor", "kept ^my-anchor");
 
     let out = serialize(doc(vec![h, anchored]), true);
-    assert_eq!(out, "## Title ^block-0\n\nkept ^my-anchor\n");
+    assert_eq!(out, "## Title ^title-1\n\nkept ^my-anchor\n");
 }
 
 #[test]

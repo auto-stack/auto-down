@@ -403,6 +403,13 @@ pub fn withBlockAnchor(node BlockNode, newId str) BlockNode {
     return BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source)
 }
 
+// Direct-struct-literal form (a2r-safe): the id field init borrows newId
+// BEFORE the attrs arg moves it, so one str feeds both positions without a
+// double-move — unlike going through blockFull whose &str borrow spans the call.
+pub fn withIdAndAnchor(node BlockNode, newId str) BlockNode {
+    return BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source)
+}
+
 pub fn hasIdDeep(tree BlockNode, id str) bool {
     if tree.id == id { return true }
     for i in 0..tree.children.length.to(int) {

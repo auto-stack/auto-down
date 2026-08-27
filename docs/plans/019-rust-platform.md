@@ -42,9 +42,12 @@
 >   parse 199.8s/构建 242.8s → 两轮热路径线性化（normalizeNewlines
 >   split/join、+= 自拼接+发射器 E9、循环长度提升局部）后 parse
 >   33.0s/构建 32.6s（构建≈内嵌 parse，纯 View 构建近零）；剩余深部
->   优化登记 DEBTS 019 性能债行。跨仓合并顺序：先 auto-down 批次六
->   （8f4a7e2+perf 提交）、后 auto-lang 批次七（Cargo.toml path 按
->   注释翻转相对路径）。
+>   优化登记 DEBTS 019 性能债行。~~跨仓合并顺序：先 auto-down 批次六、
+>   后 auto-lang 批次七~~ **合并已执行（2026-08-27）**：auto-down
+>   bd8d16e（批次六/七/八本仓侧）→ auto-lang 45b005d01（a2r）+
+>   1c80b8cf5（批次七/八）+ path 翻转提交；合并后主检出全量验证
+>   （crate 8/0、engine 255/255、auto-lang 3729/2 非本计划项、042
+>   示例实机零 handler 错误）。
 >
 > **进度（2026-08-26，批次六 Phase 1 收口）**：
 > - 本仓侧：markdown_parser.at + ial.at 全面类型化重写（WNode 结构体替

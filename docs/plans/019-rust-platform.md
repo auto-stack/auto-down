@@ -8,6 +8,23 @@
 > 本仓侧负责 crate 源发射与对拍；本文件为跨仓协调计划，落地时在
 > auto-lang 侧立对应计划并互链。
 >
+> **进度（2026-08-27，批次八 Phase 3 第一轨：`autodown_*` VM natives）**：
+> - auto-lang 侧（续 feat/plan-019-vm-render）：六个 natives 入册
+>   （catalog 2950-2955 + codegen intrinsics ×2 轨 + shim）——
+>   `autodown_parse/serialize/text/find_block/insert_text/insert_template`，
+>   JSON 传输循 read_dir 先例（BlockNode↔serde_json 封送，crate Value 的
+>   JSON 形态 Null/{"Str"}/{"Int"}/...）；insert_text 走 crate `applyOp`
+>   （Op::InsertText + collapsedSel），insert_template 为模板块拼接
+>   （parent 空 = 顶层，index 负 = 追加）；CLI bin 透传 feature
+>   （`--features autodown`）；
+> - 验证：natives 4 单测（roundtrip 与 crate 直接 parse+serialize 逐字节
+>   一致 / applyOp 语义 / 模板拼接）；042 示例加编程环段——带 feature 的
+>   CLI 实机运行 Init 全环（parse→insert_template→serialize）零 handler
+>   错误，无 feature 二进制返回明确构建错误（桩路径）；
+> - Phase 3 余量（下一批次候选）：AutodownEditorCore 编辑状态机
+>   （cosmic-text Buffer/光标/选区叠加/输入规则/undo/IME）与
+>   行内 marks→Attrs spans 的 iced 富渲染。
+>
 > **进度（2026-08-27，批次七 Phase 2 收口）**：
 > - auto-lang 侧（worktree feat/plan-019-vm-render）：`markdown`/`autodown`
 >   widget 在 VM（iced）从 D-GAP-3 textarea 降级升级为**真渲染**——

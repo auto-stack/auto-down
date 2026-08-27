@@ -35,6 +35,14 @@ const SOURCES = [
     at: 'links.at',
     structs: ['LineBlock', 'WikiLinkHit', 'LinkScan', 'TagScan'],
   },
+  {
+    at: 'tasks.at',
+    structs: ['TaskScanItem'],
+  },
+  {
+    at: 'query.at',
+    structs: ['QueryTask', 'QueryEvalOut', 'QueryEvalOut2', 'OffsetDays'],
+  },
 ]
 
 const ctorRegexFor = (structs) =>

@@ -1,0 +1,507 @@
+// jade-garden back query — task query DSL parse+eval (Plan 021 Phase 2 slice 3).
+//
+// Single-source port of query.rs's parse_expr/eval/parse_list/trim_outer_braces/
+// parse_offset, restructured as a combined recursive-descent PARSE+EVAL
+// interpreter: the prefix-notation DSL is evaluated on the fly (no expression
+// tree type), every sub-expression is still visited so parse errors match the
+// original parse-then-eval surface.
+//
+// Semantics contract (mirrors query.rs @ slice-2 base):
+// - input may be wrapped in a doubled-brace pair and/or a leading "query"
+//   keyword; outer (…) pairs are stripped in a loop (the original's
+//   paren-match-insensitive stripping quirk is reproduced as-is).
+// - ops: and/or/not (prefix, lists split at depth-0 spaces), task <MARKERS>,
+//   priority <P…>, between <off> <off> (d/w/m/y, "today"), property <k> <v>
+//   (always false — unimplemented in the original), [[Page]], #tag.
+// - case-insensitivity is ASCII-only (to_lowercase unicode divergence
+//   accepted: corpus is zh/en BMP text).
+// - Between compares ISO date strings lexicographically; taskDateToIso
+//   accepts chrono's %Y-%m-%d leniency (1-2 digit month/day) on the first
+//   whitespace token and "" for anything else (original filtered None out).
+// - error strings verbatim: empty query / Unknown query: X / between expects
+//   two offsets / Invalid offset number: X / Invalid offset unit: X /
+//   property expects key and value.
+//
+// DSL-lexer constraints honored (learned this slice):
+// - no adjacent {{ or }} literals anywhere, even in comments → dbl brace
+//   helpers built by concat
+// - no `*` operator → timesInt
+// - no `!` on field access, no reassigning `let`-emitted locals
+// - struct-typed params must not be named `task` (reserved)
+
+pub type QueryTask {
+    title str
+    content str
+    marker str
+    priority str
+    scheduled str
+    deadline str
+}
+
+pub type QueryEvalOut {
+    ok bool
+    err str
+    value bool
+}
+
+pub type QueryEvalOut2 {
+    ok bool
+    err str
+    days int
+}
+
+pub type OffsetDays {
+    ok bool
+    err str
+    days int
+}
+
+fn evalOut(value bool) QueryEvalOut {
+    return QueryEvalOut(true, "", value)
+}
+
+fn evalErr(err str) QueryEvalOut {
+    return QueryEvalOut(false, err, false)
+}
+
+fn notBool(b bool) bool {
+    if b { return false }
+    return true
+}
+
+fn dblOpenBrace() str {
+    return "{" + "{"
+}
+
+fn dblCloseBrace() str {
+    return "}" + "}"
+}
+
+// ------------------------------------------------------------ str vocabulary
+
+fn startsWithStr(s str, prefix str) bool {
+    if s.length.to(int) < prefix.length.to(int) { return false }
+    return s.slice(0, prefix.length.to(int)) == prefix
+}
+
+fn endsWithStr(s str, suffix str) bool {
+    if s.length.to(int) < suffix.length.to(int) { return false }
+    return s.slice(s.length.to(int) - suffix.length.to(int), s.length.to(int)) == suffix
+}
+
+fn trimStr(s str) str {
+    return trimStartStr(trimEndStr(s))
+}
+
+fn isWs(c int) bool {
+    if c == 32 { return true }
+    if c == 9 { return true }
+    if c == 10 { return true }
+    if c == 13 { return true }
+    if c == 11 { return true }
+    if c == 12 { return true }
+    return false
+}
+
+fn trimStartStr(s str) str {
+    var p int = 0
+    while p < s.length.to(int) {
+        if !isWs(s.char_at(p)) { break }
+        p += 1
+    }
+    if p == 0 { return s }
+    return s.slice(p)
+}
+
+fn trimEndStr(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        if !isWs(s.char_at(end - 1)) { break }
+        end -= 1
+    }
+    if end == s.length.to(int) { return s }
+    return s.slice(0, end)
+}
+
+fn findStr(s str, needle str) int {
+    let nLen int = needle.length.to(int)
+    let sLen int = s.length.to(int)
+    if nLen == 0 { return 0 }
+    if sLen < nLen { return -1 }
+    var i int = 0
+    while i + nLen <= sLen {
+        if s.slice(i, i + nLen) == needle { return i }
+        i += 1
+    }
+    return -1
+}
+
+fn timesInt(n int, m int) int {
+    var r int = 0
+    var i int = 0
+    while i < m {
+        r += n
+        i += 1
+    }
+    return r
+}
+
+fn lowerAlphabet() str {
+    return "abcdefghijklmnopqrstuvwxyz"
+}
+
+fn asciiLower(s str) str {
+    var out str = ""
+    let lower = lowerAlphabet()
+    var i int = 0
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        if c >= 65 && c <= 90 {
+            out = out + lower.slice(c - 65, c - 64)
+        } else {
+            out = out + s.slice(i, i + 1)
+        }
+        i += 1
+    }
+    return out
+}
+
+fn containsIgnoreCase(hay str, needle str) bool {
+    return findStr(asciiLower(hay), asciiLower(needle)) >= 0
+}
+
+fn eqAsciiIgnoreCase(a str, b str) bool {
+    if a.length.to(int) != b.length.to(int) { return false }
+    var i int = 0
+    while i < a.length.to(int) {
+        var ca int = a.char_at(i)
+        var cb int = b.char_at(i)
+        if ca >= 65 && ca <= 90 { ca += 32 }
+        if cb >= 65 && cb <= 90 { cb += 32 }
+        if ca != cb { return false }
+        i += 1
+    }
+    return true
+}
+
+fn splitWs(s str) List<str> {
+    var out List<str> = []
+    var i int = 0
+    let n = s.length.to(int)
+    while i < n {
+        if isWs(s.char_at(i)) {
+            i += 1
+        } else {
+            var j int = i
+            while j < n {
+                if isWs(s.char_at(j)) { break }
+                j += 1
+            }
+            out.push(s.slice(i, j))
+            i = j
+        }
+    }
+    return out
+}
+
+// ------------------------------------------------------------ dates
+
+fn digitsToI64(s str) int {
+    if s.length.to(int) == 0 { return -999999999 }
+    var i int = 0
+    var neg int = 1
+    if s.char_at(0) == 45 {
+        neg = -1
+        i = 1
+        if s.length.to(int) == 1 { return -999999999 }
+    }
+    var v int = 0
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        if c < 48 || c > 57 { return -999999999 }
+        v = timesInt(v, 10) + (c - 48)
+        i += 1
+    }
+    if neg == -1 { return 0 - v }
+    return v
+}
+
+fn isDigits(s str) bool {
+    if s.length.to(int) == 0 { return false }
+    var i int = 0
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        if c < 48 || c > 57 { return false }
+        i += 1
+    }
+    return true
+}
+
+fn pad2(n int) str {
+    if n < 10 { return "0" + n.to(str) }
+    return n.to(str)
+}
+
+fn intMod(a int, m int) int {
+    var r int = a
+    while r >= m {
+        r -= m
+    }
+    while r < 0 {
+        r += m
+    }
+    return r
+}
+
+fn isLeapYear(y int) bool {
+    if intMod(y, 4) != 0 { return false }
+    if intMod(y, 100) != 0 { return true }
+    return intMod(y, 400) == 0
+}
+
+fn daysInMonth(y int, m int) int {
+    if m == 2 {
+        if isLeapYear(y) { return 29 }
+        return 28
+    }
+    if m == 4 || m == 6 || m == 9 || m == 11 { return 30 }
+    return 31
+}
+
+fn addDaysIso(iso str, offset int) str {
+    let parts = iso.split("-")
+    if parts.length.to(int) != 3 { return iso }
+    let y = digitsToI64(parts[0])
+    let m = digitsToI64(parts[1])
+    let d = digitsToI64(parts[2])
+    if y == -999999999 || m == -999999999 || d == -999999999 { return iso }
+    var day int = d + offset
+    var month int = m
+    var year int = y
+    while day > daysInMonth(year, month) {
+        day -= daysInMonth(year, month)
+        month += 1
+        if month > 12 {
+            month = 1
+            year += 1
+        }
+    }
+    while day < 1 {
+        month -= 1
+        if month < 1 {
+            month = 12
+            year -= 1
+        }
+        day += daysInMonth(year, month)
+    }
+    var ys str = year.to(str)
+    while ys.length.to(int) < 4 {
+        ys = "0" + ys
+    }
+    return ys + "-" + pad2(month) + "-" + pad2(day)
+}
+
+fn taskDateToIso(raw str) str {
+    var i int = 0
+    while i < raw.length.to(int) {
+        if isWs(raw.char_at(i)) { break }
+        i += 1
+    }
+    let token = raw.slice(0, i)
+    let parts = token.split("-")
+    if parts.length.to(int) != 3 { return "" }
+    if !isDigits(parts[1]) || !isDigits(parts[2]) { return "" }
+    if parts[1].length.to(int) > 2 || parts[2].length.to(int) > 2 { return "" }
+    if !isDigits(parts[0]) || parts[0].length.to(int) != 4 { return "" }
+    let mo = digitsToI64(parts[1])
+    let da = digitsToI64(parts[2])
+    if mo < 1 || mo > 12 { return "" }
+    if da < 1 || da > 31 { return "" }
+    return parts[0] + "-" + pad2(mo) + "-" + pad2(da)
+}
+
+fn isoLe(a str, b str) bool {
+    // a <= b 逐码点比较（ISO 等长日期下即时间序）。char_at 结果先落局部
+    // 变量——a2r 对 cast 表达式直接接 < 会误析为泛型参数。
+    let n = a.length.to(int)
+    if n != b.length.to(int) { return n < b.length.to(int) }
+    var i int = 0
+    while i < n {
+        let ca = a.char_at(i)
+        let cb = b.char_at(i)
+        if ca < cb { return true }
+        if ca > cb { return false }
+        i += 1
+    }
+    return true
+}
+
+// ------------------------------------------------------------ offsets
+
+fn parseOffsetDays(s str) OffsetDays {
+    var t str = trimStr(s)
+    if t == "today" { return OffsetDays(true, "", 0) }
+    var i int = 0
+    var digitsEnd int = -1
+    while i < t.length.to(int) {
+        let c = t.char_at(i)
+        if (c >= 48 && c <= 57) || c == 45 {
+            digitsEnd = i
+            i += 1
+        } else {
+            break
+        }
+    }
+    if digitsEnd < 0 { return OffsetDays(false, "Invalid offset number: " + s, 0) }
+    let numPart = t.slice(0, i)
+    let unit = t.slice(i)
+    if numPart == "" || numPart == "-" { return OffsetDays(false, "Invalid offset number: " + s, 0) }
+    let n = digitsToI64(numPart)
+    if n == -999999999 { return OffsetDays(false, "Invalid offset number: " + s, 0) }
+    if unit == "d" { return OffsetDays(true, "", n) }
+    if unit == "w" { return OffsetDays(true, "", timesInt(n, 7)) }
+    if unit == "m" { return OffsetDays(true, "", timesInt(n, 30)) }
+    if unit == "y" { return OffsetDays(true, "", timesInt(n, 365)) }
+    return OffsetDays(false, "Invalid offset unit: " + t, 0)
+}
+
+// ------------------------------------------------------------ evaluator
+
+pub fn evalQuery(input str, qtask QueryTask, todayIso str) QueryEvalOut {
+    var t str = trimStr(input)
+    if startsWithStr(t, dblOpenBrace()) && endsWithStr(t, dblCloseBrace()) {
+        t = trimStr(t.slice(2, t.length.to(int) - 2))
+    }
+    if startsWithStr(t, "query") {
+        t = trimStr(t.slice(5))
+    }
+    t = trimOuterBraces(t)
+    if t == "" {
+        return evalErr("empty query")
+    }
+    return evalAt(t, qtask, todayIso)
+}
+
+fn trimOuterBraces(s str) str {
+    var t str = trimStr(s)
+    while startsWithStr(t, "(") && endsWithStr(t, ")") {
+        t = trimStr(t.slice(1, t.length.to(int) - 1))
+    }
+    return t
+}
+
+fn evalAt(s str, qtask QueryTask, todayIso str) QueryEvalOut {
+    let t = trimOuterBraces(s)
+    if t == "" {
+        return evalErr("empty query")
+    }
+    if startsWithStr(t, "and ") {
+        return evalList(t.slice(4), qtask, todayIso, true)
+    }
+    if startsWithStr(t, "or ") {
+        return evalList(t.slice(3), qtask, todayIso, false)
+    }
+    if startsWithStr(t, "not ") {
+        let sub = evalAt(t.slice(4), qtask, todayIso)
+        if sub.ok == false { return sub }
+        return evalOut(notBool(sub.value))
+    }
+    if startsWithStr(t, "task ") {
+        let markers = splitWs(t.slice(5))
+        var hit bool = false
+        var i int = 0
+        while i < markers.length.to(int) {
+            if eqAsciiIgnoreCase(qtask.marker, markers[i]) { hit = true }
+            i += 1
+        }
+        return evalOut(hit)
+    }
+    if startsWithStr(t, "priority ") {
+        let prios = splitWs(t.slice(9))
+        var hit bool = false
+        var i int = 0
+        while i < prios.length.to(int) {
+            if qtask.priority != "" && eqAsciiIgnoreCase(qtask.priority, prios[i]) { hit = true }
+            i += 1
+        }
+        return evalOut(hit)
+    }
+    if startsWithStr(t, "between ") {
+        let parts = splitWs(t.slice(8))
+        if parts.length.to(int) != 2 {
+            return evalErr("between expects two offsets")
+        }
+        let startOff = parseOffsetDays(parts[0])
+        if startOff.ok == false { return evalErr(startOff.err) }
+        let endOff = parseOffsetDays(parts[1])
+        if endOff.ok == false { return evalErr(endOff.err) }
+        let startIso = addDaysIso(todayIso, startOff.days)
+        let endIso = addDaysIso(todayIso, endOff.days)
+        var hit bool = false
+        let d1 = taskDateToIso(qtask.scheduled)
+        if d1 != "" {
+            if isoLe(startIso, d1) && isoLe(d1, endIso) { hit = true }
+        }
+        let d2 = taskDateToIso(qtask.deadline)
+        if d2 != "" {
+            if isoLe(startIso, d2) && isoLe(d2, endIso) { hit = true }
+        }
+        return evalOut(hit)
+    }
+    if startsWithStr(t, "property ") {
+        let body = t.slice(9)
+        if findStr(body, " ") < 0 {
+            return evalErr("property expects key and value")
+        }
+        return evalOut(false)
+    }
+    if startsWithStr(t, "[[") && endsWithStr(t, "]]") {
+        let inner = t.slice(2, t.length.to(int) - 2)
+        let hit = eqAsciiIgnoreCase(qtask.title, inner) || containsIgnoreCase(qtask.content, inner)
+        return evalOut(hit)
+    }
+    if startsWithStr(t, "#") {
+        let tag = t.slice(1)
+        let hit = containsIgnoreCase(qtask.content, "#" + tag) || findStr(qtask.content, "[[" + tag + "]]") >= 0
+        return evalOut(hit)
+    }
+    return evalErr("Unknown query: " + t)
+}
+
+fn evalList(rest str, qtask QueryTask, todayIso str, isAnd bool) QueryEvalOut {
+    // depth-0 空格切段；全部子表达式求值（不短路），错误面与原实现一致
+    var anyFalse bool = false
+    var anyTrue bool = false
+    let n = rest.length.to(int)
+    var depth int = 0
+    var start int = 0
+    var i int = 0
+    while i <= n {
+        var boundary bool = false
+        if i == n {
+            boundary = true
+        } else {
+            let c = rest.char_at(i)
+            if c == 40 { depth += 1 }
+            if c == 41 { depth -= 1 }
+            if c == 32 && depth == 0 { boundary = true }
+        }
+        if boundary {
+            if i > start {
+                let sub = evalAt(rest.slice(start, i), qtask, todayIso)
+                if sub.ok == false { return sub }
+                if sub.value {
+                    anyTrue = true
+                } else {
+                    anyFalse = true
+                }
+            }
+            start = i + 1
+        }
+        i += 1
+    }
+    if isAnd {
+        return evalOut(notBool(anyFalse))
+    }
+    return evalOut(anyTrue)
+}

@@ -1,0 +1,225 @@
+// jade-garden back tasks — task-line extraction for `.ad` pages.
+//
+// Plan 021 Phase 2 slice 3: single-source port of the regex scanners in
+// back/server/src/tasks.rs (TASK_MARKER_RE / PRIORITY_RE / SCHEDULED_RE +
+// parse_tasks orchestration), a2r-clean subset (char-scan, no RegExp).
+//
+// Semantics contract (mirrors the retired regexes):
+// - task line: ^indent "- " (TODO|DOING|DONE|NOW|LATER)\b rest  — \b boundary:
+//   the char after the keyword must not be [A-Za-z0-9_] (EOF ok).
+// - priority: "[#A]" / "[#B]" / "[#C]" anywhere in rest; extracted value is
+//   the single letter.
+// - scheduled/deadline: lookahead over following lines whose indent exceeds
+//   the task line's; shape: indent (SCHEDULED|DEADLINE): <value> — value
+//   stops at the first '>'.
+// - empty-string fields mean "absent" (shell maps to Option::None).
+
+pub type TaskScanItem {
+    pagePath str
+    title str
+    line int
+    raw str
+    marker str
+    priority str
+    content str
+    scheduled str
+    deadline str
+}
+
+// ------------------------------------------------------ str vocabulary copy
+
+fn startsWithStr(s str, prefix str) bool {
+    if s.length.to(int) < prefix.length.to(int) { return false }
+    return s.slice(0, prefix.length.to(int)) == prefix
+}
+
+pub fn trimStr(s str) str {
+    return trimStartStr(trimEndStr(s))
+}
+
+fn isWs(c int) bool {
+    if c == 32 { return true }
+    if c == 9 { return true }
+    if c == 10 { return true }
+    if c == 13 { return true }
+    if c == 11 { return true }
+    if c == 12 { return true }
+    return false
+}
+
+fn trimStartStr(s str) str {
+    var p int = 0
+    while p < s.length.to(int) {
+        if !isWs(s.char_at(p)) { break }
+        p += 1
+    }
+    if p == 0 { return s }
+    return s.slice(p)
+}
+
+fn trimEndStr(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        if !isWs(s.char_at(end - 1)) { break }
+        end -= 1
+    }
+    if end == s.length.to(int) { return s }
+    return s.slice(0, end)
+}
+
+fn indentWidth(line str) int {
+    var p int = 0
+    while p < line.length.to(int) {
+        if !isWs(line.char_at(p)) { break }
+        p += 1
+    }
+    return p
+}
+
+fn isWordChar(c int) bool {
+    if c >= 65 && c <= 90 { return true }
+    if c >= 97 && c <= 122 { return true }
+    if c >= 48 && c <= 57 { return true }
+    if c == 95 { return true }
+    return false
+}
+
+// ------------------------------------------------------ task marker
+
+fn isMarkerKwAt(s str) str {
+    if startsWithStr(s, "TODO") { return markerIfBoundary(s, 4) }
+    if startsWithStr(s, "DOING") { return markerIfBoundary(s, 5) }
+    if startsWithStr(s, "DONE") { return markerIfBoundary(s, 4) }
+    if startsWithStr(s, "NOW") { return markerIfBoundary(s, 3) }
+    if startsWithStr(s, "LATER") { return markerIfBoundary(s, 5) }
+    return ""
+}
+
+fn markerIfBoundary(s str, kwLen int) str {
+    let next = s.char_at(kwLen)
+    if isWordChar(next) { return "" }
+    return s.slice(0, kwLen)
+}
+
+fn taskMarkerOf(line str) str {
+    let indent = indentWidth(line)
+    let rest = line.slice(indent)
+    if !startsWithStr(rest, "- ") { return "" }
+    return isMarkerKwAt(rest.slice(2))
+}
+
+// ------------------------------------------------------ priority
+
+fn isPriorityTagAt(s str, at int) bool {
+    // "[#A]" / "[#B]" / "[#C]"
+    if !startsWithStr(s.slice(at), "[#") { return false }
+    let c = s.char_at(at + 2)
+    if c != 65 && c != 66 && c != 67 { return false }
+    return s.char_at(at + 3) == 93
+}
+
+fn findPriorityTag(rest str) str {
+    let n = rest.length.to(int)
+    var i int = 0
+    while i + 3 < n {
+        if isPriorityTagAt(rest, i) {
+            return rest.slice(i + 2, i + 3)
+        }
+        i += 1
+    }
+    return ""
+}
+
+fn stripPriorityTag(content str) str {
+    // Drop the first "[#X]" (4 chars) — char-append accumulation (joinLines
+    // idiom; the two-operand slice+slice `+` form trips a2r's type inference).
+    let n = content.length.to(int)
+    var found int = -1
+    var i int = 0
+    while i + 3 < n {
+        if isPriorityTagAt(content, i) {
+            found = i
+            break
+        }
+        i += 1
+    }
+    if found < 0 { return trimStr(content) }
+    var out str = ""
+    var k int = 0
+    while k < n {
+        if k == found || k == found + 1 || k == found + 2 || k == found + 3 {
+            // skip the priority tag
+        } else {
+            out = out + content.slice(k, k + 1)
+        }
+        k += 1
+    }
+    return trimStr(out)
+}
+
+// ------------------------------------------------------ scheduled look
+
+// Mirror of SCHEDULED_RE on a single line: returns the <value> or "".
+fn scheduleValueOf(line str) str {
+    let p = indentWidth(line)
+    let rest = line.slice(p)
+    var kwLen int = 0
+    if startsWithStr(rest, "SCHEDULED:") {
+        kwLen = 10
+    } else {
+        if startsWithStr(rest, "DEADLINE:") {
+            kwLen = 9
+        } else {
+            return ""
+        }
+    }
+    let v = trimStartStr(rest.slice(kwLen))
+    if v.char_at(0) != 60 { return "" }
+    var j int = 1
+    while j < v.length.to(int) {
+        if v.char_at(j) == 62 {
+            return v.slice(1, j)
+        }
+        j += 1
+    }
+    return ""
+}
+
+// ------------------------------------------------------ parse
+
+pub fn parseTasksLines(pagePath str, title str, lines List<str>) List<TaskScanItem> {
+    var out List<TaskScanItem> = []
+    let count = lines.length.to(int)
+    var i int = 0
+    while i < count {
+        let line = lines[i]
+        let marker = taskMarkerOf(line)
+        if marker != "" {
+            let indent = indentWidth(line)
+            let rest = line.slice(indent + 2 + marker.length.to(int))
+            let priority = findPriorityTag(rest)
+            let content = stripPriorityTag(trimStr(rest))
+            // lookahead: deeper-indented SCHEDULED/DEADLINE lines bind to this task
+            var scheduled str = ""
+            var deadline str = ""
+            var j int = i + 1
+            while j < count {
+                let next = lines[j]
+                let nextIndent = indentWidth(next)
+                if trimStr(next) == "" || nextIndent <= indent { break }
+                let sv = scheduleValueOf(next)
+                if sv != "" {
+                    if startsWithStr(trimStartStr(next), "SCHEDULED:") {
+                        scheduled = sv
+                    } else {
+                        deadline = sv
+                    }
+                }
+                j += 1
+            }
+            out.push(TaskScanItem(pagePath, title, i, line, marker, priority, content, scheduled, deadline))
+        }
+        i += 1
+    }
+    return out
+}

@@ -1,0 +1,26 @@
+{
+  "pages": [
+    {
+      "pagePath": "Cards.ad",
+      "title": "Cards",
+      "lines": [
+        "- TODO 写周报 [#A]",
+        "  SCHEDULED: <2026-09-01 Thu>",
+        "  DEADLINE: <2026-09-10 Fri>",
+        "- DONE 旧任务 [#C]",
+        "- LATER 无元数据"
+      ],
+      "expected": [
+        { "marker": "TODO", "priority": "A", "content": "写周报", "scheduled": "2026-09-01 Thu", "deadline": "2026-09-10 Fri", "line": 0 },
+        { "marker": "DONE", "priority": "C", "content": "旧任务", "scheduled": "", "deadline": "", "line": 3 },
+        { "marker": "LATER", "priority": "", "content": "无元数据", "scheduled": "", "deadline": "", "line": 4 }
+      ]
+    },
+    {
+      "pagePath": "Plain.ad",
+      "title": "Plain",
+      "lines": ["- [ ] 不是任务标记", "普通段落文字"],
+      "expected": []
+    }
+  ]
+}

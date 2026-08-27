@@ -1,0 +1,130 @@
+{
+  "cases": [
+    {
+      "query": "#card",
+      "task": { "title": "t", "content": "看 #card 了", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "#card",
+      "task": { "title": "t", "content": "无标签", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    },
+    {
+      "query": "[[CAP 定理]]",
+      "task": { "title": "t", "content": "见 [[CAP 定理]]", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "[[CAP 定理]]",
+      "task": { "title": "CAP 定理", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "(and (task TODO) (priority A))",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "A", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "(and (task TODO) (priority B))",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "A", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    },
+    {
+      "query": "(or (task DONE) (priority A))",
+      "task": { "title": "t", "content": "", "marker": "DONE", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "(not (task DONE))",
+      "task": { "title": "t", "content": "", "marker": "NOW", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "(not (task DONE))",
+      "task": { "title": "t", "content": "", "marker": "DONE", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    },
+    {
+      "query": "(between today 7d)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "2026-08-30 Sat", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "(between today 7d)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "2026-09-30 Wed", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    },
+    {
+      "query": "(between 3d today)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "2026-08-26 Wed" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    },
+    {
+      "query": "(between 0d 3d)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "2026-08-30 Sat", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "(property key value)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    },
+    {
+      "query": "{{query (task TODO)}}",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": true, "err": ""
+    },
+    {
+      "query": "bogus-op",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": "Unknown query: bogus-op"
+    },
+    {
+      "query": "",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": "empty query"
+    },
+    {
+      "query": "(between today)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": "between expects two offsets"
+    },
+    {
+      "query": "(between a b)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": "Invalid offset number: a"
+    },
+    {
+      "query": "(between 1 x)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": "Invalid offset unit: 1"
+    },
+    {
+      "query": "(task TODOX)",
+      "task": { "title": "t", "content": "", "marker": "TODO", "priority": "", "scheduled": "", "deadline": "" },
+      "today": "2026-08-28",
+      "value": false, "err": ""
+    }
+  ]
+}

@@ -4,7 +4,6 @@ use axum::{
     extract::{Query, State},
     response::Json,
 };
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
@@ -23,66 +22,29 @@ pub struct TaskItem {
     pub deadline: Option<String>,
 }
 
-lazy_static::lazy_static! {
-    static ref TASK_MARKER_RE: Regex = Regex::new(r"^(\s*)- (TODO|DOING|DONE|NOW|LATER)\b(.*)$").unwrap();
-    static ref PRIORITY_RE: Regex = Regex::new(r"\[#([ABC])\]").unwrap();
-    static ref SCHEDULED_RE: Regex = Regex::new(r"^(\s*)(SCHEDULED|DEADLINE):\s*<([^>]+)>\s*$").unwrap();
-}
-
+/// Parse a page's task lines via the generated scanner (back/auto/tasks.at).
+/// Shell owns: frontmatter split, uuid stamping, Option mapping.
 pub fn parse_tasks(page_path: &str, title: &str, text: &str) -> Vec<TaskItem> {
     let body = crate::parser::split_frontmatter(text).1;
     let lines: Vec<&str> = body.lines().collect();
-    let mut tasks = Vec::new();
-    let mut i = 0;
-    while i < lines.len() {
-        let line = lines[i];
-        if let Some(cap) = TASK_MARKER_RE.captures(line) {
-            let indent = cap[1].len();
-            let marker = cap[2].to_string();
-            let rest = cap[3].to_string();
-            let priority = PRIORITY_RE.captures(&rest).and_then(|c| c.get(1).map(|m| m.as_str().to_string()));
-            let content = rest.trim().to_string();
-            let mut scheduled: Option<String> = None;
-            let mut deadline: Option<String> = None;
-            // Look ahead for indented SCHEDULED/DEADLINE lines.
-            let mut j = i + 1;
-            while j < lines.len() {
-                let next = lines[j];
-                let next_indent = next.len() - next.trim_start().len();
-                if next.trim().is_empty() || next_indent <= indent {
-                    break;
-                }
-                if let Some(s_cap) = SCHEDULED_RE.captures(next) {
-                    let keyword = s_cap[2].to_string();
-                    let value = s_cap[3].to_string();
-                    if keyword == "SCHEDULED" {
-                        scheduled = Some(value);
-                    } else {
-                        deadline = Some(value);
-                    }
-                }
-                j += 1;
-            }
-            tasks.push(TaskItem {
-                page_path: page_path.to_string(),
-                title: title.to_string(),
-                line: i,
-                raw: line.to_string(),
-                marker,
-                priority,
-                content: strip_marker_and_priority(&content),
-                scheduled,
-                deadline,
-            });
-        }
-        i += 1;
-    }
-    tasks
+    crate::tasks_gen::parseTasksLines(page_path, title, lines.iter().map(|l| l.to_string()).collect())
+        .into_iter()
+        .map(|it| TaskItem {
+            page_path: it.pagePath,
+            title: it.title,
+            line: it.line as usize,
+            raw: it.raw,
+            marker: it.marker,
+            priority: opt_string(it.priority),
+            content: it.content,
+            scheduled: opt_string(it.scheduled),
+            deadline: opt_string(it.deadline),
+        })
+        .collect()
 }
 
-fn strip_marker_and_priority(content: &str) -> String {
-    let s = PRIORITY_RE.replace(content, "").into_owned();
-    s.trim().to_string()
+fn opt_string(s: String) -> Option<String> {
+    (!s.is_empty()).then_some(s)
 }
 
 pub fn scan_wiki_tasks(wiki: &Path) -> Vec<TaskItem> {
@@ -176,4 +138,53 @@ pub async fn get_agenda(
         .map(|(date, tasks)| AgendaGroup { date, tasks })
         .collect();
     Ok(Json(AgendaResponse { groups }))
+}
+
+#[cfg(test)]
+mod tasks_gen_parity {
+    use super::*;
+
+    // Cross-language parity with the TS twin (../../auto/tests/tasks-parity.mjs).
+
+    #[test]
+    fn parse_tasks_parity_fixtures() {
+        let fixtures: serde_json::Value = serde_json::from_str(
+            include_str!("../../auto/tests/tasks-fixtures.json"),
+        )
+        .unwrap();
+        for page in fixtures["pages"].as_array().unwrap() {
+            let page_path = page["pagePath"].as_str().unwrap();
+            let title = page["title"].as_str().unwrap();
+            let text = page["lines"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_str().unwrap())
+                .collect::<Vec<_>>()
+                .join("\n");
+            let items = parse_tasks(page_path, title, &text);
+            let expected = page["expected"].as_array().unwrap();
+            assert_eq!(items.len(), expected.len(), "page `{page_path}`: task count");
+            for (it, e) in items.iter().zip(expected.iter()) {
+                assert_eq!(it.marker, e["marker"].as_str().unwrap(), "page `{page_path}` marker");
+                assert_eq!(
+                    it.priority.as_deref().unwrap_or(""),
+                    e["priority"].as_str().unwrap(),
+                    "page `{page_path}` priority"
+                );
+                assert_eq!(it.content, e["content"].as_str().unwrap(), "page `{page_path}` content");
+                assert_eq!(
+                    it.scheduled.as_deref().unwrap_or(""),
+                    e["scheduled"].as_str().unwrap(),
+                    "page `{page_path}` scheduled"
+                );
+                assert_eq!(
+                    it.deadline.as_deref().unwrap_or(""),
+                    e["deadline"].as_str().unwrap(),
+                    "page `{page_path}` deadline"
+                );
+                assert_eq!(it.line as i64, e["line"].as_i64().unwrap(), "page `{page_path}` line");
+            }
+        }
+    }
 }

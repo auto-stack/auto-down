@@ -10,6 +10,7 @@ import {
   BlockType,
   BlockPos,
   Selection,
+  anchorOf,
   attrSet,
   block,
   childIndex,
@@ -17,6 +18,7 @@ import {
   leafBlock,
   parentOf,
   replaceNode,
+  retargetAnchor,
   withChildren,
 } from '../../parser/block-model'
 import type { EditorEngine } from './editor-engine'
@@ -116,4 +118,46 @@ export function setBlockAttrs(engine: EditorEngine, id: string, attrs: Attr[]): 
     for (const a of attrs) next = { ...next, attrs: attrSet(next.attrs, a.key, a.value) }
     return replaceNode(tree, id, [next])
   })
+}
+
+// -- on-demand block anchoring (Obsidian-compatible lazy ^ids) -----------------
+
+/** Short persistent anchor id (7 base62 chars) — Obsidian-style, unlike the
+ *  engine-internal `block-N` / `b-xxxxxx` fallbacks which never serialize. */
+export function generateAnchorId(used: Set<string>): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const cryptoObj = typeof crypto !== 'undefined' ? crypto : undefined
+  const rand = (): number => {
+    if (cryptoObj?.getRandomValues) {
+      const buf = new Uint32Array(1)
+      cryptoObj.getRandomValues(buf)
+      return buf[0]! % alphabet.length
+    }
+    return Math.floor(Math.random() * alphabet.length)
+  }
+  for (let attempt = 0; attempt < 64; attempt++) {
+    let id = ''
+    for (let i = 0; i < 7; i++) id += alphabet[rand()]!
+    if (!used.has(id)) return id
+  }
+  return `a${Date.now().toString(36).slice(-6)}`
+}
+
+/** Return the block's persistent anchor, assigning one on demand (copy-block
+ *  link on a not-yet-anchored block). One undo step; emits change so the
+ *  autosave persists the new anchor. Returns null when the id is unknown. */
+export function ensureBlockAnchor(engine: EditorEngine, id: string): string | null {
+  const found = findBlock(engine.doc, id)
+  if (!found) return null
+  const existing = anchorOf(found)
+  if (existing) return existing
+  const used = new Set<string>()
+  const walk = (n: BlockNode): void => {
+    used.add(n.id)
+    n.children.forEach(walk)
+  }
+  walk(engine.doc)
+  const anchor = generateAnchorId(used)
+  engine.applyTree((tree) => retargetAnchor(tree, id, anchor))
+  return anchor
 }

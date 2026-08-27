@@ -20,4 +20,6 @@ export {
   setBlockAttrs,
   tableAddRowTree,
   tableAddColumnTree,
+  ensureBlockAnchor,
+  generateAnchorId,
 } from './commands'

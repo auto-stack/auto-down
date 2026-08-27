@@ -392,6 +392,39 @@ pub fn dupNodes(nodes List<BlockNode>) List<BlockNode> {
 
 // ------------------------------------------------------------------ lookup
 
+// The block's PERSISTENT anchor (`^token` in the .ad text), lifted by
+// applyAnchorsDeep at parse time and re-emitted by withIdSuffix. Engine
+// fallback ids (`block-<i>`, `b-xxxxxx`) carry no anchor attr -> "".
+pub fn anchorOf(node BlockNode) str {
+    return attrGetStr(node.attrs, "anchor", "")
+}
+
+pub fn withBlockAnchor(node BlockNode, newId str) BlockNode {
+    return BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source)
+}
+
+pub fn hasIdDeep(tree BlockNode, id str) bool {
+    if tree.id == id { return true }
+    for i in 0..tree.children.length.to(int) {
+        if hasIdDeep(tree.children[i], id) { return true }
+    }
+    return false
+}
+
+// Assign a persistent anchor to the block with engine-internal `id`
+// (on-demand anchoring, e.g. copy-block-link). Returns the tree unchanged
+// when the id is absent so applyTree callers can no-op safely.
+pub fn retargetAnchor(tree BlockNode, id str, newId str) BlockNode {
+    if !hasIdDeep(tree, id) { return tree }
+    if tree.id == id { return withBlockAnchor(tree, newId) }
+    if tree.children.length.to(int) == 0 { return tree }
+    var out List<BlockNode> = []
+    for i in 0..tree.children.length.to(int) {
+        out.push(retargetAnchor(tree.children[i], id, newId))
+    }
+    return BlockNode(tree.id, tree.kind, tree.attrs, out, tree.inlines, tree.source)
+}
+
 pub fn findBlock(node BlockNode, id str) BlockNode? {
     if node.id == id { return Some(node) }
     for i in 0..node.children.length.to(int) {

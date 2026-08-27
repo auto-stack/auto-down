@@ -442,6 +442,43 @@ export function dupNodes(nodes: BlockNode[]): BlockNode[] {
     return out;
 }
 
+export function anchorOf(node: BlockNode): string {
+    return attrGetStr(node.attrs, "anchor", "");
+}
+
+export function withBlockAnchor(node: BlockNode, newId: string): BlockNode {
+    return BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source);
+}
+
+export function hasIdDeep(tree: BlockNode, id: string): boolean {
+    if (tree.id == id) {
+        return true;
+    }
+    for (let i = 0; i < Number(tree.children.length); i++) {
+        if (hasIdDeep(tree.children[i], id)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function retargetAnchor(tree: BlockNode, id: string, newId: string): BlockNode {
+    if (!hasIdDeep(tree, id)) {
+        return tree;
+    }
+    if (tree.id == id) {
+        return withBlockAnchor(tree, newId);
+    }
+    if (Number(tree.children.length) == 0) {
+        return tree;
+    }
+    let out: BlockNode[] = [];
+    for (let i = 0; i < Number(tree.children.length); i++) {
+        out.push(retargetAnchor(tree.children[i], id, newId));
+    }
+    return BlockNode(tree.id, tree.kind, tree.attrs, out, tree.inlines, tree.source);
+}
+
 export function findBlock(node: BlockNode, id: string): BlockNode | null {
     if (node.id == id) {
         return node;

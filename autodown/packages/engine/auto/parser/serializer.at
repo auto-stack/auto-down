@@ -254,7 +254,9 @@ pub fn tableMd(node BlockNode) str {
 
 // Serialize a list of child blocks for blockquote/list-item/extension bodies:
 // blank line between blocks, single newline before a nested list (tight form).
-pub fn joinChildren(kids List<BlockNode>) str {
+// `withId` threads the anchor re-emission down through containers so list
+// items / quote lines keep their ^anchors too.
+pub fn joinChildren(kids List<BlockNode>, withId bool) str {
     var out str = ""
     for i in 0..kids.length.to(int) {
         if i > 0 {
@@ -264,13 +266,13 @@ pub fn joinChildren(kids List<BlockNode>) str {
                 out = out + "\n\n"
             }
         }
-        out = out + blockMd(kids[i], false)
+        out = out + blockMd(kids[i], withId)
     }
     return out
 }
 
-pub fn quoteMd(node BlockNode) str {
-    let body = joinChildren(node.children)
+pub fn quoteMd(node BlockNode, withId bool) str {
+    let body = joinChildren(node.children, withId)
     let lines = body.split("\n")
     var out str = ""
     for i in 0..lines.length.to(int) {
@@ -284,7 +286,7 @@ pub fn quoteMd(node BlockNode) str {
     return out
 }
 
-pub fn listMd(node BlockNode) str {
+pub fn listMd(node BlockNode, withId bool) str {
     let ordered = attrGetBool(node.attrs, "ordered", false)
     let start = attrGetInt(node.attrs, "start", 1)
     var out str = ""
@@ -295,7 +297,7 @@ pub fn listMd(node BlockNode) str {
             let n = start + i
             marker = n.to(str) + ". "
         }
-        let body = joinChildren(node.children[i].children)
+        let body = joinChildren(node.children[i].children, withId)
         let lines = body.split("\n")
         let pad = repeatStr(" ", marker.length.to(int))
         for j in 0..lines.length.to(int) {
@@ -330,7 +332,7 @@ pub fn fenceMd(node BlockNode) str {
 pub fn headingMd(node BlockNode, withId bool) str {
     let level = attrGetInt(node.attrs, "level", 1)
     var t str = inlinesMd(node.inlines)
-    if withId { t = withIdSuffix(t, node.id) }
+    if withId { t = withIdSuffix(t, attrGetStr(node.attrs, "anchor", "")) }
     if level <= 2 {
         if hasNewline(t) {
             var underline str = "---"
@@ -343,9 +345,9 @@ pub fn headingMd(node BlockNode, withId bool) str {
 
 // ---------- extended block placeholders ----------
 
-pub fn componentBlockMd(name str, argName str, node BlockNode) str {
+pub fn componentBlockMd(name str, argName str, node BlockNode, withId bool) str {
     let arg = attrGetStr(node.attrs, argName, "")
-    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children) + "\n}"
+    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children, withId) + "\n}"
 }
 
 pub fn wikilinkMd(node BlockNode) str {
@@ -363,15 +365,15 @@ pub fn blockMd(node BlockNode, withId bool) str {
     let k = node.kind
     if k == BlockType.Heading { return headingMd(node, withId) }
     if k == BlockType.Fence { return fenceMd(node) }
-    if k == BlockType.Blockquote { return quoteMd(node) }
-    if k == BlockType.ListBlock { return listMd(node) }
-    if k == BlockType.ListItem { return joinChildren(node.children) }
+    if k == BlockType.Blockquote { return quoteMd(node, withId) }
+    if k == BlockType.ListBlock { return listMd(node, withId) }
+    if k == BlockType.ListItem { return joinChildren(node.children, withId) }
     if k == BlockType.Table { return tableMd(node) }
     if k == BlockType.TableRow { return tableRowMd(node) }
     if k == BlockType.TableCell { return inlinesMd(node.inlines) }
     if k == BlockType.ThematicBreak { return "---" }
-    if k == BlockType.Callout { return componentBlockMd("callout", "type", node) }
-    if k == BlockType.Details { return componentBlockMd("details", "summary", node) }
+    if k == BlockType.Callout { return componentBlockMd("callout", "type", node, withId) }
+    if k == BlockType.Details { return componentBlockMd("details", "summary", node, withId) }
     if k == BlockType.WikilinkBlock { return wikilinkMd(node) }
     if k == BlockType.QueryBlock { return "$query(" + attrGetStr(node.attrs, "query", "") + ")" }
     if k == BlockType.BlockEmbed { return "$embed(src: \"" + attrGetStr(node.attrs, "src", "") + "\")" }
@@ -379,15 +381,16 @@ pub fn blockMd(node BlockNode, withId bool) str {
     if k == BlockType.MathBlock { return "%{\n" + spansText(node.inlines) + "\n}%" }
     // Paragraph and any future leaf with inlines.
     let t = inlinesMd(node.inlines)
-    if withId { return withIdSuffix(t, node.id) }
+    if withId { return withIdSuffix(t, attrGetStr(node.attrs, "anchor", "")) }
     return t
 }
 
 // ---------- document entry ----------
 
-// Append ` ^<id>` unless the text already ends with that anchor token
-// (parse_blocks extracts the anchor from the last whitespace token; keeping
-// it in the text means ids survive serialization even with emitIds=false).
+// Append ` ^<anchor>` unless the text already ends with that anchor token.
+// `id` is the block's PERSISTENT anchor (the `anchor` attr set by
+// applyAnchorsDeep / withBlockAnchor) — engine-internal fallback ids
+// (`block-<i>`, `b-xxxxxx`) carry no anchor attr and never serialize.
 pub fn withIdSuffix(text str, id str) str {
     let tok = "^" + id
     if id.length.to(int) == 0 { return text }
@@ -400,15 +403,9 @@ pub fn serializeBlocks(blocks List<BlockNode>, emitIds bool) str {
     for i in 0..blocks.length.to(int) {
         if i > 0 { out = out + "\n\n" }
         let b = blocks[i]
-        // Only Paragraph/Heading carry inlines the anchor extractor reads;
-        // other kinds ignore the flag inside blockMd.
-        if b.kind == BlockType.Paragraph {
-            out = out + blockMd(b, emitIds)
-        } else if b.kind == BlockType.Heading {
-            out = out + blockMd(b, emitIds)
-        } else {
-            out = out + blockMd(b, false)
-        }
+        // emitIds threads through every kind: list items / quote lines can
+        // carry anchors too (blockMd re-emits from the `anchor` attr).
+        out = out + blockMd(b, emitIds)
     }
     return out
 }

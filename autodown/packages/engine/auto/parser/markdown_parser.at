@@ -2244,6 +2244,117 @@ fn withAnchorId(node BlockNode, fallbackId str) BlockNode {
     return blockFull(anchor, node.kind, node.attrs, node.children, node.inlines, node.source)
 }
 
+// -- Obsidian-compatible anchor lifting (plan: anchor display hiding) ----------
+// A trailing " ^token" on an anchorable leaf line is metadata, not content:
+// lift it into the block id + `anchor` attr and STRIP it from the inline text
+// so neither the editing host nor the preview ever renders it. Deep walk so
+// list items / quote lines strip too, not just top-level leaves. Serializer
+// re-emits the token from the `anchor` attr (withIdSuffix), making the
+// parse -> edit -> serialize round trip anchor-preserving.
+
+fn endsWithStr(hay str, needle str) bool {
+    let hl = hay.length.to(int)
+    let nl = needle.length.to(int)
+    if nl > hl { return false }
+    return hay.slice(hl - nl, hl) == needle
+}
+
+// Rebuild the inline list keeping only text before `cut` (code-unit offset in
+// the concatenated text). Spans fully before cut pass through; the span that
+// contains cut is truncated; later spans are dropped.
+fn stripAnchorSpans(spans List<InlineSpan>, cut int) List<InlineSpan> {
+    var out List<InlineSpan> = []
+    var pos int = 0
+    for i in 0..spans.length.to(int) {
+        let t = spans[i].text
+        let start = pos
+        let end = pos + t.length.to(int)
+        pos = end
+        if start >= cut {
+            // fully inside the removed suffix
+        } else {
+            if end <= cut {
+                out.push(spans[i])
+            } else {
+                let keepLen = cut - start
+                if keepLen > 0 {
+                    out.push(InlineSpan(t.slice(0, keepLen), spans[i].marks, spans[i].attrs))
+                }
+            }
+        }
+    }
+    return out
+}
+
+fn isAnchorableLeafKind(kind BlockType) bool {
+    if kind == BlockType.Paragraph { return true }
+    if kind == BlockType.Heading { return true }
+    if kind == BlockType.ListItem { return true }
+    return false
+}
+
+pub fn applyAnchorsDeep(node BlockNode) BlockNode {
+    var kids List<BlockNode> = []
+    for i in 0..node.children.length.to(int) {
+        kids.push(applyAnchorsDeep(node.children[i]))
+    }
+    var out BlockNode = blockFull(node.id, node.kind, node.attrs, kids, node.inlines, node.source)
+    if isAnchorableLeafKind(node.kind) {
+        if node.inlines.length.to(int) > 0 {
+            let text = spansText(node.inlines)
+            let anchor = extractAnchorBlock(text)
+            if anchor != "" {
+                let total = text.length.to(int)
+                let tokLen = anchor.length.to(int) + 1
+                let spaceIdx = total - tokLen - 1
+                if spaceIdx >= 0 {
+                    let ws = text.slice(spaceIdx, spaceIdx + 1)
+                    if ws == " " || ws == "\t" {
+                        let stripped = stripAnchorSpans(node.inlines, spaceIdx)
+                        out = blockFull(anchor, node.kind, attrSet(node.attrs, "anchor", Value.Str(anchor)), kids, stripped, node.source)
+                    }
+                }
+            }
+        }
+    }
+    return out
+}
+
+// Line-level anchor strip for read/preview paths that go through the weak
+// parser directly. Fence-aware: lines inside ``` fences are never touched.
+fn stripLineAnchor(l str) str {
+    let n = l.length.to(int)
+    if n < 3 { return l }
+    let cand = extractAnchorBlock(l)
+    if cand == "" { return l }
+    let tok = "^" + cand
+    let tokLen = tok.length.to(int)
+    if !endsWithStr(l, tok) { return l }
+    let before = n - tokLen
+    if before <= 0 { return l }
+    let ws = l.slice(before - 1, before)
+    if ws != " " && ws != "\t" { return l }
+    return l.slice(0, before - 1)
+}
+
+pub fn stripAnchorTokens(md str) str {
+    var out str = ""
+    var inFence bool = false
+    let lines = md.split("\n")
+    let count = lines.length.to(int)
+    for i in 0..count {
+        var l str = lines[i]
+        if l.slice(0, 3) == "```" {
+            inFence = !inFence
+        } else {
+            if !inFence { l = stripLineAnchor(l) }
+        }
+        out = out + l
+        if i < count - 1 { out = out + "\n" }
+    }
+    return out
+}
+
 pub fn parse_blocks(src str, isFinal bool) BlockNode {
     let pre = preprocessMarkdown(src)
     let preMd = pre.md
@@ -2251,7 +2362,7 @@ pub fn parse_blocks(src str, isFinal bool) BlockNode {
     var kids List<BlockNode> = []
     for i in 0..weak.length.to(int) {
         let fallback = "block-" + i.to(str)
-        kids.push(withAnchorId(convertBlock(weak[i], fallback), fallback))
+        kids.push(applyAnchorsDeep(convertBlock(weak[i], fallback)))
     }
     let withIal = attachIAL(kids, pre.tableAttrs)
     return blockFull("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0))

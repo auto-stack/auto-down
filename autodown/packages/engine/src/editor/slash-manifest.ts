@@ -9,11 +9,21 @@ import {
   Table as TableIcon, AlertCircle, PanelTop, Sigma, Workflow, Check, X,
   Link, Search, Square, CircleDot, CheckCircle2, Clock, Timer, ArrowUp,
 } from 'lucide-vue-next'
+import { ensureBlockAnchor } from './engine/commands'
 import type { SlashItem } from './menus/slashItem'
 
 function getCurrentBlockId(editor: any): string | null {
   const engine = editor?.__engine
   return engine?.selection?.anchor?.blockId ?? null
+}
+
+/** Persistent anchor for the current block: returns the existing ^anchor, or
+ *  assigns a fresh short id on demand (lazy Obsidian-style anchoring). */
+function getCurrentBlockAnchor(editor: any): string | null {
+  const engine = editor?.__engine
+  const id = engine?.selection?.anchor?.blockId
+  if (!engine || !id) return null
+  return ensureBlockAnchor(engine, id)
 }
 
 // The original's baseSlashItems + extraSlashItems merge, verbatim. The
@@ -246,7 +256,7 @@ export function getSlashItems(props: any): SlashItem[] {
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
         const title = props.pageTitle
-        const id = getCurrentBlockId(editor)
+        const id = getCurrentBlockAnchor(editor)
         if (title && id) {
           const link = `[[${title}#^${id}]]`
           navigator.clipboard.writeText(link).catch(() => {})

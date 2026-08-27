@@ -11,7 +11,7 @@ a **bold** move
 | 1 |
 {cols:[120,"auto"], rows:[40]}
 === emit_ids ===
-## Title ^block-0
+## Title
 
 kept ^my-anchor
 === hardbreak_and_fence ===

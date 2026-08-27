@@ -280,7 +280,7 @@ export function tableMd(node: BlockNode): string {
     return out;
 }
 
-export function joinChildren(kids: BlockNode[]): string {
+export function joinChildren(kids: BlockNode[], withId: boolean): string {
     let out: string = "";
     for (let i = 0; i < Number(kids.length); i++) {
         if (i > 0) {
@@ -290,13 +290,13 @@ export function joinChildren(kids: BlockNode[]): string {
                 out = out + "\n\n";
             }
         }
-        out = out + blockMd(kids[i], false);
+        out = out + blockMd(kids[i], withId);
     }
     return out;
 }
 
-export function quoteMd(node: BlockNode): string {
-    const body = joinChildren(node.children);
+export function quoteMd(node: BlockNode, withId: boolean): string {
+    const body = joinChildren(node.children, withId);
     const lines = body.split("\n");
     let out: string = "";
     for (let i = 0; i < Number(lines.length); i++) {
@@ -312,7 +312,7 @@ export function quoteMd(node: BlockNode): string {
     return out;
 }
 
-export function listMd(node: BlockNode): string {
+export function listMd(node: BlockNode, withId: boolean): string {
     const ordered = attrGetBool(node.attrs, "ordered", false);
     const start = attrGetInt(node.attrs, "start", 1);
     let out: string = "";
@@ -325,7 +325,7 @@ export function listMd(node: BlockNode): string {
             const n: number = start + i;
             marker = String(n) + ". ";
         }
-        const body = joinChildren(node.children[i].children);
+        const body = joinChildren(node.children[i].children, withId);
         const lines = body.split("\n");
         const pad = repeatStr(" ", Number(marker.length));
         for (let j = 0; j < Number(lines.length); j++) {
@@ -361,7 +361,7 @@ export function headingMd(node: BlockNode, withId: boolean): string {
     const level = attrGetInt(node.attrs, "level", 1);
     let t: string = inlinesMd(node.inlines);
     if (withId) {
-        t = withIdSuffix(t, node.id);
+        t = withIdSuffix(t, attrGetStr(node.attrs, "anchor", ""));
     }
     if (level <= 2) {
         if (hasNewline(t)) {
@@ -375,9 +375,9 @@ export function headingMd(node: BlockNode, withId: boolean): string {
     return repeatStr("#", level) + " " + t;
 }
 
-export function componentBlockMd(name: string, argName: string, node: BlockNode): string {
+export function componentBlockMd(name: string, argName: string, node: BlockNode, withId: boolean): string {
     const arg = attrGetStr(node.attrs, argName, "");
-    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children) + "\n}";
+    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children, withId) + "\n}";
 }
 
 export function wikilinkMd(node: BlockNode): string {
@@ -398,13 +398,13 @@ export function blockMd(node: BlockNode, withId: boolean): string {
         return fenceMd(node);
     }
     if (k == BlockType.Blockquote) {
-        return quoteMd(node);
+        return quoteMd(node, withId);
     }
     if (k == BlockType.ListBlock) {
-        return listMd(node);
+        return listMd(node, withId);
     }
     if (k == BlockType.ListItem) {
-        return joinChildren(node.children);
+        return joinChildren(node.children, withId);
     }
     if (k == BlockType.Table) {
         return tableMd(node);
@@ -419,10 +419,10 @@ export function blockMd(node: BlockNode, withId: boolean): string {
         return "---";
     }
     if (k == BlockType.Callout) {
-        return componentBlockMd("callout", "type", node);
+        return componentBlockMd("callout", "type", node, withId);
     }
     if (k == BlockType.Details) {
-        return componentBlockMd("details", "summary", node);
+        return componentBlockMd("details", "summary", node, withId);
     }
     if (k == BlockType.WikilinkBlock) {
         return wikilinkMd(node);
@@ -443,7 +443,7 @@ export function blockMd(node: BlockNode, withId: boolean): string {
 
     const t = inlinesMd(node.inlines);
     if (withId) {
-        return withIdSuffix(t, node.id);
+        return withIdSuffix(t, attrGetStr(node.attrs, "anchor", ""));
     }
     return t;
 }
@@ -469,13 +469,7 @@ export function serializeBlocks(blocks: BlockNode[], emitIds: boolean): string {
         
 
 
-        if (b.kind == BlockType.Paragraph) {
-            out = out + blockMd(b, emitIds);
-        } else if (b.kind == BlockType.Heading) {
-            out = out + blockMd(b, emitIds);
-        } else {
-            out = out + blockMd(b, false);
-        }
+        out = out + blockMd(b, emitIds);
     }
     return out;
 }

@@ -94,7 +94,10 @@ function normTree(node: BlockNode): unknown {
 }
 
 const round1 = (src: string) => parse_blocks(src, true)
-const round2 = (src: string) => parse_blocks(serialize(round1(src), false), true)
+// round2 models a save/load cycle: emitIds=true is the anchor-preserving
+// path (emitIds=false is the editor working copy, which intentionally strips
+// ^anchors from the text — Obsidian-compatible display hiding).
+const round2 = (src: string) => parse_blocks(serialize(round1(src), true), true)
 
 // ---------- directed cases ----------
 
@@ -202,22 +205,27 @@ describe('roundtrip layer (b): serialize(parse(x)) byte stability', () => {
 })
 
 describe('roundtrip layer (c): BlockId roundtrip', () => {
-  it('keeps explicit ^anchors in the text with emitIds=false', () => {
-    const out = serialize(round1(DIRECTED.anchor), false)
-    expect(out).toBe(DIRECTED.anchor)
-    const re = parse_blocks(out, true)
+  it('anchors are stripped from the working copy, preserved via emitIds=true', () => {
+    // emitIds=false = editor working copy: the ^anchor is hidden (stripped)
+    expect(serialize(round1(DIRECTED.anchor), false)).toBe('first\n\nsecond\n')
+    // emitIds=true = save path: the anchor round-trips byte-identically
+    expect(serialize(round1(DIRECTED.anchor), true)).toBe(DIRECTED.anchor)
+    const re = parse_blocks(serialize(round1(DIRECTED.anchor), true), true)
     expect(re.children[1].id).toBe('my-anchor')
   })
 
-  it('emitIds=true appends ^<id> to top-level paragraphs/headings', () => {
-    const src = '# Title\n\nsome text\n'
-    const out = serialize(parse_blocks(src, true), true)
-    expect(out).toBe('# Title ^block-0\n\nsome text ^block-1\n')
+  it('emitIds=true re-emits real anchors; fallback ids stay internal', () => {
+    const anchored = serialize(parse_blocks('# Title ^title-1\n\nsome text\n', true), true)
+    expect(anchored).toBe('# Title ^title-1\n\nsome text\n')
+    // blocks without an explicit ^anchor get engine-internal ids (block-N),
+    // which must NEVER leak into the serialized markdown
+    const plain = serialize(parse_blocks('# Title\n\nsome text\n', true), true)
+    expect(plain).toBe('# Title\n\nsome text\n')
   })
 
   it('does not duplicate an anchor already present in the text', () => {
     const out = serialize(parse_blocks(DIRECTED.anchor, true), true)
-    expect(out).toBe('first ^block-0\n\nsecond ^my-anchor\n')
+    expect(out).toBe('first\n\nsecond ^my-anchor\n')
   })
 
   it('ids do not drift through an emitIds roundtrip', () => {

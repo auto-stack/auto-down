@@ -2552,6 +2552,127 @@ export function withAnchorId(node: BlockNode, fallbackId: string): BlockNode {
     return blockFull(anchor, node.kind, node.attrs, node.children, node.inlines, node.source);
 }
 
+export function endsWithStr(hay: string, needle: string): boolean {
+    const hl: number = Number(hay.length);
+    const nl: number = Number(needle.length);
+    if (nl > hl) {
+        return false;
+    }
+    return hay.slice(hl - nl, hl) == needle;
+}
+
+export function stripAnchorSpans(spans: InlineSpan[], cut: number): InlineSpan[] {
+    let out: InlineSpan[] = [];
+    let pos: number = 0;
+    for (let i = 0; i < Number(spans.length); i++) {
+        const t = spans[i].text;
+        const start: number = pos;
+        const end: number = pos + Number(t.length);
+        pos = end;
+        if (start >= cut) {
+            
+
+        } else {
+            if (end <= cut) {
+                out.push(spans[i]);
+            } else {
+                const keepLen: number = cut - start;
+                if (keepLen > 0) {
+                    out.push(InlineSpan(t.slice(0, keepLen), spans[i].marks, spans[i].attrs));
+                }
+            }
+        }
+    }
+    return out;
+}
+
+export function isAnchorableLeafKind(kind: BlockType): boolean {
+    if (kind == BlockType.Paragraph) {
+        return true;
+    }
+    if (kind == BlockType.Heading) {
+        return true;
+    }
+    if (kind == BlockType.ListItem) {
+        return true;
+    }
+    return false;
+}
+
+export function applyAnchorsDeep(node: BlockNode): BlockNode {
+    let kids: BlockNode[] = [];
+    for (let i = 0; i < Number(node.children.length); i++) {
+        kids.push(applyAnchorsDeep(node.children[i]));
+    }
+    let out: BlockNode = BlockNode(node.id, node.kind, node.attrs, kids, node.inlines, node.source);
+    if (isAnchorableLeafKind(node.kind)) {
+        if (Number(node.inlines.length) > 0) {
+            const text = spansText(node.inlines);
+            const anchor = extractAnchorBlock(text);
+            if (anchor != "") {
+                const total: number = Number(text.length);
+                const tokLen: number = Number(anchor.length) + 1;
+                const spaceIdx: number = total - tokLen - 1;
+                if (spaceIdx >= 0) {
+                    const ws = text.slice(spaceIdx, spaceIdx + 1);
+                    if (ws == " " || ws == "\t") {
+                        const stripped = stripAnchorSpans(node.inlines, spaceIdx);
+                        out = BlockNode(anchor, node.kind, attrSet(node.attrs, "anchor", Value.Str(anchor)), kids, stripped, node.source);
+                    }
+                }
+            }
+        }
+    }
+    return out;
+}
+
+export function stripLineAnchor(l: string): string {
+    const n: number = Number(l.length);
+    if (n < 3) {
+        return l;
+    }
+    const cand = extractAnchorBlock(l);
+    if (cand == "") {
+        return l;
+    }
+    const tok: string = "^" + cand;
+    const tokLen: number = Number(tok.length);
+    if (!endsWithStr(l, tok)) {
+        return l;
+    }
+    const before: number = n - tokLen;
+    if (before <= 0) {
+        return l;
+    }
+    const ws = l.slice(before - 1, before);
+    if (ws != " " && ws != "\t") {
+        return l;
+    }
+    return l.slice(0, before - 1);
+}
+
+export function stripAnchorTokens(md: string): string {
+    let out: string = "";
+    let inFence: boolean = false;
+    const lines = md.split("\n");
+    const count: number = Number(lines.length);
+    for (let i = 0; i < count; i++) {
+        let l: string = lines[i];
+        if (l.slice(0, 3) == "```") {
+            inFence = !inFence;
+        } else {
+            if (!inFence) {
+                l = stripLineAnchor(l);
+            }
+        }
+        out = out + l;
+        if (i < count - 1) {
+            out = out + "\n";
+        }
+    }
+    return out;
+}
+
 export function parse_blocks(src: string, isFinal: boolean): BlockNode {
     const pre = preprocessMarkdown(src);
     const preMd = pre.md;
@@ -2559,7 +2680,7 @@ export function parse_blocks(src: string, isFinal: boolean): BlockNode {
     let kids: BlockNode[] = [];
     for (let i = 0; i < Number(weak.length); i++) {
         const fallback: string = "block-" + String(i);
-        kids.push(withAnchorId(convertBlock(weak[i], fallback), fallback));
+        kids.push(applyAnchorsDeep(convertBlock(weak[i], fallback)));
     }
     const withIal = attachIAL(kids, pre.tableAttrs);
     return blockFull("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0));

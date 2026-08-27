@@ -22,6 +22,7 @@
 // an injectable port (VM backends supply their own adapter).
 import { computed, onMounted, ref } from 'vue'
 import { parseDocument } from './markdown-parser.generated'
+import { stripAnchorTokens } from '../parser/markdown-parser'
 import { renderNodes } from './render-node'
 import { useRenderScheduler } from './use-render-scheduler'
 
@@ -50,7 +51,9 @@ const props = withDefaults(
   }
 )
 
-const allNodes = computed(() => parseDocument(props.content ?? '', props.final))
+// ^block-anchors are file-level metadata: strip them (fence-aware) so the
+// read view never renders the tokens, matching the editor's applyAnchorsDeep.
+const allNodes = computed(() => parseDocument(stripAnchorTokens(props.content ?? ''), props.final))
 
 // SSR / non-batched path renders everything synchronously
 const ssrNodes = computed(() => renderNodes(allNodes.value, props.final))

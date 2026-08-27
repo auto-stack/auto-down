@@ -67,7 +67,10 @@ engine.onChange(() => {
 })
 
 function emitUpdate(): void {
-  const md = serialize(engine.doc, false)
+  // emitIds=true: re-emit persistent ^anchors from the `anchor` attr so the
+  // store/save round trip never loses them (the text itself stays clean —
+  // applyAnchorsDeep stripped them at parse time).
+  const md = serialize(engine.doc, true)
   emit('update', md)
   emit('update:modelValue', md)
 }
@@ -75,7 +78,7 @@ function emitUpdate(): void {
 watch(
   () => props.modelValue ?? props.content,
   (md) => {
-    if (md != null && md !== serialize(engine.doc, false)) engine.replaceDoc(docFromMarkdown(md))
+    if (md != null && md !== serialize(engine.doc, true)) engine.replaceDoc(docFromMarkdown(md))
   }
 )
 
@@ -200,7 +203,7 @@ function focusFirstBlock(): void {
 if (!engine.selection.anchor.blockId) focusFirstBlock()
 
 function emitSave(): void {
-  emit('save', serialize(engine.doc, false))
+  emit('save', serialize(engine.doc, true))
 }
 
 defineExpose({ getBlockMap, handleSave: emitSave })

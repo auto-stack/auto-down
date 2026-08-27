@@ -1,0 +1,299 @@
+// jade-garden back links — wikilink / block-ref / tag scanning.
+//
+// Plan 021 Phase 2 slice 2: single-source port of the regex scanners that
+// lived in back/server/src/index.rs (WIKI_LINK_RE / BLOCK_REF_RE / TAG_RE
+// plus the per-line orchestration of extract_links / extract_tags), written
+// in the a2r-clean subset (char-scan, no RegExp; str vocabulary same as
+// parser.at).
+//
+// Semantics contract (mirrors the retired regexes verbatim):
+// - wiki link: "[[" title "#block"? "]]"; title excludes ] | # \n and must
+//   be non-empty AFTER trim (regex required 1+ raw chars; whitespace-only
+//   titles — which the old code pushed as empty targets — are dropped:
+//   registered deviation, garbage-in no longer produces a garbage link).
+// - block ref: "((uuid36))" with strict uuid shape.
+// - tag: "#" + [A-Za-z0-9_/-]+ run; unanchored (matches mid-line), same as
+//   the retired TAG_RE.
+// - context: the trimmed line containing the hit (extract_context over the
+//   match offset always resolved to the scanned line).
+
+pub type LineBlock {
+    uuid str
+    lineStart int
+    lineEnd int
+}
+
+pub type WikiLinkHit {
+    title str
+    blockId str
+}
+
+pub type LinkScan {
+    sourcePage str
+    sourceBlockUuid str
+    targetPage str
+    targetBlockUuid str
+    linkType str
+    context str
+}
+
+pub type TagScan {
+    pagePath str
+    tag str
+    blockUuid str
+}
+
+// ------------------------------------------------------ str vocabulary copy
+// (kept local so this module stays dependency-free like parser.at; dedup via
+// a shared .at import is future work once the mini-gen grows an M1 pass)
+
+fn startsWithStr(s str, prefix str) bool {
+    if s.length.to(int) < prefix.length.to(int) { return false }
+    return s.slice(0, prefix.length.to(int)) == prefix
+}
+
+fn trimStr(s str) str {
+    return trimStartStr(trimEndStr(s))
+}
+
+fn isWs(c int) bool {
+    if c == 32 { return true }
+    if c == 9 { return true }
+    if c == 10 { return true }
+    if c == 13 { return true }
+    if c == 11 { return true }
+    if c == 12 { return true }
+    return false
+}
+
+fn trimStartStr(s str) str {
+    var p int = 0
+    while p < s.length.to(int) {
+        if !isWs(s.char_at(p)) { break }
+        p += 1
+    }
+    if p == 0 { return s }
+    return s.slice(p)
+}
+
+fn trimEndStr(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        if !isWs(s.char_at(end - 1)) { break }
+        end -= 1
+    }
+    if end == s.length.to(int) { return s }
+    return s.slice(0, end)
+}
+
+fn isHexChar(c int) bool {
+    if c >= 48 && c <= 57 { return true }
+    if c >= 65 && c <= 70 { return true }
+    if c >= 97 && c <= 102 { return true }
+    return false
+}
+
+fn isUuid36(s str) bool {
+    if s.length.to(int) != 36 { return false }
+    var i int = 0
+    while i < 36 {
+        let c = s.char_at(i)
+        if i == 8 || i == 13 || i == 18 || i == 23 {
+            if c != 45 { return false }
+        } else {
+            if !isHexChar(c) { return false }
+        }
+        i += 1
+    }
+    return true
+}
+
+// ------------------------------------------------------ per-line scanners
+
+fn isLinkBreakChar(c int) bool {
+    if c == 93 { return true }
+    if c == 124 { return true }
+    if c == 35 { return true }
+    if c == 10 { return true }
+    return false
+}
+
+/// Scan one line for "[[title]]" / "[[title#block]]" hits. Mirrors
+/// WIKI_LINK_RE captures (trimmed title, optional block id).
+pub fn scanWikiLinksLine(line str) List<WikiLinkHit> {
+    var out List<WikiLinkHit> = []
+    let n = line.length.to(int)
+    var i int = 0
+    while i + 1 < n {
+        if line.char_at(i) == 91 && line.char_at(i + 1) == 91 {
+            // scan title: stops at ] | # \n
+            var j int = i + 2
+            while j < n {
+                let c = line.char_at(j)
+                if isLinkBreakChar(c) { break }
+                j += 1
+            }
+            let titleEnd = j
+            var blockStart = -1
+            if line.char_at(j) == 35 {
+                blockStart = j
+                j += 1
+                while j < n {
+                    let c = line.char_at(j)
+                    if c == 93 || c == 124 || c == 10 { break }
+                    j += 1
+                }
+            }
+            if j + 1 < n && line.char_at(j) == 93 && line.char_at(j + 1) == 93 {
+                let title = trimStr(line.slice(i + 2, titleEnd))
+                if title.length.to(int) > 0 {
+                    var bid str = ""
+                    if blockStart >= 0 {
+                        bid = line.slice(blockStart + 1, j)
+                    }
+                    out.push(WikiLinkHit(title, bid))
+                    i = j + 2
+                } else {
+                    i += 1
+                }
+            } else {
+                i += 1
+            }
+        } else {
+            i += 1
+        }
+    }
+    return out
+}
+
+/// Scan one line for "((uuid36))" block references (Logseq style).
+pub fn scanBlockRefsLine(line str) List<str> {
+    var out List<str> = []
+    let n = line.length.to(int)
+    var i int = 0
+    while i + 1 < n {
+        if line.char_at(i) == 40 && line.char_at(i + 1) == 40 {
+            var j int = i + 2
+            while j < n {
+                let c = line.char_at(j)
+                if c == 41 { break }
+                j += 1
+            }
+            if j + 1 < n && line.char_at(j) == 41 && line.char_at(j + 1) == 41 {
+                let cand = line.slice(i + 2, j)
+                if isUuid36(cand) {
+                    out.push(cand)
+                    i = j + 2
+                } else {
+                    i += 1
+                }
+            } else {
+                i += 1
+            }
+        } else {
+            i += 1
+        }
+    }
+    return out
+}
+
+fn isTagChar(c int) bool {
+    if c >= 48 && c <= 57 { return true }
+    if c >= 65 && c <= 90 { return true }
+    if c >= 97 && c <= 122 { return true }
+    if c == 45 { return true }
+    if c == 95 { return true }
+    if c == 47 { return true }
+    return false
+}
+
+/// Scan one line for "#tag" runs (TAG_RE: #([A-Za-z0-9_/-]+)).
+pub fn scanTagsLine(line str) List<str> {
+    var out List<str> = []
+    let n = line.length.to(int)
+    var i int = 0
+    while i < n {
+        if line.char_at(i) == 35 {
+            var j int = i + 1
+            while j < n {
+                if !isTagChar(line.char_at(j)) { break }
+                j += 1
+            }
+            if j > i + 1 {
+                out.push(line.slice(i + 1, j))
+                i = j
+            } else {
+                i += 1
+            }
+        } else {
+            i += 1
+        }
+    }
+    return out
+}
+
+// ------------------------------------------------------ orchestration
+
+fn findBlockUuidForLine(blocks List<LineBlock>, idx int) str {
+    var i int = 0
+    while i < blocks.length.to(int) {
+        let b = blocks[i]
+        if b.lineStart <= idx && idx < b.lineEnd { return b.uuid }
+        i += 1
+    }
+    return ""
+}
+
+fn bodyLineCount(lines List<str>) int {
+    // Rust str::lines() semantics: a trailing newline yields no final "".
+    var count int = lines.length.to(int)
+    if count > 0 {
+        if lines[count - 1] == "" {
+            count -= 1
+        }
+    }
+    return count
+}
+
+pub fn scanLinkRows(body str, sourcePage str, blocks List<LineBlock>) List<LinkScan> {
+    var rows List<LinkScan> = []
+    let lines = body.split("\n")
+    let count = bodyLineCount(lines)
+    var idx int = 0
+    while idx < count {
+        let context = trimStr(lines[idx])
+        let sbu = findBlockUuidForLine(blocks, idx)
+        let wikiHits = scanWikiLinksLine(lines[idx])
+        var w int = 0
+        while w < wikiHits.length.to(int) {
+            rows.push(LinkScan(sourcePage, sbu, wikiHits[w].title, wikiHits[w].blockId, "page", context))
+            w += 1
+        }
+        let refHits = scanBlockRefsLine(lines[idx])
+        var r int = 0
+        while r < refHits.length.to(int) {
+            rows.push(LinkScan(sourcePage, sbu, "", refHits[r], "block", context))
+            r += 1
+        }
+        idx += 1
+    }
+    return rows
+}
+
+pub fn scanTagRows(body str, pagePath str, blocks List<LineBlock>) List<TagScan> {
+    var rows List<TagScan> = []
+    let lines = body.split("\n")
+    let count = bodyLineCount(lines)
+    var idx int = 0
+    while idx < count {
+        let bu = findBlockUuidForLine(blocks, idx)
+        let hits = scanTagsLine(lines[idx])
+        var t int = 0
+        while t < hits.length.to(int) {
+            rows.push(TagScan(pagePath, hits[t], bu))
+            t += 1
+        }
+        idx += 1
+    }
+    return rows
+}

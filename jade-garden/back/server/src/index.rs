@@ -1,6 +1,6 @@
+use crate::links_gen;
 use crate::block::{generate_uuid, Block, BlockKind};
 use crate::parser::{parse_page, split_frontmatter};
-use regex::Regex;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -726,65 +726,48 @@ struct TagRow {
 }
 
 fn extract_links(body: &str, source_page: &str, blocks: &[Block]) -> Vec<LinkRow> {
-    lazy_static::lazy_static! {
-        static ref WIKI_LINK_RE: Regex = Regex::new(r"\[\[([^\]|#\n]+)(?:#([^\]|\n]+))?\]\]").unwrap();
-        static ref BLOCK_REF_RE: Regex = Regex::new(r"\(\(([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\)\)").unwrap();
-        static ref TAG_RE: Regex = Regex::new(r"#([a-zA-Z0-9_\-/]+)").unwrap();
-    }
+    let line_blocks: Vec<links_gen::LineBlock> = blocks
+        .iter()
+        .map(|b| links_gen::LineBlock {
+            uuid: b.uuid.clone(),
+            lineStart: b.line_start as i64,
+            lineEnd: b.line_end as i64,
+        })
+        .collect();
+    links_gen::scanLinkRows(body, source_page, line_blocks)
+        .into_iter()
+        .map(|r| LinkRow {
+            source_page: r.sourcePage,
+            source_block_uuid: opt_string(r.sourceBlockUuid),
+            target_page: opt_string(r.targetPage),
+            target_block_uuid: opt_string(r.targetBlockUuid),
+            link_type: r.linkType,
+            context: r.context,
+        })
+        .collect()
+}
 
-    let mut links = Vec::new();
-    let lines: Vec<&str> = body.lines().collect();
-
-    // Page/block wiki links.
-    for (idx, line) in lines.iter().enumerate() {
-        for cap in WIKI_LINK_RE.captures_iter(line) {
-            let target_title = cap[1].trim().to_string();
-            let target_block_id = cap.get(2).map(|m| m.as_str().to_string());
-            let context = extract_context(body, line.find(&cap[0]).unwrap_or(0) + line_char_offset(body, idx));
-            let source_block_uuid = find_block_uuid_for_line(blocks, idx);
-            links.push(LinkRow {
-                source_page: source_page.to_string(),
-                source_block_uuid,
-                target_page: Some(target_title),
-                target_block_uuid: target_block_id,
-                link_type: "page".to_string(),
-                context,
-            });
-        }
-        for cap in BLOCK_REF_RE.captures_iter(line) {
-            let target_uuid = cap[1].to_string();
-            let context = extract_context(body, line.find(&cap[0]).unwrap_or(0) + line_char_offset(body, idx));
-            let source_block_uuid = find_block_uuid_for_line(blocks, idx);
-            links.push(LinkRow {
-                source_page: source_page.to_string(),
-                source_block_uuid,
-                target_page: None,
-                target_block_uuid: Some(target_uuid),
-                link_type: "block".to_string(),
-                context,
-            });
-        }
-    }
-
-    links
+fn opt_string(s: String) -> Option<String> {
+    (!s.is_empty()).then_some(s)
 }
 
 fn extract_tags(body: &str, page_path: &str, blocks: &[Block]) -> Vec<TagRow> {
-    lazy_static::lazy_static! {
-        static ref TAG_RE: Regex = Regex::new(r"#([a-zA-Z0-9_\-/]+)").unwrap();
-    }
-    let mut tags = Vec::new();
-    let lines: Vec<&str> = body.lines().collect();
-    for (idx, line) in lines.iter().enumerate() {
-        for cap in TAG_RE.captures_iter(line) {
-            tags.push(TagRow {
-                page_path: page_path.to_string(),
-                tag_name: cap[1].to_string(),
-                block_uuid: find_block_uuid_for_line(blocks, idx),
-            });
-        }
-    }
-    tags
+    let line_blocks: Vec<links_gen::LineBlock> = blocks
+        .iter()
+        .map(|b| links_gen::LineBlock {
+            uuid: b.uuid.clone(),
+            lineStart: b.line_start as i64,
+            lineEnd: b.line_end as i64,
+        })
+        .collect();
+    links_gen::scanTagRows(body, page_path, line_blocks)
+        .into_iter()
+        .map(|t| TagRow {
+            page_path: t.pagePath,
+            tag_name: t.tag,
+            block_uuid: opt_string(t.blockUuid),
+        })
+        .collect()
 }
 
 fn extract_aliases(frontmatter: &serde_json::Value) -> Vec<TagRow> {

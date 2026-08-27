@@ -1,0 +1,61 @@
+{
+  "lines": [
+    {
+      "line": "看 [[CAP 定理]] 和 [[Hello World#^abc-123]]",
+      "wiki": [
+        { "title": "CAP 定理", "blockId": "" },
+        { "title": "Hello World", "blockId": "^abc-123" }
+      ],
+      "refs": [],
+      "tags": []
+    },
+    {
+      "line": "无链接纯文本",
+      "wiki": [],
+      "refs": [],
+      "tags": []
+    },
+    {
+      "line": "[[空标题 ]]",
+      "wiki": [{ "title": "空标题", "blockId": "" }],
+      "refs": [],
+      "tags": []
+    },
+    {
+      "line": "块引用 ((123e4567-e89b-42d3-a456-426614174000)) 结束",
+      "wiki": [],
+      "refs": ["123e4567-e89b-42d3-a456-426614174000"],
+      "tags": []
+    },
+    {
+      "line": "## 不是标签",
+      "wiki": [],
+      "refs": [],
+      "tags": []
+    },
+    {
+      "line": "- [ ] 待办 [[Tasks]] #todo",
+      "wiki": [{ "title": "Tasks", "blockId": "" }],
+      "refs": [],
+      "tags": ["todo"]
+    },
+    {
+      "line": "#tag_3 纯 ASCII 标签",
+      "wiki": [],
+      "refs": [],
+      "tags": ["tag_3"]
+    },
+    {
+      "line": "[[a|b]] 别名形式不匹配",
+      "wiki": [],
+      "refs": [],
+      "tags": []
+    },
+    {
+      "line": "[[未闭合",
+      "wiki": [],
+      "refs": [],
+      "tags": []
+    }
+  ]
+}

@@ -1,17 +1,17 @@
-// jade-garden back parser gen (Plan 021 Phase 2 slice 1).
+// jade-garden back gen (Plan 021 Phase 2) — dual-target emission for the
+// backend's .at single sources.
 //
-// Emits the dual-target parser from the a2r-clean single source parser.at:
-//   a2ts -> gen-ts/parser_gen.ts  (parity golden twin, driven by tests/parity.mjs)
-//   a2r  -> ../server/src/parser_gen.rs (included as `mod parser_gen;`)
+//   a2ts -> gen-ts/<name>_gen.ts  (node twin tests in tests/)
+//   a2r  -> ../server/src/<name>_gen.rs (included as `mod <name>_gen;`)
 //
 // Post-fixes (mirrors engine auto/parser/gen.mjs):
 //   B1  a2ts omits `new` for struct constructions in return/let positions ->
-//       rewrite `<Struct>(` -> `new <Struct>(` for the structs defined here.
+//       rewrite `<Struct>(` -> `new <Struct>(` for the module's structs.
 //   C1  Auto's `char_at` intrinsic -> JS `charCodeAt` (plan 019).
-//   Rust output is emitted verbatim (pure std, zero deps).
+//   Rust output verbatim + `#![allow(non_snake_case, dead_code)]` header
+//   (a2r keeps the Auto camelCase identifiers).
 //
-// Raw transpiler outputs are kept as parser.raw.ts / parser.raw.rs for
-// inspection (engine-pipeline convention).
+// Raw transpiler outputs kept as <at-stem>.raw.{ts,rs} for inspection.
 //
 // Usage: node gen.mjs   (AUTO_EXE overrides the compiler path)
 
@@ -21,50 +21,77 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const atPath = path.join(here, 'parser.at')
-const outTs = path.join(here, 'gen-ts', 'parser_gen.ts')
-const outRs = path.join(here, '..', 'server', 'src', 'parser_gen.rs')
+const serverSrc = path.join(here, '..', 'server', 'src')
 
 const AUTO_EXE =
   process.env.AUTO_EXE ?? 'D:/autostack/auto-lang/target/debug/auto.exe'
 
-const structNames = ['PBlock', 'AnchorSplit', 'FrontSplit', 'PropPair']
-const ctorRe = new RegExp(`(?<!new )\\b(${structNames.join('|')})\\(`, 'g')
+const SOURCES = [
+  {
+    at: 'parser.at',
+    structs: ['PBlock', 'AnchorSplit', 'FrontSplit', 'PropPair'],
+  },
+  {
+    at: 'links.at',
+    structs: ['LineBlock', 'WikiLinkHit', 'LinkScan', 'TagScan'],
+  },
+]
 
-function b1(src) {
-  return src
+const ctorRegexFor = (structs) =>
+  new RegExp(`(?<!new )\\b(${structs.join('|')})\\(`, 'g')
+
+// B1: struct constructions need `new` outside argument position.
+const b1 = (ctorRe, src) =>
+  src
     .split('\n')
     .map((line) => (line.startsWith('export class ') ? line : line.replace(ctorRe, 'new $1(')))
     .join('\n')
-}
 
 // C1 (plan 019): Auto's snake_case `char_at` is not a JS string method —
 // rewrite to charCodeAt (code-unit semantics, engine-parity with chars().nth
 // on the rust side for BMP content).
 const charAtFix = (s) => s.split('.char_at(').join('.charCodeAt(')
 
-function trans(target, emittedName, rawName, applyFixes) {
-  execFileSync(AUTO_EXE, ['trans', '--path', atPath, target], { stdio: 'ignore' })
-  const emitted = path.join(here, emittedName)
-  const raw = fs.readFileSync(emitted, 'utf8')
-  fs.rmSync(emitted, { force: true })
-  fs.writeFileSync(path.join(here, rawName), applyFixes(raw))
-  return applyFixes(raw)
+function emit(source) {
+  const atPath = path.join(here, source.at)
+  const stem = path.basename(source.at, '.at')
+  const ctorRe = ctorRegexFor(source.structs)
+
+  // ---- TS twin ----
+  execFileSync(AUTO_EXE, ['trans', '--path', atPath, 'ts'], { stdio: 'ignore' })
+  const rawTsPath = path.join(here, `${stem}.ts`)
+  const rawTs = fs.readFileSync(rawTsPath, 'utf8')
+  fs.rmSync(rawTsPath, { force: true })
+  const ts = b1(ctorRegexFor(source.structs), charAtFix(rawTs))
+  const outTs = path.join(here, 'gen-ts', `${stem}_gen.ts`)
+  fs.mkdirSync(path.dirname(outTs), { recursive: true })
+  fs.writeFileSync(outTs, ts)
+  fs.writeFileSync(path.join(here, `${stem}.raw.ts`), ts)
+
+  // ---- Rust for the backend shell ----
+  execFileSync(AUTO_EXE, ['trans', '--path', atPath, 'rust'], { stdio: 'ignore' })
+  const rawRsPath = path.join(here, `${stem}.a2r.rs`)
+  const rawRs = fs.readFileSync(rawRsPath, 'utf8')
+  fs.rmSync(rawRsPath, { force: true })
+  const outRs = path.join(serverSrc, `${stem}_gen.rs`)
+  let rs = rawRs
+  if (!rs.startsWith('#![')) {
+    rs = '#![allow(non_snake_case)]\n#![allow(dead_code)]\n\n' + rs
+  }
+  fs.writeFileSync(outRs, rs)
+  fs.writeFileSync(path.join(here, `${stem}.raw.rs`), rawRs)
+
+  // ---- sanity: no unresolved bare struct ctor left in TS ----
+  const bad = ts
+    .split('\n')
+    .map((l, i) => (ctorRe.test(l) && !l.startsWith('export class') ? `${i + 1}: ${l}` : ''))
+    .filter(Boolean)
+  if (bad.length) {
+    console.error(`[gen] ${source.at}: B1 left bare struct ctors:\n` + bad.join('\n'))
+    process.exit(1)
+  }
+
+  console.log(`[gen] ${source.at} -> ${path.relative(here, outTs)} + ${path.relative(here, outRs)}`)
 }
 
-// ---- TS twin (parity golden) ----
-trans('ts', 'parser.ts', 'parser.raw.ts', (raw) => b1(charAtFix(raw)))
-fs.mkdirSync(path.dirname(outTs), { recursive: true })
-fs.copyFileSync(path.join(here, 'parser.raw.ts'), outTs)
-
-// ---- Rust for the backend shell ----
-trans('rust', 'parser.a2r.rs', 'parser.raw.rs', (raw) => raw)
-fs.copyFileSync(path.join(here, 'parser.raw.rs'), outRs)
-// a2r keeps the Auto camelCase identifiers — silence the naming lints for
-// the generated module (hand-written shell stays lint-clean).
-const rs = fs.readFileSync(outRs, 'utf8')
-if (!rs.startsWith('#![')) {
-  fs.writeFileSync(outRs, '#![allow(non_snake_case)]\n#![allow(dead_code)]\n\n' + rs)
-}
-
-console.log('[gen] parser_gen.ts / parser_gen.rs written')
+for (const source of SOURCES) emit(source)

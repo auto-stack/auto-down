@@ -6,6 +6,7 @@ mod files;
 mod import_export;
 mod index;
 mod links;
+mod links_gen;
 mod parser;
 mod parser_gen;
 mod query;

@@ -300,3 +300,54 @@ mod tests {
         assert_eq!(outlinks[0].target_block_uuid.as_deref(), Some("block-3"));
     }
 }
+
+#[cfg(test)]
+mod links_gen_parity {
+    // Cross-language parity with the TS twin (../../auto/tests/links-parity.mjs).
+    use super::*;
+
+    #[test]
+    fn links_gen_parity_fixtures() {
+        let fixtures: serde_json::Value = serde_json::from_str(
+            include_str!("../../auto/tests/links-fixtures.json"),
+        )
+        .unwrap();
+        for case in fixtures["lines"].as_array().unwrap() {
+            let line = case["line"].as_str().unwrap();
+            let wiki: Vec<(String, String)> = crate::links_gen::scanWikiLinksLine(line)
+                .into_iter()
+                .map(|h| (h.title, h.blockId))
+                .collect();
+            let expected: Vec<(String, String)> = case["wiki"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|w| {
+                    (
+                        w["title"].as_str().unwrap().to_string(),
+                        w["blockId"].as_str().unwrap().to_string(),
+                    )
+                })
+                .collect();
+            assert_eq!(wiki, expected, "wiki scan: {line}");
+
+            let refs: Vec<String> = crate::links_gen::scanBlockRefsLine(line);
+            let expected_refs: Vec<String> = case["refs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_str().unwrap().to_string())
+                .collect();
+            assert_eq!(refs, expected_refs, "block refs: {line}");
+
+            let tags: Vec<String> = crate::links_gen::scanTagsLine(line);
+            let expected_tags: Vec<String> = case["tags"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_str().unwrap().to_string())
+                .collect();
+            assert_eq!(tags, expected_tags, "tags scan: {line}");
+        }
+    }
+}

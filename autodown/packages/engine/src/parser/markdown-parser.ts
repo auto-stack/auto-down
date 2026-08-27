@@ -164,26 +164,12 @@ export class LinkScan {
 }
 
 export function normalizeNewlines(src: string): string {
-    let out: string = "";
-    let i: number = 0;
-    while (i < Number(src.length)) {
-        const c = src.charCodeAt(i);
-        if (c == 13) {
-            if (i + 1 < Number(src.length)) {
-                if (src.charCodeAt(i + 1) == 10) {
-                    out = out + "\n";
-                    i += 2;
-                    continue;
-                }
-            }
-            out = out + "\n";
-            i += 1;
-            continue;
-        }
-        out = out + src.slice(i, i + 1);
-        i += 1;
-    }
-    return out;
+    
+
+
+
+    const a = src.split("\r\n").join("\n");
+    return a.split("\r").join("\n");
 }
 
 export function stripListMarkerTail(s: string): string {

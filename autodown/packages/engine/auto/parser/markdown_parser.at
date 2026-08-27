@@ -178,26 +178,11 @@ pub type LinkScan {
 // ---------------------------------------------------------------- helpers
 
 fn normalizeNewlines(src str) str {
-    var out = ""
-    var i int = 0
-    while i < src.length.to(int) {
-        let c = src.char_at(i)
-        if c == 13 {
-            if i + 1 < src.length.to(int) {
-                if src.char_at(i + 1) == 10 {
-                    out = out + "\n"
-                    i += 2
-                    continue
-                }
-            }
-            out = out + "\n"
-            i += 1
-            continue
-        }
-        out = out + src.slice(i, i + 1)
-        i += 1
-    }
-    return out
+    // \r\n → \n，孤立 \r → \n。split/join 线性扫描（逐字符累积在 a2r
+    // 的 chars 语义下是 O(n²)——1MB 文档不可用，plan 019 批次七 perf 基线
+    // 实测后改写；语义与逐字符版逐字节一致）。
+    let a = src.split("\r\n").join("\n")
+    return a.split("\r").join("\n")
 }
 
 // "\n {0,3}([-*+]|\d{1,9}[.)]) *$" strip at the LAST newline (the loop in
@@ -387,7 +372,7 @@ fn fenceMarkerRun(line str) str {
     }
     while i < t.length.to(int) {
         if t.char_at(i) == first {
-            run = run + t.slice(i, i + 1)
+            run += t.slice(i, i + 1)
             i += 1
         } else {
             break
@@ -776,7 +761,7 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
             var code = body.join("\n")
             if closed {
                 if body.length.to(int) > 0 {
-                    code = code + "\n"
+                    code += "\n"
                 } else {
                     code = ""
                 }
@@ -1249,7 +1234,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 if sp > 0 {
                     buf = buf.slice(0, buf.length.to(int) - sp)
                 }
-                buf = buf + "\n"
+                buf += "\n"
             }
             i += 1
             continue
@@ -1281,7 +1266,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 i = scEm.next
                 continue
             }
-            buf = buf + cs
+            buf += cs
             i += 1
             continue
         }
@@ -1297,7 +1282,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 i = scU.next
                 continue
             }
-            buf = buf + cs
+            buf += cs
             i += 1
             continue
         }
@@ -1315,7 +1300,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                     continue
                 }
             }
-            buf = buf + cs
+            buf += cs
             i += 1
             continue
         }
@@ -1375,8 +1360,8 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
             }
             // unclosed multi-backtick run (or any run in final mode): the
             // whole run goes into the text buffer verbatim
-            buf = buf + line.slice(i, i + run)
-            i = i + run
+            buf += line.slice(i, i + run)
+            i += run
             continue
         }
 
@@ -1395,7 +1380,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                     continue
                 }
             }
-            buf = buf + cs
+            buf += cs
             i += 1
             continue
         }
@@ -1421,7 +1406,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 i = lk.next
                 continue
             }
-            buf = buf + cs
+            buf += cs
             i += 1
             continue
         }
@@ -1433,12 +1418,12 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 let nc = line.char_at(i + 1)
                 if isPunctuationCode(nc) {
                     if nc == 34 {
-                        buf = buf + String.fromCharCode(1)
+                        buf += String.fromCharCode(1)
                     } else {
                         if nc == 39 {
-                            buf = buf + String.fromCharCode(2)
+                            buf += String.fromCharCode(2)
                         } else {
-                            buf = buf + line.slice(i + 1, i + 2)
+                            buf += line.slice(i + 1, i + 2)
                         }
                     }
                     i += 2
@@ -1447,7 +1432,7 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
             }
         }
 
-        buf = buf + cs
+        buf += cs
         i += 1
     }
     if buf != "" {
@@ -1764,27 +1749,27 @@ fn smartQuotes(s str) str {
                 if prev == "{" { prevIsOpenCtx = true }
             }
             if prevIsOpenCtx {
-                out = out + CURLY_LDQUO()
+                out += CURLY_LDQUO()
                 i += 1
                 continue
             }
             // close context: next is whitespace / end / closing punctuation
             if i + 1 >= s.length.to(int) {
-                out = out + CURLY_RDQUO()
+                out += CURLY_RDQUO()
                 i += 1
                 continue
             }
             let nc = s.char_at(i + 1)
             if nc == 32 {
-                out = out + CURLY_RDQUO()
+                out += CURLY_RDQUO()
             } else {
                 if nc == 10 {
-                    out = out + CURLY_RDQUO()
+                    out += CURLY_RDQUO()
                 } else {
                     if isClosePunctCode(nc) {
-                        out = out + CURLY_RDQUO()
+                        out += CURLY_RDQUO()
                     } else {
-                        out = out + cs
+                        out += cs
                     }
                 }
             }
@@ -1805,7 +1790,7 @@ fn smartQuotes(s str) str {
                 }
             }
             if apostrophe {
-                out = out + CURLY_RSQUO()
+                out += CURLY_RSQUO()
             } else {
                 var openS bool = false
                 if out == "" {
@@ -1818,15 +1803,15 @@ fn smartQuotes(s str) str {
                     if prev2 == "[" { openS = true }
                 }
                 if openS {
-                    out = out + CURLY_LSQUO()
+                    out += CURLY_LSQUO()
                 } else {
-                    out = out + CURLY_RSQUO()
+                    out += CURLY_RSQUO()
                 }
             }
             i += 1
             continue
         }
-        out = out + cs
+        out += cs
         i += 1
     }
     return out
@@ -1891,7 +1876,7 @@ fn findBacktickRun(line str, from int, count int) int {
         if run == count {
             return i
         }
-        i = i + run
+        i += run
     }
     return -1
 }

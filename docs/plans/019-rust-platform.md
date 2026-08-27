@@ -8,6 +8,22 @@
 > 本仓侧负责 crate 源发射与对拍；本文件为跨仓协调计划，落地时在
 > auto-lang 侧立对应计划并互链。
 >
+> **进度（2026-08-27，批次七 Phase 2 收口）**：
+> - auto-lang 侧（worktree feat/plan-019-vm-render）：`markdown`/`autodown`
+>   widget 在 VM（iced）从 D-GAP-3 textarea 降级升级为**真渲染**——
+>   feature `autodown` 挂 autodown-core crate（跨仓 path 依赖，合入后按
+>   Cargo.toml 注释翻转为相对路径；**合并顺序：先 auto-down 批次六、后
+>   auto-lang 批次七**）；适配器 `ui/autodown_render.rs` 将 parse_blocks
+>   块树分解为既有 View 变体（plan-450 批次三面板臂同源样式：heading
+>   样式表/quote 边条/codeblock chrome/表格/列表标记/分隔线；行内 marks
+>   按行拆分横排，跨 span 换行不折叠为登记限制）；
+> - 流式路径 v1：`final:` 属性（状态解析）驱动流式模式解析，content
+>   绑定状态 → 更新自然触发重解析与视图重建；逐块布局缓存登记 v1 性能债；
+> - gallery 页：examples/capability-tests/042-autodown-vm（静态全面板
+>   词汇 + 按钮驱动流式演示）；测试：适配器 4 单测 + 臂级分派/final
+>   解析测试；性能基线：1MB 文档 parse/渲染计时测试（--ignored，
+>   release 口径，数字见批次提交记录）。
+>
 > **进度（2026-08-26，批次六 Phase 1 收口）**：
 > - 本仓侧：markdown_parser.at + ial.at 全面类型化重写（WNode 结构体替
 >   `any` 弱节点、28 处 RegExp 全部手工扫描化、scanDelim/scanLink 返回具名

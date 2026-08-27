@@ -120,24 +120,11 @@ pub struct LinkScan {
 }
 
 fn normalizeNewlines(src: &str) -> String {
-    let mut out: String = "".to_string();
-    let mut i: i64 = 0;
-    while i < (src.chars().count() as i64) {
-        let c = src.chars().nth((i) as usize).unwrap_or('\0') as i64;
-        if c == 13 {
-            if i + 1 < (src.chars().count() as i64) {
-                if src.chars().nth((i + 1) as usize).unwrap_or('\0') as i64 == 10 {
-                    out = format!("{}{}", out, "\n");
-                    i += 2;
-                    continue;
-                }            }            out = format!("{}{}", out, "\n");
-            i += 1;
-            continue;
-        }
-        out = format!("{}{}", out, src.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>());
-        i += 1;
-    }
-    return out;
+
+
+
+    let a = src.split("\r\n").map(|s| s.to_string()).collect::<Vec<String>>().join("\n");
+    return a.split("\r").map(|s| s.to_string()).collect::<Vec<String>>().join("\n");
 }
 
 fn stripListMarkerTail(s: &str) -> String {
@@ -352,7 +339,7 @@ fn fenceMarkerRun(line: &str) -> String {
         }    }
     while i < (t.chars().count() as i64) {
         if t.chars().nth((i) as usize).unwrap_or('\0') as i64 == first {
-            run = format!("{}{}", run, t.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>());
+            run += &t.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>();
             i += 1;
         } else {
             break;
@@ -854,7 +841,7 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
             let mut code = body.join("\n");
             if closed {
                 if (body.len() as i64) > 0 {
-                    code = format!("{}{}", code, "\n");
+                    code += "\n";
                 } else {
                     code = "".to_string();
                 }
@@ -1349,7 +1336,7 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
             } else {
                 if sp > 0 {
                     buf = buf.chars().take(((buf.chars().count() as i64) - sp) as usize).skip((0) as usize).collect::<String>();
-                }                buf = format!("{}{}", buf, "\n");
+                }                buf += &"\n";
             }
             i += 1;
             continue;
@@ -1376,7 +1363,7 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                 }                nodes.push(emNode(parseInlineLine(scEm.inner.as_str(), isFinal)));
                 i = scEm.next;
                 continue;
-            }            buf = format!("{}{}", buf, cs);
+            }            buf += &cs;
             i += 1;
             continue;
         }
@@ -1390,7 +1377,7 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                 }                nodes.push(emNode(parseInlineLine(scU.inner.as_str(), isFinal)));
                 i = scU.next;
                 continue;
-            }            buf = format!("{}{}", buf, cs);
+            }            buf += &cs;
             i += 1;
             continue;
         }
@@ -1405,7 +1392,7 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                     }                    nodes.push(strikeNode(parseInlineLine(scS.inner.as_str(), isFinal)));
                     i = scS.next;
                     continue;
-                }            }            buf = format!("{}{}", buf, cs);
+                }            }            buf += &cs;
             i += 1;
             continue;
         }
@@ -1456,8 +1443,8 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                 }            }            
 
 
-            buf = format!("{}{}", buf, line.chars().take((i + run) as usize).skip((i) as usize).collect::<String>());
-            i = i + run;
+            buf += &line.chars().take((i + run) as usize).skip((i) as usize).collect::<String>();
+            i += run;
             continue;
         }
         
@@ -1473,7 +1460,7 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                     }                    nodes.push(imageNode(img.href.as_str(), img.text.as_str()));
                     i = img.next;
                     continue;
-                }            }            buf = format!("{}{}", buf, cs);
+                }            }            buf += &cs;
             i += 1;
             continue;
         }
@@ -1497,7 +1484,7 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                 }
                 i = lk.next;
                 continue;
-            }            buf = format!("{}{}", buf, cs);
+            }            buf += &cs;
             i += 1;
             continue;
         }
@@ -1509,19 +1496,19 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                 let nc = line.chars().nth((i + 1) as usize).unwrap_or('\0') as i64;
                 if isPunctuationCode(nc) {
                     if nc == 34 {
-                        buf = format!("{}{}", buf, char::from_u32((1) as u32).unwrap_or('\u{0}').to_string());
+                        buf += &char::from_u32((1) as u32).unwrap_or('\u{0}').to_string();
                     } else {
                         if nc == 39 {
-                            buf = format!("{}{}", buf, char::from_u32((2) as u32).unwrap_or('\u{0}').to_string());
+                            buf += &char::from_u32((2) as u32).unwrap_or('\u{0}').to_string();
                         } else {
-                            buf = format!("{}{}", buf, line.chars().take((i + 2) as usize).skip((i + 1) as usize).collect::<String>());
+                            buf += &line.chars().take((i + 2) as usize).skip((i + 1) as usize).collect::<String>();
                         }
                     }
                     i += 2;
                     continue;
                 }            }        }
         
-        buf = format!("{}{}", buf, cs);
+        buf += &cs;
         i += 1;
     }
     if buf != "" {
@@ -1911,26 +1898,26 @@ fn smartQuotes(s: &str) -> String {
                     prevIsOpenCtx = true;
                 }            }
             if prevIsOpenCtx {
-                out = format!("{}{}", out, CURLY_LDQUO());
+                out += &CURLY_LDQUO();
                 i += 1;
                 continue;
             }            
 
             if i + 1 >= (s.chars().count() as i64) {
-                out = format!("{}{}", out, CURLY_RDQUO());
+                out += &CURLY_RDQUO();
                 i += 1;
                 continue;
             }            let nc = s.chars().nth((i + 1) as usize).unwrap_or('\0') as i64;
             if nc == 32 {
-                out = format!("{}{}", out, CURLY_RDQUO());
+                out += &CURLY_RDQUO();
             } else {
                 if nc == 10 {
-                    out = format!("{}{}", out, CURLY_RDQUO());
+                    out += &CURLY_RDQUO();
                 } else {
                     if isClosePunctCode(nc) {
-                        out = format!("{}{}", out, CURLY_RDQUO());
+                        out += &CURLY_RDQUO();
                     } else {
-                        out = format!("{}{}", out, cs);
+                        out += &cs;
                     }
                 }
             }
@@ -1949,7 +1936,7 @@ fn smartQuotes(s: &str) -> String {
                         if nWord {
                             apostrophe = true;
                         }                    }                }            }            if apostrophe {
-                out = format!("{}{}", out, CURLY_RSQUO());
+                out += &CURLY_RSQUO();
             } else {
                 let mut openS: bool = false;
                 if out == "" {
@@ -1966,15 +1953,15 @@ fn smartQuotes(s: &str) -> String {
                         openS = true;
                     }                }
                 if openS {
-                    out = format!("{}{}", out, CURLY_LSQUO());
+                    out += &CURLY_LSQUO();
                 } else {
-                    out = format!("{}{}", out, CURLY_RSQUO());
+                    out += &CURLY_RSQUO();
                 }
             }
             i += 1;
             continue;
         }
-        out = format!("{}{}", out, cs);
+        out += &cs;
         i += 1;
     }
     return out;
@@ -2040,7 +2027,7 @@ fn findBacktickRun(line: &str, from: i64, count: i64) -> i64 {
         if run == count {
             return i;
         }
-        i = i + run;
+        i += run;
     }
     return -1;
 }

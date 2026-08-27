@@ -21,8 +21,13 @@
 >   绑定状态 → 更新自然触发重解析与视图重建；逐块布局缓存登记 v1 性能债；
 > - gallery 页：examples/capability-tests/042-autodown-vm（静态全面板
 >   词汇 + 按钮驱动流式演示）；测试：适配器 4 单测 + 臂级分派/final
->   解析测试；性能基线：1MB 文档 parse/渲染计时测试（--ignored，
->   release 口径，数字见批次提交记录）。
+>   解析测试；性能基线：1MB 文档（19692 块）release 计时——优化前
+>   parse 199.8s/构建 242.8s → 两轮热路径线性化（normalizeNewlines
+>   split/join、+= 自拼接+发射器 E9、循环长度提升局部）后 parse
+>   33.0s/构建 32.6s（构建≈内嵌 parse，纯 View 构建近零）；剩余深部
+>   优化登记 DEBTS 019 性能债行。跨仓合并顺序：先 auto-down 批次六
+>   （8f4a7e2+perf 提交）、后 auto-lang 批次七（Cargo.toml path 按
+>   注释翻转相对路径）。
 >
 > **进度（2026-08-26，批次六 Phase 1 收口）**：
 > - 本仓侧：markdown_parser.at + ial.at 全面类型化重写（WNode 结构体替

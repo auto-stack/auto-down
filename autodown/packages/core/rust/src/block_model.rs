@@ -117,7 +117,7 @@ pub fn dupAttrs(attrs: Vec<Attr>) -> Vec<Attr> {
     return out;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mark {
     Strong = 0,
     Em = 1,
@@ -268,7 +268,7 @@ pub fn spansDelete(spans: Vec<InlineSpan>, lo: i64, hi: i64) -> Vec<InlineSpan> 
                 nt = s.text[0..(lo - pos) as usize].to_string();
             }            if hi < sEnd {
                 nt = format!("{}{}", nt, s.text[(hi - pos) as usize..].to_string());
-            }            if (nt.len() as i64) > 0 {
+            }            if (nt.chars().count() as i64) > 0 {
                 out.push(InlineSpan { text: nt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
             }        } else {
             out.push(s.clone().clone());
@@ -305,9 +305,9 @@ pub fn spansSplitAt(spans: Vec<InlineSpan>, offset: i64) -> SpanSplit {
                 } else {
                     let lt = s.text[0..(offset - pos) as usize].to_string();
                     let rt = s.text[(offset - pos) as usize..].to_string();
-                    if (lt.len() as i64) > 0 {
+                    if (lt.chars().count() as i64) > 0 {
                         before.push(InlineSpan { text: lt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
-                    }                    if (rt.len() as i64) > 0 {
+                    }                    if (rt.chars().count() as i64) > 0 {
                         after.push(InlineSpan { text: rt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
                     }                    done = true;
                 }
@@ -319,7 +319,7 @@ pub fn spansSplitAt(spans: Vec<InlineSpan>, offset: i64) -> SpanSplit {
     return SpanSplit { before: before, after: after };
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BlockType {
     Heading = 0,
     Paragraph = 1,
@@ -402,8 +402,16 @@ pub fn block(id: &str, kind: BlockType) -> BlockNode {
     return BlockNode { id: id.to_string(), kind: kind, attrs: vec![], children: vec![], inlines: vec![], source: rng(0, 0) };
 }
 
+pub fn blockFull(id: &str, kind: BlockType, attrs: Vec<Attr>, children: Vec<BlockNode>, inlines: Vec<InlineSpan>, source: SourceRange) -> BlockNode {
+    return BlockNode { id: id.to_string(), kind: kind, attrs: attrs, children: children, inlines: inlines, source: source };
+}
+
+pub fn attrOf(key: &str, value: Value) -> Attr {
+    return Attr { key: key.to_string(), value: value };
+}
+
 pub fn leafBlock(id: &str, kind: BlockType, text: &str) -> BlockNode {
-    return BlockNode { id: id.to_string(), kind: kind, attrs: vec![], children: vec![], inlines: vec![span(text)], source: rng(0, (text.len() as i64)) };
+    return BlockNode { id: id.to_string(), kind: kind, attrs: vec![], children: vec![], inlines: vec![span(text)], source: rng(0, (text.chars().count() as i64)) };
 }
 
 pub fn blockText(node: BlockNode) -> String {
@@ -734,7 +742,7 @@ pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult 
             return EditResult { tree: tree2, selection: selection };
         },
         Op::ReplaceRange(a) => {
-            let sel: Selection = a.sel;
+            let sel: Selection = a.sel.clone();
             if sel.anchor.blockId == sel.head.blockId {
                 let found = findBlock(tree.clone(), sel.anchor.blockId.as_str());
                 let mut target = found.unwrap_or(missingBlock());

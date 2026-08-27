@@ -8,7 +8,63 @@
 > 本仓侧负责 crate 源发射与对拍；本文件为跨仓协调计划，落地时在
 > auto-lang 侧立对应计划并互链。
 >
-> **进度（2026-08-26）**：
+> **进度（2026-08-27，批次八 Phase 3 第一轨：`autodown_*` VM natives）**：
+> - auto-lang 侧（续 feat/plan-019-vm-render）：六个 natives 入册
+>   （catalog 2950-2955 + codegen intrinsics ×2 轨 + shim）——
+>   `autodown_parse/serialize/text/find_block/insert_text/insert_template`，
+>   JSON 传输循 read_dir 先例（BlockNode↔serde_json 封送，crate Value 的
+>   JSON 形态 Null/{"Str"}/{"Int"}/...）；insert_text 走 crate `applyOp`
+>   （Op::InsertText + collapsedSel），insert_template 为模板块拼接
+>   （parent 空 = 顶层，index 负 = 追加）；CLI bin 透传 feature
+>   （`--features autodown`）；
+> - 验证：natives 4 单测（roundtrip 与 crate 直接 parse+serialize 逐字节
+>   一致 / applyOp 语义 / 模板拼接）；042 示例加编程环段——带 feature 的
+>   CLI 实机运行 Init 全环（parse→insert_template→serialize）零 handler
+>   错误，无 feature 二进制返回明确构建错误（桩路径）；
+> - Phase 3 余量（下一批次候选）：AutodownEditorCore 编辑状态机
+>   （cosmic-text Buffer/光标/选区叠加/输入规则/undo/IME）与
+>   行内 marks→Attrs spans 的 iced 富渲染。
+>
+> **进度（2026-08-27，批次七 Phase 2 收口）**：
+> - auto-lang 侧（worktree feat/plan-019-vm-render）：`markdown`/`autodown`
+>   widget 在 VM（iced）从 D-GAP-3 textarea 降级升级为**真渲染**——
+>   feature `autodown` 挂 autodown-core crate（跨仓 path 依赖，合入后按
+>   Cargo.toml 注释翻转为相对路径；**合并顺序：先 auto-down 批次六、后
+>   auto-lang 批次七**）；适配器 `ui/autodown_render.rs` 将 parse_blocks
+>   块树分解为既有 View 变体（plan-450 批次三面板臂同源样式：heading
+>   样式表/quote 边条/codeblock chrome/表格/列表标记/分隔线；行内 marks
+>   按行拆分横排，跨 span 换行不折叠为登记限制）；
+> - 流式路径 v1：`final:` 属性（状态解析）驱动流式模式解析，content
+>   绑定状态 → 更新自然触发重解析与视图重建；逐块布局缓存登记 v1 性能债；
+> - gallery 页：examples/capability-tests/042-autodown-vm（静态全面板
+>   词汇 + 按钮驱动流式演示）；测试：适配器 4 单测 + 臂级分派/final
+>   解析测试；性能基线：1MB 文档（19692 块）release 计时——优化前
+>   parse 199.8s/构建 242.8s → 两轮热路径线性化（normalizeNewlines
+>   split/join、+= 自拼接+发射器 E9、循环长度提升局部）后 parse
+>   33.0s/构建 32.6s（构建≈内嵌 parse，纯 View 构建近零）；剩余深部
+>   优化登记 DEBTS 019 性能债行。跨仓合并顺序：先 auto-down 批次六
+>   （8f4a7e2+perf 提交）、后 auto-lang 批次七（Cargo.toml path 按
+>   注释翻转相对路径）。
+>
+> **进度（2026-08-26，批次六 Phase 1 收口）**：
+> - 本仓侧：markdown_parser.at + ial.at 全面类型化重写（WNode 结构体替
+>   `any` 弱节点、28 处 RegExp 全部手工扫描化、scanDelim/scanLink 返回具名
+>   结构、preprocessMarkdown 返回 PreDoc）——TS 行为零漂移（engine 255/255，
+>   含对真实 stream-markdown-parser 的逐字符流式对拍）；
+> - auto-lang 侧（worktree feat/plan-019-a2r-parser，8 组发射器修复）：
+>   r# 保留字转义（type 字段）、String.fromCharCode 映射、str length/slice
+>   字符语义（字节→chars，Auto 码元语义对齐）、split 收集 Vec<String>、
+>   NullCoalesce 类型剥离与借用、Some(&str 参数) 物化、mut 参数 &mut 透传
+>   （parseList/tableConsume 累加器）——auto-lang 自身 3211/0 零回归；
+> - crate：`src/markdown_parser.rs` + `src/ial.rs` 入库（全模块经新编译器
+>   重发），tests/parse_parity.rs + engine
+>   rust-parse-parity-gen.test.ts 金标对拍闭环（18 组 fixtures ×
+>   final/streaming 双模式，双端逐字节一致）——**Phase 1 的 parse 双端对拍
+>   交付完成**（016 遗留的"parser 不进 crate"欠账就此清偿，DEBTS 行更新）。
+>   已登记偏差：isPunctuation 的 \p{P} 近似范围、表格行必须顶格、str
+>   chars 计数的 O(n) 性能债。
+>
+> **进度（2026-08-26，早前批次）**：
 > - auto-lang 侧（plan-450，已合 master）：批次一 registry 登记、批次三
 >   iced backend 面板映射（VM 七面板臂 + a2r 同族发射）、批次四 codegen
 >   臂确认；

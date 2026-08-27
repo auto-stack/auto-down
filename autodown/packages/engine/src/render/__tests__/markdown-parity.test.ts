@@ -36,13 +36,28 @@ function project(n: any): any {
   const out: Record<string, any> = {}
   for (const k of Object.keys(n)) {
     if (DROPPED.has(k)) continue
-    if (n[k] === undefined) continue // {start: undefined} === {} for parity
+    // plan 019: unset optional WNode fields arrive as null (class instances
+    // materialize every field); the reference's absent keys are undefined —
+    // both mean "not set" for parity.
+    if (n[k] == null) continue
     out[k] = n[k]
   }
   for (const k of ['children', 'items', 'rows', 'cells']) {
     if (Array.isArray(out[k])) out[k] = out[k].map(project)
   }
-  if (out.header && out.header.type === 'table_row') out.header = project(out.header)
+  // plan 019: WNode's table header is a 0-or-1 array (keeps the struct
+  // non-recursive on the rust side); normalize to the reference's object.
+  if (Array.isArray(out.header)) {
+    out.header = out.header.length > 0 ? project(out.header[0]) : null
+  } else if (out.header && out.header.type === 'table_row') {
+    out.header = project(out.header)
+  }
+  // plan 019: the cell's header flag is spelled isHeader on WNode (the
+  // table's row field owns the `header` name); map back for comparison.
+  if (out.type === 'table_cell' && 'isHeader' in out) {
+    out.header = out.isHeader
+    delete out.isHeader
+  }
   return out
 }
 

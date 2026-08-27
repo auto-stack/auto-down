@@ -1,4 +1,4 @@
-// @autodown/vue -- incremental markdown parser (plan 008, Phase 2).
+// AutoDown Core — incremental markdown parser (plan 008, Phase 2).
 //
 // Transpiled to src/markdown-parser.generated.ts by auto/gen.mjs (`pnpm gen`
 // from packages/vue). Semantic subset aligned with stream-markdown-parser
@@ -15,32 +15,290 @@
 // emphasis quirk, indented code (treated as paragraph, matching the
 // reference's fixIndentedCodeBlock behavior).
 //
-// a2ts workarounds (see auto/README.md): no ternaries (var + if/else), no
-// destructuring, parentheses dropped around nested binaries (intermediate
-// variables), RegExp("...") instead of literals, == nil as nullish check.
+// Dual-portable discipline (plan 019 Phase 1): the weak-node layer was
+// retyped from `any` object literals + RegExp to WNode structs and manual
+// character scans so a2r can emit this file into the autodown-core rust
+// crate (parse parity is asserted cross-target on a golden projection).
+// String vocabulary is the ial.at helper set (startsWithStr/findStr/...) —
+// no direct str indexing, no RegExp, no `any`. WNode instances replace the
+// old plain objects on the TS side; all consumers do property access, and
+// JSON projections are unchanged (unset fields are null).
+//
+// Registered divergences from the retired regexes (plan 019):
+// - isPunctuation approximates \p{P} with ASCII + Latin-1 + General
+//   Punctuation + CJK symbols + fullwidth ranges; exotic-script punctuation
+//   outside those ranges classifies as non-punctuation.
+// - stripTrailingPartialTag requires the partial tag tail to sit after the
+//   last '>' of the line, matching the regex's [^>]* anchor semantics.
+
+use ial: preprocessMarkdown, startsWithStr, startsWithAt, endsWithStr, trimStartStr, trimEndStr, hasChar, findStr, findStrFrom, rfindChar, scanIntPrefix, TableAttr
+use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText, spanWith, blockFull, attrOf
+
+// ---------------------------------------------------------------- weak tree
+// The parser-internal node representation. Field order (20 fields):
+//   1 type        node discriminator string
+//   2 content     text
+//   3 level       heading
+//   4 language    code_block
+//   5 code        code_block / inline_code
+//   6 loading     code_block / table / link (streaming)
+//   7 children    most containers + inline containers
+//   8 ordered     list
+//   9 start       list (ordered start attr)
+//  10 items       list
+//  11 cells       table_row
+//  12 header      table (0-or-1 row; a list to keep WNode non-recursive
+//                 by value on the rust side)
+//  13 rows        table
+//  14 isHeader    table_cell
+//  15 align       table_cell
+//  16 href        link
+//  17 title       link / image
+//  18 text        link text mirror
+//  19 src         image
+//  20 alt         image
+
+pub type WNode {
+    type str
+    content str?
+    level int?
+    language str?
+    code str?
+    loading bool?
+    children List<WNode>?
+    ordered bool?
+    start int?
+    items List<WNode>?
+    cells List<WNode>?
+    header List<WNode>?
+    rows List<WNode>?
+    isHeader bool?
+    align str?
+    href str?
+    title str?
+    text str?
+    src str?
+    alt str?
+}
+
+pub fn noNodes() List<WNode> {
+    var l List<WNode> = []
+    return l
+}
+
+fn codeNode(language str, code str, loading bool) WNode {
+    return WNode("code_block", None, None, Some(language), Some(code), Some(loading), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn headingNode(level int, children List<WNode>) WNode {
+    return WNode("heading", None, Some(level), None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn thematicNode() WNode {
+    return WNode("thematic_break", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn quoteNode(children List<WNode>) WNode {
+    return WNode("blockquote", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn paraNode(children List<WNode>) WNode {
+    return WNode("paragraph", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn tableNode(header List<WNode>, rows List<WNode>, loading bool) WNode {
+    return WNode("table", None, None, None, None, Some(loading), None, None, None, None, None, Some(header), Some(rows), None, None, None, None, None, None, None)
+}
+
+fn rowNode(cells List<WNode>) WNode {
+    return WNode("table_row", None, None, None, None, None, None, None, None, None, Some(cells), None, None, None, None, None, None, None, None, None)
+}
+
+fn cellNode(isHeaderCell bool, children List<WNode>, align str) WNode {
+    return WNode("table_cell", None, None, None, None, None, Some(children), None, None, None, None, None, None, Some(isHeaderCell), Some(align), None, None, None, None, None)
+}
+
+fn listNode(ordered bool, startN int?, items List<WNode>) WNode {
+    return WNode("list", None, None, None, None, None, None, Some(ordered), startN, Some(items), None, None, None, None, None, None, None, None, None, None)
+}
+
+fn itemNode(children List<WNode>) WNode {
+    return WNode("list_item", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn strongNode(children List<WNode>) WNode {
+    return WNode("strong", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn emNode(children List<WNode>) WNode {
+    return WNode("emphasis", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn strikeNode(children List<WNode>) WNode {
+    return WNode("strikethrough", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn codeSpanNode(code str) WNode {
+    return WNode("inline_code", None, None, None, Some(code), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn hardbreakNode() WNode {
+    return WNode("hardbreak", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn imageNode(src str, alt str) WNode {
+    return WNode("image", None, None, None, None, Some(false), None, None, None, None, None, None, None, None, None, None, None, None, Some(src), Some(alt))
+}
+
+fn linkNode(href str, title str?, textContent str, children List<WNode>, loading bool) WNode {
+    return WNode("link", None, None, None, None, Some(loading), Some(children), None, None, None, None, None, None, None, None, Some(href), title, Some(textContent), None, None)
+}
+
+// text node WITHOUT re-running smartQuotes (the streaming-tail trimmer
+// rebuilds an already-processed text node).
+fn rawTextNode(content str) WNode {
+    return WNode("text", Some(content), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+// Scan results for inline delimiters/links (the retired `[a, b]` tuples).
+pub type DelimScan {
+    next int
+    inner str
+}
+
+pub type LinkScan {
+    next int
+    text str
+    href str
+    loading bool
+    title str?
+    tail str
+}
 
 // ---------------------------------------------------------------- helpers
 
 fn normalizeNewlines(src str) str {
-    let s = src.replace(RegExp("\r\n", "g"), "\n")
-    return s.replace(RegExp("\r", "g"), "\n")
+    // \r\n → \n，孤立 \r → \n。split/join 线性扫描（逐字符累积在 a2r
+    // 的 chars 语义下是 O(n²)——1MB 文档不可用，plan 019 批次七 perf 基线
+    // 实测后改写；语义与逐字符版逐字节一致）。
+    let a = src.split("\r\n").join("\n")
+    return a.split("\r").join("\n")
+}
+
+// "\n {0,3}([-*+]|\d{1,9}[.)]) *$" strip at the LAST newline (the loop in
+// stripDanglingTail converges to the regex's repeated leftmost strips).
+fn stripListMarkerTail(s str) str {
+    let nl = rfindChar(s, 10)
+    if nl == -1 { return s }
+    var p int = nl + 1
+    var sp int = 0
+    while p < s.length.to(int) {
+        if s.char_at(p) == 32 {
+            sp += 1
+            p += 1
+        } else {
+            break
+        }
+    }
+    if sp > 3 { return s }
+    if p >= s.length.to(int) { return s }
+    var c = s.char_at(p)
+    var after int = -1
+    if c == 45 {
+        after = p + 1
+    } else {
+        if c == 42 {
+            after = p + 1
+        } else {
+            if c == 43 {
+                after = p + 1
+            }
+        }
+    }
+    if after == -1 {
+        var q int = p
+        var digits int = 0
+        while q < s.length.to(int) {
+            let d = s.char_at(q)
+            if d >= 48 {
+                if d <= 57 {
+                    digits += 1
+                    q += 1
+                } else {
+                    break
+                }
+            } else {
+                break
+            }
+        }
+        if digits == 0 { return s }
+        if digits > 9 { return s }
+        if q >= s.length.to(int) { return s }
+        let dm = s.char_at(q)
+        if dm == 46 {
+            after = q + 1
+        } else {
+            if dm == 41 {
+                after = q + 1
+            } else {
+                return s
+            }
+        }
+    }
+    var t int = after
+    while t < s.length.to(int) {
+        if s.char_at(t) == 32 {
+            t += 1
+        } else {
+            return s
+        }
+    }
+    return s.slice(0, nl)
+}
+
+// "\n {0,3}> *$" strip at the last newline.
+fn stripQuoteMarkerTail(s str) str {
+    let nl = rfindChar(s, 10)
+    if nl == -1 { return s }
+    var p int = nl + 1
+    var sp int = 0
+    while p < s.length.to(int) {
+        if s.char_at(p) == 32 {
+            sp += 1
+            p += 1
+        } else {
+            break
+        }
+    }
+    if sp > 3 { return s }
+    if p >= s.length.to(int) { return s }
+    if s.char_at(p) != 62 { return s }
+    var t int = p + 1
+    while t < s.length.to(int) {
+        if s.char_at(t) == 32 {
+            t += 1
+        } else {
+            return s
+        }
+    }
+    return s.slice(0, nl)
 }
 
 // Streaming pre-parse: drop a dangling list/quote marker at the very end of
 // the document so a half-typed "- " / "> " / "3. " does not flash an empty
 // block (reference: safeMarkdown's strip of hanging stream-tail markers).
-fn stripDanglingTail(src str, final bool) str {
-    if final { return src }
+fn stripDanglingTail(src str, isFinal bool) str {
+    if isFinal { return src }
     var s = src
     var changed bool = true
     while changed {
         changed = false
-        let stripped = s.replace(RegExp("\n {0,3}([-*+]|\\d{1,9}[.)]) *$", ""), "")
+        let stripped = stripListMarkerTail(s)
         if stripped != s {
             s = stripped
             changed = true
         }
-        let strippedQuote = s.replace(RegExp("\n {0,3}> *$", ""), "")
+        let strippedQuote = stripQuoteMarkerTail(s)
         if strippedQuote != s {
             s = strippedQuote
             changed = true
@@ -55,9 +313,8 @@ fn isBlank(line str) bool {
 
 fn indentOf(line str) int {
     var n int = 0
-    while n < line.length {
-        let ch = line[n]
-        if ch == " " {
+    while n < line.length.to(int) {
+        if line.char_at(n) == 32 {
             n += 1
         } else {
             break
@@ -69,12 +326,12 @@ fn indentOf(line str) int {
 fn indentWidth(s str) int {
     var n int = 0
     var i int = 0
-    while i < s.length {
-        let ch = s[i]
-        if ch == " " {
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        if c == 32 {
             n += 1
         } else {
-            if ch == "\t" {
+            if c == 9 {
                 n += 4
             } else {
                 break
@@ -87,21 +344,20 @@ fn indentWidth(s str) int {
 
 // ---------------------------------------------------------------- blocks
 
-fn parseDocument(src str, final bool) List<any> {
+fn parseDocument(src str, isFinal bool) List<WNode> {
     let normalized = normalizeNewlines(src)
-    let safe = stripDanglingTail(normalized, final)
+    let safe = stripDanglingTail(normalized, isFinal)
     let lines = safe.split("\n")
-    return parseBlocks(lines, final)
+    return parseBlocks(lines, isFinal)
 }
 
 // Check whether a line opens a fence: returns marker char, or "" when not a
-// fence. fenceOpenChar/ fenceOpenInfo/fenceContentStart are separate probes
-// because Auto has no tuples-in-conditions.
+// fence.
 fn fenceMarker(line str) str {
     if indentWidth(line) >= 4 { return "" }
     let t = line.trim()
-    if t.startsWith("```") { return "`" }
-    if t.startsWith("~~~") { return "~" }
+    if startsWithStr(t, "```") { return "`" }
+    if startsWithStr(t, "~~~") { return "~" }
     return ""
 }
 
@@ -109,14 +365,14 @@ fn fenceMarkerRun(line str) str {
     let t = line.trim()
     var run str = ""
     var i int = 0
-    let first = t[0]
-    if first != "`" {
-        if first != "~" { return "" }
+    if t.length.to(int) == 0 { return "" }
+    let first = t.char_at(0)
+    if first != 96 {
+        if first != 126 { return "" }
     }
-    while i < t.length {
-        let ch = t[i]
-        if ch == first {
-            run = run + ch
+    while i < t.length.to(int) {
+        if t.char_at(i) == first {
+            run += t.slice(i, i + 1)
             i += 1
         } else {
             break
@@ -128,10 +384,12 @@ fn fenceMarkerRun(line str) str {
 fn isCloseFence(line str, marker str, run str) bool {
     if indentWidth(line) >= 4 { return false }
     let t = line.trim()
-    if t.length != run.length { return false }
+    if t.length.to(int) != run.length.to(int) { return false }
     var i int = 0
-    while i < t.length {
-        if t[i] != marker { return false }
+    var mkCode int = 96
+    if marker == "~" { mkCode = 126 }
+    while i < t.length.to(int) {
+        if t.char_at(i) != mkCode { return false }
         i += 1
     }
     return true
@@ -142,8 +400,8 @@ fn headingLevel(line str) int {
     if indentWidth(line) >= 4 { return 0 }
     let t = line.trim()
     var level int = 0
-    while level < t.length {
-        if t[level] == "#" {
+    while level < t.length.to(int) {
+        if t.char_at(level) == 35 {
             level += 1
         } else {
             break
@@ -151,64 +409,166 @@ fn headingLevel(line str) int {
     }
     if level == 0 { return 0 }
     if level > 6 { return 0 }
-    if level == t.length { return level }
-    let after = t[level]
-    if after != " " { return 0 }
+    if level == t.length.to(int) { return level }
+    if t.char_at(level) != 32 { return 0 }
     return level
 }
 
-// Strip trailing " ###" sequences from ATX heading content.
+// Strip trailing " ###" sequences from ATX heading content. Suffix must be
+// a space run (>=1) followed by hashes to the end; group 1 of the retired
+// regex ^(.*?)( #{1,})#*$ is the prefix before that space run, then
+// trimEnd'ed.
 fn stripTrailingHashes(t str) str {
     let trimmed = t.trim()
-    let m = trimmed.match(RegExp("^(.*?)( #{1,})#*$"))
-    if m == nil { return trimmed }
-    let body = m[1]
-    return body.trimEnd()
+    if trimmed.length.to(int) == 0 { return trimmed }
+    if trimmed.char_at(trimmed.length.to(int) - 1) != 35 { return trimmed }
+    var hs int = trimmed.length.to(int) - 1
+    while hs > 0 {
+        if trimmed.char_at(hs - 1) == 35 {
+            hs -= 1
+        } else {
+            break
+        }
+    }
+    var ss int = hs
+    while ss > 0 {
+        if trimmed.char_at(ss - 1) == 32 {
+            ss -= 1
+        } else {
+            break
+        }
+    }
+    if ss == hs { return trimmed }
+    let body = trimmed.slice(0, ss)
+    return trimEndStr(body)
 }
 
-// Ordered list marker: returns the number, or -1 when not an ordered marker.
+// Ordered list marker: returns the number, or -1 when not an ordered marker
+// ("^ {0,3}(\d{1,9}[.)] |...$)").
 fn olMarkerNum(line str) int {
     if indentWidth(line) >= 4 { return -1 }
-    let m = line.match(RegExp("^ {0,3}(\\d{1,9})[.)] |^ {0,3}(\\d{1,9})[.)]$"))
-    if m == nil { return -1 }
-    if m[1] != nil { return parseInt(m[1], 10) }
-    return parseInt(m[2], 10)
+    var p int = 0
+    var sp int = 0
+    while p < line.length.to(int) {
+        if line.char_at(p) == 32 {
+            sp += 1
+            p += 1
+        } else {
+            break
+        }
+    }
+    if sp > 3 { return -1 }
+    var q int = p
+    var digits int = 0
+    while q < line.length.to(int) {
+        let d = line.char_at(q)
+        if d >= 48 {
+            if d <= 57 {
+                digits += 1
+                q += 1
+            } else {
+                break
+            }
+        } else {
+            break
+        }
+    }
+    if digits == 0 { return -1 }
+    if digits > 9 { return -1 }
+    if q >= line.length.to(int) { return -1 }
+    let c = line.char_at(q)
+    if c != 46 {
+        if c != 41 { return -1 }
+    }
+    var after int = q + 1
+    var isMarker bool = false
+    if after == line.length.to(int) {
+        isMarker = true
+    } else {
+        if line.char_at(after) == 32 {
+            isMarker = true
+        }
+    }
+    if !isMarker { return -1 }
+    let num = scanIntPrefix(line.slice(p, q))
+    return num ?? -1
 }
 
-// Bullet list marker char, or "" when not a bullet item start.
+// Bullet list marker char, or "" when not a bullet item start
+// ("^ {0,3}([-*+]) ").
 fn bulletMarker(line str) str {
     if indentWidth(line) >= 4 { return "" }
-    let m = line.match(RegExp("^ {0,3}([-*+]) "))
-    if m == nil { return "" }
-    return m[1]
+    var p int = 0
+    var sp int = 0
+    while p < line.length.to(int) {
+        if line.char_at(p) == 32 {
+            sp += 1
+            p += 1
+        } else {
+            break
+        }
+    }
+    if sp > 3 { return "" }
+    if p >= line.length.to(int) { return "" }
+    let c = line.char_at(p)
+    var isBullet bool = false
+    if c == 45 {
+        isBullet = true
+    } else {
+        if c == 42 {
+            isBullet = true
+        } else {
+            if c == 43 {
+                isBullet = true
+            }
+        }
+    }
+    if !isBullet { return "" }
+    if p + 1 >= line.length.to(int) { return "" }
+    if line.char_at(p + 1) != 32 { return "" }
+    return line.slice(p, p + 1)
 }
 
 // marker line forms like "- " alone at end also match via the $ branch
 fn bulletMarkerBare(line str) bool {
     if indentWidth(line) >= 4 { return false }
-    let m = line.match(RegExp("^ {0,3}[-*+]$"))
-    if m == nil { return false }
-    return true
+    var p int = 0
+    var sp int = 0
+    while p < line.length.to(int) {
+        if line.char_at(p) == 32 {
+            sp += 1
+            p += 1
+        } else {
+            break
+        }
+    }
+    if sp > 3 { return false }
+    if p + 1 != line.length.to(int) { return false }
+    let c = line.char_at(p)
+    if c == 45 { return true }
+    if c == 42 { return true }
+    if c == 43 { return true }
+    return false
 }
 
 fn isThematicBreak(line str) bool {
     if indentWidth(line) >= 4 { return false }
     let t = line.trim()
-    if t.length < 3 { return false }
-    let first = t[0]
-    if first != "-" {
-        if first != "*" {
-            if first != "_" { return false }
+    if t.length.to(int) < 3 { return false }
+    let first = t.char_at(0)
+    if first != 45 {
+        if first != 42 {
+            if first != 95 { return false }
         }
     }
     var count int = 0
     var i int = 0
-    while i < t.length {
-        let ch = t[i]
-        if ch == first {
+    while i < t.length.to(int) {
+        let c = t.char_at(i)
+        if c == first {
             count += 1
         } else {
-            if ch != " " { return false }
+            if c != 32 { return false }
         }
         i += 1
     }
@@ -219,65 +579,95 @@ fn isSetextUnderline(line str) int {
     // returns 1 for =+, 2 for -+, 0 otherwise
     if indentWidth(line) >= 4 { return 0 }
     let t = line.trim()
-    if t.length == 0 { return 0 }
-    let first = t[0]
-    if first != "=" {
-        if first != "-" { return 0 }
+    if t.length.to(int) == 0 { return 0 }
+    let first = t.char_at(0)
+    if first != 61 {
+        if first != 45 { return 0 }
     }
     var i int = 0
-    while i < t.length {
-        if t[i] != first { return 0 }
+    while i < t.length.to(int) {
+        if t.char_at(i) != first { return 0 }
         i += 1
     }
-    if first == "=" { return 1 }
+    if first == 61 { return 1 }
     return 2
 }
 
 fn startsBlockquote(line str) bool {
     if indentWidth(line) >= 4 { return false }
-    return line.trimStart().startsWith(">")
+    return startsWithStr(trimStartStr(line), ">")
 }
 
 fn quoteBody(line str) str {
-    let t = line.trimStart()
+    let t = trimStartStr(line)
     let rest = t.slice(1)
-    if rest.startsWith(" ") { return rest.slice(1) }
+    if startsWithStr(rest, " ") { return rest.slice(1) }
     return rest
 }
 
 // GFM table: does `line` look like a row (contains a pipe, not blank)?
 fn isTableRow(line str) bool {
     if isBlank(line) { return false }
-    return line.includes("|")
+    return hasChar(line, 124)
+}
+
+// ":?-+:?" on the trimmed cell.
+fn isAlignCell(t str) bool {
+    if t.length.to(int) == 0 { return false }
+    var p int = 0
+    if t.char_at(0) == 58 { p = 1 }
+    if p >= t.length.to(int) { return false }
+    var q int = p
+    while q < t.length.to(int) {
+        if t.char_at(q) == 45 {
+            q += 1
+        } else {
+            break
+        }
+    }
+    if q == p { return false }
+    if q == t.length.to(int) { return true }
+    if q + 1 == t.length.to(int) {
+        if t.char_at(q) == 58 { return true }
+    }
+    return false
 }
 
 fn isTableDelimiter(line str) bool {
     if isBlank(line) { return false }
-    if !line.includes("-") { return false }
+    if !hasChar(line, 45) { return false }
     // every cell must be :--/-/:--: style; a partial row being typed
     // ("| -", "| ---") is NOT a delimiter yet
     let cells = splitRowCells(line)
-    if cells.length == 0 { return false }
+    if cells.length.to(int) == 0 { return false }
     for c in cells {
         let t = c.trim()
-        let m = t.match(RegExp("^:?-+:?$"))
-        if m == nil { return false }
+        if !isAlignCell(t) { return false }
     }
     return true
 }
 
 // Split "| a | b |" -> ["a", "b"] (leading/trailing pipes optional).
+// (The split result is copied through an indexed loop: a bare split-collect
+// return would infer Vec<&str> against the declared Vec<String>.)
 fn splitRowCells(line str) List<str> {
     var t = line.trim()
-    if t.startsWith("|") { t = t.slice(1) }
-    if t.endsWith("|") { t = t.slice(0, t.length - 1) }
-    return t.split("|")
+    if startsWithStr(t, "|") { t = t.slice(1) }
+    if endsWithStr(t, "|") { t = t.slice(0, t.length.to(int) - 1) }
+    let raw = t.split("|")
+    var out List<str> = []
+    var i int = 0
+    while i < raw.length.to(int) {
+        out.push(raw[i])
+        i += 1
+    }
+    return out
 }
 
 fn delimiterAlign(cell str) str {
     let t = cell.trim()
-    let left = t.startsWith(":")
-    let right = t.endsWith(":")
+    let left = startsWithStr(t, ":")
+    let right = endsWithStr(t, ":")
     if left {
         if right { return "center" }
         return "left"
@@ -286,11 +676,65 @@ fn delimiterAlign(cell str) str {
     return "left"
 }
 
-// Core block-level scan over a line range (0-based, end exclusive).
-fn parseBlocks(lines List<str>, final bool) List<any> {
-    var nodes List<any> = []
+// "^[`~]+$" on the trimmed tail line.
+fn isFenceTailRun(t str) bool {
+    if t.length.to(int) == 0 { return false }
     var i int = 0
-    while i < lines.length {
+    while i < t.length.to(int) {
+        let c = t.char_at(i)
+        if c == 96 {
+            // backtick
+        } else {
+            if c == 126 {
+                // tilde
+            } else {
+                return false
+            }
+        }
+        i += 1
+    }
+    return true
+}
+
+// "\n +$" — a trailing (newline + spaces-to-end) collapses to the newline.
+fn stripTrailingSpaceLine(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        if s.char_at(end - 1) == 32 {
+            end -= 1
+        } else {
+            break
+        }
+    }
+    if end == s.length.to(int) { return s }
+    if end == 0 { return s }
+    if s.char_at(end - 1) == 10 { return s.slice(0, end) }
+    return s
+}
+
+// "^ {0,4}" — strip up to four leading spaces.
+fn stripParaIndent(s str) str {
+    var n int = 0
+    while n < 4 {
+        if n < s.length.to(int) {
+            if s.char_at(n) == 32 {
+                n += 1
+            } else {
+                break
+            }
+        } else {
+            break
+        }
+    }
+    if n == 0 { return s }
+    return s.slice(n)
+}
+
+// Core block-level scan over a line range (0-based, end exclusive).
+fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
+    var nodes List<WNode> = []
+    var i int = 0
+    while i < lines.length.to(int) {
         let line = lines[i]
         if isBlank(line) {
             i += 1
@@ -301,12 +745,12 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
         let mk = fenceMarker(line)
         if mk != "" {
             let run = fenceMarkerRun(line)
-            let info = line.trim().slice(run.length)
+            let info = line.trim().slice(run.length.to(int))
             let language = info.trim()
             var body List<str> = []
             var j = i + 1
             var closed bool = false
-            while j < lines.length {
+            while j < lines.length.to(int) {
                 if isCloseFence(lines[j], mk, run) {
                     closed = true
                     break
@@ -316,22 +760,21 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
             }
             var code = body.join("\n")
             if closed {
-                if body.length > 0 {
-                    code = code + "\n"
+                if body.length.to(int) > 0 {
+                    code += "\n"
                 } else {
                     code = ""
                 }
-                nodes.push({type: "code_block", language: language, code: code, loading: false})
+                nodes.push(codeNode(language, code, false))
             } else {
                 // a trailing partial close-fence line (only ` or ~ chars)
                 // belongs to the fence being typed, not to the code body
-                while body.length > 0 {
-                    let tailLine = body[body.length - 1].trim()
+                while body.length.to(int) > 0 {
+                    let tailLine = body[body.length.to(int) - 1].trim()
                     if tailLine == "" {
                         break
                     }
-                    let fenceTail = tailLine.match(RegExp("^[`~]+$"))
-                    if fenceTail == nil {
+                    if !isFenceTailRun(tailLine) {
                         break
                     }
                     body.pop()
@@ -339,8 +782,8 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
                 var openCode = body.join("\n")
                 // trailing spaces on the (empty) last line of an unclosed
                 // fence are dropped; a partial content line keeps them
-                openCode = openCode.replace(RegExp("\n +$"), "\n")
-                nodes.push({type: "code_block", language: language, code: openCode, loading: !final})
+                openCode = stripTrailingSpaceLine(openCode)
+                nodes.push(codeNode(language, openCode, !isFinal))
             }
             i = j + 1
             continue
@@ -352,18 +795,18 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
             let t = line.trim()
             let content = t.slice(hlevel).trim()
             let clean = stripTrailingHashes(content)
-            var children = parseInline(clean, final)
+            var children = parseInline(clean, isFinal)
             if clean == "" {
-                children = []
+                children = noNodes()
             }
-            nodes.push({type: "heading", level: hlevel, children: children})
+            nodes.push(headingNode(hlevel, children))
             i += 1
             continue
         }
 
         // --- thematic break ---
         if isThematicBreak(line) {
-            nodes.push({type: "thematic_break"})
+            nodes.push(thematicNode())
             i += 1
             continue
         }
@@ -372,7 +815,7 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
         if startsBlockquote(line) {
             var qlines List<str> = []
             var j = i
-            while j < lines.length {
+            while j < lines.length.to(int) {
                 if startsBlockquote(lines[j]) {
                     qlines.push(quoteBody(lines[j]))
                     j += 1
@@ -387,23 +830,23 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
                     }
                 }
             }
-            let inner = parseBlocks(qlines, final)
-            nodes.push({type: "blockquote", children: inner})
+            let inner = parseBlocks(qlines, isFinal)
+            nodes.push(quoteNode(inner))
             i = j
             continue
         }
 
         // --- table ---
         if isTableRow(line) {
-            if i + 1 < lines.length {
+            if i + 1 < lines.length.to(int) {
                 if isTableDelimiter(lines[i + 1]) {
                     // the delimiter row must have as many cells as the
                     // header — a partially-typed row falls through to the
                     // streaming pre-parse path
-                    let headCount = splitRowCells(line).length
-                    let delimCount = splitRowCells(lines[i + 1]).length
+                    let headCount = splitRowCells(line).length.to(int)
+                    let delimCount = splitRowCells(lines[i + 1]).length.to(int)
                     if headCount == delimCount {
-                        var tableEnd = tableConsume(lines, i, nodes, final)
+                        var tableEnd = tableConsume(lines, i, nodes, isFinal)
                         i = tableEnd
                         continue
                     }
@@ -415,18 +858,18 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
         let bnum = olMarkerNum(line)
         let bmark = bulletMarker(line)
         if bnum >= 0 {
-            var listEnd = parseList(lines, i, true, bnum, nodes, final)
+            var listEnd = parseList(lines, i, true, bnum, nodes, isFinal)
             i = listEnd
             continue
         }
         if bmark != "" {
-            var listEnd2 = parseList(lines, i, false, 0, nodes, final)
+            var listEnd2 = parseList(lines, i, false, 0, nodes, isFinal)
             i = listEnd2
             continue
         }
         if bulletMarkerBare(line) {
             // "-" alone: a bullet item with empty content
-            var bareEnd = parseList(lines, i, false, 0, nodes, final)
+            var bareEnd = parseList(lines, i, false, 0, nodes, isFinal)
             i = bareEnd
             continue
         }
@@ -435,10 +878,10 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
         var para List<str> = []
         var j = i
         var setextLevel = 0
-        while j < lines.length {
+        while j < lines.length.to(int) {
             let cur = lines[j]
             if isBlank(cur) { break }
-            if para.length > 0 {
+            if para.length.to(int) > 0 {
                 let su = isSetextUnderline(cur)
                 if su > 0 {
                     setextLevel = su
@@ -447,52 +890,52 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
                 }
             }
             if paraBreaks(cur, lines, j) { break }
-            para.push(cur.replace(RegExp("^ {0,4}"), ""))
+            para.push(stripParaIndent(cur))
             j += 1
         }
         if setextLevel > 0 {
             let content = para.join("\n")
-            let children = parseInline(content, final)
-            nodes.push({type: "heading", level: setextLevel, children: children})
+            let children = parseInline(content, isFinal)
+            nodes.push(headingNode(setextLevel, children))
             i = j
             continue
         }
-        if para.length > 0 {
+        if para.length.to(int) > 0 {
             // streaming: a "| a | b |" header line followed by more content
             // pre-parses as a loading table while the delimiter row is still
             // being typed
-            if !final {
+            if !isFinal {
                 var preOk bool = false
-                if para.length >= 2 {
+                if para.length.to(int) >= 2 {
                     preOk = true
                 }
-                if j < lines.length {
+                if j < lines.length.to(int) {
                     preOk = true
                 }
                 if preOk {
                     let head = para[0]
                     if isTableRow(head) {
-                        if head.trim().endsWith("|") {
+                        if endsWithStr(head.trim(), "|") {
                             let preCells = splitRowCells(head)
-                            if preCells.length >= 2 {
+                            if preCells.length.to(int) >= 2 {
                                 var allPipes bool = true
                                 var pi int = 0
-                                while pi < para.length {
+                                while pi < para.length.to(int) {
                                     let pl = para[pi].trim()
-                                    if !pl.startsWith("|") {
+                                    if !startsWithStr(pl, "|") {
                                         allPipes = false
                                     }
                                     pi += 1
                                 }
                                 if allPipes {
-                                    var preRow List<any> = []
+                                    var preRow List<WNode> = []
                                     for pc in preCells {
                                         let pt = pc.trim()
-                                        let pChildren = parseInline(pt, final)
-                                        preRow.push({type: "table_cell", header: true, children: pChildren, align: "left"})
+                                        let pChildren = parseInline(pt, isFinal)
+                                        preRow.push(cellNode(true, pChildren, "left"))
                                     }
-                                    let preHeader = {type: "table_row", cells: preRow}
-                                    nodes.push({type: "table", header: preHeader, rows: [], loading: true})
+                                    let preHeader = rowNode(preRow)
+                                    nodes.push(tableNode([preHeader], noNodes(), true))
                                     i = j
                                     continue
                                 }
@@ -502,8 +945,8 @@ fn parseBlocks(lines List<str>, final bool) List<any> {
                 }
             }
             let content = para.join("\n")
-            let children = parseInline(content, final)
-            nodes.push({type: "paragraph", children: children})
+            let children = parseInline(content, isFinal)
+            nodes.push(paraNode(children))
             i = j
             continue
         }
@@ -534,28 +977,28 @@ fn isParagraphStart(line str) bool {
 
 // Parse a list starting at lines[start]; ordered per `ordered`/`firstNum`.
 // Appends one list node; returns index after the list.
-fn parseList(lines List<str>, start int, ordered bool, firstNum int, nodes List<any>, final bool) int {
-    var items List<any> = []
+fn parseList(lines List<str>, start int, ordered bool, firstNum int, mut nodes List<WNode>, isFinal bool) int {
+    var items List<WNode> = []
     var i = start
-    var startAttr any = nil
+    var startN int? = None
     if ordered {
         if firstNum != 1 {
-            startAttr = firstNum
+            startN = Some(firstNum)
         }
     }
-    while i < lines.length {
+    while i < lines.length.to(int) {
         let line = lines[i]
         if isBlank(line) {
             // blank: list continues only if a next item follows after it
             var k = i + 1
-            while k < lines.length {
+            while k < lines.length.to(int) {
                 if isBlank(lines[k]) {
                     k += 1
                 } else {
                     break
                 }
             }
-            if k < lines.length {
+            if k < lines.length.to(int) {
                 if bulletMarker(lines[k]) != "" {
                     i = k
                     continue
@@ -580,7 +1023,6 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, nodes List<
         let om = olMarkerNum(line)
         if bm != "" {
             markerIndent = indentOf(line)
-            let t = line.trimStart()
             contentStart = 2 + indentOf(line)
             isItem = true
             orderedHere = false
@@ -593,17 +1035,38 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, nodes List<
             } else {
                 if om >= 0 {
                     markerIndent = indentOf(line)
-                    let t = line.trimStart()
-                    let m = t.match(RegExp("^(\\d{1,9}[.)])( *)"))
-                    if m != nil {
-                        let markerWidth = m[1].length
-                        var spaces = m[2].length
-                        if spaces > 4 { spaces = 1 }
-                        if spaces < 1 { spaces = 1 }
-                        contentStart = markerIndent + markerWidth + spaces
-                        isItem = true
-                        orderedHere = true
+                    let t = trimStartStr(line)
+                    // marker = digits{1,9} + [.)], then a space run (the
+                    // retired ^(\d{1,9}[.)])( *) capture)
+                    var q int = 0
+                    while q < t.length.to(int) {
+                        let dc = t.char_at(q)
+                        if dc >= 48 {
+                            if dc <= 57 {
+                                q += 1
+                            } else {
+                                break
+                            }
+                        } else {
+                            break
+                        }
                     }
+                    var markerWidth int = q + 1
+                    var spaces int = 0
+                    var p2 int = q + 1
+                    while p2 < t.length.to(int) {
+                        if t.char_at(p2) == 32 {
+                            spaces += 1
+                            p2 += 1
+                        } else {
+                            break
+                        }
+                    }
+                    if spaces > 4 { spaces = 1 }
+                    if spaces < 1 { spaces = 1 }
+                    contentStart = markerIndent + markerWidth + spaces
+                    isItem = true
+                    orderedHere = true
                 }
             }
         }
@@ -612,10 +1075,10 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, nodes List<
         if orderedHere != ordered { break }
         if !ordered {
             // same bullet char required to continue the list
-            let t = line.trimStart()
-            let firstChar = t[0]
-            let firstItem = lines[start].trimStart()
-            let listChar = firstItem[0]
+            let t = trimStartStr(line)
+            let firstChar = t.slice(0, 1)
+            let firstItem = trimStartStr(lines[start])
+            let listChar = firstItem.slice(0, 1)
             if firstChar != listChar { break }
         }
 
@@ -624,19 +1087,19 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, nodes List<
         var firstText = line.slice(contentStart)
         itemLines.push(firstText)
         i += 1
-        while i < lines.length {
+        while i < lines.length.to(int) {
             let cur = lines[i]
             if isBlank(cur) {
                 // lookahead: blank followed by more indented content stays
                 var k = i + 1
-                while k < lines.length {
+                while k < lines.length.to(int) {
                     if isBlank(lines[k]) {
                         k += 1
                     } else {
                         break
                     }
                 }
-                if k < lines.length {
+                if k < lines.length.to(int) {
                     if indentWidth(lines[k]) >= contentStart {
                         if paraBreaks(lines[k], lines, k) {
                             // indented block start inside item
@@ -668,192 +1131,196 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, nodes List<
             }
             break
         }
-        let itemNodes = parseBlocks(itemLines, final)
-        items.push({type: "list_item", children: itemNodes})
+        let itemNodes = parseBlocks(itemLines, isFinal)
+        items.push(itemNode(itemNodes))
     }
     if ordered {
-        if startAttr != nil {
-            nodes.push({type: "list", ordered: true, start: startAttr, items: items})
+        if startN != None {
+            nodes.push(listNode(true, startN, items))
         } else {
-            nodes.push({type: "list", ordered: true, items: items})
+            nodes.push(listNode(true, None, items))
         }
     } else {
-        nodes.push({type: "list", ordered: false, items: items})
+        nodes.push(listNode(false, None, items))
     }
     return i
 }
 
 // Consume a table starting at lines[start] (header row). Appends the table
 // node; returns index after the table.
-fn tableConsume(lines List<str>, start int, nodes List<any>, final bool) int {
+fn tableConsume(lines List<str>, start int, mut nodes List<WNode>, isFinal bool) int {
     let headerCells = splitRowCells(lines[start])
     let aligns List<str> = []
     let delimCells = splitRowCells(lines[start + 1])
     for c in delimCells {
         aligns.push(delimiterAlign(c))
     }
-    var rows List<any> = []
+    var rows List<WNode> = []
     var i = start + 2
-    while i < lines.length {
+    while i < lines.length.to(int) {
         if !isTableRow(lines[i]) { break }
         let cells = splitRowCells(lines[i])
-        var rowCells List<any> = []
+        var rowCells List<WNode> = []
         var ci = 0
-        while ci < headerCells.length {
+        while ci < headerCells.length.to(int) {
             var cellText = ""
-            if ci < cells.length {
+            if ci < cells.length.to(int) {
                 cellText = cells[ci].trim()
             }
             var align = "left"
-            if ci < aligns.length {
+            if ci < aligns.length.to(int) {
                 align = aligns[ci]
             }
-            var children = parseInline(cellText, final)
+            var children = parseInline(cellText, isFinal)
             if cellText == "" {
-                children = []
+                children = noNodes()
             }
-            rowCells.push({type: "table_cell", header: false, children: children, align: align})
+            rowCells.push(cellNode(false, children, align))
             ci += 1
         }
-        rows.push({type: "table_row", cells: rowCells})
+        rows.push(rowNode(rowCells))
         i += 1
     }
-    var headerRowCells List<any> = []
+    var headerRowCells List<WNode> = []
     var ci = 0
-    while ci < headerCells.length {
+    while ci < headerCells.length.to(int) {
         let cellText = headerCells[ci].trim()
         var align = "left"
-        if ci < aligns.length {
+        if ci < aligns.length.to(int) {
             align = aligns[ci]
         }
-        let children = parseInline(cellText, final)
-        headerRowCells.push({type: "table_cell", header: true, children: children, align: align})
+        let children = parseInline(cellText, isFinal)
+        headerRowCells.push(cellNode(true, children, align))
         ci += 1
     }
-    let header = {type: "table_row", cells: headerRowCells}
-    nodes.push({type: "table", header: header, rows: rows, loading: false})
+    let header = rowNode(headerRowCells)
+    nodes.push(tableNode([header], rows, false))
     return i
 }
 
 // ---------------------------------------------------------------- inline
 
-fn parseInline(text str, final bool) List<any> {
-    if text == "" { return [] }
-    return parseInlineLine(text, final)
+fn parseInline(text str, isFinal bool) List<WNode> {
+    if text == "" { return noNodes() }
+    return parseInlineLine(text, isFinal)
 }
 
-fn parseInlineLine(line str, final bool) List<any> {
-    var nodes List<any> = []
+fn parseInlineLine(line str, isFinal bool) List<WNode> {
+    var nodes List<WNode> = []
     var buf str = ""
     var i int = 0
     var seenCode bool = false
-    while i < line.length {
-        let ch = line[i]
+    // 热路径：长度提升为局部（a2r 的 str length 是 chars().count()，
+    // 每次迭代重数为 O(n²)——plan 019 批次七 perf 基线配套）
+    let lineLen int = line.length.to(int)
+    while i < lineLen {
+        let cs = line.slice(i, i + 1)
 
         // newline: >=2 trailing spaces = hardbreak, else soft merge
-        if ch == "\n" {
+        if cs == "\n" {
             var sp int = 0
-            while sp < buf.length {
-                let bch = buf[buf.length - 1 - sp]
-                if bch == " " {
+            while sp < buf.length.to(int) {
+                if buf.char_at(buf.length.to(int) - 1 - sp) == 32 {
                     sp += 1
                 } else {
                     break
                 }
             }
             if sp >= 2 {
-                let kept = buf.slice(0, buf.length - sp)
+                let kept = buf.slice(0, buf.length.to(int) - sp)
                 if kept != "" {
                     nodes.push(textNode(kept))
                 }
-                nodes.push({type: "hardbreak"})
+                nodes.push(hardbreakNode())
                 buf = ""
             } else {
                 if sp > 0 {
-                    buf = buf.slice(0, buf.length - sp)
+                    buf = buf.slice(0, buf.length.to(int) - sp)
                 }
-                buf = buf + "\n"
+                buf += "\n"
             }
             i += 1
             continue
         }
 
         // strong / emphasis / strikethrough delimiters
-        if ch == "*" {
-            if line.startsWith("**", i) {
-                var after = scanDelim(line, i, "**", true, final)
-                if after != nil {
+        if cs == "*" {
+            if startsWithAt(line, "**", i) {
+                var after = scanDelim(line, i, "**", true, isFinal)
+                if after != None {
+                    let sc = after ?? DelimScan(0, "")
                     if buf != "" {
                         nodes.push(textNode(buf))
                         buf = ""
                     }
-                    nodes.push({type: "strong", children: parseInlineLine(after[1], final)})
-                    i = after[0]
+                    nodes.push(strongNode(parseInlineLine(sc.inner, isFinal)))
+                    i = sc.next
                     continue
                 }
             }
-            var afterEm = scanDelim(line, i, "*", false, final)
-            if afterEm != nil {
+            var afterEm = scanDelim(line, i, "*", false, isFinal)
+            if afterEm != None {
+                let scEm = afterEm ?? DelimScan(0, "")
                 if buf != "" {
                     nodes.push(textNode(buf))
                     buf = ""
                 }
-                nodes.push({type: "emphasis", children: parseInlineLine(afterEm[1], final)})
-                i = afterEm[0]
+                nodes.push(emNode(parseInlineLine(scEm.inner, isFinal)))
+                i = scEm.next
                 continue
             }
-            buf = buf + ch
+            buf += cs
             i += 1
             continue
         }
-        if ch == "_" {
-            var afterU = scanDelim(line, i, "_", false, final)
-            if afterU != nil {
+        if cs == "_" {
+            var afterU = scanDelim(line, i, "_", false, isFinal)
+            if afterU != None {
+                let scU = afterU ?? DelimScan(0, "")
                 if buf != "" {
                     nodes.push(textNode(buf))
                     buf = ""
                 }
-                nodes.push({type: "emphasis", children: parseInlineLine(afterU[1], final)})
-                i = afterU[0]
+                nodes.push(emNode(parseInlineLine(scU.inner, isFinal)))
+                i = scU.next
                 continue
             }
-            buf = buf + ch
+            buf += cs
             i += 1
             continue
         }
-        if ch == "~" {
-            if line.startsWith("~~", i) {
-                var afterS = scanDelim(line, i, "~~", false, final)
-                if afterS != nil {
+        if cs == "~" {
+            if startsWithAt(line, "~~", i) {
+                var afterS = scanDelim(line, i, "~~", false, isFinal)
+                if afterS != None {
+                    let scS = afterS ?? DelimScan(0, "")
                     if buf != "" {
                         nodes.push(textNode(buf))
                         buf = ""
                     }
-                    nodes.push({type: "strikethrough", children: parseInlineLine(afterS[1], final)})
-                    i = afterS[0]
+                    nodes.push(strikeNode(parseInlineLine(scS.inner, isFinal)))
+                    i = scS.next
                     continue
                 }
             }
-            buf = buf + ch
+            buf += cs
             i += 1
             continue
         }
 
         // inline code
-        if ch == "`" {
+        if cs == "`" {
             var run int = 0
-            while line.startsWith("`", i + run) {
+            while startsWithAt(line, "`", i + run) {
                 run += 1
             }
             var close = findBacktickRun(line, i + run, run)
             if close != -1 {
                 var inner = line.slice(i + run, close)
-                let trimmedL = inner.replace(RegExp("^ "), "")
-                let trimmedBoth = trimmedL.replace(RegExp(" $"), "")
-                if inner.startsWith(" ") {
-                    if inner.endsWith(" ") {
+                if startsWithStr(inner, " ") {
+                    if endsWithStr(inner, " ") {
                         if inner.trim() != "" {
-                            inner = trimmedBoth
+                            inner = inner.slice(1, inner.length.to(int) - 1)
                         }
                     }
                 }
@@ -861,26 +1328,26 @@ fn parseInlineLine(line str, final bool) List<any> {
                     nodes.push(textNode(buf))
                     buf = ""
                 }
-                nodes.push({type: "inline_code", code: inner})
+                nodes.push(codeSpanNode(inner))
                 seenCode = true
                 i = close + run
                 continue
             }
             // streaming: a lone SINGLE backtick at the start of the line with
             // nothing after it is dropped entirely (a bare "``" stays literal)
-            if !final {
+            if !isFinal {
                 if run == 1 {
                     let restAll = line.slice(i + run)
                     if restAll.trim() == "" {
                         if buf == "" {
-                            i = line.length
+                            i = line.length.to(int)
                             continue
                         }
                     }
                 }
             }
             if run == 1 {
-                if !final {
+                if !isFinal {
                     // streaming: an unclosed single backtick renders the rest
                     // as an (empty-or-partial) inline code span
                     let rest = line.slice(i + 1)
@@ -888,76 +1355,78 @@ fn parseInlineLine(line str, final bool) List<any> {
                         nodes.push(textNode(buf))
                         buf = ""
                     }
-                    nodes.push({type: "inline_code", code: rest})
+                    nodes.push(codeSpanNode(rest))
                     seenCode = true
-                    i = line.length
+                    i = line.length.to(int)
                     continue
                 }
             }
             // unclosed multi-backtick run (or any run in final mode): the
             // whole run goes into the text buffer verbatim
-            buf = buf + line.slice(i, i + run)
-            i = i + run
+            buf += line.slice(i, i + run)
+            i += run
             continue
         }
 
         // image ![alt](src)
-        if ch == "!" {
-            if line.startsWith("![", i) {
-                var imgAfter = scanLink(line, i + 1, final, seenCode)
-                if imgAfter != nil {
+        if cs == "!" {
+            if startsWithAt(line, "![", i) {
+                var imgAfter = scanLink(line, i + 1, isFinal, seenCode)
+                if imgAfter != None {
+                    let img = imgAfter ?? LinkScan(0, "", "", false, None, "")
                     if buf != "" {
                         nodes.push(textNode(buf))
                         buf = ""
                     }
-                    nodes.push({type: "image", src: imgAfter[2], alt: imgAfter[1], title: nil, loading: false})
-                    i = imgAfter[0]
+                    nodes.push(imageNode(img.href, img.text))
+                    i = img.next
                     continue
                 }
             }
-            buf = buf + ch
+            buf += cs
             i += 1
             continue
         }
 
         // link [text](href)
-        if ch == "[" {
-            var after = scanLink(line, i, final, seenCode)
-            if after != nil {
+        if cs == "[" {
+            var after = scanLink(line, i, isFinal, seenCode)
+            if after != None {
+                let lk = after ?? LinkScan(0, "", "", false, None, "")
                 if buf != "" {
                     nodes.push(textNode(buf))
                     buf = ""
                 }
-                if after[3] {
+                if lk.loading {
                     // loading (streaming) link with the extracted href
-                    nodes.push({type: "link", href: after[2], title: after[4], text: after[1], children: parseInlineLine(after[1], final), loading: true})
-                    if after[5] != "" {
-                        nodes.push(textNode(after[5]))
+                    nodes.push(linkNode(lk.href, lk.title, lk.text, parseInlineLine(lk.text, isFinal), true))
+                    if lk.tail != "" {
+                        nodes.push(textNode(lk.tail))
                     }
                 } else {
-                    nodes.push({type: "link", loading: false, href: after[2], title: after[4], text: after[1], children: parseInlineLine(after[1], final)})
+                    nodes.push(linkNode(lk.href, lk.title, lk.text, parseInlineLine(lk.text, isFinal), false))
                 }
-                i = after[0]
+                i = lk.next
                 continue
             }
-            buf = buf + ch
+            buf += cs
             i += 1
             continue
         }
 
         // backslash escape: emit the escaped char literally; quotes arrive
         // as sentinels so smartQuotes() leaves them alone
-        if ch == "\\" {
-            if i + 1 < line.length {
-                let nxt = line[i + 1]
-                if isPunctuation(nxt) {
-                    if nxt == "\"" {
-                        buf = buf + String.fromCharCode(1)
+        if cs == "\\" {
+            if i + 1 < line.length.to(int) {
+                let nc = line.char_at(i + 1)
+                if isPunctuationCode(nc) {
+                    if nc == 34 {
+                        buf += String.fromCharCode(1)
                     } else {
-                        if nxt == "'" {
-                            buf = buf + String.fromCharCode(2)
+                        if nc == 39 {
+                            buf += String.fromCharCode(2)
                         } else {
-                            buf = buf + nxt
+                            buf += line.slice(i + 1, i + 2)
                         }
                     }
                     i += 2
@@ -966,13 +1435,13 @@ fn parseInlineLine(line str, final bool) List<any> {
             }
         }
 
-        buf = buf + ch
+        buf += cs
         i += 1
     }
     if buf != "" {
         nodes.push(textNode(buf))
     }
-    if !final {
+    if !isFinal {
         trimStreamingTail(nodes)
     }
     return nodes
@@ -982,36 +1451,163 @@ fn parseInlineLine(line str, final bool) List<any> {
 // "((", an unclosed html-like "<tag ..." tail, a trailing "*" / "* " run
 // are stripped first; only when nothing was stripped is the plain trailing
 // whitespace removed (reference behavior observed via prefix scans).
-fn trimStreamingTail(nodes List<any>) {
-    if nodes.length > 0 {
-        let last = nodes[nodes.length - 1]
-        if last["type"] == "text" {
+fn trimStreamingTail(nodes List<WNode>) {
+    if nodes.length.to(int) > 0 {
+        let last = nodes[nodes.length.to(int) - 1]
+        if last.type == "text" {
             trimLastTextNode(last, nodes)
         }
     }
 }
 
-fn trimLastTextNode(last any, nodes List<any>) {
-    var c = last["content"]
+// " ?<[/!a-zA-Z][^>]*$" — a trailing partial html tag; the match must live
+// entirely after the last '>' of the line, and the FIRST valid '<' there
+// wins (leftmost match of the retired regex).
+fn stripTrailingPartialTag(s str) str {
+    var lastGt int = -1
+    var i int = 0
+    while i < s.length.to(int) {
+        if s.char_at(i) == 62 {
+            lastGt = i
+        }
+        i += 1
+    }
+    var j int = lastGt + 1
+    while j < s.length.to(int) {
+        if s.char_at(j) == 60 {
+            var p int = j + 1
+            if p >= s.length.to(int) { return s }
+            var c = s.char_at(p)
+            if c == 47 {
+                p += 1
+                if p >= s.length.to(int) { return s }
+                c = s.char_at(p)
+            }
+            var isLetter bool = false
+            if c == 33 {
+                isLetter = true
+            } else {
+                if c >= 65 {
+                    if c <= 90 { isLetter = true }
+                }
+                if c >= 97 {
+                    if c <= 122 { isLetter = true }
+                }
+            }
+            if !isLetter { return s }
+            var q int = p + 1
+            var clean bool = true
+            while q < s.length.to(int) {
+                if s.char_at(q) == 62 {
+                    clean = false
+                    break
+                }
+                q += 1
+            }
+            if !clean { return s }
+            var cut int = j
+            if j > 0 {
+                if s.char_at(j - 1) == 32 {
+                    cut = j - 1
+                }
+            }
+            return s.slice(0, cut)
+        }
+        j += 1
+    }
+    return s
+}
+
+// "\(+\s*$" — trailing run of '(' followed by whitespace to end (the
+// whitespace run may be empty: a bare trailing '(' strips too).
+fn stripTrailingOpenParens(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        let c = s.char_at(end - 1)
+        if c == 32 {
+            end -= 1
+        } else {
+            if c == 9 {
+                end -= 1
+            } else {
+                if c == 10 {
+                    end -= 1
+                } else {
+                    if c == 13 {
+                        end -= 1
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+    }
+    var start int = end
+    while start > 0 {
+        if s.char_at(start - 1) == 40 {
+            start -= 1
+        } else {
+            break
+        }
+    }
+    if start == end { return s }
+    return s.slice(0, start)
+}
+
+// "\* +$" — a '*' followed by one-or-more spaces to end.
+fn stripTrailingStarSpaces(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        if s.char_at(end - 1) == 32 {
+            end -= 1
+        } else {
+            break
+        }
+    }
+    if end == s.length.to(int) { return s }
+    if end == 0 { return s }
+    if s.char_at(end - 1) == 42 { return s.slice(0, end - 1) }
+    return s
+}
+
+// " +$" — trailing spaces only.
+fn stripTrailingSpaces(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        if s.char_at(end - 1) == 32 {
+            end -= 1
+        } else {
+            break
+        }
+    }
+    if end == s.length.to(int) { return s }
+    return s.slice(0, end)
+}
+
+fn trimLastTextNode(last WNode, nodes List<WNode>) {
+    var c = last.content ?? ""
     var stripped bool = false
-    var c2 = c.replace(RegExp(" ?<[/!a-zA-Z][^>]*$"), "")
+    var c2 = stripTrailingPartialTag(c)
     if c2 == c {
-        c2 = c.replace(RegExp("<$"), "")
+        // "<$" — a trailing lone '<'
+        if endsWithStr(c, "<") {
+            c2 = c.slice(0, c.length.to(int) - 1)
+        }
     }
     if c2 != c {
         stripped = true
     }
     c = c2
-    var c3 = c.replace(RegExp("\\(+\\s*$"), "")
+    var c3 = stripTrailingOpenParens(c)
     if c3 != c {
         stripped = true
     }
     c = c3
-    var c4 = c.replace(RegExp("\\* +$"), "")
+    var c4 = stripTrailingStarSpaces(c)
     if c4 == c {
-        if c.endsWith("*") {
-            if !c.endsWith("**") {
-                c4 = c.slice(0, c.length - 1)
+        if endsWithStr(c, "*") {
+            if !endsWithStr(c, "**") {
+                c4 = c.slice(0, c.length.to(int) - 1)
             }
         }
     }
@@ -1020,7 +1616,7 @@ fn trimLastTextNode(last any, nodes List<any>) {
     }
     c = c4
     if !stripped {
-        c = c.replace(RegExp(" +$"), "")
+        c = stripTrailingSpaces(c)
     }
     if c.trim() == "|" {
         // a lone dangling table pipe flashes an empty paragraph
@@ -1029,28 +1625,98 @@ fn trimLastTextNode(last any, nodes List<any>) {
     if c == "" {
         nodes.pop()
     } else {
-        last["content"] = c
+        nodes.pop()
+        nodes.push(rawTextNode(c))
     }
 }
 
-fn textNode(content str) any {
+pub fn textNode(content str) WNode {
     var s = smartQuotes(content)
     // escaped quotes arrived as sentinels; restore them literally
     s = s.split(String.fromCharCode(1)).join("\"")
     s = s.split(String.fromCharCode(2)).join("'")
-    return {type: "text", content: s}
+    return WNode("text", Some(s), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
-fn isWordChar(ch str) bool {
-    let re = RegExp("\\w", "u")
-    return re.test(ch)
+// ASCII \w (the u-flag \w class is ASCII-only; exact parity).
+fn isWordCharCode(c int) bool {
+    if c >= 48 {
+        if c <= 57 { return true }
+    }
+    if c >= 65 {
+        if c <= 90 { return true }
+    }
+    if c >= 97 {
+        if c <= 122 { return true }
+    }
+    if c == 95 { return true }
+    return false
 }
 
 // closing punctuation for the smart-quote close context (an opening bracket
-// like ( or the fullwidth ( does NOT make a close-quote context)
-fn isClosePunctuation(ch str) bool {
-    let re = RegExp("[\\)\\]},.;:!?\\u2026\"'\\uff09\\uff0c\\uff0e\\u3002\\uff1b\\uff1a\\uff01\\uff1f\\u300d\\u300f\\u3009\\u300b]")
-    return re.test(ch)
+// like ( or the fullwidth ( does NOT make a close-quote context) — the
+// explicit char class of the retired regex, by code point.
+fn isClosePunctCode(c int) bool {
+    if c == 41 { return true }
+    if c == 93 { return true }
+    if c == 125 { return true }
+    if c == 44 { return true }
+    if c == 46 { return true }
+    if c == 59 { return true }
+    if c == 58 { return true }
+    if c == 33 { return true }
+    if c == 63 { return true }
+    if c == 8230 { return true }
+    if c == 34 { return true }
+    if c == 39 { return true }
+    if c == 65289 { return true }
+    if c == 65292 { return true }
+    if c == 65294 { return true }
+    if c == 12290 { return true }
+    if c == 65307 { return true }
+    if c == 65306 { return true }
+    if c == 65301 { return true }
+    if c == 65311 { return true }
+    if c == 12301 { return true }
+    if c == 12303 { return true }
+    if c == 12313 { return true }
+    if c == 12311 { return true }
+    return false
+}
+
+// \p{P}|[-+/=@$^`|~] approximation (plan 019 registered divergence): the
+// ASCII punct/symbol strips cover the explicit symbol class; Unicode
+// punctuation is approximated by Latin-1 + General Punctuation + CJK
+// symbols + fullwidth/halfwidth forms ranges.
+fn isPunctuationCode(c int) bool {
+    if c >= 33 {
+        if c <= 47 { return true }
+    }
+    if c >= 58 {
+        if c <= 64 { return true }
+    }
+    if c >= 91 {
+        if c <= 96 { return true }
+    }
+    if c >= 123 {
+        if c <= 126 { return true }
+    }
+    if c == 161 { return true }
+    if c == 167 { return true }
+    if c == 171 { return true }
+    if c == 182 { return true }
+    if c == 183 { return true }
+    if c == 191 { return true }
+    if c >= 8208 {
+        if c <= 8286 { return true }
+    }
+    if c >= 12288 {
+        if c <= 12351 { return true }
+    }
+    if c >= 65281 {
+        if c <= 65380 { return true }
+    }
+    return false
 }
 
 // typographer smart quotes: open " when preceded by whitespace/line start/
@@ -1059,23 +1725,27 @@ fn isClosePunctuation(ch str) bool {
 // (markdown-it typographer:true behavior -- e.g. a close-bracket followed
 // by a straight quote before a word keeps straight quotes)
 // curly-quote constants: Auto string literals cannot contain these
-// characters (the lexer rejects them), so they are built from char codes
-var CURLY_LDQUO str = String.fromCharCode(8220)
-var CURLY_RDQUO str = String.fromCharCode(8221)
-var CURLY_LSQUO str = String.fromCharCode(8216)
-var CURLY_RSQUO str = String.fromCharCode(8217)
+// characters (the lexer rejects them), so they are built from char codes.
+// Functions instead of module vars: a2r emits module-level `var` as
+// Lazy<Mutex<..>> statics (once_cell), which the zero-dependency crate
+// cannot host.
+fn CURLY_LDQUO() str { return String.fromCharCode(8220) }
+fn CURLY_RDQUO() str { return String.fromCharCode(8221) }
+fn CURLY_LSQUO() str { return String.fromCharCode(8216) }
+fn CURLY_RSQUO() str { return String.fromCharCode(8217) }
 
 fn smartQuotes(s str) str {
     var out = ""
     var i int = 0
-    while i < s.length {
-        let ch = s[i]
-        if ch == "\"" {
+    let sLen int = s.length.to(int)
+    while i < sLen {
+        let cs = s.slice(i, i + 1)
+        if cs == "\"" {
             var prevIsOpenCtx bool = false
             if out == "" {
                 prevIsOpenCtx = true
             } else {
-                let prev = out.charAt(out.length - 1)
+                let prev = out.slice(out.length.to(int) - 1, out.length.to(int))
                 if prev == " " { prevIsOpenCtx = true }
                 if prev == "\n" { prevIsOpenCtx = true }
                 if prev == "(" { prevIsOpenCtx = true }
@@ -1083,240 +1753,310 @@ fn smartQuotes(s str) str {
                 if prev == "{" { prevIsOpenCtx = true }
             }
             if prevIsOpenCtx {
-                out = out + CURLY_LDQUO
+                out += CURLY_LDQUO()
                 i += 1
                 continue
             }
             // close context: next is whitespace / end / closing punctuation
-            if i + 1 >= s.length {
-                out = out + CURLY_RDQUO
+            if i + 1 >= s.length.to(int) {
+                out += CURLY_RDQUO()
                 i += 1
                 continue
             }
-            let nxt = s[i + 1]
-            if nxt == " " {
-                out = out + CURLY_RDQUO
+            let nc = s.char_at(i + 1)
+            if nc == 32 {
+                out += CURLY_RDQUO()
             } else {
-                if nxt == "\n" {
-                    out = out + CURLY_RDQUO
+                if nc == 10 {
+                    out += CURLY_RDQUO()
                 } else {
-                    if isClosePunctuation(nxt) {
-                        out = out + CURLY_RDQUO
+                    if isClosePunctCode(nc) {
+                        out += CURLY_RDQUO()
                     } else {
-                        out = out + ch
+                        out += cs
                     }
                 }
             }
             i += 1
             continue
         }
-        if ch == "'" {
+        if cs == "'" {
             var apostrophe bool = false
             if i > 0 {
-                if i + 1 < s.length {
-                    let p = s[i - 1]
-                    let n = s[i + 1]
-                    let pWord = isWordChar(p)
-                    let nWord = isWordChar(n)
+                if i + 1 < s.length.to(int) {
+                    let pc = s.char_at(i - 1)
+                    let ncc = s.char_at(i + 1)
+                    let pWord = isWordCharCode(pc)
+                    let nWord = isWordCharCode(ncc)
                     if pWord {
                         if nWord { apostrophe = true }
                     }
                 }
             }
             if apostrophe {
-                out = out + CURLY_RSQUO
+                out += CURLY_RSQUO()
             } else {
                 var openS bool = false
                 if out == "" {
                     openS = true
                 } else {
-                    let prev2 = out.charAt(out.length - 1)
+                    let prev2 = out.slice(out.length.to(int) - 1, out.length.to(int))
                     if prev2 == " " { openS = true }
                     if prev2 == "\n" { openS = true }
                     if prev2 == "(" { openS = true }
                     if prev2 == "[" { openS = true }
                 }
                 if openS {
-                    out = out + CURLY_LSQUO
+                    out += CURLY_LSQUO()
                 } else {
-                    out = out + CURLY_RSQUO
+                    out += CURLY_RSQUO()
                 }
             }
             i += 1
             continue
         }
-        out = out + ch
+        out += cs
         i += 1
     }
     return out
 }
 
-fn isPunctuation(ch str) bool {
-    // Unicode punctuation class \p{P} plus ASCII symbols (markdown-it's
-    // punctuation definition includes both; the u flag enables the property
-    // escape, passed through verbatim by a2ts)
-    let re = RegExp("\\p{P}|[-+/=@$^`|~]", "u")
-    return re.test(ch)
-}
-
 // Starting at i where line.substr(i) == delim: find a closing delimiter.
-// Returns [indexAfter, innerText] or nil. Opener flanking: the char before
-// the delimiter must be whitespace/punctuation/start (a*b stays literal).
+// Returns DelimScan or None. Opener flanking: the char before the
+// delimiter must be whitespace/punctuation/start (a*b stays literal).
 // Unclosed strong auto-closes even when final (reference applyFixStrongTokens);
 // unclosed emphasis/strikethrough auto-close only in streaming mode.
-fn scanDelim(line str, i int, delim str, autoCloseWhenFinal bool, final bool) any {
+fn scanDelim(line str, i int, delim str, autoCloseWhenFinal bool, isFinal bool) DelimScan? {
     // underscore intraword restriction: "_word_" only opens at word edges
     // (snake_case_word stays literal); "*" has no left-side restriction
     if delim == "_" {
         if i > 0 {
-            let prev = line[i - 1]
-            if isWordChar(prev) { return nil }
+            let pc = line.char_at(i - 1)
+            if isWordCharCode(pc) { return None }
         }
     }
-    let afterStart = i + delim.length
+    let afterStart = i + delim.length.to(int)
     let inner = line.slice(afterStart)
-    var close = inner.indexOf(delim)
+    var close = findStr(inner, delim)
     var innerText = inner
     if close != -1 {
         innerText = inner.slice(0, close)
     }
     if innerText == "" {
         // empty emphasis/strong content ("**" at line end) stays literal
-        return nil
+        return None
     }
-    let lead = innerText[0]
-    if isPunctuation(lead) {
+    if isPunctuationCode(innerText.char_at(0)) {
         // e.g. "auto-plan-*: text" -- a delimiter whose content starts
         // with punctuation stays literal (markdown-it flanking); applies
         // to both a real close and the streaming auto-close
-        return nil
+        return None
     }
     if close != -1 {
-        var next = afterStart + close + delim.length
-        return [next, innerText]
+        var next = afterStart + close + delim.length.to(int)
+        return Some(DelimScan(next, innerText))
     }
     if !autoCloseWhenFinal {
-        if final { return nil }
+        if isFinal { return None }
     }
     // auto-close at end of line
-    if inner == "" { return nil }
-    if inner.startsWith(" ") { return nil }
-    return [line.length, inner]
+    if inner == "" { return None }
+    if inner.char_at(0) == 32 { return None }
+    return Some(DelimScan(line.length.to(int), inner))
 }
 
 // Find a run of exactly `count` backticks starting at or after `from`.
 fn findBacktickRun(line str, from int, count int) int {
     var i = from
-    while i < line.length {
-        if line[i] != "`" {
+    while i < line.length.to(int) {
+        if line.char_at(i) != 96 {
             i += 1
             continue
         }
         var run int = 0
-        while line.startsWith("`", i + run) {
+        while startsWithAt(line, "`", i + run) {
             run += 1
         }
         if run == count {
             return i
         }
-        i = i + run
+        i += run
     }
     return -1
 }
 
+// "[.,:;!?)]+$" — trailing URL punctuation strip.
+fn stripTrailingUrlPunct(s str) str {
+    var end int = s.length.to(int)
+    while end > 0 {
+        let c = s.char_at(end - 1)
+        if c == 46 {
+            end -= 1
+        } else {
+            if c == 44 {
+                end -= 1
+            } else {
+                if c == 58 {
+                    end -= 1
+                } else {
+                    if c == 59 {
+                        end -= 1
+                    } else {
+                        if c == 33 {
+                            end -= 1
+                        } else {
+                            if c == 63 {
+                                end -= 1
+                            } else {
+                                if c == 41 {
+                                    end -= 1
+                                } else {
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if end == s.length.to(int) { return s }
+    return s.slice(0, end)
+}
+
+// "^https?://.+" — url-like prefix with at least one char after.
+fn isHttpUrl(s str) bool {
+    if startsWithStr(s, "http://") {
+        if s.length.to(int) > 7 { return true }
+    }
+    if startsWithStr(s, "https://") {
+        if s.length.to(int) > 8 { return true }
+    }
+    return false
+}
+
+// "^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$" — bare domain (chars all in the class,
+// last dot has >=1 class char before it and >=2 letters after).
+fn isBareDomain(s str) bool {
+    if s.length.to(int) == 0 { return false }
+    var dot int = -1
+    var i int = 0
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        var ok bool = false
+        if c >= 48 {
+            if c <= 57 { ok = true }
+        }
+        if c >= 65 {
+            if c <= 90 { ok = true }
+        }
+        if c >= 97 {
+            if c <= 122 { ok = true }
+        }
+        if c == 45 { ok = true }
+        if c == 46 {
+            ok = true
+            dot = i
+        }
+        if !ok { return false }
+        i += 1
+    }
+    if dot <= 0 { return false }
+    var letters int = 0
+    var j int = dot + 1
+    while j < s.length.to(int) {
+        let c = s.char_at(j)
+        if c >= 65 {
+            if c <= 90 {
+                letters += 1
+            } else {
+                return false
+            }
+        } else {
+            if c >= 97 {
+                if c <= 122 {
+                    letters += 1
+                } else {
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+        j += 1
+    }
+    if letters < 2 { return false }
+    return true
+}
+
 // Starting at i where line[i] == "[": parse [text](href "title").
-// Returns [indexAfter, text, href, loading, title] or nil. Once "(" follows
-// the closing "]", an unclosed link renders as a loading link (streaming and
-// final alike, matching the reference).
-fn scanLink(line str, i int, final bool, seenCode bool) any {
-    var close = line.indexOf("]", i)
-    if close == -1 { return nil }
+// Returns LinkScan or None. Once "(" follows the closing "]", an unclosed
+// link renders as a loading link (streaming and final alike, matching the
+// reference).
+fn scanLink(line str, i int, isFinal bool, seenCode bool) LinkScan? {
+    var close = findStrFrom(line, "]", i)
+    if close == -1 { return None }
     let text = line.slice(i + 1, close)
     var after = close + 1
-    if !line.startsWith("(", after) { return nil }
-    var end = line.indexOf(")", after)
+    if !startsWithAt(line, "(", after) { return None }
+    var end = findStrFrom(line, ")", after)
     if end == -1 {
         // loading link: "[text](href-without-close" -- url-like prefixes keep
         // their href (trailing punctuation is excluded from the url and
         // becomes trailing text), bare domains get http:// prepended
         let frag = line.slice(after + 1)
-        let urlMatch = frag.match(RegExp("^https?:\\/\\/.+"))
-        if urlMatch != nil {
-            var urlHref = frag.replace(RegExp("[.,:;!?)]+$"), "")
-            var tailText = frag.slice(urlHref.length)
-            var urlTitle any = ""
+        if isHttpUrl(frag) {
+            var urlHref = stripTrailingUrlPunct(frag)
+            var tailText = frag.slice(urlHref.length.to(int))
+            var urlTitle str? = Some("")
             if seenCode {
-                urlTitle = nil
+                urlTitle = None
             }
-            return [line.length, text, urlHref, true, urlTitle, tailText]
+            return Some(LinkScan(line.length.to(int), text, urlHref, true, urlTitle, tailText))
         }
-        let m = frag.match(RegExp("^[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))
-        if m != nil {
-            return [line.length, text, "http://" + frag, true, nil, ""]
+        if isBareDomain(frag) {
+            return Some(LinkScan(line.length.to(int), text, "http://" + frag, true, None, ""))
         }
-        return [line.length, text, "", true, nil, ""]
+        return Some(LinkScan(line.length.to(int), text, "", true, None, ""))
     }
     var inner = line.slice(after + 1, end)
     var href = inner
-    var title any = nil
-    let sp = inner.indexOf(" \"")
+    var title str? = None
+    let sp = findStr(inner, " \"")
     if sp != -1 {
         href = inner.slice(0, sp)
         let titlePart = inner.slice(sp + 2)
-        if titlePart.endsWith("\"") {
-            title = titlePart.slice(0, titlePart.length - 1)
+        if endsWithStr(titlePart, "\"") {
+            title = Some(titlePart.slice(0, titlePart.length.to(int) - 1))
         }
     } else {
         // reference quirks around a missing title: title:"" normally, but
         // title:null when the link ends the line OR an inline code span
         // appeared earlier on the line (the code span alters the token attrs
         // the reference builds the node from)
-        var lineTail = end + 1 >= line.length
+        var lineTail = end + 1 >= line.length.to(int)
         if !lineTail {
             if !seenCode {
-                title = ""
+                title = Some("")
             }
         }
     }
-    return [end + 1, text, href, false, title, ""]
+    return Some(LinkScan(end + 1, text, href, false, title, ""))
 }
 
 // ================================================================ plan 016
 // Phase 2: strong-typed block-tree output layer.
 //
-// parse_blocks(src, isFinal) parses through the legacy weak tree above and
-// converts it to the unified block model (block_model.at). The weak-tree
-// reads (`any` indexing) are inherently a2ts-only, same as the rest of this
-// file; everything that CONSTRUCTS model values follows the dual-emission
-// discipline (see block_model.at header / REPORT.md Phase 1 addendum).
-//
-// Mapping decisions:
-// - weak `code_block` -> BlockType.Fence with language/loading attrs; the
-//   AutoDown extension variants (Callout/Details/WikilinkBlock/QueryBlock/
-//   BlockEmbed/Mermaid/MathBlock) are NOT produced here because the current
-//   scanner emits none of them (out-of-subset per the file header). They
-//   remain reachable for hand-built trees; mermaid/math stay Fence +
-//   language attr, matching the render layer's existing branching.
-// - link/image carry their href/src/title in InlineSpan.attrs (Mark stays a
-//   unit enum).
-// - hardbreak -> InlineSpan("\n").
-// - Block ids: editor BlockId convention — explicit `^anchor` suffix wins,
-//   else `block-<top-index>`; nested blocks get `<parentId>-<childIndex>`.
-// - SourceRange: the scanner tracks no positions (startLine/endLine are
-//   dropped in the semantic projection), so source is a zero placeholder —
-//   registered gap, Phase 3+.
-// - IAL: preprocessMarkdown runs as a pre-step here (kernel path only;
-//   parseDocument keeps byte-identical legacy behavior), and extracted table
-//   attrs attach to top-level Table blocks as the `ial` attr.
+// parse_blocks(src, isFinal) parses through the weak tree above (WNode,
+// dual-portable since plan 019 Phase 1) and converts it to the unified
+// block model (block_model.at). Optional weak fields are consumed through
+// the `?? fallback` discipline; the mapping decisions are unchanged.
 
-use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText
-use ial: preprocessMarkdown
-
+// Dual-clean ^anchor extraction (no regex, no char indexing): last
+// whitespace-separated token of the trimmed text, must start with ^ and
+// contain only [a-zA-Z0-9_-]. Looser than the editor regex on tabs —
+// documented divergence.
 fn extractAnchorBlock(text str) str {
-    // Dual-clean ^anchor extraction (no regex, no char indexing): last
-    // whitespace-separated token of the trimmed text, must start with ^ and
-    // contain only [a-zA-Z0-9_-]. Looser than the editor regex on tabs —
-    // documented divergence.
     let t = text.trim()
     let parts = t.split(" ")
     let n = parts.length.to(int)
@@ -1337,110 +2077,119 @@ fn extractAnchorBlock(text str) str {
     return body
 }
 
-fn convertInlines(wnodes List<any>, marks List<Mark>) List<InlineSpan> {
+fn convertInlines(wnodes List<WNode>, marks List<Mark>) List<InlineSpan> {
     var out List<InlineSpan> = []
     for w in wnodes {
-        let t = w["type"]
+        let t str = w.type
         if t == "text" {
-            out.push(InlineSpan(w["content"], marks, []))
+            out.push(spanWith(w.content ?? "", marks, []))
         }
         if t == "strong" {
-            for s in convertInlines(w["children"], addMark(marks, Mark.Strong)) { out.push(s) }
+            for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Strong)) { out.push(s) }
         }
         if t == "emphasis" {
-            for s in convertInlines(w["children"], addMark(marks, Mark.Em)) { out.push(s) }
+            for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Em)) { out.push(s) }
         }
         if t == "strikethrough" {
-            for s in convertInlines(w["children"], addMark(marks, Mark.Del)) { out.push(s) }
+            for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Del)) { out.push(s) }
         }
         if t == "inline_code" {
-            out.push(InlineSpan(w["code"], addMark(marks, Mark.Code), []))
+            out.push(spanWith(w.code ?? "", addMark(marks, Mark.Code), []))
         }
         if t == "hardbreak" {
-            out.push(InlineSpan("\n", marks, []))
+            out.push(spanWith("\n", marks, []))
         }
         if t == "link" {
             var lattrs List<Attr> = []
-            lattrs = attrSet(lattrs, "href", Value.Str(w["href"]))
-            let title = w["title"]
-            if title != None { lattrs = attrSet(lattrs, "title", Value.Str(title)) }
-            for s in convertInlines(w["children"], addMark(marks, Mark.Link)) {
-                out.push(InlineSpan(s.text, s.marks, lattrs))
+            lattrs = attrSet(lattrs, "href", Value.Str(w.href ?? ""))
+            let title = w.title
+            if title != None {
+                lattrs = attrSet(lattrs, "title", Value.Str(title ?? ""))
+            }
+            for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Link)) {
+                out.push(spanWith(s.text, s.marks, lattrs))
             }
         }
         if t == "image" {
             var iattrs List<Attr> = []
-            iattrs = attrSet(iattrs, "src", Value.Str(w["src"]))
-            iattrs = attrSet(iattrs, "alt", Value.Str(w["alt"]))
-            let ititle = w["title"]
-            if ititle != None { iattrs = attrSet(iattrs, "title", Value.Str(ititle)) }
-            out.push(InlineSpan(w["alt"], addMark(marks, Mark.Image), iattrs))
+            iattrs = attrSet(iattrs, "src", Value.Str(w.src ?? ""))
+            iattrs = attrSet(iattrs, "alt", Value.Str(w.alt ?? ""))
+            let ititle = w.title
+            if ititle != None {
+                iattrs = attrSet(iattrs, "title", Value.Str(ititle ?? ""))
+            }
+            out.push(spanWith(w.alt ?? "", addMark(marks, Mark.Image), iattrs))
         }
     }
     return out
 }
 
-fn convertTableCell(wnode any, id str) BlockNode {
+fn convertTableCell(wnode WNode, id str) BlockNode {
     var attrs List<Attr> = []
-    attrs = attrSet(attrs, "header", Value.Bool(wnode["header"]))
-    attrs = attrSet(attrs, "align", Value.Str(wnode["align"]))
-    return BlockNode(id, BlockType.TableCell, attrs, [], convertInlines(wnode["children"], []), rng(0, 0))
+    attrs = attrSet(attrs, "header", Value.Bool(wnode.isHeader ?? false))
+    attrs = attrSet(attrs, "align", Value.Str(wnode.align ?? "left"))
+    return blockFull(id, BlockType.TableCell, attrs, [], convertInlines(wnode.children ?? noNodes(), []), rng(0, 0))
 }
 
-fn convertTableRow(wnode any, id str) BlockNode {
-    let cells = wnode["cells"]
+fn convertTableRow(wnode WNode, id str) BlockNode {
+    let cells = wnode.cells ?? noNodes()
     var kids List<BlockNode> = []
     for ci in 0..cells.length.to(int) {
         kids.push(convertTableCell(cells[ci], id + "-c" + ci.to(str)))
     }
-    return BlockNode(id, BlockType.TableRow, [], kids, [], rng(0, 0))
+    return blockFull(id, BlockType.TableRow, [], kids, [], rng(0, 0))
 }
 
-fn convertBlock(wnode any, id str) BlockNode {
-    let t = wnode["type"]
+fn convertBlock(wnode WNode, id str) BlockNode {
+    let t str = wnode.type
     if t == "heading" {
         var attrs List<Attr> = []
-        attrs = attrSet(attrs, "level", Value.Int(wnode["level"]))
-        return BlockNode(id, BlockType.Heading, attrs, [], convertInlines(wnode["children"], []), rng(0, 0))
+        attrs = attrSet(attrs, "level", Value.Int(wnode.level ?? 0))
+        return blockFull(id, BlockType.Heading, attrs, [], convertInlines(wnode.children ?? noNodes(), []), rng(0, 0))
     }
     if t == "code_block" {
         var attrs2 List<Attr> = []
-        attrs2 = attrSet(attrs2, "language", Value.Str(wnode["language"]))
-        attrs2 = attrSet(attrs2, "loading", Value.Bool(wnode["loading"]))
-        return BlockNode(id, BlockType.Fence, attrs2, [], [span(wnode["code"])], rng(0, 0))
+        attrs2 = attrSet(attrs2, "language", Value.Str(wnode.language ?? ""))
+        attrs2 = attrSet(attrs2, "loading", Value.Bool(wnode.loading ?? false))
+        return blockFull(id, BlockType.Fence, attrs2, [], [span(wnode.code ?? "")], rng(0, 0))
     }
     if t == "blockquote" {
-        return BlockNode(id, BlockType.Blockquote, [], convertChildren(wnode["children"], id), [], rng(0, 0))
+        return blockFull(id, BlockType.Blockquote, [], convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0))
     }
     if t == "list" {
         var attrs3 List<Attr> = []
-        attrs3 = attrSet(attrs3, "ordered", Value.Bool(wnode["ordered"]))
-        let start = wnode["start"]
-        if start != None { attrs3 = attrSet(attrs3, "start", Value.Int(start)) }
-        return BlockNode(id, BlockType.ListBlock, attrs3, convertChildren(wnode["items"], id), [], rng(0, 0))
+        attrs3 = attrSet(attrs3, "ordered", Value.Bool(wnode.ordered ?? false))
+        let start = wnode.start
+        if start != None {
+            attrs3 = attrSet(attrs3, "start", Value.Int(start ?? 0))
+        }
+        return blockFull(id, BlockType.ListBlock, attrs3, convertChildren(wnode.items ?? noNodes(), id), [], rng(0, 0))
     }
     if t == "list_item" {
-        return BlockNode(id, BlockType.ListItem, [], convertChildren(wnode["children"], id), [], rng(0, 0))
+        return blockFull(id, BlockType.ListItem, [], convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0))
     }
     if t == "table" {
         var kids List<BlockNode> = []
-        kids.push(convertTableRow(wnode["header"], id + "-h"))
-        let rows = wnode["rows"]
+        let hdr = wnode.header ?? noNodes()
+        if hdr.length.to(int) > 0 {
+            kids.push(convertTableRow(hdr[0], id + "-h"))
+        }
+        let rows = wnode.rows ?? noNodes()
         for ri in 0..rows.length.to(int) {
             kids.push(convertTableRow(rows[ri], id + "-r" + ri.to(str)))
         }
         var attrs4 List<Attr> = []
-        attrs4 = attrSet(attrs4, "loading", Value.Bool(wnode["loading"]))
-        return BlockNode(id, BlockType.Table, attrs4, kids, [], rng(0, 0))
+        attrs4 = attrSet(attrs4, "loading", Value.Bool(wnode.loading ?? false))
+        return blockFull(id, BlockType.Table, attrs4, kids, [], rng(0, 0))
     }
     if t == "thematic_break" {
-        return BlockNode(id, BlockType.ThematicBreak, [], [], [], rng(0, 0))
+        return blockFull(id, BlockType.ThematicBreak, [], [], [], rng(0, 0))
     }
     // paragraph and anything unrecognized degrade to Paragraph
-    return BlockNode(id, BlockType.Paragraph, [], [], convertInlines(wnode["children"], []), rng(0, 0))
+    return blockFull(id, BlockType.Paragraph, [], [], convertInlines(wnode.children ?? noNodes(), []), rng(0, 0))
 }
 
-fn convertChildren(wchildren List<any>, parentId str) List<BlockNode> {
+fn convertChildren(wchildren List<WNode>, parentId str) List<BlockNode> {
     var out List<BlockNode> = []
     for i in 0..wchildren.length.to(int) {
         out.push(convertBlock(wchildren[i], parentId + "-" + i.to(str)))
@@ -1448,32 +2197,35 @@ fn convertChildren(wchildren List<any>, parentId str) List<BlockNode> {
     return out
 }
 
-fn intListToValue(arr List<any>) Value {
+fn intListToValue(arr List<int?>) Value {
     var out List<Value> = []
-    for v in arr {
+    var i int = 0
+    while i < arr.length.to(int) {
+        let v = arr[i]
         if v == None {
             out.push(Value.Null())
         } else {
-            out.push(Value.Int(v))
+            out.push(Value.Int(v ?? 0))
         }
+        i += 1
     }
     return Value.ListV(out)
 }
 
 // Attach extracted IAL table attrs to top-level Table blocks (document order).
-fn attachIAL(blocks List<BlockNode>, ialAttrs List<any>) List<BlockNode> {
+fn attachIAL(blocks List<BlockNode>, ialAttrs List<TableAttr>) List<BlockNode> {
     var out List<BlockNode> = []
     var ti int = 0
     for b in blocks {
         if b.kind == BlockType.Table {
             if ti < ialAttrs.length.to(int) {
                 let ta = ialAttrs[ti]
-                let cols = intListToValue(ta["cols"])
-                let rows = intListToValue(ta["rows"])
+                let cols = intListToValue(ta.cols)
+                let rows = intListToValue(ta.rows)
                 var ialPair List<Attr> = []
-                ialPair.push(Attr("cols", cols))
-                ialPair.push(Attr("rows", rows))
-                out.push(BlockNode(b.id, b.kind, attrSet(b.attrs, "ial", Value.AttrsV(ialPair)), b.children, b.inlines, b.source))
+                ialPair.push(attrOf("cols", cols))
+                ialPair.push(attrOf("rows", rows))
+                out.push(blockFull(b.id, b.kind, attrSet(b.attrs, "ial", Value.AttrsV(ialPair)), b.children, b.inlines, b.source))
                 ti += 1
             } else {
                 out.push(b)
@@ -1489,17 +2241,18 @@ fn attachIAL(blocks List<BlockNode>, ialAttrs List<any>) List<BlockNode> {
 fn withAnchorId(node BlockNode, fallbackId str) BlockNode {
     let anchor = extractAnchorBlock(spansText(node.inlines))
     if anchor == "" { return node }
-    return BlockNode(anchor, node.kind, node.attrs, node.children, node.inlines, node.source)
+    return blockFull(anchor, node.kind, node.attrs, node.children, node.inlines, node.source)
 }
 
-fn parse_blocks(src str, isFinal bool) BlockNode {
+pub fn parse_blocks(src str, isFinal bool) BlockNode {
     let pre = preprocessMarkdown(src)
-    let weak = parseDocument(pre["md"], isFinal)
+    let preMd = pre.md
+    let weak = parseDocument(preMd, isFinal)
     var kids List<BlockNode> = []
     for i in 0..weak.length.to(int) {
         let fallback = "block-" + i.to(str)
         kids.push(withAnchorId(convertBlock(weak[i], fallback), fallback))
     }
-    let withIal = attachIAL(kids, pre["tableAttrs"])
-    return BlockNode("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0))
+    let withIal = attachIAL(kids, pre.tableAttrs)
+    return blockFull("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0))
 }

@@ -5,8 +5,12 @@
 generated pure re-export barrel (`export * from` the three modules).
 
 - `ial.at` — the Auto language source of the IAL (Inline Attribute List) utilities
-  (`TableAttr`, `preprocessMarkdown`, `buildIAL`, `formatValue`, `formatArray`,
-  `hasAnyValue`; `parseValue`/`parseArray` stay internal, same as before).
+  (`TableAttr`, `PreDoc`, `preprocessMarkdown`, `buildIAL`, `formatValue`,
+  `formatArray`, `hasAnyValue`, plus the dual-portable string vocabulary —
+  `startsWithStr`/`findStr`/`scanIntPrefix`/...; `parseValue`/`parseArray`
+  stay internal). Plan 019 Phase 1: no RegExp/lambdas/parseInt — the
+  table+IAL extraction is a line scan; `preprocessMarkdown` returns the
+  typed `PreDoc` struct.
 - `block_model.at` — the unified block model (plan 016 Phase 1): `BlockNode` /
   `InlineSpan` / `Mark` / `BlockType` / `Attr` / `Value` / `BlockPos` /
   `Selection`, tree lookup/surgery helpers, the `Op` operation set
@@ -14,9 +18,17 @@ generated pure re-export barrel (`export * from` the three modules).
   `ReplaceRange`) as pure functions (`applyOp`), and `invertOp` for undo.
   Generated to `src/block-model.ts`.
 - `markdown_parser.at` — the incremental markdown parser (plan 016 Phase 2,
-  moved here from `packages/vue/auto`): unchanged weak-tree `parseDocument`
-  (byte-identical legacy behavior, no IAL), plus a strong typed-tree output
-  layer appended at the end of the file: `parse_blocks(src, isFinal)` runs
+  moved here from `packages/vue/auto`). **Plan 019 Phase 1** retyped the
+  weak-tree layer for dual emission: `parseDocument` now builds `WNode`
+  structs (property-compatible with the old plain objects; unset optional
+  fields are `null`) through per-kind factories, all RegExp scans are
+  manual character scans (ial.at helper vocabulary + `char_at` code tests),
+  and `scanDelim`/`scanLink` return `DelimScan`/`LinkScan` structs instead
+  of tuple arrays. TS behavior is pinned by markdown-parity (vs the real
+  stream-markdown-parser) and the rust-parse-parity golden; the same source
+  a2r-emits into `packages/core/rust` (see that crate's README for the
+  registered divergences). The strong typed-tree output layer:
+ `parse_blocks(src, isFinal)` runs
   `preprocessMarkdown` as a pre-step, converts the weak tree to `BlockNode`
   (`convertBlock`/`convertInlines`/table converters), attaches extracted IAL
   table attrs to top-level `Table` blocks (`ial` attr, `AttrsV[cols, rows]`,

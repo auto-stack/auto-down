@@ -81,6 +81,14 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 
 ### Phase 2 — 后端纯逻辑 .at 化（a2r-clean subset）
 
+> **进度（2026-08-28 slice 1 完成）**：back/auto/parser.at 单源落地——
+> 块分段/锚点剥离/属性扫描退役 parser.rs（薄壳化，pub API 零改动）；
+> back/auto/gen.mjs 双发射 a2ts/a2r；fixtures.json 单源对拍
+> （rust parse_gen_parity_fixtures + node tests/parity.mjs 双侧断言）。
+> 登记偏差：有序列表统一为「数字串 + . 」（原 parse_list_item 只认
+> 1./0.，与 is_block_start 的 ORDERED_RE 不一致，"12. x" 行会进空段落
+> 死循环——顺带修复）。后续 slice：links 索引 → search/tasks/query → srs。
+>
 - **前置（过渡期工具链依赖，2026-08-27 登记）**：a2r 转译须用含
   plan-019 发射器修复（r# 保留字转义等 8 组）的 auto.exe。该修复
   2026-08-27 13:46 才合入 auto-lang master（`45b005d01`）；主检出

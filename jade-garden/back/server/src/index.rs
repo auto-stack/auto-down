@@ -553,7 +553,7 @@ impl Index {
         // Page title / frontmatter FTS
         let pages: Vec<SearchResult> = {
             let mut stmt = conn.prepare(
-                "SELECT p.path, p.title, snippet(fts_pages, 2, '\u{0001}', '\u{0001}', '…', 32) AS snippet
+                "SELECT p.path, p.title, snippet(fts_pages, 1, '\u{0001}', '\u{0001}', '…', 32) AS snippet
                  FROM fts_pages fp
                  JOIN pages p ON p.rowid = fp.rowid
                  WHERE fts_pages MATCH ?1

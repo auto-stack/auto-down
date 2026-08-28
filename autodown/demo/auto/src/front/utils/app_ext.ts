@@ -12,9 +12,10 @@
 //    handler assigns the mounted elements/instances into the bag). Owns the
 //    initial document content, the three template refs, useSyncedScroll and
 //    useTableColumnResize — the original App.vue's glue.
-// 2. AutoDownEditor / StreamingRenderer re-exports — they come from the
-//    workspace packages '@autodown/editor' / '@autodown/vue'; the gen project
-//    resolves them through pac.at `npm_deps` link: entries.
+// 2. AutoDownEditor / StreamingRenderer re-exports — both come from the
+//    workspace package '@autodown/engine' (plan 020 Phase 2: direct target
+//    state, no shim); the gen project resolves it through pac.at `npm_deps`
+//    link: entries.
 // 3. logSave / logCancel — console handlers.
 // 4. editingBlock — reserved state for the future block-level inline editing
 //    box (always null today), kept here so the widget can bind
@@ -26,13 +27,12 @@
 // double-src mirror is copied in by gen/regen.sh — jade gap 32 precedent).
 
 import { computed, reactive, ref } from 'vue'
-import type { BlockInfo } from '@autodown/editor'
+import type { BlockInfo } from '@autodown/engine'
 import { initialContent } from '../../../../src/content'
 import { useSyncedScroll } from '../../../../src/composables/useSyncedScroll'
 import { useTableColumnResize } from '../../../../src/composables/useTableColumnResize'
 
-export { AutoDownEditor } from '@autodown/editor'
-export { StreamingRenderer } from '@autodown/vue'
+export { AutoDownEditor, StreamingRenderer } from '@autodown/engine'
 
 export function useDemoAppBridge() {
   const workspaceRef = ref<HTMLElement | null>(null)

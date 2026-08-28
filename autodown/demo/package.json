@@ -9,9 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@autodown/core": "workspace:*",
-    "@autodown/editor": "workspace:*",
-    "@autodown/vue": "workspace:*",
+    "@autodown/engine": "workspace:*",
     "lucide-vue-next": "^0.460.0",
     "vue": "^3.4.0"
   },

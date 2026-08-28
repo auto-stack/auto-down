@@ -1,4 +1,5 @@
 use crate::links_gen;
+use crate::search_gen;
 use crate::block::{generate_uuid, Block, BlockKind};
 use crate::parser::{parse_page, split_frontmatter};
 use rusqlite::{params, Connection, OptionalExtension};
@@ -84,60 +85,19 @@ impl Index {
             ) STRICT;
             CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(tag_name);
 
-            CREATE VIRTUAL TABLE IF NOT EXISTS fts_pages USING fts5(
-                title,
-                frontmatter,
-                content=pages,
-                content_rowid=rowid
-            );
-            CREATE TRIGGER IF NOT EXISTS pages_fts_insert AFTER INSERT ON pages BEGIN
-                INSERT INTO fts_pages(rowid, title, frontmatter)
-                VALUES (new.rowid, new.title, new.frontmatter);
-            END;
-            CREATE TRIGGER IF NOT EXISTS pages_fts_update AFTER UPDATE ON pages BEGIN
-                INSERT INTO fts_pages(fts_pages, rowid, title, frontmatter)
-                VALUES ('delete', old.rowid, old.title, old.frontmatter);
-                INSERT INTO fts_pages(rowid, title, frontmatter)
-                VALUES (new.rowid, new.title, new.frontmatter);
-            END;
-            CREATE TRIGGER IF NOT EXISTS pages_fts_delete AFTER DELETE ON pages BEGIN
-                INSERT INTO fts_pages(fts_pages, rowid, title, frontmatter)
-                VALUES ('delete', old.rowid, old.title, old.frontmatter);
-            END;
-
-            CREATE VIRTUAL TABLE IF NOT EXISTS fts_blocks USING fts5(
-                content,
-                content=blocks,
-                content_rowid=rowid
-            );
-            CREATE TRIGGER IF NOT EXISTS blocks_fts_insert AFTER INSERT ON blocks BEGIN
-                INSERT INTO fts_blocks(rowid, content)
-                VALUES (new.rowid, new.content);
-            END;
-            CREATE TRIGGER IF NOT EXISTS blocks_fts_update AFTER UPDATE ON blocks BEGIN
-                INSERT INTO fts_blocks(fts_blocks, rowid, content)
-                VALUES ('delete', old.rowid, old.content);
-                INSERT INTO fts_blocks(rowid, content)
-                VALUES (new.rowid, new.content);
-            END;
-            CREATE TRIGGER IF NOT EXISTS blocks_fts_delete AFTER DELETE ON blocks BEGIN
-                INSERT INTO fts_blocks(fts_blocks, rowid, content)
-                VALUES ('delete', old.rowid, old.content);
-            END;
+            -- Plan 022 slice 5: FTS5 retired (search moved to search.at
+            -- over plain rows). Drop the virtual tables and their triggers
+            -- from databases created before the switch.
+            DROP TRIGGER IF EXISTS pages_fts_insert;
+            DROP TRIGGER IF EXISTS pages_fts_update;
+            DROP TRIGGER IF EXISTS pages_fts_delete;
+            DROP TRIGGER IF EXISTS blocks_fts_insert;
+            DROP TRIGGER IF EXISTS blocks_fts_update;
+            DROP TRIGGER IF EXISTS blocks_fts_delete;
+            DROP TABLE IF EXISTS fts_pages;
+            DROP TABLE IF EXISTS fts_blocks;
             "#,
         )
-    }
-
-    /// Rebuild FTS tables from scratch. Useful after schema changes or if triggers
-    /// drift out of sync.
-    #[allow(dead_code)]
-    pub fn rebuild_fts(&self) -> Result<(), rusqlite::Error> {
-        let conn = self.conn.lock().unwrap();
-        conn.execute("DELETE FROM fts_pages", ())?;
-        conn.execute("INSERT INTO fts_pages(rowid, title, frontmatter) SELECT rowid, title, frontmatter FROM pages", ())?;
-        conn.execute("DELETE FROM fts_blocks", ())?;
-        conn.execute("INSERT INTO fts_blocks(rowid, content) SELECT rowid, content FROM blocks", ())?;
-        Ok(())
     }
 
     /// Index or re-index a single file.
@@ -541,62 +501,75 @@ impl Index {
         limit: usize,
     ) -> Result<Vec<SearchResult>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
-        let mut results = Vec::new();
-
-        // Normalize the query: trim and escape FTS5 special characters.
+        // Normalize the query: trim (matching itself is plain substring —
+        // FTS5 escaping died with FTS5).
         let q = query.trim();
         if q.is_empty() {
-            return Ok(results);
+            return Ok(Vec::new());
         }
-        let escaped = escape_fts_query(q);
 
-        // Page title / frontmatter FTS
-        let pages: Vec<SearchResult> = {
-            let mut stmt = conn.prepare(
-                "SELECT p.path, p.title, snippet(fts_pages, 1, '\u{0001}', '\u{0001}', '…', 32) AS snippet
-                 FROM fts_pages fp
-                 JOIN pages p ON p.rowid = fp.rowid
-                 WHERE fts_pages MATCH ?1
-                 ORDER BY rank
-                 LIMIT ?2",
-            )?;
-            stmt.query_map(params![escaped, limit], |row| {
-                Ok(SearchResult::Page {
+        // Plan 022 slice 5: matching/snippet/ranking live in search.at
+        // (search_gen, dual-emitted); the shell only loads rows. The
+        // highlight/ellipsis constants are injected here — the Auto
+        // emitters do not interpret \u escapes in string literals.
+        let open = "\u{0001}";
+
+        let mut pages: Vec<search_gen::SrPage> = Vec::new();
+        {
+            let mut stmt = conn.prepare("SELECT path, title, frontmatter FROM pages")?;
+            let rows = stmt.query_map([], |row| {
+                Ok(search_gen::SrPage {
                     path: row.get(0)?,
                     title: row.get(1)?,
-                    snippet: row.get(2)?,
+                    frontmatter: row.get(2)?,
                 })
-            })?
-            .collect::<Result<_, _>>()?
-        };
-        results.extend(pages);
+            })?;
+            for r in rows {
+                pages.push(r?);
+            }
+        }
 
-        // Block content FTS
-        let blocks: Vec<SearchResult> = {
+        let mut blocks: Vec<search_gen::SrBlock> = Vec::new();
+        {
             let mut stmt = conn.prepare(
-                "SELECT b.uuid, b.page_path, b.block_id, b.content,
-                        snippet(fts_blocks, 0, '\u{0001}', '\u{0001}', '…', 32) AS snippet
-                 FROM fts_blocks fb
-                 JOIN blocks b ON b.rowid = fb.rowid
-                 WHERE fts_blocks MATCH ?1
-                 ORDER BY rank
-                 LIMIT ?2",
+                "SELECT uuid, page_path, COALESCE(block_id, ''), content FROM blocks",
             )?;
-            stmt.query_map(params![escaped, limit], |row| {
-                Ok(SearchResult::Block {
+            let rows = stmt.query_map([], |row| {
+                Ok(search_gen::SrBlock {
                     uuid: row.get(0)?,
-                    page_path: row.get(1)?,
-                    block_id: row.get(2)?,
+                    pagePath: row.get(1)?,
+                    blockId: row.get(2)?,
                     content: row.get(3)?,
-                    snippet: row.get(4)?,
                 })
-            })?
-            .collect::<Result<_, _>>()?
-        };
-        results.extend(blocks);
+            })?;
+            for r in rows {
+                blocks.push(r?);
+            }
+        }
 
-        results.truncate(limit);
-        Ok(results)
+        let hits = search_gen::searchAll(pages, blocks, q, limit as i64, open, open, "…");
+
+        Ok(hits
+            .into_iter()
+            .map(|h| {
+                let snippet = (!h.snippet.is_empty()).then_some(h.snippet);
+                if h.isPage {
+                    SearchResult::Page {
+                        path: h.path,
+                        title: h.title,
+                        snippet,
+                    }
+                } else {
+                    SearchResult::Block {
+                        uuid: h.uuid,
+                        page_path: h.path,
+                        block_id: (!h.blockId.is_empty()).then_some(h.blockId),
+                        content: h.content,
+                        snippet,
+                    }
+                }
+            })
+            .collect())
     }
 
     #[allow(dead_code)]
@@ -699,13 +672,6 @@ pub struct GraphData {
 pub enum SearchResult {
     Page { path: String, title: String, snippet: Option<String> },
     Block { uuid: String, page_path: String, block_id: Option<String>, content: String, snippet: Option<String> },
-}
-
-fn escape_fts_query(q: &str) -> String {
-    // Wrap the whole query in double quotes so FTS5 treats it as a single phrase
-    // and special characters inside are escaped.
-    let escaped = q.replace('"', "\"\"");
-    format!("\"{}\"", escaped)
 }
 
 #[derive(Debug, Clone)]

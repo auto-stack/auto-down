@@ -133,3 +133,67 @@ pub async fn search_blocks(
         results: blocks,
     }))
 }
+
+#[cfg(test)]
+mod search_gen_parity {
+    // Cross-language parity with the TS twin (../../auto/tests/search-parity.mjs).
+    // Both sides drive search_gen::searchAll over the same fixture file; the
+    // shell-level Index::search row loading stays covered by index.rs tests.
+
+    fn fixtures() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../auto/tests/search-fixtures.json")).unwrap()
+    }
+
+    #[test]
+    fn search_parity_fixtures() {
+        let fx = fixtures();
+        let open = fx["marks"]["open"].as_str().unwrap();
+        let close = fx["marks"]["close"].as_str().unwrap();
+        let ellipsis = fx["marks"]["ellipsis"].as_str().unwrap();
+        for c in fx["cases"].as_array().unwrap() {
+            let name = c["name"].as_str().unwrap();
+            let pages: Vec<crate::search_gen::SrPage> = c["pages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| crate::search_gen::SrPage {
+                    path: p["path"].as_str().unwrap().to_string(),
+                    title: p["title"].as_str().unwrap().to_string(),
+                    frontmatter: p["frontmatter"].as_str().unwrap().to_string(),
+                })
+                .collect();
+            let blocks: Vec<crate::search_gen::SrBlock> = c["blocks"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|b| crate::search_gen::SrBlock {
+                    uuid: b["uuid"].as_str().unwrap().to_string(),
+                    pagePath: b["pagePath"].as_str().unwrap().to_string(),
+                    blockId: b["blockId"].as_str().unwrap().to_string(),
+                    content: b["content"].as_str().unwrap().to_string(),
+                })
+                .collect();
+            let hits = crate::search_gen::searchAll(
+                pages,
+                blocks,
+                c["query"].as_str().unwrap(),
+                c["limit"].as_i64().unwrap(),
+                open,
+                close,
+                ellipsis,
+            );
+            let expected = c["expected"].as_array().unwrap();
+            assert_eq!(hits.len(), expected.len(), "{name}: hit count");
+            for (i, (h, e)) in hits.iter().zip(expected).enumerate() {
+                let label = format!("{name} #{i}");
+                assert_eq!(h.isPage, e["isPage"].as_bool().unwrap(), "{label}: isPage");
+                assert_eq!(h.path, e["path"].as_str().unwrap(), "{label}: path");
+                assert_eq!(h.title, e["title"].as_str().unwrap(), "{label}: title");
+                assert_eq!(h.uuid, e["uuid"].as_str().unwrap(), "{label}: uuid");
+                assert_eq!(h.blockId, e["blockId"].as_str().unwrap(), "{label}: blockId");
+                assert_eq!(h.content, e["content"].as_str().unwrap(), "{label}: content");
+                assert_eq!(h.snippet, e["snippet"].as_str().unwrap(), "{label}: snippet");
+            }
+        }
+    }
+}

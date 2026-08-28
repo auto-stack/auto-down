@@ -1,0 +1,440 @@
+{
+  "marks": {
+    "open": "\u0001",
+    "close": "\u0001",
+    "ellipsis": "…"
+  },
+  "cases": [
+    {
+      "name": "title-case-fold",
+      "pages": [
+        {
+          "path": "Auto Down.ad",
+          "title": "Auto Down",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [],
+      "query": "AUTO",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": true,
+          "path": "Auto Down.ad",
+          "title": "Auto Down",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001Auto\u0001 Down"
+        }
+      ]
+    },
+    {
+      "name": "cjk-substring-all-occurrences",
+      "pages": [],
+      "blocks": [
+        {
+          "uuid": "u1",
+          "pagePath": "市场.ad",
+          "blockId": "",
+          "content": "前门大桥正当前门"
+        }
+      ],
+      "query": "前门",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": false,
+          "path": "市场.ad",
+          "title": "",
+          "uuid": "u1",
+          "blockId": "",
+          "content": "前门大桥正当前门",
+          "snippet": "\u0001前门\u0001大桥正当\u0001前门\u0001"
+        }
+      ]
+    },
+    {
+      "name": "pages-before-blocks-limit-truncation",
+      "pages": [
+        {
+          "path": "a.ad",
+          "title": "x here",
+          "frontmatter": "{}"
+        },
+        {
+          "path": "b.ad",
+          "title": "x there",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [
+        {
+          "uuid": "u1",
+          "pagePath": "a.ad",
+          "blockId": "",
+          "content": "has x"
+        },
+        {
+          "uuid": "u2",
+          "pagePath": "b.ad",
+          "blockId": "",
+          "content": "has x"
+        }
+      ],
+      "query": "x",
+      "limit": 3,
+      "expected": [
+        {
+          "isPage": true,
+          "path": "a.ad",
+          "title": "x here",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001x\u0001 here"
+        },
+        {
+          "isPage": true,
+          "path": "b.ad",
+          "title": "x there",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001x\u0001 there"
+        },
+        {
+          "isPage": false,
+          "path": "a.ad",
+          "title": "",
+          "uuid": "u1",
+          "blockId": "",
+          "content": "has x",
+          "snippet": "has \u0001x\u0001"
+        }
+      ]
+    },
+    {
+      "name": "empty-query",
+      "pages": [
+        {
+          "path": "a.ad",
+          "title": "x",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [],
+      "query": "   ",
+      "limit": 20,
+      "expected": []
+    },
+    {
+      "name": "no-match",
+      "pages": [
+        {
+          "path": "a.ad",
+          "title": "x",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [],
+      "query": "zzz",
+      "limit": 20,
+      "expected": []
+    },
+    {
+      "name": "occurrence-count-desc",
+      "pages": [],
+      "blocks": [
+        {
+          "uuid": "u1",
+          "pagePath": "p.ad",
+          "blockId": "",
+          "content": "hit once"
+        },
+        {
+          "uuid": "u2",
+          "pagePath": "q.ad",
+          "blockId": "",
+          "content": "hit hit twice"
+        }
+      ],
+      "query": "hit",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": false,
+          "path": "q.ad",
+          "title": "",
+          "uuid": "u2",
+          "blockId": "",
+          "content": "hit hit twice",
+          "snippet": "\u0001hit\u0001 \u0001hit\u0001 twice"
+        },
+        {
+          "isPage": false,
+          "path": "p.ad",
+          "title": "",
+          "uuid": "u1",
+          "blockId": "",
+          "content": "hit once",
+          "snippet": "\u0001hit\u0001 once"
+        }
+      ]
+    },
+    {
+      "name": "tie-path-then-uuid-asc",
+      "pages": [],
+      "blocks": [
+        {
+          "uuid": "u1",
+          "pagePath": "b.ad",
+          "blockId": "",
+          "content": "q here"
+        },
+        {
+          "uuid": "u2",
+          "pagePath": "a.ad",
+          "blockId": "",
+          "content": "q here"
+        },
+        {
+          "uuid": "u0",
+          "pagePath": "a.ad",
+          "blockId": "",
+          "content": "q here"
+        }
+      ],
+      "query": "q",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": false,
+          "path": "a.ad",
+          "title": "",
+          "uuid": "u0",
+          "blockId": "",
+          "content": "q here",
+          "snippet": "\u0001q\u0001 here"
+        },
+        {
+          "isPage": false,
+          "path": "a.ad",
+          "title": "",
+          "uuid": "u2",
+          "blockId": "",
+          "content": "q here",
+          "snippet": "\u0001q\u0001 here"
+        },
+        {
+          "isPage": false,
+          "path": "b.ad",
+          "title": "",
+          "uuid": "u1",
+          "blockId": "",
+          "content": "q here",
+          "snippet": "\u0001q\u0001 here"
+        }
+      ]
+    },
+    {
+      "name": "long-content-window-ellipsis",
+      "pages": [],
+      "blocks": [
+        {
+          "uuid": "w1",
+          "pagePath": "long.ad",
+          "blockId": "",
+          "content": "ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab NEEDLE cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd"
+        }
+      ],
+      "query": "needle",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": false,
+          "path": "long.ad",
+          "title": "",
+          "uuid": "w1",
+          "blockId": "",
+          "content": "ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab NEEDLE cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd",
+          "snippet": "…ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab \u0001NEEDLE\u0001 cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd…"
+        }
+      ]
+    },
+    {
+      "name": "frontmatter-match-snippet",
+      "pages": [
+        {
+          "path": "a.ad",
+          "title": "Totally Different",
+          "frontmatter": "{\"aliases\":[\"SecretName\"]}"
+        }
+      ],
+      "blocks": [],
+      "query": "secretname",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": true,
+          "path": "a.ad",
+          "title": "Totally Different",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "{\"aliases\":[\"\u0001SecretName\u0001\"]}"
+        }
+      ]
+    },
+    {
+      "name": "literal-regex-chars",
+      "pages": [],
+      "blocks": [
+        {
+          "uuid": "r1",
+          "pagePath": "p.ad",
+          "blockId": "",
+          "content": "foo ((("
+        }
+      ],
+      "query": "(((",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": false,
+          "path": "p.ad",
+          "title": "",
+          "uuid": "r1",
+          "blockId": "",
+          "content": "foo (((",
+          "snippet": "foo \u0001(((\u0001"
+        }
+      ]
+    },
+    {
+      "name": "multi-word-literal-phrase",
+      "pages": [],
+      "blocks": [
+        {
+          "uuid": "m1",
+          "pagePath": "p.ad",
+          "blockId": "",
+          "content": "x foo bar y"
+        }
+      ],
+      "query": "foo bar",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": false,
+          "path": "p.ad",
+          "title": "",
+          "uuid": "m1",
+          "blockId": "",
+          "content": "x foo bar y",
+          "snippet": "x \u0001foo bar\u0001 y"
+        }
+      ]
+    },
+    {
+      "name": "limit-zero",
+      "pages": [
+        {
+          "path": "a.ad",
+          "title": "x",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [],
+      "query": "x",
+      "limit": 0,
+      "expected": []
+    },
+    {
+      "name": "page-count-ranking",
+      "pages": [
+        {
+          "path": "one.ad",
+          "title": "dup",
+          "frontmatter": "{}"
+        },
+        {
+          "path": "two.ad",
+          "title": "dup dup",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [],
+      "query": "dup",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": true,
+          "path": "two.ad",
+          "title": "dup dup",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001dup\u0001 \u0001dup\u0001"
+        },
+        {
+          "isPage": true,
+          "path": "one.ad",
+          "title": "dup",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001dup\u0001"
+        }
+      ]
+    },
+    {
+      "name": "title-snippet-priority",
+      "pages": [
+        {
+          "path": "p.ad",
+          "title": "Alpha Page",
+          "frontmatter": "{\"note\":\"alpha here\"}"
+        }
+      ],
+      "blocks": [],
+      "query": "alpha",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": true,
+          "path": "p.ad",
+          "title": "Alpha Page",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001Alpha\u0001 Page"
+        }
+      ]
+    },
+    {
+      "name": "query-trimmed",
+      "pages": [
+        {
+          "path": "a.ad",
+          "title": "x",
+          "frontmatter": "{}"
+        }
+      ],
+      "blocks": [],
+      "query": "  x  ",
+      "limit": 20,
+      "expected": [
+        {
+          "isPage": true,
+          "path": "a.ad",
+          "title": "x",
+          "uuid": "",
+          "blockId": "",
+          "content": "",
+          "snippet": "\u0001x\u0001"
+        }
+      ]
+    }
+  ]
+}

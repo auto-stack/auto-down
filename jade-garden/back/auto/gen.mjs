@@ -51,6 +51,10 @@ const SOURCES = [
     at: 'srs.at',
     structs: ['PropPair', 'Qa', 'SrsBlock', 'SrsCardRaw', 'SchedOut'],
   },
+  {
+    at: 'search.at',
+    structs: ['SrPage', 'SrBlock', 'SrHit'],
+  },
 ]
 
 const ctorRegexFor = (structs) =>

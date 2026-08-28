@@ -13,6 +13,7 @@ mod parser_gen;
 mod query;
 mod query_gen;
 mod search;
+mod search_gen;
 mod srs;
 mod srs_gen;
 mod state;

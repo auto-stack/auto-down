@@ -2,7 +2,7 @@
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 2 slice 4 完成，2026-08-28）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 2 slice 5 完成，2026-08-28）**。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -111,6 +111,35 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > 同步 tmp/wiki-demo fixture，与 021 会话同款环境项）。剩余 slice：
 > search（触发 SQLite 存储裁定项）；Phase 1（api.at 契约固化）仍欠。
 >
+> **进度（2026-08-28 slice 5 完成）**：search 纯逻辑 .at 化 + FTS5 退役 +
+> SQLite 存储裁定落定——`search.at`（查询 trim+ASCII 折叠 / 大小写不敏感
+> 子串匹配 / 首命中词对齐窗口 snippet（壳注入 \u0001 标记包裹、两侧省略
+> 号）/ 确定性排序（页先块后、命中数降序、path/uuid/blockId 升序决胜）/
+> limit 截断）退役 index.rs 的 FTS5 虚拟表+6 触发器+escape_fts_query+
+> rebuild_fts（init 含旧库 DROP 清理）；壳收缩为「SQL 读行 →
+> search_gen::searchAll」。高亮标记串由壳注入——`\u0001` 转义字面量两侧
+> 发射器都不解释（探针实测，透传为字面反斜杠）。
+> **存储裁定（裁定项销号，倾向落地为裁定）**：JSON 文件存储方向，否决
+> rusqlite FFI。实测依据：a2r-std fs+json 面完整可用；FTS5 退役后 SQLite
+> 只剩普通行表（索引可再生缓存），JSON 化无技术障碍；为可再生缓存引
+> rusqlite 绑定面违背减 FFI 面。落地分两步：本 slice 已卸掉 FTS5（SQLite
+> 在索引中的唯一不可替代件），行缓存迁 `jade-garden-index.json` 立为独立
+> 小步（涉 index.rs 全部消费方，防 blast radius），Phase 3（VM 接管）前
+> 完成即可。搜索语义登记偏差（FTS5→char-scan，无测试钉死 bm25/分词——
+> e2e 23 条零搜索断言）：子串匹配替代 unicode61 分词（CJK 连续串内可
+> 命中，实测「项目」命中「项目二」，FTS5 时代查不到，属增强）；bm25 换
+> 命中数排序（tie path/uuid 升序，确定性）；查询字面化（FTS5 语法与引号
+> 转义壳消亡）；页 snippet 命中 title 时改取 title（旧恒取 frontmatter
+> 列，UX 修正）。新增跨端纪律：a2r 不转义 Rust 2024 保留字 `final`（.at
+> 局部变量撞名即 E0530）→ 标识符避用保留字（DEBTS 022 行，修复属
+> auto-lang 关键字转义表）。对拍：search 15 fixtures（大小写折叠/CJK
+> 子串/页先块后限截/计数排序/路径 uuid 决胜/长文窗口省略号/frontmatter
+> snippet/字面括号/多词短语/limit 0/空白 trim；build-search-fixtures.mjs
+> 构造生成，node TS 孪生 + rust include_str 双侧同 fixtures）。门：server
+> cargo 34/34（33 既有全存活）+ 七套 parity 全绿 + jade e2e 23/23 + 生产
+> API 冒烟（scratch 副本起后端，/api/search 三端点 markers 正确）。剩余：
+> Phase 1（api.at 契约固化）仍欠；index 行缓存 JSON 迁移小步新立。
+>
 > **进度（2026-08-28 slice 2 完成）**：back/auto/links.at 单源落地——
 > wikilink/block-ref/tag 三个正则扫描器与 extract_links/extract_tags 行级
 > 编排退役 index.rs 正则；alias [[a|b]] 不匹配、空标题丢弃、中文标签
@@ -135,8 +164,10 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
   `fs/http/json` 可用面先行确认（Plan 024 async API）。
 - 金标：每模块 a2ts + a2r 双发射 + 对拍测试（复制 engine 四件套的
   roundtrip/parity 三层模式）。
-- SQLite 存储裁定项：a2r-std 无 db 绑定——FFI 绑 rusqlite，或降级
-  JSON 文件存储（索引可再生，倾向后者减 FFI 面，实测后定）。
+- SQLite 存储裁定项：**已裁定（2026-08-28 slice 5）**——JSON 文件存储
+  方向，否决 rusqlite FFI；FTS5 已退役（SQLite 剩普通行表），行缓存迁
+  `jade-garden-index.json` 为独立小步，Phase 3 前完成。实测依据与落地
+  路径见上方 slice 5 进度注记。
 - 验收：对应手写 Rust 模块删除；双端金标测试绿；jade e2e 无回归。
 
 ### Phase 3 — VM 内路由接管

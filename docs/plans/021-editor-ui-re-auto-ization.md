@@ -1,6 +1,6 @@
 # Plan 021：编辑层 UI 再 Auto 化（engine chrome 层 .at 恢复与桥接换向）
 
-> 状态：**Phase 3 完成（2026-08-28，合并 master/020 基线后）**，Phase 4 待开工。立项：2026-08-26。
+> 状态：**execution_done（2026-08-28 Phase 4 收口）**，待 /auto-plan:review。立项：2026-08-26。
 > Phase 2 产物（详见附录 B）：7 个 ext 桥全部脱离 Tiptap 改接引擎接口
 >   （G1 四桥路径重接；node_view_ext 引擎宿主组件；bubble_menu_ext 本地
 >   EngineBubbleMenu；auto_down_editor_ext 引擎会话 + 适配器 handle，30 项
@@ -438,3 +438,59 @@ Phase 4 做后端映射重定向）；本计划的子组件（slash/bubble/table
 - demo e2e **9/9** ✅；jade e2e **23/23** ✅（fixture 同步后）
 - 12 SFC 与末代部署物逐字节一致（modulo ext import）✅；gen 复跑
   部署一致 ✅
+
+---
+
+## 附录 D：Phase 4 落地记录（2026-08-28）
+
+### D.1 冻结产物 guard 入 build
+
+- 新 `scripts/assert-editor-gen.mjs` 接进 build 末位：① src/editor/ 全域
+  扫 "Auto-generated" 头注 → PascalCase↔snake_case 映射断言 .at 源在册；
+  ② 部署清单精确性（12 部署物双向核对，漂移须显式改 guard 清单）；
+  ③ 7 个 ext 桥 auto/editor/ext ↔ src/editor/ext 逐字节同步。正负两向
+  实测（移走 .at 源 → 响亮失败；恢复 → 绿）。
+
+### D.2 EngineEditor/BlockHost .at 化裁定：登记"平台装配层"边界
+
+**不实施 .at 化**，依据（ARCHITECTURE.md §6 定版）：
+- BlockHost = contenteditable + compositionstart/update/end 接线 +
+  CompositionSession 协议 + 光标偏移读取——widget DSL 无 contenteditable
+  属性与 composition 事件面（plan 013 widget 集从未有 contenteditable
+  widget，旧 EditorContent 恒为 Tiptap re-export）；
+- EngineEditor = expose 契约（getBlockMap/handleSave）+ 宿主注册表 +
+  重绘版本号 + 020 预览 wikilink 装饰接线——平台胶水性质。
+- F2 裁定：auto_down_editor.at + 其桥为 **dormant 参考实现**保留
+  （EngineContentHost = 活预览折衷的桥内移植，"装配路径可行"原型；
+  过 vue-tsc、tree-shaken 不进 dist；guard 豁免）。重启装配 .at 化的
+  前置：移植 wikilink 装饰与 slash 派发 + IME 手验。
+
+### D.3 G4 修复（auto-lang 侧，分支 auto-down-g4-dyn）
+
+- 修法 = slot/teleport 同款先例（其注释原话"codegen 特判已有，补声明
+  使 S002 不再误报"）：schema.rs 登记 `element dyn`（Content 类，
+  allows_children，**props 空**——透传 prop 归目标组件所有无从枚举，
+  空 props 同时使 S001 prop 校验整体跳过，零新增 advisory 噪声）；
+  aura.at 经 SCHEMA_DRIFT_GENERATE_AT=1 再生成（diff 恰 +10 行）；
+  baseline 增量两条（rs_not_in_render/rs_not_in_vb × dyn，理由入
+  auto-lang 提交信息：vue codegen 结构关键字，iced 侧无元素表成员）；
+  validators 增回归测试（dyn + 透传 prop → S002/S001 双零）。
+- 验证：auto-lang lib **3236/0**、schema_drift fence 绿；auto-down
+  engine gen:editor（AUTO_EXE 指 G4 二进制）**S002 9→0**，部署物零
+  漂移；S001/R011 26 条为 advisory（--lenient 维持，strict 兼容待
+  R011/S001 口径另行裁定，不在 G4 范围）。
+- 环境记录：共享 target 的 auto.exe 被运行中进程锁定（os error 5），
+  G4 二进制建于 worktree 本地 target（.worktree/plan-021-g4/target），
+  验证经 AUTO_EXE 覆盖；auto-down 仓检出的 `.worktree/auto-down`
+  （auto-lang 内，喂 autodown-core 跨仓 path 依赖）曾被误删已恢复
+  （detach 于 e0b4f66）。
+
+### D.4 Phase 4 门核验
+
+- engine **262/262** + build 绿（vue-tsc + 三断言，新增
+  assert-editor-gen）✅
+- demo e2e **9/9** ✅；jade e2e **23/23** ✅
+- 三 regen（parser/render/editor，G4 二进制）两连跑：src 稳定、日志
+  逐字节一致 ✅
+- 台账：ARCHITECTURE.md §6 边界定版；changeset plan-021（minor）；
+  DEBTS 增 021 两行（dormant 挂载缺口 / F4-F5 小欠账）、G4 行转已修复。

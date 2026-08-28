@@ -71,5 +71,15 @@ Phase 1 status: all 14 widgets emit; diffs vs the last deployed products
 Phase 2 status: SlashMenu is LIVE again — the regenerated SFC (E1 applied)
 replaces the frozen `src/editor/menus/SlashMenu.vue` with a one-import-line
 diff; 6 of 7 ext bridges deploy to `src/editor/ext/` and type-check in the
-engine build. See the compile inventory in
-`docs/plans/021-editor-ui-re-auto-ization.md` 附录 A / 附录 B.
+engine build.
+Phase 3 status: FULL chrome set deployed — the three menus
+(BubbleMenu/TableMenu/CodeBlockMenu → `menus/`), CodeLanguageIcon →
+`components/`, the seven node views → `node-views/` (recreating the
+directory), and the 7th bridge `auto_down_editor_ext.ts`. All 12 SFCs are
+byte-identical to the `c7364cd^` last-deployed products modulo ext import
+lines. Deployed-but-DORMANT: EngineEditor does not mount the menus/node
+views yet (they need the engine menu-host protocol / block-view mount —
+018/020 口径, see the plan); wikilink interaction is owned by 020's preview
+decorator (`src/editor/wikilink.ts`). Only `AutoDownEditor.vue` stays
+undeployed (Phase 4 assembly evaluation). See the compile inventory in
+`docs/plans/021-editor-ui-re-auto-ization.md` 附录 A / B / C.

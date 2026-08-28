@@ -1,6 +1,6 @@
 # Plan 021：编辑层 UI 再 Auto 化（engine chrome 层 .at 恢复与桥接换向）
 
-> 状态：**Phase 2 完成（2026-08-28）**，Phase 3 待开工。立项：2026-08-26。
+> 状态：**Phase 3 完成（2026-08-28，合并 master/020 基线后）**，Phase 4 待开工。立项：2026-08-26。
 > Phase 2 产物（详见附录 B）：7 个 ext 桥全部脱离 Tiptap 改接引擎接口
 >   （G1 四桥路径重接；node_view_ext 引擎宿主组件；bubble_menu_ext 本地
 >   EngineBubbleMenu；auto_down_editor_ext 引擎会话 + 适配器 handle，30 项
@@ -383,3 +383,58 @@ Phase 4 做后端映射重定向）；本计划的子组件（slash/bubble/table
 - wikilink 点击交互：**020 装饰器为准，本计划不重复实现**（二选一裁定）；
   wiki_link_node_view.at 仍恢复为生成源，不挂运行时交互。
 - Phase 3 门在合并 master 后的基线上跑。
+
+---
+
+## 附录 C：Phase 3 落地记录（2026-08-28，master 合并基线）
+
+### C.0 合并前提（复审 F6/F7 执行）
+
+- F6 落地：`EditorAdapter.__engine` 改**可选**字段（020 已将
+  createEditorAdapter 冻结进 1.0.0 契约面，必填字段对外部实现方是
+  破坏性变更），随 Phase 2 提交 b32a0e1。
+- F7 落地：`git merge master`（1e7298e，零冲突；带入 020 全相位 +
+  engine 1.0.0 + wikilink.ts + EngineEditor 装饰器接线）。
+  合并后基线全门：engine **262/262**（255 + 020 wikilink 6 + 本计划 1）
+  + build 绿 + demo 9/9 + **jade 23/23**。
+- 环境勘误：jade e2e 首跑 22/23——worktree 的 `tmp/wiki-demo` fixture
+  为立项时快照，缺 020 期间新增的 `journals/` 目录；自主仓同步
+  fixture 后 23/23（tmp/ 未版本化，非代码回归）。
+
+### C.1 部署（chrome 层全量回活生成态）
+
+- gen.mjs 部署清单翻面：EXT_DEPLOY 补 `auto_down_editor_ext.ts`（第 7
+  桥，其 `../menus/*.vue` re-export 随本批菜单落地可解析）；
+  DEPLOY_COMPONENTS 补 12 SFC——菜单三件套 → `menus/`、
+  CodeLanguageIcon → `components/`、7 块视图 → `node-views/`（目录
+  重建，gen.mjs 补目标目录 mkdir）。AutoDownEditor.vue 仍不部署
+  （Phase 4 装配裁定）。
+- **diff 评审：12/12 全部与 c7364cd^ 末代部署物逐字节一致**（仅 ext
+  import 说明符行差异，双向过滤后 diff 为空）——.at 源零改动 +
+  桥保形换向的验收面。
+- gen 复跑部署逐字节一致（确定性）。
+
+### C.2 挂载缺口（显式记录，非静默延后）
+
+部署的菜单/块视图**未被 EngineEditor 挂载**（dormant 生成物）：
+
+- 菜单三件套运行时需要引擎菜单宿主协议：适配器 `.on/.off(
+  'selectionUpdate')`、`isActive('table')`、`getAttributes('codeBlock')`、
+  表链命令（addRow*/deleteRow/deleteTable 等映射 commands.ts）、
+  `view.dom` 定位 shim——v1 引擎无此面（018/020 口径：待行内
+  mark/面板注入位扩展）。挂载属引擎功能扩展，超出本计划"chrome 层
+  回活生成态"的范围。
+- 7 块视图同理需要预览列的 block-view 挂载协议（math/mermaid 预览
+  能力已就位于 ext 侧：node_view_ext → composables/renderPreview →
+  render/optional-capabilities 注入位）。
+- wikilink 交互：020 预览装饰器（`src/editor/wikilink.ts`）为准（见
+  Phase 3 节修订注记）；WikiLinkNodeView 仅为生成源。
+
+### C.3 Phase 3 门核验（合并基线）
+
+- engine test **262/262** ✅；build 绿（vue-tsc 全量检查 12 新 SFC +
+  第 7 桥 + assert-parser-pure + assert-no-tiptap）✅
+- `from '@tiptap` 在 src/editor/ 全域命中 0 ✅
+- demo e2e **9/9** ✅；jade e2e **23/23** ✅（fixture 同步后）
+- 12 SFC 与末代部署物逐字节一致（modulo ext import）✅；gen 复跑
+  部署一致 ✅

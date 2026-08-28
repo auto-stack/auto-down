@@ -169,15 +169,35 @@ const EXT_DEPLOY = [
   'code_block_menu_ext.ts',
   'bubble_menu_ext.ts',
   'node_view_ext.ts',
-  // 'auto_down_editor_ext.ts' — Phase 3 (its ../menus/*.vue re-exports need
-  // the generated menu SFCs deployed first)
+  // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
+  // below deploy alongside it.
+  'auto_down_editor_ext.ts',
 ]
 
 const DEPLOY_COMPONENTS = {
   // Phase 2 — SlashMenu revival (replaces the frozen product; expected diff
   // vs the frozen file: the computeMenuPosition import specifier ONLY).
   'SlashMenu.vue': 'menus/SlashMenu.vue',
-  // Phase 3 — menus + CodeLanguageIcon + the seven node views.
+  // Phase 3 — the remaining chrome set. Deployed as live generated products
+  // (vue-tsc-checked, regen-owned); NOT yet mounted by EngineEditor — the
+  // menus need the engine menu-host protocol (adapter .on/.off/
+  // isActive('table')/getAttributes/table chains/view shim), the node
+  // views need a block-view mount in the preview column. Both are recorded
+  // in the plan as the documented dormant gap (018/020 口径: 待行内
+  // mark/面板注入位扩展). wikilink interaction is owned by 020's preview
+  // decorator (src/editor/wikilink.ts) — WikiLinkNodeView deploys as a
+  // generated source only.
+  'BubbleMenu.vue': 'menus/BubbleMenu.vue',
+  'TableMenu.vue': 'menus/TableMenu.vue',
+  'CodeBlockMenu.vue': 'menus/CodeBlockMenu.vue',
+  'CodeLanguageIcon.vue': 'components/CodeLanguageIcon.vue',
+  'DetailsNodeView.vue': 'node-views/DetailsNodeView.vue',
+  'WikiLinkNodeView.vue': 'node-views/WikiLinkNodeView.vue',
+  'QueryBlockNodeView.vue': 'node-views/QueryBlockNodeView.vue',
+  'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',
+  'MermaidNodeView.vue': 'node-views/MermaidNodeView.vue',
+  'MathBlockNodeView.vue': 'node-views/MathBlockNodeView.vue',
+  'MathInlineNodeView.vue': 'node-views/MathInlineNodeView.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }
@@ -201,6 +221,8 @@ for (const [file, dest] of Object.entries(DEPLOY_COMPONENTS)) {
     console.error(`[deploy] E1: no '@/ext/ext/*' import found in ${file} — compiler output drifted?`)
     process.exit(1)
   }
-  writeFileSync(join(pkgRoot, 'src', 'editor', dest), rewritten)
+  const destPath = join(pkgRoot, 'src', 'editor', dest)
+  mkdirSync(dirname(destPath), { recursive: true })
+  writeFileSync(destPath, rewritten)
   console.log(`[deploy] src/editor/${dest} (E1 x${count})`)
 }

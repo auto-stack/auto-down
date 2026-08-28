@@ -99,7 +99,7 @@ autodown/packages/engine/
 - **子路径出口**按依赖方向严格分层：`./parser` ⊂ `./render` ⊂ `./editor`。
   tree-shaking 保证只用渲染时不加载编辑机械。
 - **过渡 shim**：`@autodown/editor`、`@autodown/vue` 降为 re-export 薄壳
-  （版本 0.3.x，只转发到 engine 对应出口），1.0.0 时退役。
+  （版本 0.3.x，只转发到 engine 对应出口），契约冻结版（0.5.0,原措辞 1.0.0 系 2026-08-28 版本策略修订前）发布且消费方迁尽后退役。
 - **版本序列**：engine 首发承接 `@autodown/vue 0.2.0` 序列 → **0.3.0**
   （合并 + 渲染统一，Plan 017）→ 0.4.x（编辑内核替换，Plan 018）→
   **1.0.0**（rust 平台齐 + 旧包退役，Plan 019/020）。

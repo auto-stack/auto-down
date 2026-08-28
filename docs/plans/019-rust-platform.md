@@ -1,6 +1,24 @@
 # Plan 019：rust 平台落地（autodown-core crate + iced 渲染 + 编辑壳）
 
-> 状态：**execution_done（2026-08-28）**。Phase 1-4 全部落地，验收标准
+---
+supersedes_spec_components:
+  - "auto-man platform 挂载表 markstream-vue 路径: 替换为 @autodown/engine MarkdownRender（存量消费方迁移归 020）"
+  - "registry Markdown/AutoDownEditor spec（无 vue 映射态）: 替换为 aura.at vue 声明 @autodown/engine"
+new_spec_components:
+  - "auto-lang ui/autodown_editor（core+widget）: 新增 iced/VM 块级编辑壳（cosmic-text 缓冲组/焦点导航/结构编辑引擎/marks 叠加）"
+  - "auto-lang View::AutodownEditor 变体: 新增（iced 双轨 lowering/gpui 降级/snapshot 探针）"
+  - "native 2956 auto.autodown_editor.text: 新增（on_change 回环 payload 口）"
+  - "aura schema markdown/autodown_editor ElementDef: 新增类型化 props（props TBD 回退退役）"
+  - "autodown-core crate markdown_parser/ial 入册 + 双端金标对拍闭环: 新增（批次六）"
+touched_goals:
+  - "019 目标1: autodown-core crate a2r 发射 + 双端对拍（验收①）"
+  - "019 目标2: iced 渲染链路 + 流式 + 1MB 基线（验收②③）"
+  - "019 目标3: rust 编辑壳（验收④，IME 手验为移交边界）"
+  - "019 目标4: registry 重定向 @autodown/engine + ark/jet 边界（验收⑤⑥）"
+  - "019 目标5: gallery 042 验收页"
+---
+
+> 状态：**reviewed（2026-08-28，/auto-plan:review 通过）**。Phase 1-4 全部落地，验收标准
 > ①②③⑤⑥ 达成；④ 编辑壳 gallery 可操作已备，IME 微软拼音手验通道
 > 已实现（preedit/commit）但人工执行记录在册为移交边界项——随 review
 > 一并裁定（补验或登记债务）。终验（worktree @ f55c2e2cc）：lib 3781
@@ -271,3 +289,33 @@
 4. **与 018 并行的汇合风险**：两端编辑语义（vue contenteditable vs
    rust cosmic-text）共享 016 操作模型但几何实现不同——跨块选区两端
    各自实现，020 收口时以语义用例集（018 Phase 0 产物）双端跑对拍。
+
+## 复审记录
+
+- **复审人/时间**：ZCode /auto-plan:review，2026-08-28。
+- **核验基点**：auto-lang master f55c2e2cc（Phase 1-4 折叠点，worktree
+  auto-down-dev 已同相位）；autodown-core crate 主检出实测。
+
+| 验收标准 | 判定 | 证据 |
+|---|---|---|
+| ① crate cargo test 绿 + 双端对拍全绿 | **pass** | crate `cargo test` 3 bins ok（本轮实测）；批次六 18 组 fixtures × final/streaming 逐字节一致（parse_parity + rust-parse-parity-gen 在册） |
+| ② gallery 双后端渲染 + 对齐表全量面板 rust 实现 | **pass** | 批次七交付（042 页 + 适配器 4 单测 + plan-450 同源臂），对齐表面板全量有实现/显式降级 |
+| ③ 流式 chunk 追加 O(新增块) 基准在册 | **pass** | 1MB/19692 块基线 parse 199.8s→33.0s（批次七实测 + perf 测试在库，ignored 口径） |
+| ④ 编辑壳可操作 + IME 手验记录在册 | **partial（用户批准的移交边界）** | 编辑/光标/选区/undo/拆块/合并 24 单测全绿 + 042 第四块可编辑演示；**IME 微软拼音人工手验未执行**（通道已实现：preedit/commit/输入区逐帧）。根因：需人工 GUI 会话。处置：登记 DEBTS（019-IME），由人工实机补验后销号 |
+| ⑤ registry 重定向 + 全量绿 + core.md props 完整 | **pass** | aura.at vue 声明 @autodown/engine（MarkdownRender/AutoDownEditor，npm 注入）；core.md 两组件 props 入册；lib 3781 过（1 败=master 在册 md_hidden，主检出同样失败）+ schema_drift/docs_gen/gallery_golden/a2vue/vue_capabilities 76/component_registry 7 全绿 |
+| ⑥ ark/jet 展示路径冒烟（映射 + 编译） | **pass** | registry ark/jet 映射在册 + 编辑降级边界注释；ui-gpui/全仓编译通过（gpui 轨 master 既有失败与本项目无关，在册） |
+
+- **遗漏/延后/workaround 猎查**：
+  - 遗漏：无（批次九~十一逐项对回阶段划分；natives 四层接入经编译器穷尽匹配兜底）。
+  - 延后（**均经用户批准或计划内登记**）：IME 手验 → DEBTS（019-IME）；
+    musk re-vendor / 存量 markstream 消费方迁移 → Plan 020 Phase 1/2；
+    选区不跨块、标题拆分降级、列表项内多段续项边界 → 已登记 Phase 3 v1 边界；
+    表格自适应列宽 → 待澄清 2（v1 等宽已交付）。
+  - workaround：无隐藏 hack——autodown_editor 模块 TODO/FIXME/HACK 扫描零命中；
+    快照降级（本地编辑暂态基础色）为设计内行为非权宜。
+  - code over plan 偏差：crate 宿主为 `packages/core/rust/`（016 试点处）而非
+    Phase 1 原文 `packages/engine/rust/`（批次一起已登记，非本审查新发现）。
+- **债务候选**：019-IME（唯一 blocking 候选，用户已批准作为移交边界随
+  merge 登记 DEBTS）；019 性能债（DEBTS 019 行，批次七起在册）。
+- **结论**：全部准则 pass / 经批准边界，无未批准延后 → **status: reviewed**。
+  可进入 `/auto-plan:merge`。

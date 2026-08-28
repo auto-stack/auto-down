@@ -1,6 +1,11 @@
 # Plan 019：rust 平台落地（autodown-core crate + iced 渲染 + 编辑壳）
 
-> 状态：**执行中（Phase 1 首石落地，2026-08-26）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §4/§6.1/§7.2。
+> 状态：**execution_done（2026-08-28）**。Phase 1-4 全部落地，验收标准
+> ①②③⑤⑥ 达成；④ 编辑壳 gallery 可操作已备，IME 微软拼音手验通道
+> 已实现（preedit/commit）但人工执行记录在册为移交边界项——随 review
+> 一并裁定（补验或登记债务）。终验（worktree @ f55c2e2cc）：lib 3781
+> 过/1 败=master 在册（md_hidden）；模块 24/24；schema_drift/docs_gen/
+> gallery_golden 全绿。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §4/§6.1/§7.2。
 > 立项：2026-08-25。前置：**Plan 016 完成**（块模型 + a2r 探针裁定）、
 > **Plan 017 完成**（面板映射 + AURA registry 对齐表，本计划的直接输入）。
 > 与 Plan 018 并行（不同端不同仓，汇合点在 020）。

@@ -21,7 +21,7 @@ touched_goals:
   - "020 目标5: 文档与台账收口"
 ---
 
-> 状态：**reviewed（2026-08-28 /auto-plan:review 通过；前态 execution_done）**。
+> 状态：**CLOSED（2026-08-28，/auto-plan:merge 沉淀归档；前态 reviewed）**。
 > Phase 1：DEBTS 008
 > 双销号（T13=51b8abf 对拍 5/5；T10=musk 041 stub 等价裁定留档）。
 > Phase 2：demo 直连 engine（e2e 9/9，b6afa5a）。Phase 3：jade 直连

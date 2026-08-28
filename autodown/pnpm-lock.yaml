@@ -29,15 +29,9 @@ importers:
 
   demo:
     dependencies:
-      '@autodown/core':
+      '@autodown/engine':
         specifier: workspace:*
-        version: link:../packages/core
-      '@autodown/editor':
-        specifier: workspace:*
-        version: link:../packages/editor
-      '@autodown/vue':
-        specifier: workspace:*
-        version: link:../packages/vue
+        version: link:../packages/engine
       lucide-vue-next:
         specifier: ^0.460.0
         version: 0.460.0(vue@3.5.35(typescript@5.9.3))

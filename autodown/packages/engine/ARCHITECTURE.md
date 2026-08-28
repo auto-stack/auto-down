@@ -51,7 +51,7 @@
   形式 vendor（musk 0.2.0 快照已冻结于其仓 51b8abf）；npm publish 前置
   （去 workspace 内联依赖、changeset access 调整）登记于 DEBTS.md 008。
 - 版本仪式：changesets 手写（`.changeset/*.md`），版本号手 bumped；
-  1.0.0 changeset = plan-020-engine-1.0.0.md。
+  契约冻结 changeset = plan-020-engine-1.0.0.md（原记 1.0.0；2026-08-28 版本策略修订改 0.5.0，见 .changeset/2026-08-28-engine-version-policy-0-5-0.md）。
 
 ## 5. 已知边界（登记在案）
 

@@ -1,7 +1,7 @@
 {
   "name": "@autodown/engine",
-  "version": "1.0.0",
-  "description": "AutoDown unified document engine — parser / render / editor in one package (plan 017; 1.0.0 contract freeze in plan 020)",
+  "version": "0.5.0",
+  "description": "AutoDown unified document engine — parser / render / editor in one package (plan 017; contract freeze in plan 020; version 0.5.0 per 2026-08-28 version policy — 1.0 reserved for the language as a whole)",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

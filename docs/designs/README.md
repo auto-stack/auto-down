@@ -24,5 +24,5 @@
 - LLM 调用：通过 `auto-ai-client` → `auto-ai-daemon`，不直连 LLM API
 - 索引：向量 + 图混合，具体技术栈待进一步调研
 - 存储：本地文件系统优先，`wiki/` 目录即知识库
-- 文档引擎：`@autodown/engine` **1.0.0 契约冻结**（Plan 020 Phase 4，2026-08-28）——四出口 + EDITOR-CONTRACT DOM/事件面 + 命令层 API 冻结；rust/VM 平台面（a2r crate、VM natives）标 experimental 不随 1.0 冻结
+- 文档引擎：`@autodown/engine` **0.5.0 契约冻结**（Plan 020 Phase 4，2026-08-28；同日版本策略修订 1.0.0→0.5.0，1.0 预留给语言整体）——四出口 + EDITOR-CONTRACT DOM/事件面 + 命令层 API 冻结；rust/VM 平台面（a2r crate、VM natives）标 experimental 不随契约冻结
 - 旧包退役：`@autodown/vue`/`@autodown/editor`/`@autodown/core` 自 Plan 020 起为 deprecated re-export shim（demo/jade-garden 已切 engine；musk 冻结 0.2.0 vendor 快照）；物理归档待 musk vendor 再生路径确认弃用后执行

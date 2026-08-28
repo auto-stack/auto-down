@@ -5,7 +5,9 @@
 // chain().focus().{setHeading|setParagraph|setCodeBlock|setMathBlock|
 // setMermaidBlock|setCallout|setDetails|setImage|setHorizontalRule|
 // toggleBulletList|toggleOrderedList|toggleTaskList|toggleBlockquote|
-// insertContent}().run(), plus the storage['slash-command'] handshake.
+// insertContent}().run(), plus the storage['slash-command'] handshake and
+// the __engine back-reference (engine-native manifest readers, plan 021
+// Phase 2).
 //
 // Block-level only (v1): inline mark chains (bold/italic bubbles) come with
 // the inline-mark op extension in Phase 4.
@@ -56,6 +58,12 @@ export interface EditorAdapter {
   chain(): ChainLike
   isActive(_name: string, _attrs?: any): boolean
   isEditable: boolean
+  /** The wrapped session — engine-native readers (slash-manifest's
+   *  getCurrentBlockAnchor / ensureBlockAnchor) reach the model through it.
+   *  Optional: createEditorAdapter always sets it, but the interface is on
+   *  the 1.0.0 frozen surface (plan 020 Phase 4) — a required field would
+   *  break external implementors. */
+  __engine?: EditorEngine
 }
 
 export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
@@ -64,6 +72,7 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
     isEditable: true,
     isActive: () => false,
     chain: () => createChain(engine),
+    __engine: engine,
   }
   return adapter
 }

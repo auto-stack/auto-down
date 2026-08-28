@@ -64,6 +64,14 @@ describe('tiptap chain adapter', () => {
     const adapter = createEditorAdapter(e)
     expect(adapter.storage['slash-command']).toMatchObject({ query: '', handled: false })
   })
+
+  it('carries __engine so engine-native manifest readers reach the session (plan 021 Phase 2)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    // optional field on the frozen interface; the factory always sets it
+    expect(adapter.__engine).toBeDefined()
+    expect(adapter.__engine!.selection.anchor.blockId).toBe('p1')
+  })
 })
 
 describe('slashQueryAt (Suggestion-compatible trigger)', () => {

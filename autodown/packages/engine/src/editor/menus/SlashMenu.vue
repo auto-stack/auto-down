@@ -1,7 +1,7 @@
 <!-- SlashMenu component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { computeMenuPosition } from '../composables/useMenuBounds'
+import { computeMenuPosition } from '../ext/slash_menu_ext'
 import { nextTick } from 'vue'
 
 

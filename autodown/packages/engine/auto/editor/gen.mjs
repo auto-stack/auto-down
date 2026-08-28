@@ -22,12 +22,21 @@
 // `auto build --gen-only --lenient` there, and harvests the emitted SFCs into
 // the ISOLATED output area auto/editor/gen/components/.
 //
-// PHASE 1 BOUNDARY: nothing here deploys into src/. The frozen products under
-// src/editor/{menus,components,node-views,core} stay untouched until Phase 2
-// (ext bridge retargeting + diff review). The emitted SFCs import the ext
-// bridges through the gen-project alias `@/ext/ext/<name>_ext` — the E1
-// import-specifier rewrite to real editor-tree paths is a deployment-time
-// post-fix and is deliberately NOT applied yet.
+// PHASE 2 DEPLOYMENT (plan 021): after harvesting, this script now WRITES
+// into src/editor/:
+//   1. the ext bridges  auto/editor/ext/*.ts  ->  src/editor/ext/*.ts
+//      (deploy list below — auto_down_editor_ext.ts lands with the Phase 3
+//      menu batch, its ../menus re-exports don't resolve until then);
+//   2. the DEPLOY_COMPONENTS SFCs -> their src/editor/ destinations, with
+//      the E1 import-specifier rewrite applied: the emitted
+//      `from '@/ext/ext/<name>'` becomes `from '../ext/<name>'` (every
+//      destination dir — menus/, components/, node-views/, core/ — is a
+//      direct child of src/editor/, so one uniform prefix). E1 is asserted:
+//      a deploying component without an ext import fails the run.
+// Components outside DEPLOY_COMPONENTS stay in the isolated
+// auto/editor/gen/components/ area until their phase turns them on
+// (Phase 3: BubbleMenu/TableMenu/CodeBlockMenu/CodeLanguageIcon + the seven
+// node views; Phase 4: AutoDownEditor per the assembly evaluation).
 //
 // Flags:
 //   --gen-only  skip the gen project's pnpm install / vue-tsc / vite build
@@ -62,6 +71,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url)) // packages/engine/auto/editor
+const pkgRoot = join(here, '../..') // packages/engine
 const genRoot = join(here, 'gen')
 const stage = join(genRoot, '_stage')
 const outComponents = join(genRoot, 'components')
@@ -147,5 +157,50 @@ for (const f of emitted.sort()) {
   console.log(`[gen] ${f}`)
 }
 console.log(
-  `[gen] ${emitted.length} widget SFCs -> auto/editor/gen/components/ (isolated; src/ untouched, validation census at gen/validation.log)`
+  `[gen] ${emitted.length} widget SFCs -> auto/editor/gen/components/ (isolated; validation census at gen/validation.log)`
 )
+
+// -- deployment (Phase 2) ------------------------------------------------------
+
+const EXT_DEPLOY = [
+  'slash_menu_ext.ts',
+  'code_language_icon_ext.ts',
+  'table_menu_ext.ts',
+  'code_block_menu_ext.ts',
+  'bubble_menu_ext.ts',
+  'node_view_ext.ts',
+  // 'auto_down_editor_ext.ts' — Phase 3 (its ../menus/*.vue re-exports need
+  // the generated menu SFCs deployed first)
+]
+
+const DEPLOY_COMPONENTS = {
+  // Phase 2 — SlashMenu revival (replaces the frozen product; expected diff
+  // vs the frozen file: the computeMenuPosition import specifier ONLY).
+  'SlashMenu.vue': 'menus/SlashMenu.vue',
+  // Phase 3 — menus + CodeLanguageIcon + the seven node views.
+  // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
+  // evaluation decides).
+}
+
+const EXT_IMPORT_RE = /from '@\/ext\/ext\/([A-Za-z0-9_]+)'/g
+
+mkdirSync(join(pkgRoot, 'src', 'editor', 'ext'), { recursive: true })
+for (const f of EXT_DEPLOY) {
+  cpSync(join(here, 'ext', f), join(pkgRoot, 'src', 'editor', 'ext', f))
+  console.log(`[deploy] src/editor/ext/${f}`)
+}
+
+for (const [file, dest] of Object.entries(DEPLOY_COMPONENTS)) {
+  const src = readFileSync(join(outComponents, file), 'utf8')
+  let count = 0
+  const rewritten = src.replace(EXT_IMPORT_RE, (_m, name) => {
+    count += 1
+    return `from '../ext/${name}'`
+  })
+  if (count === 0) {
+    console.error(`[deploy] E1: no '@/ext/ext/*' import found in ${file} — compiler output drifted?`)
+    process.exit(1)
+  }
+  writeFileSync(join(pkgRoot, 'src', 'editor', dest), rewritten)
+  console.log(`[deploy] src/editor/${dest} (E1 x${count})`)
+}

@@ -1,6 +1,15 @@
 # Plan 021：编辑层 UI 再 Auto 化（engine chrome 层 .at 恢复与桥接换向）
 
-> 状态：**Phase 1 完成（2026-08-26）**，Phase 2 待开工。立项：2026-08-26。
+> 状态：**Phase 2 完成（2026-08-28）**，Phase 3 待开工。立项：2026-08-26。
+> Phase 2 产物（详见附录 B）：7 个 ext 桥全部脱离 Tiptap 改接引擎接口
+>   （G1 四桥路径重接；node_view_ext 引擎宿主组件；bubble_menu_ext 本地
+>   EngineBubbleMenu；auto_down_editor_ext 引擎会话 + 适配器 handle，30 项
+>   清单单源自 slash-manifest.ts）；gen.mjs 进入部署态（ext 桥 →
+>   `src/editor/ext/`，DEPLOY_COMPONENTS + E1 断言式后修；auto_down_editor_ext
+>   随 Phase 3 菜单批次部署）；**SlashMenu 复活**——生成物覆盖冻结产物，
+>   diff 恰 1 行 import 说明符，两连跑部署逐字节一致；引擎侧
+>   createEditorAdapter 挂 `__engine`（Block link 命令复活，+1 测试）。
+>   门：engine 256/256 + build 绿 + demo e2e 9/9。
 > Phase 1 产物：
 > - 14 个 widget .at + 7 个 ext 桥恢复至 `engine/auto/editor/`（扁平
 >   布局 + `ext/` 子目录；`use` 路径 23 处机械改写；pac.at 带、
@@ -102,7 +111,15 @@ Phase 4 做后端映射重定向）；本计划的子组件（slash/bubble/table
 - 7 个块视图 .at 恢复 + 块视图接口接引擎宿主协议（math/mermaid 预览
   经 optional-capabilities 注入位，018 遗留口径）。
 - wikilink 点击交互（`[[..]]` span + open-wiki-link 发射）。
+  > **复审修订（2026-08-28）**：本项已由 plan 020 Phase 3 以"编辑器侧
+  > 预览装饰器"（engine `src/editor/wikilink.ts` + jade e2e 23/23 回绿）
+  > 落地，按 §协调"二选一、以 020 状态头回写为准"裁定：**交互以 020
+  > 装饰器为准，本计划不再重复实现**。`wiki_link_node_view.at` 仍按
+  > "chrome 层回活生成态"目标恢复为生成源（不承担运行时交互挂载，
+  > 引擎行内节点视图协议存在前无挂载点）。
 - 门：demo e2e 9/9 + jade e2e（020 基线，目标 23/23）。
+  > **复审修订（2026-08-28）**：开工前须先合入 master（020 全相位 +
+  > engine 1.0.0 + wikilink，领先本分支 9 提交），门在合并后基线上跑。
 
 ### Phase 4 — 收口
 
@@ -255,3 +272,114 @@ Phase 4 做后端映射重定向）；本计划的子组件（slash/bubble/table
 - 现行部署物零变更（git status 仅新增 `auto/editor/` + package.json
   一行脚本）✅
 - engine test 255/255、build 绿（恢复前后一致，本阶段未引入回归）✅
+
+---
+
+## 附录 B：Phase 2 落地记录（2026-08-28）
+
+### B.0 基线勘误（worktree 环境）
+
+- Phase 1 附录 A 的基线未含 demo dev server 侧：worktree 内 shim 包
+  （`@autodown/editor`/`@autodown/vue`）dist 未构建，demo vite 解析
+  `<pkg>/style.css` 500、e2e 9 全挂。补跑两 shim 的 `pnpm build`
+  （workspace 内构建产物，不涉源码改动）后恢复 9/9。engine 侧
+  `pnpm install`/test/build 基线与附录 A 一致。
+
+### B.1 ext 桥换向（7/7 完成，无 @tiptap import）
+
+| 桥 | 换向 | 要点 |
+|---|---|---|
+| slash_menu_ext | G1 | computeMenuPosition 路径重接（`../composables/useMenuBounds`） |
+| code_language_icon_ext | G1 | getLanguageIconUrl 路径重接（`../utils/codeBlockLanguage`） |
+| table_menu_ext | G1 | 同上 + tableMenuTitles 原样 |
+| code_block_menu_ext | G1 | 同上 + 语言清单/Check 图标原样 |
+| node_view_ext | G2 | NodeViewWrapper/NodeViewContent 换本地引擎宿主组件（`as` 元素 prop + attrs 透传 + data-node-view-* 标记，DOM 契约保形）；renderPreview 路径重接；其余（parseWikiLinkRaw/图标/normalizeQueryResults/errorMessage/focusAndSelect）原样 |
+| bubble_menu_ext | G3 | tiptap BubbleMenu → 本地 EngineBubbleMenu：引擎 handle（`__engine`）驱动可见性（onChange 重算）、shouldShow 收引擎形态 state（selection.empty = anchor==head collapsed）、outside-pointerdown/Escape 关闭、v1 定位锚到聚焦块元素。**v1 块粒度选择恒 collapsed → 菜单不弹**（与 020 移交口径一致：待行内 mark/选择扩展）；runBubbleLink 的 set/unsetLink 链可选调用（适配器无此命令不炸） |
+| auto_down_editor_ext | G3 | useAutoDownEditorBridge 建 EditorEngine 会话 + createEditorAdapter handle（getMarkdown=serialize(doc,true)、commands.setContent=replaceDoc、setEditable、isFocused、`__engine`）；30 项清单 **单源自 `src/editor/slash-manifest.ts`**（零复制）；EditorContent=本地 EngineContentHost（聚焦叶块走 BlockHost、其余走 render 预览管线——EngineEditor 的活预览折衷的桥内移植，Phase 4 装配评估的过渡实现）；appendTableIAL=identity（引擎序列化器自持 IAL 发射，016 S4）；blockMapOf=引擎 block-map（handle.__contentEl 域内） |
+
+- 保形度：widget .at 源零改动达成（桥导出面与 `use` 声明逐项对齐，
+  含 `TiptapBubbleMenu`/`EditorContent` 历史导出名）；事件载荷无变化。
+
+### B.2 gen.mjs 部署态 + SlashMenu 复活
+
+- `EXT_DEPLOY`（6 桥）+ `DEPLOY_COMPONENTS`（本阶段仅 SlashMenu.vue →
+  `src/editor/menus/`）+ **E1** 后修：`from '@/ext/ext/<n>'` →
+  `from '../ext/<n>'`（menus/components/node-views/core 皆为 src/editor/
+  直接子目录，统一 `../ext/` 前缀；断言式——无 ext import 即失败）。
+- **auto_down_editor_ext 部署推迟 Phase 3**：其 `../menus/{BubbleMenu,
+  TableMenu,CodeBlockMenu}.vue` re-export 在菜单生成物落地前无法过
+  vue-tsc（gen.mjs 注释 + 桥头注均已记录）。
+- SlashMenu diff 评审：与冻结产物 diff **恰 1 行**——
+  `import { computeMenuPosition }` 说明符由 `../composables/useMenuBounds`
+  → `../ext/slash_menu_ext`（运行时等价：桥内即 re-export 该模块）。
+- 确定性：gen 两连跑后部署物（SlashMenu.vue + ext/）逐字节一致 ✅。
+
+### B.3 引擎侧小修
+
+- `createEditorAdapter` 挂 `__engine`（EditorAdapter 接口 + 实现）：
+  slash-manifest 的 getCurrentBlockAnchor/Block link 命令此前读
+  `editor?.__engine` 恒 undefined（死路径），现接通；+1 测试钉住
+  （tiptap-adapter.test.ts）。
+
+### B.4 Phase 2 门核验
+
+- engine test **256/256**（255 基线 + 1 新增）✅
+- engine build 绿（vue-tsc + vite + assert-parser-pure + **assert-no-tiptap**）✅
+- demo e2e **9/9**（E2E_PORT=5199, --workers=1）✅
+- slash-manifest 30 项零改动（未触文件）✅
+- 部署 ext 无 @tiptap import（grep 仅注释文字命中）✅
+
+---
+
+## 复审记录（/auto-plan:review，2026-08-28，中期——Phase 2 专项）
+
+**裁定：不路由 `reviewed`**（计划未达 execution_done，Phase 3/4 未开工；
+本次为用户点名的中期复审，核验已声称完成的 Phase 2 并修订 Phase 3 范围）。
+回 `/auto-plan:work`。spec-impact frontmatter 留待终审（Phase 4 后）填写。
+
+### 逐项核验（全部本 worktree 重跑，非引用执行记录）
+
+| 项 | 判定 | 证据 |
+|---|---|---|
+| engine 全测试 | ✅ | 17 文件 / **256/256**（基线 255 + `__engine` 新增 1） |
+| engine build | ✅ | vue-tsc + vite + assert-parser-pure + assert-no-tiptap 全绿 |
+| demo e2e | ✅ | **9/9**（E2E_PORT=5199, --workers=1） |
+| SlashMenu diff 评审 | ✅ | 与冻结产物 diff 恰 1 行（computeMenuPosition import 说明符），无事件载荷差异 |
+| slash-manifest 30 项零改动 | ✅ | slash-manifest.ts / slashItem.ts 零 diff |
+| ext 无 @tiptap import | ✅ | `from '@tiptap` 在 auto/editor/ext/ + src/editor/ext/ 命中 0 |
+| gen 确定性 | ✅ | 复跑 gen 后 git status 稳定（部署物无漂移） |
+| Phase 1 资产在册 | ✅ | auto/editor/ 14 个 .at 源在位 |
+| 验收 3（桥脱离 Tiptap） | ✅（源侧） | 7/7 桥重写完成；运行时部署 6/7（见 F1） |
+
+### 遗漏 / 延后 / workaround 清单（debt 候选，不隐藏）
+
+- **F1 延后（已记录）**：auto_down_editor_ext 部署推迟 Phase 3（其
+  `../menus/*.vue` re-export 在菜单生成物落地前不过 vue-tsc）。计划原文
+  Phase 2 未拆部署相位——本延后系执行裁量，已在 gen.mjs/桥头注/附录 B
+  三处记录，Phase 3 收口。
+- **F2 重复实现（Phase 4 输入）**：EngineContentHost 为 EngineEditor 活预览
+  折衷的桥内移植（~60 行重复）；装配评估裁定前两份并存。
+- **F3 v1 固有限制**：EngineBubbleMenu 在块粒度选择下恒 collapsed 不弹
+  （与 020 移交口径一致：待行内 mark/选择扩展）；runBubbleLink 以可选链
+  容错适配器缺失的 set/unsetLink。
+- **F4 小欠账**：EngineBubbleMenu 的 onChange 监听无 off 通道（unsubscribe
+  为墓碑 no-op，EngineEngine 无移除 API）。
+- **F5 继承缺口（非本次引入）**：SlashMenu 两段式定位依赖 `editor['view']`
+  （coordsAtPos），引擎适配器无此面 → 定位跳过、菜单位置为默认值。018
+  冻结产物行为相同（e2e 以默认位姿通过）；定位保真待引擎坐标系 API。
+- **F6 契约冻结冲突（新发现，合并前必修）**：master 上 020 Phase 4 已将
+  `createEditorAdapter` 列入 **engine 1.0.0 冻结面**（ARCHITECTURE.md §2），
+  而本分支给导出接口 `EditorAdapter` 加了**必填** `__engine` 字段——对外部
+  实现方是破坏性类型变更。修法：改可选（`__engine?: EditorEngine`，
+  slash-manifest 的 `editor?.__engine` 读法天然兼容）或补契约注记。
+- **F7 合并前提（新发现）**：本分支落后 master 9 提交（020 全相位 + engine
+  1.0.0 + wikilink.ts + EngineEditor 装饰器接线 + engine 261 测试）。文件
+  面无冲突（020 未触 SlashMenu/tiptap-adapter/slash-manifest/auto/），但
+  Phase 3 必须先 `git merge master` 并在合并后基线重跑全门（engine 应
+  262+、jade 23/23 以 master 为基）。
+
+### Phase 3 范围修订（依 020 状态头回写，已改上文 Phase 3 节）
+
+- wikilink 点击交互：**020 装饰器为准，本计划不重复实现**（二选一裁定）；
+  wiki_link_node_view.at 仍恢复为生成源，不挂运行时交互。
+- Phase 3 门在合并 master 后的基线上跑。

@@ -18,15 +18,24 @@ level with `auto/parser/` and `auto/render/` — no longer buried under
   `code_language_icon.at`, and the seven node views
   (`details` / `wiki_link` / `query_block` / `block_embed` / `mermaid` /
   `math_block` / `math_inline`).
-- `ext/*.ts` — the 7 hand-written TS extension bridges (Tiptap-era
-  implementations, restored verbatim; **retargeting to the engine interfaces
-  is Phase 2**). Widget `use { ... }` paths were mechanically rewritten from
-  `src/front/utils/<name>_ext.ts` to `ext/<name>_ext.ts` for the new layout —
-  the only source-level change vs the restored originals.
-- `gen.mjs` — the Phase 1 pipeline (see its header comment). Stages a
-  transient `auto build --gen-only --lenient` project under `gen/_stage/`,
-  harvests emitted SFCs into the isolated `gen/components/` area and the
-  validation census into `gen/validation.log`. **Never writes into `src/`.**
+- `ext/*.ts` — the 7 hand-written TS extension bridges, **engine-retargeted
+  in Phase 2** (no Tiptap anywhere): G1 bridges re-connect existing engine
+  modules by path; `node_view_ext` ships engine-native NodeViewWrapper/
+  NodeViewContent host components; `bubble_menu_ext` replaces tiptap's
+  BubbleMenu with a local EngineBubbleMenu over the engine handle;
+  `auto_down_editor_ext` builds the EditorEngine session + chain-adapter
+  handle (slash manifest single-sourced from `src/editor/slash-manifest.ts`).
+  Deployed verbatim to `src/editor/ext/` by gen.mjs — that copy is the ONLY
+  runtime instance (engine tree is the sole resolution target; the Tiptap-era
+  dual-resolution shim is retired). `auto_down_editor_ext.ts` deploys with
+  the Phase 3 menu batch (its `../menus/*.vue` re-exports need the generated
+  menus first).
+- `gen.mjs` — the pipeline (see its header comment). Stages a transient
+  `auto build --gen-only --lenient` project under `gen/_stage/`, harvests
+  emitted SFCs into the isolated `gen/components/` area, then (Phase 2)
+  DEPLOYS: the ext bridges to `src/editor/ext/` and the components listed
+  in its DEPLOY_COMPONENTS map to their `src/editor/` destinations, with
+  the E1 import rewrite `@/ext/ext/<name>` → `../ext/<name>` (asserted).
 - `gen/` — transient generator output (gitignored, safe to delete).
 - `README.plan013.md` — the plan 013/017-era README restored verbatim from
   `c7364cd^`: full workaround/capability notes for the widget set. Its
@@ -58,6 +67,9 @@ silently after the validation phase without emitting — `gen.mjs` detects the
 missing output and retries once.
 
 Phase 1 status: all 14 widgets emit; diffs vs the last deployed products
-(`c7364cd^` `src/editor/...`) are limited to the ext import specifier lines
-(`@/ext/ext/<name>_ext`, E1 rewrite pending Phase 2). See the compile
-inventory in `docs/plans/021-editor-ui-re-auto-ization.md` 附录 A.
+(`c7364cd^` `src/editor/...`) are limited to the ext import specifier lines.
+Phase 2 status: SlashMenu is LIVE again — the regenerated SFC (E1 applied)
+replaces the frozen `src/editor/menus/SlashMenu.vue` with a one-import-line
+diff; 6 of 7 ext bridges deploy to `src/editor/ext/` and type-check in the
+engine build. See the compile inventory in
+`docs/plans/021-editor-ui-re-auto-ization.md` 附录 A / 附录 B.

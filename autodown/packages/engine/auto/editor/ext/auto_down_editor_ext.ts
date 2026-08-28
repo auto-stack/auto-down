@@ -1,83 +1,65 @@
 // auto_down_editor_ext.ts — Hand-written TS extension for the
-// AutoDownEditor widget (../auto_down_editor.at). Imported via
-// `use { fn/component/composable: ... }`; the Auto build copies it into the
-// gen project as src/ext/src/front/utils/auto_down_editor_ext.ts, and the
-// generated AutoDownEditor.vue (copied to src/core/) imports it from
-// ../auto/src/front/utils/auto_down_editor_ext.
+// AutoDownEditor widget (../auto_down_editor.at). The gen pipeline copies
+// this file into the transient gen project (never type-checked there) and
+// deploys it verbatim to src/editor/ext/auto_down_editor_ext.ts; the
+// generated AutoDownEditor.vue imports it from ../ext/auto_down_editor_ext
+// (gen.mjs E1 rewrite). DEPLOY NOTE: unlike the other six bridges this one
+// deploys with the Phase 3 menu batch — its BubbleMenu/TableMenu/
+// CodeBlockMenu re-exports only resolve once those generated SFCs land in
+// src/editor/menus/.
 //
-// What remains here genuinely cannot be expressed in the DSL (see the
-// widget's header comment for the full list): the zero-argument editor
-// composable bridge (the DSL's composable imports take no arguments, so
-// the useAutoDownEditor options object is assembled here from the
-// component instance's props and tiptap's lifecycle callbacks are
-// forwarded through inst.emit; useAutoDownEditor.ts itself is untouched),
-// the 30-item static slash command manifest (lucide icons as data +
-// block-body command closures with window.prompt / navigator.clipboard /
-// DOM walking), normalizeAnchors (no regex literals in the DSL), the
-// EditorContent / menu component re-exports (dual-resolution shim — a
-// `use` path cannot leave src/), the Check/X lucide re-exports for the
-// `dyn` render trick, and the blockMapOf/appendTableIAL re-exports behind
-// the exposed getBlockMap and handleSave.
+// plan 021 Phase 2 retarget (Tiptap → engine). The ASSEMBLY surface the
+// widget needs is now built from engine primitives:
 //
-// The relative imports below resolve in BOTH trees at the same depth:
-// editor tree src/auto/src/front/utils → src/..., gen tree
-// gen/front/vue/src/ext/src/front/utils → gen/front/vue/src/... (stub
-// mirrors are copied in by the regen script — the gen project has no
-// @tiptap/katex/@autodown dependencies).
+// - useAutoDownEditorBridge — creates the EditorEngine session (parse_blocks
+//   of the content prop) and returns a reactive { items, editor } bag.
+//   `editor` is the chain adapter (createEditorAdapter) extended with the
+//   assembly surface: getMarkdown (serialize, emitIds=true like
+//   EngineEditor), commands.setContent (replaceDoc), setEditable, isFocused,
+//   and __engine (the session itself — the slash manifest's Block link
+//   command reads it). Lifecycle events are forwarded through inst.emit
+//   using the widget's quoted msg variants. The 30-item slash manifest is
+//   SINGLE-SOURCED from ../slash-manifest (the plan 018 deployment) —
+//   engine idioms, zero duplication.
+// - EditorContent — the engine content host: focused editable leaf blocks
+//   render through BlockHost (BlockHostController), every other block
+//   renders through the ./render preview pipeline — the same live-preview
+//   compromise as the handwritten EngineEditor.vue (design §8 v1). Compact
+//   bridge-native version; the Phase 4 assembly evaluation decides whether
+//   this hardens into the deployed assembly or EngineEditor stays the
+//   handwritten platform shell.
+// - appendTableIAL — identity: the engine serializer owns IAL emission
+//   (table cols/rows attrs round-trip as {cols:[..]} text, plan 016 S4),
+//   so the Tiptap-era save-time IAL re-append has no engine counterpart.
+// - blockMapOf — the engine block-map (DOM-anchored, EDITOR-CONTRACT §3)
+//   scoped to the content host element stashed on the handle.
+// - normalizeAnchors / editorCheckIcon / editorXIcon — unchanged in kind
+//   (regex; lucide re-exports for the `dyn` render trick).
 //
-// No @tiptap imports on purpose (besides the type-only SlashItem): the
-// editor instance is typed structurally as any.
+// No @tiptap imports anywhere; the editor instance is the engine handle.
 
-import { getCurrentInstance, onMounted, reactive } from 'vue'
-import {
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
-  Heading5,
-  Heading6,
-  Text,
-  List,
-  ListOrdered,
-  CheckSquare,
-  Code,
-  Quote,
-  Minus,
-  Image,
-  Table as TableIcon,
-  AlertCircle,
-  PanelTop,
-  Sigma,
-  Workflow,
-  Check,
-  X,
-  Link,
-  Search,
-  Square,
-  CircleDot,
-  CheckCircle2,
-  Clock,
-  Timer,
-  ArrowUp,
-} from 'lucide-vue-next'
-import type { SlashItem } from '../../../../menus/slashItem'
-import { useAutoDownEditor } from '../../../../composables/useAutoDownEditor'
+import { defineComponent, getCurrentInstance, h, onMounted, reactive, ref } from 'vue'
+import type { VNode } from 'vue'
+import { Check, X } from 'lucide-vue-next'
+import type { SlashItem } from '../menus/slashItem'
+import { getSlashItems } from '../slash-manifest'
+import { EditorEngine } from '../engine/editor-engine'
+import { createEditorAdapter } from '../engine/tiptap-adapter'
+import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import BlockHost from '../components/BlockHost.vue'
+import { getBlockMap } from '../block-map'
+import { BlockNode, BlockType } from '../../parser/block-model'
+import { parse_blocks, parseDocument } from '../../parser/markdown-parser'
+import { serialize } from '../../parser/serializer'
+import { renderNodes } from '../../render/render-node'
 
-// Dual-resolution re-exports (editor tree: the real modules; gen tree:
-// stubs). The katex CSS side-effect import lives in tiptapEditorContent.ts
-// (the original AutoDownEditor.vue imported 'katex/dist/katex.min.css' at
-// module scope; the gen project's stub omits it).
-export { EditorContent } from '../../../../composables/tiptapEditorContent'
-export { default as BubbleMenu } from '../../../../menus/BubbleMenu.vue'
-export { default as SlashMenu } from '../../../../menus/SlashMenu.vue'
-export { default as TableMenu } from '../../../../menus/TableMenu.vue'
-export { default as CodeBlockMenu } from '../../../../menus/CodeBlockMenu.vue'
-
-// The exposed imperative getBlockMap and handleSave's IAL post-processing —
-// re-exported from the real extensions modules (same shim; gen stubs under
-// stubs/gen_blockId.ts / gen_tableAttributes.ts).
-export { getBlockMap as blockMapOf } from '../../../../extensions/BlockId'
-export { appendTableIAL } from '../../../../extensions/tableAttributes'
+// -- menu / content component re-exports (the widget's `component:` use) ----
+// SlashMenu is the Phase 2 revival; the other three menus are the Phase 3
+// generated products. EngineContentHost is local (see below).
+export { default as SlashMenu } from '../menus/SlashMenu.vue'
+export { default as BubbleMenu } from '../menus/BubbleMenu.vue'
+export { default as TableMenu } from '../menus/TableMenu.vue'
+export { default as CodeBlockMenu } from '../menus/CodeBlockMenu.vue'
 
 // Lucide icons for the Save/Cancel buttons, rendered via `dyn` (the
 // codeBlockCheckIcon trick).
@@ -91,7 +73,7 @@ export function editorXIcon(): unknown {
 
 // The original's normalizeAnchors: strip trailing ` ^blockId` anchors per
 // line before comparing editor content with the incoming prop (the DSL has
-// no regex literals — same gap as node_view_ext's wiki-link parser).
+// no regex literals).
 export function normalizeAnchors(md: string): string {
   return md
     .split('\n')
@@ -99,322 +81,139 @@ export function normalizeAnchors(md: string): string {
     .join('\n')
 }
 
-// The original's getCurrentBlockId helper (Block link slash command):
-// walk from the selection's DOM position up to the nearest [data-block-id]
-// element. Uses Node.TEXT_NODE / instanceof HTMLElement / closest — none
-// expressible in the DSL.
-function getCurrentBlockId(editor: any): string | null {
-  if (!editor.view) return null
-  const { from } = editor.state.selection
-  const domPos = editor.view.domAtPos(from)
-  let el = domPos.node
-  if (el.nodeType === Node.TEXT_NODE) el = el.parentElement
-  if (!(el instanceof HTMLElement)) return null
-  const blockEl = el.closest('[data-block-id]') as HTMLElement | null
-  return blockEl?.getAttribute('data-block-id') || null
+// The original's save-time IAL post-process. Engine: identity — the
+// serializer already emits table IAL from block attrs (plan 016 S4), so
+// there is nothing to re-append. Kept as a named export because the widget
+// source calls it (byte-stable .at contract).
+export function appendTableIAL(md: string, _editor: unknown): string {
+  return md
 }
 
-// The original's baseSlashItems + extraSlashItems merge, verbatim. The
-// closures capture the props object (read live at command time), exactly
-// like the original component's closures captured `props`. Called once at
-// setup by the bridge — the original's slashItems const was likewise
-// evaluated once (props.extraSlashItems was never reactive).
-export function getSlashItems(props: any): SlashItem[] {
-  const baseSlashItems: SlashItem[] = [
-    {
-      title: 'Text',
-      description: 'Plain text',
-      icon: Text,
-      searchTerms: ['p'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setParagraph().run(),
-    },
-    {
-      title: 'Heading 1',
-      description: 'Big section heading',
-      icon: Heading1,
-      searchTerms: ['h1'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run(),
-    },
-    {
-      title: 'Heading 2',
-      description: 'Medium section heading',
-      icon: Heading2,
-      searchTerms: ['h2'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run(),
-    },
-    {
-      title: 'Heading 3',
-      description: 'Small section heading',
-      icon: Heading3,
-      searchTerms: ['h3'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run(),
-    },
-    {
-      title: 'Heading 4',
-      description: 'Fourth level heading',
-      icon: Heading4,
-      searchTerms: ['h4'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 4 }).run(),
-    },
-    {
-      title: 'Heading 5',
-      description: 'Fifth level heading',
-      icon: Heading5,
-      searchTerms: ['h5'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 5 }).run(),
-    },
-    {
-      title: 'Heading 6',
-      description: 'Sixth level heading',
-      icon: Heading6,
-      searchTerms: ['h6'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHeading({ level: 6 }).run(),
-    },
-    {
-      title: 'Bullet List',
-      description: 'Bullet list',
-      icon: List,
-      searchTerms: ['ul'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run(),
-    },
-    {
-      title: 'Numbered List',
-      description: 'Numbered list',
-      icon: ListOrdered,
-      searchTerms: ['ol'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
-    },
-    {
-      title: 'Task List',
-      description: 'Task list',
-      icon: CheckSquare,
-      searchTerms: ['task'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run(),
-    },
-    {
-      title: 'Code Block',
-      description: 'Code snippet',
-      icon: Code,
-      searchTerms: ['code'],
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'text' }).run()
-      },
-    },
-    {
-      title: 'Quote',
-      description: 'Quote',
-      icon: Quote,
-      searchTerms: ['blockquote'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
-    },
-    {
-      title: 'Divider',
-      description: 'Horizontal rule',
-      icon: Minus,
-      searchTerms: ['hr'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
-    },
-    {
-      title: 'Image',
-      description: 'Embed image',
-      icon: Image,
-      searchTerms: ['img'],
-      command: ({ editor, range }) => {
-        const url = window.prompt(props.imageUrlPrompt)
-        if (url) editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
-      },
-    },
-    {
-      title: 'Table',
-      description: 'Add table',
-      icon: TableIcon,
-      searchTerms: ['table'],
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
-    },
-    {
-      title: 'Callout',
-      description: 'Admonition / callout box',
-      icon: AlertCircle,
-      searchTerms: ['callout', 'admonition', 'warning', 'tip', 'note'],
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setCallout({ type: 'note', title: 'Note' }).run()
-      },
-    },
-    {
-      title: 'Details',
-      description: 'Collapsible details block',
-      icon: PanelTop,
-      searchTerms: ['details', 'toggle', 'collapse', 'accordion'],
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setDetails({ summary: 'Details' }).run()
-      },
-    },
-    {
-      title: 'Math',
-      description: 'Block math formula (KaTeX)',
-      icon: Sigma,
-      searchTerms: ['math', 'katex', 'formula', 'equation', 'latex'],
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setMathBlock().run()
-      },
-    },
-    {
-      title: 'Mermaid',
-      description: 'Mermaid diagram',
-      icon: Workflow,
-      searchTerms: ['mermaid', 'diagram', 'chart', 'flowchart'],
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setMermaidBlock().run()
-      },
-    },
-    {
-      title: 'TODO',
-      description: 'Insert a TODO task',
-      icon: Square,
-      searchTerms: ['todo', 'task'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- TODO ').run(),
-    },
-    {
-      title: 'DOING',
-      description: 'Insert a DOING task',
-      icon: CircleDot,
-      searchTerms: ['doing', 'task'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- DOING ').run(),
-    },
-    {
-      title: 'DONE',
-      description: 'Insert a DONE task',
-      icon: CheckCircle2,
-      searchTerms: ['done', 'task'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- DONE ').run(),
-    },
-    {
-      title: 'NOW',
-      description: 'Insert a NOW task',
-      icon: Clock,
-      searchTerms: ['now', 'task'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- NOW ').run(),
-    },
-    {
-      title: 'LATER',
-      description: 'Insert a LATER task',
-      icon: Timer,
-      searchTerms: ['later', 'task'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('- LATER ').run(),
-    },
-    {
-      title: 'Priority A',
-      description: 'Insert [#A] priority',
-      icon: ArrowUp,
-      searchTerms: ['priority', 'A'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#A] ').run(),
-    },
-    {
-      title: 'Priority B',
-      description: 'Insert [#B] priority',
-      icon: ArrowUp,
-      searchTerms: ['priority', 'B'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#B] ').run(),
-    },
-    {
-      title: 'Priority C',
-      description: 'Insert [#C] priority',
-      icon: ArrowUp,
-      searchTerms: ['priority', 'C'],
-      command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent('[#C] ').run(),
-    },
-    {
-      title: 'Query',
-      description: 'Insert a query macro',
-      icon: Search,
-      searchTerms: ['query', 'macro'],
-      command: ({ editor, range }) => {
-        const q = window.prompt('Query (e.g. (task TODO DOING))', '(task TODO)')
-        if (q) {
-          editor.chain().focus().deleteRange(range).insertContent(`{{query ${q}}}`).run()
-        }
-      },
-    },
-    {
-      title: 'Block link',
-      description: 'Copy link to current block',
-      icon: Link,
-      searchTerms: ['block link', 'anchor', 'copy link'],
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).run()
-        const title = props.pageTitle
-        const id = getCurrentBlockId(editor)
-        if (title && id) {
-          const link = `[[${title}#^${id}]]`
-          navigator.clipboard.writeText(link).catch(() => {})
-        }
-      },
-    },
-  ]
-  return [...baseSlashItems, ...(props.extraSlashItems ?? [])]
+// The exposed imperative getBlockMap — the engine block-map scoped to this
+// editor's content wrapper (stashed on the handle by EngineContentHost).
+export function blockMapOf(editor: any): ReturnType<typeof getBlockMap> {
+  return getBlockMap(editor?.__contentEl ?? null)
 }
 
-// The editor-creating composable, imported by the widget via
-// `use { composable: ... }` — the codegen calls it ONCE at <script setup>
-// top level with ZERO arguments, so the options object is assembled here
-// from the component instance's props (resolved, with the widget's
-// generated withDefaults applied). tiptap's useEditor registers its
-// onMounted/onBeforeUnmount inside this call, which runs in setup scope
-// as required.
+// -- the engine content host (EditorContent replacement) ---------------------
 //
-// tiptap lifecycle callbacks are forwarded through inst.emit(...) using
-// the widget's QUOTED msg variants (update/blur/focus/link-click/
-// open-wiki-link) — quoted variants are contractual emit names, always
-// declared in defineEmits (plan 013 Phase 2 compiler fix), so the parent
-// listeners no longer fall through as native DOM listeners. The original's
-// `onOpenWikiLink` prop callback is ALSO invoked, matching the original
-// component's dual channel.
+// Renders the engine document: the focused editable leaf block through
+// BlockHost, every other block through the render preview pipeline
+// (EngineEditor.vue's live-preview compromise, compact bridge-native
+// port). The class attr falls through from the widget
+// (autodown-editor-content-wrapper).
+
+const EngineContentHost = defineComponent({
+  name: 'EngineContentHost',
+  props: {
+    editor: { type: Object, default: null },
+  },
+  setup(props, { attrs }) {
+    const tick = ref(0)
+    const hosts = new Map<string, BlockHostController>()
+
+    const engine = (): EditorEngine | undefined => (props.editor as any)?.__engine
+
+    const hostFor = (blockId: string): BlockHostController => {
+      let c = hosts.get(blockId)
+      if (!c) {
+        const e = engine()
+        if (!e) throw new Error('EngineContentHost: engine handle missing')
+        c = new BlockHostController(e, blockId)
+        hosts.set(blockId, c)
+      }
+      return c
+    }
+
+    onMounted(() => {
+      const e = engine()
+      if (e) e.onChange(() => { tick.value++ })
+      const inst = getCurrentInstance()
+      const el = (inst?.proxy?.$el as HTMLElement | undefined) ?? null
+      if (el && props.editor) (props.editor as any).__contentEl = el
+    })
+
+    return () => {
+      void tick.value
+      const e = engine()
+      const kids: VNode[] = []
+      if (e) {
+        const focusedId = e.selection.anchor.blockId
+        const previewMd = e.doc.children
+          .filter((n) => !(n.id === focusedId && isEditableLeaf(n)))
+          .map((n) => serialize({ ...e.doc, children: [n] } as BlockNode, false))
+          .join('\n')
+        const preview = renderNodes(parseDocument(previewMd, true), true)
+        let previewIdx = 0
+        e.doc.children.forEach((node) => {
+          if (node.id === focusedId && isEditableLeaf(node)) {
+            kids.push(
+              h(BlockHost, { controller: hostFor(node.id), blockKind: BlockType[node.kind], key: node.id })
+            )
+            return
+          }
+          const vnode = preview[previewIdx]
+          previewIdx += 1
+          kids.push(
+            h(
+              'div',
+              {
+                class: 'node-slot',
+                'data-node-index': String(previewIdx - 1),
+                'data-node-type': BlockType[node.kind],
+                'data-block-id': node.id,
+                key: node.id,
+              },
+              [h('div', { class: 'node-content' }, [vnode ?? h('div', { class: 'unknown-node' })])]
+            )
+          )
+        })
+      }
+      return h('div', { ...attrs, class: ['autodown-editor-content-wrapper', attrs.class] }, [
+        h('div', { class: 'autodown-editor-content', 'data-engine-editor': '' }, kids),
+      ])
+    }
+  },
+})
+
+// Exported under the widget's historical import name (`component:
+// EditorContent from "ext/auto_down_editor_ext.ts"`).
+export { EngineContentHost as EditorContent }
+
+// -- the editor-creating composable ------------------------------------------
 //
-// Returns a reactive `{ items, editor }` bag. reactive() keeps the editor
-// ref linked (reads/writes unwrap it), so when tiptap's useEditor assigns
-// the instance in its onMounted, `.autoDownEditorBridge.editor` becomes
-// live everywhere in the widget — the ONLY channel that works in
-// production builds (inline-template <script setup> returns a render
-// function, leaving setupState empty; extension code cannot reach the
-// widget's model vars through the component proxy).
-//
-// Also merges the editor REF into the widget's exposed surface on mount
-// (defineExpose runs at setup end, after this composable, so the merge
-// must defer to onMounted). The demo e2e harness reads
-// el.__vueParentComponent.exposed.editor.value — keep the ref shape.
+// The codegen calls it ONCE at <script setup> top level with ZERO
+// arguments, so the options are assembled here from the component
+// instance's props. Returns a reactive `{ items, editor }` bag;
+// reactive() keeps the handle linked so `.autoDownEditorBridge.editor` is
+// live everywhere in the widget. The handle REF is also merged into the
+// widget's exposed surface on mount (defineExpose runs at setup end, so
+// the merge defers to onMounted) — the e2e harness reads the raw
+// exposed ref shape.
+
 export function useAutoDownEditorBridge(): { items: SlashItem[]; editor: any } {
   const inst = getCurrentInstance()!
   const props = inst.props as any
 
   const slashItems = getSlashItems(props)
 
-  const editor = useAutoDownEditor({
-    content: props.content,
-    placeholder: props.placeholder,
-    editable: props.canEdit,
-    autofocus: props.autofocus ?? false,
-    slashItems,
-    loadBlock: props.loadBlock,
-    onAssetUpload: props.onAssetUpload,
-    taskWorkflow: props.taskWorkflow,
-    runQuery: props.runQuery,
-    onUpdate: (editorInstance: any) => {
-      inst.emit('update', editorInstance.getMarkdown())
+  const session = new EditorEngine(parse_blocks(String(props.content ?? ''), true))
+  const editor = createEditorAdapter(session) as any
+  editor.__engine = session
+  editor.getMarkdown = (): string => serialize(session.doc, true)
+  editor.isFocused = session.selection.anchor.blockId !== ''
+  editor.setEditable = (v: boolean): void => {
+    editor.isEditable = v
+  }
+  editor.commands = {
+    setContent(md: string, _opts?: { emitUpdate?: boolean; contentType?: string }): void {
+      if (md != null && md !== serialize(session.doc, true)) {
+        session.replaceDoc(parse_blocks(md, true))
+      }
     },
-    onBlur: () => {
-      inst.emit('blur')
-    },
-    onFocus: () => {
-      inst.emit('focus')
-    },
-    onLinkClick: (id: string) => {
-      inst.emit('link-click', id)
-    },
-    onOpenWikiLink: (title: string, blockId?: string | null) => {
-      inst.emit('open-wiki-link', title, blockId)
-      props.onOpenWikiLink?.(title, blockId)
-    },
+  }
+  session.onChange(() => {
+    inst.emit('update', serialize(session.doc, true))
   })
 
   onMounted(() => {

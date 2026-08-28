@@ -70,10 +70,12 @@ pub fn scan_wiki_tasks(wiki: &Path) -> Vec<TaskItem> {
     tasks
 }
 
-/// Parse a date token like "2026-07-01 Wed" or "2026-07-01".
-pub fn parse_task_date(raw: &str) -> Option<chrono::NaiveDate> {
-    let date_part = raw.split_whitespace().next()?;
-    chrono::NaiveDate::parse_from_str(date_part, "%Y-%m-%d").ok()
+/// Normalize a date token like "2026-07-01 Wed" / "2026-7-1" to the strict
+/// "YYYY-MM-DD" group-key form (validation + calendar logic in
+/// back/auto/agenda.at); "" = invalid.
+pub fn parse_task_date(raw: &str) -> Option<String> {
+    let d = crate::agenda_gen::normalizeDate(raw);
+    (!d.is_empty()).then_some(d)
 }
 
 #[derive(Serialize)]
@@ -114,28 +116,32 @@ pub async fn get_agenda(
 ) -> Result<Json<AgendaResponse>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
+    // Wall clock stays shell-side (chrono); validation/normalization and the
+    // window grouping live in back/auto/agenda.at. Normalized keys compare
+    // lexically == chronologically.
     let today = chrono::Local::now().date_naive();
     let end = today + chrono::Duration::days(q.days);
+    let refs: Vec<crate::agenda_gen::AgTaskRef> = tasks
+        .iter()
+        .enumerate()
+        .map(|(i, t)| crate::agenda_gen::AgTaskRef {
+            scheduled: t.scheduled.clone().unwrap_or_default(),
+            deadline: t.deadline.clone().unwrap_or_default(),
+            index: i as i64,
+        })
+        .collect();
+    let groups = crate::agenda_gen::groupAgenda(refs, &today.to_string(), &end.to_string());
 
-    let mut map: std::collections::BTreeMap<String, Vec<TaskItem>> = std::collections::BTreeMap::new();
-    for task in tasks {
-        let dates: Vec<String> = [task.scheduled.as_ref(), task.deadline.as_ref()]
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect();
-        for raw in dates {
-            if let Some(date) = parse_task_date(&raw) {
-                if date >= today && date <= end {
-                    map.entry(date.to_string()).or_default().push(task.clone());
-                }
-            }
-        }
-    }
-
-    let groups = map
+    let groups = groups
         .into_iter()
-        .map(|(date, tasks)| AgendaGroup { date, tasks })
+        .map(|g| AgendaGroup {
+            date: g.date,
+            tasks: g
+                .indexes
+                .into_iter()
+                .map(|i| tasks[i as usize].clone())
+                .collect(),
+        })
         .collect();
     Ok(Json(AgendaResponse { groups }))
 }
@@ -184,6 +190,67 @@ mod tasks_gen_parity {
                     "page `{page_path}` deadline"
                 );
                 assert_eq!(it.line as i64, e["line"].as_i64().unwrap(), "page `{page_path}` line");
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod agenda_gen_parity {
+    use super::*;
+
+    // Cross-language parity with the TS twin (../../auto/tests/agenda-parity.mjs).
+
+    #[test]
+    fn normalize_date_parity_fixtures() {
+        let fixtures: serde_json::Value = serde_json::from_str(
+            include_str!("../../auto/tests/agenda-fixtures.json"),
+        )
+        .unwrap();
+        for d in fixtures["dates"].as_array().unwrap() {
+            assert_eq!(
+                crate::agenda_gen::normalizeDate(d["raw"].as_str().unwrap()),
+                d["out"].as_str().unwrap(),
+                "raw {:?}",
+                d["raw"]
+            );
+        }
+    }
+
+    #[test]
+    fn group_agenda_parity_fixtures() {
+        let fixtures: serde_json::Value = serde_json::from_str(
+            include_str!("../../auto/tests/agenda-fixtures.json"),
+        )
+        .unwrap();
+        for g in fixtures["groups"].as_array().unwrap() {
+            let entries: Vec<crate::agenda_gen::AgTaskRef> = g["entries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| crate::agenda_gen::AgTaskRef {
+                    scheduled: e["scheduled"].as_str().unwrap().to_string(),
+                    deadline: e["deadline"].as_str().unwrap().to_string(),
+                    index: e["index"].as_i64().unwrap(),
+                })
+                .collect();
+            let groups = crate::agenda_gen::groupAgenda(
+                entries,
+                g["today"].as_str().unwrap(),
+                g["end"].as_str().unwrap(),
+            );
+            let expected = g["expected"].as_array().unwrap();
+            assert_eq!(groups.len(), expected.len(), "{}", g["name"].as_str().unwrap());
+            for (grp, e) in groups.iter().zip(expected.iter()) {
+                assert_eq!(grp.date, e["date"].as_str().unwrap());
+                let idx: Vec<i64> = grp.indexes.clone();
+                let exp: Vec<i64> = e["indexes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| v.as_i64().unwrap())
+                    .collect();
+                assert_eq!(idx, exp, "date {}", grp.date);
             }
         }
     }

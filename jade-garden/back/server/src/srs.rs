@@ -6,7 +6,6 @@ use axum::{
     extract::{Json as AxumJson, Query, State},
     response::Json,
 };
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::block::Block;
@@ -29,12 +28,6 @@ pub struct Card {
     pub last_reviewed: Option<String>,
 }
 
-lazy_static::lazy_static! {
-    static ref CARD_TAG_RE: Regex = Regex::new(r"#card\b|\[\[card\]\]").unwrap();
-    static ref CLOZE_RE: Regex = Regex::new(r"\{\{cloze\s+(.*?)\s*\\\s*(.*?)\}\}").unwrap();
-    static ref PROPERTY_RE: Regex = Regex::new(r"^\s*([a-zA-Z_][a-zA-Z0-9_\-]*)::\s*(.*)$").unwrap();
-}
-
 fn today_string() -> String {
     chrono::Local::now().date_naive().to_string()
 }
@@ -43,100 +36,67 @@ fn parse_date(s: &str) -> Option<chrono::NaiveDate> {
     chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
 }
 
+/// Numeric card fields cross the .at boundary as raw property text; parse
+/// them here (a2r cannot lower str<->float for the rust target). "" or an
+/// unparsable value falls back to the historical defaults.
+fn parse_f64_or(s: &str, dflt: f64) -> f64 {
+    s.parse::<f64>().unwrap_or(dflt)
+}
+
 pub fn extract_cards(page_path: &str, text: &str, blocks: &[Block]) -> Vec<Card> {
-    let mut cards = Vec::new();
-    for block in blocks {
-        let content = block.content.as_str();
-        if !CARD_TAG_RE.is_match(content) && !CLOZE_RE.is_match(content) {
-            continue;
-        }
-        let block_id = match &block.block_id {
-            Some(id) => id.clone(),
-            None => continue,
-        };
-        let (question, answer) = build_qa(content);
-        let props = parse_block_properties(text, block.line_start, block.line_end);
-        let ease_factor = props
-            .get("card-ease-factor")
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(2.5);
-        let repeats = props
-            .get("card-repeats")
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(0);
-        let last_interval = props
-            .get("card-last-interval")
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(0.0);
-        let next_schedule = props.get("card-next-schedule").cloned();
-        let last_score = props.get("card-last-score").and_then(|v| v.parse().ok());
-        let last_reviewed = props.get("card-last-reviewed").cloned();
-        cards.push(Card {
-            page_path: page_path.to_string(),
-            block_id,
-            uuid: block.uuid.clone(),
-            raw: content.to_string(),
-            question,
-            answer,
-            deck: props.get("deck").cloned(),
-            ease_factor,
-            repeats,
-            last_interval,
-            next_schedule,
-            last_score,
-            last_reviewed,
-        });
-    }
-    cards
-}
-
-fn build_qa(content: &str) -> (String, String) {
-    let mut question = content.to_string();
-    let mut answer = content.to_string();
-    for cap in CLOZE_RE.captures_iter(content) {
-        let answer_text = cap[1].trim().to_string();
-        let hint = cap[2].trim().to_string();
-        let full = cap[0].to_string();
-        question = question.replace(&full, &format!("{{{{{}}}}}", hint));
-        answer = answer.replace(&full, &format!("**{}**", answer_text));
-    }
-    question = CARD_TAG_RE.replace_all(&question, "").trim().to_string();
-    answer = CARD_TAG_RE.replace_all(&answer, "").trim().to_string();
-    (question, answer)
-}
-
-fn parse_block_properties(text: &str, line_start: usize, line_end: usize) -> HashMap<String, String> {
-    let mut props = HashMap::new();
-    // Block line ranges come from `parser::parse_page`, which strips the
-    // frontmatter before indexing lines — so index into the body, not the
-    // raw file text.
+    // Shell owns: frontmatter split, uuid stamping, numeric parsing, Option
+    // mapping. Card/QA/property logic lives in back/auto/srs.at.
     let (_, body) = crate::parser::split_frontmatter(text);
-    let lines: Vec<&str> = body.lines().collect();
-    for i in line_start..line_end.min(lines.len()) {
-        if let Some(cap) = PROPERTY_RE.captures(lines[i]) {
-            props.insert(cap[1].to_string(), cap[2].trim().to_string());
-        }
-    }
-    // Single-line blocks (list items, headings) end at their own line, but
-    // `review_card` writes `key:: value` properties as deeper-indented lines
-    // below the block. Keep consuming lines while they are indented deeper
-    // than the block line; stop at a blank line or at the next block (same or
-    // shallower indent). Mirrors the property-region scan in `review_card`.
-    if line_start < lines.len() {
-        let block_line = lines[line_start];
-        let block_indent = block_line.len() - block_line.trim_start().len();
-        for i in line_end.max(line_start + 1)..lines.len() {
-            let line = lines[i];
-            let indent = line.len() - line.trim_start().len();
-            if line.trim().is_empty() || indent <= block_indent {
-                break;
-            }
-            if let Some(cap) = PROPERTY_RE.captures(line) {
-                props.insert(cap[1].to_string(), cap[2].trim().to_string());
-            }
-        }
-    }
-    props
+    let lines: Vec<String> = body.lines().map(|l| l.to_string()).collect();
+    let srs_blocks: Vec<crate::srs_gen::SrsBlock> = blocks
+        .iter()
+        .map(|b| crate::srs_gen::SrsBlock {
+            blockId: b.block_id.clone().unwrap_or_default(),
+            uuid: b.uuid.clone(),
+            content: b.content.clone(),
+            lineStart: b.line_start as i64,
+            lineEnd: b.line_end as i64,
+        })
+        .collect();
+    crate::srs_gen::extractCards(page_path, lines, srs_blocks)
+        .into_iter()
+        .map(|c| Card {
+            page_path: c.pagePath,
+            block_id: c.blockId,
+            uuid: c.uuid,
+            raw: c.raw,
+            question: c.question,
+            answer: c.answer,
+            deck: opt_string(c.deck),
+            ease_factor: parse_f64_or(&c.easeFactor, 2.5),
+            repeats: c.repeats.parse().unwrap_or(0),
+            last_interval: parse_f64_or(&c.lastInterval, 0.0),
+            next_schedule: opt_string(c.nextSchedule),
+            last_score: c.lastScore.parse().ok(),
+            last_reviewed: opt_string(c.lastReviewed),
+        })
+        .collect()
+}
+
+fn opt_string(s: String) -> Option<String> {
+    (!s.is_empty()).then_some(s)
+}
+
+/// Cloze QA construction — thin wrapper over back/auto/srs.at buildQa.
+fn build_qa(content: &str) -> (String, String) {
+    let qa = crate::srs_gen::buildQa(content);
+    (qa.question, qa.answer)
+}
+
+/// Block property region scan — thin wrapper over back/auto/srs.at
+/// parseBlockProps (frontmatter split stays shell-side).
+fn parse_block_properties(text: &str, line_start: usize, line_end: usize) -> HashMap<String, String> {
+    let (_, body) = crate::parser::split_frontmatter(text);
+    let lines: Vec<String> = body.lines().map(|l| l.to_string()).collect();
+    crate::srs_gen::parseBlockProps(lines, line_start as i64, line_end as i64)
+        .into_iter()
+        .map(|p| (p.key, p.value))
+        .collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,36 +130,16 @@ impl OfMatrix {
     }
 
     pub fn factor(&self, repetition: usize, grade: u8) -> f64 {
-        self.matrix
-            .get(repetition.min(4))
-            .and_then(|row| row.get((grade.saturating_sub(1) as usize).min(4)))
-            .copied()
-            .unwrap_or(2.5)
+        crate::srs_gen::matrixFactor(self.matrix.clone(), repetition as i64, grade as i64)
     }
 
     pub fn update(&mut self, repetition: usize, grade: u8, requested: f64) {
-        let rep = repetition.min(4);
-        let gr = (grade.saturating_sub(1) as usize).min(4);
-        if self.matrix.is_empty() {
-            self.matrix = vec![vec![2.5; 5]; 5];
-        }
-        if self.matrix.len() <= rep {
-            self.matrix.resize_with(rep + 1, || vec![2.5; 5]);
-        }
-        let row = &mut self.matrix[rep];
-        if row.len() <= gr {
-            row.resize(gr + 1, 2.5);
-        }
-        let current = row[gr];
-        let modifier = match grade {
-            1 => -0.30,
-            2 => -0.15,
-            3 => 0.0,
-            4 => 0.10,
-            _ => 0.0,
-        };
-        let change = (requested - current) * 0.1 + modifier;
-        row[gr] = (current + change).clamp(1.3, 3.0);
+        self.matrix = crate::srs_gen::matrixUpdate(
+            self.matrix.clone(),
+            repetition as i64,
+            grade as i64,
+            requested,
+        );
     }
 }
 
@@ -238,37 +178,24 @@ impl Default for OfMatrix {
 }
 
 pub fn schedule(card: &Card, grade: u8, matrix: &mut OfMatrix) -> HashMap<String, String> {
+    // Scheduling math lives in back/auto/srs.at (scheduleWith); the shell
+    // owns wall clock + numeric formatting (a2r boundary).
     let mut props = HashMap::new();
     let grade = grade.clamp(1, 4);
-    let mut repeats = card.repeats;
-    let mut interval = card.last_interval;
-    let mut ease_factor = card.ease_factor;
+    let out = crate::srs_gen::scheduleWith(
+        card.ease_factor,
+        card.repeats as i64,
+        card.last_interval,
+        grade as i64,
+        matrix.matrix.clone(),
+    );
+    matrix.matrix = out.matrix;
 
-    if grade == 1 {
-        repeats = 0;
-        interval = 0.0;
-    } else {
-        repeats += 1;
-        if repeats == 1 {
-            interval = 1.0;
-        } else if repeats == 2 {
-            interval = 6.0;
-        } else {
-            let factor = matrix.factor((repeats as usize).min(4), grade);
-            interval = (interval * factor).max(ease_factor);
-        }
-    }
+    let next_date = chrono::Local::now().date_naive() + chrono::Duration::days(out.lastInterval.max(1.0) as i64);
 
-    // Update EF using SM-2 formula as a proxy for item easiness.
-    let q = 5.0 - grade as f64;
-    ease_factor = (ease_factor + (0.1 - q * (0.08 + q * 0.02))).max(1.3);
-    matrix.update((repeats as usize).min(4), grade, interval);
-
-    let next_date = chrono::Local::now().date_naive() + chrono::Duration::days(interval.max(1.0) as i64);
-
-    props.insert("card-ease-factor".to_string(), format!("{:.2}", ease_factor));
-    props.insert("card-repeats".to_string(), repeats.to_string());
-    props.insert("card-last-interval".to_string(), format!("{:.1}", interval));
+    props.insert("card-ease-factor".to_string(), format!("{:.2}", out.easeFactor));
+    props.insert("card-repeats".to_string(), out.repeats.to_string());
+    props.insert("card-last-interval".to_string(), format!("{:.1}", out.lastInterval));
     props.insert("card-next-schedule".to_string(), next_date.to_string());
 
     props.insert("card-last-score".to_string(), grade.to_string());
@@ -354,14 +281,14 @@ pub async fn review_card(
     let text = std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {e}"))?;
     let mut lines: Vec<String> = text.lines().map(|s| s.to_string()).collect();
 
-    // Find the block line by its ^block_id anchor.
+    // Find the block line by its ^block_id anchor (scan in back/auto/srs.at).
     let anchor = format!("^{}", req.block_id);
-    let block_line = lines
-        .iter()
-        .position(|l| l.trim_end().ends_with(&anchor))
-        .ok_or("Block not found")?;
-    let block_indent = lines[block_line].len() - lines[block_line].trim_start().len();
-
+    let block_line = crate::srs_gen::findAnchorLine(lines.clone(), &anchor);
+    let block_line = if block_line >= 0 {
+        block_line as usize
+    } else {
+        return Err("Block not found".into());
+    };
     // Load or create the OF matrix.
     let matrix_path = wiki.join("jade-garden-srs-of-matrix.edn");
     let mut matrix = OfMatrix::load(&matrix_path);
@@ -399,37 +326,16 @@ pub async fn review_card(
 
     let new_props = schedule(&card, req.grade, &mut matrix);
 
-    // Remove old property lines for the keys we are updating.
-    let end_line = (block_line + 1..lines.len())
-        .find(|i| {
-            let line = &lines[*i];
-            let indent = line.len() - line.trim_start().len();
-            line.trim().is_empty() || indent <= block_indent
-        })
-        .unwrap_or(lines.len());
-    let mut remove: Vec<usize> = Vec::new();
-    for i in block_line + 1..end_line {
-        if let Some(cap) = PROPERTY_RE.captures(&lines[i]) {
-            if new_props.contains_key(&cap[1]) {
-                remove.push(i);
-            }
-        }
-    }
-    for i in remove.into_iter().rev() {
-        lines.remove(i);
-    }
-
-    // Insert updated properties after the block line, indented.
-    let indent = " ".repeat(block_indent + 2);
-    let mut insert_lines: Vec<String> = new_props
+    // Line surgery (drop stale property lines + insert the new ones sorted)
+    // lives in back/auto/srs.at applyReviewProps.
+    let gen_props: Vec<crate::srs_gen::PropPair> = new_props
         .iter()
-        .map(|(k, v)| format!("{}{}:: {}", indent, k, v))
+        .map(|(k, v)| crate::srs_gen::PropPair {
+            key: k.clone(),
+            value: v.clone(),
+        })
         .collect();
-    insert_lines.sort();
-    let insert_pos = block_line + 1;
-    for (i, line) in insert_lines.into_iter().enumerate() {
-        lines.insert(insert_pos + i, line);
-    }
+    lines = crate::srs_gen::applyReviewProps(lines, block_line as i64, gen_props);
 
     // Write back preserving original line endings.
     std::fs::write(&path, lines.join("\n")).map_err(|e| format!("Failed to write file: {e}"))?;
@@ -548,5 +454,155 @@ mod tests {
         let cards = extract_cards("Cards.ad", text, &parsed.blocks);
         assert_eq!(cards.len(), 1);
         assert_eq!(cards[0].next_schedule, None);
+    }
+}
+
+
+#[cfg(test)]
+mod srs_gen_parity {
+    use super::*;
+
+    // Cross-language parity with the TS twin (../../auto/tests/srs-parity.mjs).
+
+    fn default_matrix() -> Vec<Vec<f64>> {
+        vec![vec![2.5; 5]; 5]
+    }
+
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-9
+    }
+
+    fn fixtures() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../auto/tests/srs-fixtures.json")).unwrap()
+    }
+
+    #[test]
+    fn qa_parity_fixtures() {
+        for c in fixtures()["qa"].as_array().unwrap() {
+            let (q, a) = build_qa(c["content"].as_str().unwrap());
+            assert_eq!(q, c["q"].as_str().unwrap(), "{}", c["name"].as_str().unwrap());
+            assert_eq!(a, c["a"].as_str().unwrap(), "{}", c["name"].as_str().unwrap());
+        }
+    }
+
+    #[test]
+    fn props_parity_fixtures() {
+        for c in fixtures()["props"].as_array().unwrap() {
+            // join body lines and drive through the shell wrapper (same path
+            // as production: frontmatter split happens inside)
+            let text = c["lines"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect::<Vec<_>>().join("
+");
+            let props = parse_block_properties(&text, c["lineStart"].as_u64().unwrap() as usize, c["lineEnd"].as_u64().unwrap() as usize);
+            let expected = c["expected"].as_object().unwrap();
+            assert_eq!(props.len(), expected.len(), "{}", c["name"].as_str().unwrap());
+            for (k, v) in expected {
+                assert_eq!(props.get(k.as_str()).map(String::as_str), Some(v.as_str().unwrap()), "{}: {k}", c["name"].as_str().unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn extract_parity_fixtures() {
+        for c in fixtures()["extract"].as_array().unwrap() {
+            let lines: Vec<String> = c["lines"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
+            let blocks: Vec<crate::srs_gen::SrsBlock> = c["blocks"].as_array().unwrap().iter().map(|b| crate::srs_gen::SrsBlock {
+                blockId: b["blockId"].as_str().unwrap().to_string(),
+                uuid: b["uuid"].as_str().unwrap().to_string(),
+                content: b["content"].as_str().unwrap().to_string(),
+                lineStart: b["lineStart"].as_i64().unwrap(),
+                lineEnd: b["lineEnd"].as_i64().unwrap(),
+            }).collect();
+            let cards: Vec<Card> = crate::srs_gen::extractCards(c["pagePath"].as_str().unwrap(), lines, blocks).into_iter().map(|c| Card {
+                page_path: c.pagePath,
+                block_id: c.blockId,
+                uuid: c.uuid,
+                raw: c.raw,
+                question: c.question,
+                answer: c.answer,
+                deck: (!c.deck.is_empty()).then_some(c.deck),
+                ease_factor: c.easeFactor.parse().unwrap_or(2.5),
+                repeats: c.repeats.parse().unwrap_or(0),
+                last_interval: c.lastInterval.parse().unwrap_or(0.0),
+                next_schedule: (!c.nextSchedule.is_empty()).then_some(c.nextSchedule),
+                last_score: c.lastScore.parse().ok(),
+                last_reviewed: (!c.lastReviewed.is_empty()).then_some(c.lastReviewed),
+            }).collect();
+            let expected = c["expected"].as_array().unwrap();
+            assert_eq!(cards.len(), expected.len(), "{}", c["name"].as_str().unwrap());
+            for (card, e) in cards.iter().zip(expected.iter()) {
+                assert_eq!(card.block_id, e["blockId"].as_str().unwrap(), "{}", c["name"].as_str().unwrap());
+                assert_eq!(card.question, e["question"].as_str().unwrap(), "{} q", c["name"].as_str().unwrap());
+                assert_eq!(card.answer, e["answer"].as_str().unwrap(), "{} a", c["name"].as_str().unwrap());
+                assert_eq!(card.deck.as_deref().unwrap_or(""), e["deck"].as_str().unwrap(), "{} deck", c["name"].as_str().unwrap());
+                assert_eq!(card.ease_factor.to_string(), e["easeFactor"].as_str().unwrap().parse::<f64>().unwrap_or(2.5).to_string(), "{} ease", c["name"].as_str().unwrap());
+                assert_eq!(card.repeats as i64, e["repeats"].as_str().unwrap().parse::<i64>().unwrap_or(0), "{} reps", c["name"].as_str().unwrap());
+                assert_eq!(card.next_schedule.as_deref().unwrap_or(""), e["nextSchedule"].as_str().unwrap(), "{} next", c["name"].as_str().unwrap());
+                assert_eq!(card.last_score.map(|s| s.to_string()).unwrap_or_default(), e["lastScore"].as_str().unwrap(), "{} score", c["name"].as_str().unwrap());
+                assert_eq!(card.last_reviewed.as_deref().unwrap_or(""), e["lastReviewed"].as_str().unwrap(), "{} reviewed", c["name"].as_str().unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn matrix_factor_parity_fixtures() {
+        for (i, c) in fixtures()["matrixFactor"].as_array().unwrap().iter().enumerate() {
+            let matrix: Vec<Vec<f64>> = c["matrix"].as_array().unwrap().iter()
+                .map(|r| r.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect())
+                .collect();
+            let out = crate::srs_gen::matrixFactor(matrix, c["rep"].as_i64().unwrap(), c["grade"].as_i64().unwrap());
+            assert!(close(out, c["out"].as_f64().unwrap()), "factor #{i}: {out}");
+        }
+    }
+
+    #[test]
+    fn matrix_update_parity_fixtures() {
+        for c in fixtures()["matrixUpdate"].as_array().unwrap() {
+            let matrix: Vec<Vec<f64>> = c["matrix"].as_array().unwrap().iter()
+                .map(|r| r.as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect())
+                .collect();
+            let out = crate::srs_gen::matrixUpdate(matrix, c["rep"].as_i64().unwrap(), c["grade"].as_i64().unwrap(), c["requested"].as_f64().unwrap());
+            assert_eq!(out.len() as i64, c["rows"].as_i64().unwrap(), "{} rows", c["name"].as_str().unwrap());
+            if let Some(row0) = c["row0"].as_array() {
+                let exp: Vec<f64> = row0.iter().map(|v| v.as_f64().unwrap()).collect();
+                assert_eq!(out[0], exp, "{} row0", c["name"].as_str().unwrap());
+            }
+            let (r, g, v) = (c["row"].as_u64().unwrap() as usize, c["col"].as_u64().unwrap() as usize, c["cell"].as_f64().unwrap());
+            assert!(close(out[r][g], v), "{} cell: {}", c["name"].as_str().unwrap(), out[r][g]);
+        }
+    }
+
+    #[test]
+    fn schedule_parity_fixtures() {
+        for c in fixtures()["schedule"].as_array().unwrap() {
+            let out = crate::srs_gen::scheduleWith(
+                c["ease"].as_f64().unwrap(),
+                c["repeats"].as_i64().unwrap(),
+                c["interval"].as_f64().unwrap(),
+                c["grade"].as_i64().unwrap(),
+                default_matrix(),
+            );
+            let e = &c["out"];
+            assert!(close(out.easeFactor, e["easeFactor"].as_f64().unwrap()), "{} ease", c["name"].as_str().unwrap());
+            assert_eq!(out.repeats, e["repeats"].as_i64().unwrap(), "{} reps", c["name"].as_str().unwrap());
+            assert!(close(out.lastInterval, e["lastInterval"].as_f64().unwrap()), "{} iv", c["name"].as_str().unwrap());
+            let (r, g, v) = (c["matrixCell"][0].as_u64().unwrap() as usize, c["matrixCell"][1].as_u64().unwrap() as usize, c["matrixCell"][2].as_f64().unwrap());
+            assert!(close(out.matrix[r][g], v), "{} cell", c["name"].as_str().unwrap());
+        }
+    }
+
+    #[test]
+    fn review_surgery_parity_fixtures() {
+        assert_eq!(crate::srs_gen::findAnchorLine(vec!["x".to_string(), "- card ^c1  ".to_string()], "^c1"), 1);
+        assert_eq!(crate::srs_gen::findAnchorLine(vec!["x".to_string()], "^c1"), -1);
+        for c in fixtures()["applyReviewProps"].as_array().unwrap() {
+            let lines: Vec<String> = c["lines"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
+            let props: Vec<crate::srs_gen::PropPair> = c["newProps"].as_array().unwrap().iter().map(|p| crate::srs_gen::PropPair {
+                key: p["key"].as_str().unwrap().to_string(),
+                value: p["value"].as_str().unwrap().to_string(),
+            }).collect();
+            let out = crate::srs_gen::applyReviewProps(lines, c["blockLine"].as_i64().unwrap(), props);
+            let expected: Vec<&str> = c["expected"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+            assert_eq!(out, expected, "{}", c["name"].as_str().unwrap());
+        }
     }
 }

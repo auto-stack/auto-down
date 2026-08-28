@@ -43,6 +43,14 @@ const SOURCES = [
     at: 'query.at',
     structs: ['QueryTask', 'QueryEvalOut', 'QueryEvalOut2', 'OffsetDays'],
   },
+  {
+    at: 'agenda.at',
+    structs: ['AgTaskRef', 'AgGroup'],
+  },
+  {
+    at: 'srs.at',
+    structs: ['PropPair', 'Qa', 'SrsBlock', 'SrsCardRaw', 'SchedOut'],
+  },
 ]
 
 const ctorRegexFor = (structs) =>

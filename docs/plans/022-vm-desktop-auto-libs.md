@@ -2,7 +2,11 @@
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**立项（2026-08-27 评估完成，未开工）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 2 slice 4 完成，2026-08-28）**。决议来源：2026-08-27 会话方向裁定——
+> 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
+> 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
+> e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
+> 此处对号入座）；slice 4 由改号后本会话执行。
 > jade-garden 未来直接依赖 autodown 的 Auto 实现库，使 VM（桌面）版成为可能，
 > 而不是限于网页版。
 > 立项：2026-08-27。前置：无硬前置（Phase 1 可即日开工）；Phase 3 依赖
@@ -90,6 +94,22 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > 登记偏差：有序列表统一为「数字串 + . 」（原 parse_list_item 只认
 > 1./0.，与 is_block_start 的 ORDERED_RE 不一致，"12. x" 行会进空段落
 > 死循环——顺带修复）。
+>
+> **进度（2026-08-28 slice 4 完成，改号后）**：agenda + srs 纯逻辑 .at 化——
+> `agenda.at`（日期校验归一/窗口分组，退役 tasks.rs 的 parse_task_date +
+> BTreeMap 分组）与 `srs.at`（CARD/CLOZE 识别与 QA 构建/属性行区扫描/
+> OF 矩阵 factor+update/调度数学/复盘属性行手术，退役 srs.rs 三个正则与
+> schedule/update/QA/property 手写体）；壳保留 axum/fs/chrono 与全部
+> str↔float 解析格式化（a2r 不能降阶 to(float)/toFixed——float 只跨边界
+> 传值，算术在 .at）。新增跨端纪律两条：`(a op b) * c` 括号被发射器丢弃
+> → let 中转变量（DEBTS 013 残留复现）；`x.max(y)`/`/` 双端不同形
+> （TS number 无方法 / a2ts 浮点除）→ 比较辅助 fmax/fmin 与减法整除。
+> 对拍：agenda 15 日期 + 2 分组、srs 7 QA + 6 属性 + 2 抽取 + 5 factor +
+> 2 update + 4 调度 + 3 手术（node TS 孪生 + rust include_str 双侧同
+> fixtures）。门：server cargo 33/33（24 既有全存活 = 语义保形证据）+
+> 六套 parity 全绿 + jade e2e 23/23（worktree 需先构建 engine dist 与
+> 同步 tmp/wiki-demo fixture，与 021 会话同款环境项）。剩余 slice：
+> search（触发 SQLite 存储裁定项）；Phase 1（api.at 契约固化）仍欠。
 >
 > **进度（2026-08-28 slice 2 完成）**：back/auto/links.at 单源落地——
 > wikilink/block-ref/tag 三个正则扫描器与 extract_links/extract_tags 行级

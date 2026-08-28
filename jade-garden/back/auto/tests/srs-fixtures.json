@@ -1,0 +1,219 @@
+{
+  "qa": [
+    {
+      "name": "cloze basic with tag and anchor",
+      "content": "- 法国的首都是哪里？ {{cloze Paris \\ 城市}} #card ^c1",
+      "q": "- 法国的首都是哪里？ {{城市}}  ^c1",
+      "a": "- 法国的首都是哪里？ **Paris**  ^c1"
+    },
+    {
+      "name": "two clozes",
+      "content": "- {{cloze A \\ a}} and {{cloze B \\ b}} #card",
+      "q": "- {{a}} and {{b}}",
+      "a": "- **A** and **B**"
+    },
+    {
+      "name": "cloze needs whitespace after keyword",
+      "content": "- {{clozeX}} #card",
+      "q": "- {{clozeX}}",
+      "a": "- {{clozeX}}"
+    },
+    {
+      "name": "cloze without closing braces still a card via tag, QA keeps source",
+      "content": "- {{cloze X \\ no end #card",
+      "q": "- {{cloze X \\ no end",
+      "a": "- {{cloze X \\ no end"
+    },
+    {
+      "name": "whitespace-heavy cloze trims both sides",
+      "content": "- q {{cloze  A B  \\  h  }} #card",
+      "q": "- q {{h}}",
+      "a": "- q **A B**"
+    },
+    {
+      "name": "#cardx is not a card tag",
+      "content": "- Q #cardx",
+      "q": "- Q #cardx",
+      "a": "- Q #cardx"
+    },
+    {
+      "name": "[[card]] tag strips",
+      "content": "- Q [[card]] ^c1",
+      "q": "- Q  ^c1",
+      "a": "- Q  ^c1"
+    }
+  ],
+  "props": [
+    {
+      "name": "indented below single-line block, last duplicate wins",
+      "lines": ["- card ^c1", "  deck:: french", "  k:: v1", "  k:: v2"],
+      "lineStart": 0,
+      "lineEnd": 1,
+      "expected": { "deck": "french", "k": "v2" }
+    },
+    {
+      "name": "stops at next block (indent <= block)",
+      "lines": ["- card one ^c1", "  deck:: french", "- card two ^c2", "  deck:: german"],
+      "lineStart": 0,
+      "lineEnd": 1,
+      "expected": { "deck": "french" }
+    },
+    {
+      "name": "stops at blank line",
+      "lines": ["- card ^c1", "  deck:: french", "", "  orphan:: ignored"],
+      "lineStart": 0,
+      "lineEnd": 1,
+      "expected": { "deck": "french" }
+    },
+    {
+      "name": "multi-line block range picks inline props",
+      "lines": ["- item ^c1", "  key-a:: 1 ", "plain", "  key-b::2"],
+      "lineStart": 0,
+      "lineEnd": 3,
+      "expected": { "key-a": "1", "key-b": "2" }
+    },
+    {
+      "name": "no property lines is empty",
+      "lines": ["- plain ^b1", "- next ^b2"],
+      "lineStart": 0,
+      "lineEnd": 1,
+      "expected": {}
+    },
+    {
+      "name": "key charset allows dash and digits, value trimmed both ends",
+      "lines": ["- b ^c1", "  card-ease-factor::  2.50  ", "  x_9-y:: v"],
+      "lineStart": 0,
+      "lineEnd": 1,
+      "expected": { "card-ease-factor": "2.50", "x_9-y": "v" }
+    }
+  ],
+  "extract": [
+    {
+      "name": "card with persisted schedule properties",
+      "pagePath": "Cards.ad",
+      "lines": ["- Q? {{cloze Paris \\ 城市}} #card ^c1", "  card-next-schedule:: 2099-01-01", "  card-repeats:: 1", "  card-ease-factor:: 2.45", "  card-last-interval:: 6.0", "  card-last-score:: 3", "  card-last-reviewed:: 2026-08-01", "  deck:: french"],
+      "blocks": [
+        { "blockId": "c1", "uuid": "u1", "content": "- Q? {{cloze Paris \\ 城市}} #card ^c1", "lineStart": 0, "lineEnd": 1 }
+      ],
+      "expected": [
+        {
+          "blockId": "c1",
+          "question": "- Q? {{城市}}  ^c1",
+          "answer": "- Q? **Paris**  ^c1",
+          "deck": "french",
+          "easeFactor": "2.45",
+          "repeats": "1",
+          "lastInterval": "6.0",
+          "nextSchedule": "2099-01-01",
+          "lastScore": "3",
+          "lastReviewed": "2026-08-01"
+        }
+      ]
+    },
+    {
+      "name": "block without anchor skipped, non-card skipped, defaults empty",
+      "pagePath": "P.ad",
+      "lines": ["- no anchor #card", "- plain", "- bare #card ^c2"],
+      "blocks": [
+        { "blockId": "", "uuid": "u0", "content": "- no anchor #card", "lineStart": 0, "lineEnd": 1 },
+        { "blockId": "p", "uuid": "u1", "content": "- plain", "lineStart": 1, "lineEnd": 2 },
+        { "blockId": "c2", "uuid": "u2", "content": "- bare #card ^c2", "lineStart": 2, "lineEnd": 3 }
+      ],
+      "expected": [
+        { "blockId": "c2", "question": "- bare  ^c2", "answer": "- bare  ^c2", "deck": "", "easeFactor": "", "repeats": "", "lastInterval": "", "nextSchedule": "", "lastScore": "", "lastReviewed": "" }
+      ]
+    }
+  ],
+  "matrixFactor": [
+    { "matrix": [], "rep": 3, "grade": 3, "out": 2.5 },
+    { "matrix": [[2.5, 2.5, 2.5, 2.5, 2.5], [2.5, 2.5, 2.5, 2.5, 2.5], [2.5, 2.5, 2.5, 2.5, 2.5], [2.5, 2.5, 2.5, 2.5, 2.5], [2.5, 2.5, 2.5, 2.5, 2.5]], "rep": 3, "grade": 4, "out": 2.5 },
+    { "matrix": [[1.0, 2.0], [3.0]], "rep": 1, "grade": 1, "out": 3.0 },
+    { "matrix": [[1.0, 2.0]], "rep": 1, "grade": 4, "out": 2.5 },
+    { "matrix": [[1.0, 2.0]], "rep": 9, "grade": 1, "out": 2.5 }
+  ],
+  "matrixUpdate": [
+    {
+      "name": "empty matrix seeds 5x5 and clamps high",
+      "matrix": [],
+      "rep": 2,
+      "grade": 4,
+      "requested": 15.0,
+      "row": 2,
+      "col": 3,
+      "cell": 3.0,
+      "rows": 5
+    },
+    {
+      "name": "short matrix pads rows, target cell within existing row",
+      "matrix": [[2.0, 2.1]],
+      "rep": 3,
+      "grade": 1,
+      "requested": 0.0,
+      "row": 3,
+      "col": 0,
+      "cell": 1.95,
+      "rows": 4,
+      "row0": [2.0, 2.1]
+    }
+  ],
+  "schedule": [
+    {
+      "name": "grade 1 resets",
+      "ease": 2.5, "repeats": 5, "interval": 12.0, "grade": 1,
+      "out": { "easeFactor": 1.96, "repeats": 0, "lastInterval": 0.0 },
+      "matrixCell": [0, 0, 1.95]
+    },
+    {
+      "name": "fresh card grade 3 → first interval",
+      "ease": 2.5, "repeats": 0, "interval": 0.0, "grade": 3,
+      "out": { "easeFactor": 2.36, "repeats": 1, "lastInterval": 1.0 },
+      "matrixCell": [1, 2, 2.35]
+    },
+    {
+      "name": "third step multiplies by matrix factor, grade 4 bumps cell",
+      "ease": 2.5, "repeats": 2, "interval": 6.0, "grade": 4,
+      "out": { "easeFactor": 2.5, "repeats": 3, "lastInterval": 15.0 },
+      "matrixCell": [3, 3, 3.0]
+    },
+    {
+      "name": "grade clamped to 1..4 (grade 9 → 4)",
+      "ease": 2.5, "repeats": 0, "interval": 0.0, "grade": 9,
+      "out": { "easeFactor": 2.5, "repeats": 1, "lastInterval": 1.0 },
+      "matrixCell": [1, 3, 2.45]
+    }
+  ],
+  "applyReviewProps": [
+    {
+      "name": "replaces stale keys, keeps deck, inserts sorted",
+      "lines": ["- card ^c1", "  deck:: french", "  card-repeats:: 1", "- next ^c2"],
+      "blockLine": 0,
+      "newProps": [
+        { "key": "card-repeats", "value": "2" },
+        { "key": "card-ease-factor", "value": "2.30" },
+        { "key": "card-next-schedule", "value": "2026-08-30" }
+      ],
+      "expected": [
+        "- card ^c1",
+        "  card-ease-factor:: 2.30",
+        "  card-next-schedule:: 2026-08-30",
+        "  card-repeats:: 2",
+        "  deck:: french",
+        "- next ^c2"
+      ]
+    },
+    {
+      "name": "inserts into block without existing props, stops at blank",
+      "lines": ["- card ^c1", "", "  orphan:: stays"],
+      "blockLine": 0,
+      "newProps": [{ "key": "card-repeats", "value": "1" }],
+      "expected": ["- card ^c1", "  card-repeats:: 1", "", "  orphan:: stays"]
+    },
+    {
+      "name": "zero-indent block inserts at column 2",
+      "lines": ["## Heading #card ^h1", "para"],
+      "blockLine": 0,
+      "newProps": [{ "key": "deck", "value": "x" }],
+      "expected": ["## Heading #card ^h1", "  deck:: x", "para"]
+    }
+  ]
+}

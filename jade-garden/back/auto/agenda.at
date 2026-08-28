@@ -1,0 +1,252 @@
+// jade-garden back agenda — agenda date normalization + window grouping.
+//
+// Plan 022 Phase 2 slice 4: single-source port of the agenda logic in
+// back/server/src/tasks.rs (parse_task_date + the get_agenda grouping loop),
+// a2r-clean subset (char-scan, no RegExp). The wall-clock `today` and
+// `end = today + days` stay in the shell (chrono); this module owns the
+// date-token validation/normalization and the grouping.
+//
+// Semantics contract (mirrors the retired Rust):
+// - parse_task_date: first whitespace-delimited token of the raw value must
+//   be a real calendar date — 4-digit year, 1-2 digit month/day ("2026-7-1"
+//   parses like chrono's %Y-%m-%d), month 1-12, day within the month
+//   (leap-year aware). Valid → NORMALIZED "YYYY-MM-DD" (chrono's to_string
+//   form, which the Rust used as the group key); invalid → "" (Rust None).
+// - grouping: a task contributes one occurrence per in-window date token —
+//   scheduled first, then deadline (both in window → both groups; both
+//   normalizing to the same date → twice in that group, like the Rust loop
+//   pushing per date). Groups ordered by date (BTreeMap — lexical equals
+//   chronological on normalized keys); indexes within a group keep scan
+//   order. Window comparison is lexical: today <= date <= end.
+
+pub type AgTaskRef {
+    scheduled str
+    deadline str
+    index int
+}
+
+pub type AgGroup {
+    date str
+    indexes List<int>
+}
+
+// ------------------------------------------------------ str vocabulary copy
+
+fn isWs(c int) bool {
+    if c == 32 { return true }
+    if c == 9 { return true }
+    if c == 10 { return true }
+    if c == 13 { return true }
+    if c == 11 { return true }
+    if c == 12 { return true }
+    return false
+}
+
+fn isDigit(c int) bool {
+    return c >= 48 && c <= 57
+}
+
+// Single decimal digit → its character (avoids int→str intrinsics).
+fn digitChar(d int) str {
+    return "0123456789".slice(d, d + 1)
+}
+
+// Integer division by repeated subtraction — a2ts emits `/` as float
+// division (2026/100 → 20.26) while a2r emits i64 division; subtraction is
+// exact on both targets.
+fn div10(v int) int {
+    var q int = 0
+    var r int = v
+    while r >= 10 {
+        r = r - 10
+        q = q + 1
+    }
+    return q
+}
+
+fn div100(v int) int {
+    var q int = 0
+    var r int = v
+    while r >= 100 {
+        r = r - 100
+        q = q + 1
+    }
+    return q
+}
+
+fn pad2(v int) str {
+    if v < 10 {
+        return "0" + digitChar(v)
+    }
+    let tens = div10(v)
+    let ones = v - tens * 10
+    return digitChar(tens) + digitChar(ones)
+}
+
+fn pad4(v int) str {
+    let hi = div100(v)
+    let lo = v - hi * 100
+    return pad2(hi) + pad2(lo)
+}
+
+// ------------------------------------------------------ calendar
+
+fn daysInMonth(year int, month int) int {
+    //              Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
+    let lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if month < 1 { return 0 }
+    if month > 12 { return 0 }
+    if month != 2 { return lengths[month - 1] }
+    var leap bool = false
+    if year % 4 == 0 {
+        leap = true
+        if year % 100 == 0 {
+            leap = false
+            if year % 400 == 0 {
+                leap = true
+            }
+        }
+    }
+    if leap { return 29 }
+    return 28
+}
+
+// ------------------------------------------------------ date normalization
+
+pub fn normalizeDate(raw str) str {
+    let n = raw.length.to(int)
+    var s int = 0
+    while s < n {
+        if !isWs(raw.char_at(s)) { break }
+        s += 1
+    }
+    var e int = s
+    while e < n {
+        if isWs(raw.char_at(e)) { break }
+        e += 1
+    }
+    if e <= s { return "" }
+    // year: exactly 4 digits
+    var i int = s
+    var year int = 0
+    var k int = 0
+    while k < 4 {
+        if !isDigit(raw.char_at(i)) { return "" }
+        year = year * 10 + (raw.char_at(i) - 48)
+        i += 1
+        k += 1
+    }
+    if raw.char_at(i) != 45 { return "" }
+    i += 1
+    // month: 1-2 digits
+    var month int = 0
+    var mdigits int = 0
+    while i < e {
+        if !isDigit(raw.char_at(i)) { break }
+        if mdigits >= 2 { break }
+        month = month * 10 + (raw.char_at(i) - 48)
+        i += 1
+        mdigits += 1
+    }
+    if mdigits == 0 { return "" }
+    if i >= e { return "" }
+    if raw.char_at(i) != 45 { return "" }
+    i += 1
+    // day: 1-2 digits, must consume the rest of the token
+    var day int = 0
+    var ddigits int = 0
+    while i < e {
+        if !isDigit(raw.char_at(i)) { break }
+        if ddigits >= 2 { break }
+        day = day * 10 + (raw.char_at(i) - 48)
+        i += 1
+        ddigits += 1
+    }
+    if ddigits == 0 { return "" }
+    if i != e { return "" }
+    if day < 1 { return "" }
+    if day > daysInMonth(year, month) { return "" }
+    return pad4(year) + "-" + pad2(month) + "-" + pad2(day)
+}
+
+// ------------------------------------------------------ str order helpers
+// Comparing a str LOCAL against a str PARAM emits String-vs-&str in a2r
+// (E0277); two str params compare as &str >= &str on both targets.
+
+fn strGE(a str, b str) bool {
+    return a >= b
+}
+
+fn strLE(a str, b str) bool {
+    return a <= b
+}
+
+// ------------------------------------------------------ grouping
+
+pub fn groupAgenda(entries List<AgTaskRef>, today str, end str) List<AgGroup> {
+    // occurrence pairs in scan order (scheduled before deadline per task)
+    var pairDate List<str> = []
+    var pairIdx List<int> = []
+    let count = entries.length.to(int)
+    var i int = 0
+    while i < count {
+        let en = entries[i]
+        let ds = normalizeDate(en.scheduled)
+        if ds != "" && strGE(ds, today) && strLE(ds, end) {
+            pairDate.push(ds)
+            pairIdx.push(en.index)
+        }
+        let dd = normalizeDate(en.deadline)
+        if dd != "" && strGE(dd, today) && strLE(dd, end) {
+            pairDate.push(dd)
+            pairIdx.push(en.index)
+        }
+        i += 1
+    }
+    // distinct dates
+    var unique List<str> = []
+    var j int = 0
+    while j < pairDate.length.to(int) {
+        let d = pairDate[j]
+        var seen bool = false
+        var q int = 0
+        while q < unique.length.to(int) {
+            if unique[q] == d { seen = true }
+            q += 1
+        }
+        if !seen { unique.push(d) }
+        j += 1
+    }
+    // selection into a new list (no in-place mutation; dates are unique so
+    // "smallest strictly greater than the last pick" walks them in order)
+    var dates List<str> = []
+    var last str = ""
+    while dates.length.to(int) < unique.length.to(int) {
+        var best str = ""
+        var r int = 0
+        while r < unique.length.to(int) {
+            let u = unique[r]
+            if last == "" || u > last {
+                if best == "" || u < best { best = u }
+            }
+            r += 1
+        }
+        dates.push(best)
+        last = best
+    }
+    // one group per date, indexes in scan order (duplicates preserved)
+    var out List<AgGroup> = []
+    var di int = 0
+    while di < dates.length.to(int) {
+        let d = dates[di]
+        var idxs List<int> = []
+        var p int = 0
+        while p < pairDate.length.to(int) {
+            if pairDate[p] == d { idxs.push(pairIdx[p]) }
+            p += 1
+        }
+        out.push(AgGroup(d, idxs))
+        di += 1
+    }
+    return out
+}

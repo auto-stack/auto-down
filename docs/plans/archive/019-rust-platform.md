@@ -18,7 +18,7 @@ touched_goals:
   - "019 目标5: gallery 042 验收页"
 ---
 
-> 状态：**reviewed（2026-08-28，/auto-plan:review 通过）**。Phase 1-4 全部落地，验收标准
+> 状态：**CLOSED（2026-08-28，/auto-plan:merge 沉淀归档；前态 reviewed）**。Phase 1-4 全部落地，验收标准
 > ①②③⑤⑥ 达成；④ 编辑壳 gallery 可操作已备，IME 微软拼音手验通道
 > 已实现（preedit/commit）但人工执行记录在册为移交边界项——随 review
 > 一并裁定（补验或登记债务）。终验（worktree @ f55c2e2cc）：lib 3781

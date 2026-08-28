@@ -1,6 +1,28 @@
 # Plan 020：应用迁移与退役收口（demo / jade-garden / musk / 旧包）
 
-> 状态：**execution_done（2026-08-28 全相位落地）**。Phase 1：DEBTS 008
+---
+supersedes_spec_components:
+  - "demo/jade-garden package.json + 导入面: 三旧包依赖 → @autodown/engine 直连（shim 旁路跳过）"
+  - "engine 0.4.0 → 1.0.0: 出口契约冻结（四出口 + EDITOR-CONTRACT + 命令层 API；natives/rust 面标 experimental）"
+  - "@autodown/core / @autodown/vue / @autodown/editor: 定版为 deprecated re-export shim（deprecate 标注 + 墓碑 README，物理归档待 musk vendor 路径确认）"
+  - "jade-garden/front/src/assets/autodown-editor.css + engine editor css: .ProseMirror* 与 tiptap 插件残留段删除"
+  - "docs/designs/06-roadmap.md Phase 1: canonical AST 修订为统一块模型（ProseMirror JSON 决策废止标注）"
+  - "DEBTS 008 跨仓验证行: T13/T10 双销号（T10 按 musk 041 stub 等价裁定）"
+new_spec_components:
+  - "engine 编辑器预览 wikilink 装饰（src/editor/wikilink.ts）: [[..]] → .autodown-wikilink-label 可点 span + open-wiki-link(title, blockId) 发射（018 冻结选择器复通，单测 6 例）"
+  - "packages/engine/ARCHITECTURE.md: 新建（三层架构 + 1.0.0 冻结面 + 双端单源通道 + vendor 发包形态 + 已知边界）"
+  - "DEBTS 020 五行: blockParser 镜像保留裁定与 (c) 前置 / bubble·表格·代码块菜单延期 / 旧包物理归档待确认 / 019 边界集中登记×2（ark/jet 编辑降级、rust katex/mermaid 降级）"
+  - "裁定记录: 发版通道=vendor 快照维持；退役时点=deprecate 即刻 + 归档待 musk 确认；natives experimental"
+touched_goals:
+  - "020 目标1: musk 欠账清偿（验收①，DEBTS 008 销号）"
+  - "020 目标2: demo 迁移 engine（e2e 9/9）"
+  - "020 目标3: jade-garden 迁移 + wikilink 交互 + 块语义裁定（e2e 23/23，grep 归零）"
+  - "020 目标4: 旧包退役与 engine 1.0.0 发版裁定"
+  - "020 目标5: 文档与台账收口"
+---
+
+> 状态：**reviewed（2026-08-28 /auto-plan:review 通过；前态 execution_done）**。
+> Phase 1：DEBTS 008
 > 双销号（T13=51b8abf 对拍 5/5；T10=musk 041 stub 等价裁定留档）。
 > Phase 2：demo 直连 engine（e2e 9/9，b6afa5a）。Phase 3：jade 直连
 > engine + wikilink 点击交互（编辑器侧装饰器 + open-wiki-link(title,
@@ -8,7 +30,7 @@
 > + blockParser 裁定（1dd5451）。Phase 4：engine **1.0.0** 契约冻结
 > （natives experimental）+ 旧包 deprecate 标注与退役/发版通道裁定
 > （4bcb753）。Phase 5：designs README/03/06 + engine ARCHITECTURE.md +
-> DEBTS 020 三行（59ae2a3）。设计依据：
+> DEBTS 020 登记（59ae2a3；复审补 019 边界集中登记两行）。设计依据：
 > [docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §10。
 > 立项：2026-08-25。前置：**Plan 017 完成**（迁移最低门限：渲染统一 +
    shim 可用）；**018/019 完成为 1.0.0 门限**。
@@ -141,3 +163,18 @@
    （a2r crate）标 experimental 不冻结——见
    packages/engine/ARCHITECTURE.md §2 与 changeset
    plan-020-engine-1.0.0.md。
+
+## 复审记录
+
+- **复审人/时间**：/auto-plan:review，2026-08-28（worktree `.worktree/plan-020` @ master 同相位复验）。
+- **验收①（musk T13/T10 执行记录）**：✅ pass——T13 = musk 51b8abf（render-switch 5/5 对拍）；T10 = musk PLAN-041 Phase 2 执行记录（2026-08-26 stub 等价裁定，checkbox [x] 在册）；DEBTS 008 行双销号（26c450a）。合并验证备选未触发。
+- **验收②（双 app 无旧依赖 + e2e 全绿）**：✅ pass——`grep '@autodown/' demo/package.json jade package.json`：各仅 `@autodown/engine` 一条；复审时重跑 demo e2e **9/9**、jade vue-tsc 零错 + e2e **23/23**（含 04 wikilink 两例）。
+- **验收③（CSS/tiptap 归零 + 块语义对齐）**：✅ pass——`grep ProseMirror`（jade src+auto，css/vue/ts）= 0；`grep @tiptap/`（jade+demo 源与依赖）= 0；engine 自身 css 的 `.ProseMirror-selectednode`/gapcursor/drag-handle 残留一并清除（超出计划最低要求）。块语义差异清单**登记**（DEBTS 020 行）：engine parser 行号占位 + `:::`/table 子集缺口 → 保留前端镜像（选项 a），(c) 前置在册；选项 b 被 plan 021 back 单源化自然否决。5 文件 fixture 对拍差异清单在执行日志。
+- **验收④（shim deprecate + 退役时点裁定）**：✅ pass——三包 package.json `deprecated` 字段 + 墓碑 README；changeset plan-020-engine-1.0.0.md；DEBTS 020 归档行（物理归档前置 = musk vendor 再生路径确认）。
+- **验收⑤（engine 1.0.0 + 文档收口）**：✅ pass——version 1.0.0（复审 grep 实证）；vendor 通道裁定落档（changeset + ARCHITECTURE §4 + DEBTS 008 行维持）；designs README/03/06、engine ARCHITECTURE.md 逐项在（59ae2a3）。
+- **全量门禁（review 专属）**：engine vitest **261/261**（含新增 wikilink 6 例）；`pnpm -r build` 断言双绿（assert-parser-pure / assert-no-tiptap）。
+- **遗漏猎查**：发现并已补救 1 项——Phase 5 文本要求 DEBTS 集中登记"019 ark/jet 编辑降级边界、rust katex/mermaid 降级"，原执行只登记了 020 自身三行；复审补 2 行（ark/jet 编辑降级、rust katex/mermaid v1 降级，引用 019 归档 + 设计 §9）。补救后 Phase 5 完整。
+- **延后猎查**：bubble/表格/代码块菜单与 node view 富渲染延期已按"归零**或登记**"条款入册（DEBTS 020 行，前置 = 行内 mark 层）；旧包物理归档挂 musk 确认（DEBTS 020 行）。均为计划文本允许的登记式收口，非未批准缩水。
+- **Workaround 猎查**：① 05/08 e2e 期望 2→3 + 基线重录——根因是 master 上 plan-021 今晨改 fixture（CAP 定理.ad 新增 [[Hello World]]）未同步 jade 期望，属跨计划漂移修复，已在测试注释与提交信息留痕；② EditorShell 薄壳**评估后保留**——计划允许"重新评估能否拆除"，DSL 现状仍把 on* prop 当事件监听（onAssetUpload 改名转发仍必需），拆除前置（DSL 支持任意 on* prop 名）未达成，薄壳保留为正解非绕道；③ wikilink 装饰器对 TEXT_CHILDREN vnode 采用重建而非原地改 children——Vue shapeFlag 约束下的正确做法，单测锁定。
+- **DEBT 候选**：无新增（020 五行 + 019-IME 等既有行覆盖全部边界）。
+- **裁定**：五项验收全 pass、无阻断债 → **reviewed**，移交 /auto-plan:merge。

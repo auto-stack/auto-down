@@ -1,0 +1,225 @@
+// table_menu.at — TableMenu widget: Auto widget DSL port of the original
+// hand-written src/menus/TableMenu.vue. The generated SFC replaces it
+// (see auto/editor/README.plan013.md). Nearly all of the original logic lives here in
+// the DSL — visibility/position tracking, the editor selectionUpdate
+// subscription with its rAF throttle, the document outside-click listener
+// and the table command dispatch. The hand-written extension
+// utils/table_menu_ext.ts only keeps the computeMenuPosition re-export (a
+// `use` path cannot leave src/) and tableMenuTitles (`??` is not supported
+// in computed expressions and an object-literal computed does not parse —
+// probe-verified, see README), same as the slash extension.
+//
+// Prop types are deliberately wide: `Array<str>` is a generic instance,
+// which the Vue backend maps to TS `any` (bare `any` is rejected by the
+// name checker). The DSL prop type system cannot express Tiptap's Editor
+// or the Partial<Record<...>> titles shape; behaviour is unaffected.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see slash_menu.at
+// for the full list: `.editor["view"]` bracket access (`view` is a DSL
+// keyword), intermediate locals where the transpiler would drop parens,
+// and the `if <cond> { .Helper() }` wrapper for handler-to-handler calls
+// (a statement starting with `.` glues onto the previous line). Also:
+// `.contains(...)` on a DOM element still needs bracket notation
+// `el["contains"](x)` in HANDLER bodies: the receiver there is a
+// `let el = null` local, and the transpiler's string/array method map
+// (contains → includes) fires on it. (Computed/map-typed model-var
+// receivers pass through — plan 013 probe 10/10b — but that does not
+// cover these null-init locals.)
+
+widget TableMenu(editor: Array<str>, titles: Array<str> = null) {
+    use {
+        fn: nextTick from "vue"
+        fn: computeMenuPosition, tableMenuTitles from "ext/table_menu_ext.ts"
+        component: ArrowUpToLine, ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, Trash2, Eraser, X from "lucide-vue-next"
+    }
+
+    msg Msg { Init, Destroy, Run, OutsideClick }
+
+    model {
+        var visible bool = false
+        var pos_top str = ""
+        var pos_left str = ""
+        var pos_visibility str = ""
+        var raf_id int = 0
+        // The selectionUpdate callback, stored so Destroy can off() it.
+        var selection_cb Array<str> = null
+    }
+
+    computed {
+        titles_map => tableMenuTitles(.titles)
+    }
+
+    view {
+        if .visible {
+            div {
+                ref: "menuEl",
+                class: "autodown-table-menu",
+                style_obj: { top: .pos_top, left: .pos_left, visibility: .pos_visibility },
+                // document-level outside-click listener (registered in
+                // onMounted/onUnmounted regardless of the v-if above).
+                on "mousedown".document: .OutsideClick($event),
+
+                div {
+                    class: "autodown-table-menu-group",
+                    button {
+                        class: "autodown-table-menu-btn",
+                        title: .titles_map.addRowBefore,
+                        onclick: .Run("addRowBefore"),
+                        ArrowUpToLine { size: 13 }
+                    }
+                    button {
+                        class: "autodown-table-menu-btn",
+                        title: .titles_map.addRowAfter,
+                        onclick: .Run("addRowAfter"),
+                        ArrowDownToLine { size: 13 }
+                    }
+                    button {
+                        class: "autodown-table-menu-btn",
+                        title: .titles_map.addColumnBefore,
+                        onclick: .Run("addColumnBefore"),
+                        ArrowLeftToLine { size: 13 }
+                    }
+                    button {
+                        class: "autodown-table-menu-btn",
+                        title: .titles_map.addColumnAfter,
+                        onclick: .Run("addColumnAfter"),
+                        ArrowRightToLine { size: 13 }
+                    }
+                }
+                div { class: "autodown-table-menu-divider" }
+                div {
+                    class: "autodown-table-menu-group",
+                    button {
+                        class: "autodown-table-menu-btn",
+                        title: .titles_map.deleteRow,
+                        onclick: .Run("deleteRow"),
+                        Trash2 { size: 13 }
+                    }
+                    button {
+                        class: "autodown-table-menu-btn",
+                        title: .titles_map.deleteColumn,
+                        onclick: .Run("deleteColumn"),
+                        Eraser { size: 13 }
+                    }
+                    button {
+                        class: "autodown-table-menu-btn danger",
+                        title: .titles_map.deleteTable,
+                        onclick: .Run("deleteTable"),
+                        X { size: 13 }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            // scheduleCheck: rAF-throttled visibility + position update.
+            // Registered on the editor's selectionUpdate and run once
+            // immediately (the original's
+            // `watch(() => editor?.state.selection, scheduleCheck,
+            // { immediate: true })` only ever fired immediately — tiptap
+            // state is not Vue-reactive).
+            let schedule = () => {
+                if .raf_id != 0 {
+                    cancelAnimationFrame(.raf_id)
+                }
+                .raf_id = requestAnimationFrame(() => {
+                    .raf_id = 0
+                    // checkVisibility: show only while the selection is
+                    // inside a table; reposition after the menu mounts.
+                    let inside = .editor.isActive("table")
+                    .visible = inside
+                    if inside {
+                        nextTick(() => {
+                            // updatePosition + useMenuBounds.applyPosition:
+                            // locate the (first) table element, render the
+                            // menu hidden at the preferred position, measure
+                            // the real menu box on the next tick, then
+                            // flip/clamp into bounds and reveal.
+                            let tableEl = .editor["view"].dom.querySelector(".tableWrapper, table")
+                            if tableEl == null {
+                                .visible = false
+                            }
+                            if tableEl != null {
+                                let editorRect = .editor["view"].dom.getBoundingClientRect()
+                                let tableRect = tableEl.getBoundingClientRect()
+                                let trigger = { top: tableRect.top - editorRect.top, left: tableRect.left - editorRect.left, bottom: tableRect.bottom - editorRect.top, right: tableRect.right - editorRect.left, width: tableRect.width, height: tableRect.height }
+                                let container = { width: editorRect.width, height: editorRect.height }
+                                let initial = computeMenuPosition(trigger, 0, 0, container, "top", 8, "right")
+                                .pos_top = initial.top + "px"
+                                .pos_left = initial.left + "px"
+                                .pos_visibility = "hidden"
+                                nextTick(() => {
+                                    // The menu is mounted by this tick, so
+                                    // the template ref is valid — the same
+                                    // element the original's menuRef held.
+                                    if .menuEl {
+                                        let menuRect = .menuEl.getBoundingClientRect()
+                                        let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, "top", 8, "right")
+                                        .pos_top = pos_final.top + "px"
+                                        .pos_left = pos_final.left + "px"
+                                        .pos_visibility = "visible"
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+            }
+            .selection_cb = schedule
+            .editor.on("selectionUpdate", schedule)
+            schedule()
+        }
+
+        .Destroy -> {
+            // (Like the original, a pending rAF is not cancelled.)
+            .editor.off("selectionUpdate", .selection_cb)
+        }
+
+        // The original run(command): focus + dispatch the tiptap table
+        // command. The switch becomes an if chain (the DSL has no switch);
+        // the return value was only used by a commented-out debug log.
+        .Run(cmd) -> {
+            let chain = .editor.chain().focus()
+            if cmd == "addColumnBefore" {
+                chain.addColumnBefore().run()
+            }
+            if cmd == "addColumnAfter" {
+                chain.addColumnAfter().run()
+            }
+            if cmd == "addRowBefore" {
+                chain.addRowBefore().run()
+            }
+            if cmd == "addRowAfter" {
+                chain.addRowAfter().run()
+            }
+            if cmd == "deleteColumn" {
+                chain.deleteColumn().run()
+            }
+            if cmd == "deleteRow" {
+                chain.deleteRow().run()
+            }
+            if cmd == "deleteTable" {
+                chain.deleteTable().run()
+            }
+        }
+
+        // handleOutsideClick: hide when the click lands outside both the
+        // menu and the editor.
+        .OutsideClick(e) -> {
+            if .visible {
+                let editorEl = .editor["view"].dom
+                let root = editorEl.closest(".autodown-editor")
+                if root != null {
+                    let menu = root.querySelector(".autodown-table-menu")
+                    if menu != null {
+                        if !menu["contains"](e.target) && !editorEl["contains"](e.target) {
+                            .visible = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

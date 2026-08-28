@@ -1,0 +1,32 @@
+// code_language_icon.at — CodeLanguageIcon widget (Auto language source).
+//
+// Auto-generated replacement for the hand-written
+// src/components/CodeLanguageIcon.vue. Regenerate with:
+//
+//   cd autodown/packages/engine && pnpm gen:editor
+//
+// The language -> icon URL mapping is imported from the real
+// src/utils/codeBlockLanguage.ts via the ext/code_language_icon_ext.ts
+// re-export (see auto/editor/README.md). `url` is a
+// plain computed, matching the original's reactivity to `language` prop
+// changes.
+
+widget CodeLanguageIcon(language: str) {
+    use {
+        fn: getLanguageIconUrl from "./ext/code_language_icon_ext.ts"
+    }
+
+    view {
+        img {
+            class: "code-language-icon",
+            src: .url,
+            alt: .language,
+            width: 16,
+            height: 16
+        }
+    }
+
+    computed {
+        url => getLanguageIconUrl(.language)
+    }
+}

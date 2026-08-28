@@ -33,7 +33,8 @@
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "gen:parser": "node auto/parser/gen.mjs",
-    "gen:render": "node auto/render/gen.mjs"
+    "gen:render": "node auto/render/gen.mjs",
+    "gen:editor": "node auto/editor/gen.mjs"
   },
   "peerDependencies": {
     "lucide-vue-next": "^0.460.0",

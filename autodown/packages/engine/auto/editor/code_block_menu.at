@@ -1,0 +1,598 @@
+// code_block_menu.at — CodeBlockMenu widget: Auto widget DSL port of the
+// original hand-written src/menus/CodeBlockMenu.vue. The generated SFC
+// replaces it (see auto/editor/README.plan013.md). Nearly all of the original logic
+// lives here in the DSL — the search filter computed, the open/close/select
+// state machine, keyboard navigation, the two-phase positioning, the
+// document wheel scroll-lock and the editor-dom capture listeners for the
+// code block header buttons (all registered imperatively in .Init with DSL
+// closures, torn down in .Destroy). The hand-written extension
+// utils/code_block_menu_ext.ts only keeps the computeMenuPosition re-export
+// (a `use` path cannot leave src/), the static language manifest (typed data
+// belongs in TS; the required `aliases` field gives the DSL filter's
+// `.concat(lang.aliases)` a type — `??`/`||` are unavailable in computed
+// expressions) and the Check icon re-export for the `dyn` render trick.
+//
+// Prop types are deliberately wide: `Array<str>` is a generic instance,
+// which the Vue backend maps to TS `any` (bare `any` is rejected by the
+// name checker). The DSL prop type system cannot express Tiptap's Editor;
+// behaviour is unaffected.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see slash_menu.at
+// and table_menu.at for the full list: `.editor["view"]` bracket access
+// (`view` is a DSL keyword), `el["contains"](x)` bracket access in handler
+// bodies (null-init locals still hit the contains→includes string/array
+// method map; only map/model-var receivers pass through), `.filtered` in
+// handlers (computed refs are not auto-unwrapped outside the template),
+// emptiness via the named `is_empty` computed (`.filtered.length` inside a
+// view `if` is mangled), explicit
+// `x = x + 1` (no `+=`), and `if x != null && x.closest != null` guards
+// instead of optional chaining.
+
+widget CodeBlockMenu(editor: Array<str>) {
+    use {
+        fn: nextTick from "vue"
+        fn: computeMenuPosition, codeBlockLanguages, codeBlockCheckIcon from "ext/code_block_menu_ext.ts"
+    }
+
+    msg Msg { Init, Destroy, SearchInput, MoveDown, MoveUp, SelectHighlighted, SelectItem, HoverItem, Close, OutsideClick }
+
+    model {
+        var visible bool = false
+        var search str = ""
+        var highlighted_index int = 0
+        var current_language str = ""
+        var pos_top str = ""
+        var pos_left str = ""
+        var pos_visibility str = ""
+        // The code block the menu was opened for (null → use the
+        // selection's block, like the original's
+        // `activeCodeBlock ?? findActiveCodeBlock()`).
+        var active_code_block Array<str> = null
+        // Bookkeeping for the listeners registered in .Init: the elements
+        // they were attached to and the callback references (needed by
+        // removeEventListener in .Destroy).
+        var editor_el Array<str> = null
+        var editor_dom Array<str> = null
+        var wrapper_el Array<str> = null
+        var raf_id int = 0
+        var wheel_cb Array<str> = null
+        var dom_mousedown_cb Array<str> = null
+        var dom_click_cb Array<str> = null
+        var scroll_cb Array<str> = null
+    }
+
+    computed {
+        // filteredLanguages: lowercase substring match over the joined
+        // id/label/aliases. The query is trimmed inline; an empty query
+        // matches everything (''.includes('') === true), same as the
+        // original's early return. `.contains` on the joined STRING is the
+        // transpiler's intended mapping (emits `.includes`).
+        filtered => codeBlockLanguages().filter(lang => [lang.id, lang.label].concat(lang.aliases).join(" ").toLowerCase().contains(.search.toLowerCase().trim()))
+        // The template codegen mangles `.filtered.length` in a view `if`
+        // (renders `filtered.lengthgth`), so emptiness is a named computed.
+        is_empty => .filtered.length == 0
+        check_icon => codeBlockCheckIcon()
+    }
+
+    view {
+        if .visible {
+            div {
+                ref: "menuEl",
+                class: "autodown-codeblock-menu",
+                style_obj: { top: .pos_top, left: .pos_left, visibility: .pos_visibility },
+                // document-level outside-click listener (registered in
+                // onMounted/onUnmounted regardless of the v-if above).
+                on "mousedown".document: .OutsideClick($event),
+
+                div {
+                    class: "autodown-codeblock-menu-header",
+                    input {
+                        ref: "searchEl",
+                        class: "autodown-codeblock-menu-search",
+                        placeholder: "Search language…",
+                        // Plain model var + an input handler: the codegen
+                        // v-model optimization folds the pair into
+                        // v-model="search" (exactly the original's
+                        // template) and DROPS the explicit @input — so
+                        // SearchInput is never emitted to the template.
+                        // Without the oninput line only `:value` is emitted
+                        // (read-only input), so the pair must stay.
+                        value: .search,
+                        oninput: .SearchInput($event),
+                        onkeydown.escape: .Close,
+                        onkeydown.down.prevent: .MoveDown,
+                        onkeydown.up.prevent: .MoveUp,
+                        onkeydown.enter.prevent: .SelectHighlighted
+                    }
+                }
+                div {
+                    ref: "listEl",
+                    class: "autodown-codeblock-menu-list",
+                    for i, lang in .filtered {
+                        button {
+                            class: "autodown-codeblock-menu-item",
+                            key: lang.id,
+                            style: { active: i == .highlighted_index, selected: lang.id == .current_language },
+                            onclick: .SelectItem(lang),
+                            onmouseenter: .HoverItem(i),
+                            span { class: "autodown-codeblock-menu-item-label", text lang.label }
+                            if lang.id == .current_language {
+                                // Rendered via dyn (not a PascalCase
+                                // component): the codegen auto-adds
+                                // `:key="'Check-N-' + (i?.id ?? i)"` for
+                                // PascalCase components inside a two-var for
+                                // loop, and `i?.id` (i is the numeric index)
+                                // fails vue-tsc. dyn emits a lowercase
+                                // <component :is> with no auto key.
+                                dyn (.check_icon) { size: 13, class: "autodown-codeblock-menu-check" }
+                            }
+                        }
+                    }
+                    if .is_empty {
+                        div { class: "autodown-codeblock-menu-empty", text "No matching languages" }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            let dom = .editor["view"].dom
+            .editor_dom = dom
+            .editor_el = dom.closest(".autodown-editor")
+            .wrapper_el = dom.closest(".autodown-editor-content-wrapper")
+
+            // scheduleUpdate: rAF-throttled reposition, driven by the
+            // content-wrapper scroll listener below. (The original's
+            // selection `watch` never fired — tiptap state is not
+            // Vue-reactive — so the wrapper scroll is the only driver.)
+            let schedule = () => {
+                if .raf_id != 0 {
+                    cancelAnimationFrame(.raf_id)
+                }
+                .raf_id = requestAnimationFrame(() => {
+                    .raf_id = 0
+                    if .visible {
+                        // updatePosition + useMenuBounds.applyPosition:
+                        // locate the active code block's language badge,
+                        // render the menu hidden below it, measure the real
+                        // menu box on the next tick, then flip/clamp into
+                        // bounds and reveal. (Duplicated in the open path —
+                        // a statement starting with `.` glues onto the
+                        // previous line, so a shared helper handler is not
+                        // viable.)
+                        if .editor_el != null {
+                            let editorRect = .editor_el.getBoundingClientRect()
+                            let triggerEl = .active_code_block
+                            if triggerEl == null {
+                                // findActiveCodeBlock: locate the selection's
+                                // code block DOM node.
+                                let ed_view = .editor["view"]
+                                let el = ed_view.nodeDOM(ed_view.state.selection.from)
+                                if el != null && el.closest != null {
+                                    triggerEl = el.closest("pre[data-language]")
+                                    if triggerEl == null {
+                                        triggerEl = el.closest(".autodown-codeblock-node")
+                                    }
+                                }
+                            }
+                            if triggerEl == null {
+                                // No code block found: close() inline.
+                                .visible = false
+                                .search = ""
+                                .highlighted_index = 0
+                                .active_code_block = null
+                            }
+                            if triggerEl != null {
+                                let badge = triggerEl.querySelector("[data-codeblock-language-badge]")
+                                let anchor = triggerEl
+                                if badge != null {
+                                    anchor = badge
+                                }
+                                let triggerRect = anchor.getBoundingClientRect()
+                                // Just below the badge (header bar): a small
+                                // fixed gap of 6px, like the original.
+                                let trigger = { top: triggerRect.top - editorRect.top + 6, left: triggerRect.left - editorRect.left, bottom: triggerRect.bottom - editorRect.top + 6, right: triggerRect.right - editorRect.left, width: triggerRect.width, height: triggerRect.height }
+                                let container = { width: editorRect.width, height: editorRect.height }
+                                let initial = computeMenuPosition(trigger, 0, 0, container, "bottom-end", 0)
+                                .pos_top = initial.top + "px"
+                                .pos_left = initial.left + "px"
+                                .pos_visibility = "hidden"
+                                nextTick(() => {
+                                    // The menu is mounted by this tick; the
+                                    // template ref is null inside this
+                                    // nested closure (same querySelector
+                                    // workaround as SlashMenu).
+                                    let menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                                    if menu != null {
+                                        let menuRect = menu.getBoundingClientRect()
+                                        let pos_final = computeMenuPosition(trigger, menuRect.width, menuRect.height, container, "bottom-end", 0)
+                                        .pos_top = pos_final.top + "px"
+                                        .pos_left = pos_final.left + "px"
+                                        .pos_visibility = "visible"
+                                    }
+                                })
+                            }
+                        }
+                    }
+                })
+            }
+            .scroll_cb = schedule
+
+            // Lock page/workspace scrolling while the language menu is open.
+            // Registered imperatively (not via the view `on` syntax) because
+            // it needs { passive: false, capture: true } with a CONDITIONAL
+            // e.preventDefault() — wheel must flow normally while the menu
+            // is closed. If the wheel happens over the menu's language list,
+            // the list is scrolled instead.
+            let on_wheel = (e) => {
+                if .visible {
+                    let menu = null
+                    if .editor_el != null {
+                        menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                    }
+                    if menu != null && menu["contains"](e.target) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        let list = menu.querySelector(".autodown-codeblock-menu-list")
+                        if list != null {
+                            let can_down = list.scrollTop + list.clientHeight < list.scrollHeight
+                            let can_up = list.scrollTop > 0
+                            // Only apply the wheel delta when the list can
+                            // actually move in that direction.
+                            if e.deltaY > 0 && can_down {
+                                list.scrollTop = list.scrollTop + e.deltaY
+                            }
+                            if e.deltaY < 0 && can_up {
+                                list.scrollTop = list.scrollTop + e.deltaY
+                            }
+                        }
+                    }
+                    // Outside the menu: suppress all wheel scrolling until
+                    // the menu is closed.
+                    if menu == null {
+                        e.preventDefault()
+                        e.stopPropagation()
+                    }
+                    if menu != null && !menu["contains"](e.target) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                    }
+                }
+            }
+            .wheel_cb = on_wheel
+            document.addEventListener("wheel", .wheel_cb, { passive: false, capture: true })
+
+            // Editor-dom mousedown capture: keep ProseMirror from moving the
+            // selection / scrolling the editor wrapper when a code block
+            // header button is pressed, so the popup opens for the clicked
+            // block. (`target.closest != null` replaces the original's
+            // `target.closest?.(...)` optional chaining.)
+            let on_mousedown = (e) => {
+                let target = e.target
+                let badge = null
+                let copy = null
+                let expand = null
+                let more = null
+                if target.closest != null {
+                    badge = target.closest("[data-codeblock-language-badge]")
+                    copy = target.closest("[data-codeblock-copy-btn]")
+                    expand = target.closest("[data-codeblock-expand-btn]")
+                    more = target.closest("[data-codeblock-more-btn]")
+                }
+                if badge != null || copy != null || expand != null || more != null {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }
+            }
+            .dom_mousedown_cb = on_mousedown
+            dom.addEventListener("mousedown", .dom_mousedown_cb, { capture: true })
+
+            // Editor-dom click capture: copy / collapse / open the language
+            // menu. The original's early-return branches become exclusive
+            // if-guards (a copy button is never an ancestor of the others).
+            let on_click = (e) => {
+                let target = e.target
+                let copy = null
+                let expand = null
+                let badge = null
+                let more = null
+                if target.closest != null {
+                    copy = target.closest("[data-codeblock-copy-btn]")
+                    expand = target.closest("[data-codeblock-expand-btn]")
+                    badge = target.closest("[data-codeblock-language-badge]")
+                    more = target.closest("[data-codeblock-more-btn]")
+                }
+                if copy != null {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    let pre = copy.closest("pre")
+                    let code = ""
+                    if pre != null {
+                        let codeEl = pre.querySelector("code")
+                        if codeEl != null {
+                            code = codeEl.textContent ?? ""
+                        }
+                    }
+                    navigator.clipboard.writeText(code)
+                }
+                if copy == null && expand != null {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    let pre2 = expand.closest("pre")
+                    if pre2 != null {
+                        pre2.classList.toggle("is-collapsed")
+                    }
+                }
+                if copy == null && expand == null {
+                    let trigger = badge
+                    if trigger == null {
+                        trigger = more
+                    }
+                    if trigger != null {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        // open(trigger.closest("pre") ??
+                        // trigger.closest(".autodown-codeblock-node")):
+                        let block = trigger.closest("pre")
+                        if block == null {
+                            block = trigger.closest(".autodown-codeblock-node")
+                        }
+                        if block == null {
+                            // findActiveCodeBlock fallback (original's
+                            // `target ?? findActiveCodeBlock() ?? null`).
+                            let ed_view = .editor["view"]
+                            let el = ed_view.nodeDOM(ed_view.state.selection.from)
+                            if el != null && el.closest != null {
+                                block = el.closest("pre[data-language]")
+                                if block == null {
+                                    block = el.closest(".autodown-codeblock-node")
+                                }
+                            }
+                        }
+                        .active_code_block = block
+                        // Snapshot the current language at open time (the
+                        // original's currentLanguage computed only ever
+                        // re-evaluated when forcedLanguage changed — tiptap
+                        // attrs are not Vue-reactive). Empty attribute falls
+                        // through to the selection's codeBlock attrs, like
+                        // the original's truthiness check.
+                        .current_language = ""
+                        if .active_code_block != null {
+                            .current_language = .active_code_block.getAttribute("data-language") ?? ""
+                        }
+                        if .current_language == "" {
+                            .current_language = .editor.getAttributes("codeBlock").language ?? ""
+                        }
+                        .visible = true
+                        .search = ""
+                        let idx = codeBlockLanguages().findIndex(l => l.id == .current_language)
+                        .highlighted_index = idx
+                        if idx < 0 {
+                            .highlighted_index = 0
+                        }
+                        nextTick(() => {
+                            // Focus the search input, position the menu,
+                            // center the highlighted item.
+                            let menu = null
+                            if .editor_el != null {
+                                menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                            }
+                            if menu != null {
+                                let searchEl = menu.querySelector(".autodown-codeblock-menu-search")
+                                if searchEl != null {
+                                    searchEl.focus()
+                                }
+                            }
+                            // updatePosition (same body as in schedule).
+                            if .editor_el != null {
+                                let editorRect = .editor_el.getBoundingClientRect()
+                                let triggerEl = .active_code_block
+                                if triggerEl == null {
+                                    let ed_view2 = .editor["view"]
+                                    let el2 = ed_view2.nodeDOM(ed_view2.state.selection.from)
+                                    if el2 != null && el2.closest != null {
+                                        triggerEl = el2.closest("pre[data-language]")
+                                        if triggerEl == null {
+                                            triggerEl = el2.closest(".autodown-codeblock-node")
+                                        }
+                                    }
+                                }
+                                if triggerEl == null {
+                                    .visible = false
+                                    .search = ""
+                                    .highlighted_index = 0
+                                    .active_code_block = null
+                                }
+                                if triggerEl != null {
+                                    let badge2 = triggerEl.querySelector("[data-codeblock-language-badge]")
+                                    let anchor = triggerEl
+                                    if badge2 != null {
+                                        anchor = badge2
+                                    }
+                                    let triggerRect = anchor.getBoundingClientRect()
+                                    let trigger2 = { top: triggerRect.top - editorRect.top + 6, left: triggerRect.left - editorRect.left, bottom: triggerRect.bottom - editorRect.top + 6, right: triggerRect.right - editorRect.left, width: triggerRect.width, height: triggerRect.height }
+                                    let container = { width: editorRect.width, height: editorRect.height }
+                                    let initial = computeMenuPosition(trigger2, 0, 0, container, "bottom-end", 0)
+                                    .pos_top = initial.top + "px"
+                                    .pos_left = initial.left + "px"
+                                    .pos_visibility = "hidden"
+                                    nextTick(() => {
+                                        let menu2 = .editor_el.querySelector(".autodown-codeblock-menu")
+                                        if menu2 != null {
+                                            let menuRect = menu2.getBoundingClientRect()
+                                            let pos_final = computeMenuPosition(trigger2, menuRect.width, menuRect.height, container, "bottom-end", 0)
+                                            .pos_top = pos_final.top + "px"
+                                            .pos_left = pos_final.left + "px"
+                                            .pos_visibility = "visible"
+                                        }
+                                    })
+                                }
+                            }
+                            // scrollHighlightedIntoCenter: center the
+                            // highlighted item in the scrollable list (the
+                            // original's itemRefs indexed the same element
+                            // the .active class marks).
+                            nextTick(() => {
+                                let s_menu = null
+                                if .editor_el != null {
+                                    s_menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                                }
+                                if s_menu != null {
+                                    let s_list = s_menu.querySelector(".autodown-codeblock-menu-list")
+                                    let s_item = s_menu.querySelector(".autodown-codeblock-menu-item.active")
+                                    if s_list != null && s_item != null {
+                                        let listRect = s_list.getBoundingClientRect()
+                                        let itemRect = s_item.getBoundingClientRect()
+                                        let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2
+                                        s_list.scrollTop = s_list.scrollTop + offset
+                                    }
+                                }
+                            })
+                        })
+                    }
+                }
+            }
+            .dom_click_cb = on_click
+            dom.addEventListener("click", .dom_click_cb, { capture: true })
+
+            // The editor content is scrollable inside
+            // `.autodown-editor-content-wrapper`, so reposition the popup
+            // when that wrapper scrolls.
+            if .wrapper_el != null {
+                .wrapper_el.addEventListener("scroll", .scroll_cb, { passive: true })
+            }
+        }
+
+        .Destroy -> {
+            // Every listener target was captured at Init, so removal never
+            // touches the editor — the original's isDestroyed guard (which,
+            // when it fired, skipped ALL removals including document-level
+            // ones) is unnecessary here. The document mousedown outside-click
+            // listener is the view-registered one (auto-detached).
+            document.removeEventListener("wheel", .wheel_cb, { capture: true })
+            if .editor_dom != null {
+                .editor_dom.removeEventListener("mousedown", .dom_mousedown_cb, { capture: true })
+                .editor_dom.removeEventListener("click", .dom_click_cb, { capture: true })
+            }
+            if .wrapper_el != null {
+                .wrapper_el.removeEventListener("scroll", .scroll_cb)
+            }
+        }
+
+        // Consumed by the v-model optimization (see the view): never
+        // emitted to the template, kept as the write-back target.
+        .SearchInput(e) -> {
+            .search = e.target.value
+        }
+
+        .MoveDown -> {
+            if .highlighted_index < .filtered.length - 1 {
+                .highlighted_index = .highlighted_index + 1
+                nextTick(() => {
+                    let s_menu = null
+                    if .editor_el != null {
+                        s_menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                    }
+                    if s_menu != null {
+                        let s_list = s_menu.querySelector(".autodown-codeblock-menu-list")
+                        let s_item = s_menu.querySelector(".autodown-codeblock-menu-item.active")
+                        if s_list != null && s_item != null {
+                            let listRect = s_list.getBoundingClientRect()
+                            let itemRect = s_item.getBoundingClientRect()
+                            let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2
+                            s_list.scrollTop = s_list.scrollTop + offset
+                        }
+                    }
+                })
+            }
+        }
+
+        .MoveUp -> {
+            if .highlighted_index > 0 {
+                .highlighted_index = .highlighted_index - 1
+                nextTick(() => {
+                    let s_menu = null
+                    if .editor_el != null {
+                        s_menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                    }
+                    if s_menu != null {
+                        let s_list = s_menu.querySelector(".autodown-codeblock-menu-list")
+                        let s_item = s_menu.querySelector(".autodown-codeblock-menu-item.active")
+                        if s_list != null && s_item != null {
+                            let listRect = s_list.getBoundingClientRect()
+                            let itemRect = s_item.getBoundingClientRect()
+                            let offset = itemRect.top - listRect.top - listRect.height / 2 + itemRect.height / 2
+                            s_list.scrollTop = s_list.scrollTop + offset
+                        }
+                    }
+                })
+            }
+        }
+
+        // The original selectHighlighted(): a single filtered result is
+        // selected directly; otherwise the highlighted item.
+        .SelectHighlighted -> {
+            if .filtered.length == 1 {
+                let only = .filtered[0]
+                .editor.chain().focus().setCodeBlock({ language: only.id }).run()
+                .visible = false
+                .search = ""
+                .highlighted_index = 0
+                .active_code_block = null
+            }
+            if .filtered.length != 1 {
+                let lang = .filtered[.highlighted_index]
+                if lang != null {
+                    .editor.chain().focus().setCodeBlock({ language: lang.id }).run()
+                    .visible = false
+                    .search = ""
+                    .highlighted_index = 0
+                    .active_code_block = null
+                }
+            }
+        }
+
+        // The original selectLanguage(): focus + setCodeBlock, then close()
+        // inline (close does not reset current_language in the original).
+        .SelectItem(lang) -> {
+            .editor.chain().focus().setCodeBlock({ language: lang.id }).run()
+            .visible = false
+            .search = ""
+            .highlighted_index = 0
+            .active_code_block = null
+        }
+
+        .HoverItem(i) -> {
+            .highlighted_index = i
+        }
+
+        .Close -> {
+            .visible = false
+            .search = ""
+            .highlighted_index = 0
+            .active_code_block = null
+        }
+
+        // handleOutsideClick: close when the click lands outside the menu.
+        // (Guarded by .visible — when hidden the menu is not rendered, so
+        // the original's `menu != null` check could never pass either.)
+        .OutsideClick(e) -> {
+            if .visible {
+                let menu = null
+                if .editor_el != null {
+                    menu = .editor_el.querySelector(".autodown-codeblock-menu")
+                }
+                if menu != null {
+                    if !menu["contains"](e.target) {
+                        .visible = false
+                        .search = ""
+                        .highlighted_index = 0
+                        .active_code_block = null
+                    }
+                }
+            }
+        }
+    }
+}

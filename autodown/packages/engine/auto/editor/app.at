@@ -1,0 +1,20 @@
+// app.at — Placeholder root widget.
+//
+// The Auto Vue generator always emits the project's root widget as `App.vue`;
+// every other widget lands in `gen/front/vue/src/components/<Name>.vue`.
+// This dummy App exists only so that the real widgets are generated as
+// standalone component SFC. Its own output is discarded.
+
+widget App {
+    msg Msg { Init }
+
+    model {
+    }
+
+    view {
+        text "editor-widgets"
+    }
+
+    on {
+    }
+}

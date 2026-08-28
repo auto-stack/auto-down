@@ -1,0 +1,162 @@
+// mermaid_node_view.at — MermaidNodeView widget: Auto widget DSL port of
+// the original hand-written src/node-views/MermaidNodeView.vue. The
+// generated SFC replaces it (see auto/editor/README.plan013.md). All widget logic
+// lives here in the DSL; the shared hand-written extension
+// utils/node_view_ext.ts keeps the tiptap NodeViewWrapper/NodeViewContent
+// re-exports (dual-resolution shim — the gen project has no @tiptap/*
+// dependency) and re-exports renderMermaidPreview from
+// src/composables/renderPreview.ts (same shim for katex/mermaid — npm
+// imports, try/catch and v-html are inexpressible in the DSL; see
+// renderPreview.ts's header comment).
+//
+// Prop types are deliberately wide: `Array<str>` maps to TS `any`, `[]str`
+// to `any[]`. All eight NodeViewProps fields are declared (the original
+// used defineProps<NodeViewProps>()) so nothing falls through as attrs.
+//
+// Idioms forced by real (probe-verified) codegen gaps — see
+// details_node_view.at / query_block_node_view.at for the full list:
+// - The original's svg/error refs become model vars with the "" sentinel
+//   (the originals used null; falsy either way, so the v-if/v-else-if
+//   chain behaves identically).
+// - The original's v-html is native now: `html: .svg` on the preview div
+//   (plan 013 probe 05). The old empty-div + imperative setInnerHTML +
+//   nextTick shim is retired; the reactive binding needs no remount wait.
+// - The mermaid.render call is async: the DSL has no async/await, so the
+//   promise resolves via a single .then callback (renderMermaidPreview
+//   never rejects — its try/catch returns the error as data).
+// - render() runs on mount via .Init and on source changes via watch —
+//   the original's watch(..., { immediate: true }) (the DSL watch has no
+//   immediate option; the body is DUPLICATED because a msg handler that
+//   no view event references is not emitted).
+// - `as:` in PAREN form (keyword token, mis-parses in the brace form).
+// - The <code> child of NodeViewContent renders via dyn with a string tag
+//   (code is not in the DSL element table and would fall back to <div>).
+// - The bare data-mermaid-block attribute binds the empty string (renders
+//   data-mermaid-block="" — identical DOM to the original's valueless
+//   attribute).
+
+widget MermaidNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
+    use {
+        component: NodeViewWrapper, NodeViewContent from "ext/node_view_ext.ts"
+        fn: renderMermaidPreview from "ext/node_view_ext.ts"
+    }
+
+    msg Msg { Init }
+
+    model {
+        var svg str = ""
+        var error_text str = ""
+    }
+
+    computed {
+        // The original's computed(() => props.node.textContent || '').
+        source => .node.textContent || ""
+        // <code> is not in the DSL element table (falls back to div, which
+        // loses the UA monospace) — render a real <code> via dyn.
+        code_tag => "code"
+        // The original's v-if="svg" / v-else-if="error" chain as two
+        // exclusive named-boolean computeds (same rendered branch).
+        show_preview => .svg != ""
+        show_error => .svg == "" && .error_text != ""
+    }
+
+    view {
+        NodeViewWrapper (as: "div") {
+            class: "autodown-mermaid-block",
+            data-mermaid-block: "",
+
+            if .show_preview {
+                // Native v-html via the `html:` prop (plan 013 probe 05);
+                // the old empty-div + imperative setInnerHTML shim and its
+                // nextTick wait are retired.
+                div { class: "autodown-mermaid-preview", html: .svg }
+            }
+            if .show_error {
+                div {
+                    class: "autodown-mermaid-error",
+                    title: "Mermaid render error",
+                    text .error_text
+                }
+            }
+            NodeViewContent (as: "pre") {
+                class: "mermaid-source",
+                dyn (.code_tag) {}
+            }
+        }
+    }
+
+    watch {
+        // The original's watch(() => source.value, render) — the immediate
+        // run happens in .Init (the DSL watch has no immediate option).
+        // The body is DUPLICATED here and in .Init: a msg handler that no
+        // view event references is not emitted, so a shared Render handler
+        // is not viable.
+        .source -> {
+            if .source.trim() == "" {
+                .svg = ""
+                .error_text = ""
+            }
+            if .source.trim() != "" {
+                let p = renderMermaidPreview(.source)
+                // renderMermaidPreview never rejects (its try/catch returns
+                // the error as data), so a single resolve callback carries
+                // both the original's try and catch branches.
+                p.then(res => {
+                    .svg = res.svg
+                    .error_text = res.error
+                })
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            // render() — duplicated in the watch above (see the comment
+            // there).
+            if .source.trim() == "" {
+                .svg = ""
+                .error_text = ""
+            }
+            if .source.trim() != "" {
+                let p = renderMermaidPreview(.source)
+                p.then(res => {
+                    .svg = res.svg
+                    .error_text = res.error
+                })
+            }
+        }
+    }
+
+    style {
+        .autodown-mermaid-block {
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--card, 0 0% 100%));
+          overflow: hidden;
+        }
+        .autodown-mermaid-preview {
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+        }
+        .autodown-mermaid-preview :deep(svg) {
+          margin: 0 auto;
+          display: block;
+        }
+        .autodown-mermaid-error {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          color: hsl(var(--destructive, 0 72% 51%));
+          background: hsl(var(--destructive/10, 0 72% 51% / 0.1));
+        }
+        .mermaid-source {
+          margin: 0;
+          border-top: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0;
+          background: hsl(var(--muted, 210 20% 96%));
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+          white-space: pre-wrap;
+        }
+    }
+}

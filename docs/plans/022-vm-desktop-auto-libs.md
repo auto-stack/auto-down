@@ -2,7 +2,7 @@
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 2 slice 5 完成，2026-08-28）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 1 + Phase 2 完成，2026-08-28）**。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -75,6 +75,25 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 
 ### Phase 1 — API 契约固化（api.at 复活）
 
+> **进度（2026-08-28 Phase 1 完成，欠账回补）**：back/auto/api.at 契约单源
+> 落地——34 类型覆盖全部 28 条现役路由（workspace/files CRUD/assets/wiki/
+> links×3/search×3/tasks/agenda/query/cards×2/import/export/sync/whiteboard/
+> blocks×2/unlinked，含 ApiError `{"error": …}` 错误面）；请求体类型化
+> （FileCreateRequest 等），查询参数与 multipart 在 ROUTE 注记登记。
+> a2ts 单向发射（`tsOnly`，backend serde DTO 留守运行时权威），部署副本
+> `front/src/lib/api_gen.ts` 由 gen.mjs 产出；`lib/api.ts` 手写 interface
+> 全退役改为 re-export，fetch 层 + `LinksResponse<T>` 泛型信封 +
+> `GraphSettings`（front 本地视图模型）留守。表达力探针：`str?`→
+> `string | null`、递归 `List<FileNode>`、`type` 字段名双端可用；开放对象
+> （frontmatter/properties）以空结构 `JsonAny` 标记 + gen 后修 J1 →
+> `Record<string, any>`。路由覆盖检查 `tests/api-contract-routes.mjs`
+> （main.rs ↔ api.at ROUTE 标记 28/28）。门：vue-tsc 零错（抓到一例旧
+> 接口说谎：线上 priority 恒为 string|null，旧手写接口却声明
+> `priority?: string`——agenda 视图模型已诚实化）+ vite build +
+> jade e2e 23/23。**契约变更流程**（细则在 api.at 头注）：后端 DTO 先行
+> → api.at 镜像 → `node gen.mjs` 再生 → api.ts 跟随 → vue-tsc 卡客户端
+> 漂移 → ROUTE 检查卡漏登记；e2e 为行为对拍门。
+>
 - 以 `legacy-autoui/api.at` 为种子恢复正式契约源：逐端点固化现役
   `/api/*` 请求/响应形状（workspace / files CRUD / wiki / backlinks /
   outlinks / graph / search×3 / tasks / agenda / query / cards×2 /
@@ -145,6 +164,23 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > 编排退役 index.rs 正则；alias [[a|b]] 不匹配、空标题丢弃、中文标签
 > 不支持等边界逐项对齐旧语义。后续 slice：search/tasks/query → srs。
 >
+> **进度（2026-08-28 slice 6 完成）**：index 行缓存 JSON 迁移（存储裁定
+> 第二步落地，裁定项两步全销号）——index.rs 全量重写为内存索引
+> （pages/blocks/links/tags 四行表 Vec + 扫描，`&mut self` 变更、RWLock
+> 串行化等价旧互斥锁），持久化 `jade-garden-index.json`（serde 序列化 +
+> tmp/rename 原子写；启动重建末尾 flush 一次，增量变更经 links.rs 壳逐笔
+> flush）；rusqlite 依赖摘除（Cargo.toml），旧库文件自愈式弃用（缺失/
+> 损坏 → 空表起步，重建即重写）。语义保形：COLLATE NOCASE≈ASCII 折叠、
+> ORDER BY 显式复刻（backlinks source_page / outlinks target_page /
+> graph path+source_page）、find_block 先 uuid 后 block_id 与 LIMIT 1 取
+> 首语义、resolve 先 title 后 alias。**存量潜伏 bug 按原样保形**：uuid
+> 稳定性查找在删除之后执行（SQLite 时代继承）恒空 → 块 uuid 每存必换；
+> 消费面均走 block_id（块引用/闪卡复盘/滚动定位），uuid 仅信息性，DEBTS
+> 022 行在册，修复属独立语义决策。门：cargo 37/37（34 既有全存活 +
+> 新增 rename 全行种更新 / remove 全行种删除 / JSON flush-reload 往返
+> 3 测试）+ jade e2e 23/23 + 运行时 JSON 文件实证（11 pages / 73 blocks /
+> 11 links / 9 tags）。剩余：Phase 3（VM 内路由接管）起待启动。
+>
 - **前置（过渡期工具链依赖，2026-08-27 登记）**：a2r 转译须用含
   plan-019 发射器修复（r# 保留字转义等 8 组）的 auto.exe。该修复
   2026-08-27 13:46 才合入 auto-lang master（`45b005d01`）；主检出
@@ -164,10 +200,10 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
   `fs/http/json` 可用面先行确认（Plan 024 async API）。
 - 金标：每模块 a2ts + a2r 双发射 + 对拍测试（复制 engine 四件套的
   roundtrip/parity 三层模式）。
-- SQLite 存储裁定项：**已裁定（2026-08-28 slice 5）**——JSON 文件存储
-  方向，否决 rusqlite FFI；FTS5 已退役（SQLite 剩普通行表），行缓存迁
-  `jade-garden-index.json` 为独立小步，Phase 3 前完成。实测依据与落地
-  路径见上方 slice 5 进度注记。
+- SQLite 存储裁定项：**已裁定并两步全落地（2026-08-28 slice 5 + 6）**——
+  JSON 文件存储方向，否决 rusqlite FFI；slice 5 退役 FTS5，slice 6 行缓存
+  迁 `jade-garden-index.json`（rusqlite 依赖已摘除）。实测依据与落地路径
+  见上方 slice 5/6 进度注记。
 - 验收：对应手写 Rust 模块删除；双端金标测试绿；jade e2e 无回归。
 
 ### Phase 3 — VM 内路由接管

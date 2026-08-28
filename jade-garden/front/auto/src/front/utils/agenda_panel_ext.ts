@@ -41,7 +41,8 @@ export async function fetchAgendaSafe(): Promise<AgendaGroup[] | null> {
 export interface AgendaTaskView {
   page_path: string
   marker: string
-  priority?: string
+  // wire truth (contract TaskItem): Option<String> → string | null
+  priority: string | null
   content: string
   marker_muted: boolean
   marker_primary: boolean

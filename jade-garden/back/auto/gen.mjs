@@ -55,6 +55,25 @@ const SOURCES = [
     at: 'search.at',
     structs: ['SrPage', 'SrBlock', 'SrHit'],
   },
+  {
+    at: 'api.at',
+    structs: [
+      'ApiError',
+      'WorkspaceInfo', 'WorkspaceOpenRequest', 'FileNode', 'FileCreateRequest',
+      'FileRenameRequest', 'FileDeleteRequest', 'UploadAssetResponse', 'WikiDoc',
+      'Backlink', 'Outlink', 'GraphNode', 'GraphEdge', 'GraphData',
+      'SearchResult', 'SearchResponse', 'TaskItem', 'TasksResponse',
+      'AgendaGroup', 'AgendaResponse', 'QueryResponse', 'Card', 'CardsResponse',
+      'CardReviewRequest', 'CardReviewResponse', 'ImportResult', 'SyncStatus',
+      'WhiteboardShape', 'WhiteboardDoc', 'BlockInfo', 'BlockResponse',
+      'UnlinkedRef', 'UnlinkedRefsResponse',
+    ],
+    // Contract is client-facing only — the backend serde DTOs stay
+    // hand-written (runtime authority); no a2r emission.
+    tsOnly: true,
+    // Deploy a copy next to lib/api.ts so front imports stay in-tree.
+    front: true,
+  },
 ]
 
 const ctorRegexFor = (structs) =>
@@ -72,6 +91,12 @@ const b1 = (ctorRe, src) =>
 // on the rust side for BMP content).
 const charAtFix = (s) => s.split('.char_at(').join('.charCodeAt(')
 
+// J1 (plan 022 Phase 1): the contract's marker type for open JSON objects
+// (frontmatter/properties bags) — the DSL has no map type, so api.at
+// declares an empty `JsonAny` struct and this rewrite turns it into the
+// honest TS type.
+const jsonAnyFix = (s) => s.split(': JsonAny').join(': Record<string, any>')
+
 function emit(source) {
   const atPath = path.join(here, source.at)
   const stem = path.basename(source.at, '.at')
@@ -83,23 +108,37 @@ function emit(source) {
   const rawTs = fs.readFileSync(rawTsPath, 'utf8')
   fs.rmSync(rawTsPath, { force: true })
   const ts = b1(ctorRegexFor(source.structs), charAtFix(rawTs))
+  const tsFixed = source.at === 'api.at' ? jsonAnyFix(ts) : ts
   const outTs = path.join(here, 'gen-ts', `${stem}_gen.ts`)
   fs.mkdirSync(path.dirname(outTs), { recursive: true })
-  fs.writeFileSync(outTs, ts)
-  fs.writeFileSync(path.join(here, `${stem}.raw.ts`), ts)
+  fs.writeFileSync(outTs, tsFixed)
+  fs.writeFileSync(path.join(here, `${stem}.raw.ts`), tsFixed)
+
+  // ---- deployed front copy (contract only) ----
+  if (source.front) {
+    const frontDir = path.join(here, '..', '..', 'front', 'src', 'lib')
+    fs.mkdirSync(frontDir, { recursive: true })
+    const header =
+      '// GENERATED from back/auto/api.at via back/auto/gen.mjs — do not edit.\n' +
+      "// Contract source of truth for the /api/* wire shapes (Plan 022 Phase 1).\n\n"
+    fs.writeFileSync(path.join(frontDir, 'api_gen.ts'), header + tsFixed)
+  }
 
   // ---- Rust for the backend shell ----
-  execFileSync(AUTO_EXE, ['trans', '--path', atPath, 'rust'], { stdio: 'ignore' })
-  const rawRsPath = path.join(here, `${stem}.a2r.rs`)
-  const rawRs = fs.readFileSync(rawRsPath, 'utf8')
-  fs.rmSync(rawRsPath, { force: true })
-  const outRs = path.join(serverSrc, `${stem}_gen.rs`)
-  let rs = rawRs
-  if (!rs.startsWith('#![')) {
-    rs = '#![allow(non_snake_case)]\n#![allow(dead_code)]\n\n' + rs
+  let outRs = null
+  if (!source.tsOnly) {
+    execFileSync(AUTO_EXE, ['trans', '--path', atPath, 'rust'], { stdio: 'ignore' })
+    const rawRsPath = path.join(here, `${stem}.a2r.rs`)
+    const rawRs = fs.readFileSync(rawRsPath, 'utf8')
+    fs.rmSync(rawRsPath, { force: true })
+    outRs = path.join(serverSrc, `${stem}_gen.rs`)
+    let rs = rawRs
+    if (!rs.startsWith('#![')) {
+      rs = '#![allow(non_snake_case)]\n#![allow(dead_code)]\n\n' + rs
+    }
+    fs.writeFileSync(outRs, rs)
+    fs.writeFileSync(path.join(here, `${stem}.raw.rs`), rawRs)
   }
-  fs.writeFileSync(outRs, rs)
-  fs.writeFileSync(path.join(here, `${stem}.raw.rs`), rawRs)
 
   // ---- sanity: no unresolved bare struct ctor left in TS ----
   const bad = ts
@@ -111,7 +150,10 @@ function emit(source) {
     process.exit(1)
   }
 
-  console.log(`[gen] ${source.at} -> ${path.relative(here, outTs)} + ${path.relative(here, outRs)}`)
+  const targets = source.tsOnly
+    ? [path.relative(here, outTs)]
+    : [path.relative(here, outTs), path.relative(here, outRs)]
+  console.log(`[gen] ${source.at} -> ${targets.join(' + ')}`)
 }
 
 for (const source of SOURCES) emit(source)

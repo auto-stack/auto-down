@@ -1,22 +1,89 @@
-export interface FileNode {
-  name: string
-  path: string
-  is_dir: boolean
-  children?: FileNode[]
+// Wire types are GENERATED from the backend contract source
+// back/auto/api.at (Plan 022 Phase 1) — change shapes there, run
+// `node gen.mjs` in back/auto, and never edit lib/api_gen.ts.
+// Hand-written in this file: the fetch layer, the generic links envelope
+// (LinksResponse<T> — both /api/backlinks and /api/outlinks share the
+// { title, links } envelope), and the front-local GraphSettings (a view
+// model, not a wire shape; kept here so the Auto-generated GraphView
+// widget's `import type { GraphSettings } from '@/lib/api'` resolves in
+// both the front tree and the gen project, plan 011 Phase 5.3b).
+import type {
+  AgendaResponse,
+  Backlink,
+  BlockResponse,
+  CardReviewRequest,
+  CardReviewResponse,
+  CardsResponse,
+  FileNode,
+  GraphData,
+  ImportResult,
+  Outlink,
+  QueryResponse,
+  SearchResponse,
+  TasksResponse,
+  UnlinkedRefsResponse,
+  UploadAssetResponse,
+  WhiteboardDoc,
+  WikiDoc,
+  WorkspaceInfo,
+} from './api_gen'
+
+export type {
+  AgendaGroup,
+  AgendaResponse,
+  ApiError,
+  Backlink,
+  BlockInfo,
+  BlockResponse,
+  Card,
+  CardsResponse,
+  FileNode,
+  GraphData,
+  GraphEdge,
+  GraphNode,
+  ImportResult,
+  Outlink,
+  QueryResponse,
+  SearchResponse,
+  SearchResult,
+  SyncStatus,
+  TaskItem,
+  TasksResponse,
+  UnlinkedRef,
+  UnlinkedRefsResponse,
+  WhiteboardDoc,
+  WhiteboardShape,
+  WikiDoc,
+  WorkspaceInfo,
+} from './api_gen'
+
+/** Generic envelope shared by /api/backlinks and /api/outlinks
+ * (contract section "links" in back/auto/api.at). */
+export interface LinksResponse<T> {
+  title: string
+  links: T[]
 }
 
-export interface WikiDoc {
-  frontmatter: Record<string, any>
-  body: string
+/** Graph view settings. Defined here (next to GraphNode/GraphEdge) so the
+ * Auto-generated GraphView widget's `settings: GraphSettings` prop resolves
+ * its `import type { GraphSettings } from '@/lib/api'` in both the front
+ * tree and the gen project (plan 011 Phase 5.3b); graph_store_ext re-exports
+ * it for the store facade and pre-existing consumers. */
+export interface GraphSettings {
+  showOrphans: boolean
+  showMissing: boolean
+  nodeSize: number
+  textOpacity: number
+  edgeWidth: number
+  showArrows: boolean
+  gravity: number
+  repulsion: number
+  attraction: number
+  linkLength: number
 }
 
-export interface WorkspaceInfo {
-  root: string | null
-  wiki_dir: string | null
-}
-
-/** Error bodies are JSON `{"error": "..."}` (ApiError); fall back to raw
- * text for anything else. */
+/** Error bodies are JSON `{"error": "..."}` (contract type ApiError); fall
+ * back to raw text for anything else. */
 async function errorMessage(res: Response): Promise<string> {
   const text = await res.text()
   try {
@@ -95,61 +162,6 @@ export async function writeWiki(path: string, doc: WikiDoc): Promise<WikiDoc> {
   return res.json()
 }
 
-export interface Backlink {
-  source_title: string
-  source_path: string
-  context: string
-}
-
-export interface Outlink {
-  target_title: string
-  target_path?: string
-  exists: boolean
-  block_id?: string
-}
-
-export interface GraphNode {
-  id: string
-  label: string
-  path: string
-  exists: boolean
-  degree: number
-}
-
-export interface GraphEdge {
-  source: string
-  target: string
-  block_id?: string
-}
-
-// Graph view settings. Defined here (next to GraphNode/GraphEdge) so the
-// Auto-generated GraphView widget's `settings: GraphSettings` prop resolves
-// its `import type { GraphSettings } from '@/lib/api'` in both the front
-// tree and the gen project (plan 011 Phase 5.3b); graph_store_ext re-exports
-// it for the store facade and pre-existing consumers.
-export interface GraphSettings {
-  showOrphans: boolean
-  showMissing: boolean
-  nodeSize: number
-  textOpacity: number
-  edgeWidth: number
-  showArrows: boolean
-  gravity: number
-  repulsion: number
-  attraction: number
-  linkLength: number
-}
-
-export interface GraphData {
-  nodes: GraphNode[]
-  edges: GraphEdge[]
-}
-
-export interface LinksResponse<T> {
-  title: string
-  links: T[]
-}
-
 export async function getGraph(): Promise<GraphData> {
   const res = await fetch('/api/graph')
   if (!res.ok) throw new Error(await errorMessage(res))
@@ -166,22 +178,6 @@ export async function getOutlinks(title: string): Promise<LinksResponse<Outlink>
   const res = await fetch(`/api/outlinks/${encodeURIComponent(title)}`)
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
-}
-
-export interface SearchResult {
-  type: 'Page' | 'Block'
-  path?: string
-  title?: string
-  uuid?: string
-  page_path?: string
-  block_id?: string
-  content?: string
-  snippet?: string | null
-}
-
-export interface SearchResponse {
-  query: string
-  results: SearchResult[]
 }
 
 export async function search(query: string, limit = 20): Promise<SearchResponse> {
@@ -205,39 +201,16 @@ export async function searchBlocks(query: string, limit = 20): Promise<SearchRes
   return res.json()
 }
 
-export interface UnlinkedRef {
-  page_path: string
-  block_uuid?: string
-  context: string
-  matched_text: string
-}
-
-export interface UnlinkedRefsResponse {
-  title: string
-  refs: UnlinkedRef[]
-}
-
 export async function getUnlinkedRefs(title: string): Promise<UnlinkedRefsResponse> {
   const res = await fetch(`/api/unlinked/${encodeURIComponent(title)}`)
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
-export async function getBlock(id: string): Promise<{ found: boolean; block?: BlockInfo }> {
+export async function getBlock(id: string): Promise<BlockResponse> {
   const res = await fetch(`/api/blocks/${encodeURIComponent(id)}`)
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
-}
-
-export interface BlockInfo {
-  uuid: string
-  page_path: string
-  block_id?: string
-  kind: string
-  content: string
-  properties: Record<string, any>
-  line_start: number
-  line_end: number
 }
 
 export async function createWikiPage(title: string): Promise<string> {
@@ -254,39 +227,14 @@ export async function uploadAsset(file: File): Promise<string> {
     body: formData,
   })
   if (!res.ok) throw new Error(await errorMessage(res))
-  const data = await res.json()
-  return data.path as string
-}
-
-export interface TaskItem {
-  page_path: string
-  title: string
-  line: number
-  raw: string
-  marker: string
-  priority?: string
-  content: string
-  scheduled?: string
-  deadline?: string
-}
-
-export interface TasksResponse {
-  tasks: TaskItem[]
+  const data: UploadAssetResponse = await res.json()
+  return data.path
 }
 
 export async function getTasks(): Promise<TasksResponse> {
   const res = await fetch('/api/tasks')
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
-}
-
-export interface AgendaGroup {
-  date: string
-  tasks: TaskItem[]
-}
-
-export interface AgendaResponse {
-  groups: AgendaGroup[]
 }
 
 export async function getAgenda(days = 14): Promise<AgendaResponse> {
@@ -296,35 +244,11 @@ export async function getAgenda(days = 14): Promise<AgendaResponse> {
   return res.json()
 }
 
-export interface QueryResponse {
-  results: TaskItem[]
-}
-
 export async function runQuery(q: string): Promise<QueryResponse> {
   const params = new URLSearchParams({ q })
   const res = await fetch(`/api/query?${params}`)
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
-}
-
-export interface Card {
-  page_path: string
-  block_id: string
-  uuid: string
-  raw: string
-  question: string
-  answer: string
-  deck?: string
-  ease_factor: number
-  repeats: number
-  last_interval: number
-  next_schedule?: string
-  last_score?: number
-  last_reviewed?: string
-}
-
-export interface CardsResponse {
-  cards: Card[]
 }
 
 export async function getDueCards(limit = 50): Promise<CardsResponse> {
@@ -334,11 +258,12 @@ export async function getDueCards(limit = 50): Promise<CardsResponse> {
   return res.json()
 }
 
-export async function reviewCard(pagePath: string, blockId: string, grade: number): Promise<{ card: Card }> {
+export async function reviewCard(pagePath: string, blockId: string, grade: number): Promise<CardReviewResponse> {
+  const body: CardReviewRequest = { page_path: pagePath, block_id: blockId, grade }
   const res = await fetch('/api/cards/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ page_path: pagePath, block_id: blockId, grade }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
@@ -351,7 +276,7 @@ export async function exportMarkdown(): Promise<Blob> {
 }
 
 
-export async function importMarkdown(zipFile: File): Promise<{ imported: number }> {
+export async function importMarkdown(zipFile: File): Promise<ImportResult> {
   const formData = new FormData()
   formData.append('archive', zipFile)
   const res = await fetch('/api/import/markdown', {
@@ -360,21 +285,6 @@ export async function importMarkdown(zipFile: File): Promise<{ imported: number 
   })
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
-}
-
-export interface WhiteboardShape {
-  id: string
-  kind: string
-  x: number
-  y: number
-  width: number
-  height: number
-  label: string
-  target?: string
-}
-
-export interface WhiteboardDoc {
-  shapes: WhiteboardShape[]
 }
 
 export async function readWhiteboard(path: string): Promise<WhiteboardDoc> {

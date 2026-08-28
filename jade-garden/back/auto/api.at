@@ -1,0 +1,312 @@
+// jade-garden API contract — single source for the /api/* wire shapes.
+//
+// Plan 022 Phase 1 (api.at contract revival from legacy-autoui seed):
+// every live route's request/response shape is declared here and emitted
+// to TS via a2ts (gen.mjs → gen-ts/api_gen.ts, deployed copy at
+// front/src/lib/api_gen.ts). The hand-written fetch layer lives in
+// front/src/lib/api.ts and re-exports these types; it must not declare
+// competing shapes.
+//
+// The `#[api]` route-codegen annotations of the legacy seed are NOT
+// revived (old AutoUI toolchain, plan 011 stays archived) — the route
+// mapping is documented per section and machine-read from the
+// `// ROUTE:` markers below (tests/api-contract-routes.mjs asserts they
+// cover every route in back/server/src/main.rs).
+//
+// Contract change process (plan 022 Phase 1 acceptance):
+//   1. change the backend handler DTO first (it owns the wire),
+//   2. mirror the shape here (type + ROUTE section comment),
+//   3. `node gen.mjs` regenerates gen-ts/api_gen.ts and the deployed
+//      front/src/lib/api_gen.ts copy,
+//   4. api.ts fetchers follow the new shape; `pnpm build` (vue-tsc)
+//      fails on any client drift,
+//   5. tests/api-contract-routes.mjs fails if a route exists without a
+//      contract section (add the ROUTE marker when adding routes).
+// The backend serde DTOs remain the runtime authority; e2e (23 specs)
+// is the behavioral parity gate.
+//
+// Error face (all routes): non-2xx responses carry JSON
+// `{"error": string}` (ApiError, error.rs); plain-text bodies are a
+// legacy fallback the client tolerates.
+
+// ------------------------------------------------------ errors
+
+// ROUTE: (all routes)  non-2xx response body
+pub type ApiError {
+    error str
+}
+
+// ------------------------------------------------------ marker type
+// Open JSON object (arbitrary keys) — the Auto DSL has no map type that
+// a2ts emits usefully, so gen.mjs post-fixes `JsonAny` to TS
+// `Record<string, any>`. Used ONLY for frontmatter/properties-style
+// bags; never for values with known keys.
+
+pub type JsonAny {
+}
+
+// ------------------------------------------------------ workspace
+
+// ROUTE: GET /api/workspace
+pub type WorkspaceInfo {
+    root str?
+    wiki_dir str?
+}
+
+// ROUTE: POST /api/workspace/open  (body: WorkspaceOpenRequest)
+pub type WorkspaceOpenRequest {
+    root str
+}
+
+// ------------------------------------------------------ files
+
+pub type FileNode {
+    name str
+    path str
+    is_dir bool
+    // always present on the wire (empty for files) — backend Vec<FileNode>
+    children List<FileNode>
+}
+
+// ROUTE: GET /api/files  (query: path, recursive)
+// ROUTE: POST /api/files/create  (body: FileCreateRequest → FileNode)
+pub type FileCreateRequest {
+    path str
+    is_dir bool
+}
+
+// ROUTE: POST /api/files/rename  (body: FileRenameRequest → empty)
+pub type FileRenameRequest {
+    old_path str
+    new_path str
+}
+
+// ROUTE: POST /api/files/delete  (body: FileDeleteRequest → empty)
+pub type FileDeleteRequest {
+    path str
+}
+
+// ------------------------------------------------------ assets
+
+// ROUTE: POST /api/assets/upload  (multipart: file → UploadAssetResponse)
+pub type UploadAssetResponse {
+    path str
+}
+
+// ------------------------------------------------------ wiki docs
+
+// ROUTE: GET /api/wiki/{*path}
+// ROUTE: POST /api/wiki/{*path}  (body: WikiDoc → WikiDoc)
+pub type WikiDoc {
+    // arbitrary frontmatter bag (serde_json::Value on the backend)
+    frontmatter JsonAny
+    body str
+}
+
+// ------------------------------------------------------ links
+
+pub type Backlink {
+    source_title str
+    source_path str
+    context str
+}
+
+pub type Outlink {
+    target_title str
+    target_path str?
+    exists bool
+    block_id str?
+}
+
+// ROUTE: GET /api/backlinks/{title}  → { title, links: Backlink[] }
+// ROUTE: GET /api/outlinks/{title}  → { title, links: Outlink[] }
+// The links envelope is generic on the client (LinksResponse<T> in
+// api.ts) — both routes share the { title str, links List<T> } shape.
+
+// ------------------------------------------------------ graph
+
+pub type GraphNode {
+    id str
+    label str
+    path str
+    exists bool
+    degree int
+}
+
+pub type GraphEdge {
+    source str
+    target str
+    block_id str?
+}
+
+// ROUTE: GET /api/graph
+pub type GraphData {
+    nodes List<GraphNode>
+    edges List<GraphEdge>
+}
+
+// ------------------------------------------------------ search
+// One result type flattened over the backend's tagged enum
+// (serde(tag = "type")): `type` is "Page" (path/title/snippet set) or
+// "Block" (uuid/page_path/block_id/content/snippet set); other fields
+// are absent on the wire for a given variant.
+
+pub type SearchResult {
+    type str
+    path str?
+    title str?
+    uuid str?
+    page_path str?
+    block_id str?
+    content str?
+    // \u0001-wrapped match highlights for <mark> rendering, null = none
+    snippet str?
+}
+
+// ROUTE: GET /api/search  (query: q, limit)
+// ROUTE: GET /api/search/pages  (query: q, limit)
+// ROUTE: GET /api/search/blocks  (query: q, limit)
+pub type SearchResponse {
+    query str
+    results List<SearchResult>
+}
+
+// ------------------------------------------------------ tasks / agenda / query
+
+pub type TaskItem {
+    page_path str
+    title str
+    line int
+    raw str
+    marker str
+    priority str?
+    content str
+    // normalized "YYYY-MM-DD" or absent
+    scheduled str?
+    deadline str?
+}
+
+// ROUTE: GET /api/tasks
+pub type TasksResponse {
+    tasks List<TaskItem>
+}
+
+pub type AgendaGroup {
+    date str
+    tasks List<TaskItem>
+}
+
+// ROUTE: GET /api/agenda  (query: days)
+pub type AgendaResponse {
+    groups List<AgendaGroup>
+}
+
+// ROUTE: GET /api/query  (query: q)
+pub type QueryResponse {
+    results List<TaskItem>
+}
+
+// ------------------------------------------------------ srs / flashcards
+
+pub type Card {
+    page_path str
+    block_id str
+    uuid str
+    raw str
+    question str
+    answer str
+    deck str?
+    ease_factor float
+    repeats int
+    last_interval float
+    next_schedule str?
+    last_score int?
+    last_reviewed str?
+}
+
+// ROUTE: GET /api/cards/due  (query: limit)
+pub type CardsResponse {
+    cards List<Card>
+}
+
+// ROUTE: POST /api/cards/review  (body: CardReviewRequest → CardReviewResponse)
+pub type CardReviewRequest {
+    page_path str
+    block_id str
+    grade int
+}
+
+pub type CardReviewResponse {
+    card Card
+}
+
+// ------------------------------------------------------ import / export
+
+// ROUTE: GET /api/export/markdown  → zip archive (binary blob)
+// ROUTE: POST /api/import/markdown  (multipart: archive → ImportResult)
+pub type ImportResult {
+    imported int
+}
+
+// ------------------------------------------------------ sync
+
+// ROUTE: GET /api/sync/status
+pub type SyncStatus {
+    status str
+    message str
+}
+
+// ------------------------------------------------------ whiteboards
+
+pub type WhiteboardShape {
+    id str
+    kind str
+    x float
+    y float
+    width float
+    height float
+    label str
+    target str?
+}
+
+// ROUTE: GET /api/whiteboard/{*path}
+// ROUTE: POST /api/whiteboard/{*path}  (body: WhiteboardDoc → WhiteboardDoc)
+pub type WhiteboardDoc {
+    shapes List<WhiteboardShape>
+}
+
+// ------------------------------------------------------ blocks
+
+pub type BlockInfo {
+    uuid str
+    page_path str
+    block_id str?
+    kind str
+    content str
+    // key:: value property bag (serde_json::Value on the backend)
+    properties JsonAny
+    line_start int
+    line_end int
+}
+
+// ROUTE: GET /api/blocks/{id}
+// ROUTE: GET /api/blocks/{title}/{id}
+pub type BlockResponse {
+    found bool
+    block BlockInfo?
+}
+
+// ------------------------------------------------------ unlinked references
+
+pub type UnlinkedRef {
+    page_path str
+    block_uuid str?
+    context str
+    matched_text str
+}
+
+// ROUTE: GET /api/unlinked/{title}
+pub type UnlinkedRefsResponse {
+    title str
+    refs List<UnlinkedRef>
+}

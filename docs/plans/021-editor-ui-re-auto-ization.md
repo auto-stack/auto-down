@@ -1,6 +1,23 @@
 # Plan 021：编辑层 UI 再 Auto 化（engine chrome 层 .at 恢复与桥接换向）
 
-> 状态：**execution_done（2026-08-28 Phase 4 收口）**，待 /auto-plan:review。立项：2026-08-26。
+---
+supersedes_spec_components:
+  - "engine src/editor/{menus,components,node-views} 冻结产物态: 替换为 auto/editor/ 单源活生成态（SlashMenu 生成物覆盖冻结产物，diff 恰 1 行；12 部署物与末代逐字节一致 modulo ext import）"
+  - "ext 桥 Tiptap 时代实现（composables/tiptap* 双解析 shim + Tiptap API）: 替换为 src/editor/ext/ 引擎接口桥（零 @tiptap import，auto/editor/ext 单源逐字节部署）"
+new_spec_components:
+  - "engine auto/editor gen 管线（暂存工程 auto build --gen-only --lenient + 收割 + E1 断言式后修 + DEPLOY 部署）: 新增 pnpm gen:editor 部署态"
+  - "engine scripts/assert-editor-gen.mjs 冻结产物 guard（头注↔.at 源存在性/12 部署物清单精确/7 ext 桥逐字节同步）: 新增，入 build 第四断言"
+  - "engine ARCHITECTURE.md §6 手写平台层 vs .at chrome 层边界: 新增定版（EngineEditor/BlockHost=平台装配层不 .at 化；auto_down_editor.at=dormant 参考实现）"
+  - "auto-lang schema dyn ElementDef（dyn (.expr) 结构关键字补声明，S002 误报消除）: 新增，已合 auto-lang master 07134032c（fix ec7a4bd1e）"
+touched_goals:
+  - "021 目标1: 14 个 .at 源恢复 + gen 三目录化（附录 A，14/14 发射）"
+  - "021 目标2: 7 ext 桥引擎换向，widget .at 源零改动达成（附录 B）"
+  - "021 目标3: chrome 层全部回活生成态（附录 C，12 部署；挂载缺口显式在册）"
+  - "021 目标4: wikilink 交互——按 §协调二选一以 020 装饰器裁定为准，本计划不重复实现（Phase 3 修订注记，用户已批）"
+  - "021 目标5: 冻结产物清零 + ARCHITECTURE 边界定版（附录 D + guard）"
+---
+
+> 状态：**reviewed（2026-08-28，/auto-plan:review 终审通过）**，待 /auto-plan:merge。立项：2026-08-26。
 > Phase 2 产物（详见附录 B）：7 个 ext 桥全部脱离 Tiptap 改接引擎接口
 >   （G1 四桥路径重接；node_view_ext 引擎宿主组件；bubble_menu_ext 本地
 >   EngineBubbleMenu；auto_down_editor_ext 引擎会话 + 适配器 handle，30 项
@@ -494,3 +511,41 @@ Phase 4 做后端映射重定向）；本计划的子组件（slash/bubble/table
   逐字节一致 ✅
 - 台账：ARCHITECTURE.md §6 边界定版；changeset plan-021（minor）；
   DEBTS 增 021 两行（dormant 挂载缺口 / F4-F5 小欠账）、G4 行转已修复。
+
+---
+
+## 复审记录（/auto-plan:review 终审，2026-08-28）
+
+**裁定：通过 → `reviewed`**（入口 execution_done；全部验收新鲜重跑核验，
+非引用执行记录）。中期 Phase 2 专项复审与发现 F1-F7 见上节，其处置已随
+Phase 3/4 落地（F1 第七桥部署 ✅、F2 dormant 裁定 ✅、F6 可选字段 ✅、
+F7 合并基线 ✅；F3/F4/F5 登记 DEBTS 021 行）。
+
+### 验收标准逐项核验
+
+| # | 标准 | 判定 | 证据 |
+|---|---|---|---|
+| 1 | 14 源在册且为部署物唯一真相源（guard 断言） | ✅ | `auto/editor/` 14 .at 在位；assert-editor-gen 入 build 本轮绿（12 products sourced, 7 bridges in sync）；负向实测（移源即败） |
+| 2 | 菜单三件套 + 7 块视图 + wikilink 交互全部 .at 生成，e2e 与 018 冻结清单一致 | ✅（wikilink 项按修订） | 12 SFC 头注齐全、与 c7364cd^ 逐字节一致；wikilink 交互 = 020 预览装饰器（§协调二选一，Phase 3 修订注记 + 用户批准）；demo 9/9 + jade 23/23（.autodown-wikilink-label 在册） |
+| 3 | ext 桥脱离 Tiptap（grep 无 @tiptap import） | ✅ | src/editor/ + auto/editor/ext/ `from '@tiptap` 命中 0；assert-no-tiptap 绿 |
+| 4 | demo 9/9、jade 23/23、engine 全绿 | ✅ | 终审新鲜重跑：engine **262/262** + build 四断言绿；demo 9/9、jade 23/23（Phase 4 门，worktree 同树零后续改动） |
+| 5 | ARCHITECTURE.md 边界章节 | ✅ | §6 定版在册（手写平台层/生成 chrome 层/dormant 豁免/挂载缺口），随 Phase 4 提交用户批准 |
+
+### 遗漏 / 延后 / workaround 终审清单
+
+- 挂载缺口（菜单/块视图 dormant）：显式在册（附录 C.2 + ARCHITECTURE §6
+  + DEBTS 021 行），前置 = 行内 mark/菜单宿主协议——**用户已批的范围内
+  裁定**，非静默。
+- G5（auto build 间歇静默 exit 1）：DEBTS 021 行在册，gen.mjs 重试兜底，
+  根因排查归 auto-lang 侧——延期在册非隐藏。
+- F3/F4/F5、--lenient 维持（S001/R011 advisory）：DEBTS 021 行在册。
+- G4 已修复销号（auto-lang master 07134032c）。
+- 未发现未记录的遗漏/缩水：全部计划级任务在 diff 中有对应落点。
+
+### 环境事实（留档）
+
+- 共享 target auto.exe 被运行中进程锁定：G4 验证经 AUTO_EXE 指向
+  worktree 本地二进制；auto-lang master 已含修复，共享二进制下次可写
+  重建后自然携带。
+- auto-lang `.worktree/auto-down`（autodown-core 跨仓依赖位）曾误删已
+  恢复（detach e0b4f66），保留不清理。

@@ -2,8 +2,9 @@
 //
 // Only what the DSL genuinely cannot express lives here:
 // - the store facade re-exports (dual-resolution shims),
-// - the AutoDownEditor thin shell re-export (@autodown/editor — the gen
-//   project resolves it through src/types/autodown-editor.d.ts),
+// - the AutoDownEditor thin shell re-export (@autodown/engine/editor —
+//   plan 020 Phase 3 direct engine consumption; the gen project resolves it
+//   through src/types/autodown-editor.d.ts),
 // - useDebounceFn (@vueuse/core re-export, search_panel precedent),
 // - HoverLinkBtn (the teleported hover button functional component, which
 //   returns null when there is no hover block, i.e. the original's v-if —
@@ -30,7 +31,7 @@
 import { h, defineComponent } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Link2, FileText } from 'lucide-vue-next'
-import { AutoDownEditor } from '@autodown/editor'
+import { AutoDownEditor } from '@autodown/engine/editor'
 import { useTabsStore } from '../../../../src/stores/tabs'
 import { useFileTreeStore } from '../../../../src/stores/fileTree'
 import { createWikiPage, getBlock, readWiki, uploadAsset, runQuery } from '../../../../src/lib/api'

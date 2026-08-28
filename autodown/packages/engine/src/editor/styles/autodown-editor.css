@@ -274,20 +274,6 @@
   align-items: center;
 }
 
-/* ─── Table Resize Handles ─── */
-
-/* Hide prosemirror-tables default handle so our custom indicator takes over.
-   visibility:hidden preserves layout so the indicator plugin can read its position. */
-.ProseMirror .column-resize-handle {
-  visibility: hidden !important;
-}
-
-/* Cursor change when near column boundary (plugin adds .resize-cursor to editor root) */
-.ProseMirror.resize-cursor,
-.ProseMirror.resize-cursor * {
-  cursor: col-resize !important;
-}
-
 /* ─── Table ─── */
 .autodown-editor-content .tableWrapper,
 .autodown-editor-content .autodown-table,
@@ -328,35 +314,6 @@
 .autodown-editor-content .autodown-table tr:nth-child(odd):not(:first-child),
 .autodown-editor-content table tr:nth-child(odd):not(:first-child) {
   background: #f9fafb;
-}
-
-/* ─── Selected Node ─── */
-.ProseMirror-selectednode {
-  outline: 2px solid hsl(var(--ad-primary, 220 90% 56%) / 0.3);
-  border-radius: 4px;
-}
-
-/* ─── Drag Handle ─── */
-.autodown-drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  cursor: grab;
-  color: var(--ad-muted, #6b7280);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.autodown-drag-handle:hover {
-  background: hsl(var(--ad-muted, 220 9% 46%) / 0.08);
-  color: var(--ad-fg, #111827);
-}
-
-.autodown-editor-content-wrapper:hover .autodown-drag-handle {
-  opacity: 1;
 }
 
 /* ─── Slash Menu ─── */
@@ -462,33 +419,6 @@
 .autodown-bubble-btn.active {
   background: hsl(var(--ad-primary, 220 90% 56%) / 0.15);
   color: hsl(var(--ad-primary, 220 90% 56%));
-}
-
-/* ─── Gap Cursor ─── */
-.ProseMirror-gapcursor {
-  display: none;
-  pointer-events: none;
-  position: absolute;
-}
-
-.ProseMirror-gapcursor:after {
-  content: '';
-  display: block;
-  position: absolute;
-  top: -2px;
-  width: 20px;
-  border-top: 2px solid hsl(var(--ad-primary, 220 90% 56%));
-  animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
-}
-
-@keyframes ProseMirror-cursor-blink {
-  to {
-    visibility: hidden;
-  }
-}
-
-.ProseMirror-focused .ProseMirror-gapcursor {
-  display: block;
 }
 
 /* ─── Table Menu ─── */
@@ -1050,7 +980,6 @@
   font-weight: 700;
 }
 
-
 /* Block boundary insert handle
    The widget sits between top-level blocks. The hover area is anchored upward
    so that hovering near the bottom edge of a block reveals the handle, and
@@ -1121,4 +1050,19 @@
 
 .autodown-editor-content .autodown-block-boundary-plus:hover {
   background: hsl(var(--ad-primary, 220 90% 56%) / 0.85);
+}
+
+/* ─── Editor Preview Wikilinks (plan 020 Phase 3) ───
+   [[title]] / [[title#block]] in non-focused preview blocks — clickable
+   labels emitting open-wiki-link; the focused block stays raw source. */
+.autodown-editor .autodown-wikilink-label {
+  color: hsl(var(--ad-primary, 220 90% 56%));
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.autodown-editor .autodown-wikilink-label:hover {
+  text-decoration-style: solid;
 }

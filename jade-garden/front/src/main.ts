@@ -1,8 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
-import '@autodown/editor/style.css'
-import '@autodown/vue/style.css'
+import '@autodown/engine/style.css'
 import './assets/index.css'
 import './assets/autodown-editor.css'
 

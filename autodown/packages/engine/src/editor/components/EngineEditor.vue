@@ -38,6 +38,7 @@ import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
 import BlockHost from './BlockHost.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
+import { decorateWikilinks } from '../wikilink'
 
 const props = defineProps<{
   content?: string
@@ -46,7 +47,7 @@ const props = defineProps<{
   extraSlashItems?: unknown[]
 }>()
 
-const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', target: string): void }>()
+const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
 
 const root = ref<HTMLElement | null>(null)
 const wrapper = ref<HTMLElement | null>(null)
@@ -124,7 +125,9 @@ const views = computed<BlockView[]>(() => {
 })
 
 /** Preview render of the NON-focused blocks: serialize each top-level block
- *  to markdown, parse it back, render through the ./render pipeline. */
+ *  to markdown, parse it back, render through the ./render pipeline, then
+ *  decorate [[wikilinks]] into clickable labels (plan 020 Phase 3) — the
+ *  parser keeps them as plain text, the click emits open-wiki-link. */
 const previewNodes = computed<VNode[]>(() => {
   void repaintVersion.value
   const focusedId = engine.selection.anchor.blockId
@@ -132,7 +135,9 @@ const previewNodes = computed<VNode[]>(() => {
     .filter((n) => !(n.id === focusedId && isEditableLeaf(n)))
     .map((n) => serialize({ ...engine.doc, children: [n] }, false))
   const md = mdBlocks.join('\n')
-  return renderNodes(parseDocument(md, true), true)
+  const vnodes = renderNodes(parseDocument(md, true), true)
+  decorateWikilinks(vnodes, (title, blockId) => emit('open-wiki-link', title, blockId))
+  return vnodes
 })
 
 // -- host registry -------------------------------------------------------------------

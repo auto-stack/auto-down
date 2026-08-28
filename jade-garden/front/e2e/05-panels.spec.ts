@@ -22,10 +22,12 @@ test.describe('right sidebar panels', () => {
     await openApp(page)
     await openFile(page, 'Hello World.ad', '这是一段示例文本')
 
-    // index.ad and Tasks.ad both contain [[Hello World]].
+    // index.ad, Tasks.ad and CAP 定理.ad all contain [[Hello World]]
+    // (CAP 定理.ad gained its link section with the wiki-demo fixture
+    // refresh landing alongside plan 021's link-extraction work).
     const panel = rightSidebar(page).locator('> div', { hasText: 'Backlinks' }).first()
     await expect(panel.locator('li').first()).toBeVisible()
-    await expect(panel.locator('li')).toHaveCount(2)
+    await expect(panel.locator('li')).toHaveCount(3)
   })
 
   test('Outline panel renders (currently empty — known app gap)', async ({ page }) => {

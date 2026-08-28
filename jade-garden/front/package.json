@@ -13,8 +13,7 @@
     "test:e2e:update": "playwright test --update-snapshots"
   },
   "dependencies": {
-    "@autodown/editor": "link:../../autodown/packages/editor",
-    "@autodown/vue": "link:../../autodown/packages/vue",
+    "@autodown/engine": "link:../../autodown/packages/engine",
     "@vee-validate/zod": "^4.15.1",
     "@vueuse/core": "^10.7.0",
     "class-variance-authority": "^0.7.0",

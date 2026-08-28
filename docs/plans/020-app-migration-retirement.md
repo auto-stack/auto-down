@@ -1,6 +1,15 @@
 # Plan 020：应用迁移与退役收口（demo / jade-garden / musk / 旧包）
 
-> 状态：**执行中（2026-08-26 批次一：jade 迁移核心完成——异步内容重渲染修复、块点击聚焦/Ctrl+End/宿主自动聚焦、chain 模板插入经适配器多行化；jade e2e 21/23 + 视觉基线重录；demo 9/9 无回归。余：wikilink 点击交互（旧 node view，需编辑器侧 [[..]] span + open-wiki-link 发射）、bubble/表格/代码块菜单、019 rust 平台门限与 1.0.0 收口）**。设计依据：[docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §10。
+> 状态：**execution_done（2026-08-28 全相位落地）**。Phase 1：DEBTS 008
+> 双销号（T13=51b8abf 对拍 5/5；T10=musk 041 stub 等价裁定留档）。
+> Phase 2：demo 直连 engine（e2e 9/9，b6afa5a）。Phase 3：jade 直连
+> engine + wikilink 点击交互（编辑器侧装饰器 + open-wiki-link(title,
+> blockId) 发射，e2e 23/23——04 两例回绿）+ .ProseMirror/tiptap 残留归零
+> + blockParser 裁定（1dd5451）。Phase 4：engine **1.0.0** 契约冻结
+> （natives experimental）+ 旧包 deprecate 标注与退役/发版通道裁定
+> （4bcb753）。Phase 5：designs README/03/06 + engine ARCHITECTURE.md +
+> DEBTS 020 三行（59ae2a3）。设计依据：
+> [docs/designs/09-unified-document-engine.md](../designs/09-unified-document-engine.md) §10。
 > 立项：2026-08-25。前置：**Plan 017 完成**（迁移最低门限：渲染统一 +
    shim 可用）；**018/019 完成为 1.0.0 门限**。
 > 关联：DEBTS.md 008 行（musk T13/T10 欠账，本计划强制先清）。
@@ -116,10 +125,19 @@
 
 ## 待澄清事项
 
-1. **jade-garden 前端 blockParser 的最终归宿**（Phase 3 三选一）——
-   影响后端 `parser.rs` 是否同步改，倾向前端直消费 engine parser
-   发射物，后端只保 roundtrip 校验。
-2. **musk 排期不可得时的合并验证**是否可接受——需 musk 侧会话确认。
-3. **engine 1.0.0 的 API 冻结范围**：命令层 API（018）与 VM natives
-   （019）是否随 1.0 冻结或标 experimental——倾向 natives 标
-   experimental（413 natives 同期也未冻结）。
+1. ~~**jade-garden 前端 blockParser 的最终归宿**（Phase 3 三选一）~~
+   **✅ 已裁定（2026-08-28）**：保留前端镜像（选项 a）+ 差异清单登记
+   （DEBTS 020 行）。原倾向的"前端直消费 engine parser 发射物"（选项 c）
+   经实证不可行：engine parser `SourceRange` 恒占位 rng(0,0)（.at 头注
+   自证 startLine/endLine dropped），`ensureBlockAnchors` 的行级锚点手术
+   无行号可用；`:::` 容器/table 亦不在解析子集。选项 b（改后端）已被
+   plan 021 的 back 单源化自然否决。(c) 的前置（parser 补行号 + 子集
+   扩展）已登记为后续债项。
+2. ~~**musk 排期不可得时的合并验证**是否可接受~~ **✅ 无需触发**：
+   musk 侧两项均有执行记录（T13 = 51b8abf；T10 = 041 stub 等价裁定），
+   DEBTS 008 行双销号（26c450a）。
+3. ~~**engine 1.0.0 的 API 冻结范围**~~ **✅ 已裁定（2026-08-28，按倾向
+   执行）**：命令层 API（018）随 1.0.0 冻结；VM natives 与 rust 平台面
+   （a2r crate）标 experimental 不冻结——见
+   packages/engine/ARCHITECTURE.md §2 与 changeset
+   plan-020-engine-1.0.0.md。

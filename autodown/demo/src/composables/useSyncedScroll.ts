@@ -1,5 +1,5 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
-import type { BlockInfo } from '@autodown/editor'
+import type { BlockInfo } from '@autodown/engine'
 
 export interface SyncedScrollOptions {
   workspaceRef: Ref<HTMLElement | null>

@@ -23,16 +23,19 @@
 
 目标：让 AutoDown 编辑器能够读写 `.ad` 文件。
 
-- [ ] 定义 `.ad` 文件的 canonical AST（基于 ProseMirror JSON）
-- [ ] 实现 parser：`text(.ad)` → ProseMirror JSON
-- [ ] 实现 serializer：ProseMirror JSON → `.ad` text
+- [x] 定义 `.ad` 文件的 canonical AST（**统一块模型**——修订：原决策
+  "基于 ProseMirror JSON" 于 Plan 016 废止，ProseMirror 随 Tiptap 在
+  Plan 018 全退役；块模型定义见 [09 §5](./09-unified-document-engine.md)）
+- [x] 实现 parser：`text(.ad)` → 统一块模型（`@autodown/engine` ./parser，
+  双端金标对拍 autodown-core crate）
+- [x] 实现 serializer：统一块模型 → `.ad` text（roundtrip 测试在册）
 - [ ] 处理 YAML frontmatter 的解析与保留
 - [ ] 处理 `[[WikiLink]]` 和 `[[Title#block-id]]`
 - [ ] 单元测试：roundtrip（解析后再序列化，结果一致）
 
 交付物：
 
-- `@autodown/core` 中的 `.ad` parser/serializer
+- `@autodown/engine`（`./parser` 出口）中的 `.ad` parser/serializer
 - 测试用例覆盖常见 block
 
 ## Phase 2：类 Obsidian 编辑器 MVP

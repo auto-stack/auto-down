@@ -39,7 +39,7 @@ test.describe('screenshot baselines', () => {
 
     const sidebar = rightSidebar(page)
     // Wait for async panels (backlinks etc.) to settle.
-    await expect(sidebar.locator('> div', { hasText: 'Backlinks' }).locator('li')).toHaveCount(2)
+    await expect(sidebar.locator('> div', { hasText: 'Backlinks' }).locator('li')).toHaveCount(3)
 
     await page.mouse.move(720, 895)
     for (const [heading, slug] of PANELS) {

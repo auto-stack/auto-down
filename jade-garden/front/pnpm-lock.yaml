@@ -8,12 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@autodown/editor':
-        specifier: link:../../autodown/packages/editor
-        version: link:../../autodown/packages/editor
-      '@autodown/vue':
-        specifier: link:../../autodown/packages/vue
-        version: link:../../autodown/packages/vue
+      '@autodown/engine':
+        specifier: link:../../autodown/packages/engine
+        version: link:../../autodown/packages/engine
       '@vee-validate/zod':
         specifier: ^4.15.1
         version: 4.15.1(vue@3.5.38(typescript@5.9.3))(zod@3.25.76)

@@ -14,7 +14,7 @@
 │         └─────────────────┴──────────────────┴────────────────┘     │
 │                                   │                                  │
 │                              Vue Frontend                           │
-│  - @autodown/editor            - @autodown/vue                     │
+│  - @autodown/engine（单包多出口：./parser ./render ./editor）        │
 │  - 文件树、链接、图视图、搜索 UI                                     │
 └───────────────────────────────────┬─────────────────────────────────┘
                                     │ HTTP / WebSocket
@@ -70,9 +70,9 @@ my-wiki/
 | 模块 | 依赖 | 说明 |
 |------|------|------|
 | `FileTree` | — | 展示 `wiki/` 目录，支持新建/重命名/删除 `.ad` |
-| `EditorPane` | `@autodown/editor` | 双栏左侧编辑器 |
-| `PreviewPane` | `@autodown/vue` | 双栏右侧渲染器，复用 `useSyncedScroll` |
-| `WikiLinkResolver` | `@autodown/core` | 把 `[[Topic#block-id]]` 解析为路由 |
+| `EditorPane` | `@autodown/engine`（`./editor` 出口） | 双栏左侧编辑器（自研内核，plan 018 起） |
+| `PreviewPane` | `@autodown/engine`（`./render` 出口） | 双栏右侧渲染器，复用 `useSyncedScroll` |
+| `WikiLinkResolver` | `@autodown/engine`（`./parser` 出口） | 把 `[[Topic#block-id]]` 解析为路由 |
 | `SearchPanel` | backend API | 文件名搜索 + 未来语义搜索 |
 | `GraphView` | backend API + D3/Cytoscape | 知识关系图 |
 
@@ -85,7 +85,7 @@ my-wiki/
 | `converter` | `auto-ai-agent` | stage → `.ad`（LLM 驱动） |
 | `indexer` | `serde`、`lancedb` 等 | 维护 vector/graph 索引 |
 | `server` | `axum` | 给前端提供 API |
-| `ad_parser` | `@autodown/core` 或 Rust 重写 | `.ad` ↔ ProseMirror JSON |
+| `ad_parser` | `@autodown/engine` parser（TS）/ autodown-core crate（rust） | `.ad` ↔ 统一块模型（双端金标对拍） |
 
 ### 3.3 auto-ai 客户端集成
 

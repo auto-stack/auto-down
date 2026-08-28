@@ -8,6 +8,10 @@
 > 协调项（017 Phase 3 移交）：engine 渲染根 class 已去掉 `markstream-vue`
 > 历史段（现为 `markdown-renderer`）——musk 重新 vendor 时须在对拍脚本中确认
 > 无该 class 依赖（本仓侧审计：demo/jade-garden 选择器干净）。
+> 执行模式（2026-08-27 起，含 019 余量的后续）：单 worktree + 每 phase
+> 合回同步——不再按批次开多 worktree/多分支并行；每个 phase 落地即合回
+> 主线、双仓同步到同相位后再进下一 phase（取代 019 批次六~八的多轨合并，
+> 免除跨仓合并排序约束）。
 
 ## 背景
 

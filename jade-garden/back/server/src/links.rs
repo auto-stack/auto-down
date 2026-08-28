@@ -167,8 +167,10 @@ fn rebuild_index_sync(state: Arc<AppState>) -> Result<(), String> {
     }
 
     let index_path = state.index_path().ok_or("No workspace open")?;
-    // Open a fresh index. This wipes old data.
-    let index = crate::index::Index::open(&index_path)
+    // Open (loading any prior JSON cache) and re-index every .ad file.
+    // Rows of files deleted since the last run linger in memory until the
+    // flush rewrites the cache — same as the SQLite flow this replaces.
+    let mut index = crate::index::Index::open(&index_path)
         .map_err(|e| format!("Failed to open index: {e}"))?;
 
     for entry in walkdir::WalkDir::new(&wiki)
@@ -187,6 +189,7 @@ fn rebuild_index_sync(state: Arc<AppState>) -> Result<(), String> {
             .index_file(&wiki, path, &text, &title)
             .map_err(|e| format!("Failed to index {}: {e}", path.display()))?;
     }
+    index.flush()?;
 
     // Replace the in-memory index reference.
     state.set_index(index);
@@ -207,9 +210,8 @@ pub fn index_file(
     let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
     state
-        .with_index_mut(|idx| idx.index_file(&wiki, path, &text, &title))
+        .with_index_mut(|idx| idx.index_file(&wiki, path, &text, &title).and_then(|_| idx.flush()))
         .ok_or("Index not available")?
-        .map_err(|e| e.to_string())
 }
 
 /// Remove a file from the index.
@@ -219,9 +221,8 @@ pub fn remove_file(
 ) -> Result<(), String> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     state
-        .with_index_mut(|idx| idx.remove_file(&wiki, path))
+        .with_index_mut(|idx| idx.remove_file(&wiki, path).and_then(|_| idx.flush()))
         .ok_or("Index not available")?
-        .map_err(|e| e.to_string())
 }
 
 /// Rename a file in the index.
@@ -237,9 +238,11 @@ pub fn rename_file(
         .to_string_lossy()
         .to_string();
     state
-        .with_index_mut(|idx| idx.rename_file(&wiki, old_path, new_path, &new_title))
+        .with_index_mut(|idx| {
+            idx.rename_file(&wiki, old_path, new_path, &new_title)
+                .and_then(|_| idx.flush())
+        })
         .ok_or("Index not available")?
-        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

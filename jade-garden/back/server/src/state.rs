@@ -83,7 +83,7 @@ impl AppState {
     }
 
     pub fn index_path(&self) -> Option<PathBuf> {
-        self.workspace_root().map(|r| r.join("jade-garden-index.sqlite"))
+        self.workspace_root().map(|r| r.join("jade-garden-index.json"))
     }
 
     pub fn ensure_wiki_dir(&self) -> std::io::Result<()> {
@@ -93,7 +93,7 @@ impl AppState {
         Ok(())
     }
 
-    /// Open (or re-open) the SQLite index for the current workspace.
+    /// Open (or re-open) the JSON-file index for the current workspace.
     fn open_index(&self) {
         let mut guard = self.index.write().unwrap();
         *guard = self.index_path().and_then(|p| Index::open(&p).ok());

@@ -15,6 +15,28 @@
 > 停用批次六~八式多 worktree/多分支并行（该方式曾引入跨仓合并顺序
 > 约束，见批次七注）。
 >
+> **进度（2026-08-28，批次十一 Phase 4 收口：registry 重定向与 codegen）**：
+> - auto-lang 侧（同 worktree，Phase 4 完成即折回 master 并推送
+>   f55c2e2cc）：widget registry 的 Markdown/AutoDownEditor vue 映射按
+>   P4-4 单源落 schema/aura.at（MarkdownRender/AutoDownEditor ←
+>   @autodown/engine@^0.4.0，npm_package 注入 package.json；手写 insert
+>   围栏保持零）——存量 markstream-vue 平台挂载路径退役，musk re-vendor
+>   归 020；ark/jet 编辑降级 TextArea/OutlinedTextField 维持 + 边界注释
+>   （展示经面板树）；aura/schema.rs 落 markdown/autodown_editor 类型化
+>   props（content/final/key/can_edit/show_actions/oninput/onchange），
+>   **props TBD 回退退役**；schema/aura.at + schema_drift 基线 +
+>   core.md + kitchen-sink.at（23→25 元素）全部再生成；a2vue 002 金标切
+>   engine import；auto-man main.ts CSS 注入识别 engine（存量 editor 包
+>   兼容），DSL 显式 use.web from 声明包语义保持。测试：lib 3778 过
+>   （1 败=master 在册 md_hidden）、schema_drift/docs_gen/gallery_golden/
+>   a2vue/vue_capabilities 76/component_registry 7 全绿；ui_snapshots 3
+>   败=master 同样失败（显示依赖型 insta，在册）；gallery 基线折叠了
+>   plan-458 并行漂移（app/flex/kitchen 三条，归因注明）。
+> - **验收标准核账**：①✅ ②✅ ③✅ ④🔶（gallery 编辑可操作已备，**IME
+>   微软拼音手验记录在册**为唯一未项，待人工）⑤✅（registry 重定向 +
+>   全量绿 + core.md props 完整）⑥✅（ark/jet registry 映射 + 编译通过，
+>   实机边界登记）。
+>
 > **进度（2026-08-27，批次十 Phase 3 第三轨：结构编辑引擎）**：
 > - auto-lang 侧（同 worktree `auto-down-dev` 续）：① 关键回环缺陷修正——
 >   sync_external 补自回显快速路径（on_change→绑定回写不再整树重建清

@@ -17,7 +17,7 @@ touched_goals:
   - "021 目标5: 冻结产物清零 + ARCHITECTURE 边界定版（附录 D + guard）"
 ---
 
-> 状态：**reviewed（2026-08-28，/auto-plan:review 终审通过）**，待 /auto-plan:merge。立项：2026-08-26。
+> 状态：**CLOSED（2026-08-28，终审 reviewed 后归档；spec-impact 元数据与复审记录随文保留）**。立项：2026-08-26。
 > Phase 2 产物（详见附录 B）：7 个 ext 桥全部脱离 Tiptap 改接引擎接口
 >   （G1 四桥路径重接；node_view_ext 引擎宿主组件；bubble_menu_ext 本地
 >   EngineBubbleMenu；auto_down_editor_ext 引擎会话 + 适配器 handle，30 项

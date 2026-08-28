@@ -30,5 +30,6 @@
   "devDependencies": {
     "typescript": "^5.4.0",
     "vitest": "^3.2.7"
-  }
+  },
+  "deprecated": "@autodown/engine supersedes this package (plan 017; retirement ruling plan 020 Phase 4). Consume the engine exits directly: this package maps to @autodown/engine/{parser,render,editor}."
 }

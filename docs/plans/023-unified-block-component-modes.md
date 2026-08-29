@@ -10,7 +10,7 @@ updated_at: 2026-08-29T16:35:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 9
+current_step: 11
 total_steps: 13
 ---
 
@@ -263,9 +263,19 @@ export interface BlockComponent {
 - [ ] P2T1 StreamingRenderer 接契约：改 `autodown/packages/engine/src/render/StreamingRenderer.vue`——内联 `registry`（table）与
   `<details>` 分支改经 `resolveBlockComponent(kind).stream`；markdown 段与
   调度参数不动。验证：`cd autodown/packages/engine && npx vitest run src/render/__tests__/streaming-details.test.ts src/render/__tests__/streaming-highlight.test.ts`。
+  [✅ 已完成] stream 槽经 streamSlotOf 解析（json 组件块按 componentType、
+  details 段按 'details'；槽接收段载荷 + 对应 final 语义），注册覆盖内置
+  分支、未注册走原生 details/StreamingTable 不变；markdown 段与调度参数
+  未动。既有 9 测试全绿 + 新增 streaming-component-slot.test.ts 4 例钉死
+  路由（含 markdown 段永不解析）。调研在档：组件段仅来自 ```json 围栏
+  组件块（streaming 协议），markdown 表不触发。
 - [ ] P2T2 stream→edit 只读门控 v1：`BlockEditCtx.readonly = streaming` 贯通
   （EngineEditor 装配层传参 + CodeEditorBlock/TableEditorBlock 只读呈现 +
   横幅）；新增/更新单测钉死语义。验证：`npx vitest run src/editor/__tests__/code-editor-block.test.ts src/editor/__tests__/table-editor-block.test.ts`。
+  [✅ 已完成] EngineEditor 增 `streaming?: boolean` prop（缺省 false），装配
+  call site 以 `readonly: props.streaming === true` 注入 BlockEditCtx（两编辑
+  面适配器透传）；编辑面只读呈现/横幅/disabled 为 P1T4-P1T8 既有产物。新增
+  4 例装配级测试钉死（code/table × streaming true/false）。21/21 绿。
 - [ ] P2T3 消费端验证：`cd autodown/demo && npx playwright test`；`cd jade-garden/front && pnpm build`（消费 engine link 不回归）。验证：两者退出码 0。
 
 ### 收尾

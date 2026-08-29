@@ -1,0 +1,175 @@
+// BlockNode -> WNode bridge (plan 023 P0T1) — hand-written, never generated.
+//
+// The editing engine's document model (BlockNode: kind/inlines/attrs) and the
+// render pipeline's node model (WNode: type/code/language, produced by
+// parseDocument) are two shapes of the same tree. convertBlock
+// (markdown-parser, generated) maps WNode -> BlockNode at parse time; the
+// serializer maps BlockNode -> markdown. This module is the missing direct
+// leg: BlockNode -> WNode, producing the same tree the old
+// serialize -> parseDocument round trip produced, so the EngineEditor preview
+// can feed engine.doc.children straight into renderNodes — one render
+// pipeline, zero re-parse.
+//
+// Serializer conventions mirrored here (spanMd / tableMd):
+// - a span whose text is exactly "\n" is a hard break (spanMd writes "  \n")
+// - a table's children[0] is the header row (tableMd emits it + delimiter)
+
+import {
+  BlockNode,
+  BlockType,
+  InlineSpan,
+  Mark,
+  attrGetBool,
+  attrGetInt,
+  attrGetStr,
+  hasMark,
+  spansText,
+} from '../parser/block-model'
+import {
+  WNode,
+  cellNode,
+  codeNode,
+  codeSpanNode,
+  emNode,
+  hardbreakNode,
+  headingNode,
+  imageNode,
+  itemNode,
+  linkNode,
+  listNode,
+  paraNode,
+  quoteNode,
+  rawTextNode,
+  rowNode,
+  strikeNode,
+  strongNode,
+  tableNode,
+  thematicNode,
+} from '../parser/markdown-parser'
+
+export function blockNodesToWNodes(nodes: BlockNode[]): WNode[] {
+  return (nodes ?? []).map(blockNodeToWNode)
+}
+
+export function blockNodeToWNode(node: BlockNode): WNode {
+  switch (node.kind) {
+    case BlockType.Heading:
+      return headingNode(attrGetInt(node.attrs, 'level', 1), inlineTree(node.inlines))
+    case BlockType.Fence:
+      return codeNode(
+        attrGetStr(node.attrs, 'language', ''),
+        spansText(node.inlines),
+        attrGetBool(node.attrs, 'loading', false)
+      )
+    case BlockType.Blockquote:
+      return quoteNode(node.children.map(blockNodeToWNode))
+    case BlockType.ListBlock:
+      return listNode(
+        attrGetBool(node.attrs, 'ordered', false),
+        attrGetInt(node.attrs, 'start', 1),
+        node.children.map(blockNodeToWNode)
+      )
+    case BlockType.ListItem:
+      return itemNode(node.children.map(blockNodeToWNode))
+    case BlockType.Table: {
+      const rows = node.children.map(tableRowToWNode)
+      return tableNode(rows.length > 0 ? [rows[0]] : [], rows.slice(1), attrGetBool(node.attrs, 'loading', false))
+    }
+    case BlockType.ThematicBreak:
+      return thematicNode()
+    default:
+      // convertBlock maps every other WNode type to a Paragraph; the mirror
+      // image keeps exotic engine blocks previewing exactly like the old
+      // serialize->reparse path did.
+      return paraNode(inlineTree(node.inlines))
+  }
+}
+
+function tableRowToWNode(row: BlockNode): WNode {
+  return rowNode(row.children.map(tableCellToWNode))
+}
+
+function tableCellToWNode(cell: BlockNode): WNode {
+  return cellNode(
+    attrGetBool(cell.attrs, 'header', false),
+    inlineTree(cell.inlines),
+    attrGetStr(cell.attrs, 'align', 'left')
+  )
+}
+
+// -- flat mark spans -> nested inline WNode tree -----------------------------------
+
+// Marks peel outermost-first, in the order the serializer writes wrappers
+// (spanMd: code `..` inside ** .. inside * .. inside ~~..~~ inside [..](..)).
+const PEEL_ORDER: Mark[] = [Mark.Strong, Mark.Em, Mark.Del, Mark.Link]
+
+function inlineTree(spans: InlineSpan[]): WNode[] {
+  return peel(spans, 0)
+}
+
+function peel(spans: InlineSpan[], depth: number): WNode[] {
+  const mark = PEEL_ORDER[depth]
+  if (mark === undefined) return leaves(spans)
+  const out: WNode[] = []
+  let run: InlineSpan[] = []
+  const emitRun = () => {
+    if (run.length === 0) return
+    out.push(wrapMark(mark, run, peel(run, depth + 1)))
+    run = []
+  }
+  for (const s of spans) {
+    if (hasMark(s.marks, mark)) run.push(s)
+    else {
+      emitRun()
+      out.push(...peel([s], depth + 1))
+    }
+  }
+  emitRun()
+  return out
+}
+
+function wrapMark(mark: Mark, run: InlineSpan[], kids: WNode[]): WNode {
+  switch (mark) {
+    case Mark.Strong:
+      return strongNode(kids)
+    case Mark.Em:
+      return emNode(kids)
+    case Mark.Del:
+      return strikeNode(kids)
+    case Mark.Link: {
+      const href = attrGetStr(run[0].attrs, 'href', '')
+      const title = attrGetStr(run[0].attrs, 'title', '')
+      return linkNode(href, title.length > 0 ? title : null, spansText(run), kids, false)
+    }
+    default:
+      return kids[0]
+  }
+}
+
+function leaves(spans: InlineSpan[]): WNode[] {
+  const out: WNode[] = []
+  for (const s of spans) {
+    if (s.text === '\n') {
+      out.push(hardbreakNode())
+      continue
+    }
+    if (hasMark(s.marks, Mark.Image)) {
+      const img = imageNode(attrGetStr(s.attrs, 'src', ''), s.text)
+      const title = attrGetStr(s.attrs, 'title', '')
+      if (title.length > 0) img.title = title
+      if (hasMark(s.marks, Mark.Link)) {
+        const href = attrGetStr(s.attrs, 'href', '')
+        out.push(linkNode(href, null, s.text, [img], false))
+      } else {
+        out.push(img)
+      }
+      continue
+    }
+    if (hasMark(s.marks, Mark.Code)) {
+      out.push(codeSpanNode(s.text))
+      continue
+    }
+    out.push(rawTextNode(s.text))
+  }
+  return out
+}

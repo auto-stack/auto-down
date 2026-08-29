@@ -332,6 +332,19 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > > 非产品代码路径）。slice 4（编辑器核心流：tabs_store/editor_tab 迁移 +
 > > map 保真）起待启动。
 > >
+> > **进度（2026-08-29 slice 4 完成：编辑器与闪卡核心流实机通）**：app.at
+> > 升级为三栏面板（文件树 | 编辑器 | 卡片列）。**编辑器 6/6 断言**（MCP
+> > type_text 驱动）：文件列表点开 → read_wiki 载入 → textarea `value:`
+> > 绑定 + oninput 置脏 → save → 脏标清除 + 磁盘新正文 + **frontmatter
+> > map 保真**（title 原样回写——slice 3 的 null 登记项实证闭环：非空
+> > map 往返无损，空 map `{}` 字面量 null 边缘缩窄登记）。骨架期为单活动
+> > 文档 + 打开历史列表，tabs_store 全量状态机（多 tab/脏守卫/
+> > adoptSaveResult）随 29-widget 迁移归位。**闪卡 4/4 断言**：due 列表
+> > 呈现 → good 评分（review_card 循环项多参数 onclick）→ due 清空 +
+> > 排程属性行落盘（card-next-schedule:: 次日）。Phase 4 验收核心流盘点：
+> > 打开工作区 ✓ / 编辑 ✓ / 保存 ✓ / 闪卡 ✓；反链、图谱（列表形态）、
+> > 双端视觉基线归 slice 5。
+> >
 - 29 个 widget `.at` 接 ui_gen iced 发射；ext 层 DOM 依赖清单化并逐项
   裁定：clipboard / confirm / showDirectoryPicker / DOM walk（hover 定位、
   scrollToBlock）→ VM 能力或 iced 等价物。

@@ -12,6 +12,13 @@ import { computeMenuPosition, tableMenuTitles } from '../ext/table_menu_ext'
 import { nextTick } from 'vue'
 
 
+const props = withDefaults(defineProps<{
+  editor: any
+  titles?: any
+}>(), {
+  titles: null,
+})
+
 const visible = ref<boolean>(false)
 const pos_top = ref<string>('')
 const pos_left = ref<string>('')
@@ -22,13 +29,6 @@ const selection_cb = ref<any>(null)
 const menuEl = ref<HTMLElement | null>(null)
 
 const titles_map = computed<any>(() => tableMenuTitles(props.titles))
-
-const props = withDefaults(defineProps<{
-  editor: any
-  titles?: any
-}>(), {
-  titles: null,
-})
 
 const emit = defineEmits<{
   Init: []

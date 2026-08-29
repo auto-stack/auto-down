@@ -5,6 +5,10 @@ import { computeMenuPosition, codeBlockLanguages, codeBlockCheckIcon } from '../
 import { nextTick } from 'vue'
 
 
+const props = defineProps<{
+  editor: any
+}>()
+
 const visible = ref<boolean>(false)
 const search = ref<string>('')
 const highlighted_index = ref<number>(0)
@@ -29,10 +33,6 @@ const listEl = ref<HTMLElement | null>(null)
 const filtered = computed<any>(() => codeBlockLanguages().filter((lang) => [lang.id, lang.label].concat(lang.aliases).join(' ').toLowerCase().includes(search.value.toLowerCase().trim())))
 const is_empty = computed<boolean>(() => filtered.value.length === 0)
 const check_icon = computed<any>(() => codeBlockCheckIcon())
-
-const props = defineProps<{
-  editor: any
-}>()
 
 const emit = defineEmits<{
   Init: []

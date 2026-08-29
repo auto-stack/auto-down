@@ -4,10 +4,6 @@ import { ref, onMounted } from 'vue'
 import { focusCodeArea, resizeCodeArea } from '../ext/code_editor_block_ext'
 
 
-const code_draft = ref<string>('')
-
-const area = ref<HTMLElement | null>(null)
-
 const props = defineProps<{
   controller: any
   blockId: string
@@ -15,6 +11,10 @@ const props = defineProps<{
   code: string
   readonly: boolean
 }>()
+
+const code_draft = ref<string>('')
+
+const area = ref<HTMLElement | null>(null)
 
 const emit = defineEmits<{
   Init: []

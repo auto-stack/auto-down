@@ -7,6 +7,16 @@ import { detailsEditIcon, focusAndSelect } from '../ext/node_view_ext'
 import { nextTick } from 'vue'
 
 
+const props = defineProps<{
+  node: any
+  updateAttributes: any
+  editor: any
+  selected: boolean
+  extension: any
+  getPos: any
+  deleteNode: any
+}>()
+
 const editing_summary = ref<boolean>(false)
 const summary_draft = ref<string>('')
 
@@ -17,16 +27,6 @@ const summary = computed<any>(() => props.node.attrs.summary || 'Details')
 const marker = computed<any>(() => (is_open.value ? '▼' : '▶'))
 const edit_icon = computed<any>(() => detailsEditIcon())
 const selected_state = computed<boolean>(() => props.selected)
-
-const props = defineProps<{
-  node: any
-  updateAttributes: any
-  editor: any
-  selected: boolean
-  extension: any
-  getPos: any
-  deleteNode: any
-}>()
 
 const emit = defineEmits<{
   ToggleOpen: []

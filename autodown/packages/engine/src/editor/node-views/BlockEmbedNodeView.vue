@@ -5,6 +5,17 @@ import { NodeViewWrapper } from '../ext/node_view_ext'
 import { errorMessage } from '../ext/node_view_ext'
 
 
+const props = defineProps<{
+  node: any
+  editor: any
+  updateAttributes: any
+  selected: boolean
+  extension: any
+  getPos: any
+  deleteNode: any
+  decorations: any[]
+}>()
+
 const block = ref<any>(null)
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
@@ -18,17 +29,6 @@ const block_content = computed<any>(() => block.value && block.value.content || 
 const show_loading = computed<boolean>(() => loading.value)
 const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
 const show_block = computed<any>(() => !loading.value && !(error_text.value) && block.value)
-
-const props = defineProps<{
-  node: any
-  editor: any
-  updateAttributes: any
-  selected: boolean
-  extension: any
-  getPos: any
-  deleteNode: any
-  decorations: any[]
-}>()
 
 const emit = defineEmits<{
   Init: []

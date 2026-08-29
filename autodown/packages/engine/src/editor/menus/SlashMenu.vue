@@ -5,6 +5,14 @@ import { computeMenuPosition } from '../ext/slash_menu_ext'
 import { nextTick } from 'vue'
 
 
+const props = withDefaults(defineProps<{
+  editor: any
+  items: any[]
+  noResultsText?: string
+}>(), {
+  noResultsText: 'No results',
+})
+
 const visible = ref<boolean>(false)
 const query = ref<string>('')
 const range = ref<any>(null)
@@ -18,14 +26,6 @@ const menuEl = ref<HTMLElement | null>(null)
 const filtered = computed<any>(() => props.items.filter((item) => [item.title, item.description].concat(item.searchTerms).join(' ').toLowerCase().includes(query.value.toLowerCase())))
 const is_empty = computed<boolean>(() => filtered.value.length === 0)
 const empty_text = computed<any>(() => (props.noResultsText ?? 'No results'))
-
-const props = withDefaults(defineProps<{
-  editor: any
-  items: any[]
-  noResultsText?: string
-}>(), {
-  noResultsText: 'No results',
-})
 
 const emit = defineEmits<{
   OnOpen: [any]

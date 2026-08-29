@@ -6,14 +6,6 @@ import { NodeViewWrapper } from '../ext/node_view_ext'
 import { renderMermaidPreview } from '../ext/node_view_ext'
 
 
-const svg = ref<string>('')
-const error_text = ref<string>('')
-
-const source = computed<any>(() => props.node.textContent || '')
-const code_tag = computed<string>(() => 'code')
-const show_preview = computed<boolean>(() => !!(svg.value))
-const show_error = computed<boolean>(() => !(svg.value) && !!(error_text.value))
-
 const props = defineProps<{
   node: any
   editor: any
@@ -24,6 +16,14 @@ const props = defineProps<{
   deleteNode: any
   decorations: any[]
 }>()
+
+const svg = ref<string>('')
+const error_text = ref<string>('')
+
+const source = computed<any>(() => props.node.textContent || '')
+const code_tag = computed<string>(() => 'code')
+const show_preview = computed<boolean>(() => !!(svg.value))
+const show_error = computed<boolean>(() => !(svg.value) && !!(error_text.value))
 
 const emit = defineEmits<{
   Init: []

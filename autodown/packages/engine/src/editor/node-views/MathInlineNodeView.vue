@@ -5,14 +5,6 @@ import { NodeViewWrapper } from '../ext/node_view_ext'
 import { renderKatexPreview } from '../ext/node_view_ext'
 
 
-const html = ref<string>('')
-const error_text = ref<string>('')
-
-const source = computed<any>(() => props.node.attrs.source || '')
-const source_label = computed<string>(() => '$' + source.value + '$')
-const show_preview = computed<boolean>(() => !(error_text.value))
-const show_error = computed<boolean>(() => !!(error_text.value))
-
 const props = defineProps<{
   node: any
   editor: any
@@ -23,6 +15,14 @@ const props = defineProps<{
   deleteNode: any
   decorations: any[]
 }>()
+
+const html = ref<string>('')
+const error_text = ref<string>('')
+
+const source = computed<any>(() => props.node.attrs.source || '')
+const source_label = computed<string>(() => '$' + source.value + '$')
+const show_preview = computed<boolean>(() => !(error_text.value))
+const show_error = computed<boolean>(() => !!(error_text.value))
 
 const emit = defineEmits<{
   Init: []

@@ -5,6 +5,17 @@ import { NodeViewWrapper } from '../ext/node_view_ext'
 import { normalizeQueryResults, errorMessage } from '../ext/node_view_ext'
 
 
+const props = defineProps<{
+  node: any
+  editor: any
+  updateAttributes: any
+  selected: boolean
+  extension: any
+  getPos: any
+  deleteNode: any
+  decorations: any[]
+}>()
+
 const results = ref<any[]>([])
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
@@ -17,17 +28,6 @@ const show_loading = computed<boolean>(() => loading.value)
 const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
 const show_results = computed<boolean>(() => !loading.value && !(error_text.value) && results.value.length > 0)
 const show_empty = computed<boolean>(() => !loading.value && !(error_text.value) && results.value.length === 0)
-
-const props = defineProps<{
-  node: any
-  editor: any
-  updateAttributes: any
-  selected: boolean
-  extension: any
-  getPos: any
-  deleteNode: any
-  decorations: any[]
-}>()
 
 const emit = defineEmits<{
   Init: []

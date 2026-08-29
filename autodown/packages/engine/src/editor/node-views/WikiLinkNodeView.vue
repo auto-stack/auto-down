@@ -6,6 +6,17 @@ import { nextTick } from 'vue'
 import { parseWikiLinkRaw, wikiLinkPencilIcon, focusAndSelect } from '../ext/node_view_ext'
 
 
+const props = defineProps<{
+  node: any
+  editor: any
+  updateAttributes: any
+  selected: boolean
+  extension: any
+  getPos: any
+  deleteNode: any
+  decorations: any[]
+}>()
+
 const editing = ref<boolean>(false)
 const input_value = ref<string>('')
 
@@ -18,17 +29,6 @@ const display_label = computed<any>(() => (attr_block_id.value ? attr_title.valu
 const open_title = computed<string>(() => 'Open ' + display_label.value || 'Open')
 const pencil_icon = computed<any>(() => wikiLinkPencilIcon())
 const wrapper_class = computed<any>(() => editing.value && 'autodown-wikilink-node is-editing' || 'autodown-wikilink-node')
-
-const props = defineProps<{
-  node: any
-  editor: any
-  updateAttributes: any
-  selected: boolean
-  extension: any
-  getPos: any
-  deleteNode: any
-  decorations: any[]
-}>()
 
 const emit = defineEmits<{
   StartEdit: []

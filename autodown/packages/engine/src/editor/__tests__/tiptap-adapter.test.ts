@@ -6,13 +6,20 @@ import { describe, expect, it } from 'vitest'
 import {
   BlockNode,
   BlockType,
+  Mark,
+  Selection,
   block,
   blockText,
   collapsedSel,
   findBlock,
   leafBlock,
+  pos,
+  span,
+  spanWith,
   withChildren,
+  withInlines,
 } from '../../parser/block-model'
+import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
 import { createEditorAdapter, slashQueryAt } from '../engine/tiptap-adapter'
 
@@ -87,5 +94,58 @@ describe('slashQueryAt (Suggestion-compatible trigger)', () => {
 
   it('no slash, no query', () => {
     expect(slashQueryAt('hello', 5)).toBeNull()
+  })
+})
+
+// -- mark chain + isActive (plan 024 P3T1) --------------------------------------
+
+describe('adapter mark surface', () => {
+  function markedEngine() {
+    const spans = [span('a'), spanWith('b', [Mark.Strong], []), spanWith('c', [Mark.Em], [])]
+    const e = new EditorEngine(doc(withInlines(leafBlock('p1', BlockType.Paragraph, ''), spans)), collapsedSel('p1', 0))
+    return e
+  }
+
+  it('isActive reads the selection marks from the engine', () => {
+    const e = markedEngine()
+    const adapter = createEditorAdapter(e)
+    e.select(new Selection(pos('p1', 1), pos('p1', 2)))
+    expect(adapter.isActive('bold')).toBe(true)
+    expect(adapter.isActive('italic')).toBe(false)
+    e.select(new Selection(pos('p1', 2), pos('p1', 3)))
+    expect(adapter.isActive('italic')).toBe(true)
+    expect(adapter.isActive('bold')).toBe(false)
+    // caret inside the bold run reads the enclosing span
+    e.select(collapsedSel('p1', 1))
+    expect(adapter.isActive('bold')).toBe(true)
+  })
+
+  it('isActive is false for unknown/unsupported names (underline)', () => {
+    const e = markedEngine()
+    const adapter = createEditorAdapter(e)
+    expect(adapter.isActive('underline')).toBe(false)
+    expect(adapter.isActive('heading')).toBe(false)
+    expect(adapter.isActive('image')).toBe(false)
+  })
+
+  it('mark chain methods exist and run without a focused host (no-op)', () => {
+    const e = markedEngine()
+    const adapter = createEditorAdapter(e)
+    const c: any = adapter.chain()
+    expect(c.focus().toggleBold().run()).toBe(true)
+    expect(c.focus().toggleItalic().run()).toBe(true)
+    expect(c.focus().toggleStrike().run()).toBe(true)
+    expect(c.focus().toggleCode().run()).toBe(true)
+    expect(c.focus().toggleUnderline().run()).toBe(true)
+    // DOM wrap never happened — model untouched
+    expect(serialize(e.doc, false)).toContain('a**b***c*')
+  })
+
+  it('setLink/unsetLink chain methods run without a host (no-op safe)', () => {
+    const e = markedEngine()
+    const adapter = createEditorAdapter(e)
+    const c: any = adapter.chain()
+    expect(c.focus().setLink({ href: 'https://x' }).run()).toBe(true)
+    expect(c.focus().unsetLink().run()).toBe(true)
   })
 })

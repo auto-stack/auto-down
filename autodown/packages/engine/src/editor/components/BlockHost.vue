@@ -12,6 +12,7 @@
     @compositionupdate="onCompositionUpdate"
     @compositionend="onCompositionEnd"
     @paste="onPaste"
+    @focus="onFocus"
     @blur="onBlur"
   v-html="initialHtml"></div>
 </template>
@@ -25,10 +26,11 @@
 // elements (spansToHtml, evaluated once — the engine is not Vue-reactive,
 // so the computed never invalidates under the user's caret). The blur
 // writeback (controller.onRichBlur) collects the structure back.
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 import { spansToHtml } from '../engine/rich-html'
+import { setFocusedRichHost, getFocusedRichHost } from '../engine/dom-marks'
 
 const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
 
@@ -48,6 +50,10 @@ onMounted(() => {
   sel?.addRange(range)
 })
 const initialHtml = computed(() => spansToHtml(props.controller.inlines))
+
+onBeforeUnmount(() => {
+  if (getFocusedRichHost() === el.value) setFocusedRichHost(null)
+})
 
 function onInput(): void {
   const text = el.value?.textContent ?? ''
@@ -99,10 +105,17 @@ function onCompositionEnd(e: CompositionEvent): void {
  *  into the model as one undo step (plan 024 P2T2). */
 function onBlur(): void {
   const node = el.value
+  setFocusedRichHost(null)
   if (!node) return
   const text = node.textContent ?? ''
   if (text !== props.controller.text) props.controller.onInput(text)
   props.controller.onRichBlur(node)
+}
+
+/** Register as the focused rich host so the adapter's mark chains can wrap
+ *  this DOM in place (plan 024 P3T1). */
+function onFocus(): void {
+  if (el.value) setFocusedRichHost(el.value)
 }
 
 function caretOffset(): number {

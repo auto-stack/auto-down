@@ -12,11 +12,17 @@ function sameMarks(a: Mark[], b: Mark[]): boolean {
   return true
 }
 
+function sameValue(a: Value, b: Value): boolean {
+  if (a._tag !== b._tag) return false
+  if (!('value' in a) || !('value' in b)) return true
+  return JSON.stringify(a.value) === JSON.stringify(b.value)
+}
+
 function sameAttrs(a: Attr[], b: Attr[]): boolean {
   if (a.length !== b.length) return false
   for (const x of a) {
     const y = b.find((c) => c.key === x.key)
-    if (!y || x.value._tag !== y.value._tag || JSON.stringify(x.value.value) !== JSON.stringify(y.value.value)) return false
+    if (!y || !sameValue(x.value, y.value)) return false
   }
   return true
 }

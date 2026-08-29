@@ -100,13 +100,55 @@ ext）。每文件命中类别（脚本判定，同文件可多类别）：
    （实测 a2ts 发射 25 个 `export function` 全部命中剥离）；门检扩展双
    登记对拍（ROUTE ↔ #[api]，豁免显式清单）28/28 + 25 fn 绿；再生后七
    个 parity 模块逐字节不变（发射器确定性佐证）；vue-tsc + vite build 绿。
-3. slice 3：桌面 app 工程（本目录 pac.at + app）+ 核心流探针实机通
-   （workspace.open → files → readWiki → writeWiki 经 VM 通道；merged
-   模式进程内 / split 模式 loopback HTTP 二路探明，`{*path}` 通配参数
-   在 340 改写器的支持面就地确认，缺口提 auto-lang 侧）+ 无 DOM 依赖
-   widget 首批（status_bar / ribbon 纯逻辑下沉）。
+   追加（slice 3 中发现）：POST 体约定改为字段级标量参数（单结构体参数
+   会被 340 改写器包成 `{"req": {...}}` 与 axum `Json<Struct>` 平铺错位；
+   auto-musk 同款惯例）。
+3. ✅ slice 3（2026-08-29）：核心流实机通 + 桌面工程骨架（本目录）。
+   - **auto-lang 侧修复 ×1（跨仓，TDD，已折 auto-lang master @ b385e3ab5）**：
+     340 改写器 `emit_api_http_call` 补 ①`{*param}` 通配 splice（此前字面
+     `{*path}` 透传 404、参数静默丢弃）②GET/DELETE query 参数发射（此前
+     非路径参数收集进 body 桶后丢弃）③路径参数 percent 编码（单段
+     auto.url.encode 全量 / 通配新增 `auto.url.encode_path` 保留 `/`——
+     浏览器 fetch 对等行为，服务端逐段解码复原）。3 新测先红后绿，
+     musk brace 回归 + 目录一致性测试全绿。
+   - **核心流实机通（AutoUI MCP 驱动，四调用全断言）**：open-ws（POST 体
+     {root}）→ root 回填 ✓；files（GET query ?path=&recursive=）→ 6 文件 ✓；
+     read（GET /api/wiki/Hello%20World.ad——带空格标题通配回环）→ 全文
+     markdown ✓；save（POST 体 {frontmatter, body}）→ 回显 + **磁盘落盘
+     验证** ✓。split（AUTO_VM_MERGE=0 + AUTO_BACKEND）与 merged（宿主派发
+     消费 AUTO_BACKEND）双模式同通；纯 merged 无后端地址时契约 stub 执行
+     （None，符合设计）。驱动脚本 tmp/core-probe/probe_driver.mjs。
+   - **骨架落盘**：本目录 pac.at + src/front/app.at（核心流按钮面板，slice 4
+     起被真 UI 替换）+ src/back/api.at（gen.mjs 生成的契约副本，门检有漂移
+     对拍）。
+   - **登记项**：① 空 map 字面量经 json.from_value 序列化为 `null`（探针
+     frontmatter 变 `---\nnull\n---`）——编辑器写回路径需 map 保真，slice 4
+     处理（提 auto-lang 侧确认 from_value 对空 map 的语义）；② 物理合成
+     点击下探针进程偶发静默 exit(1)（无栈、无日志），AutoUI MCP 驱动通道
+     稳定——探针环境观察项，非产品代码路径。
 4. slice 4：编辑器核心流（tabs_store + editor_tab，hover/scroll 映射）
    + 闪卡（flashcard_modal）；随后 backlinks/outlinks/outline/search。
 5. slice 5：图谱列表视图 + 主题/设置；双端视觉基线截图归档。
 6. 依赖回填：dir-picker 宿主能力、confirm 模态语义（若 DSL 需扩充，
    提 auto-lang 侧提案，不绕过）。
+
+## 6. 运行方式（当前骨架）
+
+```bash
+# 1. 起 jade 服务器（rust 后端；或 Phase 3 的 JADE_GARDEN_SERVER=vm 模式）
+cd jade-garden/back/server && JADE_GARDEN_PORT=8199 cargo run
+curl -X POST http://127.0.0.1:8199/api/workspace/open \
+  -H "Content-Type: application/json" -d '{"root": "<wiki 工作区根>"}'
+
+# 2. 跑桌面前台（split 模式：340 HTTP 改写 → loopback）
+cd jade-garden/front/desktop
+AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
+  D:/autostack/auto-lang/target/debug/auto.exe run -r vm
+```
+
+- `AUTO_BACKEND` 缺省回落 `http://127.0.0.1:$AUTO_HTTP_PORT`（默认 8080）。
+- merged 模式（不设 AUTO_VM_MERGE=0）：api 调用经宿主派发，同样消费
+  `AUTO_BACKEND` 实测可达；无后端地址时契约 stub 执行（`return None`）。
+- 驱动/断言：AutoUI MCP（`AUTOUI_MCP_PORT=<port>`，autoui_state /
+  autoui_snapshot / autoui_action），先例 auto-lang plan446 corpora；
+  物理点击通道在探针环境不稳定（§5 slice 3 登记项 ②）。

@@ -1,0 +1,70 @@
+// app.at — jade-garden 桌面骨架（plan-022 Phase 4 slice 3）。
+//
+// 核心流竖切：workspace.open → files → wiki read → wiki write，四调用均经
+// use back.api 契约层（#[api] 改写）打到 jade 服务器。slice 3 实测双通
+// （split HTTP 与 merged 宿主派发，含带空格标题的通配回环与磁盘落盘验证）。
+// 后续 slice：app_shell 组装 + 无 DOM widget 迁移（README §5 slice 4 起），
+// 本文件的按钮面板届时被真 UI 替换。
+
+use back.api: open_workspace, list_files, read_wiki, write_wiki
+
+widget App {
+    msg { Init, OpenWs, LoadFiles, ReadDoc, SaveDoc }
+
+    model {
+        var status str = "boot"
+        var root str = ""
+        var files = []
+        var doc_body str = ""
+        var save_echo str = ""
+    }
+
+    on {
+        .Init -> {
+            .status = "ready"
+        }
+
+        .OpenWs -> {
+            var res = open_workspace("D:/autostack/auto-down/tmp/wiki-demo")
+            .root = res.root
+            .status = "opened"
+        }
+
+        .LoadFiles -> {
+            .files = list_files("", false)
+            .status = "files-loaded"
+        }
+
+        .ReadDoc -> {
+            var doc = read_wiki("Hello World.ad")
+            .doc_body = doc.body
+            .status = "read-ok"
+        }
+
+        .SaveDoc -> {
+            var out = write_wiki("Hello World.ad", {}, "VM iced 写回探针（plan-022 slice 3）\n\n第二段。")
+            .save_echo = out.body
+            .status = "save-echo-received"
+        }
+    }
+
+    view {
+        col {
+            class: "flex h-full flex-col gap-2 p-4 bg-background text-foreground",
+            row {
+                class: "flex items-center gap-2",
+                button "open-ws" { onclick: .OpenWs }
+                button "files" { onclick: .LoadFiles }
+                button "read" { onclick: .ReadDoc }
+                button "save" { onclick: .SaveDoc }
+            }
+            text .status
+            text .root
+            for f in .files {
+                text f.name
+            }
+            text .doc_body
+            text .save_echo
+        }
+    }
+}

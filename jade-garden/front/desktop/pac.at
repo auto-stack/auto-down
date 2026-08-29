@@ -1,0 +1,7 @@
+// pac.at — jade-garden 桌面形态（plan-022 Phase 4）。VM 渲染（iced）前台，
+// 经 use back.api 契约层调用后端（split 模式 loopback HTTP / merged 模式
+// 宿主派发，见 README §6）。运行：
+//   D:/autostack/auto-lang/target/debug/auto.exe run -r vm
+//   （split：AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:<jade-port>）
+name: "jade-garden-desktop"
+window: "1000x700"

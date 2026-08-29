@@ -98,3 +98,28 @@ console.log(
   `api contract routes ok — ${routes.length}/${routes.length} routes covered by api.at; ` +
     `${apiFns.size} #[api] fns consistent (${VM_ENVELOPE_EXEMPT.size} VM-envelope exemptions)`,
 )
+
+// ---- slice 3: desktop VM contract copy drift check ----
+// gen.mjs deploys the contract .at (verbatim) to front/desktop/src/back/api.at
+// for the desktop app's `use back.api:` resolution. Assert it exists and is
+// byte-identical to the source (modulo the GENERATED header).
+
+const desktopCopy = join(backDir, '..', 'front', 'desktop', 'src', 'back', 'api.at')
+let copyBody = null
+try {
+  copyBody = readFileSync(desktopCopy, 'utf8')
+} catch {
+  assert.fail(
+    `desktop contract copy missing at ${desktopCopy} — run \`node gen.mjs\` in back/auto to deploy it`,
+  )
+}
+const copyLines = copyBody.split('\n')
+const bodyStart = copyLines.findIndex((l) => !l.startsWith('//') && l.trim() !== '')
+const srcBody = apiAt.split('\n')
+const srcStart = srcBody.findIndex((l) => !l.startsWith('//') && l.trim() !== '')
+assert.deepEqual(
+  copyLines.slice(bodyStart).join('\n'),
+  srcBody.slice(srcStart).join('\n'),
+  `desktop contract copy drifted from back/auto/api.at — run \`node gen.mjs\` to re-deploy`,
+)
+console.log('desktop contract copy ok — byte-identical to back/auto/api.at')

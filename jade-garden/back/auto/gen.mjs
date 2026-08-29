@@ -150,6 +150,21 @@ function emit(source) {
     fs.writeFileSync(path.join(frontDir, 'api_gen.ts'), header + tsFixed)
   }
 
+  // ---- desktop VM contract copy (plan-022 Phase 4 slice 3) ----
+  // The desktop app's `use back.api:` resolves to <project>/src/back/api.at.
+  // Deploy the contract .at verbatim (#[api] fns included — they ARE the
+  // payload here, unlike the TS copy where K1 strips them).
+  if (source.at === 'api.at') {
+    const deskDir = path.join(here, '..', '..', 'front', 'desktop', 'src', 'back')
+    fs.mkdirSync(deskDir, { recursive: true })
+    const header =
+      '// GENERATED from back/auto/api.at via back/auto/gen.mjs — do not edit.\n' +
+      '// VM 前台契约副本：use back.api 解析 + #[api] 改写元数据（Phase 4 slice 3）。\n' +
+      '// 单源仍在 jade-garden/back/auto/api.at；编辑后重跑 node gen.mjs 同步。\n\n'
+    fs.writeFileSync(path.join(deskDir, 'api.at'), header + fs.readFileSync(atPath, 'utf8'))
+    console.log(`[gen] api.at -> ${path.relative(here, path.join(deskDir, 'api.at'))} (desktop contract copy)`)
+  }
+
   // ---- Rust for the backend shell ----
   let outRs = null
   if (!source.tsOnly) {

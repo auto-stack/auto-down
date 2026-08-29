@@ -87,3 +87,53 @@ test('IME smoke: typing CJK in the rich host commits through the diff protocol',
   const right = await page.locator('.right .streaming-document').innerHTML()
   expect(right).toContain('你好世界')
 })
+
+test('bubble menu: shows over the selection, reflects active marks, no underline', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForSelector('.left [data-block-id]', { timeout: 10000 })
+  await page.locator('.left [data-node-type="Paragraph"]').first().click()
+  const host = page.locator('.left .autodown-block-host')
+  await expect(host).toBeVisible()
+
+  // select the existing bold run — the bubble appears above the selection
+  await selectInHost(page, 'bold', 4)
+  const bubble = page.locator('.autodown-bubble-menu')
+  await expect(bubble).toBeVisible()
+  // underline is clipped (no Mark representation); the other four remain
+  await expect(bubble.locator('button')).toHaveCount(5)
+  await expect(bubble.locator('button[title="Underline"]')).toHaveCount(0)
+  // isActive: the selection is inside **bold** → bold button active
+  await expect(bubble.locator('button[title="Bold"]')).toHaveClass(/active/)
+
+  // click italic: the live host DOM gets an <em> around the selection
+  await bubble.locator('button[title="Italic"]').click()
+  await expect(host.locator('em').filter({ hasText: 'bold' })).toHaveText('bold')
+
+  // blur via the save button → writeback. The MODEL keeps both marks (left
+  // pane re-renders from the engine doc); serialize emits ***bold*** and the
+  // v1 parser cannot re-nest *** (generated parser gap — plan 待澄清), so
+  // the right (markdown-roundtrip) pane only shows the strong.
+  await page.locator('.autodown-editor-save').click()
+  await page.waitForTimeout(300)
+  await expect(page.locator('.left [data-node-type="Paragraph"] strong').filter({ hasText: 'bold' }).first()).toHaveText('bold')
+  await expect(page.locator('.left [data-node-type="Paragraph"] em').filter({ hasText: 'bold' }).first()).toHaveText('bold')
+  await expect(page.locator('.right [data-block-slot-id="block-1"] strong').filter({ hasText: 'bold' }).first()).toHaveText('bold')
+})
+
+test('Ctrl+K link: prompt channel, anchor roundtrip', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForSelector('.left [data-block-id]', { timeout: 10000 })
+  await page.locator('.left [data-node-type="Paragraph"]').first().click()
+  const host = page.locator('.left .autodown-block-host')
+  await expect(host).toBeVisible()
+
+  page.on('dialog', (d) => d.accept('https://example.org/wiki'))
+  await selectInHost(page, 'paragraph', 9)
+  await page.keyboard.press('Control+k')
+  // the live host renders an uneditable anchor
+  await expect(host.locator('a[href="https://example.org/wiki"]')).toHaveText('paragraph')
+
+  await page.locator('.autodown-editor-save').click()
+  await page.waitForTimeout(300)
+  await expect(page.locator('.right [data-block-slot-id="block-1"] a[href="https://example.org/wiki"]').first()).toHaveText('paragraph')
+})

@@ -30,7 +30,7 @@ import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 import { spansToHtml } from '../engine/rich-html'
-import { setFocusedRichHost, getFocusedRichHost } from '../engine/dom-marks'
+import { setFocusedRichHost, getFocusedRichHost, domToggleMark, domSetLink } from '../engine/dom-marks'
 
 const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
 
@@ -65,6 +65,28 @@ function onInput(): void {
 
 function onKeydown(e: KeyboardEvent): void {
   if (props.controller.composition.composing) return
+  if (e.ctrlKey || e.metaKey) {
+    const k = e.key.toLowerCase()
+    // inline mark shortcuts (plan 024 P3T3): wrap the live DOM in place —
+    // the model catches up on blur. Overriding the browser's native <b>
+    // keeps the DOM canonical (<strong>) for the blur walk.
+    if (k === 'b') {
+      e.preventDefault()
+      domToggleMark('strong')
+      return
+    }
+    if (k === 'i') {
+      e.preventDefault()
+      domToggleMark('em')
+      return
+    }
+    if (k === 'k') {
+      e.preventDefault()
+      const url = window.prompt('Enter URL')
+      if (url) domSetLink(url)
+      return
+    }
+  }
   if (e.key === 'Enter') {
     e.preventDefault()
     const offset = caretOffset()

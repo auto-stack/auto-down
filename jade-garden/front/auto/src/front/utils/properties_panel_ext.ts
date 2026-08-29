@@ -93,8 +93,8 @@ export function propsDirty(entries: PropEntry[], tabs: { activeTab: any }): bool
 }
 
 /** Original updateFrontmatter: rebuild the frontmatter map from the entries
- *  (skipping blank keys and null values, coercing by declared type),
- *  assign it to the active tab, and schedule the debounced save. */
+ * (skipping blank keys and null values, coercing by declared type),
+ * assign it to the active tab, and schedule the debounced save. */
 export function commitFrontmatter(
   tabs: { activeTab: any },
   entries: PropEntry[],
@@ -118,6 +118,13 @@ export function commitFrontmatter(
     }
   }
   tab.frontmatter = fm
+  // Mark the tab dirty: saveTabIfDirty gates on tab.dirty, which only body
+  // edits (SetBody) set. Without this, a frontmatter-only edit persists only
+  // when it lands inside a pending body-save debounce window — a timing
+  // race the VM backend's slower saves exposed (plan 022 Phase 3: the
+  // editor's anchor-stamp save fired first, cleared dirty, and the panel's
+  // debounced save became a no-op, dropping the edit).
+  tab.dirty = true
   debouncedSave()
 }
 

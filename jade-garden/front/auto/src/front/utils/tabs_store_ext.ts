@@ -52,6 +52,41 @@ export function recordRecent(path: string, title: string): void {
   useRecentFilesStore().record(path, title)
 }
 
+/** Adopt a save's server echo without clobbering concurrent user edits
+ * (plan 022 Phase 3 double-writer fix). The VM backend's slower save
+ * round-trips exposed it: a panel frontmatter commit landing while
+ * writeWiki is in flight was reverted by the stale echo
+ * (`tab.frontmatter = saved.frontmatter` wrote back the PRE-edit map,
+ * silently dropping the edit — e2e 11-properties' disk showed the add-row
+ * key surviving next to a reverted `status`).
+ *
+ * Reference compare-and-swap: commitFrontmatter REPLACES tab.frontmatter
+ * (never mutates in place), so an unchanged reference means no user edit
+ * raced the round-trip and the echo is safe to adopt wholesale; a changed
+ * reference keeps the user's map and re-stamps only the server-owned
+ * `updated_at`. The body gets the same guard — the editor re-pushes its
+ * body on every change so it self-heals, but adopting a stale echo would
+ * flash-revert dirty state mid-typing. */
+export function adoptSaveResult(
+  tab: any,
+  sentFm: Record<string, any>,
+  sentBody: string,
+  saved: WikiDoc,
+): void {
+  if (tab.frontmatter === sentFm) {
+    tab.frontmatter = saved.frontmatter || {}
+  } else {
+    const stamped = { ...(tab.frontmatter ?? {}) }
+    const updated = (saved.frontmatter ?? {}).updated_at
+    if (updated !== undefined) stamped.updated_at = updated
+    tab.frontmatter = stamped
+  }
+  if (tab.body === sentBody) {
+    tab.body = saved.body
+    tab.originalBody = saved.body
+  }
+}
+
 /** path.replace(/<ext>$/, '') — the DSL has no regex literals. */
 export function stripExt(path: string, ext: string): string {
   return path.replace(new RegExp(ext.replace(/\./g, '\\.') + '$'), '')

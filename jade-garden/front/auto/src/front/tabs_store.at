@@ -12,7 +12,7 @@
 // `rethrow` helper so the rejection propagates like the original Pinia
 // store; finally keeps tab.saving accurate on both paths. Load keeps its
 // original catch behavior via readWikiSafe's null return.
-use back.api: readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose
+use back.api: readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose, adoptSaveResult
 
 store Tabs {
     model {
@@ -41,7 +41,13 @@ store Tabs {
                 .active_path = path
                 if !existing.loaded && !existing.isGraph {
                     var doc2 = readWikiSafe(path)
-                    if doc2 != null {
+                    // Post-await re-check: a slow read must not overwrite a
+                    // tab that loaded (or went dirty) meanwhile — Open and
+                    // Load both read the doc on open; on the VM backend the
+                    // two round-trips land in arbitrary order and a late
+                    // disk echo silently reverted user edits (plan 022
+                    // Phase 3, e2e 11-properties).
+                    if doc2 != null && existing.loaded == false {
                         existing.body = doc2.body
                         existing.originalBody = doc2.body
                         existing.frontmatter = doc2.frontmatter || {}
@@ -65,7 +71,10 @@ store Tabs {
                 .active_path = path
                 var doc = readWikiSafe(path)
                 var tab = .tabs.find(t => t.path == path)
-                if tab != null && doc != null {
+                // Post-await re-check (same double-reader race as above):
+                // Load may have populated the tab while this read was in
+                // flight — first response wins, the late one stands down.
+                if tab != null && doc != null && tab.loaded == false {
                     tab.body = doc.body
                     tab.originalBody = doc.body
                     tab.frontmatter = doc.frontmatter || {}
@@ -123,7 +132,10 @@ store Tabs {
             var tab = .tabs.find(t => t.path == path)
             if tab != null && !tab.loaded {
                 var doc = readWikiSafe(path)
-                if doc != null {
+                // Post-await re-check (double-reader race, plan 022
+                // Phase 3): a concurrent Open/Load that finished first
+                // owns the tab; this late echo must not clobber it.
+                if doc != null && tab.loaded == false {
                     tab.body = doc.body
                     tab.originalBody = doc.body
                     tab.frontmatter = doc.frontmatter || {}
@@ -178,10 +190,13 @@ store Tabs {
                 tab.saving = true
                 try {
                     var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
-                    var saved = writeWiki(path, { frontmatter: tab.frontmatter, body: body2 })
-                    tab.frontmatter = saved.frontmatter || {}
-                    tab.body = saved.body
-                    tab.originalBody = saved.body
+                    // Capture what we send: adoptSaveResult compares against
+                    // the live tab to keep user edits that committed while the
+                    // save round-tripped (stale-echo revert fix, plan 022
+                    // Phase 3 — see tabs_store_ext.adoptSaveResult).
+                    var sentFm = tab.frontmatter
+                    var saved = writeWiki(path, { frontmatter: sentFm, body: body2 })
+                    adoptSaveResult(tab, sentFm, body2, saved)
                     tab.dirty = false
                 } catch (e) {
                     // Original save() had no catch — the rejection propagated

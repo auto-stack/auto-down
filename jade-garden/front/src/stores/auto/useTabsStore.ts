@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose } from '../../../auto/src/front/utils/tabs_store_ext'
+import { readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose, adoptSaveResult } from '../../../auto/src/front/utils/tabs_store_ext'
 
 const tabs = ref<any>([])
 const active_path = ref<string | null>(null)
@@ -17,7 +17,10 @@ active_path.value = tabs.value[idx2].path;
  }
     const Load = async (path: string) => { let tab = tabs.value.find((t: any) => t.path == path);
 if (tab != null && !tab.loaded) {let doc = await readWikiSafe(path);
-if (doc != null) {tab.body = doc.body;
+
+
+
+if (doc != null && tab.loaded == false) {tab.body = doc.body;
 tab.originalBody = doc.body;
 tab.frontmatter = doc.frontmatter || {  };
 tab.title = doc.frontmatter && doc.frontmatter.title || tab.title;
@@ -33,7 +36,13 @@ let title = args.title;
 let existing = tabs.value.find((t: any) => t.path == path);
 if (existing != null) {active_path.value = path;
 if (!existing.loaded && !existing.isGraph) {let doc2 = await readWikiSafe(path);
-if (doc2 != null) {existing.body = doc2.body;
+
+
+
+
+
+
+if (doc2 != null && existing.loaded == false) {existing.body = doc2.body;
 existing.originalBody = doc2.body;
 existing.frontmatter = doc2.frontmatter || {  };
 existing.title = doc2.frontmatter && doc2.frontmatter.title || existing.title;
@@ -49,7 +58,10 @@ if (t2 == '') {t2 = await stripExt(path, '.ad');
 active_path.value = path;
 let doc = await readWikiSafe(path);
 let tab = tabs.value.find((t: any) => t.path == path);
-if (tab != null && doc != null) {tab.body = doc.body;
+
+
+
+if (tab != null && doc != null && tab.loaded == false) {tab.body = doc.body;
 tab.originalBody = doc.body;
 tab.frontmatter = doc.frontmatter || {  };
 tab.title = doc.frontmatter && doc.frontmatter.title || tab.title;
@@ -61,13 +73,13 @@ tab.dirty = false;
 }await recordRecent(path, t2);
 }
  }
-    const OpenGraph = (args: any) => { 
+    const OpenGraph = async (args: any) => { 
 let center = args.center;
 let depth = args.depth;
 let path: string = '__graph__';
 let title: string = '全局图谱';
 if (center != '') {path = `__graph__:${center}`;
-title = `局部图谱：${stripExt(center, ".ad")}`;
+title = `局部图谱：${await stripExt(center, '.ad')}`;
 }
 let existing = tabs.value.find((t: any) => t.path == path);
 if (existing != null) {active_path.value = path;
@@ -90,10 +102,13 @@ active_path.value = path;
     const Save = async (path: string) => { let tab = tabs.value.find((t: any) => t.path == path);
 if (tab != null && tab.loaded) {tab.saving = true;
 try {let body2 = await ensureBlockAnchors(tab.body, tab.originalBody);
-let saved = await writeWiki(path, { frontmatter: tab.frontmatter, body: body2 });
-tab.frontmatter = saved.frontmatter || {  };
-tab.body = saved.body;
-tab.originalBody = saved.body;
+
+
+
+
+let sentFm = tab.frontmatter;
+let saved = await writeWiki(path, { frontmatter: sentFm, body: body2 });
+await adoptSaveResult(tab, sentFm, body2, saved);
 tab.dirty = false;
 } catch (e) {
 

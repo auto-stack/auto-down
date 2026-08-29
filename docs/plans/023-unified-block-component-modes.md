@@ -2,15 +2,15 @@
 
 ---
 plan_id: PLAN-023
-status: executing
+status: execution_done
 feature_name: 统一块组件契约（BlockComponent 三模式）与分类型编辑面重建
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T16:20:00+08:00
-updated_at: 2026-08-29T16:35:00+08:00
+updated_at: 2026-08-29T18:05:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 11
+current_step: 13
 total_steps: 13
 ---
 
@@ -277,11 +277,20 @@ export interface BlockComponent {
   面适配器透传）；编辑面只读呈现/横幅/disabled 为 P1T4-P1T8 既有产物。新增
   4 例装配级测试钉死（code/table × streaming true/false）。21/21 绿。
 - [ ] P2T3 消费端验证：`cd autodown/demo && npx playwright test`；`cd jade-garden/front && pnpm build`（消费 engine link 不回归）。验证：两者退出码 0。
+  [✅ 已完成] engine dist 重建（14 部署物/9 桥）后 demo e2e 9/9 全绿（含
+  scroll-sync:141，其抖动性已在 P1 折叠前单独排查：左右面板 DOM 与
+  maxScroll 双边逐字节一致，失败为在册豁免项的点击映射抖动）；jade-garden
+  front `pnpm build` 绿（link: 相对路径消费 worktree engine，验证有效）。
+  两者退出码 0。
 
 ### 收尾
 
 - [ ] P3T1 全量门：engine `pnpm test && pnpm build`、demo e2e、`gen:editor`
   确定性两连跑——四门全绿后状态推进 `execution_done`。
+  [✅ 已完成] ① engine test 306/306（基线 271 → +35）；② build 三断言绿
+  （parser-pure / no-tiptap / editor-gen 14 部署物+9 桥）；③ gen:editor 两连
+  跑逐字节一致；④ demo e2e 9/9（scroll-sync:141 过）。状态推进
+  execution_done。
 
 ## 复审记录
 

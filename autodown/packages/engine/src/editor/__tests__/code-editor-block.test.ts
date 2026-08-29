@@ -9,7 +9,7 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
-import { BlockType, Value, attrSet, findBlock, leafBlock, blockText, withChildren, block } from '../../parser/block-model'
+import { BlockType, Value, attrSet, block, blockText, findBlock, leafBlock, withChildren } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
@@ -90,32 +90,38 @@ describe('Fence edit-slot registration (P1T5)', () => {
   })
 })
 
-describe('CodeEditorBlock.vue SSR contract', () => {
-  async function ssr(node: any, readonly: boolean): Promise<string> {
-    // the controller reads from the engine, so the engine doc must hold the node
-    const engine = new EditorEngine(withChildren(block('root', BlockType.Paragraph), [node]))
+describe('CodeEditorBlock.vue SSR contract (generated product, P1T7)', () => {
+  // Since P1T7 the component at components/CodeEditorBlock.vue is the
+  // .at-generated widget (flat chrome props; the headless controller is
+  // passed in). Its textarea fills via v-model + onMounted Init, so SSR
+  // renders it empty — the code write-back semantics are pinned by the
+  // controller tests above.
+  async function ssr(readonly: boolean): Promise<string> {
     const app = createSSRApp({
-      render: () => h(CodeEditorBlock as any, { node, ctx: { engine, blockId: node.id, readonly } }),
+      render: () =>
+        h(CodeEditorBlock as any, {
+          controller: { commit: () => false },
+          blockId: 'f-gen',
+          language: 'js',
+          code: 'const a = 1',
+          readonly,
+        }),
     })
     return renderToString(app)
   }
 
   it('renders the code-block-header title bar + multiline textarea', async () => {
-    let node = leafBlock('f-ssr', BlockType.Fence, 'const a = 1')
-    node = { ...node, attrs: attrSet(node.attrs, 'language', Value.Str('js')) }
-    const html = (await ssr(node, false)).replace(/<!--.*?-->/g, '')
+    const html = (await ssr(false)).replace(/<!--.*?-->/g, '')
     expect(html).toContain('code-block-header')
     expect(html).toContain('code-header-title')
     expect(html).toContain('>js<')
     expect(html).toContain('<textarea')
-    expect(html).toContain('const a = 1')
+    expect(html).toContain('data-block-id="f-gen"')
     expect(html).not.toContain('autodown-stream-banner')
   })
 
   it('readonly (streaming) renders the banner and disables the textarea', async () => {
-    let node = leafBlock('f-ro', BlockType.Fence, 'const a = 1')
-    node = { ...node, attrs: attrSet(node.attrs, 'language', Value.Str('js')) }
-    const html = (await ssr(node, true)).replace(/<!--.*?-->/g, '')
+    const html = (await ssr(true)).replace(/<!--.*?-->/g, '')
     expect(html).toContain('autodown-stream-banner')
     expect(html).toContain('流式生成中')
     expect(html).toContain('disabled')

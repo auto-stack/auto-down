@@ -90,8 +90,9 @@ if (!autoExe) {
 const widgets = readdirSync(here)
   .filter((f) => f.endsWith('.at') && f !== 'pac.at')
   .sort()
-if (widgets.length !== 14) {
-  console.error(`expected 14 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// 14 plan-013-era widgets + code_editor_block.at (plan 023 P1T7).
+if (widgets.length !== 15) {
+  console.error(`expected 15 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -169,6 +170,8 @@ const EXT_DEPLOY = [
   'code_block_menu_ext.ts',
   'bubble_menu_ext.ts',
   'node_view_ext.ts',
+  // plan 023 P1T7 — CodeEditorBlock's DOM helpers (focus/resize).
+  'code_editor_block_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -198,6 +201,11 @@ const DEPLOY_COMPONENTS = {
   'MermaidNodeView.vue': 'node-views/MermaidNodeView.vue',
   'MathBlockNodeView.vue': 'node-views/MathBlockNodeView.vue',
   'MathInlineNodeView.vue': 'node-views/MathInlineNodeView.vue',
+  // plan 023 P1T7 — the code block's typed editing face (replaces the
+  // hand-written prototype at the same path; tests point at the generated
+  // product). Deployed LIVE: EngineEditor's plain-script registration mounts
+  // it through the BlockComponent edit slot.
+  'CodeEditorBlock.vue': 'components/CodeEditorBlock.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

@@ -18,19 +18,39 @@
 </template>
 
 <script lang="ts">
-// plan 023 P1T5: the code block's typed editing face, registered at the
-// assembly so every EngineEditor consumer gets it. This lives in a PLAIN
-// script block because <script setup> statements compile into setup() —
-// they would only run at component creation, not at import. Key is the
-// BlockType enum name — 'Fence' IS the code block kind; the edit slot
-// carries no view, so the final-state preview stays on the builtin panel
-// pipeline.
-import { registerBlockComponent, sfcEditSlot } from '../../render/block-component'
+// plan 023 P1T5/P1T7: the typed editing faces, registered at the assembly so
+// every EngineEditor consumer gets them. This lives in a PLAIN script block
+// because <script setup> statements compile into setup() — they would only
+// run at component creation, not at import. Keys are BlockType enum names
+// ('Fence' IS the code block kind); the slots carry no view, so final-state
+// previews stay on the builtin panel pipeline. `h` comes from the setup
+// script's vue import — dual-script imports share one module scope.
+import { attrGetStr, blockText } from '../../parser/block-model'
+import type { BlockNode } from '../../parser/block-model'
+import { registerBlockComponent } from '../../render/block-component'
+import type { BlockEditCtx } from '../../render/block-component'
+import { CodeEditorController } from '../engine/code-editor-controller'
 import CodeEditorBlock from './CodeEditorBlock.vue'
 import TableEditorBlock from './TableEditorBlock.vue'
 
-registerBlockComponent('Fence', { edit: sfcEditSlot(CodeEditorBlock) })
-registerBlockComponent('Table', { edit: sfcEditSlot(TableEditorBlock) })
+// CodeEditorBlock is the generated widget (.at source): flat chrome props —
+// the headless controller + language/code are read out of the node/ctx here.
+function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  return h(CodeEditorBlock, {
+    controller: new CodeEditorController(ctx.engine, ctx.blockId),
+    blockId: ctx.blockId,
+    language: attrGetStr(node.attrs, 'language', ''),
+    code: blockText(node),
+    readonly: ctx.readonly,
+  })
+}
+
+registerBlockComponent('Fence', { edit: fenceEditSlot })
+// TableEditorBlock is still the hand-written SFC (P1T8 .at-izes it); it
+// takes the node/ctx pair directly.
+registerBlockComponent('Table', {
+  edit: (node: BlockNode, ctx: BlockEditCtx) => h(TableEditorBlock, { node, ctx }),
+})
 
 // frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
 // script block: with dual scripts, type exports must live here, and the

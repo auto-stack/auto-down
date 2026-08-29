@@ -141,8 +141,30 @@ ext）。每文件命中类别（脚本判定，同文件可多类别）：
      review_note 回填 + due 清空（fresh 卡 grade 3 排程次日）+ **排程属性
      落盘**（`card-next-schedule:: 2026-08-30` 写回文档）。
    - 驱动：tmp/core-probe/probe_driver_edit.mjs / probe_driver_cards.mjs。
-5. slice 5：图谱列表视图 + 反链/大纲/搜索面板 + 主题/设置；双端视觉基线
-   截图归档。
+5. ✅ slice 5（2026-08-29）：反链/图谱/搜索面板实机通（app.at 四区面板）+
+   结构视觉基线落盘。
+   - **面板 10/10 断言**（probe_driver_links.mjs）：CAP 定理 打开 →
+     title 剥离（`.split(".ad")[0]`）+ 反链 3/出链 2 计数与按钮呈现 →
+     反链点击跳转 Hello World ✓；graph → 8 边 + 节点按钮可点 ✓；
+     search_pages("CAP") → 1 命中渲染为页按钮 ✓。
+   - **auto-lang 侧修复 ×2（跨仓，TDD，已折推送 master）**：
+     ① 属性形式 `.length`（engine/vue 侧源码的普遍拼写）在 VM 两种通道
+     均恒 0——typed 接收者缺 `auto.list.length`/`auto.str.length` 懒表
+     别名（NATIVE_ID_ENTRIES + bigvm 返回类型表，复用 103/170）；untyped
+     接收者（obj 参数/调用结果链）GET_FIELD 落堆列表失配——运行时
+     GET_FIELD 的 length 回退（镜像 ARRAY_LEN 语义，含 0 哨兵不变式）。
+     plan046 三新测先红后绿，plan340/catalog 全绿。
+     ②（app 侧规避 + 登记）SearchResult 的 wire 判别字段 `type` 与 DSL
+     元属性 `.type`（返回表达式类型名）撞名——VM 侧不可读；缺席字段的
+     读出是 0 哨兵而非 null，存在性分支不可靠。app 处置：改用
+     search_pages（页命中 title/path 全在场）+ handler 内行模型规范化
+     （视图零字段分支/零 null 比较）。两者已登记 auto-lang 侧
+     （`.type` 转义/命中字段语义），随后续 slice 提案。
+   - **结构视觉基线**：baseline/iced-slice5-structure.txt（AutoUI
+     snapshot @ 满状态：工作区+文档+反链出链+卡片+图谱+页搜索，可 diff
+     重生成 save_baseline.mjs）；web 侧基线 = jade e2e 23/23。像素级截图
+     通道本会话环境不稳（iced 窗口偶发自退/句柄不可枚举），登记工具链
+     债，Phase 5 收口时补像素对拍。
 6. 依赖回填：dir-picker 宿主能力、confirm 模态语义（若 DSL 需扩充，
    提 auto-lang 侧提案，不绕过）。
 

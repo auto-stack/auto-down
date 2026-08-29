@@ -1,8 +1,25 @@
 # Plan 022：jade-garden VM（桌面）化——后端逻辑与 lib 层并入 Auto 双端库
 
+---
+supersedes_spec_components:
+  - "jade-garden back/server 手写业务逻辑体（parser/links 提取/search 匹配/tasks/agenda/query/srs 数学）: 逻辑退役至 back/auto/*.at 双发射 *_gen 壳内直调（壳保留 axum/fs/chrono 装配——Phase 1-3 复审裁定：薄壳化为既定形态，字面『模块删除』由 Phase 5 全量退役承接）"
+  - "jade-garden 索引存储 SQLite（rusqlite + FTS5 虚拟表）: 退役为内存行表 + jade-garden-index.json 持久化（存储裁定项销号，rusqlite 依赖摘除）"
+  - "jade front lib/api.ts 手写 wire interface（24 个）: 退役为 back/auto/api.at 契约单源 a2ts 生成（api_gen.ts 部署 + re-export；fetch 层/LinksResponse 泛型信封/GraphSettings 视图模型留守）"
+new_spec_components:
+  - "back/auto/api.at 契约源 + gen.mjs tsOnly/front 部署通道 + tests/api-contract-routes.mjs 路由覆盖门（28/28）: 新增（Phase 1）"
+  - "back/auto/{parser,links,tasks,query,agenda,srs,search}.at 单源双发射（a2ts 孪生 + a2r 壳内）+ 七套 parity fixtures 双侧同源断言: 新增（Phase 2）"
+  - "VM 服务面：vm_server（host bridge jade.api + run_file）+ vm_dispatch（28 臂信封路由双壳单核）+ auto/server.at 入口 + jade_server.at 28 路由（442-c2 适配器，JADE_GARDEN_SERVER=vm 切换）: 新增（Phase 3）"
+  - "auto-lang OpCode::VALID 真值表不变式（枚举判别集派生）+ match_route Path 参数百分号解码: 跨仓修复已合 auto-lang master（2bfd6475c / 5441dda28）"
+touched_goals:
+  - "022 目标1 逻辑单源: Phase 2 七模块 .at 单源 + api.at 契约单源 + 双发射金标对拍（达成，Phase 1-3 复审 2026-08-29）"
+  - "022 目标3 网页版零回归: rust/VM 双后端 e2e 23/23（达成）"
+  - "022 目标4 退役重复实现: 后端逻辑侧就位；blockParser.ts 前端镜像冻结未删（Phase 5 承接）"
+  - "022 目标2 VM 桌面版: Phase 3 完成 VM 路由接管（网页版形态）；桌面形态待 Phase 4/5"
+---
+
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 1 + Phase 2 完成，2026-08-28）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 1-3 复审通过 2026-08-29；Phase 4/5 待启动）**。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -261,12 +278,74 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 
 ### Phase 5 — 桌面壳与手写层退役
 
+> **复审补录（2026-08-29，Phase 1-3 复审退役面盘点）**：Phase 5 全量退役
+> 的手写清单 = 薄壳层（16 模块 X_impl 双壳装配）+ 以下 Phase 2 清单外
+> 遗留逻辑体（复审新发现，见复审记录 D1/D2）：① unlinked.rs
+> find_unlinked_references 的 regex 扫描（regex crate 仅存消费方）；
+> ② index.rs 行扫描/解析排序（resolve_page_path/backlinks 过滤排序/
+> graph 边装配）与 links.rs graph degree 装配；③ srs.rs OfMatrix EDN
+> load/save（壳内最厚件，观察项）。
+
 - 桌面壳：Tauri（`TAURI_ENV` 钩子激活）或纯 VM 窗口（auto-cosmic）二选一，
   Phase 4 结束按 iced 成熟度裁定。
 - `back/server` 手写 Rust 全量退役；`front/src/lib/blockParser.ts` 删除
   （消费引擎 a2ts 产物）；三镜像归一完成（020 Phase 3 该项随之销号）。
 - 验收：桌面版端到端（打开工作区/编辑/保存/搜索/闪卡/导入导出）；
   网页版 e2e 无回归；DEBTS/README/ARCHITECTURE 文档收口。
+
+## 复审记录（Phase 1-3 阶段域，2026-08-29）
+
+> 复审人：ZCode 会话（/auto-plan:review）。域：Phase 1-3（Phase 4/5 未
+> 启动，状态保持执行中——本记录为阶段域验收，全计划 `reviewed` 路由留待
+> Phase 4/5 收口时终审）。全部验证本会话在 worktree 重跑，未采信历史勾选。
+
+**五门全量（worktree 重跑）**：back/server cargo test **37/37**；八套
+node parity/契约门全绿（parser 6 / links 9 / tasks / query 21 / agenda
+15+2 / srs 7+6+2+5+2+4+3 / search 15 / api-contract-routes **28/28**）；
+front `vue-tsc` **0 错**；rust 后端 e2e **23/23**；VM 后端 e2e
+（JADE_GARDEN_SERVER=vm）**23/23**。
+
+**Phase 1 验收（3/3 pass）**：
+- 契约覆盖全部现役路由 → api-contract-routes 28/28（main.rs 路由表 ↔
+  api.at ROUTE 标记机器对拍）✓
+- TS 客户端改由契约产出后 e2e 全绿 → api.ts 全量 re-export api_gen.ts，
+  仅存 2 个本地 interface（LinksResponse 泛型信封 / GraphSettings 视图
+  模型，均为设计内留守）+ rust e2e 23/23 ✓
+- 契约变更流程写进本文档 → api.at:16 头注五步流程 + Phase 1 注记 ✓
+
+**Phase 2 验收（2/3 pass + 1 项裁定偏离）**：
+- 双端金标测试绿 → 七套 parity fixtures 双侧同源断言全绿 ✓
+- jade e2e 无回归 → 23/23 ✓；存储裁定项两步销号（FTS5 退役 + JSON
+  行缓存，rusqlite 摘除）；blockParser.ts 冻结纪律守住（本计划零触碰，
+  末次改动 d8ce121 先于立项）✓
+- 「对应手写 Rust 模块删除」→ **裁定偏离（pass with rationale）**：实际
+  形态为薄壳化（逻辑全量下沉 *_gen，壳保留装配，pub API 保形）——slice 1
+  起即在进度注记中明示，且 Phase 5 明文承接全量退役；字面「删除」属起草
+  期过严表述。语义意图（逻辑单源）已达成。
+
+**Phase 3 验收（1/1 pass）**：
+- 网页版前端零改动跑在 VM 后端上，e2e 全量复用 → VM e2e 23/23；front
+  diff 复核 = 双读竞争修复（模式无关 bug fix，双端受益）+ playwright
+  config 透传（测试基建），零 VM 专属应用代码 ✓
+
+**遗漏/延后/绕道猎查（5 项，均记录非阻断）**：
+- D1 unlinked.rs find_unlinked_references 仍 regex 手写——不在 Phase 2
+  迁移清单（清单枚举 parser/links/search/tasks/agenda/query/srs），
+  非漏项；已补录 Phase 5 退役面清单（regex crate 仅存消费方）
+- D2 index.rs 行扫描/解析排序 + links.rs graph degree 装配仍手写——
+  同上补录 Phase 5 清单
+- D3 wildcard `{*path}` extractor 交付空值 → 显式深度 1..3 绕行（e2e
+  fixture 全覆盖；正修在 auto-lang 侧在册）
+- D4 multipart（assets/import）与二进制（export zip）不能过 VM 信封 →
+  dispatch 400 登记偏差（e2e 不测）
+- D5 srs.rs 壳 621 行偏厚（OfMatrix EDN load/save + Card 装配）——观察
+  项，Phase 5 处置
+- 新产物零 TODO/FIXME；调试插桩与临时 spec 全数清除（复检 0 残留）
+
+**结论**：Phase 1-3 验收标准全数达成（1 项起草期表述偏离经裁定通过），
+无未批准延后，无隐瞒绕道。spec-impact 元数据已填（frontmatter）。
+后续：Phase 4（iced 双渲染）→ Phase 5（桌面壳 + 全量退役）→ 全计划
+终审 `/auto-plan:review` → `/auto-plan:merge`。
 
 ## 风险与约束
 

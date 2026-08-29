@@ -13,6 +13,16 @@ export {
 export { setHighlightImpl, getHighlightImpl } from './highlight'
 export type { HighlightFn } from './highlight'
 export { lowlightHighlighter } from './highlight-lowlight'
+export {
+  registerBlockComponent,
+  resolveBlockComponent,
+  unregisterBlockComponent,
+  clearBlockComponents,
+  canonicalKind,
+  editSlotFor,
+  sfcEditSlot,
+} from './block-component'
+export type { BlockComponent, BlockEditCtx } from './block-component'
 export type {
   MarkdownSegment,
   ComponentSegment,

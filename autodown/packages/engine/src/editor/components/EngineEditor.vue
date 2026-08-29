@@ -17,6 +17,77 @@
   </div>
 </template>
 
+<script lang="ts">
+// plan 023 P1T5/P1T7: the typed editing faces, registered at the assembly so
+// every EngineEditor consumer gets them. This lives in a PLAIN script block
+// because <script setup> statements compile into setup() — they would only
+// run at component creation, not at import. Keys are BlockType enum names
+// ('Fence' IS the code block kind); the slots carry no view, so final-state
+// previews stay on the builtin panel pipeline. `h` comes from the setup
+// script's vue import — dual-script imports share one module scope.
+import { attrGetStr, blockText } from '../../parser/block-model'
+import type { BlockNode } from '../../parser/block-model'
+import { registerBlockComponent } from '../../render/block-component'
+import type { BlockEditCtx } from '../../render/block-component'
+import { CodeEditorController } from '../engine/code-editor-controller'
+import { TableEditorController } from '../engine/table-editor-controller'
+import CodeEditorBlock from './CodeEditorBlock.vue'
+import TableEditorBlock from './TableEditorBlock.vue'
+
+// CodeEditorBlock is the generated widget (.at source): flat chrome props —
+// the headless controller + language/code are read out of the node/ctx here.
+function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  return h(CodeEditorBlock, {
+    controller: new CodeEditorController(ctx.engine, ctx.blockId),
+    blockId: ctx.blockId,
+    language: attrGetStr(node.attrs, 'language', ''),
+    code: blockText(node),
+    readonly: ctx.readonly,
+  })
+}
+
+registerBlockComponent('Fence', { edit: fenceEditSlot })
+// TableEditorBlock is the generated widget (.at source, P1T8): flat chrome
+// data — the adapter flattens the table's BlockNode into plain cell objects
+// ({id, text, cls}) on every render; commands/cell-commit semantics stay on
+// the TableEditorController.
+function tableEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  const cellData = (c: BlockNode) => ({
+    id: c.id,
+    text: blockText(c),
+    cls: alignClass(attrGetStr(c.attrs, 'align', 'left')),
+  })
+  const rows = node.children
+  return h(TableEditorBlock, {
+    controller: new TableEditorController(ctx.engine, ctx.blockId),
+    blockId: ctx.blockId,
+    readonly: ctx.readonly,
+    header_cells: (rows[0]?.children ?? []).map(cellData),
+    body_rows: rows.slice(1).map((row) => ({ id: row.id, cells: row.children.map(cellData) })),
+  })
+}
+
+function alignClass(align: string): string {
+  if (align === 'center') return 'text-center'
+  if (align === 'right') return 'text-right'
+  return 'text-left'
+}
+
+registerBlockComponent('Table', { edit: tableEditSlot })
+
+// frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
+// script block: with dual scripts, type exports must live here, and the
+// script setup below sees the module-scope type.
+export interface BlockInfo {
+  id: string
+  index: number
+  pos: number
+  el: HTMLElement
+  top: number
+  height: number
+}
+</script>
+
 <script setup lang="ts">
 // EngineEditor (plan 018 Phase 2/3) — the self-built editor top level:
 // per-leaf-block contenteditable hosts + the ./render pipeline for preview
@@ -33,6 +104,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
 import { blockNodesToWNodes } from '../../render/block-wnode'
+import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
@@ -101,6 +173,24 @@ const views = computed<BlockView[]>(() => {
   let previewIdx = 0
   return engine.doc.children.map((node) => {
     const focused = node.id === focusedId
+    // Focused assembly through the BlockComponent contract (plan 023 P1T3):
+    // a registered edit slot wins (CodeEditorBlock / TableEditorBlock); the
+    // BlockHost text fallback covers every kind without one. The edit face
+    // commits on blur (host protocol), so the per-repaint vnode rebuild never
+    // yanks focus mid-typing.
+    if (focused) {
+      const edit = editSlotFor(BlockType[node.kind])
+      if (edit) {
+        return {
+          id: node.id,
+          view: {
+            render: () =>
+              edit(node, { engine, blockId: node.id, readonly: false }),
+          },
+          props: {},
+        }
+      }
+    }
     if (focused && isEditableLeaf(node)) {
       const controller = hostFor(node.id)
       return {
@@ -156,15 +246,7 @@ function hostFor(blockId: string): BlockHostController {
 }
 
 // -- frozen expose contract (EDITOR-CONTRACT.md) ---------------------------------------
-
-export interface BlockInfo {
-  id: string
-  index: number
-  pos: number
-  el: HTMLElement
-  top: number
-  height: number
-}
+// BlockInfo lives in the plain <script> block above (dual-script type exports).
 
 /** getBlockMap parity: DOM-anchored block geometry for scroll sync. */
 function getBlockMap(): BlockInfo[] {

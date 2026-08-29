@@ -58,6 +58,11 @@ const EXPECTED = [
   'menus/TableMenu.vue',
   'menus/CodeBlockMenu.vue',
   'components/CodeLanguageIcon.vue',
+  // plan 023 P1T7 — the code block's typed editing face (live: mounted by
+  // EngineEditor's BlockComponent edit-slot registration).
+  'components/CodeEditorBlock.vue',
+  // plan 023 P1T8 — the table's typed editing face.
+  'components/TableEditorBlock.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',

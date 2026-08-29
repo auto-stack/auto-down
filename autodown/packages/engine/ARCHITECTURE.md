@@ -82,14 +82,33 @@
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 12 个部署物：`menus/{SlashMenu,BubbleMenu,TableMenu,CodeBlockMenu}.vue`、
-  `components/CodeLanguageIcon.vue`、`node-views/*.vue`（7）——gen 管线
+- 14 个部署物：`menus/{SlashMenu,BubbleMenu,TableMenu,CodeBlockMenu}.vue`、
+  `components/{CodeLanguageIcon,CodeEditorBlock,TableEditorBlock}.vue`、
+  `node-views/*.vue`（7）——gen 管线
   （暂存工程 `auto build --gen-only --lenient` → 收割 → E1 import 后修 →
   部署），两连跑逐字节确定。
-- 7 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
+- 9 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
   部署（引擎接口，零 Tiptap）。
 - build guard：`scripts/assert-editor-gen.mjs`——生成头注 ↔ .at 源存在性、
   部署清单精确性（增删均须显式改 guard 清单）、ext 桥同步，三项断言。
+
+**BlockComponent 三模式契约（plan 023）**
+
+- `src/render/block-component.ts`（手写桥，同 highlight.ts 模式）：每类型
+  一个组件，`view`（终态=现有 panel 管线，经 BlockNode→WNode 桥
+  `block-wnode.ts` 直连，EngineEditor 预览零 md 往返）/ `stream`（渐进态，
+  缺省沿用 markdown 段路径）/ `edit`（分类型编辑面，缺省=BlockHost 文本
+  兜底）三槽位；注册表键为 BlockType 枚举名（canonicalKind 归一
+  'code_block'→'CodeBlock'）。
+- 归属边界：**编辑面 SFC 归 chrome 层**（CodeEditorBlock/TableEditorBlock
+  已 .at 化，扁平 chrome props）；**无头控制器与适配器归平台层**
+  （engine/code-editor-controller、engine/table-editor-controller、
+  EngineEditor plain script 里的 node/ctx→扁平 props 适配与注册）。
+- **stream→edit v1 裁定**：`BlockEditCtx.readonly = streaming`——流式进行
+  中编辑面只读（横幅"流式生成中"+disabled），流结束自动解锁；备选
+  "流式中编辑转 final 截断流"交互更激进、改动面大，不取。
+- 在册缺口：行内 WYSIWYG（段落内 mark 就地编辑、选区映射）不在 plan 023
+  范围，单列后续计划；表格嵌套块单元格 v1 仅文本单元格可编辑。
 
 **在册不部署的源（dormant，guard 豁免）**
 

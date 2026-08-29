@@ -1,0 +1,143 @@
+// code_editor_block.at — CodeEditorBlock widget (plan 023 P1T7).
+//
+// The code block's typed editing face: language title bar (code-block-header
+// DOM contract, display-only in v1 — language changes stay on the code-block
+// menu's IAL channel) over a multiline auto-resizing textarea. Host protocol
+// preserved: while focused the textarea owns its text; blur commits the
+// whole code back through the CodeEditorController the EngineEditor edit
+// slot passes in (one undo step, engine kernel — see
+// src/editor/engine/code-editor-controller.ts).
+//
+// Props are FLAT chrome primitives: the VM object (controller) arrives as a
+// prop typed Array<str> (Vue backend emits `any`), the same idiom the
+// DetailsNodeView widget uses for tiptap's node. Str/bool props stay real.
+//
+// Idioms (see details_node_view.at for the shared list):
+// - `text .code` inside the textarea renders the initial/committed code —
+//   the Vue SFC compiler turns textarea child interpolation into the value
+//   binding, so SSR shows the code and repaints after blur-commit are
+//   consistent with the model.
+// - focus/resize DOM helpers come from the ext bridge (no element casts in
+//   the DSL); .Init runs them on mount (BlockHost focus parity, skipped
+//   when readonly).
+// - `spellcheck` is not a keyword token — brace form is fine.
+
+widget CodeEditorBlock(controller: Array<str>, blockId: str, language: str, code: str, readonly: bool) {
+    use {
+        fn: focusCodeArea, resizeCodeArea from "ext/code_editor_block_ext.ts"
+    }
+
+    msg Msg { Init, AreaInput, Blur }
+
+    model {
+        var code_draft str = ""
+    }
+
+    view {
+        div {
+            class: "autodown-code-editor",
+            style: { "is-readonly": .readonly },
+            data-block-id: .blockId,
+            data-node-type: "Fence",
+
+            if .readonly {
+                div {
+                    class: "autodown-stream-banner",
+                    text "流式生成中"
+                }
+            }
+            div {
+                class: "code-block-header flex justify-between items-center",
+                div {
+                    class: "code-header-main",
+                    div {
+                        class: "code-header-copy",
+                        div {
+                            class: "code-header-title",
+                            text .language
+                        }
+                    }
+                }
+                div {
+                    class: "flex items-center gap-0.5"
+                }
+            }
+            textarea (spellcheck: "false") {
+                ref: "area",
+                class: "code-editor-textarea",
+                // v-model fold: value + oninput → v-model (the span-wrapping
+                // `text` is invalid inside a textarea — its content is raw
+                // text; compiler-ssr renders the v-model var as the content).
+                value: .code_draft,
+                oninput: .AreaInput($event),
+                disabled: .readonly,
+                onblur: .Blur($event)
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            // prop→model var init must live here: the generator emits model
+            // var initializers BEFORE defineProps, so `var code_draft = .code`
+            // compiles to ref(props.code) in the TDZ (ReferenceError at
+            // runtime). SSR renders the empty draft — the textarea fills on
+            // mount (documented compiler-ordering gap, same treatment as
+            // the details_node_view idiom list).
+            .code_draft = .code
+            focusCodeArea(.area, .readonly)
+        }
+
+        .AreaInput(e) -> {
+            resizeCodeArea(e.target)
+        }
+
+        .Blur(e) -> {
+            if !.readonly {
+                let c = .controller
+                c.commit(e.target.value)
+            }
+        }
+    }
+
+    style {
+        .autodown-code-editor {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #f8f9fa;
+          overflow: hidden;
+        }
+        .autodown-code-editor.is-readonly {
+          opacity: 0.75;
+        }
+        .autodown-stream-banner {
+          padding: 0.3rem 0.75rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          border-bottom: 1px solid #fcd34d;
+          user-select: none;
+        }
+        .code-editor-textarea {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 3rem;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          outline: none;
+          resize: none;
+          overflow: hidden;
+          background: transparent;
+          color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+        }
+        .code-editor-textarea:disabled {
+          cursor: not-allowed;
+        }
+    }
+}

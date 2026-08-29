@@ -17,6 +17,32 @@
   </div>
 </template>
 
+<script lang="ts">
+// plan 023 P1T5: the code block's typed editing face, registered at the
+// assembly so every EngineEditor consumer gets it. This lives in a PLAIN
+// script block because <script setup> statements compile into setup() —
+// they would only run at component creation, not at import. Key is the
+// BlockType enum name — 'Fence' IS the code block kind; the edit slot
+// carries no view, so the final-state preview stays on the builtin panel
+// pipeline.
+import { registerBlockComponent, sfcEditSlot } from '../../render/block-component'
+import CodeEditorBlock from './CodeEditorBlock.vue'
+
+registerBlockComponent('Fence', { edit: sfcEditSlot(CodeEditorBlock) })
+
+// frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
+// script block: with dual scripts, type exports must live here, and the
+// script setup below sees the module-scope type.
+export interface BlockInfo {
+  id: string
+  index: number
+  pos: number
+  el: HTMLElement
+  top: number
+  height: number
+}
+</script>
+
 <script setup lang="ts">
 // EngineEditor (plan 018 Phase 2/3) — the self-built editor top level:
 // per-leaf-block contenteditable hosts + the ./render pipeline for preview
@@ -175,15 +201,7 @@ function hostFor(blockId: string): BlockHostController {
 }
 
 // -- frozen expose contract (EDITOR-CONTRACT.md) ---------------------------------------
-
-export interface BlockInfo {
-  id: string
-  index: number
-  pos: number
-  el: HTMLElement
-  top: number
-  height: number
-}
+// BlockInfo lives in the plain <script> block above (dual-script type exports).
 
 /** getBlockMap parity: DOM-anchored block geometry for scroll sync. */
 function getBlockMap(): BlockInfo[] {

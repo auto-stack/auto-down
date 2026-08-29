@@ -126,9 +126,23 @@ ext）。每文件命中类别（脚本判定，同文件可多类别）：
      处理（提 auto-lang 侧确认 from_value 对空 map 的语义）；② 物理合成
      点击下探针进程偶发静默 exit(1)（无栈、无日志），AutoUI MCP 驱动通道
      稳定——探针环境观察项，非产品代码路径。
-4. slice 4：编辑器核心流（tabs_store + editor_tab，hover/scroll 映射）
-   + 闪卡（flashcard_modal）；随后 backlinks/outlinks/outline/search。
-5. slice 5：图谱列表视图 + 主题/设置；双端视觉基线截图归档。
+4. ✅ slice 4（2026-08-29）：编辑器核心流 + 闪卡核心流实机通（app.at 升级
+   为三栏面板：文件树 | 编辑器 | 卡片列）。
+   - **编辑器 6/6 断言**：文件列表点开 → read_wiki 载入正文 → textarea
+     `value:` 绑定 + oninput 置脏（MCP type_text 驱动）→ save → 脏标清除
+     + 磁盘新正文 + **frontmatter map 保真**（`title: Hello World` 原样
+     回写——slice 3 登记项①实证闭环：非空 map 往返无损；空 map `{}` 字面
+     量的 null 边缘仅存于新建无 frontmatter 场景，缩窄登记）。骨架期为
+     单活动文档 + 打开历史列表；tabs_store 全量状态机（多 tab/脏守卫/
+     adoptSaveResult 双读竞争防护）随 29-widget 迁移归位。
+   - **闪卡 4/4 断言**：驱动经 API 预置卡文档（`- 探针问题：1+1=? #card
+     ^probe-c1`）→ cards 面板 due 列表呈现 → good 评分（review_card POST，
+     循环项多参数 `onclick: .Grade(c.page_path, c.block_id, 3)`）→
+     review_note 回填 + due 清空（fresh 卡 grade 3 排程次日）+ **排程属性
+     落盘**（`card-next-schedule:: 2026-08-30` 写回文档）。
+   - 驱动：tmp/core-probe/probe_driver_edit.mjs / probe_driver_cards.mjs。
+5. slice 5：图谱列表视图 + 反链/大纲/搜索面板 + 主题/设置；双端视觉基线
+   截图归档。
 6. 依赖回填：dir-picker 宿主能力、confirm 模态语义（若 DSL 需扩充，
    提 auto-lang 侧提案，不绕过）。
 

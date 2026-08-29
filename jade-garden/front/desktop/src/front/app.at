@@ -1,22 +1,28 @@
-// app.at — jade-garden 桌面骨架（plan-022 Phase 4 slice 3）。
+// app.at — jade-garden 桌面（plan-022 Phase 4 slice 4：编辑器核心流）。
 //
-// 核心流竖切：workspace.open → files → wiki read → wiki write，四调用均经
-// use back.api 契约层（#[api] 改写）打到 jade 服务器。slice 3 实测双通
-// （split HTTP 与 merged 宿主派发，含带空格标题的通配回环与磁盘落盘验证）。
-// 后续 slice：app_shell 组装 + 无 DOM widget 迁移（README §5 slice 4 起），
-// 本文件的按钮面板届时被真 UI 替换。
+// 流：open-ws → 文件列表点开 → textarea 编辑（oninput 置脏）→ save 回写
+// （frontmatter 原样传回——map 保真实测面）。骨架期为单活动文档形态；
+// tabs_store 全量状态机（多 tab/脏守卫/双读竞争防护）随后续 slice 的
+// 29-widget 迁移归位。登记偏差：脏态切换文档直接重读（丢弃未保存编辑），
+// iced confirm 模态到位后补守卫（README §2 裁定表）。
 
-use back.api: open_workspace, list_files, read_wiki, write_wiki
+use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card
 
 widget App {
-    msg { Init, OpenWs, LoadFiles, ReadDoc, SaveDoc }
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit, Save, LoadCards, Grade(str, str, int) }
 
     model {
         var status str = "boot"
         var root str = ""
         var files = []
-        var doc_body str = ""
-        var save_echo str = ""
+        var open_paths = []
+        var active_path str = ""
+        var active_body str = ""
+        var active_frontmatter map = {}
+        var active_dirty bool = false
+        var save_note str = ""
+        var cards = []
+        var review_note str = ""
     }
 
     on {
@@ -27,44 +33,103 @@ widget App {
         .OpenWs -> {
             var res = open_workspace("D:/autostack/auto-down/tmp/wiki-demo")
             .root = res.root
-            .status = "opened"
+            .files = list_files("", false)
+            .status = "ws-open"
         }
 
         .LoadFiles -> {
             .files = list_files("", false)
-            .status = "files-loaded"
+            .status = "files-reloaded"
         }
 
-        .ReadDoc -> {
-            var doc = read_wiki("Hello World.ad")
-            .doc_body = doc.body
-            .status = "read-ok"
+        .OpenFile(path) -> {
+            var doc = read_wiki(path)
+            .active_path = path
+            .active_body = doc.body
+            .active_frontmatter = doc.frontmatter
+            .active_dirty = false
+            var existing = .open_paths.find(p => p == path)
+            if existing == null {
+                .open_paths.push(path)
+            }
+            .status = "opened"
         }
 
-        .SaveDoc -> {
-            var out = write_wiki("Hello World.ad", {}, "VM iced 写回探针（plan-022 slice 3）\n\n第二段。")
-            .save_echo = out.body
-            .status = "save-echo-received"
+        .Edit -> {
+            .active_dirty = true
+        }
+
+        .Save -> {
+            var out = write_wiki(.active_path, .active_frontmatter, .active_body)
+            .save_note = "saved:" + out.body.length
+            .active_dirty = false
+            .status = "saved"
+        }
+
+        .LoadCards -> {
+            var res = get_due_cards(20)
+            .cards = res.cards
+            .status = "cards-loaded"
+        }
+
+        .Grade(page_path, block_id, grade) -> {
+            var res = review_card(page_path, block_id, grade)
+            .review_note = "graded:" + res.card.block_id
+            var res2 = get_due_cards(20)
+            .cards = res2.cards
+            .status = "graded"
         }
     }
 
     view {
         col {
-            class: "flex h-full flex-col gap-2 p-4 bg-background text-foreground",
+            class: "flex h-full flex-col gap-2 p-3 bg-background text-foreground",
             row {
                 class: "flex items-center gap-2",
                 button "open-ws" { onclick: .OpenWs }
-                button "files" { onclick: .LoadFiles }
-                button "read" { onclick: .ReadDoc }
-                button "save" { onclick: .SaveDoc }
+                button "reload-files" { onclick: .LoadFiles }
+                button "save" { onclick: .Save }
+                button "cards" { onclick: .LoadCards }
+                text .status
+                if .active_dirty {
+                    text "● unsaved"
+                }
             }
-            text .status
-            text .root
-            for f in .files {
-                text f.name
+            row {
+                class: "flex flex-1 gap-3 overflow-hidden",
+                col {
+                    class: "w-52 shrink-0 gap-1 overflow-auto border-r pr-2",
+                    for f in .files {
+                        button (text: f.name) {
+                            onclick: .OpenFile(f.path)
+                        }
+                    }
+                }
+                col {
+                    class: "flex flex-1 flex-col gap-2",
+                    if .active_path != "" {
+                        textarea (value: .active_body, placeholder: "edit markdown here") {
+                            oninput: .Edit
+                        }
+                    }
+                    text .save_note
+                }
+                col {
+                    class: "w-64 shrink-0 gap-2 overflow-auto border-l pl-2",
+                    text .review_note
+                    for c in .cards {
+                        col {
+                            class: "gap-1 border-b pb-1",
+                            text c.question
+                            row {
+                                class: "gap-1",
+                                button "again" { onclick: .Grade(c.page_path, c.block_id, 1) }
+                                button "good" { onclick: .Grade(c.page_path, c.block_id, 3) }
+                            }
+                        }
+                    }
+                }
             }
-            text .doc_body
-            text .save_echo
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-023
-status: reviewed
+status: archived
 feature_name: 统一块组件契约（BlockComponent 三模式）与分类型编辑面重建
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T16:20:00+08:00
@@ -160,17 +160,17 @@ export interface BlockComponent {
 
 ## 验收标准
 
-- [ ] EngineEditor 预览零 `serialize→parseDocument` 往返（代码检索无该调用），
+- [x] EngineEditor 预览零 `serialize→parseDocument` 往返（代码检索无该调用），
   demo e2e 全绿。
-- [ ] 聚焦代码块呈现 CodeEditorBlock（标题栏 + 多行代码区），不再是纯文本
+- [x] 聚焦代码块呈现 CodeEditorBlock（标题栏 + 多行代码区），不再是纯文本
   input；编辑回写后 `serialize` 输出含修改后的代码块。
-- [ ] 聚焦表格呈现编辑面，行列增删经 `commands.ts` 生效且 undo 可回退。
-- [ ] `BlockComponent` 三模式契约从 `@autodown/engine/render` 公开导出；
+- [x] 聚焦表格呈现编辑面，行列增删经 `commands.ts` 生效且 undo 可回退。
+- [x] `BlockComponent` 三模式契约从 `@autodown/engine/render` 公开导出；
   StreamingRenderer 与 EngineEditor 均经 registry 解析。
-- [ ] CodeEditorBlock / TableEditorBlock 终态为 `.at` 生成物，
+- [x] CodeEditorBlock / TableEditorBlock 终态为 `.at` 生成物，
   `assert-editor-gen` 门检含新增部署物，`pnpm gen:editor` 确定性两连跑一致。
-- [ ] 流式进行中编辑面只读、流结束解锁（单测钉死）。
-- [ ] EDITOR-CONTRACT.md 冻结面与 `getBlockMap` 契约零破坏。
+- [x] 流式进行中编辑面只读、流结束解锁（单测钉死）。
+- [x] EDITOR-CONTRACT.md 冻结面与 `getBlockMap` 契约零破坏。
 
 ## 执行步骤
 
@@ -179,7 +179,7 @@ export interface BlockComponent {
 
 ### Phase 0：管道统一（P0）
 
-- [ ] P0T1 EngineEditor 预览去 round-trip：改 `autodown/packages/engine/src/editor/components/EngineEditor.vue` 的 `previewNodes`——删除
+- [x] P0T1 EngineEditor 预览去 round-trip：改 `autodown/packages/engine/src/editor/components/EngineEditor.vue` 的 `previewNodes`——删除
   `mdBlocks/serialize/parseDocument` 路径，改为对
   `engine.doc.children`（排除聚焦可编辑叶块）逐个 `renderNodes([n], true)`
   并沿用现有 node-slot/data-block-id/boundary/onClick 包装；wikilink 装饰后置。
@@ -189,7 +189,7 @@ export interface BlockComponent {
   `previewNodes` 改为 过滤→blockNodesToWNodes→renderNodes(一次，保持 data-node-index
   编号)→decorateWikilinks；EngineEditor.vue 已无 parseDocument 调用；`pnpm test`
   271/271 全绿。
-- [ ] P0T2 回归门：`cd autodown/demo && npx playwright test`（scroll-sync
+- [x] P0T2 回归门：`cd autodown/demo && npx playwright test`（scroll-sync
   契约重点观察）；不绿则修 P0T1 引入的 DOM 差异。验证：e2e 退出码 0。
   [✅ 已完成] 9/9 全绿（含 scroll-sync:141 历史豁免项，本次也过）。备注：冷
   worktree 首跑需先 `pnpm build` engine（demo 消费 dist），且 vite 首启
@@ -197,32 +197,32 @@ export interface BlockComponent {
 
 ### Phase 1：契约 + 分类型编辑面（P1）
 
-- [ ] P1T1 契约类型：新建 `autodown/packages/engine/src/render/block-component.ts`（`BlockComponent`/`BlockEditCtx`/注册表 API：registerBlockComponent/resolveBlockComponent/unregister，含 builtin 兜底）；`src/render/index.ts` 导出。验证：`cd autodown/packages/engine && pnpm test`。
+- [x] P1T1 契约类型：新建 `autodown/packages/engine/src/render/block-component.ts`（`BlockComponent`/`BlockEditCtx`/注册表 API：registerBlockComponent/resolveBlockComponent/unregister，含 builtin 兜底）；`src/render/index.ts` 导出。验证：`cd autodown/packages/engine && pnpm test`。
   [✅ 已完成] block-component.ts 落地：三模式契约 + register/unregister/clear +
   canonicalKind（'code_block'→'CodeBlock' 键归一）+ sfcEditSlot 包装 helper +
   editSlotFor；resolve 恒返回可 view 组件（注册槽覆盖、缺省槽落 builtin
   renderNodes 产物）；index.ts 全量导出。pnpm test 281/281。
-- [ ] P1T2 契约单测：新建 `src/render/__tests__/block-component.test.ts`——三模式解析优先级、未注册回落、导出面冒烟。验证：`npx vitest run src/render/__tests__/block-component.test.ts`。
+- [x] P1T2 契约单测：新建 `src/render/__tests__/block-component.test.ts`——三模式解析优先级、未注册回落、导出面冒烟。验证：`npx vitest run src/render/__tests__/block-component.test.ts`。
   [✅ 已完成] 10/10：未注册回落（view 出 panel DOM、stream/edit undefined）、
   edit-only 注册保留 builtin view（P1T5 形状）、view/stream 注册覆盖、
   canonicalKind 键归一互认、index 导出面冒烟。TDD 先红后绿。
-- [ ] P1T3 EngineEditor 聚焦装配走契约：`EngineEditor.vue` 聚焦分支先查
+- [x] P1T3 EngineEditor 聚焦装配走契约：`EngineEditor.vue` 聚焦分支先查
   `resolveBlockComponent(...)?.edit`，无则回落 BlockHost（`isEditableLeaf`
   不变）。验证：`cd autodown/packages/engine && pnpm test && pnpm build`。
-- [ ] P1T4 CodeEditorBlock 手写原型：新建 `src/editor/components/CodeEditorBlock.vue`（标题栏 + textarea 编辑区 + 失焦
+- [x] P1T4 CodeEditorBlock 手写原型：新建 `src/editor/components/CodeEditorBlock.vue`（标题栏 + textarea 编辑区 + 失焦
   `applyOp` 回写 `node.code`）+ `src/editor/__tests__/code-editor-block.test.ts`（回写断言 + serialize roundtrip + readonly 呈现）。验证：`npx vitest run src/editor/__tests__/code-editor-block.test.ts`。
   [✅ 已完成] 新增 CodeEditorController（无头，整段回写 applyTree 一步撤销——
   逐字符 diff op 会把 "\n" 引入文本 op 内核，代码块语义整段更稳）+ SFC
   （code-block-header DOM 契约标题栏 + 自适应 textarea + readonly 横幅/禁用）。
   测试 8/8：回写/undo/roundtrip/无变化 no-op/块已删/SVC SSR 标题栏+readonly 横幅。
-- [ ] P1T5 装配代码块：在 P1T3 的 edit 槽注册
+- [x] P1T5 装配代码块：在 P1T3 的 edit 槽注册
   `BlockType.CodeBlock → CodeEditorBlock`（`src/editor/index.ts` 或
   EngineEditor 装配处，二选一以不产生循环依赖为准）。验证：`pnpm test` + `pnpm build`。
   [✅ 已完成] 注册在 EngineEditor.vue 的 plain `<script>` 块（script setup 语句
   会编译进 setup()——导入即注册必须用 plain script；BlockInfo 类型导出随之迁入
   plain script 以过双 script 的 vue-tsc）。键为 BlockType 枚举名 'Fence'（即
   代码块类型）。pnpm test 289/289 + build 三断言绿。
-- [ ] P1T6 TableEditorBlock 手写原型：新建 `src/editor/components/TableEditorBlock.vue`（消费
+- [x] P1T6 TableEditorBlock 手写原型：新建 `src/editor/components/TableEditorBlock.vue`（消费
   `src/editor/engine/commands.ts` 表链；单元格沿用 BlockHost 协议）+ 对应
   `src/editor/__tests__/table-editor-block.test.ts`（四向命令 + undo）。验证：`npx vitest run src/editor/__tests__/table-editor-block.test.ts`。
   [✅ 已完成] TableEditorController（addRow/addColumn/deleteRow/deleteColumn
@@ -231,7 +231,7 @@ export interface BlockComponent {
   readonly 横幅）。测试 9/9；EngineEditor plain script 增注册
   Table→TableEditorBlock；全套 298/298 + build 绿。备注：deleteTable 不在
   commands.ts 命令面（验收仅要求行列增删），v1 不做按钮。
-- [ ] P1T7 CodeEditorBlock .at 化：新建 `autodown/packages/engine/auto/editor/code_editor_block.at`；`auto/editor/gen.mjs` DEPLOY_COMPONENTS 与
+- [x] P1T7 CodeEditorBlock .at 化：新建 `autodown/packages/engine/auto/editor/code_editor_block.at`；`auto/editor/gen.mjs` DEPLOY_COMPONENTS 与
   `scripts/assert-editor-gen.mjs` 部署清单各增一行；`pnpm gen:editor` 收割；
   生成物与 P1T4 手写件对拍（DOM 快照 diff）后删手写 SFC，测试改指生成物。验证：`pnpm gen:editor && pnpm gen:editor`（两次逐字节一致）+ `pnpm build`（三断言含新部署物）。
   [✅ 已完成] code_editor_block.at（扁平 chrome props：controller/blockId/
@@ -242,7 +242,7 @@ export interface BlockComponent {
   span、v-model textarea SSR 空内容+mount 回填、attr 顺序）。在档的编译器
   缺口：model var 用 prop 初始化会发射在 defineProps 之前（TDZ）——绕行为
   .Init 回填并在 .at 头注记录。gen 两连跑 md5 一致；test 298/298 + build 绿。
-- [ ] P1T8 TableEditorBlock .at 化：同 P1T7 路径（`table_editor_block.at`）。验证：同 P1T7。
+- [x] P1T8 TableEditorBlock .at 化：同 P1T7 路径（`table_editor_block.at`）。验证：同 P1T7。
   [✅ 已完成] table_editor_block.at（扁平 chrome 数据：controller/blockId/
   readonly/header_cells/body_rows——适配器 tableEditSlot 每次 render 从
   BlockNode 拍平 {id,text,cls}；嵌套 v-for 带行/格 key）+
@@ -250,7 +250,7 @@ export interface BlockComponent {
   同 P1T7 类：span 包裹/attr 顺序）；踩坑在档：.at 视图引用与 prop 声明
   命名必须一致（snake_case），否则 v-for 源 undefined 静默渲染空表。gen
   两连跑 md5 一致（14 部署物/9 桥）；test 298/298 + build 绿。
-- [ ] P1T9 ARCHITECTURE §6 修订：在 `autodown/packages/engine/ARCHITECTURE.md` §6 增补 BlockComponent 三模式契约边界（手写平台层/生成 chrome 层归属、
+- [x] P1T9 ARCHITECTURE §6 修订：在 `autodown/packages/engine/ARCHITECTURE.md` §6 增补 BlockComponent 三模式契约边界（手写平台层/生成 chrome 层归属、
   readonly 裁定、P2 行内 WYSIWYG 缺口显式在册）。验证：文档存在且被 build
   门检不依赖（`pnpm build` 仍绿）。
   [✅ 已完成] §6 新增"BlockComponent 三模式契约（plan 023）"小节：三槽位
@@ -260,7 +260,7 @@ export interface BlockComponent {
 
 ### Phase 2：流式合流（P3）
 
-- [ ] P2T1 StreamingRenderer 接契约：改 `autodown/packages/engine/src/render/StreamingRenderer.vue`——内联 `registry`（table）与
+- [x] P2T1 StreamingRenderer 接契约：改 `autodown/packages/engine/src/render/StreamingRenderer.vue`——内联 `registry`（table）与
   `<details>` 分支改经 `resolveBlockComponent(kind).stream`；markdown 段与
   调度参数不动。验证：`cd autodown/packages/engine && npx vitest run src/render/__tests__/streaming-details.test.ts src/render/__tests__/streaming-highlight.test.ts`。
   [✅ 已完成] stream 槽经 streamSlotOf 解析（json 组件块按 componentType、
@@ -269,14 +269,14 @@ export interface BlockComponent {
   未动。既有 9 测试全绿 + 新增 streaming-component-slot.test.ts 4 例钉死
   路由（含 markdown 段永不解析）。调研在档：组件段仅来自 ```json 围栏
   组件块（streaming 协议），markdown 表不触发。
-- [ ] P2T2 stream→edit 只读门控 v1：`BlockEditCtx.readonly = streaming` 贯通
+- [x] P2T2 stream→edit 只读门控 v1：`BlockEditCtx.readonly = streaming` 贯通
   （EngineEditor 装配层传参 + CodeEditorBlock/TableEditorBlock 只读呈现 +
   横幅）；新增/更新单测钉死语义。验证：`npx vitest run src/editor/__tests__/code-editor-block.test.ts src/editor/__tests__/table-editor-block.test.ts`。
   [✅ 已完成] EngineEditor 增 `streaming?: boolean` prop（缺省 false），装配
   call site 以 `readonly: props.streaming === true` 注入 BlockEditCtx（两编辑
   面适配器透传）；编辑面只读呈现/横幅/disabled 为 P1T4-P1T8 既有产物。新增
   4 例装配级测试钉死（code/table × streaming true/false）。21/21 绿。
-- [ ] P2T3 消费端验证：`cd autodown/demo && npx playwright test`；`cd jade-garden/front && pnpm build`（消费 engine link 不回归）。验证：两者退出码 0。
+- [x] P2T3 消费端验证：`cd autodown/demo && npx playwright test`；`cd jade-garden/front && pnpm build`（消费 engine link 不回归）。验证：两者退出码 0。
   [✅ 已完成] engine dist 重建（14 部署物/9 桥）后 demo e2e 9/9 全绿（含
   scroll-sync:141，其抖动性已在 P1 折叠前单独排查：左右面板 DOM 与
   maxScroll 双边逐字节一致，失败为在册豁免项的点击映射抖动）；jade-garden
@@ -285,7 +285,7 @@ export interface BlockComponent {
 
 ### 收尾
 
-- [ ] P3T1 全量门：engine `pnpm test && pnpm build`、demo e2e、`gen:editor`
+- [x] P3T1 全量门：engine `pnpm test && pnpm build`、demo e2e、`gen:editor`
   确定性两连跑——四门全绿后状态推进 `execution_done`。
   [✅ 已完成] ① engine test 306/306（基线 271 → +35）；② build 三断言绿
   （parser-pure / no-tiptap / editor-gen 14 部署物+9 桥）；③ gen:editor 两连

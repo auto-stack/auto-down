@@ -311,6 +311,27 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > > 绿。slice 3（桌面工程 + 核心流实机探针，merged/split 二路 + {*path}
 > > 通配在 340 改写器的支持面确认）起待启动。
 > >
+> > **进度（2026-08-29 slice 3 完成：核心流实机通 + 桌面工程骨架 + 跨仓
+> > 修复）**：**auto-lang 侧修复 ×1（TDD，已折并推送 auto-lang master
+> > b385e3ab5）**——340 改写器 emit_api_http_call 补 ①`{*param}` 通配
+> > splice（此前 `{*path}` 字面透传必 404、参数被静默丢弃）②GET/DELETE
+> > query 参数发射（此前非路径参数收集进 body 桶后丢弃，`?q=&limit=` 类
+> > 端点自 VM 前台不可达）③路径参数 percent 编码（单段 auto.url.encode
+> > 全量，通配新增 auto.url.encode_path 原生件 id 2013 保留 `/` 分隔符——
+> > 浏览器 fetch 对等，服务端逐段解码可复原）。3 新测先红后绿，musk
+> > brace 回归 + 目录一致性测试全绿。**核心流实机通（AutoUI MCP 驱动，
+> > split 与 merged 双模式同断言全过）**：open-ws → root 回填；files →
+> > GET query 文件列表；read → 带空格标题 `Hello World.ad` 通配回环全文；
+> > save → 回显 + 磁盘落盘验证。纯 merged（无 AUTO_BACKEND）契约 stub
+> > 执行（None，符合设计）。**桌面骨架落盘**：jade-garden/front/desktop/
+> > （pac.at + 核心流 app.at + gen.mjs 生成的契约副本 api.at，门检加副本
+> > 漂移对拍）。api.at POST 体约定改字段级标量（单结构体参数会被改写器
+> > 包成 `{"req":..}` 与 axum Json<Struct> 错位；musk 同款）。**登记项**：
+> > 空 map 字面量经 json.from_value 序列化为 null（编辑器写回路径 slice 4
+> > 处理）；物理合成点击下探针进程偶发静默 exit(1)（MCP 驱动为稳定通道，
+> > 非产品代码路径）。slice 4（编辑器核心流：tabs_store/editor_tab 迁移 +
+> > map 保真）起待启动。
+> >
 - 29 个 widget `.at` 接 ui_gen iced 发射；ext 层 DOM 依赖清单化并逐项
   裁定：clipboard / confirm / showDirectoryPicker / DOM walk（hover 定位、
   scrollToBlock）→ VM 能力或 iced 等价物。

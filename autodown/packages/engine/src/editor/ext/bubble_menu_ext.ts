@@ -30,6 +30,7 @@
 //    does not carry inline-mark commands until the inline-mark extension.
 
 import { defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computeMenuPosition, type TriggerRect } from '../composables/useMenuBounds'
 import {
   Bold,
   Italic,
@@ -111,30 +112,59 @@ const EngineBubbleMenu = defineComponent({
     const visible = ref(false)
     const top = ref('0px')
     const left = ref('0px')
+    const menuEl = ref<HTMLElement | null>(null)
     let unsubscribe: (() => void) | null = null
 
+    // plan 024 P3T2: the live DOM selection is the truth source for a
+    // selection bubble — the engine selection (block-granular baseline,
+    // range-synced by EngineEditor's selectionchange bridge) drives the
+    // shouldShow/isActive semantics, but a collapsed DOM selection always
+    // hides regardless of what the engine still holds.
     const derive = (): void => {
       const engine: EditorEngine | undefined = props.editor?.__engine
       if (!engine) {
         visible.value = false
         return
       }
+      const sel = typeof window === 'undefined' ? null : window.getSelection()
+      const domRange =
+        sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed ? sel.getRangeAt(0) : null
+      if (!domRange) {
+        visible.value = false
+        return
+      }
       const ctx = { editor: props.editor, state: engineStateOf(engine) }
       visible.value = props.shouldShow ? Boolean(props.shouldShow(ctx)) : false
       if (!visible.value) return
-      // v1 positioning: float above the anchor block element (the engine
-      // has no caret-coordinate API; refined with the inline selection
-      // model). placement "top" is the only placement the widget requests.
-      const host = document.querySelector<HTMLElement>(
-        `[data-block-id="${engine.selection.anchor.blockId}"]`
-      )
-      const scope = host?.closest<HTMLElement>('.autodown-editor')
-      if (host && scope) {
-        const hostRect = host.getBoundingClientRect()
-        const scopeRect = scope.getBoundingClientRect()
-        left.value = `${hostRect.left - scopeRect.left}px`
-        top.value = `${Math.max(0, hostRect.top - scopeRect.top)}px`
+      // positioning: float above the selection rect (computeMenuPosition
+      // 'top' placement, the only placement the widget requests).
+      const anchor = (domRange.startContainer.nodeType === 3
+        ? domRange.startContainer.parentElement
+        : (domRange.startContainer as HTMLElement))?.closest<HTMLElement>('.autodown-block-host')
+      const scope = anchor?.closest<HTMLElement>('.autodown-editor')
+      if (!anchor || !scope || !scope.contains(anchor)) {
+        visible.value = false
+        return
       }
+      const rect = domRange.getBoundingClientRect()
+      const scopeRect = scope.getBoundingClientRect()
+      const trigger: TriggerRect = {
+        top: rect.top - scopeRect.top,
+        left: rect.left - scopeRect.left,
+        bottom: rect.bottom - scopeRect.top,
+        right: rect.right - scopeRect.left,
+        width: rect.width,
+        height: rect.height,
+      }
+      const pos = computeMenuPosition(
+        trigger,
+        menuEl.value?.offsetWidth ?? 0,
+        menuEl.value?.offsetHeight ?? 0,
+        { width: scope.clientWidth, height: scope.clientHeight },
+        'top',
+      )
+      left.value = `${pos.left}px`
+      top.value = `${pos.top}px`
     }
 
     const onPointerDown = (e: PointerEvent): void => {
@@ -146,10 +176,10 @@ const EngineBubbleMenu = defineComponent({
       if (e.key === 'Escape' && visible.value) visible.value = false
     }
 
+    const listener = (): void => derive()
     onMounted(() => {
       const engine: EditorEngine | undefined = props.editor?.__engine
       if (engine) {
-        const listener = (): void => derive()
         engine.onChange(listener)
         unsubscribe = () => {
           // EditorEngine has no off(); listeners live for the editor's
@@ -158,19 +188,29 @@ const EngineBubbleMenu = defineComponent({
       }
       document.addEventListener('pointerdown', onPointerDown)
       document.addEventListener('keydown', onKeydown)
+      document.addEventListener('selectionchange', listener)
       derive()
     })
     onBeforeUnmount(() => {
       unsubscribe?.()
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeydown)
+      document.removeEventListener('selectionchange', listener)
     })
 
     return () =>
       visible.value
         ? h(
             'div',
-            { class: 'autodown-bubble-menu', style: { position: 'absolute', top: top.value, left: left.value } },
+            {
+              ref: menuEl,
+              class: 'autodown-bubble-menu',
+              style: { position: 'absolute', top: top.value, left: left.value },
+              // plan 024 P3T2: preventDefault keeps the contenteditable
+              // host focused (and its selection alive) through button
+              // clicks — the mark chains wrap the live host DOM.
+              onMousedown: (e: MouseEvent) => e.preventDefault(),
+            },
             slots.default?.()
           )
         : null

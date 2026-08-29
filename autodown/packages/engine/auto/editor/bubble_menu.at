@@ -45,7 +45,6 @@ widget BubbleMenu(editor: Array<str>, linkPrompt: str = "Enter URL", tooltips: A
         buttons => [
             { name: "bold", title: .tooltips && .tooltips.bold || "Bold", icon: bubbleIcon("bold"), active: .editor.isActive("bold"), action: () => .editor.chain().focus().toggleBold().run() },
             { name: "italic", title: .tooltips && .tooltips.italic || "Italic", icon: bubbleIcon("italic"), active: .editor.isActive("italic"), action: () => .editor.chain().focus().toggleItalic().run() },
-            { name: "underline", title: .tooltips && .tooltips.underline || "Underline", icon: bubbleIcon("underline"), active: .editor.isActive("underline"), action: () => .editor.chain().focus().toggleUnderline().run() },
             { name: "strike", title: .tooltips && .tooltips.strike || "Strikethrough", icon: bubbleIcon("strike"), active: .editor.isActive("strike"), action: () => .editor.chain().focus().toggleStrike().run() },
             { name: "code", title: .tooltips && .tooltips.code || "Inline Code", icon: bubbleIcon("code"), active: .editor.isActive("code"), action: () => .editor.chain().focus().toggleCode().run() },
             { name: "link", title: .tooltips && .tooltips.link || "Link", icon: bubbleIcon("link"), active: .editor.isActive("link"), action: () => runBubbleLink(.editor, .linkPrompt) }

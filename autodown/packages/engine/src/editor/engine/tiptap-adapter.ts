@@ -29,6 +29,7 @@ import {
 } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 
+import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
 import { marksInRange } from './commands'
 import { domSetLink, domToggleMark } from './dom-marks'
@@ -93,10 +94,18 @@ export interface EditorAdapter {
 }
 
 export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
+  // Reactive tick read inside isActive: consumers that evaluate isActive in
+  // a Vue computed (the bubble's buttons) re-evaluate on every engine change
+  // — the engine itself is not Vue-reactive (plan 024 P3T2).
+  const selectionTick = ref(0)
+  engine.onChange(() => {
+    selectionTick.value++
+  })
   const adapter: EditorAdapter = {
     storage: { 'slash-command': { query: '', range: null, handled: false } },
     isEditable: true,
     isActive: (name: string) => {
+      void selectionTick.value
       const m = MARK_BY_NAME[name]
       if (m == null) return false
       return hasMark(marksInRange(engine, engine.selection), m)

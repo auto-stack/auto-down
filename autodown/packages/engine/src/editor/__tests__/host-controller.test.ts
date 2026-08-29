@@ -4,17 +4,26 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  Attr,
   BlockNode,
   BlockType,
+  Mark,
+  Value,
+  attrGetStr,
   block,
   blockText,
   collapsedSel,
   findBlock,
   leafBlock,
+  span,
+  spanWith,
   withChildren,
+  withInlines,
 } from '../../parser/block-model'
+import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import { richTreeToSpans } from '../engine/rich-html'
 
 function doc(...kids: BlockNode[]): BlockNode {
   return withChildren(block('doc', BlockType.Paragraph), kids)
@@ -74,5 +83,67 @@ describe('isEditableLeaf', () => {
     expect(isEditableLeaf(leafBlock('p', BlockType.Paragraph, 'x'))).toBe(true)
     expect(isEditableLeaf(leafBlock('h', BlockType.ThematicBreak, ''))).toBe(false)
     expect(isEditableLeaf(withChildren(block('q', BlockType.Blockquote), [leafBlock('i', BlockType.Paragraph, '')]))).toBe(false)
+  })
+})
+
+// -- rich blur writeback (plan 024 P2T2) ---------------------------------------
+
+describe('richTreeToSpans (DOM walk, injected node description)', () => {
+  it('collects nested marks with the text runs and merges neighbors', () => {
+    const tree = { tag: 'div', children: [
+      { text: 'a' },
+      { tag: 'strong', children: [{ text: 'b' }, { text: 'c' }] },
+      { tag: 'em', children: [{ tag: 'strong', children: [{ text: 'd' }] }] },
+    ] }
+    const spans = richTreeToSpans(tree)
+    expect(spans.map((s) => s.text)).toEqual(['a', 'bc', 'd'])
+    expect(spans[1].marks).toContain(Mark.Strong)
+    expect(spans[2].marks).toEqual(expect.arrayContaining([Mark.Em, Mark.Strong]))
+  })
+
+  it('reads link href/title attrs into the span attrs', () => {
+    const tree = { tag: 'div', children: [
+      { tag: 'a', attrs: { href: 'https://x', title: 't' }, children: [{ text: 'go' }] },
+    ] }
+    const spans = richTreeToSpans(tree)
+    expect(spans[0].marks).toContain(Mark.Link)
+    expect(attrGetStr(spans[0].attrs, 'href', '')).toBe('https://x')
+    expect(attrGetStr(spans[0].attrs, 'title', '')).toBe('t')
+  })
+
+  it('ignores structure-only elements (br) and drops empty runs', () => {
+    const tree = { tag: 'div', children: [{ tag: 'br', children: [] }, { text: '' }, { text: 'x' }] }
+    const spans = richTreeToSpans(tree)
+    expect(spans).toHaveLength(1)
+    expect(spans[0].text).toBe('x')
+  })
+})
+
+describe('BlockHostController rich blur commit', () => {
+  it('commitRichSpans rewrites the whole block as one undo step', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'abc')), collapsedSel('p1', 0))
+    const c = new BlockHostController(e, 'p1')
+    const changed = c.commitRichSpans([span('a'), spanWith('b', [Mark.Strong], []), span('c')])
+    expect(changed).toBe(true)
+    expect(serialize(e.doc, false)).toContain('a**b**c')
+    expect(c.text).toBe('abc')
+    e.undo()
+    expect(serialize(e.doc, false)).toBe('abc\n')
+    expect(e.canUndo).toBe(false)
+  })
+
+  it('commitRichSpans is a no-op when nothing changed', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'ab')), collapsedSel('p1', 0))
+    const c = new BlockHostController(e, 'p1')
+    expect(c.commitRichSpans([span('ab')])).toBe(false)
+    expect(e.canUndo).toBe(false)
+  })
+
+  it('skips blocks carrying Image marks (v1: no data-loss rewrite)', () => {
+    const img = spanWith('alt', [Mark.Image], [new Attr('src', Value.Str('s.png'))])
+    const e = new EditorEngine(withInlines(leafBlock('p1', BlockType.Paragraph, ''), [img]), collapsedSel('p1', 0))
+    const c = new BlockHostController(e, 'p1')
+    expect(c.commitRichSpans([span('alt')])).toBe(false)
+    expect(findBlock(e.doc, 'p1')!.inlines[0].marks).toContain(Mark.Image)
   })
 })

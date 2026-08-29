@@ -12,6 +12,7 @@
     @compositionupdate="onCompositionUpdate"
     @compositionend="onCompositionEnd"
     @paste="onPaste"
+    @blur="onBlur"
   v-html="initialHtml"></div>
 </template>
 
@@ -91,6 +92,17 @@ function onCompositionUpdate(e: CompositionEvent): void {
 
 function onCompositionEnd(e: CompositionEvent): void {
   props.controller.compositionCommit(el.value?.textContent ?? '')
+}
+
+/** Focus leave: flush any pending plain-text diff first (the normal input
+ *  path already committed each keystroke), then walk the rich structure back
+ *  into the model as one undo step (plan 024 P2T2). */
+function onBlur(): void {
+  const node = el.value
+  if (!node) return
+  const text = node.textContent ?? ''
+  if (text !== props.controller.text) props.controller.onInput(text)
+  props.controller.onRichBlur(node)
 }
 
 function caretOffset(): number {

@@ -12,17 +12,22 @@
     @compositionupdate="onCompositionUpdate"
     @compositionend="onCompositionEnd"
     @paste="onPaste"
-  >{{ initialText }}</div>
+  v-html="initialHtml"></div>
 </template>
 
 <script setup lang="ts">
-// BlockHost (plan 018 Phase 2) — the per-leaf-block contenteditable shell.
-// All logic lives in BlockHostController (headless); this file only wires
-// DOM events. While focused, the host owns its DOM text (model updates flow
-// host → model); the engine repaint happens on focus leave / history only.
+// BlockHost (plan 018 Phase 2; rich host 024 P2T1) — the per-leaf-block
+// contenteditable shell. All logic lives in BlockHostController (headless);
+// this file only wires DOM events. While focused, the host owns its DOM text
+// (model updates flow host → model); the engine repaint happens on focus
+// leave / history only. The mount render is RICH: spans become inline
+// elements (spansToHtml, evaluated once — the engine is not Vue-reactive,
+// so the computed never invalidates under the user's caret). The blur
+// writeback (controller.onRichBlur) collects the structure back.
 import { computed, onMounted, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
+import { spansToHtml } from '../engine/rich-html'
 
 const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
 
@@ -41,7 +46,7 @@ onMounted(() => {
   sel?.removeAllRanges()
   sel?.addRange(range)
 })
-const initialText = computed(() => props.controller.text)
+const initialHtml = computed(() => spansToHtml(props.controller.inlines))
 
 function onInput(): void {
   const text = el.value?.textContent ?? ''

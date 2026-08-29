@@ -13,6 +13,7 @@ import {
   BlockNode,
   BlockPos,
   BlockType,
+  InlineSpan,
   MergeBlocksOp,
   Op,
   SplitBlockOp,
@@ -45,6 +46,12 @@ export class BlockHostController {
 
   get text(): string {
     return this.knownText
+  }
+
+  /** The block's inline spans (rich host mount render — plan 024 P2T1). */
+  get inlines(): InlineSpan[] {
+    const found = findBlock(this.engine.doc, this.blockId)
+    return found ? found.inlines : []
   }
 
   /** The host was (re)rendered from the engine — re-sync the known text

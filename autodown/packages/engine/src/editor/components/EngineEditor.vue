@@ -27,8 +27,10 @@
 // pipeline.
 import { registerBlockComponent, sfcEditSlot } from '../../render/block-component'
 import CodeEditorBlock from './CodeEditorBlock.vue'
+import TableEditorBlock from './TableEditorBlock.vue'
 
 registerBlockComponent('Fence', { edit: sfcEditSlot(CodeEditorBlock) })
+registerBlockComponent('Table', { edit: sfcEditSlot(TableEditorBlock) })
 
 // frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
 // script block: with dual scripts, type exports must live here, and the

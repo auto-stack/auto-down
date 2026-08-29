@@ -33,6 +33,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
 import { blockNodesToWNodes } from '../../render/block-wnode'
+import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
@@ -101,6 +102,24 @@ const views = computed<BlockView[]>(() => {
   let previewIdx = 0
   return engine.doc.children.map((node) => {
     const focused = node.id === focusedId
+    // Focused assembly through the BlockComponent contract (plan 023 P1T3):
+    // a registered edit slot wins (CodeEditorBlock / TableEditorBlock); the
+    // BlockHost text fallback covers every kind without one. The edit face
+    // commits on blur (host protocol), so the per-repaint vnode rebuild never
+    // yanks focus mid-typing.
+    if (focused) {
+      const edit = editSlotFor(BlockType[node.kind])
+      if (edit) {
+        return {
+          id: node.id,
+          view: {
+            render: () =>
+              edit(node, { engine, blockId: node.id, readonly: false }),
+          },
+          props: {},
+        }
+      }
+    }
     if (focused && isEditableLeaf(node)) {
       const controller = hostFor(node.id)
       return {

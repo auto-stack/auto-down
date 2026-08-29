@@ -19,7 +19,8 @@ touched_goals:
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 1-3 复审通过 2026-08-29；Phase 4/5 待启动）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 1-3 复审通过 2026-08-29；Phase 4 执行中——slice 1
+> 成熟度确认+裁定完成，widget 迁移待后续 slice；Phase 5 待启动）**。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -269,10 +270,54 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 
 ### Phase 4 — UI 双渲染（iced）
 
+> **进度（2026-08-29 slice 1 完成：成熟度确认 + ext 清单裁定 + 渲染探针）**：
+> 产物落 `jade-garden/front/desktop/README.md`（worktree plan-022）。要点：
+> **① ui_gen iced 后端成熟度确认达成**（Phase 4 声明依赖销号）——iced 渲染
+> 器 + VM 渲染模式（`auto run -r vm`）解释 widget DSL（Tailwind class 经
+> Style::parse 含任意值类）、store 在 VM 内运行（442 store_facade）、web 全
+> 局桥（442 webcompat localStorage/encodeURIComponent）、markdown 块编辑
+> （446 autodown-editor，消费本仓 engine a2r 产物）、桌面壳（462-472 虚拟
+> 窗口/dock/MCP 实机验收）、api 通道（340 `#[api]` 属性 → api_over_http
+> 改写）；ui:: 测试 565/565。**② 实机探针**（tmp/iced-probe）：`use store:`
+> + for/if + Tailwind 全正确渲染，指针事件 msg→handler→store→重渲染管线
+> 打通（实测窗口态 store-ready/ready → picked:a/a）。**③ ext 层 37 文件
+> 机扫清单 + 逐项裁定**：regex×37 → 纯逻辑下沉 .at（engine/Phase 2 先例）；
+> localStorage×3 零改动（VM 已桥）；clipboard×1 → VM 原生 arboard（411
+> 先例）；confirm×4 → iced 模态（迁移期默认确认+登记偏差）；dir-picker×1
+> → 宿主能力需求（rfd，Phase 5 收口，widget 自带降级）；dom-walk×11 →
+> hover=widget bounds+popover / 滚动=scroll_to 操作+msg 直派（CustomEvent
+> 总线退役）/ 主题=AUTO_UI_THEME env；timers×2 → 大半失去必要性；ext 直接
+> fetch=0（API 全走 `use back.api:` DSL 通道）。**④ cytoscape 裁定**：iced
+> v1=列表/树状图谱视图（数据面全量可达：/api/graph+backlinks/outlines 数
+> 据、节点可点跳转），力导向画布不在 Phase 4 交付；webview 子区（Tauri
+> 路线）与自研 canvas 登记为 Phase 5 后备选。**⑤ 已识别缺口（登记）**：
+> jade 契约 `// ROUTE:` 注释与 340 所需 `#[api]` 属性并存待增补（slice 2）；
+> jade widget `use {…from "….ts"}` ext 通道 VM 不可达——纯逻辑下沉 .at、
+> 平台能力走 VM 原生/宿主桥（slice 3 起）。**⑥ 视觉基线策略**：Tailwind
+> class 即视觉契约，双端以「结构+主题+可用」对拍，不做跨引擎像素级对齐。
+> > **slice 排布见 desktop/README §5。**
+> >
+> > **进度（2026-08-29 slice 2 完成：契约 #[api] fn 层 + 双登记门检）**：
+> > jade 契约补齐 VM 侧调用元数据——25 个 `#[api(method,path)]` stub fn
+> > （28 路由 − assets/upload、export/import markdown 三项 multipart/二
+> > 进制豁免，与 Phase 3 D4 登记偏差对齐；auto-musk 同款声明形态，axum
+> > 风格 {title}/{*path} 路径）；BacklinkList/OutlinkList 信封类型具体化
+> > （原注释级 wire 形状升为类型）。gen.mjs K1 后修：a2ts 会把 stub 体发
+> > 射为 TS 函数（实测 25 个 `export function`），顶层块剥离——TS 客户端
+> > 面仍归手写 fetch 层独占（Phase 1 设计不变）。门检扩展：ROUTE ↔
+> > #[api] 双登记对拍 + VM_ENVELOPE_EXEMPT 显式豁免清单（豁免路由带 fn
+> > 即败），28/28 路由 + 25 fn 一致性绿。再生验证：七 parity 模块
+> > *_gen.{ts,rs} 逐字节不变（发射器确定性佐证）；vue-tsc + vite build
+> > 绿。slice 3（桌面工程 + 核心流实机探针，merged/split 二路 + {*path}
+> > 通配在 340 改写器的支持面确认）起待启动。
+> >
 - 29 个 widget `.at` 接 ui_gen iced 发射；ext 层 DOM 依赖清单化并逐项
   裁定：clipboard / confirm / showDirectoryPicker / DOM walk（hover 定位、
   scrollToBlock）→ VM 能力或 iced 等价物。
+  **[✅ 已完成（清单化+裁定+成熟度确认+探针，2026-08-29 slice 1）；widget
+  批量迁移本身归 slice 3-5 逐批验收]**
 - 图谱视图（cytoscape）裁定项：iced 下换渲染后端或保留 webview 子区。
+  **[✅ 已裁定（iced v1=列表/树状图谱视图，画布后置；2026-08-29 slice 1）]**
 - 验收：核心流（打开工作区/编辑/保存/反链/图谱/闪卡）iced 下可用；
   双端视觉基线建立。
 

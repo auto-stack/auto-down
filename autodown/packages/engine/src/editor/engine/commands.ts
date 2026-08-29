@@ -9,6 +9,8 @@ import {
   BlockNode,
   BlockType,
   BlockPos,
+  InlineSpan,
+  Mark,
   Selection,
   anchorOf,
   attrSet,
@@ -20,7 +22,9 @@ import {
   replaceNode,
   retargetAnchor,
   withChildren,
+  withInlines,
 } from '../../parser/block-model'
+import { marksAtRange, setLinkOnSpans, toggleMarkOnSpans } from './marks'
 import type { EditorEngine } from './editor-engine'
 
 // -- command layer (jade-garden migration surface) --------------------------------
@@ -118,6 +122,37 @@ export function setBlockAttrs(engine: EditorEngine, id: string, attrs: Attr[]): 
     for (const a of attrs) next = { ...next, attrs: attrSet(next.attrs, a.key, a.value) }
     return replaceNode(tree, id, [next])
   })
+}
+
+// -- mark commands (plan 024 Phase 0): spans resplit + whole-block withInlines
+//    writeback through applyTree — ONE undo step each, same protocol as the
+//    table ops above (the op kernel has no mark op by v1 ruling).
+
+function applyMarkTree(tree: BlockNode, blockId: string, resplit: (spans: InlineSpan[]) => InlineSpan[]): BlockNode {
+  const found = findBlock(tree, blockId)
+  if (!found) return tree
+  return replaceNode(tree, blockId, [withInlines(found, resplit(found.inlines))])
+}
+
+/** Toggle a mark over [lo, hi) of the block's inline text. One undo step. */
+export function toggleMark(engine: EditorEngine, blockId: string, lo: number, hi: number, mark: Mark): void {
+  engine.applyTree((tree) => applyMarkTree(tree, blockId, (spans) => toggleMarkOnSpans(spans, lo, hi, mark)))
+}
+
+/** Link [lo, hi) to href (replacing any previous href). One undo step. */
+export function setLink(engine: EditorEngine, blockId: string, lo: number, hi: number, href: string): void {
+  engine.applyTree((tree) => applyMarkTree(tree, blockId, (spans) => setLinkOnSpans(spans, lo, hi, href)))
+}
+
+/** Marks active over the engine selection — the adapter isActive source.
+ *  Cross-block selections collapse to the anchor position (v1: single-block). */
+export function marksInRange(engine: EditorEngine, sel: Selection): Mark[] {
+  const found = findBlock(engine.doc, sel.anchor.blockId)
+  if (!found) return []
+  if (sel.anchor.blockId !== sel.head.blockId) return marksAtRange(found.inlines, sel.anchor.offset, sel.anchor.offset)
+  const lo = Math.min(sel.anchor.offset, sel.head.offset)
+  const hi = Math.max(sel.anchor.offset, sel.head.offset)
+  return marksAtRange(found.inlines, lo, hi)
 }
 
 // -- on-demand block anchoring (Obsidian-compatible lazy ^ids) -----------------

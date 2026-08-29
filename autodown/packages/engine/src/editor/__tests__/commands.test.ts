@@ -5,23 +5,33 @@ import { describe, expect, it } from 'vitest'
 import {
   BlockNode,
   BlockType,
+  Mark,
+  Selection,
   block,
   blockText,
   collapsedSel,
   findBlock,
   leafBlock,
+  markedSpan,
+  pos,
+  span,
   withChildren,
+  withInlines,
 } from '../../parser/block-model'
+import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
 import {
   focusBlock,
   insertTemplate,
+  marksInRange,
   moveBlock,
   setBlockAttrs,
+  setLink,
   tableAddColumn,
   tableAddRow,
   tableDeleteColumn,
   tableDeleteRow,
+  toggleMark,
 } from '../engine/commands'
 import { Value } from '../../parser/block-model'
 
@@ -127,5 +137,47 @@ describe('moveBlock / setBlockAttrs', () => {
     expect(found.attrs.some((a: any) => a.key === 'level')).toBe(true)
     e.undo()
     expect((findBlock(e.doc, 'h1') as any).attrs.some((a: any) => a.key === 'level')).toBe(false)
+  })
+})
+
+// -- mark commands (plan 024 Phase 0): one undo step, serialize roundtrip ------
+
+describe('mark commands', () => {
+  it('toggleMark bolds the range, serializes **b**, and undoes in one step', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'abc')), collapsedSel('p1', 0))
+    toggleMark(e, 'p1', 0, 1, Mark.Strong)
+    expect(serialize(e.doc, false)).toContain('**a**bc')
+    expect(marksInRange(e, collapsedSel('p1', 0))).toContain(Mark.Strong)
+    const rangeSel = new Selection(pos('p1', 0), pos('p1', 1))
+    expect(marksInRange(e, rangeSel)).toContain(Mark.Strong)
+    e.undo()
+    expect(serialize(e.doc, false)).toBe('abc\n')
+    expect(e.canUndo).toBe(false)
+  })
+
+  it('toggleMark twice returns to the plain single-span shape', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'ab')), collapsedSel('p1', 0))
+    toggleMark(e, 'p1', 0, 2, Mark.Strong)
+    toggleMark(e, 'p1', 0, 2, Mark.Strong)
+    const found = findBlock(e.doc, 'p1')!
+    expect(found.inlines).toHaveLength(1)
+    expect(found.inlines[0].marks).toHaveLength(0)
+  })
+
+  it('setLink writes the href attr and serializes [text](href)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'ab')), collapsedSel('p1', 0))
+    setLink(e, 'p1', 0, 2, 'https://example.com')
+    expect(serialize(e.doc, false)).toContain('[ab](https://example.com)')
+    e.undo()
+    expect(serialize(e.doc, false)).toBe('ab\n')
+  })
+
+  it('marksInRange intersects over the covered spans of the selection', () => {
+    const spans = [markedSpan('ab', [Mark.Em]), span('cd')]
+    const e = new EditorEngine(withInlines(leafBlock('p1', BlockType.Paragraph, ''), spans), collapsedSel('p1', 0))
+    const half = new Selection(pos('p1', 0), pos('p1', 2))
+    expect(marksInRange(e, half)).toContain(Mark.Em)
+    const full = new Selection(pos('p1', 0), pos('p1', 4))
+    expect(marksInRange(e, full)).toEqual([])
   })
 })

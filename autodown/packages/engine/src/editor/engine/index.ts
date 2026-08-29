@@ -22,4 +22,8 @@ export {
   tableAddColumnTree,
   ensureBlockAnchor,
   generateAnchorId,
+  toggleMark,
+  setLink,
+  marksInRange,
 } from './commands'
+export { toggleMarkOnSpans, setLinkOnSpans, marksAtRange, normalizeSpans } from './marks'

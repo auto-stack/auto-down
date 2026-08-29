@@ -13,6 +13,12 @@
         :fade="false"
         :code-block-props="codeBlockProps"
       />
+      <!-- registered BlockComponent stream slots win (plan 023 P2T1); the
+           builtin branches below are the unregistered fallbacks -->
+      <component
+        v-else-if="streamSlotOf(part)"
+        :is="() => streamSlotOf(part)!(slotNodeOf(part), slotFinalOf(part))"
+      />
       <details
         v-else-if="part.kind === 'details'"
         class="autodown-details"
@@ -50,6 +56,8 @@ import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
 import StreamingTable from './StreamingTable.vue'
+import { resolveBlockComponent } from './block-component'
+import type { VNode } from 'vue'
 
 const lowlight = createLowlight(common)
 
@@ -138,6 +146,27 @@ const codeBlockProps = {
 const registry: Record<string, any> = {
   table: StreamingTable,
   // Future: chart: StreamingChart, form: StreamingForm, ...
+}
+
+// -- BlockComponent contract routing (plan 023 P2T1) -------------------------
+// A registered stream slot overrides the builtin streaming path for its
+// kind — the SAME registry the editor assembly resolves edit faces through.
+// The slot receives the segment payload in its render-model shape (component
+// props, or the details part itself) plus the `final` flag the builtin path
+// would have used. Unregistered kinds keep the builtin branches (native
+// <details>, StreamingTable registry, markdown segments).
+
+function streamSlotOf(part: Part): ((node: any, final: boolean) => VNode) | undefined {
+  const kind = part.kind === 'component' ? part.componentType : part.kind === 'details' ? 'details' : ''
+  return kind ? resolveBlockComponent(kind).stream : undefined
+}
+
+function slotNodeOf(part: Part): any {
+  return part.kind === 'component' ? part.props : part
+}
+
+function slotFinalOf(part: Part): boolean {
+  return part.kind === 'component' ? part.final : !props.streaming
 }
 
 const containerRef = ref<HTMLElement | null>(null)

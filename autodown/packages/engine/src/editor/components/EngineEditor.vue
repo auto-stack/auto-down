@@ -118,6 +118,10 @@ const props = defineProps<{
   modelValue?: string
   placeholder?: string
   extraSlashItems?: unknown[]
+  /** stream→edit v1 gate (plan 023 P2T2): while true the focused editing
+   *  faces render read-only (banner + disabled) via BlockEditCtx.readonly;
+   *  the stream landing flips it back and the faces unlock. */
+  streaming?: boolean
 }>()
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
@@ -185,7 +189,7 @@ const views = computed<BlockView[]>(() => {
           id: node.id,
           view: {
             render: () =>
-              edit(node, { engine, blockId: node.id, readonly: false }),
+              edit(node, { engine, blockId: node.id, readonly: props.streaming === true }),
           },
           props: {},
         }

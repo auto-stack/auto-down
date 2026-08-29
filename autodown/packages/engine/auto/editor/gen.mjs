@@ -90,9 +90,10 @@ if (!autoExe) {
 const widgets = readdirSync(here)
   .filter((f) => f.endsWith('.at') && f !== 'pac.at')
   .sort()
-// 14 plan-013-era widgets + code_editor_block.at (plan 023 P1T7).
-if (widgets.length !== 15) {
-  console.error(`expected 15 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// 14 plan-013-era widgets + code_editor_block.at (P1T7) and
+// table_editor_block.at (P1T8), both plan 023.
+if (widgets.length !== 16) {
+  console.error(`expected 16 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -170,8 +171,9 @@ const EXT_DEPLOY = [
   'code_block_menu_ext.ts',
   'bubble_menu_ext.ts',
   'node_view_ext.ts',
-  // plan 023 P1T7 — CodeEditorBlock's DOM helpers (focus/resize).
+  // plan 023 P1T7/P1T8 — the editing faces' DOM helpers.
   'code_editor_block_ext.ts',
+  'table_editor_block_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -206,6 +208,8 @@ const DEPLOY_COMPONENTS = {
   // product). Deployed LIVE: EngineEditor's plain-script registration mounts
   // it through the BlockComponent edit slot.
   'CodeEditorBlock.vue': 'components/CodeEditorBlock.vue',
+  // plan 023 P1T8 — the table's typed editing face (same path as P1T7).
+  'TableEditorBlock.vue': 'components/TableEditorBlock.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

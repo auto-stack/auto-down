@@ -114,12 +114,29 @@ describe('TableEditorController — cell text commit (BlockHost protocol)', () =
   })
 })
 
-describe('TableEditorBlock.vue SSR contract', () => {
+describe('TableEditorBlock.vue SSR contract (generated product, P1T8)', () => {
+  // Since P1T8 the component at components/TableEditorBlock.vue is the
+  // .at-generated widget: flat chrome props (controller + pre-flattened
+  // cell objects), built from the BlockNode by the EngineEditor adapter.
+  // Command/cell-commit semantics are pinned by the controller tests above.
   async function ssr(readonly: boolean): Promise<string> {
-    const { engine, tableId } = tableDoc()
-    const node = findBlock(engine.doc, tableId)!
     const app = createSSRApp({
-      render: () => h(TableEditorBlock as any, { node, ctx: { engine, blockId: tableId, readonly } }),
+      render: () =>
+        h(TableEditorBlock as any, {
+          controller: { addRow() {}, deleteRow() {}, addColumn() {}, deleteColumn() {} },
+          blockId: 't-gen',
+          readonly,
+          header_cells: [
+            { id: 'h0', text: 'A', cls: 'text-left' },
+            { id: 'h1', text: 'B', cls: 'text-left' },
+          ],
+          body_rows: [
+            { id: 'r0', cells: [
+              { id: 'r0c0', text: '1', cls: 'text-left' },
+              { id: 'r0c1', text: '2', cls: 'text-left' },
+            ] },
+          ],
+        }),
     })
     return renderToString(app)
   }

@@ -30,6 +30,7 @@ import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import type { BlockEditCtx } from '../../render/block-component'
 import { CodeEditorController } from '../engine/code-editor-controller'
+import { TableEditorController } from '../engine/table-editor-controller'
 import CodeEditorBlock from './CodeEditorBlock.vue'
 import TableEditorBlock from './TableEditorBlock.vue'
 
@@ -46,11 +47,33 @@ function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
 }
 
 registerBlockComponent('Fence', { edit: fenceEditSlot })
-// TableEditorBlock is still the hand-written SFC (P1T8 .at-izes it); it
-// takes the node/ctx pair directly.
-registerBlockComponent('Table', {
-  edit: (node: BlockNode, ctx: BlockEditCtx) => h(TableEditorBlock, { node, ctx }),
-})
+// TableEditorBlock is the generated widget (.at source, P1T8): flat chrome
+// data — the adapter flattens the table's BlockNode into plain cell objects
+// ({id, text, cls}) on every render; commands/cell-commit semantics stay on
+// the TableEditorController.
+function tableEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  const cellData = (c: BlockNode) => ({
+    id: c.id,
+    text: blockText(c),
+    cls: alignClass(attrGetStr(c.attrs, 'align', 'left')),
+  })
+  const rows = node.children
+  return h(TableEditorBlock, {
+    controller: new TableEditorController(ctx.engine, ctx.blockId),
+    blockId: ctx.blockId,
+    readonly: ctx.readonly,
+    header_cells: (rows[0]?.children ?? []).map(cellData),
+    body_rows: rows.slice(1).map((row) => ({ id: row.id, cells: row.children.map(cellData) })),
+  })
+}
+
+function alignClass(align: string): string {
+  if (align === 'center') return 'text-center'
+  if (align === 'right') return 'text-right'
+  return 'text-left'
+}
+
+registerBlockComponent('Table', { edit: tableEditSlot })
 
 // frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
 // script block: with dual scripts, type exports must live here, and the

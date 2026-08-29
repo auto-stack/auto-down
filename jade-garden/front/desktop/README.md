@@ -93,13 +93,18 @@ ext）。每文件命中类别（脚本判定，同文件可多类别）：
 
 ## 5. slice 排布（Phase 4 剩余）
 
-1. ✅ slice 1（本次）：成熟度确认 + 清单 + 裁定 + 渲染探针。
-2. slice 2：契约 `#[api]` 属性增补（28 路由）+ 门检脚本扩展
-   （ROUTE ↔ #[api] 双登记一致性）；核心流探针：workspace.open →
-   files → readWiki → writeWiki 经 VM 通道实机通。
-3. slice 3：桌面 app 骨架（本目录 pac.at + app_shell 组装）+ 无 DOM
-   依赖 widget 首批迁移（status_bar / ribbon / left_sidebar / file_tree
-   纯逻辑下沉）。
+1. ✅ slice 1（2026-08-29）：成熟度确认 + 清单 + 裁定 + 渲染探针。
+2. ✅ slice 2（2026-08-29）：契约 `#[api]` fn 层落地——25 个 stub fn
+   （28 路由 − 3 个 multipart/二进制豁免，对齐 Phase 3 D4）+ BacklinkList/
+   OutlinkList 信封类型具体化；gen.mjs K1 后修剥离 TS 发射中的 fn 块
+   （实测 a2ts 发射 25 个 `export function` 全部命中剥离）；门检扩展双
+   登记对拍（ROUTE ↔ #[api]，豁免显式清单）28/28 + 25 fn 绿；再生后七
+   个 parity 模块逐字节不变（发射器确定性佐证）；vue-tsc + vite build 绿。
+3. slice 3：桌面 app 工程（本目录 pac.at + app）+ 核心流探针实机通
+   （workspace.open → files → readWiki → writeWiki 经 VM 通道；merged
+   模式进程内 / split 模式 loopback HTTP 二路探明，`{*path}` 通配参数
+   在 340 改写器的支持面就地确认，缺口提 auto-lang 侧）+ 无 DOM 依赖
+   widget 首批（status_bar / ribbon 纯逻辑下沉）。
 4. slice 4：编辑器核心流（tabs_store + editor_tab，hover/scroll 映射）
    + 闪卡（flashcard_modal）；随后 backlinks/outlinks/outline/search。
 5. slice 5：图谱列表视图 + 主题/设置；双端视觉基线截图归档。

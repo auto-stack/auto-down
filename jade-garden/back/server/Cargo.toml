@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = { version = "0.8.9", features = ["multipart"] }
+auto-lang = { path = "D:/autostack/auto-lang/crates/auto-lang" }
 chrono = "0.4.45"
 lazy_static = "1.5.0"
 notify = "8.2.0"

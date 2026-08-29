@@ -51,12 +51,10 @@ pub struct GraphData {
     pub edges: Vec<GraphEdge>,
 }
 
-pub async fn get_outlinks(
-    State(state): State<Arc<AppState>>,
-    Path(title): Path<String>,
-) -> Json<LinksResponse<Outlink>> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn outlinks_impl(state: &AppState, title: &str) -> LinksResponse<Outlink> {
     let links = state
-        .with_index(|idx| idx.outlinks(&title).unwrap_or_default())
+        .with_index(|idx| idx.outlinks(title).unwrap_or_default())
         .unwrap_or_default();
 
     let outlinks: Vec<Outlink> = links
@@ -72,15 +70,20 @@ pub async fn get_outlinks(
         })
         .collect();
 
-    Json(LinksResponse { title, links: outlinks })
+    LinksResponse { title: title.to_string(), links: outlinks }
 }
 
-pub async fn get_backlinks(
+pub async fn get_outlinks(
     State(state): State<Arc<AppState>>,
     Path(title): Path<String>,
-) -> Json<LinksResponse<Backlink>> {
+) -> Json<LinksResponse<Outlink>> {
+    Json(outlinks_impl(&state, &title))
+}
+
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn backlinks_impl(state: &AppState, title: &str) -> LinksResponse<Backlink> {
     let links = state
-        .with_index(|idx| idx.backlinks(&title).unwrap_or_default())
+        .with_index(|idx| idx.backlinks(title).unwrap_or_default())
         .unwrap_or_default();
 
     let backlinks: Vec<Backlink> = links
@@ -92,12 +95,18 @@ pub async fn get_backlinks(
         })
         .collect();
 
-    Json(LinksResponse { title, links: backlinks })
+    LinksResponse { title: title.to_string(), links: backlinks }
 }
 
-pub async fn get_graph(
+pub async fn get_backlinks(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<GraphData>, crate::error::ApiError> {
+    Path(title): Path<String>,
+) -> Json<LinksResponse<Backlink>> {
+    Json(backlinks_impl(&state, &title))
+}
+
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn graph_impl(state: &AppState) -> Result<GraphData, crate::error::ApiError> {
     let data = state
         .with_index(|idx| idx.graph_data().unwrap_or_else(|_| crate::index::GraphData {
             nodes: Vec::new(),
@@ -150,7 +159,13 @@ pub async fn get_graph(
     }
 
     nodes.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(Json(GraphData { nodes, edges }))
+    Ok(GraphData { nodes, edges })
+}
+
+pub async fn get_graph(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<GraphData>, crate::error::ApiError> {
+    Ok(Json(graph_impl(&state)?))
 }
 
 /// Rebuild the entire index from the current workspace.
@@ -160,7 +175,7 @@ pub async fn rebuild_index(state: Arc<AppState>) -> Result<(), String> {
         .map_err(|e| format!("Rebuild task failed: {e}"))?
 }
 
-fn rebuild_index_sync(state: Arc<AppState>) -> Result<(), String> {
+pub(crate) fn rebuild_index_sync(state: Arc<AppState>) -> Result<(), String> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     if !wiki.exists() {
         return Ok(());

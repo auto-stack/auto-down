@@ -208,6 +208,39 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 
 ### Phase 3 — VM 内路由接管
 
+> **进度（2026-08-29 Phase 3 机制+派发全落地，VM e2e 22/23）**：架构与
+> 嵌入面全部实证。架构：宿主 `back/server` 增加 auto-lang 库依赖（path
+> 绝对路径 D:/autostack/auto-lang，与 gen.mjs AUTO_EXE 同款仓约定）；
+> `--vm` 模式（JADE_GARDEN_SERVER=vm，playwright config 透传）走
+> `vm_server.rs`——宿主注册 host bridge 单函数 `jade.api`（Plan 060 M3）→
+> 大栈线程 `run_file` 跑 `back/auto/server.at`（入口 dep+use+main）+
+> `jade_server.at`（28 路由 `use.rust axum` 链经 442-c2 适配器装机）→
+> 自动起 AutoVM HTTP server。**16 个 handler 模块完成 impl 核抽取**（每
+> 路由 `X_impl` 同步逻辑核，axum 壳变薄包装），`vm_dispatch.rs` 28 臂
+> 经信封 `{method,path,query,body}` 调同一批 impl——双壳单核，Phase 5
+> 退役面收敛为壳层。**端到端门**：rust 后端 e2e 23/23（重构零回归）+
+> VM 后端 e2e **22/23**（前端零改动，同一 binary 同一路由面）。**唯一
+> 败项**：11-properties 面板编辑保存——编辑器防抖保存（锚点盖戳）晚于
+> 面板写入并覆盖之（双写者 last-wins 竞争，VM 单线程时序放大；rust 模式
+> 时序侥幸通过）→ 在册为应用层双写者问题，非 VM 派发缺陷（手动 POST
+> 写管线 200 落盘实证）。**跨仓修复 ×2（auto-lang worktree
+> .worktrees/auto-down-dev，均 fold master）**：① `OpCode::VALID` 手写
+> 表腐烂（幻影条目 transmute 必炸 + 9 变体漏登记）→ 按枚举判别集重生
+> + auto_down_vm_probe 门 6 用例（2bfd6475c 前身，rebase 后
+> 5441dda28）；② match_route Path 参数补百分号解码（前端
+> encodeURIComponent 的空格/CJK 标题此前找不到文件——11 败根因）。
+> **.at 配方纪律（探针实得）**：`routes` 保留字；`use.rust` 点号形式且
+> 仅导入模块解析（入口只放 dep+use+main）；extractor Query/Json 值是
+> Plan 446 doc 句柄——`json.from_value`（Plan 340）转文本后才能进信封；
+> `json.get` 文本语义（字符串字段回重转义字面量）→ statusText 字面量
+> 等值分支设 response_status（数值直传不可靠）；响应对象 status 缺省 0
+> 必须恒设。**在册（auto-lang 侧后续）**：wildcard `{*path}` 的 Path
+> extractor 交付空值 → wiki/whiteboard 用显式深度 1..3 路由替代（e2e
+> 平铺 fixture 全覆盖，嵌套超 3 段不支持）；multipart（assets/import）
+> 与二进制（export zip）不能过 VM 信封 → dispatch 返回 400 登记偏差
+> （e2e 不测）。剩余：properties 双写者竞争处置裁定（应用层）→ VM e2e
+> 全绿后 Phase 3 验收。
+>
 - Plan 442-c2 模式推广：VM 注册全部 `/api/*` 路由（Phase 2 的 a2r 产物
   + FFI 壳），网页版前端直连 VM 后端（loopback HTTP 或进程内派发，
   442 已两者验证）。

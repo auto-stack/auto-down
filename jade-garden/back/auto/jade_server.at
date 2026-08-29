@@ -1,0 +1,241 @@
+// jade_server.at — VM-side route table (Plan 022 Phase 3).
+//
+// Handlers marshal their extractors into a request envelope and delegate
+// to the host via the host bridge (Plan 060 M3):
+//   host.call("jade.api", envelope_json) -> {"status","statusText","body"}
+// The host (back/server/src/vm_dispatch.rs) routes onto the same logic
+// cores the axum shell serves; statuses round-trip faithfully via
+// response objects (Plan 346/377 natives).
+//
+// json value plumbing (probed this slice):
+// - extractor Query/Json values arrive as Plan 446 doc HANDLES —
+//   json.encode(handle) would emit the raw heap id; json.from_value
+//   (Plan 340) converts handle → JSON text for the envelope.
+// - json.get is a text-semantic accessor (string fields come back as
+//   re-escaped literals); statusText literal-equality branches select
+//   response_status values.
+//
+// Wildcard note: `{*path}` routes install but the Path extractor
+// delivers an empty value (auto-lang adapter, in ledger) — wiki and
+// whiteboard are therefore registered at explicit depths 1..3, which
+// covers the e2e fixture (flat) and typical layouts. Proper wildcard
+// capture belongs to the auto-lang adapter (plan-noted).
+
+dep axum
+dep serde_json
+
+use.rust axum::Router
+use.rust axum::routing::get
+use.rust axum::routing::post
+use.rust axum::extract::Query
+use.rust axum::extract::Path
+use.rust axum::Json
+use.rust axum::response::Response
+use.rust serde_json::Value
+
+// ------------------------------------------------------ host delegation
+
+fn callApi(method str, path str, q Value, body Value) ~Response {
+    let queryText str = json.from_value(q)
+    let bodyText str = json.from_value(body)
+    let env = "{\"method\":\"" + method + "\",\"path\":\"" + path + "\",\"query\":" + queryText + ",\"body\":" + bodyText + "}"
+    let resp = host.call("jade.api", env)
+    let v Value = json.parse(resp)
+    // json.get is text-semantic: statusText (a string field) arrives as a
+    // re-escaped literal — literal-equality selects response_status values
+    // (a numeric status would need .length on a non-string, which faults).
+    let statusText str = json.get(v, "statusText")
+    let out str = json.get(v, "body")
+    let r = http.response()
+    http.response_text(r, out)
+    if statusText == "\"200\"" { http.response_status(r, 200) }
+    if statusText == "\"400\"" { http.response_status(r, 400) }
+    if statusText == "\"404\"" { http.response_status(r, 404) }
+    if statusText == "\"500\"" { http.response_status(r, 500) }
+    if statusText == "\"501\"" { http.response_status(r, 501) }
+    return r
+}
+
+fn emptyQuery() Value {
+    return json.parse("{}")
+}
+
+fn nullBody() Value {
+    return json.parse("null")
+}
+
+// ------------------------------------------------------ routes
+
+fn workspaceGet() ~Response {
+    return callApi("GET", "/api/workspace", emptyQuery(), nullBody())
+}
+
+fn workspaceOpen(body Json<Value>) ~Response {
+    return callApi("POST", "/api/workspace/open", emptyQuery(), body)
+}
+
+fn filesList(q Query<Value>) ~Response {
+    return callApi("GET", "/api/files", q, nullBody())
+}
+
+fn filesCreate(body Json<Value>) ~Response {
+    return callApi("POST", "/api/files/create", emptyQuery(), body)
+}
+
+fn filesRename(body Json<Value>) ~Response {
+    return callApi("POST", "/api/files/rename", emptyQuery(), body)
+}
+
+fn filesDelete(body Json<Value>) ~Response {
+    return callApi("POST", "/api/files/delete", emptyQuery(), body)
+}
+
+fn assetsUpload(body Json<Value>) ~Response {
+    return callApi("POST", "/api/assets/upload", emptyQuery(), body)
+}
+
+// wiki: explicit depths 1..3 (wildcard extractor delivers empty, see header)
+fn wikiRead1(p Path<str>) ~Response {
+    return callApi("GET", "/api/wiki/" + p, emptyQuery(), nullBody())
+}
+
+fn wikiRead2(p1 Path<str>, p2 Path<str>) ~Response {
+    return callApi("GET", "/api/wiki/" + p1 + "/" + p2, emptyQuery(), nullBody())
+}
+
+fn wikiRead3(p1 Path<str>, p2 Path<str>, p3 Path<str>) ~Response {
+    return callApi("GET", "/api/wiki/" + p1 + "/" + p2 + "/" + p3, emptyQuery(), nullBody())
+}
+
+fn wikiWrite1(p Path<str>, body Json<Value>) ~Response {
+    return callApi("POST", "/api/wiki/" + p, emptyQuery(), body)
+}
+
+fn wikiWrite2(p1 Path<str>, p2 Path<str>, body Json<Value>) ~Response {
+    return callApi("POST", "/api/wiki/" + p1 + "/" + p2, emptyQuery(), body)
+}
+
+fn wikiWrite3(p1 Path<str>, p2 Path<str>, p3 Path<str>, body Json<Value>) ~Response {
+    return callApi("POST", "/api/wiki/" + p1 + "/" + p2 + "/" + p3, emptyQuery(), body)
+}
+
+fn backlinksGet(p Path<str>) ~Response {
+    return callApi("GET", "/api/backlinks/" + p, emptyQuery(), nullBody())
+}
+
+fn outlinksGet(p Path<str>) ~Response {
+    return callApi("GET", "/api/outlinks/" + p, emptyQuery(), nullBody())
+}
+
+fn graphGet() ~Response {
+    return callApi("GET", "/api/graph", emptyQuery(), nullBody())
+}
+
+fn searchAll(q Query<Value>) ~Response {
+    return callApi("GET", "/api/search", q, nullBody())
+}
+
+fn searchPages(q Query<Value>) ~Response {
+    return callApi("GET", "/api/search/pages", q, nullBody())
+}
+
+fn searchBlocks(q Query<Value>) ~Response {
+    return callApi("GET", "/api/search/blocks", q, nullBody())
+}
+
+fn tasksGet() ~Response {
+    return callApi("GET", "/api/tasks", emptyQuery(), nullBody())
+}
+
+fn agendaGet(q Query<Value>) ~Response {
+    return callApi("GET", "/api/agenda", q, nullBody())
+}
+
+fn queryGet(q Query<Value>) ~Response {
+    return callApi("GET", "/api/query", q, nullBody())
+}
+
+fn cardsDue(q Query<Value>) ~Response {
+    return callApi("GET", "/api/cards/due", q, nullBody())
+}
+
+fn cardsReview(body Json<Value>) ~Response {
+    return callApi("POST", "/api/cards/review", emptyQuery(), body)
+}
+
+fn exportMarkdown() ~Response {
+    return callApi("GET", "/api/export/markdown", emptyQuery(), nullBody())
+}
+
+fn importMarkdown(body Json<Value>) ~Response {
+    return callApi("POST", "/api/import/markdown", emptyQuery(), body)
+}
+
+fn syncStatus() ~Response {
+    return callApi("GET", "/api/sync/status", emptyQuery(), nullBody())
+}
+
+// whiteboard: explicit depths 1..2 (.canvas files sit at whiteboards/ depth 1)
+fn whiteboardRead1(p Path<str>) ~Response {
+    return callApi("GET", "/api/whiteboard/" + p, emptyQuery(), nullBody())
+}
+
+fn whiteboardRead2(p1 Path<str>, p2 Path<str>) ~Response {
+    return callApi("GET", "/api/whiteboard/" + p1 + "/" + p2, emptyQuery(), nullBody())
+}
+
+fn whiteboardWrite1(p Path<str>, body Json<Value>) ~Response {
+    return callApi("POST", "/api/whiteboard/" + p, emptyQuery(), body)
+}
+
+fn whiteboardWrite2(p1 Path<str>, p2 Path<str>, body Json<Value>) ~Response {
+    return callApi("POST", "/api/whiteboard/" + p1 + "/" + p2, emptyQuery(), body)
+}
+
+fn blockGet(p Path<str>) ~Response {
+    return callApi("GET", "/api/blocks/" + p, emptyQuery(), nullBody())
+}
+
+fn blockInPage(p1 Path<str>, p2 Path<str>) ~Response {
+    return callApi("GET", "/api/blocks/" + p1 + "/" + p2, emptyQuery(), nullBody())
+}
+
+fn unlinkedGet(p Path<str>) ~Response {
+    return callApi("GET", "/api/unlinked/" + p, emptyQuery(), nullBody())
+}
+
+// ------------------------------------------------------ router
+
+pub fn build_router() Router {
+    var app = Router.new()
+    app = app.route("/api/workspace", get(workspaceGet))
+    app = app.route("/api/workspace/open", post(workspaceOpen))
+    app = app.route("/api/files", get(filesList))
+    app = app.route("/api/files/create", post(filesCreate))
+    app = app.route("/api/files/rename", post(filesRename))
+    app = app.route("/api/files/delete", post(filesDelete))
+    app = app.route("/api/wiki/{p1}", get(wikiRead1).post(wikiWrite1))
+    app = app.route("/api/wiki/{p1}/{p2}", get(wikiRead2).post(wikiWrite2))
+    app = app.route("/api/wiki/{p1}/{p2}/{p3}", get(wikiRead3).post(wikiWrite3))
+    app = app.route("/api/backlinks/{title}", get(backlinksGet))
+    app = app.route("/api/outlinks/{title}", get(outlinksGet))
+    app = app.route("/api/graph", get(graphGet))
+    app = app.route("/api/search", get(searchAll))
+    app = app.route("/api/search/pages", get(searchPages))
+    app = app.route("/api/search/blocks", get(searchBlocks))
+    app = app.route("/api/tasks", get(tasksGet))
+    app = app.route("/api/agenda", get(agendaGet))
+    app = app.route("/api/query", get(queryGet))
+    app = app.route("/api/cards/due", get(cardsDue))
+    app = app.route("/api/cards/review", post(cardsReview))
+    app = app.route("/api/export/markdown", get(exportMarkdown))
+    app = app.route("/api/import/markdown", post(importMarkdown))
+    app = app.route("/api/sync/status", get(syncStatus))
+    app = app.route("/api/whiteboard/{p1}", get(whiteboardRead1).post(whiteboardWrite1))
+    app = app.route("/api/whiteboard/{p1}/{p2}", get(whiteboardRead2).post(whiteboardWrite2))
+    app = app.route("/api/blocks/{id}", get(blockGet))
+    app = app.route("/api/blocks/{title}/{id}", get(blockInPage))
+    app = app.route("/api/unlinked/{title}", get(unlinkedGet))
+    app = app.route("/api/assets/upload", post(assetsUpload))
+    return app
+}

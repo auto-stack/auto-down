@@ -11,7 +11,7 @@ use crate::state::AppState;
 #[derive(Serialize)]
 pub struct FileNode {
     name: String,
-    path: String,
+    pub path: String,
     is_dir: bool,
     children: Vec<FileNode>,
 }
@@ -19,33 +19,36 @@ pub struct FileNode {
 #[derive(Deserialize)]
 pub struct ListFilesQuery {
     #[serde(default)]
-    path: String,
+    pub path: String,
     #[serde(default)]
     recursive: bool,
 }
 
 #[derive(Deserialize)]
 pub struct CreateFileRequest {
-    path: String,
+    pub path: String,
     #[serde(default)]
-    is_dir: bool,
+    pub is_dir: bool,
 }
 
 #[derive(Deserialize)]
 pub struct RenameFileRequest {
-    old_path: String,
-    new_path: String,
+    pub old_path: String,
+    pub new_path: String,
 }
 
 #[derive(Deserialize)]
 pub struct DeleteFileRequest {
-    path: String,
+    pub path: String,
 }
 
-pub async fn list_files(
-    State(state): State<Arc<AppState>>,
-    Query(q): Query<ListFilesQuery>,
-) -> Result<Json<Vec<FileNode>>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn list_files_impl(
+    state: &AppState,
+    path: &str,
+    recursive: bool,
+) -> Result<Vec<FileNode>, crate::error::ApiError> {
+    let q = ListFilesQuery { path: path.to_string(), recursive };
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let base = wiki.join(&q.path);
     let base = normalize_path(&base);
@@ -55,7 +58,7 @@ pub async fn list_files(
 
     if q.recursive {
         let nodes = collect_recursive_nested(&base, &wiki).map_err(|e| format!("Failed to read directory: {e}"))?;
-        Ok(Json(nodes))
+        Ok(nodes)
     } else {
         let mut entries: Vec<_> = std::fs::read_dir(&base)
             .map_err(|e| format!("Failed to read directory: {e}"))?
@@ -67,8 +70,15 @@ pub async fn list_files(
             .into_iter()
             .map(|e| file_node_from_entry(&e, &wiki))
             .collect();
-        Ok(Json(nodes))
+        Ok(nodes)
     }
+}
+
+pub async fn list_files(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<ListFilesQuery>,
+) -> Result<Json<Vec<FileNode>>, crate::error::ApiError> {
+    Ok(Json(list_files_impl(&state, &q.path, q.recursive)?))
 }
 
 fn collect_recursive_nested(dir: &std::path::Path, wiki: &std::path::Path) -> Result<Vec<FileNode>, std::io::Error> {
@@ -118,10 +128,13 @@ fn file_node_from_entry(entry: &std::fs::DirEntry, wiki: &std::path::Path) -> Fi
     }
 }
 
-pub async fn create_file(
-    State(state): State<Arc<AppState>>,
-    Json(req): Json<CreateFileRequest>,
-) -> Result<Json<FileNode>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn create_file_impl(
+    state: &AppState,
+    path: &str,
+    is_dir: bool,
+) -> Result<FileNode, crate::error::ApiError> {
+    let req = CreateFileRequest { path: path.to_string(), is_dir };
     let target = state.resolve_wiki_path(&req.path).ok_or("Invalid path")?;
     if req.is_dir {
         std::fs::create_dir_all(&target).map_err(|e| format!("Failed to create directory: {e}"))?;
@@ -133,12 +146,19 @@ pub async fn create_file(
         std::fs::write(&target, default).map_err(|e| format!("Failed to create file: {e}"))?;
         crate::links::index_file(&state, &target).ok();
     }
-    Ok(Json(FileNode {
+    Ok(FileNode {
         name: target.file_name().unwrap_or_default().to_string_lossy().to_string(),
         path: req.path,
         is_dir: req.is_dir,
         children: Vec::new(),
-    }))
+    })
+}
+
+pub async fn create_file(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateFileRequest>,
+) -> Result<Json<FileNode>, crate::error::ApiError> {
+    Ok(Json(create_file_impl(&state, &req.path, req.is_dir)?))
 }
 
 fn default_ad_content(path: &std::path::Path) -> String {
@@ -153,29 +173,43 @@ fn default_ad_content(path: &std::path::Path) -> String {
     )
 }
 
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn rename_file_impl(
+    state: &AppState,
+    old_path: &str,
+    new_path: &str,
+) -> Result<(), crate::error::ApiError> {
+    let old = state.resolve_wiki_path(old_path).ok_or("Invalid old path")?;
+    let new = state.resolve_wiki_path(new_path).ok_or("Invalid new path")?;
+    std::fs::rename(&old, &new).map_err(|e| format!("Failed to rename: {e}"))?;
+    crate::links::rename_file(state, &old, &new).ok();
+    Ok(())
+}
+
 pub async fn rename_file(
     State(state): State<Arc<AppState>>,
     Json(req): Json<RenameFileRequest>,
 ) -> Result<Json<()>, crate::error::ApiError> {
-    let old = state.resolve_wiki_path(&req.old_path).ok_or("Invalid old path")?;
-    let new = state.resolve_wiki_path(&req.new_path).ok_or("Invalid new path")?;
-    std::fs::rename(&old, &new).map_err(|e| format!("Failed to rename: {e}"))?;
-    crate::links::rename_file(&state, &old, &new).ok();
-    Ok(Json(()))
+    Ok(Json(rename_file_impl(&state, &req.old_path, &req.new_path)?))
+}
+
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn delete_file_impl(state: &AppState, path: &str) -> Result<(), crate::error::ApiError> {
+    let target = state.resolve_wiki_path(path).ok_or("Invalid path")?;
+    if target.is_dir() {
+        std::fs::remove_dir_all(&target).map_err(|e| format!("Failed to delete directory: {e}"))?;
+    } else {
+        std::fs::remove_file(&target).map_err(|e| format!("Failed to delete file: {e}"))?;
+    }
+    crate::links::remove_file(state, &target).ok();
+    Ok(())
 }
 
 pub async fn delete_file(
     State(state): State<Arc<AppState>>,
     Json(req): Json<DeleteFileRequest>,
 ) -> Result<Json<()>, crate::error::ApiError> {
-    let target = state.resolve_wiki_path(&req.path).ok_or("Invalid path")?;
-    if target.is_dir() {
-        std::fs::remove_dir_all(&target).map_err(|e| format!("Failed to delete directory: {e}"))?;
-    } else {
-        std::fs::remove_file(&target).map_err(|e| format!("Failed to delete file: {e}"))?;
-    }
-    crate::links::remove_file(&state, &target).ok();
-    Ok(Json(()))
+    Ok(Json(delete_file_impl(&state, &req.path)?))
 }
 
 pub async fn watch_wiki(state: Arc<AppState>) -> Result<(), String> {

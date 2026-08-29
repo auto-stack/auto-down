@@ -240,10 +240,8 @@ fn default_limit() -> usize {
     50
 }
 
-pub async fn get_due_cards(
-    State(state): State<Arc<AppState>>,
-    Query(q): Query<DueQuery>,
-) -> Result<Json<CardsResponse>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn due_cards_impl(state: &AppState, limit: usize) -> Result<CardsResponse, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let today = chrono::Local::now().date_naive();
     let mut cards: Vec<Card> = scan_wiki_cards(&wiki)
@@ -256,8 +254,15 @@ pub async fn get_due_cards(
                 .unwrap_or(true)
         })
         .collect();
-    cards.truncate(q.limit);
-    Ok(Json(CardsResponse { cards }))
+    cards.truncate(limit);
+    Ok(CardsResponse { cards })
+}
+
+pub async fn get_due_cards(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<DueQuery>,
+) -> Result<Json<CardsResponse>, crate::error::ApiError> {
+    Ok(Json(due_cards_impl(&state, q.limit)?))
 }
 
 #[derive(Deserialize)]
@@ -272,10 +277,11 @@ pub struct ReviewResponse {
     pub card: Card,
 }
 
-pub async fn review_card(
-    State(state): State<Arc<AppState>>,
-    AxumJson(req): AxumJson<ReviewRequest>,
-) -> Result<Json<ReviewResponse>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn review_card_impl(
+    state: &AppState,
+    req: ReviewRequest,
+) -> Result<ReviewResponse, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let path = state.resolve_wiki_path(&req.page_path).ok_or("Invalid path")?;
     let text = std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {e}"))?;
@@ -352,7 +358,7 @@ pub async fn review_card(
     let (question, answer) = build_qa(&updated_block.content);
     let updated_props = parse_block_properties(&updated_text, updated_block.line_start, updated_block.line_end);
 
-    Ok(Json(ReviewResponse {
+    Ok(ReviewResponse {
         card: Card {
             page_path: req.page_path,
             block_id: req.block_id,
@@ -368,7 +374,14 @@ pub async fn review_card(
             last_score: updated_props.get("card-last-score").and_then(|v| v.parse().ok()),
             last_reviewed: updated_props.get("card-last-reviewed").cloned(),
         },
-    }))
+    })
+}
+
+pub async fn review_card(
+    State(state): State<Arc<AppState>>,
+    AxumJson(req): AxumJson<ReviewRequest>,
+) -> Result<Json<ReviewResponse>, crate::error::ApiError> {
+    Ok(Json(review_card_impl(&state, req)?))
 }
 
 #[cfg(test)]

@@ -42,16 +42,30 @@ pub struct SearchResponse {
     results: Vec<SearchResultDto>,
 }
 
-pub async fn search(
-    State(state): State<Arc<AppState>>,
-    Query(q): Query<SearchQuery>,
-) -> Result<Json<SearchResponse>, crate::error::ApiError> {
-    let results = state
-        .with_index(|idx| idx.search(&q.q, q.limit.max(1).min(100)).unwrap_or_default())
-        .ok_or("Index not available")?;
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+#[derive(Clone, Copy, PartialEq)]
+pub enum SearchScope {
+    All,
+    Pages,
+    Blocks,
+}
 
-    let dtos: Vec<SearchResultDto> = results
+pub fn search_impl(
+    state: &AppState,
+    query: &str,
+    limit: usize,
+    scope: SearchScope,
+) -> Result<SearchResponse, crate::error::ApiError> {
+    let all = state
+        .with_index(|idx| idx.search(query, limit.max(1).min(100)).unwrap_or_default())
+        .ok_or("Index not available")?;
+    let dtos: Vec<SearchResultDto> = all
         .into_iter()
+        .filter(|r| match (scope, r) {
+            (SearchScope::Pages, crate::index::SearchResult::Block { .. }) => false,
+            (SearchScope::Blocks, crate::index::SearchResult::Page { .. }) => false,
+            _ => true,
+        })
         .map(|r| match r {
             crate::index::SearchResult::Page { path, title, snippet } => SearchResultDto::Page {
                 path,
@@ -73,65 +87,31 @@ pub async fn search(
             },
         })
         .collect();
-
-    Ok(Json(SearchResponse {
-        query: q.q,
+    Ok(SearchResponse {
+        query: query.to_string(),
         results: dtos,
-    }))
+    })
+}
+
+pub async fn search(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<SearchQuery>,
+) -> Result<Json<SearchResponse>, crate::error::ApiError> {
+    Ok(Json(search_impl(&state, &q.q, q.limit, SearchScope::All)?))
 }
 
 pub async fn search_pages(
     State(state): State<Arc<AppState>>,
     Query(q): Query<SearchQuery>,
 ) -> Result<Json<SearchResponse>, crate::error::ApiError> {
-    let all = state
-        .with_index(|idx| idx.search(&q.q, q.limit.max(1).min(100)).unwrap_or_default())
-        .ok_or("Index not available")?;
-    let pages: Vec<SearchResultDto> = all
-        .into_iter()
-        .filter_map(|r| match r {
-            crate::index::SearchResult::Page { path, title, snippet } => {
-                Some(SearchResultDto::Page { path, title, snippet })
-            }
-            _ => None,
-        })
-        .collect();
-    Ok(Json(SearchResponse {
-        query: q.q,
-        results: pages,
-    }))
+    Ok(Json(search_impl(&state, &q.q, q.limit, SearchScope::Pages)?))
 }
 
 pub async fn search_blocks(
     State(state): State<Arc<AppState>>,
     Query(q): Query<SearchQuery>,
 ) -> Result<Json<SearchResponse>, crate::error::ApiError> {
-    let all = state
-        .with_index(|idx| idx.search(&q.q, q.limit.max(1).min(100)).unwrap_or_default())
-        .ok_or("Index not available")?;
-    let blocks: Vec<SearchResultDto> = all
-        .into_iter()
-        .filter_map(|r| match r {
-            crate::index::SearchResult::Block {
-                uuid,
-                page_path,
-                block_id,
-                content,
-                snippet,
-            } => Some(SearchResultDto::Block {
-                uuid,
-                page_path,
-                block_id,
-                content,
-                snippet,
-            }),
-            _ => None,
-        })
-        .collect();
-    Ok(Json(SearchResponse {
-        query: q.q,
-        results: blocks,
-    }))
+    Ok(Json(search_impl(&state, &q.q, q.limit, SearchScope::Blocks)?))
 }
 
 #[cfg(test)]

@@ -16,25 +16,31 @@ pub struct WikiDoc {
     pub body: String,
 }
 
-pub async fn read_wiki(
-    State(state): State<Arc<AppState>>,
-    Path(path): Path<String>,
-) -> Result<Json<WikiDoc>, crate::error::ApiError> {
-    let target = state.resolve_wiki_path(&path).ok_or("Invalid path")?;
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn read_wiki_impl(state: &AppState, path: &str) -> Result<WikiDoc, crate::error::ApiError> {
+    let target = state.resolve_wiki_path(path).ok_or("Invalid path")?;
     if !target.exists() {
         return Err(format!("File not found: {path}").into());
     }
     let text = std::fs::read_to_string(&target).map_err(|e| format!("Failed to read file: {e}"))?;
     let (frontmatter, body) = split_ad(&text)?;
-    Ok(Json(WikiDoc { frontmatter, body }))
+    Ok(WikiDoc { frontmatter, body })
 }
 
-pub async fn write_wiki(
+pub async fn read_wiki(
     State(state): State<Arc<AppState>>,
     Path(path): Path<String>,
-    Json(doc): Json<WikiDoc>,
 ) -> Result<Json<WikiDoc>, crate::error::ApiError> {
-    let target = state.resolve_wiki_path(&path).ok_or("Invalid path")?;
+    Ok(Json(read_wiki_impl(&state, &path)?))
+}
+
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn write_wiki_impl(
+    state: &AppState,
+    path: &str,
+    doc: WikiDoc,
+) -> Result<WikiDoc, crate::error::ApiError> {
+    let target = state.resolve_wiki_path(path).ok_or("Invalid path")?;
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create parent: {e}"))?;
     }
@@ -49,9 +55,17 @@ pub async fn write_wiki(
     std::fs::write(&target, text).map_err(|e| format!("Failed to write file: {e}"))?;
 
     // Incrementally update the search/link index for this file.
-    links::index_file(&state, &target).ok();
+    links::index_file(state, &target).ok();
 
-    Ok(Json(WikiDoc { frontmatter, body: doc.body }))
+    Ok(WikiDoc { frontmatter, body: doc.body })
+}
+
+pub async fn write_wiki(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<String>,
+    Json(doc): Json<WikiDoc>,
+) -> Result<Json<WikiDoc>, crate::error::ApiError> {
+    Ok(Json(write_wiki_impl(&state, &path, doc)?))
 }
 
 /// Split an `.ad` file into YAML frontmatter and Markdown body.

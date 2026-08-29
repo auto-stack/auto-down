@@ -21,6 +21,8 @@ mod sync;
 mod tasks;
 mod tasks_gen;
 mod unlinked;
+mod vm_dispatch;
+mod vm_server;
 mod whiteboard;
 mod wiki;
 mod workspace;
@@ -32,7 +34,7 @@ use axum::{
     Router,
 };
 use tower_http::cors::{Any, CorsLayer};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use state::AppState;
 
@@ -60,6 +62,17 @@ async fn main() {
             warn!("File watcher exited: {e}");
         }
     });
+
+    // Plan 022 Phase 3: JADE_GARDEN_SERVER=vm serves the same /api/* surface
+    // from the AutoVM (Plan 442-c2 pattern) instead of the hand-written axum
+    // router. The file watcher keeps the shared index fresh in both modes.
+    if std::env::var("JADE_GARDEN_SERVER").as_deref() == Ok("vm") {
+        if let Err(e) = vm_server::serve(state.clone()) {
+            error!("VM server failed: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
 
     let app = Router::new()
         // Workspace

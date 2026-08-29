@@ -20,10 +20,9 @@ pub struct QueryResponse {
     pub results: Vec<TaskItem>,
 }
 
-pub async fn query(
-    State(state): State<Arc<AppState>>,
-    Query(req): Query<QueryRequest>,
-) -> Result<Json<QueryResponse>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn query_impl(state: &AppState, query: &str) -> Result<QueryResponse, crate::error::ApiError> {
+    let req = QueryRequest { q: query.to_string() };
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
     let today_iso = chrono::Local::now().date_naive().to_string();
@@ -48,7 +47,14 @@ pub async fn query(
             results.push(t);
         }
     }
-    Ok(Json(QueryResponse { results }))
+    Ok(QueryResponse { results })
+}
+
+pub async fn query(
+    State(state): State<Arc<AppState>>,
+    Query(req): Query<QueryRequest>,
+) -> Result<Json<QueryResponse>, crate::error::ApiError> {
+    Ok(Json(query_impl(&state, &req.q)?))
 }
 
 #[cfg(test)]

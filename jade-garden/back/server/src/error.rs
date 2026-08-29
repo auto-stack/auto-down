@@ -50,3 +50,15 @@ impl IntoResponse for ApiError {
         (self.status, Json(json!({ "error": self.message }))).into_response()
     }
 }
+
+impl ApiError {
+    // Plan 022 Phase 3: vm_dispatch serializes the same error face the axum
+    // IntoResponse produces ({"error": ...} + status).
+    pub fn status_code(&self) -> axum::http::StatusCode {
+        self.status
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}

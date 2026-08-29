@@ -46,6 +46,12 @@ export default defineConfig({
       env: {
         JADE_GARDEN_PORT: String(BACKEND_PORT),
         JADE_GARDEN_DEFAULT_WORKSPACE: WORKSPACE_ROOT,
+        // Plan 022 Phase 3: setting JADE_GARDEN_SERVER=vm on the
+        // playwright invocation switches the backend onto the AutoVM
+        // serve path (same binary, same routes).
+        ...(process.env.JADE_GARDEN_SERVER
+          ? { JADE_GARDEN_SERVER: process.env.JADE_GARDEN_SERVER }
+          : {}),
       },
       url: `${BACKEND_URL}/api/workspace`,
       timeout: 60_000,

@@ -1,0 +1,18 @@
+// jade-garden VM server entry (Plan 022 Phase 3, Plan 442-c2 pattern).
+//
+// Host: back/server/src/vm_server.rs runs THIS file via
+// auto_lang::run_file. The entry stays import-free of use.rust (the VM
+// loader resolves use.rust only in imported modules) — the routes live
+// in jade_server.at, imported below. After main() returns with routes
+// installed, run_file auto-starts the AutoVM HTTP server on
+// AUTO_HTTP_PORT (mapped from JADE_GARDEN_PORT by the host).
+
+dep axum
+dep serde_json
+
+use jade_server
+
+fn main() {
+    let app = build_router()
+    print("jade-vm-router-built")
+}

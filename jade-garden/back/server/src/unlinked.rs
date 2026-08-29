@@ -23,15 +23,13 @@ pub struct UnlinkedRefsResponse {
     pub refs: Vec<UnlinkedRef>,
 }
 
-pub async fn get_unlinked_refs(
-    State(state): State<Arc<AppState>>,
-    Path(title): Path<String>,
-) -> Result<Json<UnlinkedRefsResponse>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn unlinked_impl(state: &AppState, title: &str) -> Result<UnlinkedRefsResponse, crate::error::ApiError> {
     let names = state
         .with_index(|idx| {
-            let mut names = vec![title.clone()];
+            let mut names = vec![title.to_string()];
             // Also look for aliases stored in the tags table.
-            if let Ok(path) = idx.page_exists(&title) {
+            if let Ok(path) = idx.page_exists(title) {
                 if let Some(path) = path {
                     if let Ok(rows) = idx.page_aliases(&path) {
                         names.extend(rows);
@@ -46,7 +44,14 @@ pub async fn get_unlinked_refs(
         .with_index(|idx| idx.unlinked_references(&names).unwrap_or_default())
         .ok_or("Index not available")?;
 
-    Ok(Json(UnlinkedRefsResponse { title, refs }))
+    Ok(UnlinkedRefsResponse { title: title.to_string(), refs })
+}
+
+pub async fn get_unlinked_refs(
+    State(state): State<Arc<AppState>>,
+    Path(title): Path<String>,
+) -> Result<Json<UnlinkedRefsResponse>, crate::error::ApiError> {
+    Ok(Json(unlinked_impl(&state, &title)?))
 }
 
 pub fn find_unlinked_references(text: &str, names: &[String]) -> Vec<(String, String)> {

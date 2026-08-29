@@ -83,10 +83,15 @@ pub struct TasksResponse {
     pub tasks: Vec<TaskItem>,
 }
 
-pub async fn get_tasks(State(state): State<Arc<AppState>>) -> Result<Json<TasksResponse>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn tasks_impl(state: &AppState) -> Result<TasksResponse, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
-    Ok(Json(TasksResponse { tasks }))
+    Ok(TasksResponse { tasks })
+}
+
+pub async fn get_tasks(State(state): State<Arc<AppState>>) -> Result<Json<TasksResponse>, crate::error::ApiError> {
+    Ok(Json(tasks_impl(&state)?))
 }
 
 #[derive(Deserialize)]
@@ -110,10 +115,9 @@ pub struct AgendaResponse {
     pub groups: Vec<AgendaGroup>,
 }
 
-pub async fn get_agenda(
-    State(state): State<Arc<AppState>>,
-    Query(q): Query<AgendaQuery>,
-) -> Result<Json<AgendaResponse>, crate::error::ApiError> {
+// Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
+pub fn agenda_impl(state: &AppState, days: i64) -> Result<AgendaResponse, crate::error::ApiError> {
+    let q = AgendaQuery { days };
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let tasks = scan_wiki_tasks(&wiki);
     // Wall clock stays shell-side (chrono); validation/normalization and the
@@ -143,7 +147,14 @@ pub async fn get_agenda(
                 .collect(),
         })
         .collect();
-    Ok(Json(AgendaResponse { groups }))
+    Ok(AgendaResponse { groups })
+}
+
+pub async fn get_agenda(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<AgendaQuery>,
+) -> Result<Json<AgendaResponse>, crate::error::ApiError> {
+    Ok(Json(agenda_impl(&state, q.days)?))
 }
 
 #[cfg(test)]

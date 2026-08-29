@@ -96,9 +96,10 @@ widget（`pnpm gen:editor`，bubble_menu.at / code_editor_block.at 源跟进）�
   slash 菜单在用）可复用于气泡选区矩形定位。
 - **着色素材**：highlight 桥（setHighlightImpl）+ lowlight 默认实现已在
   预览侧着色；CodeEditorBlock（.at 生成物）当前纯文本 textarea。
-- **已知编译器债务（024 写 .at 会踩，建议前置或首批修）**：① model var 用
-  prop 初始化发射于 defineProps 之前（TDZ）；② .at 视图引用与 prop 命名不
-  一致时静默渲染空 v-for——均在 auto-lang 仓（023 复审在档）。
+- **编译器债务已修**（2026-08-29，auto-lang b4b74fd09，cargo tf 3263/3263）：
+  ① model var 用 prop 初始化——defineProps 现发射于 state ref 之前（TDZ
+  根除，P4T1 改 code_editor_block.at 时可把 .Init 回填简化回 prop 初始化）；
+  ② v-for 未知源 R012 Error 校验（静默空渲染类；strict 默认即失败）。
 
 ## 详细设计
 

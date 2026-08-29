@@ -1,7 +1,7 @@
 <!-- CodeEditorBlock component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { focusCodeArea, resizeCodeArea } from '../ext/code_editor_block_ext'
+import { ref, computed, onMounted } from 'vue'
+import { focusCodeArea, resizeCodeArea, renderCodeHighlight, syncCodeHighlight } from '../ext/code_editor_block_ext'
 
 
 const props = defineProps<{
@@ -12,20 +12,31 @@ const props = defineProps<{
   readonly: boolean
 }>()
 
-const code_draft = ref<string>('')
+const code_draft = ref<string>(props.code)
 
+const hl = ref<HTMLElement | null>(null)
 const area = ref<HTMLElement | null>(null)
+
+const highlight_html = computed<any>(() => renderCodeHighlight(code_draft.value, props.language))
 
 const emit = defineEmits<{
   Init: []
   AreaInput: [any]
+  AreaScroll: [any]
   Blur: [any]
 }>()
 
 function AreaInput(e: any): void {
   resizeCodeArea(e.target);
+  syncCodeHighlight(e.target, hl.value!);
 
   emit('AreaInput', e)
+}
+
+function AreaScroll(e: any): void {
+  syncCodeHighlight(e.target, hl.value!);
+
+  emit('AreaScroll', e)
 }
 
 function Blur(e: any): void {
@@ -37,14 +48,8 @@ function Blur(e: any): void {
 }
 
 onMounted(() => {
-
-
-
-
-
-
-  code_draft.value = props.code;
   focusCodeArea(area.value!, props.readonly);
+  syncCodeHighlight(area.value!, hl.value!);
 })
 
 
@@ -67,7 +72,10 @@ onMounted(() => {
         </div>
         <div class="flex items-center gap-0.5" />
       </div>
-      <textarea class="code-editor-textarea" :disabled="readonly" ref="area" :spellcheck="'false'" v-model="code_draft" @blur="Blur($event)" @input="AreaInput($event)" />
+      <div class="code-editor-stack">
+        <pre class="code-editor-highlight" :aria-hidden="'true'" v-html="highlight_html" ref="hl" />
+        <textarea class="code-editor-textarea" :disabled="readonly" ref="area" :spellcheck="'false'" v-model="code_draft" @blur="Blur($event)" @input="AreaInput($event)" @scroll="AreaScroll($event)" />
+      </div>
     </div>
 
 </template>
@@ -97,6 +105,26 @@ onMounted(() => {
           border-bottom: 1px solid #fcd34d;
           user-select: none;
         }
+        .code-editor-stack {
+          position: relative;
+        }
+        .code-editor-highlight {
+          position: absolute;
+          inset: 0;
+          margin: 0;
+          box-sizing: border-box;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          overflow: hidden;
+          pointer-events: none;
+          background: transparent;
+          color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
         .code-editor-textarea {
           display: block;
           width: 100%;
@@ -108,11 +136,15 @@ onMounted(() => {
           resize: none;
           overflow: hidden;
           background: transparent;
-          color: #111827;
+          /* overlay plan 024 P4T1: the highlight pre below shows the text;
+             the caret stays visible via caret-color */
+          color: transparent;
+          caret-color: #111827;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
           font-size: 0.88rem;
           line-height: 1.5;
           white-space: pre-wrap;
+          word-break: break-word;
         }
         .code-editor-textarea:disabled {
           cursor: not-allowed;

@@ -137,3 +137,34 @@ test('Ctrl+K link: prompt channel, anchor roundtrip', async ({ page }) => {
   await page.waitForTimeout(300)
   await expect(page.locator('.right [data-block-slot-id="block-1"] a[href="https://example.org/wiki"]').first()).toHaveText('paragraph')
 })
+
+test('code edit face renders the syntax highlight overlay', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForSelector('.left [data-block-id]', { timeout: 10000 })
+
+  // focus the javascript fence — CodeEditorBlock mounts with the overlay
+  await page.locator('.left [data-node-type="Fence"]').first().click()
+  const editor = page.locator('.left .autodown-code-editor')
+  await expect(editor).toBeVisible()
+
+  // the overlay pre exists, is aria-hidden, and carries lowlight spans
+  const pre = editor.locator('pre.code-editor-highlight')
+  await expect(pre).toHaveAttribute('aria-hidden', 'true')
+  await expect(pre.locator('span.hljs-keyword').first()).toBeVisible()
+  // the textarea's text is transparent (overlay shows it) but keeps a caret
+  const caret = await editor.locator('textarea.code-editor-textarea').evaluate((el) => getComputedStyle(el).caretColor)
+  expect(caret).not.toBe('rgba(0, 0, 0, 0)')
+
+  // typing updates the overlay live (escaped fallback or hljs spans)
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.type('const zz = 1\n')
+  await expect(pre).toContainText('const zz = 1')
+
+  // height sync: overlay tracks the auto-resized textarea
+  const heights = await editor.evaluate((el) => {
+    const area = el.querySelector('textarea.code-editor-textarea') as HTMLElement
+    const layer = el.querySelector('pre.code-editor-highlight') as HTMLElement
+    return { area: area.offsetHeight, layer: layer.offsetHeight }
+  })
+  expect(Math.abs(heights.area - heights.layer)).toBeLessThanOrEqual(2)
+})

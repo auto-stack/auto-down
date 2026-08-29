@@ -10,7 +10,7 @@ updated_at: 2026-08-29T16:35:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 2
+current_step: 9
 total_steps: 13
 ---
 
@@ -198,25 +198,65 @@ export interface BlockComponent {
 ### Phase 1：契约 + 分类型编辑面（P1）
 
 - [ ] P1T1 契约类型：新建 `autodown/packages/engine/src/render/block-component.ts`（`BlockComponent`/`BlockEditCtx`/注册表 API：registerBlockComponent/resolveBlockComponent/unregister，含 builtin 兜底）；`src/render/index.ts` 导出。验证：`cd autodown/packages/engine && pnpm test`。
+  [✅ 已完成] block-component.ts 落地：三模式契约 + register/unregister/clear +
+  canonicalKind（'code_block'→'CodeBlock' 键归一）+ sfcEditSlot 包装 helper +
+  editSlotFor；resolve 恒返回可 view 组件（注册槽覆盖、缺省槽落 builtin
+  renderNodes 产物）；index.ts 全量导出。pnpm test 281/281。
 - [ ] P1T2 契约单测：新建 `src/render/__tests__/block-component.test.ts`——三模式解析优先级、未注册回落、导出面冒烟。验证：`npx vitest run src/render/__tests__/block-component.test.ts`。
+  [✅ 已完成] 10/10：未注册回落（view 出 panel DOM、stream/edit undefined）、
+  edit-only 注册保留 builtin view（P1T5 形状）、view/stream 注册覆盖、
+  canonicalKind 键归一互认、index 导出面冒烟。TDD 先红后绿。
 - [ ] P1T3 EngineEditor 聚焦装配走契约：`EngineEditor.vue` 聚焦分支先查
   `resolveBlockComponent(...)?.edit`，无则回落 BlockHost（`isEditableLeaf`
   不变）。验证：`cd autodown/packages/engine && pnpm test && pnpm build`。
 - [ ] P1T4 CodeEditorBlock 手写原型：新建 `src/editor/components/CodeEditorBlock.vue`（标题栏 + textarea 编辑区 + 失焦
   `applyOp` 回写 `node.code`）+ `src/editor/__tests__/code-editor-block.test.ts`（回写断言 + serialize roundtrip + readonly 呈现）。验证：`npx vitest run src/editor/__tests__/code-editor-block.test.ts`。
+  [✅ 已完成] 新增 CodeEditorController（无头，整段回写 applyTree 一步撤销——
+  逐字符 diff op 会把 "\n" 引入文本 op 内核，代码块语义整段更稳）+ SFC
+  （code-block-header DOM 契约标题栏 + 自适应 textarea + readonly 横幅/禁用）。
+  测试 8/8：回写/undo/roundtrip/无变化 no-op/块已删/SVC SSR 标题栏+readonly 横幅。
 - [ ] P1T5 装配代码块：在 P1T3 的 edit 槽注册
   `BlockType.CodeBlock → CodeEditorBlock`（`src/editor/index.ts` 或
   EngineEditor 装配处，二选一以不产生循环依赖为准）。验证：`pnpm test` + `pnpm build`。
+  [✅ 已完成] 注册在 EngineEditor.vue 的 plain `<script>` 块（script setup 语句
+  会编译进 setup()——导入即注册必须用 plain script；BlockInfo 类型导出随之迁入
+  plain script 以过双 script 的 vue-tsc）。键为 BlockType 枚举名 'Fence'（即
+  代码块类型）。pnpm test 289/289 + build 三断言绿。
 - [ ] P1T6 TableEditorBlock 手写原型：新建 `src/editor/components/TableEditorBlock.vue`（消费
   `src/editor/engine/commands.ts` 表链；单元格沿用 BlockHost 协议）+ 对应
   `src/editor/__tests__/table-editor-block.test.ts`（四向命令 + undo）。验证：`npx vitest run src/editor/__tests__/table-editor-block.test.ts`。
+  [✅ 已完成] TableEditorController（addRow/addColumn/deleteRow/deleteColumn
+  各一步撤销 + 护栏：末行/末列不可删；单元格 commitCell 走 diffToOp 协议）+
+  SFC（table-node DOM 契约 thead/th+tbody/td + 工具栏 data-te-action 四钮 +
+  readonly 横幅）。测试 9/9；EngineEditor plain script 增注册
+  Table→TableEditorBlock；全套 298/298 + build 绿。备注：deleteTable 不在
+  commands.ts 命令面（验收仅要求行列增删），v1 不做按钮。
 - [ ] P1T7 CodeEditorBlock .at 化：新建 `autodown/packages/engine/auto/editor/code_editor_block.at`；`auto/editor/gen.mjs` DEPLOY_COMPONENTS 与
   `scripts/assert-editor-gen.mjs` 部署清单各增一行；`pnpm gen:editor` 收割；
   生成物与 P1T4 手写件对拍（DOM 快照 diff）后删手写 SFC，测试改指生成物。验证：`pnpm gen:editor && pnpm gen:editor`（两次逐字节一致）+ `pnpm build`（三断言含新部署物）。
+  [✅ 已完成] code_editor_block.at（扁平 chrome props：controller/blockId/
+  language/code/readonly；EngineEditor plain script 适配器 fenceEditSlot 做
+  node/ctx→扁平 props）+ ext/code_editor_block_ext.ts（focus/resize DOM 桥）；
+  gen.mjs 与 assert-editor-gen.mjs 清单各 +1（13 部署物/8 桥）。对拍收敛：类/
+  data-block-id/横幅/disabled 逐字节一致，diff 仅编译器固有项（text 节点包
+  span、v-model textarea SSR 空内容+mount 回填、attr 顺序）。在档的编译器
+  缺口：model var 用 prop 初始化会发射在 defineProps 之前（TDZ）——绕行为
+  .Init 回填并在 .at 头注记录。gen 两连跑 md5 一致；test 298/298 + build 绿。
 - [ ] P1T8 TableEditorBlock .at 化：同 P1T7 路径（`table_editor_block.at`）。验证：同 P1T7。
+  [✅ 已完成] table_editor_block.at（扁平 chrome 数据：controller/blockId/
+  readonly/header_cells/body_rows——适配器 tableEditSlot 每次 render 从
+  BlockNode 拍平 {id,text,cls}；嵌套 v-for 带行/格 key）+
+  ext/table_editor_block_ext.ts（blur 事件 dataset 提取桥）。对拍收敛（差异
+  同 P1T7 类：span 包裹/attr 顺序）；踩坑在档：.at 视图引用与 prop 声明
+  命名必须一致（snake_case），否则 v-for 源 undefined 静默渲染空表。gen
+  两连跑 md5 一致（14 部署物/9 桥）；test 298/298 + build 绿。
 - [ ] P1T9 ARCHITECTURE §6 修订：在 `autodown/packages/engine/ARCHITECTURE.md` §6 增补 BlockComponent 三模式契约边界（手写平台层/生成 chrome 层归属、
   readonly 裁定、P2 行内 WYSIWYG 缺口显式在册）。验证：文档存在且被 build
   门检不依赖（`pnpm build` 仍绿）。
+  [✅ 已完成] §6 新增"BlockComponent 三模式契约（plan 023）"小节：三槽位
+  语义/键归一、编辑面 SFC 归 chrome 层 vs 控制器+适配器归平台层的归属线、
+  readonly v1 裁定（备选方案不取）、行内 WYSIWYG 与嵌套块单元格缺口在册；
+  部署物计数更新 12→14、ext 桥 7→9。build 三断言绿。
 
 ### Phase 2：流式合流（P3）
 

@@ -17,6 +17,7 @@ import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
 import { TableEditorController } from '../engine/table-editor-controller'
 import TableEditorBlock from '../components/TableEditorBlock.vue'
+import EngineEditor from '../components/EngineEditor.vue'
 
 function tableDoc(): { engine: EditorEngine; tableId: string } {
   const doc = parse_blocks('| A | B |\n| --- | --- |\n| 1 | 2 |\n\npara after', true)
@@ -111,6 +112,31 @@ describe('TableEditorController — cell text commit (BlockHost protocol)', () =
     const c = new TableEditorController(engine, tableId)
     const cell = rows(engine, tableId)[1].children[1]
     expect(c.commitCell(cell.id, '2')).toBe(false)
+  })
+})
+
+describe('stream→edit readonly gate v1 (P2T2)', () => {
+  // assembly wiring for the table face mirrors the code face: streaming=true
+  // → BlockEditCtx.readonly → banner + disabled toolbar buttons.
+  async function renderEditor(streaming: boolean | undefined): Promise<string> {
+    const app = createSSRApp({
+      render: () =>
+        h(EngineEditor as any, { modelValue: '| A | B |\n| --- | --- |\n| 1 | 2 |', streaming }),
+    })
+    return renderToString(app)
+  }
+
+  it('streaming=true renders the table edit face read-only with the banner', async () => {
+    const html = (await renderEditor(true)).replace(/<!--.*?-->/g, '')
+    expect(html).toContain('autodown-table-editor')
+    expect(html).toContain('autodown-stream-banner')
+    expect(html).toContain('disabled')
+  })
+
+  it('streaming absent/false leaves the table face editable', async () => {
+    const html = (await renderEditor(false)).replace(/<!--.*?-->/g, '')
+    expect(html).toContain('autodown-table-editor')
+    expect(html).not.toContain('autodown-stream-banner')
   })
 })
 

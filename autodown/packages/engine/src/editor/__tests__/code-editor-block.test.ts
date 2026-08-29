@@ -90,6 +90,35 @@ describe('Fence edit-slot registration (P1T5)', () => {
   })
 })
 
+describe('stream→edit readonly gate v1 (P2T2)', () => {
+  // EngineEditor wiring: streaming=true flows into BlockEditCtx.readonly and
+  // the focused editing face renders the banner + disabled state; the stream
+  // landing (streaming=false/absent) unlocks it. Pinned at the assembly
+  // level because the ctx handoff is the contract seam.
+
+  async function renderEditor(md: string, streaming: boolean | undefined): Promise<string> {
+    const app = createSSRApp({
+      render: () => h(EngineEditor as any, { modelValue: md, streaming }),
+    })
+    return renderToString(app)
+  }
+
+  it('streaming=true renders the code edit face read-only with the banner', async () => {
+    const html = (await renderEditor('```js\nconst a = 1\n```', true)).replace(/<!--.*?-->/g, '')
+    // focused first block = the fence → CodeEditorBlock mounts
+    expect(html).toContain('autodown-code-editor')
+    expect(html).toContain('autodown-stream-banner')
+    expect(html).toContain('流式生成中')
+    expect(html).toContain('disabled')
+  })
+
+  it('streaming absent/ false leaves the face editable (unlocked)', async () => {
+    const html = (await renderEditor('```js\nconst a = 1\n```', false)).replace(/<!--.*?-->/g, '')
+    expect(html).toContain('autodown-code-editor')
+    expect(html).not.toContain('autodown-stream-banner')
+  })
+})
+
 describe('CodeEditorBlock.vue SSR contract (generated product, P1T7)', () => {
   // Since P1T7 the component at components/CodeEditorBlock.vue is the
   // .at-generated widget (flat chrome props; the headless controller is

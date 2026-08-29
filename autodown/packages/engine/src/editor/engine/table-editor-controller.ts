@@ -63,6 +63,10 @@ export class TableEditorController {
   }
 
   /** Cell blur-commit: old→new text as one diff op (BlockHost protocol).
+   *  The selection stays anchored on the TABLE — the op's position points at
+   *  the cell and applyOp would otherwise drag the anchor into it, dropping
+   *  the top-level focus that assembles this editing face (found live in the
+   *  demo: committing a cell unmounted the table editor).
    *  Returns false when the text is unchanged or the cell is gone. */
   commitCell(cellId: string, newText: string): boolean {
     const cell = findBlock(this.engine.doc, cellId)
@@ -72,7 +76,11 @@ export class TableEditorController {
     if (oldText === newText) return false
     const op = diffToOp(cellId, oldText, newText)
     if (!op) return false
+    const preSel = this.engine.selection
     this.engine.apply(op)
+    if (this.engine.selection.anchor.blockId !== preSel.anchor.blockId) {
+      this.engine.select(preSel)
+    }
     return true
   }
 }

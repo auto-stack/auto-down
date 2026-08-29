@@ -199,3 +199,29 @@ describe('diffToOp — host text bridge', () => {
     expect(diffToOp('p1', 'same', 'same')).toBeNull()
   })
 })
+
+describe('EditorEngine — command-layer change notification (plan-023 follow-up)', () => {
+  function newEngine(text: string): EditorEngine {
+    return new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, text)))
+  }
+
+  // applyTree/applyGroup mutators (commands.ts, input rules, the code/table
+  // edit-face commits) MUST notify onChange listeners — the editor repaints
+  // and re-emits markdown from that signal; a silent tree change leaves the
+  // UI stale (found live in the demo: table add-row had no visual effect).
+  it('applyTree notifies onChange', () => {
+    const engine = newEngine('hello')
+    let notified = 0
+    engine.onChange(() => { notified++ })
+    engine.applyTree((tree) => tree)
+    expect(notified).toBe(1)
+  })
+
+  it('applyGroup notifies onChange once per group', () => {
+    const engine = newEngine('hello')
+    let notified = 0
+    engine.onChange(() => { notified++ })
+    engine.applyGroup([])
+    expect(notified).toBe(0) // no-op group stays silent
+  })
+})

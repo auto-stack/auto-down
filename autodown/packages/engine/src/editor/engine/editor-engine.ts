@@ -105,6 +105,10 @@ export class EditorEngine {
     this.undoStack.push({ preTree: this.tree, preSel: this.sel, ops: [...ops], after })
     this.redoStack = []
     this.thread(ops, after)
+    // every public mutator notifies — command-layer changes (applyTree:
+    // commands.ts, edit-face commits) drive the editor repaint + md re-emit
+    // from this signal (plan-023 follow-up; found live in the demo).
+    this.emit(false)
   }
 
   /** Apply a pure tree transform as ONE undo step (command layer:

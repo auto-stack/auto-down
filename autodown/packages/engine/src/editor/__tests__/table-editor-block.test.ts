@@ -11,7 +11,7 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
-import { BlockType, blockText, findBlock } from '../../parser/block-model'
+import { BlockType, BlockPos, Selection, blockText, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
@@ -105,6 +105,19 @@ describe('TableEditorController — cell text commit (BlockHost protocol)', () =
 
     engine.undo()
     expect(blockText(findBlock(engine.doc, headerCell.id)!)).toBe('A')
+  })
+
+  it('cell commit keeps the selection anchored on the table (edit face stays assembled)', () => {
+    // the face is assembled from the TOP-LEVEL focused block; if the commit
+    // op drags the engine selection down into the cell, the table leaves the
+    // focused branch and the editing face unmounts (found live in the demo)
+    const { engine, tableId } = tableDoc()
+    const c = new TableEditorController(engine, tableId)
+    const cell = rows(engine, tableId)[1].children[0]
+    const sel = new Selection(new BlockPos(tableId, 0), new BlockPos(tableId, 0))
+    engine.select(sel)
+    c.commitCell(cell.id, 'changed')
+    expect(engine.selection.anchor.blockId).toBe(tableId)
   })
 
   it('committing identical cell text is a no-op', () => {

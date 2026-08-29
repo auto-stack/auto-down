@@ -2,11 +2,11 @@
 
 ---
 plan_id: PLAN-023
-status: execution_done
+status: reviewed
 feature_name: 统一块组件契约（BlockComponent 三模式）与分类型编辑面重建
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T16:20:00+08:00
-updated_at: 2026-08-29T18:05:00+08:00
+updated_at: 2026-08-29T18:20:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
@@ -294,7 +294,49 @@ export interface BlockComponent {
 
 ## 复审记录
 
-（/auto-plan:review 填写）
+**复审人**：zcode（/auto-plan:review）· **时间**：2026-08-29 18:20 · **结论**：✅ PASS → `reviewed`
+（复审在 `.worktrees/plan-023-dev` 内独立复跑验证；分支已随 Phase 0/1/2 分阶段折叠于 master。）
+
+**验收标准逐条复核**（全部 PASS，证据为复审当次实测）：
+
+1. ✅ 预览零 round-trip：`EngineEditor.vue` 无 `parseDocument` 调用（仅注释提及）；
+   全 editor 检索唯一残留在 `ext/auto_down_editor_ext.ts:146`——§6 在册 dormant
+   桥，实测 dist 无引用（tree-shaken）。demo e2e 9/9。
+2. ✅ 聚焦代码块 = CodeEditorBlock（标题栏+textarea）：SSR/装配测试过（含
+   `data-block-id`）；回写语义由 CodeEditorController 测试钉死（serialize
+   roundtrip 含修改后代码 + 一步撤销）。
+3. ✅ 聚焦表格编辑面：四向命令链经 commands.ts 各一步撤销 + 末行/末列护栏，
+   TableEditorController 9 测试过。
+4. ✅ 契约公开导出（`src/render/index.ts:17-23`，导出面冒烟测试在册）；
+   EngineEditor（`editSlotFor`→resolve，:186）与 StreamingRenderer
+   （`resolveBlockComponent(kind).stream`，:161）均经 registry 解析。
+5. ✅ 两编辑面头部为 Auto-generated 生成物；`assert-editor-gen` 绿（14 部署物
+   /9 桥，清单含两新行）；gen:editor 两连跑 14 文件 md5 全一致。
+6. ✅ 流式只读门控：4 例装配级测试（code/table × streaming true/false）钉死
+   `streaming prop → BlockEditCtx.readonly → 横幅/disabled`。
+7. ✅ 冻结面零破坏：EngineEditor diff 中契约面（root class / data-block-id /
+   getBlockMap / node-slot / boundary）零行变更；demo e2e 全绿佐证。
+
+**复审独立全量门**：engine vitest 306/306 · build 三断言 · gen 确定性 ·
+demo e2e 9/9 · jade-garden front build ✓（五门全绿）。
+
+**遗漏/延后/workaround 清查**：
+- 无未声明延期；行内 WYSIWYG 与嵌套块单元格为计划文本明载的 v1 边界
+  （非执行期悄悄砍范围）。
+- 在档 workaround（2 项，根因均在 auto-lang 仓，记为跨仓债务候选）：
+  ① model var 用 prop 初始化发射于 defineProps 之前（TDZ）——绕行为
+  `.Init` 回填，副作用为 textarea SSR 空内容（mount 填充）；
+  ② .at 视图成员引用与 prop 命名不一致时静默渲染空 v-for（无校验）——
+  本计划靠命名约定规避（snake_case）。
+- 计划↔代码偏差（无害）：P0T1 字面未列 block-wnode.ts 桥文件，因
+  renderNodes 消费 WNode 形状而必须新增，语义目标（单一管线零重解析）达成。
+
+**spec-impact**：本仓无 spec 账本（docs/specs 不存在，起草时已记录后端
+不可用）——supersedes/new_spec/touched_goals 留空不猜；持久裁定已落于
+`ARCHITECTURE.md` §6（BlockComponent 三模式契约小节）。
+
+**待澄清三项维持开放**（计划起草时的 v1 取舍已按草案实现并落档，留用户
+否决权）：stream→edit 只读裁定 / 编辑态语法着色后置 / 嵌套块单元格深度。
 
 ## 待澄清事项
 

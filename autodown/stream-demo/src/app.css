@@ -1,0 +1,110 @@
+:root {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f9;
+  color: #1f2328;
+}
+
+.stream-demo {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+.stream-demo__header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stream-demo__header h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.stream-demo__header a {
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.stream-demo__header a:hover {
+  color: #4f46e5;
+}
+
+.stream-demo__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+.stream-demo__toolbar button {
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stream-demo__toolbar button:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.stream-demo__toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.stream-demo__toolbar button--primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+
+.stream-demo__toolbar button--primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.stream-demo__toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.stream-demo__status {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.stream-demo__viewport {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 28px 32px;
+  min-height: 320px;
+}

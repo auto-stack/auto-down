@@ -2,15 +2,15 @@
 
 ---
 plan_id: PLAN-023
-status: drafting
+status: executing
 feature_name: 统一块组件契约（BlockComponent 三模式）与分类型编辑面重建
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T16:20:00+08:00
-updated_at: 2026-08-29T16:25:00+08:00
+updated_at: 2026-08-29T16:35:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 0
+current_step: 2
 total_steps: 13
 ---
 
@@ -184,8 +184,16 @@ export interface BlockComponent {
   `engine.doc.children`（排除聚焦可编辑叶块）逐个 `renderNodes([n], true)`
   并沿用现有 node-slot/data-block-id/boundary/onClick 包装；wikilink 装饰后置。
   验证：`cd autodown/packages/engine && pnpm test`（271+ 全绿）。
+  [✅ 已完成] 新增手写桥 `src/render/block-wnode.ts`（BlockNode→WNode，镜像
+  convertBlock/serializer 约定——renderNodes 消费的是 WNode 形状，直连需此转换）；
+  `previewNodes` 改为 过滤→blockNodesToWNodes→renderNodes(一次，保持 data-node-index
+  编号)→decorateWikilinks；EngineEditor.vue 已无 parseDocument 调用；`pnpm test`
+  271/271 全绿。
 - [ ] P0T2 回归门：`cd autodown/demo && npx playwright test`（scroll-sync
   契约重点观察）；不绿则修 P0T1 引入的 DOM 差异。验证：e2e 退出码 0。
+  [✅ 已完成] 9/9 全绿（含 scroll-sync:141 历史豁免项，本次也过）。备注：冷
+  worktree 首跑需先 `pnpm build` engine（demo 消费 dist），且 vite 首启
+  dep-optimize 竞态可致 check-heading 假阴——预热后复跑稳定全绿。
 
 ### Phase 1：契约 + 分类型编辑面（P1）
 

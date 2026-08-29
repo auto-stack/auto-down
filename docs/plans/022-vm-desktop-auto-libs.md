@@ -332,6 +332,24 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > > 非产品代码路径）。slice 4（编辑器核心流：tabs_store/editor_tab 迁移 +
 > > map 保真）起待启动。
 > >
+> > **进度（2026-08-29 slice 4+5 完成：Phase 4 核心流验收 6/6 达成）**：
+> > slice 4（编辑器+闪卡）与 slice 5（反链/图谱/搜索面板）连续落地，提交
+> > b80c7cf / 910440f（worktree plan-022）。**Phase 4 验收口径全达**：
+> > 打开工作区 ✓ / 编辑 ✓ / 保存 ✓ / 反链 ✓（backlinks/outlinks 计数+
+> > 点击跳转）/ 图谱 ✓（列表形态裁定落地：8 边、节点可点）/ 闪卡 ✓
+> > （due→评分→排程落盘）；双端视觉基线：baseline/iced-slice5-structure.txt
+> > （AutoUI snapshot 结构树，可 diff）+ web 侧 e2e 23/23，像素对拍通道
+> > 登记工具链债（Phase 5 收口）。**跨仓修复 ×2 已折推送 auto-lang
+> > master**：①340 改写器（{*path} 通配/GET query/percent 编码 +
+> > encode_path 原生件 2013）；②属性 `.length` VM 恒 0（typed 懒表别名
+> > auto.list|str.length + untyped GET_FIELD length 回退），plan046/340
+> > TDD 全绿。**登记（auto-lang 侧备案）**：`.type` 撞 DSL 元属性；
+> > NestedObject 缺席字段读 0 哨兵（非 null）致存在性分支不可靠——app 以
+> > search_pages + handler 行模型规范化规避。**Phase 4 收口待办**：主题/
+> > 设置面板（低优）与 confirm 模态/dir-picker 宿主能力（登记项）随
+> > Phase 5；下一步按计划进 Phase 5（桌面壳裁定 + 全量退役）前，先跑
+> > Phase 4 阶段域复核（全量门 + e2e 双跑）。
+> >
 > > **进度（2026-08-29 slice 4 完成：编辑器与闪卡核心流实机通）**：app.at
 > > 升级为三栏面板（文件树 | 编辑器 | 卡片列）。**编辑器 6/6 断言**（MCP
 > > type_text 驱动）：文件列表点开 → read_wiki 载入 → textarea `value:`

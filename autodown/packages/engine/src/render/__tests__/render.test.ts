@@ -117,7 +117,7 @@ describe('optional capabilities (plan 008 goal 3)', () => {
     clearOptionalCapabilities()
     enableKatex()
     expect(isCapabilityEnabled('katex')).toBe(true)
-    enableHighlight(() => ({}))
+    enableHighlight(() => undefined)
     expect(isCapabilityEnabled('highlight')).toBe(true)
     clearOptionalCapabilities()
     expect(isCapabilityEnabled('katex')).toBe(false)

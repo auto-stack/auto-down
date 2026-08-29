@@ -1,9 +1,9 @@
 <template>
-  <div ref="containerRef" class="streaming-document">
-    <template v-for="(segment, idx) in segments" :key="segment.type + '-' + idx">
+  <div ref="containerRef" class="streaming-document" :class="{ 'is-sync': scrollSync }">
+    <template v-for="(part, idx) in parts" :key="part.kind + '-' + idx">
       <MarkdownRender
-        v-if="segment.type === 'markdown'"
-        :content="segment.text"
+        v-if="part.kind === 'markdown'"
+        :content="part.text"
         :final="!streaming"
         :max-live-nodes="streaming ? 0 : 320"
         :batch-rendering="streaming"
@@ -13,11 +13,30 @@
         :fade="false"
         :code-block-props="codeBlockProps"
       />
+      <details
+        v-else-if="part.kind === 'details'"
+        class="autodown-details"
+        data-details-wrapped
+      >
+        <summary>{{ part.summary }}</summary>
+        <div class="details-content">
+          <MarkdownRender
+            :content="part.body"
+            :final="!streaming"
+            :batch-rendering="streaming"
+            :render-batch-size="16"
+            :render-batch-delay="8"
+            :typewriter="streaming && idx === lastMarkdownIndex"
+            :fade="false"
+            :code-block-props="codeBlockProps"
+          />
+        </div>
+      </details>
       <component
-        v-else-if="segment.type === 'component'"
-        :is="registry[segment.componentType]"
-        v-bind="segment.props"
-        :final="segment.final"
+        v-else-if="part.kind === 'component'"
+        :is="registry[part.componentType]"
+        v-bind="part.props"
+        :final="part.final"
       />
     </template>
   </div>
@@ -26,7 +45,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownRender from './MarkdownRender.vue'
-import { enableKatex, enableMermaid } from './optional-capabilities'
+import { enableKatex, enableMermaid, enableHighlight, isCapabilityEnabled } from './optional-capabilities'
 import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
@@ -35,32 +54,77 @@ import StreamingTable from './StreamingTable.vue'
 const lowlight = createLowlight(common)
 
 // heavy capabilities are opt-in registrations (plan 008 Phase 3); math and
-// mermaid nodes are outside the current parse subset, so these record intent
+// mermaid nodes are outside the current parse subset, so these record intent.
+// highlight IS wired: the codeblock panel renders through the highlight
+// bridge (highlight.ts) — lowlight is just the Vue default; a backend that
+// registered its own impl (enableHighlight(vmImpl)) is NOT clobbered here.
 enableKatex()
 enableMermaid()
+if (!isCapabilityEnabled('highlight')) enableHighlight()
 
-const props = defineProps<{
-  source: string
-  streaming?: boolean
-  placeholderBlockId?: string
-  placeholderHeight?: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    source: string
+    streaming?: boolean
+    placeholderBlockId?: string
+    placeholderHeight?: number
+    /** editor scroll-sync mode: zeroes slot-edge margins for stable block
+     *  measurement. Plain streaming reads should turn this OFF to keep the
+     *  normal heading/paragraph vertical rhythm. */
+    scrollSync?: boolean
+  }>(),
+  {
+    streaming: false,
+    scrollSync: true,
+  }
+)
 
-const sourceRef = computed(() => transformDetailsContainers(props.source))
-const { segments } = useStreamingDocument(sourceRef)
+const { segments } = useStreamingDocument(computed(() => props.source))
 
-function transformDetailsContainers(text: string): string {
-  // Convert :::details Summary\n...\n::: into native <details> HTML so the
-  // preview renderer (markstream-vue) lets the browser handle collapse/expand.
-  return text.replace(
-    /:::details\s+(.*?)\n([\s\S]*?)\n:::/g,
-    '<details>\n<summary>$1</summary>\n$2\n</details>'
-  )
+// :::details blocks are NOT part of the streaming parse subset — the
+// self-hosted MarkdownRender has no raw-HTML support, so the old trick of
+// rewriting them into <details> HTML left them escaped as plain text.
+// Instead we split markdown segments here and render the native
+// <details> element ourselves (browser handles collapse/expand), with the
+// body going through MarkdownRender like any other markdown.
+type DetailsPart = { kind: 'details'; summary: string; body: string; closed: boolean }
+type Part = { kind: 'markdown'; text: string } | DetailsPart | { kind: 'component'; componentType: string; props: Record<string, any>; final: boolean }
+
+const DETAILS_HEADER_RE = /^:::details[ \t]+([^\n]*)\n/gm
+
+function splitMarkdownIntoParts(text: string): Part[] {
+  const parts: Part[] = []
+  let cursor = 0
+  DETAILS_HEADER_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = DETAILS_HEADER_RE.exec(text)) !== null) {
+    const bodyStart = m.index + m[0].length
+    const closer = text.indexOf('\n:::', bodyStart)
+    if (m.index > cursor) parts.push({ kind: 'markdown', text: text.slice(cursor, m.index) })
+    if (closer === -1) {
+      parts.push({ kind: 'details', summary: m[1], body: text.slice(bodyStart), closed: false })
+      cursor = text.length
+    } else {
+      parts.push({ kind: 'details', summary: m[1], body: text.slice(bodyStart, closer), closed: true })
+      cursor = closer + '\n:::'.length
+      DETAILS_HEADER_RE.lastIndex = cursor
+    }
+  }
+  if (cursor < text.length) parts.push({ kind: 'markdown', text: text.slice(cursor) })
+  return parts
 }
 
+const parts = computed<Part[]>(() =>
+  segments.value.flatMap((segment) =>
+    segment.type === 'markdown'
+      ? splitMarkdownIntoParts(segment.text)
+      : [{ kind: 'component', componentType: segment.componentType, props: segment.props, final: segment.final }]
+  )
+)
+
 const lastMarkdownIndex = computed(() => {
-  for (let i = segments.value.length - 1; i >= 0; i--) {
-    if (segments.value[i].type === 'markdown') return i
+  for (let i = parts.value.length - 1; i >= 0; i--) {
+    if (parts.value[i].kind !== 'component') return i
   }
   return -1
 })
@@ -84,14 +148,19 @@ function clearPlaceholders(container: HTMLElement) {
 
 const COPY_ICON = '<span class="codeblock-copy-icon"></span>'
 
-const mutationObserver = new MutationObserver(() => {
-  if (containerRef.value) {
-    applyBlockIdsAndPlaceholder(containerRef.value)
-    highlightCodeBlocks(containerRef.value)
-    addCodeBlockHeaders(containerRef.value)
-    wrapDetailsContent(containerRef.value)
-  }
-})
+// created lazily on mount — MutationObserver is browser-only and must not
+// be touched during SSR setup
+let mutationObserver: MutationObserver | null = null
+function createMutationObserver(): MutationObserver {
+  return new MutationObserver(() => {
+    if (containerRef.value) {
+      applyBlockIdsAndPlaceholder(containerRef.value)
+      highlightCodeBlocks(containerRef.value)
+      addCodeBlockHeaders(containerRef.value)
+      wrapDetailsContent(containerRef.value)
+    }
+  })
+}
 
 function getTopLevelBlockType(content: Element, nodeType: string | null): string | null {
   const child = content.firstElementChild
@@ -304,12 +373,13 @@ watch(
 
 onMounted(() => {
   if (!containerRef.value) return
+  mutationObserver = createMutationObserver()
   mutationObserver.observe(containerRef.value, { childList: true, subtree: true })
   containerRef.value.addEventListener('click', handleContainerClick, { capture: true })
 })
 
 onBeforeUnmount(() => {
-  mutationObserver.disconnect()
+  mutationObserver?.disconnect()
   containerRef.value?.removeEventListener('click', handleContainerClick, { capture: true })
 })
 
@@ -319,6 +389,13 @@ defineExpose({
 </script>
 
 <style scoped>
+/* Accent tokens (indigo) — the default streaming theme's single hue */
+.streaming-document {
+  --ad-accent: #4f46e5;
+  --ad-accent-strong: #4338ca;
+  --ad-accent-soft: #eef2ff;
+}
+
 /* Segment spacing */
 .streaming-document > * + * {
   margin-top: 0.75rem;
@@ -327,11 +404,14 @@ defineExpose({
 /* Scroll sync controls the gap between slots via margin-bottom. Zero the
    leading/trailing margins of the rendered node's children so they cannot
    collapse with adjacent slots and throw off the measurement. The first slot
-   keeps its top margin so the first block aligns with the editor. */
-.streaming-document :deep(.node-slot:not(:first-of-type) > .node-content > *:first-child) {
+   keeps its top margin so the first block aligns with the editor.
+   Active ONLY in scroll-sync mode (placeholderBlockId set): without it the
+   zeroing kills intra-segment heading/paragraph rhythm for plain streaming
+   reads. */
+.streaming-document.is-sync :deep(.node-slot:not(:first-of-type) > .node-content > *:first-child) {
   margin-top: 0 !important;
 }
-.streaming-document :deep(.node-slot:not(:last-of-type) > .node-content > *:last-child) {
+.streaming-document.is-sync :deep(.node-slot:not(:last-of-type) > .node-content > *:last-child) {
   margin-bottom: 0 !important;
 }
 
@@ -347,14 +427,16 @@ defineExpose({
 .streaming-document :deep(h2),
 .streaming-document :deep(h3) {
   font-weight: 700;
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1.6rem;
+  margin-bottom: 0.9rem;
   line-height: 1.3;
-  color: #111827;
+  color: var(--ad-accent-strong);
 }
 
 .streaming-document :deep(h1) {
   font-size: 1.58rem;
+  margin-top: 1.2rem;
+  margin-bottom: 1.1rem;
 }
 
 .streaming-document :deep(h2) {
@@ -524,7 +606,7 @@ defineExpose({
   width: 1rem;
   height: 1rem;
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--ad-accent);
   transition: transform 0.15s ease;
 }
 
@@ -894,7 +976,7 @@ defineExpose({
 
 /* Links */
 .streaming-document :deep(a) {
-  color: hsl(220 90% 56%);
+  color: var(--ad-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -1068,7 +1150,7 @@ defineExpose({
 }
 
 .streaming-document :deep(th) {
-  background: hsl(220 9% 46% / 0.06);
+  background: var(--ad-accent-soft);
   font-weight: 600;
 }
 
@@ -1090,7 +1172,7 @@ defineExpose({
 }
 
 .streaming-document :deep(.checkbox-icon.checkbox-checked) {
-  color: hsl(220 90% 56%);
+  color: var(--ad-accent);
 }
 
 .streaming-document :deep(.checkbox-icon.checkbox-unchecked) {

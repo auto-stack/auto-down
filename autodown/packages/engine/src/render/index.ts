@@ -10,6 +10,9 @@ export {
   isCapabilityEnabled,
   clearOptionalCapabilities,
 } from './optional-capabilities'
+export { setHighlightImpl, getHighlightImpl } from './highlight'
+export type { HighlightFn } from './highlight'
+export { lowlightHighlighter } from './highlight-lowlight'
 export type {
   MarkdownSegment,
   ComponentSegment,

@@ -10,6 +10,23 @@
 
 import { h, type VNode } from 'vue'
 import type { PanelRenderCtx, PanelRenderer } from './panel-registry'
+import { isCapabilityEnabled } from './optional-capabilities'
+import { getHighlightImpl } from './highlight'
+import { lowlightHighlighter } from './highlight-lowlight'
+
+// VNode-level syntax highlighting for the codeblock panel, through the
+// platform highlight bridge (highlight.ts): the bound implementation wins
+// (a VM backend's bridge), the lowlight default resolves on the Vue layer,
+// and `undefined` degrades to plain text inside the same structure. Doing
+// this at the VNode level (as an innerHTML prop Vue owns) — instead of a DOM
+// post-process — is what makes it survive streaming re-renders: a
+// post-process's spans get wiped by every Vue patch while its
+// data-highlighted guard survives, permanently disabling re-highlighting
+// (the stream-demo "plain code" bug).
+function resolveHighlighter() {
+  if (!isCapabilityEnabled('highlight')) return null
+  return getHighlightImpl() ?? lowlightHighlighter
+}
 
 function renderTextPanel({ node, final, budget, renderInlineChildren }: PanelRenderCtx): VNode {
   if (node.type === 'text') {
@@ -90,11 +107,15 @@ function renderTablePanel({ node, final, budget, renderEmbedded }: PanelRenderCt
  * Codeblock chrome: header (language label + actions area) over a
  * pre[data-language] > code pair. The pre attributes (data-language) are the
  * contract for downstream highlighters and header injection.
- * Optional capability degradation (plan 008 goal 3): without a highlighter
- * factory the code renders as plain text inside the same structure.
+ * Optional capability degradation (plan 008 goal 3): with the `highlight`
+ * capability off (or an unknown language) the code renders as plain text
+ * inside the same structure.
  */
 function renderCodeblockPanel({ node }: PanelRenderCtx): VNode {
   const language = node.language ? String(node.language) : ''
+  const code = node.code ?? ''
+  const highlighter = resolveHighlighter()
+  const highlightedHtml = highlighter?.(code, language)
   return h('div', { class: 'code-block-container rounded-lg border' }, [
     h('div', { class: 'code-block-header flex justify-between items-center' }, [
       h('div', { class: 'code-header-main' }, [
@@ -112,7 +133,11 @@ function renderCodeblockPanel({ node }: PanelRenderCtx): VNode {
         'aria-busy': 'false',
         tabindex: '0',
       },
-      [h('code', { translate: 'no' }, node.code)]
+      [
+        highlightedHtml
+          ? h('code', { translate: 'no', innerHTML: highlightedHtml, 'data-highlighted': language })
+          : h('code', { translate: 'no' }, code),
+      ]
     ),
   ])
 }

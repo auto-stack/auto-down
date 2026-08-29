@@ -4,6 +4,14 @@
 // math / mermaid nodes yet (whitelisted), so these entries currently only
 // record intent; when the subset grows, renderers are injected here and the
 // library keeps working (degraded plain rendering) when they are absent.
+//
+// The highlight implementation slot itself lives in highlight.ts (the
+// platform bridge); enableHighlight just flips the switch and optionally
+// binds an implementation in the same call.
+
+import { setHighlightImpl, type HighlightFn } from './highlight'
+
+export type { HighlightFn } from './highlight'
 
 export type NodeRendererFactory = () => unknown
 
@@ -29,9 +37,13 @@ export function enableMermaid(factory?: NodeRendererFactory): void {
   setEntry('mermaid', true, factory)
 }
 
-/** Register (or clear) the syntax highlighter. */
-export function enableHighlight(factory?: NodeRendererFactory): void {
-  setEntry('highlight', true, factory)
+/** Register (or clear) the syntax highlighter. The optional argument is the
+ *  platform implementation (see highlight.ts for the contract): a VM backend
+ *  supplies its own bridge, the Vue layer calls enableHighlight() with no
+ *  argument and the lowlight default is resolved at the call site. */
+export function enableHighlight(impl?: HighlightFn): void {
+  setEntry('highlight', true)
+  setHighlightImpl(impl ?? null)
 }
 
 export function isCapabilityEnabled(name: string): boolean {
@@ -43,4 +55,5 @@ export function clearOptionalCapabilities(): void {
   for (const key of Object.keys(registry)) {
     delete registry[key]
   }
+  setHighlightImpl(null)
 }

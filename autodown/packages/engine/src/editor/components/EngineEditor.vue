@@ -29,9 +29,10 @@
 // is preserved from day one.
 import { computed, ref, watch } from 'vue'
 import { BlockPos, BlockType, Selection } from '../../parser/block-model'
-import { parse_blocks, parseDocument } from '../../parser/markdown-parser'
+import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
+import { blockNodesToWNodes } from '../../render/block-wnode'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
@@ -124,18 +125,19 @@ const views = computed<BlockView[]>(() => {
   })
 })
 
-/** Preview render of the NON-focused blocks: serialize each top-level block
- *  to markdown, parse it back, render through the ./render pipeline, then
- *  decorate [[wikilinks]] into clickable labels (plan 020 Phase 3) — the
- *  parser keeps them as plain text, the click emits open-wiki-link. */
+/** Preview render of the NON-focused blocks: the engine's BlockNode children
+ *  go straight through the ./render pipeline via the BlockNode->WNode bridge —
+ *  no serialize->parseDocument round trip (plan 023 P0T1, one pipeline for
+ *  editor preview / MarkdownRender / StreamingRenderer). [[wikilinks]] stay
+ *  plain text in the model; decorateWikilinks turns them into clickable
+ *  labels on the returned VNodes (plan 020 Phase 3, click emits open-wiki-link). */
 const previewNodes = computed<VNode[]>(() => {
   void repaintVersion.value
   const focusedId = engine.selection.anchor.blockId
-  const mdBlocks = engine.doc.children
-    .filter((n) => !(n.id === focusedId && isEditableLeaf(n)))
-    .map((n) => serialize({ ...engine.doc, children: [n] }, false))
-  const md = mdBlocks.join('\n')
-  const vnodes = renderNodes(parseDocument(md, true), true)
+  const wnodes = blockNodesToWNodes(
+    engine.doc.children.filter((n) => !(n.id === focusedId && isEditableLeaf(n)))
+  )
+  const vnodes = renderNodes(wnodes, true)
   decorateWikilinks(vnodes, (title, blockId) => emit('open-wiki-link', title, blockId))
   return vnodes
 })

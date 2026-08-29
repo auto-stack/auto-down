@@ -2,15 +2,15 @@
 
 ---
 plan_id: PLAN-024
-status: drafting
+status: execution_done
 feature_name: 行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色）
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T19:10:00+08:00
-updated_at: 2026-08-29T19:10:00+08:00
+updated_at: 2026-08-30T01:30:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 0
+current_step: 12
 total_steps: 12
 ---
 
@@ -190,13 +190,15 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
 
 ### Phase 0：mark 命令层（headless 地基）
 
-- [ ] P0T1 spans 重切分工具：新建 `autodown/packages/engine/src/editor/engine/marks.ts`（toggleMarkOnSpans/setLinkOnSpans/marksAtRange）+
+- [x] P0T1 spans 重切分工具：新建 `autodown/packages/engine/src/editor/engine/marks.ts`（toggleMarkOnSpans/setLinkOnSpans/marksAtRange）+
   `src/editor/__tests__/marks.test.ts`（TDD 先红：跨界切分/同 mark 合并/
   部分覆盖取消/嵌套保持/link attrs）。验证：`npx vitest run src/editor/__tests__/marks.test.ts`。
+  [✅ 已完成] marks.ts 落地（toggleMarkOnSpans/setLinkOnSpans/marksAtRange/normalizeSpans），13/13 绿（2026-08-30）
 - [ ] P0T2 mark 命令与 isActive 源：`src/editor/engine/commands.ts` 增
   `toggleMark/setLink`（applyTree 一步撤销）与 `marksInRange(engine, sel)`；
   `commands.test.ts` 增段（toggle→serialize roundtrip + undo）。验证：
   `npx vitest run src/editor/__tests__/commands.test.ts`。
+  [✅ 已完成] commands.ts 增 toggleMark/setLink/marksInRange（applyMarkTree→withInlines 一步撤销），barrel 出口；commands+marks 25/25 绿（2026-08-30）
 
 ### Phase 1：选区映射
 
@@ -204,6 +206,7 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
   （domRangeToBlockRange/blockRangeToDomRange + 偏移 walk 纯函数抽出）+
   `src/editor/__tests__/selection-map.test.ts`（纯函数注入节点序列测；
   跨块 null 语义）。验证：`npx vitest run src/editor/__tests__/selection-map.test.ts`。
+  [✅ 已完成] pointOffset/offsetPoint 纯 walk（MiniNode 注入）+ domRangeToBlockRange/blockRangeToDomRange DOM 适配（跨宿主/折叠选区返回 null），8/8 绿（2026-08-30）
 
 ### Phase 2：富文本宿主（核心）
 
@@ -211,17 +214,21 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
   spans 渲染内联元素（strong/em/del/code/a，a 禁跳转），保持既有事件面；
   SSR 断言入 `src/editor/__tests__/blockhost-rich.test.ts`。验证：
   `npx vitest run src/editor/__tests__/blockhost-rich.test.ts`。
+  [✅ 已完成] rich-html.ts（spansToHtml 纯函数，转义+a 禁跳转）+ controller.inlines 出口 + BlockHost v-html 挂载渲染；4/4 绿，engine 全量 338/338（2026-08-30）
 - [ ] P2T2 失焦富回写：`src/editor/engine/host-controller.ts` 增
   `onRichBlur(domRoot)`（DOM walk 收集 spans → 整块 applyTree 回写，
   CodeEditor 同构）+ host-controller.test.ts 增（walk 纯函数注入测）。
   BlockHost @blur 分流（纯文本 diff 已无未提交变化时走富回写）。验证：
   `npx vitest run src/editor/__tests__/host-controller.test.ts`。
+  [✅ 已完成] richTreeToSpans/domRootToSpans（walk 纯函数注入测）+ commitRichSpans（一步撤销/无变化 no-op/Image 块跳过保数据）+ BlockHost @blur 分流；6 新测绿（2026-08-30）
 - [ ] P2T3 输入期语义在档回归：确认输入 diff/IME/Enter/Backspace 协议在富
   DOM 下不破（textContent 语义覆盖富结构）；`pnpm test` 全绿。验证：
   `cd autodown/packages/engine && pnpm test`。
+  [✅ 已完成] engine 全量 344/344 绿（309 基线 + 35 新增；输入/组合/结构键协议测全数通过）（2026-08-30）
 - [ ] P2T4 e2e 钉死：新建 `autodown/demo/e2e/inline-marks.spec.ts`——
   选中→Ctrl+B→失焦→预览 strong + roundtrip；IME 冒烟（type 中文）。
   验证：`cd autodown/demo && npx playwright test inline-marks.spec.ts`。
+  [✅ 已完成] inline-marks.spec.ts 2 例绿（富渲染断言/Ctrl+B 原生包裹/blur 经 Save 按钮触发/双窗 roundtrip/CJK 冒烟）；demo 全量 e2e 11/11（2026-08-30）
 
 ### Phase 3：气泡菜单激活
 
@@ -229,14 +236,17 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
   isActive(name) 真实现（marksInRange）+ chain 增 toggleBold/Italic/Strike/
   Code（转发聚焦宿主 DOM 包裹）+ `tiptap-adapter.test.ts` 增段。验证：
   `npx vitest run src/editor/__tests__/tiptap-adapter.test.ts`。
+  [✅ 已完成] isActive（MARK_BY_NAME→marksInRange）+ chain 七 mark 方法（dom-marks.ts 聚焦宿主注册表 + surround/解包；setLink/unsetLink 就位）+ BlockHost @focus/@blur 注册；13/13 绿 + build 三断言（2026-08-30）
 - [ ] P3T2 BubbleMenu 激活与裁剪：改 `auto/editor/bubble_menu.at` 移除
   underline 按钮；`src/editor/components/EngineEditor.vue` 装配
   `<BubbleMenu :editor="adapter">` + 选区矩形定位（computeMenuPosition
   通道）；`pnpm gen:editor` 两连跑确定性 + 对拍（underline 缺席）。
   验证：`pnpm gen:editor && pnpm gen:editor && pnpm build`。
+  [✅ 已完成] .at 裁 underline→重生成（BubbleMenu.vue 无 underline）；ext 重写 EngineBubbleMenu（DOM 选区真值 + computeMenuPosition 选区矩形定位 + mousedown.prevent 保宿主焦点 + selectionchange 驱动）；EngineEditor 装配 + selectionchange→engine.select 桥；adapter isActive 响应式 tick；gen 两连跑确定性 + build 三断言 + engine 348/348 + e2e 11/11（2026-08-30）
 - [ ] P3T3 快捷键与链接：Ctrl+B/I/K（BlockHost keydown 或内容级）+
   链接 prompt 通道（runBubbleLink 既有）+ e2e 增例（气泡出现/isActive/
   italic/链接）。验证：`cd autodown/demo && npx playwright test inline-marks.spec.ts`。
+  [✅ 已完成] BlockHost keydown Ctrl+B/I（覆盖原生 <b> 保 <strong> 规范形）+ Ctrl+K prompt→domSetLink；e2e 增 2 例（气泡出现/5 按钮/无 underline/isActive active 类/italic 就地包裹/链接 prompt roundtrip）——inline-marks 4/4、全量 e2e 13/13（2026-08-30）
 
 ### Phase 4：代码编辑态着色（023 待澄清 #2 收编）
 
@@ -246,18 +256,31 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
   renderCodeHighlight（highlight 桥）与滚动/高度同步；gen 重生成 + 对拍 +
   e2e 增例（叠加层存在、滚动同步）。验证：`pnpm gen:editor && pnpm gen:editor
   && pnpm build && cd ../../demo && npx playwright test`。
+  [✅ 已完成] .at 叠加层（stack+pre aria-hidden+透明文本 caret 保留+box-sizing 对齐）+ .Init 回填简化（消费 TDZ 修复，prop 初始化）+ ext renderCodeHighlight（lowlight 调用点回退）与 syncCodeHighlight；gen 两连跑确定性 + build 三断言 + engine 348/348 + demo e2e 14/14（2026-08-30）
 
 ### Phase 5：收尾
 
 - [ ] P5T1 全量门：engine `pnpm test && pnpm build`、gen 确定性两连跑、
   demo e2e 全绿（9+1 spec）、`cd jade-garden/front && pnpm build`——四门
   全绿后状态推进 `execution_done`。
+  [✅ 已完成] 四门全绿：engine 348/348 + build 三断言；gen 两连跑工作树零漂移；demo e2e 14/14（4 既有 spec + inline-marks 5 例）；jade-garden front build ✓（2026-08-30）
 
 ## 复审记录
 
 （/auto-plan:review 填写）
 
 ## 待澄清事项
+
+- [ ] （执行期发现，P3T3）**`***bold***` 嵌套无法再解析**：span 同含 Strong+Em 时序列化
+  发射 `***x***`，但生成 parser（parser .at 源）不支持三连定界嵌套——再解析只剩 Strong，
+  Em 丢失（`**_x_**` 同样不行）。模型/编辑器内双 mark 无损，仅 md 重载路径受损。修法在
+  parser 生成物域（ delimiter 栈或 flanking 规则），是否单列 parser 小项？
+- [ ] （执行期发现，P2T4）**blur 富回写会吞掉引发它的点击**：结构回写触发 applyTree →
+  views 重算 → 预览槽 DOM 在 mousedown/mouseup 之间被整体替换（`component :is` 每次取
+  新对象，组件身份不稳定）→ click 落到共同祖先，selectBlock 不触发。表现为：Ctrl+B 后
+  单击另一块"第一次没反应，第二次才行"。e2e 以先点 Save（views 外稳定元素）规避；
+  根因修复方向：views 层给每块缓存稳定组件壳（mutable state cell + 稳定 render），
+  兼收滚动稳定性/性能红利。是否单列小项或并入 025 宿主协议改造？
 
 - [ ] 富宿主回写粒度 v1：起草为"失焦整块回写"（CodeEditorBlock 同构；避开
   无 mark op 的内核约束与逐键结构 diff 复杂度）。备选：逐键 DOM↔spans 增量

@@ -2,19 +2,24 @@
 
 ---
 supersedes_spec_components:
-  - "jade-garden back/server 手写业务逻辑体（parser/links 提取/search 匹配/tasks/agenda/query/srs 数学）: 逻辑退役至 back/auto/*.at 双发射 *_gen 壳内直调（壳保留 axum/fs/chrono 装配——Phase 1-3 复审裁定：薄壳化为既定形态，字面『模块删除』由 Phase 5 全量退役承接）"
+  - "jade-garden back/server 手写业务逻辑体（parser/links 提取/search 匹配/tasks/agenda/query/srs 数学）: 逻辑退役至 back/auto/*.at 双发射 *_gen 壳内直调（壳保留 axum/fs/chrono 装配——薄壳化为既定形态；OfMatrix EDN parse/save 经 D5 裁定留壳：float 解析/格式化为 a2r 边界）"
   - "jade-garden 索引存储 SQLite（rusqlite + FTS5 虚拟表）: 退役为内存行表 + jade-garden-index.json 持久化（存储裁定项销号，rusqlite 依赖摘除）"
   - "jade front lib/api.ts 手写 wire interface（24 个）: 退役为 back/auto/api.at 契约单源 a2ts 生成（api_gen.ts 部署 + re-export；fetch 层/LinksResponse 泛型信封/GraphSettings 视图模型留守）"
+  - "jade front lib/blockParser.ts 手写解析镜像（328 行）: 删除（2026-08-30，5d3b4ca）——读路径改 @autodown/engine/parser、save 路径改 parser_gen.parseBody（三镜像归一，020 Phase 3 裁定项销号）"
+  - "back/server/src/unlinked.rs find_unlinked_references regex 扫描: 退役至 unlinked.at（regex crate 依赖摘除，复审 D1 销号，de494a7）"
+  - "back/server/src/index.rs backlinks/outlinks/graph_data 装配排序 + links.rs graph degree: 退役至 linkgraph.at（复审 D2 销号，cdafa88）"
 new_spec_components:
   - "back/auto/api.at 契约源 + gen.mjs tsOnly/front 部署通道 + tests/api-contract-routes.mjs 路由覆盖门（28/28）: 新增（Phase 1）"
   - "back/auto/{parser,links,tasks,query,agenda,srs,search}.at 单源双发射（a2ts 孪生 + a2r 壳内）+ 七套 parity fixtures 双侧同源断言: 新增（Phase 2）"
   - "VM 服务面：vm_server（host bridge jade.api + run_file）+ vm_dispatch（28 臂信封路由双壳单核）+ auto/server.at 入口 + jade_server.at 28 路由（442-c2 适配器，JADE_GARDEN_SERVER=vm 切换）: 新增（Phase 3）"
-  - "auto-lang OpCode::VALID 真值表不变式（枚举判别集派生）+ match_route Path 参数百分号解码: 跨仓修复已合 auto-lang master（2bfd6475c / 5441dda28）"
+  - "auto-lang OpCode::VALID 真值表不变式 + match_route Path 百分号解码 + 340 改写器修复（{*path} 通配/GET query/percent 编码）+ encode_path/body_bytes/body_to_file 原生 + .length 属性别名与 GET_FIELD 回退: 跨仓修复已合推送 auto-lang master（2bfd6475c/5441dda28/b385e3ab5/8302f0e54/5102c5fc1）"
+  - "front/desktop 桌面形态（VM iced：pac.at + 核心流 app.at + 契约副本 + 结构基线 + README 裁定/slice 记录）: 新增（Phase 4/5）"
+  - "back/auto/{unlinked,linkgraph}.at 单源双发射 + parity fixtures 双侧同源断言: 新增（Phase 5）"
 touched_goals:
-  - "022 目标1 逻辑单源: Phase 2 七模块 .at 单源 + api.at 契约单源 + 双发射金标对拍（达成，Phase 1-3 复审 2026-08-29）"
-  - "022 目标3 网页版零回归: rust/VM 双后端 e2e 23/23（达成）"
-  - "022 目标4 退役重复实现: 后端逻辑侧就位；blockParser.ts 前端镜像冻结未删（Phase 5 承接）"
-  - "022 目标2 VM 桌面版: Phase 3 完成 VM 路由接管（网页版形态）；桌面形态待 Phase 4/5"
+  - "022 目标1 逻辑单源: back/auto 九模块 .at 单源 + api.at 契约单源 + 双发射金标对拍（达成）"
+  - "022 目标3 网页版零回归: rust/VM 双后端 e2e 23/23（达成，终审复跑）"
+  - "022 目标4 退役重复实现: blockParser.ts 删除三镜像归一（5d3b4ca）+ unlinked/linkgraph 退役 + regex 摘除；薄壳层按裁定保留（达成）"
+  - "022 目标2 VM 桌面版: VM 路由接管 + iced 双渲染六流全通含导入导出（达成，D4 原生直连路线）"
 ---
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
@@ -496,6 +501,49 @@ front `vue-tsc` **0 错**；rust 后端 e2e **23/23**；VM 后端 e2e
 无未批准延后，无隐瞒绕道。spec-impact 元数据已填（frontmatter）。
 后续：Phase 4（iced 双渲染）→ Phase 5（桌面壳 + 全量退役）→ 全计划
 终审 `/auto-plan:review` → `/auto-plan:merge`。
+
+## 复审记录（全计划终审，2026-08-30）
+
+> 复审人：ZCode 会话（/auto-plan:review）。域：全计划（Phase 1-5）。
+> 入态 `execution_done`；全部验证在 worktree `.worktree/plan-022` 重跑，
+> 未采信历史勾选。终审时 Phase 4 已按多阶段纪律 fold master @ 2ce0d59
+> （pre-fold 门同日全绿），Phase 5 提交在分支待终审后合并。
+
+**全量门（worktree 重跑）**：十套 node 门（parser 6 / links 9 / query 21 /
+agenda 15+2 / srs 全家 / search 15 / tasks 2 / unlinked 11 / linkgraph 7 /
+契约 28/28 + desktop 副本漂移）全绿；back/server cargo **40/40**（含
+unlinked/linkgraph 双侧 parity fixtures）；front vue-tsc/vite 0 错；
+**rust 后端 e2e 23/23**；**VM 后端 e2e 23/23**。
+
+**桌面六流驱动验收**：links 10/10（反链/出链计数+跳转+图谱+搜索，
+只读驱动于 fixture 恢复后复验）+ edit 6/6（编辑置脏/保存落盘/
+frontmatter 保真）+ cards 4/4（due/评分/排程落盘）+ d4 2/2（导出 PK
+落盘/导入 8 文档）——六流全通。
+
+**分 Phase 判定**：Phase 1（3/3，终审复跑契约门+api_gen+流程文档）✓；
+Phase 2（七模块 parity + e2e；「模块删除」裁定偏离维持薄壳化形态）✓；
+Phase 3（VM e2e 23/23 + 前端零改动）✓；Phase 4（六流中五流驱动全过 +
+图谱列表裁定落地 + 结构基线；像素通道环境不稳登记工具链债）✓；
+Phase 5（导入导出原生直连实测 + 三镜像销号 + D1/D2 退役 + D5 留壳裁定 +
+文档收口）✓。
+
+**遗漏/延后/workaround 猎查**：
+- 遗漏：无——TODO/FIXME 扫描仅命中 tasks.at 任务标记关键词（域内容）；
+  声称删除物验证在案（blockParser.ts 不存在、regex 依赖已注释、
+  baseline 在库）。
+- 延后（已登记，非隐瞒）：①confirm 模态/选择器宿主能力/主题设置面板
+  （超验收的增强，DEBTS+README 登记）；②引擎侧两项（返回列表 RC 接线、
+  `.type` 撞名）——均 auto-lang 侧提案，app 有规避形态。
+- workaround：搜索驱动断言一度用文件树同名按钮假阳/阴性（驱动自身缺陷
+  已修）；probe 卫生债——桌面驱动直写共享 fixture tmp/wiki-demo，已加
+  恢复协议（restore-fixture.mjs）并登记（隔离工作区被 app.at 硬编码
+  路径阻塞，随选择器宿主能力一并解决）。
+- 存量语义发现：反链过滤不含 alias 存储 target（rust 原语义保形，
+  修复属独立裁定，DEBTS 在册）。
+
+**结论**：验收全数达成，无未批准延后，无隐瞒绕道。spec-impact 元数据已
+更新（含 Phase 4/5 跨仓修复与新增组件）。路由：**reviewed**——
+`/auto-plan:merge` 可消费。
 
 ## 风险与约束
 

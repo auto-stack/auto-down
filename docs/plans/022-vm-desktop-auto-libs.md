@@ -19,9 +19,9 @@ touched_goals:
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 1-4 收口（Phase 4 fold master @ 2ce0d59）；
-> Phase 5 执行中——桌面壳已裁定（纯 VM 窗口），blockParser 读路径已
-> 切引擎产物，save 路径待引擎行号发射）。
+> 状态：**execution_done（2026-08-30，Phase 1-5 全部收口——Phase 4 fold
+> master @ 2ce0d59；Phase 5 六流全通 + 三镜像销号 + D1/D2/D5 处置 +
+> README/ARCHITECTURE/DEBTS 收口 ec5b144；待 /auto-plan:review 终审）。
 > Phase 5 进度注记（2026-08-30）：unlinked 扫描已退役至 unlinked.at
 > （regex 依赖摘除，复审 D1 销号；双侧 parity 11/11，cargo 39/39，e2e
 > 双 23/23，de494a7）。**

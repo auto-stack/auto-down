@@ -10,7 +10,10 @@
         "related": [
           "PLAN-023"
         ],
-        "status": "proposed"
+        "status": "proposed",
+        "superseded_by": [
+          "P025-2"
+        ]
       },
       {
         "id": "P024-2",
@@ -20,6 +23,17 @@
         "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
         "related": [
           "PLAN-024"
+        ],
+        "status": "proposed"
+      },
+      {
+        "id": "P025-2",
+        "section": "goals",
+        "title": "容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复） — 目标",
+        "content": "1. **聚焦下沉**：点击列表项/引用内文 → 选中**最深叶块**（列表项的段落），\n   BlockHost 就地编辑；所在容器沿路径\"展开\"，其余子树保持预览渲染。\n2. **结构命令层**：`list-commands.ts`——`enterInItem`（拆项；空项则退出\n   列表）、`backspaceAtItemStart`（并入前项；首项则提升出列表）、\n   `indentItem`/`outdentItem`（嵌套缩进/退出，树变换实现——内核\n   WrapBlock/LiftBlock 仅见反转定义，正向应用未确认，v1 不动内核）、\n   `enterInQuote`/`exitQuote`。每个命令一步撤销。\n3. **输入规则容器化修复**：\"- /＊/+ \"产生 `ListBlock>ListItem>Paragraph`\n   （保留已输入文本），\"> \"产生 `Blockquote>Paragraph`；serialize\n   roundtrip 恢复 `- item` 形态。\n4. **宿主协议父链感知**：嵌套段落宿主的 Enter/Backspace 按\n   `parentOf(...).kind` 分流到结构命令（顶层行为不变）。\n5. 滚动同步/getBlockMap/EDITOR-CONTRACT 冻结面零破坏（嵌套\n   data-block-id 天然被 getBlockMap 的递归查询覆盖）。",
+        "file": "docs/plans/archived/025-container-block-editing.md",
+        "related": [
+          "PLAN-025"
         ],
         "status": "proposed"
       }
@@ -34,7 +48,10 @@
         "related": [
           "PLAN-023"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P025-3"
+        ]
       },
       {
         "id": "P024-3",
@@ -44,6 +61,17 @@
         "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
         "related": [
           "PLAN-024"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P025-3",
+        "section": "architecture",
+        "title": "容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复） — 架构方案",
+        "content": "```\nviews 装配（EngineEditor）\n└─ focusPath = parentOf 链 root→focused（深层叶块 id）\n   ├─ 路径上容器：children 逐个装配——路径内子节点继续下钻（容器\"展开\"），\n   │              旁支子树 blockNodeToWNodes→renderNodes 预览\n   └─ 路径终点叶块：BlockHost（协议不变；024 富化后同构兼容）\n结构命令层（headless）：list-commands.ts（applyTree 树变换，一步撤销）\n宿主协议：host-controller.onEnter/onBackspaceAtStart 按 parent.kind 分流\n输入规则：inputRuleOps 产容器结构（wrap 语义），不再产裸 ListItem\n```\n\n- **选择模型无需改**：`BlockPos(blockId)` 与 `findBlock/parentOf` 本就是\n  深层寻址——缺的只是装配层与命令层。\n- **非目标**：拖拽重排 UI（moveBlock 命令已有）、跨块选区、表格/代码块\n  嵌套容器、多级列表的连续缩进 UX 打磨（操作可复合，交互后评）。",
+        "file": "docs/plans/archived/025-container-block-editing.md",
+        "related": [
+          "PLAN-025"
         ],
         "status": "stable"
       }
@@ -70,6 +98,17 @@
           "PLAN-024"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P025-4",
+        "section": "designs",
+        "title": "容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复） — 详细设计",
+        "content": "### 1. 结构命令层 `src/editor/engine/list-commands.ts`（手写）\n\n```ts\nenterInItem(engine, paragraphId)      // 拆项：后段文本→新 ListItem(尾插)；空项→退出列表(段落提升到列表后)\nbackspaceAtItemStart(engine, paragraphId) // 并入前项末尾；首项→提升出列表；列表空→消融\nindentItem(engine, paragraphId)       // 并入前一项的子列表（无则新建）\noutdentItem(engine, paragraphId)      // 提升到父级列表同层（顶层则止）\nenterInQuote(engine, paragraphId)     // 延续引用：新空段；空段→退出引用\n```\n\n全部 `applyTree`（一步撤销）；护栏：不可产生空 ListBlock/裸 ListItem\n（消融规则在案）。\n\n### 2. 输入规则容器化（input-rules.ts）\n\n`inputRuleOps` 为容器类规则（ListItem 标记）增加 wrap 语义：删除标记后\n不改 kind 为裸 ListItem，而是 `applyTree` 把该块包成\n`ListBlock>ListItem>原段落`；Blockquote 同理包 `Blockquote>原段落`。\n规则表增 `wrap: BlockType` 字段；Heading/Fence/ThematicBreak 行为不变。\n\n### 3. 聚焦路径装配（EngineEditor.vue）\n\n- `focusPathOf(id)`：parentOf 链上溯得 id 集合。\n- `views` 递归化：`assemble(node)`——node 在路径上且为容器 → 其 children\n  逐个 `assemble`；在路径上的子节点继续下钻，旁支子树走\n  `renderNodes([blockNodeToWNode(child)], true)` 预览并包 node-slot\n  （onClick 深层 `selectBlock`，data-block-id 挂嵌套叶块）。\n- `selectBlock`/`focusFirstBlock`/Ctrl+End 改用深层 `findBlock` 与全树\n  末叶。\n- 预览排除逻辑改为\"排除**聚焦路径终点**叶块\"（原顶层判定语义的推广）。\n\n### 4. 宿主父链感知（host-controller.ts）\n\n`onEnter`：`parentOf(doc, id)?.kind` 为 ListItem→`enterInItem`（传嵌套\n段落 id）、Blockquote→`enterInQuote`，否则原 SplitBlock。\n`onBackspaceAtStart`：同法分流 `backspaceAtItemStart`；前驱解析改为\n\"同容器内前一个叶块\"。Tab/Shift-Tab 键（BlockHost keydown 增）→\nindent/outdent。",
+        "file": "docs/plans/archived/025-container-block-editing.md",
+        "related": [
+          "PLAN-025"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -92,6 +131,17 @@
         "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
         "related": [
           "PLAN-024"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P025-5",
+        "section": "tests",
+        "title": "容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复） — 测试设计",
+        "content": "- **headless 单测**（vitest，TDD）：list-commands 全命令（树断言 + undo\n  一步 + 护栏：首项 outdent 无操作、空列表消融）；input rules 容器化\n  （\"- \"→ListBlock 结构 + serialize roundtrip `- item` + \"> \" 同理 +\n  Heading 行为不回归）。\n- **SSR**：聚焦路径装配——嵌套叶块挂 data-block-id、旁支预览含\n  `node-slot`。\n- **e2e**（demo 新增 `e2e/container-editing.spec.ts`）：点击列表项→输入\n  回写；回车拆项；Tab 缩进（嵌套序列化）；空项回车退出；\"> \" 输入规则；\n  滚动同步不回归。\n- **回归门**：engine 全量（309 基线）、build 三断言、demo e2e 全绿、\n  jade-garden build。",
+        "file": "docs/plans/archived/025-container-block-editing.md",
+        "related": [
+          "PLAN-025"
         ],
         "status": "verified"
       }
@@ -118,6 +168,17 @@
           "PLAN-024"
         ],
         "status": "published"
+      },
+      {
+        "id": "P025-6",
+        "section": "reviews",
+        "title": "容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复） — 验收标准与复审",
+        "content": "- [x] 点击列表项/引用内文即可编辑文字（BlockHost 就地，非预览态）。\n- [x] \"- \" 输入产生合法列表且 serialize roundtrip 为 `- item`（修复裸\n  ListItem 丢内容缺陷）。\n- [x] 回车拆项 / 空项退出 / Backspace 合并 / Tab-Shift+Tab 缩进出退全部\n  经命令层生效且各一步撤销。\n- [x] 聚焦容器的旁支子树保持预览渲染；嵌套块入 getBlockMap（滚动同步\n  契约不破）。\n- [x] 顶层块编辑行为与 023/024 基线完全不变（回归）。\n- [x] EDITOR-CONTRACT 冻结面零破坏；全部门检绿。\n\n**复审人**：zcode（/auto-plan:review）· **时间**：2026-08-30 13:05 +08:00 · **结论**：**通过 → reviewed**\n\n**验证基线**：工作树 `.worktrees/plan-025-dev`（b763178..HEAD 累计 8 提交，16 文件\n+1438/-100，无生成物改动）。全量门（复审专属、全部亲自重跑）：engine 391/391\n（29 文件）+ vue-tsc 0 错 + build 三断言过；demo e2e 19/19（5 spec 含新\ncontainer-editing 5 用例）；jade-garden front 构建退出码 0。\n\n**逐条验收**（全部 pass，证据在案）：\n\n1. 点击列表项/引用内文就地编辑 — **pass**：e2e container-editing:45（点击→宿主\n   挂载→输入→右栏回写）+ SSR focus-path 两用例（列表首/引用首文档聚焦嵌套段）。\n2. \"- \" 产合法列表且 roundtrip `- item` — **pass**：editor-engine.test.ts:157-174\n   （serialize `'- item\\n'` + reparse 断言 + undo/redo 往返）；裸 ListItem 缺陷\n   （序列化空、无面板）已由 wrap 语义消除；\"> \" 同理 :176。\n3. 回车拆项/空项退出/Backspace 合并/Tab 出退经命令层且各一步撤销 — **pass**：\n   list-commands.test.ts 25 用例（5 处 e.undo() 断言；首项 indent/顶层 outdent\n   无历史 no-op 护栏；空容器消融）+ e2e 拆项/退出/Tab 往返三景。\n4. 旁支预览 + 嵌套块入 getBlockMap（滚动同步不破）— **pass**：SSR 断言旁支\n   node-slot+data-block-id；scroll-sync 5 用例 + 新嵌套滚动冒烟全绿\n   （getBlockMap 递归查询天然收编嵌套槽）。\n5. 顶层基线不变 — **pass**：023/024 既有用例全数在绿（309 基线全保留于 391）；\n   inline-marks/scroll-sync e2e 过；顶层 SSR DOM 基线断言不变（boundary/槽位\n   形状）；唯一语义增量是前驱合并加 isEditableLeaf 护栏（顶层宿主均为可编辑叶，\n   行为等价）。\n6. EDITOR-CONTRACT 冻结面零破坏 + 门检绿 — **pass**：getBlockMap 函数零 diff、\n   root classes 未动、data-block-id 仅增量（嵌套槽新增）；全量门如上全绿。\n\n**遗漏/延后/workaround 扫查**：diff 零 TODO/FIXME/HACK；九执行步均有对应代码与\n测试落点；无未经批准的延后（有序列表标记 \"1. \" 系待澄清 #2 起草案明示 v1 不做）。\n待澄清 #1（Tab 绑定）按起草方案落地（Tab/Shift+Tab=缩进/出退，列表外透传），\n待澄清项保持开放供翻案。\n\n**执行中发现的既有缺陷（已顺带修复，非本计划原始范围）**：EditorEngine.redo()\n丢 after 树变换（heading level/容器 wrap redo 即丢）；Chromium contenteditable\n末尾空格产 U+00A0 致 \"- \"/\"# \" 输入规则永不匹配（heading 同病）；{render} 对象\n每次重算致 Vue 换组件类型、子树整体重挂。\n\n**债候选（记录不阻塞，供 /finish-plan 或后续计划裁决）**：\n\n- D1 ext 桥装配（auto_down_editor_ext.ts EngineContentHost）仍顶层-only +\n  serialize→reparse 预览——025 聚焦路径装配未下沉该路径，widget 侧装配能力\n  双轨分叉（demo/jade 主路径均走 EngineEditor，不受影响）。\n- D2 UI 无 Ctrl+Z 键接线（引擎 undo 从未绑定——023 起既有空白；命令级一步\n  撤销由 headless 钉死，UI 级撤销不可用）。\n- D3 槽位 data-node-index 全等伪影（惰性 render 闭包读共享计数器终值，旧代码\n  同款模式；无消费方读值，纯外观）。\n- D4 blur-回写吞点击（024 在档 papercut；025 e2e 以 Save 稳定化绕行——测试\n  手法，产品修复未做）。",
+        "file": "docs/plans/archived/025-container-block-editing.md",
+        "related": [
+          "PLAN-025"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -140,6 +201,17 @@
         "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
         "related": [
           "PLAN-024"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P025-1",
+        "section": "reports",
+        "title": "容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复） — 变更摘要",
+        "content": "打通 list/blockquote 容器块的编辑：EngineEditor 的装配从\"仅顶层叶块可聚焦\"\n下沉为**聚焦路径递归装配**（点进列表项/引用段即可编辑文字，路径外旁支保持\n预览）；为列表/引用补齐**结构命令层**（回车拆项、空项退出、Backspace 合并、\nTab/Shift-Tab 缩进出退——全部走 applyTree 树变换，一步撤销）；修复 input\nrules 的容器化缺失（\"- \"/\"> \" 现产生序列化为空、无面板的裸 ListItem——\n本计划把它改为产生合法容器结构）。行内 mark 编辑不在本计划（plan-024）。",
+        "file": "docs/plans/archived/025-container-block-editing.md",
+        "related": [
+          "PLAN-025"
         ],
         "status": "published"
       }

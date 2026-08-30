@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-025
-status: reviewed
+status: archived
 feature_name: 容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:15:00+08:00

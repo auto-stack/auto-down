@@ -421,6 +421,44 @@
   color: hsl(var(--ad-primary, 220 90% 56%));
 }
 
+/* ── Menu anchors + codeblock node host (plan 026 P2) ─── */
+/* TableMenu computes coordinates against the CONTENT element — this 0-height
+   positioned wrapper gives the absolute menu that origin (CodeBlockMenu and
+   the slash/bubble menus anchor root-relative and mount bare). */
+.autodown-menu-anchor {
+  position: relative;
+  height: 0;
+}
+
+/* Host-side DOM contract of CodeBlockMenu: the focused fence edit face sits
+   in a positioned wrapper carrying data-language; the badge is the click
+   affordance the generated menu listens for. */
+.autodown-codeblock-node {
+  position: relative;
+}
+
+.autodown-codeblock-language-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.45rem;
+  z-index: 5;
+  padding: 0.08rem 0.45rem;
+  font-size: 0.68rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--ad-muted, #6b7280);
+  background: var(--ad-surface, #ffffff);
+  border: 1px solid var(--ad-border, #e5e7eb);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.autodown-codeblock-language-badge:hover {
+  color: var(--ad-primary, #2563eb);
+  border-color: var(--ad-primary, #2563eb);
+  opacity: 1;
+}
+
 /* ─── Table Menu ─── */
 .autodown-table-menu {
   position: absolute;

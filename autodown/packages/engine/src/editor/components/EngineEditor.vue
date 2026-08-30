@@ -4,6 +4,13 @@
       <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
         <BubbleMenu :editor="adapter" />
+        <!-- TableMenu anchors content-relative (view.dom rect) — the 0-height
+             positioned wrapper gives it that origin without layout cost.
+             CodeBlockMenu anchors root-relative, mounts bare. (plan 026 P2) -->
+        <div class="autodown-menu-anchor">
+          <TableMenu :editor="adapter" />
+        </div>
+        <CodeBlockMenu :editor="adapter" />
         <component
           :is="block.view"
           v-for="block in views"
@@ -45,14 +52,32 @@ import BlockEmbedNodeView from '../node-views/BlockEmbedNodeView.vue'
 
 // CodeEditorBlock is the generated widget (.at source): flat chrome props —
 // the headless controller + language/code are read out of the node/ctx here.
+// The .autodown-codeblock-node wrapper + language badge are the HOST side of
+// the CodeBlockMenu click contract (plan 026 P2T2): the generated menu looks
+// for [data-codeblock-language-badge] inside .autodown-codeblock-node /
+// pre[data-language]; the wrapper carries data-language so the menu reads the
+// current language off the DOM it lands on.
 function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
-  return h(CodeEditorBlock, {
-    controller: new CodeEditorController(ctx.engine, ctx.blockId),
-    blockId: ctx.blockId,
-    language: attrGetStr(node.attrs, 'language', ''),
-    code: blockText(node),
-    readonly: ctx.readonly,
-  })
+  const language = attrGetStr(node.attrs, 'language', '')
+  return h('div', { class: 'autodown-codeblock-node', 'data-language': language }, [
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'autodown-codeblock-language-badge',
+        'data-codeblock-language-badge': '',
+        title: '切换语言',
+      },
+      language || 'text'
+    ),
+    h(CodeEditorBlock, {
+      controller: new CodeEditorController(ctx.engine, ctx.blockId),
+      blockId: ctx.blockId,
+      language,
+      code: blockText(node),
+      readonly: ctx.readonly,
+    }),
+  ])
 }
 
 registerBlockComponent('Fence', { edit: fenceEditSlot })
@@ -152,6 +177,8 @@ import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-p
 import { domRangeToBlockRange } from '../engine/selection-map'
 import BlockHost from './BlockHost.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
+import TableMenu from '../menus/TableMenu.vue'
+import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'

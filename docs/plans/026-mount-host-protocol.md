@@ -207,7 +207,10 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
   previewVNodeOf 以 push/pop 包住渲染段）；NodeViewContent 孔经 provide/inject
   接装配内容（ext shim + NodeViewContentProvider）；serializer.at 增 detailsMd
   （open=true 时 `, open: true`）经 pnpm gen:parser 再生（先证 regen 幂等）；
-  5/5 mount 断言绿 + 引擎全量 421/421（rust parity golden 无 open 树，零漂移）
+  5/5 mount 断言绿 + 引擎全量 421/421（rust parity golden 无 open 树，零漂移）。
+  补充（P2T4 后）：rust 发射体同步——auto trans serializer.at rust 再生
+  core/rust/src/serializer.rs（detailsMd + 分发），cargo test 全绿；.at 单源
+  与 TS/rust 双发射体一致
 - [✅] P1T3 Math/Mermaid/Query/Embed 挂载：同式注册四面板 + SSR 断言（不再
   unknown-node）。验证：`npx vitest run src/editor/__tests__/node-view-mount.test.ts`。
   [✅ 已完成] blockNodeToWNode 增 math_block/mermaid/query/embed 四型（palette

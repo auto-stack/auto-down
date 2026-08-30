@@ -322,6 +322,15 @@ pub fn componentBlockMd(name: &str, argName: &str, node: BlockNode, withId: bool
     return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$", name), "("), argName), ": \""), arg), "\") {\n"), joinChildren(node.children.clone(), withId)), "\n}");
 }
 
+pub fn detailsMd(node: BlockNode, withId: bool) -> String {
+    let summary = attrGetStr(node.attrs.clone(), "summary", "");
+    let mut open: String = "".to_string();
+    if attrGetBool(node.attrs.clone(), "open", false) {
+        open = ", open: true".to_string();
+    }
+    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$details(summary: \"", summary), "\""), open), ") {\n"), joinChildren(node.children.clone(), withId)), "\n}");
+}
+
 pub fn wikilinkMd(node: BlockNode) -> String {
     let target = attrGetStr(node.attrs.clone(), "target", "");
     let anchor = attrGetStr(node.attrs.clone(), "anchor", "");
@@ -364,7 +373,7 @@ pub fn blockMd(mut node: BlockNode, withId: bool) -> String {
         return componentBlockMd("callout", "type", node.clone(), withId);
     }
     if k == BlockType::Details {
-        return componentBlockMd("details", "summary", node.clone(), withId);
+        return detailsMd(node.clone(), withId);
     }
     if k == BlockType::WikilinkBlock {
         return wikilinkMd(node.clone());

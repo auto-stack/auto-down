@@ -8,12 +8,23 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const frontDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = path.resolve(frontDir, '..', '..')
 const runtimeDir = path.join(frontDir, 'e2e', '.runtime')
 const workspaceDir = path.join(runtimeDir, 'workspace')
+
+// Plan 027: dist freshness guard up front. E2E itself consumes engine src
+// (development condition), but this keeps the dist-consuming surface honest
+// and fails fast in parallel sessions where engine src moved ahead of a
+// rebuild — long before a stale-dist white screen can eat an afternoon.
+execFileSync(
+  process.execPath,
+  [path.join(repoRoot, 'autodown', 'packages', 'engine', 'scripts', 'assert-dist-fresh.mjs')],
+  { stdio: 'inherit' },
+)
 
 const exeSource = path.join(repoRoot, 'jade-garden', 'back', 'server', 'target', 'debug', 'jade-garden-back.exe')
 const fixtureWiki = path.join(repoRoot, 'tmp', 'wiki-demo', 'wiki')

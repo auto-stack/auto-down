@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node ../../autodown/packages/engine/scripts/assert-dist-fresh.mjs",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "pretest:e2e": "node scripts/e2e-prepare.mjs",

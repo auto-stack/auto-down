@@ -199,7 +199,17 @@ export class BlockHostController {
   }
 }
 
-/** Is this block a leaf the host can edit (has inline text, no children)? */
+/** Is this block a leaf the host can edit (has inline text, no children)?
+ *  Container kinds (Details/Callout — children-based) and attr-only blocks
+ *  (Query/Embed — source lives in attrs) never host: typing into them
+ *  serializes nowhere; their focus state is the preview-side node-view
+ *  (plan 026 P2T3). Math/Mermaid stay hostable — their source IS inlines. */
 export function isEditableLeaf(node: BlockNode): boolean {
-  return node.children.length === 0 && node.kind !== BlockType.ThematicBreak
+  if (node.children.length !== 0) return false
+  if (node.kind === BlockType.ThematicBreak) return false
+  if (node.kind === BlockType.Details) return false
+  if (node.kind === BlockType.Callout) return false
+  if (node.kind === BlockType.QueryBlock) return false
+  if (node.kind === BlockType.BlockEmbed) return false
+  return true
 }

@@ -43,7 +43,6 @@ const KIND_COMMANDS: Record<string, BlockType> = {
   setMathBlock: BlockType.MathBlock,
   setMermaidBlock: BlockType.Mermaid,
   setCallout: BlockType.Callout,
-  setDetails: BlockType.Details,
   setHorizontalRule: BlockType.ThematicBreak,
   toggleBulletList: BlockType.ListItem,
   toggleOrderedList: BlockType.ListItem,
@@ -137,6 +136,8 @@ export interface ChainLike {
   /** Code language channel (plan 026 P0T3): setBlockAttrs(language) IAL. */
   setCodeBlockLanguage(lang: string): ChainLike
   setCodeBlock(opts?: { language?: string }): ChainLike
+  /** Slash Details template (plan 026 P2T3): kind + summary attr. */
+  setDetails(opts?: { summary?: string }): ChainLike
   run(): boolean
 }
 
@@ -277,24 +278,34 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
   return adapter
 }
 
-/** The focused cell's table coordinates (plan 026 P0T3): the table verbs
- *  resolve their target row/column eagerly from the engine selection. */
-interface FocusedTableCell {
+/** The focused table context (plan 026 P0T3): cell selections carry their
+ *  row/column; a table-level selection (focus stops at the table face —
+ *  plan 023 semantics) leaves them null and the verbs take the table-ends
+ *  defaults (append row/column, drop the last). */
+interface TableTarget {
   tableId: string
-  rowId: string
-  rowIdx: number
-  colIdx: number
+  rowId: string | null
+  rowIdx: number | null
+  colIdx: number | null
 }
 
-function focusedTableCell(engine: EditorEngine): FocusedTableCell | null {
+function tableTarget(engine: EditorEngine): TableTarget | null {
   const id = engine.selection.anchor.blockId
-  const cell = findBlock(engine.doc, id)
-  if (!cell || cell.kind !== BlockType.TableCell) return null
+  const found = findBlock(engine.doc, id)
+  if (!found) return null
+  if (found.kind === BlockType.Table) return { tableId: id, rowId: null, rowIdx: null, colIdx: null }
+  if (found.kind !== BlockType.TableCell) return null
   const row = parentOf(engine.doc, id)
   if (!row || row.kind !== BlockType.TableRow) return null
   const table = parentOf(engine.doc, row.id)
   if (!table || table.kind !== BlockType.Table) return null
   return { tableId: table.id, rowId: row.id, rowIdx: childIndex(table, row.id), colIdx: childIndex(row, id) }
+}
+
+/** Row id a table verb inserts relative to: the focused row, else the table's
+ *  last row (append) / none-before-first. */
+function tableRows(engine: EditorEngine, tableId: string): BlockNode[] {
+  return findBlock(engine.doc, tableId)?.children ?? []
 }
 
 function createChain(engine: EditorEngine): ChainLike {
@@ -335,15 +346,16 @@ function createChain(engine: EditorEngine): ChainLike {
       return chain
     },
     deleteRange: (range: { from: number; to: number }) => {
-      // v1: ranges always live inside the focused block — drop the trailing
-      // (to - from) characters (the typed /query)
+      // v1 assumed the query sits at the block end; range-aware since plan
+      // 026 P2T3 (the slash trigger fires at block start just as well)
       pending.push((tree) => {
         const id = currentBlockId(engine)
         const found = findBlock(tree, id)
         if (!found) return tree
         const text = blockText(found)
-        const len = Math.max(0, Math.min(range.to - range.from, text.length))
-        return replaceNode(tree, id, [leafBlock(id, found.kind, text.slice(0, text.length - len))])
+        const lo = Math.max(0, Math.min(range.from, text.length))
+        const hi = Math.max(lo, Math.min(range.to, text.length))
+        return replaceNode(tree, id, [leafBlock(id, found.kind, text.slice(0, lo) + text.slice(hi))])
       })
       return chain
     },
@@ -358,44 +370,56 @@ function createChain(engine: EditorEngine): ChainLike {
       return chain
     },
     // table verbs (plan 026 P0T3): forward to the commands.ts table transforms,
-    // resolved against the focused cell; tree-level so a chain stays ONE undo.
+    // resolved against the focused cell (table-level focus takes the
+    // table-ends defaults); tree-level so a chain stays ONE undo.
     addRowAfter: () => {
-      const f = focusedTableCell(engine)
-      if (f) pending.push((tree) => tableAddRowTree(tree, f.tableId, f.rowId))
+      const f = tableTarget(engine)
+      if (!f) return chain
+      const rows = tableRows(engine, f.tableId)
+      const after = f.rowId ?? rows[rows.length - 1]?.id ?? null
+      pending.push((tree) => tableAddRowTree(tree, f.tableId, after))
       return chain
     },
     addRowBefore: () => {
-      const f = focusedTableCell(engine)
-      if (f) {
-        const rows = findBlock(engine.doc, f.tableId)?.children ?? []
-        const prevId = f.rowIdx > 0 ? rows[f.rowIdx - 1]!.id : null
-        pending.push((tree) => tableAddRowTree(tree, f.tableId, prevId))
-      }
+      const f = tableTarget(engine)
+      if (!f) return chain
+      const rows = tableRows(engine, f.tableId)
+      const prevId = f.rowIdx != null && f.rowIdx > 0 ? rows[f.rowIdx - 1]!.id : null
+      pending.push((tree) => tableAddRowTree(tree, f.tableId, prevId))
       return chain
     },
     deleteRow: () => {
-      const f = focusedTableCell(engine)
-      const rows = f ? findBlock(engine.doc, f.tableId)?.children ?? [] : []
-      if (f && rows.length > 1) pending.push((tree) => replaceNode(tree, f.rowId, []))
+      const f = tableTarget(engine)
+      if (!f) return chain
+      const rows = tableRows(engine, f.tableId)
+      if (rows.length <= 1) return chain
+      const victim = f.rowId ?? rows[rows.length - 1]!.id
+      pending.push((tree) => replaceNode(tree, victim, []))
       return chain
     },
     addColumnBefore: () => {
-      const f = focusedTableCell(engine)
-      if (f) pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx))
+      const f = tableTarget(engine)
+      if (!f) return chain
+      pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx ?? 0))
       return chain
     },
     addColumnAfter: () => {
-      const f = focusedTableCell(engine)
-      if (f) pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx + 1))
+      const f = tableTarget(engine)
+      if (!f) return chain
+      const end = tableRows(engine, f.tableId)[0]?.children.length ?? 0
+      pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx != null ? f.colIdx + 1 : end))
       return chain
     },
     deleteColumn: () => {
-      const f = focusedTableCell(engine)
-      if (f) pending.push((tree) => tableDeleteColumnAtTree(tree, f.tableId, f.colIdx))
+      const f = tableTarget(engine)
+      if (!f) return chain
+      const rows = tableRows(engine, f.tableId)
+      const last = Math.max(0, (rows[0]?.children.length ?? 1) - 1)
+      pending.push((tree) => tableDeleteColumnAtTree(tree, f.tableId, f.colIdx ?? last))
       return chain
     },
     deleteTable: () => {
-      const f = focusedTableCell(engine)
+      const f = tableTarget(engine)
       if (f) pending.push((tree) => replaceNode(tree, f.tableId, []))
       return chain
     },
@@ -408,6 +432,27 @@ function createChain(engine: EditorEngine): ChainLike {
     setCodeBlock: (opts?: { language?: string }) => {
       if (opts?.language != null) return chain.setCodeBlockLanguage(opts.language)
       pending.push((tree) => setKind(tree, engine, BlockType.Fence))
+      return chain
+    },
+    // slash manifest's Details template carries { summary } (plan 026 P2T3):
+    // kind conversion + summary attr so the mounted node-view shows it.
+    // Converting an inline leaf moves its text into a child paragraph — a
+    // Details renders children, inlines would serialize away (data loss).
+    setDetails: (opts?: { summary?: string }) => {
+      pending.push((tree) => {
+        const id = currentBlockId(engine)
+        const found = findBlock(tree, id)
+        if (!found) return tree
+        const kids =
+          found.children.length > 0
+            ? found.children
+            : blockText(found).length > 0
+              ? [leafBlock(`${id}-p`, BlockType.Paragraph, blockText(found))]
+              : []
+        let next: BlockNode = { ...found, kind: BlockType.Details, children: kids }
+        if (opts?.summary != null) next = { ...next, attrs: attrSet(next.attrs, 'summary', Value.Str(String(opts.summary))) }
+        return replaceNode(tree, id, [next])
+      })
       return chain
     },
     // inline mark toggles (plan 024 P3T1): wrap the FOCUSED host's live DOM —

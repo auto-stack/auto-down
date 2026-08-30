@@ -301,6 +301,43 @@ describe('adapter chain verbs', () => {
     createEditorAdapter(p).chain().focus().setCodeBlock().run()
     expect(findBlock(p.doc, 'p1')!.kind).toBe(BlockType.Fence)
   })
+
+  it('table-level focus (the table face itself) takes the table-ends defaults', () => {
+    const e = new EditorEngine(
+      doc(...parse_blocks('| A | B |\n| --- | --- |\n| 1 | 2 |', true).children),
+      collapsedSel('p-none', 0),
+    )
+    const table = e.doc.children.find((n) => n.kind === BlockType.Table)!
+    e.select(collapsedSel(table.id, 0)) // focus stops at the table face
+    const adapter = createEditorAdapter(e)
+    expect(adapter.isActive('table')).toBe(true)
+    adapter.chain().focus().addRowAfter().run()
+    // appends after the LAST row (TableEditorController.addRow parity)
+    const texts = findBlock(e.doc, table.id)!.children.map((r) => r.children.map((c) => blockText(c)))
+    expect(texts).toEqual([['A', 'B'], ['1', '2'], ['', '']])
+    adapter.chain().focus().addColumnAfter().run()
+    expect(findBlock(e.doc, table.id)!.children[0]!.children.map((c) => blockText(c))).toEqual(['A', 'B', ''])
+  })
+
+  it('setDetails carries the slash template summary attr and moves inlines into a child paragraph', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'body text')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    adapter.chain().focus().setDetails({ summary: 'Details' }).run()
+    const found = findBlock(e.doc, 'p1')!
+    expect(found.kind).toBe(BlockType.Details)
+    expect(found.attrs.some((a) => a.key === 'summary' && a.value._tag === 'Str' && a.value.value === 'Details')).toBe(true)
+    // the paragraph's text survives as the details body (serialize keeps it)
+    expect(found.children.length).toBe(1)
+    expect(blockText(found.children[0]!)).toBe('body text')
+    expect(serialize(e.doc, false)).toContain('$details(summary: "Details") {\nbody text\n}')
+  })
+
+  it('deleteRange removes the range at its position (start-anchored query)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'hello world')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    adapter.chain().focus().deleteRange({ from: 0, to: 6 }).run()
+    expect(blockText(findBlock(e.doc, 'p1')!)).toBe('world')
+  })
 })
 
 // -- mark chain + isActive (plan 024 P3T1) --------------------------------------

@@ -25,6 +25,8 @@ import { EditorEngine } from '../engine/editor-engine'
 import { CompositionSession } from '../engine/composition'
 import { diffToOp } from '../engine/text-diff'
 import { INPUT_RULES, fireRuleOn, matchInputRule } from '../engine/input-rules'
+import { serialize } from '../../parser/serializer'
+import { parse_blocks } from '../../parser/markdown-parser'
 
 function doc(...kids: BlockNode[]): BlockNode {
   return withChildren(block('doc', BlockType.Paragraph), kids)
@@ -140,8 +142,60 @@ describe('input rule table', () => {
   it('fires from typed marker text through the engine', () => {
     const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, '- ')), collapsedSel('p1', 2))
     expect(fireRuleOn(e, 'p1')).toBe(true)
-    expect(findBlock(e.doc, 'p1')!.kind).toBe(BlockType.ListItem)
+    // container form: the paragraph stays a paragraph inside ListBlock>ListItem
+    const list = e.doc.children[0]
+    expect(list.kind).toBe(BlockType.ListBlock)
+    expect(list.children).toHaveLength(1)
+    expect(list.children[0].kind).toBe(BlockType.ListItem)
+    expect(list.children[0].children[0].id).toBe('p1')
+    expect(findBlock(e.doc, 'p1')!.kind).toBe(BlockType.Paragraph)
     expect(blockText(findBlock(e.doc, 'p1')!)).toBe('')
+    // the selection stays in the wrapped paragraph (the host keeps editing it)
+    expect(e.selection.anchor.blockId).toBe('p1')
+  })
+
+  it('"- " produces a serializable list (roundtrip "- item")', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, '- ')), collapsedSel('p1', 2))
+    expect(fireRuleOn(e, 'p1')).toBe(true)
+    // one undo unwraps back to the typed marker paragraph…
+    e.undo()
+    expect(e.doc.children).toHaveLength(1)
+    expect(e.doc.children[0].kind).toBe(BlockType.Paragraph)
+    expect(blockText(e.doc.children[0])).toBe('- ')
+    // …and redo re-applies the container wrap (after-fn on the group entry)
+    e.redo()
+    expect(e.doc.children[0].kind).toBe(BlockType.ListBlock)
+    e.apply(Op.InsertText(new InsertTextOp(pos('p1', 0), 'item')))
+    expect(serialize(e.doc, false)).toBe('- item\n')
+    const reparsed = parse_blocks('- item\n', true)
+    const rl = reparsed.children[0]
+    expect(rl.kind).toBe(BlockType.ListBlock)
+    expect(blockText(rl.children[0].children[0])).toBe('item')
+  })
+
+  it('"> " produces a Blockquote>Paragraph container (roundtrip)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, '> ')), collapsedSel('p1', 2))
+    expect(fireRuleOn(e, 'p1')).toBe(true)
+    const quote = e.doc.children[0]
+    expect(quote.kind).toBe(BlockType.Blockquote)
+    expect(quote.children[0].id).toBe('p1')
+    expect(findBlock(e.doc, 'p1')!.kind).toBe(BlockType.Paragraph)
+    expect(e.selection.anchor.blockId).toBe('p1')
+    e.apply(Op.InsertText(new InsertTextOp(pos('p1', 0), 'quoted')))
+    expect(serialize(e.doc, false)).toBe('> quoted\n')
+    e.undo()
+    expect(e.doc.children[0].kind).toBe(BlockType.Blockquote)
+    e.undo()
+    expect(e.doc.children[0].kind).toBe(BlockType.Paragraph)
+    expect(blockText(e.doc.children[0])).toBe('> ')
+  })
+
+  it('container rules report wrap semantics in the table', () => {
+    expect(matchInputRule('- ')!.wrap).toBe(BlockType.ListBlock)
+    expect(matchInputRule('* ')!.wrap).toBe(BlockType.ListBlock)
+    expect(matchInputRule('+ ')!.wrap).toBe(BlockType.ListBlock)
+    expect(matchInputRule('> ')!.wrap).toBe(BlockType.Blockquote)
+    expect(matchInputRule('# ')!.wrap).toBeUndefined()
   })
 })
 

@@ -36,7 +36,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "vue-tsc -b && vite build && node scripts/assert-parser-pure.mjs && node scripts/assert-no-tiptap.mjs && node scripts/assert-editor-gen.mjs",
+    "build": "vue-tsc -b && vite build && node scripts/assert-parser-pure.mjs && node scripts/assert-no-tiptap.mjs && node scripts/assert-editor-gen.mjs && node scripts/write-dist-stamp.mjs",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "gen:parser": "node auto/parser/gen.mjs",

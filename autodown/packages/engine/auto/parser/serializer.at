@@ -29,7 +29,8 @@
 // - Extended block placeholder surface syntax (AutoDown dialect,
 //   auto-lang docs/design/raw/auto-down.md):
 //     Callout      -> $callout(type: "<type>") { <children md> }
-//     Details      -> $details(summary: "<summary>") { <children md> }
+//     Details      -> $details(summary: "<summary>"[, open: true]) { <children md> }
+//       (plan 026 P1T2: the interactive open flag persists when true)
 //     WikilinkBlock-> [[<target>]]  (optional attr anchor -> [[t#anchor]])
 //     QueryBlock   -> $query(<query>)
 //     BlockEmbed   -> $embed(src: "<src>")
@@ -350,6 +351,16 @@ pub fn componentBlockMd(name str, argName str, node BlockNode, withId bool) str 
     return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children, withId) + "\n}"
 }
 
+// detailsMd — plan 026 P1T2: like componentBlockMd but the Details toggle's
+// `open` attr persists (", open: true" — emitted only when set, the closed
+// state stays the historical form).
+pub fn detailsMd(node BlockNode, withId bool) str {
+    let summary = attrGetStr(node.attrs, "summary", "")
+    var open str = ""
+    if attrGetBool(node.attrs, "open", false) { open = ", open: true" }
+    return "$details(summary: \"" + summary + "\"" + open + ") {\n" + joinChildren(node.children, withId) + "\n}"
+}
+
 pub fn wikilinkMd(node BlockNode) str {
     let target = attrGetStr(node.attrs, "target", "")
     let anchor = attrGetStr(node.attrs, "anchor", "")
@@ -373,7 +384,7 @@ pub fn blockMd(node BlockNode, withId bool) str {
     if k == BlockType.TableCell { return inlinesMd(node.inlines) }
     if k == BlockType.ThematicBreak { return "---" }
     if k == BlockType.Callout { return componentBlockMd("callout", "type", node, withId) }
-    if k == BlockType.Details { return componentBlockMd("details", "summary", node, withId) }
+    if k == BlockType.Details { return detailsMd(node, withId) }
     if k == BlockType.WikilinkBlock { return wikilinkMd(node) }
     if k == BlockType.QueryBlock { return "$query(" + attrGetStr(node.attrs, "query", "") + ")" }
     if k == BlockType.BlockEmbed { return "$embed(src: \"" + attrGetStr(node.attrs, "src", "") + "\")" }

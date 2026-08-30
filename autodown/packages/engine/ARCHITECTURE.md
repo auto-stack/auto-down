@@ -56,8 +56,8 @@
 ## 5. 已知边界（登记在案）
 
 - ~~行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染~~
-  —— 024 激活 bubble，026 激活 TableMenu/CodeBlockMenu 与 6 件 NodeView 预览
-  挂载；余量（math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
+  —— 024 激活 bubble，026 激活 TableMenu/CodeBlockMenu 与 5 件 NodeView 预览
+  挂载（Details/MathBlock/Mermaid/Query/Embed）；余量（math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
   020/021 行。
 - engine parser 不产出 source 行号（`SourceRange` 为占位）、`:::` 容器/
   table 子集与 jade 前端镜像的差异清单 —— 见 DEBTS.md 020 行（镜像保留
@@ -128,7 +128,8 @@
   `.autodown-codeblock-node[data-language]` + language badge 提供 DOM 契约）；
   NodeView 经 panel registry custom 槽挂预览（node-view-host.ts 桥：
   nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔），
-  7 件中 6 件在挂（Details/Math/Mermaid/Query/Embed 预览 + MathInline 随
-  024），WikiLinkNodeView 在册不激活（020 装饰器已拥有该交互，无双轨）。
+  7 件中 5 件在挂（Details/MathBlock/Mermaid/Query/Embed 预览）；
+  MathInlineNodeView 未挂（行内 math 无块级承载，仍 dormant——见 DEBTS.md
+  026 行）；WikiLinkNodeView 在册不激活（020 装饰器已拥有该交互，无双轨）。
   余量：Query/Embed 数据装载（runQuery/loadBlock 注入面）与 NodeView
-  编辑态深度，见 DEBTS.md 020/021 行。
+  编辑态深度、MathInline 挂载位，见 DEBTS.md 020/021/026 行。

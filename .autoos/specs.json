@@ -11,6 +11,17 @@
           "PLAN-023"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P024-2",
+        "section": "goals",
+        "title": "行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色） — 目标",
+        "content": "1. **富文本宿主**：BlockHost 渲染 InlineSpan marks 为内联元素；输入期纯文本\n   diff 语义保持（结构变化不经 input 事件同步模型）；失焦整块回写\n   withInlines（一步撤销）。\n2. **mark 命令层**：`toggleMark`/`setLink`/`marksInRange`（spans 重切分工具 +\n   applyTree 命令，023 表命令先例；**不动** block_model.at 内核——op 内核无\n   mark op，内核改造成本含 rust 对拍，v1 不取）。\n3. **选区映射**：DOM Range ↔ (blockId, lo, hi) 单块双向映射（富 DOM 文本节点\n   walk 偏移），供气泡定位与命令寻址；跨块选区 v1 明确不支持（在档）。\n4. **BubbleMenu 激活**：adapter 增 mark 链（toggleBold/Italic/Strike/Code +\n   link）与真 isActive（读选区 marks）；EngineEditor 挂载 + 选区矩形定位\n   （computeMenuBounds 先例）；underline 按钮裁剪（Mark 枚举/序列化器无\n   Underline，生成物不动）。\n5. **代码编辑态着色**（023 待澄清 #2 收编）：CodeEditorBlock 增 textarea 与\n   高亮 pre 叠加层（复用 highlight 桥），ext 桥同步滚动/高度；.at 源跟进。\n6. 快捷键 Ctrl+B/I/K 就地格式化；全程 EDITOR-CONTRACT 冻结面与既有 e2e\n   基线（9 spec）不破。",
+        "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
+        "related": [
+          "PLAN-024"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -22,6 +33,17 @@
         "file": "docs/plans/archived/023-unified-block-component-modes.md",
         "related": [
           "PLAN-023"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P024-3",
+        "section": "architecture",
+        "title": "行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色） — 架构方案",
+        "content": "```\n聚焦态（文本叶块）\n└─ BlockHost（富化）：contenteditable 内联元素呈现 marks\n   ├─ 输入（IME/键入）→ 纯文本 diff op（不变；结构变化不产生 input 同步）\n   ├─ 选区 → selection-map（DOM Range ↔ blockId+lo/hi，单块）\n   │           ├─ 气泡定位（选区矩形 → computeMenuBounds）\n   │           └─ adapter.isActive / marksInRange（命令寻址）\n   └─ 失焦 → onRichBlur：DOM walk 收集 (text, marks, attrs) → 整块回写\n             （applyTree 一步撤销 ←→ CodeEditorBlock 同构协议）\n命令层（headless）：marks.ts（spans 重切分）+ commands.toggleMark/setLink\n菜单（chrome 层）：BubbleMenu（021 生成物激活，underline 裁剪）\n```\n\n- **v1 关键裁定——失焦整块回写而非每击键结构 diff**：op 内核（InsertText/\n  ReplaceRange/...七种）无 mark op，逐键结构同步要么改内核（含 rust 对拍）\n  要么做 DOM↔spans 增量 diff（Tiptap 级复杂度）；整块回写把结构同步压缩到\n  失焦一点，IME 由浏览器原生富 contenteditable 承担。\n- **非目标**：容器块聚焦下沉（025）；跨块选区；underline mark（需动\n  parser/serializer 生成物）；气泡内嵌表单类扩展（链接输入 v1 走\n  window.prompt，BubbleMenu 既有 runBubbleLink 通道）。",
+        "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
+        "related": [
+          "PLAN-024"
         ],
         "status": "stable"
       }
@@ -37,6 +59,17 @@
           "PLAN-023"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P024-4",
+        "section": "designs",
+        "title": "行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色） — 详细设计",
+        "content": "### 1. mark 内核工具 `src/editor/engine/marks.ts`（手写）\n\n```ts\ntoggleMarkOnSpans(spans, lo, hi, mark): InlineSpan[]  // 切分/合并/取消部分覆盖\nsetLinkOnSpans(spans, lo, hi, href): InlineSpan[]     // Link mark + attrs\nmarksAtRange(spans, lo, hi): Mark[]                    // isActive 语义源\n```\n\n边界：跨界切分（span 部分覆盖）、同 mark 合并、嵌套（Strong 内 Em）保持、\ntoggle 判据 = range 内全部已含该 mark 则取消否则添加。\n\n### 2. mark 命令（commands.ts 增段）\n\n`toggleMark(engine, blockId, lo, hi, mark)` / `setLink(engine, blockId, lo,\nhi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInlines 回写\n（一步撤销）；`marksInRange(engine, sel)` 供 isActive。\n\n### 3. 选区映射 `src/editor/engine/selection-map.ts`\n\n- `domRangeToBlockRange(hostEl, blockId): {lo, hi} | null`——window\n  .getSelection() 的 range 落在单一宿主内时，walk 文本节点累积偏移；\n  跨块/跨宿主返回 null（v1 在档限制）。\n- `blockRangeToDomRange(hostEl, lo, hi): Range`——反向 walk 供选区恢复。\n- 偏移 walk 抽成纯函数（输入节点序列描述）以 headless 单测；真 DOM 侧\n  e2e 钉死。\n\n### 4. BlockHost 富化（P2 核心）\n\n- 渲染：初始内容由 spans 映射内联元素（strong/em/del/code(`code`)/a——a\n  带 contenteditable=false 防止点击跳转），挂载即渲染（替换\n  `{{ initialText }}`）。\n- 输入：onInput 的 textContent diff 语义**保持不变**（结构变化不触发 input\n  同步——toggle bold 是 DOM 包裹，不产生 input 事件；IME 输入纯文本照走）。\n- 失焦：`onRichBlur` walk DOM 收集 (text, marks, attrs) → 整块\n  withInlines 回写；已知文本（controller.knownText）同步更新。\n- Enter/Backspace/粘贴协议不动（结构键在纯文本层语义已定义）。\n\n### 5. 气泡菜单激活\n\n- adapter：`isActive(name)` → 读引擎选区 + marksInRange；chain 增\n  `toggleBold/toggleItalic/toggleStrike/toggleCode`（转发当前聚焦宿主执行\n  DOM 就地包裹——`surroundContents` 或 range 重建，宿主方法实现）。\n- EngineEditor 装配 `<BubbleMenu :editor=\"adapter\">` + 选区矩形定位\n  （computeMenuPosition 通道）。\n- `auto/editor/bubble_menu.at` 移除 underline 按钮（源级）→ gen 重生成 →\n  对拍 + 门检清单同步（生成物内容变化，部署清单不变）。\n\n### 6. 代码编辑态着色（CodeEditorBlock 叠加层）\n\n- `auto/editor/code_editor_block.at`：textarea 置于高亮 `<pre>` 之上\n  （叠层定位，pre aria-hidden），pre 内容 = highlight 桥产出 HTML（ext 桥\n  `renderCodeHighlight(code, language)` 经 setHighlightImpl 通道）；ext 桥\n  同步 oninput/onscroll 的 scrollLeft/scrollTop 与 autoresize 高度。\n- 文本颜色设为透明（textarea caret 保留）——经典 overlay 方案。",
+        "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
+        "related": [
+          "PLAN-024"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -48,6 +81,17 @@
         "file": "docs/plans/archived/023-unified-block-component-modes.md",
         "related": [
           "PLAN-023"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P024-5",
+        "section": "tests",
+        "title": "行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色） — 测试设计",
+        "content": "- **headless 单测**（vitest）：marks 工具（跨界/合并/取消/嵌套）；命令\n  （toggle→serialize roundtrip 含 `**b**`、撤销一步）；adapter isActive\n  （构造带 mark 的选区）；selection-map 纯函数偏移算法。\n- **SSR**：BlockHost 富渲染含 strong/em/a 元素。\n- **e2e**（demo，新增 `e2e/inline-marks.spec.ts`）：选中文字→Ctrl+B→失焦→\n  预览 `<strong>` + serialize roundtrip；气泡出现于选区上方→点击 italic；\n  链接 Ctrl+K→prompt→a 元素；着色叠加层存在（pre.code-editor-highlight）\n  且滚动同步。\n- **回归门**：engine 全量（309 基线）、`pnpm build` 三断言、gen 确定性\n  两连跑、demo e2e 全绿（9+1 spec）、jade-garden build。",
+        "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
+        "related": [
+          "PLAN-024"
         ],
         "status": "verified"
       }
@@ -63,6 +107,17 @@
           "PLAN-023"
         ],
         "status": "published"
+      },
+      {
+        "id": "P024-6",
+        "section": "reviews",
+        "title": "行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色） — 验收标准与复审",
+        "content": "- [x] 聚焦含加粗/斜体/链接的段落，宿主直接呈现富文本（非纯文本源码）。\n- [x] 选中一段文字 Ctrl+B / 气泡 bold / Ctrl+K 链接：失焦后预览与\n  `serialize` 输出含对应 markdown 标记；撤销一步恢复。\n- [x] IME 在富宿主内输入正常（composition 协议回归）。\n- [x] BubbleMenu 在选区上方出现，isActive 反映当前选区 marks，无 underline\n  按钮；为其裁剪后 `pnpm gen:editor` 确定性保持。\n- [x] CodeEditorBlock 编辑区呈现语法着色叠加层，输入/滚动同步无错位。\n- [x] 跨块选区调用映射返回 null 且不崩溃（在档 v1 限制）。\n- [x] EDITOR-CONTRACT 冻结面零破坏；既有 9 spec 全绿。\n\n**复审**：zcode（/auto-plan:review），2026-08-30，于 `.worktrees/plan-024-dev` 内复现全部验证。\n\n**全量门（review 唯一一次全量）**：engine `pnpm test` 348/348（27 文件；309 基线 + 39 新增）；\n`pnpm build` 三断言全过（parser-pure / no-tiptap / editor-gen 桥同步）；`gen:editor` 两连跑\n工作树哈希零漂移；demo e2e 14/14（4 既有 spec + inline-marks 5 例）；jade-garden front\nbuild ✓。diff 对账：master...HEAD 26 文件 +1644/-88，全部在计划范围，无计划外改动。\n\n**验收标准逐条裁定**：\n\n1. 富文本宿主聚焦直呈 — **过**：e2e inline-marks #1（宿主 strong/em/code/a 全断言）。\n2. Ctrl+B / 气泡 bold / Ctrl+K → 失焦预览+serialize 标记+撤销一步 — **过**：Ctrl+B 与\n   Ctrl+K 有 e2e（右窗 serialize roundtrip `<strong>`/`<a href>`）；撤销一步恢复由\n   headless commands.test 钉死（undo → 原文 + canUndo=false）。注：气泡按钮 e2e 点的是\n   italic（与 bold 同一 domToggleMark 通道，bold 的 active 态已断言）。\n3. IME 富宿主回归 — **过**：e2e CJK 冒烟 + 组合协议既有测试全绿。\n4. BubbleMenu 选区上方出现/isActive/无 underline/gen 确定性 — **过**：e2e #3（5 按钮、\n   Underline 缺席、Bold active 类）；对拍 BubbleMenu.vue 含 underline 0 处；gen 稳定。\n   注：定位复用 computeMenuPosition('top')（slash 菜单同通道），e2e 钉可见性未钉坐标。\n5. 代码着色叠加层输入/滚动同步 — **过**：e2e #5（hljs span、输入实时更新、\n   高度差 ≤2px）；滚动同步走 onscroll→syncCodeHighlight，自动增高下少有可滚场景，\n   代码路径在档。\n6. 跨块选区映射 null 不崩溃 — **过**：selection-map.test（外部容器 -1 / 无选区 null）。\n7. EDITOR-CONTRACT 冻结面零破坏 + 既有 9 spec — **过**：契约文档 diff 0 行；根类/\n   getBlockMap/expose 面未动；14/14 含全部既有 spec。\n\n**遗漏/延后/绕行排查**：12 任务均有对应 diff，无静默丢弃。在档事项：\n- 执行期发现 3 项已记入待澄清（blur 回写吞点击 / `***` 嵌套 parser 不支持 / 含\n  Image mark 块跳过富回写）——前两项为计划外相邻缺陷（视图身份域/parser 生成物域），\n  非本计划任务缩减，作为 debt candidate 移交；第三项为数据安全裁定，代码注释+计划双档。\n- 小注①：气泡旧 underline 按钮在重生成前调用的 toggleUnderline 保留为 no-op 垫片\n  （重生成后 UI 已不可达）。\n- 小注②：段落内 hardbreak（`\n` span）在富宿主中随空白折叠渲染，未单独断言（罕见路径）。\n\n**spec-impact**：supersedes/new_spec_components/touched_goals 留空不猜（沿用 023 先例——\n账本为计划派生型，无 specs/modules 树）；行内 WYSIWYG 的持久裁定（失焦整块回写/五 mark\n渲染/单块选区 v1）已随本计划各节沉淀，合并时按 §映射入账。",
+        "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
+        "related": [
+          "PLAN-024"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -74,6 +129,17 @@
         "file": "docs/plans/archived/023-unified-block-component-modes.md",
         "related": [
           "PLAN-023"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P024-1",
+        "section": "reports",
+        "title": "行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色） — 变更摘要",
+        "content": "把文本叶块（段落/标题/列表项）的编辑从\"纯文本源码态\"升级为**富文本宿主**：\n聚焦时 DOM 直接呈现 strong/em/del/code/link 内联元素并支持就地选区格式化，\n失焦时整块把 (text, marks) 序列写回模型（applyTree 一步撤销，与 023 的\nCodeEditorBlock 协议同构）。配套三件地基：mark 命令层（内核侧）、DOM↔模型\n选区映射（单块 v1）、021 休眠 BubbleMenu 的激活（adapter mark 链 + 定位\nshim）。收编 023 待澄清 #2：代码编辑态语法着色（textarea + 高亮叠加层）。\n容器块（list/blockquote）聚焦下沉**不并入**——单列 plan-025（裁定见待澄清 #4）。",
+        "file": "docs/plans/archived/024-inline-wysiwyg-rich-host.md",
+        "related": [
+          "PLAN-024"
         ],
         "status": "published"
       }

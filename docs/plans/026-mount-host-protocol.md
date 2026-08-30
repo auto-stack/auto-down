@@ -2,15 +2,14 @@
 
 ---
 plan_id: PLAN-026
-status: drafting
+status: execution_done
 feature_name: 挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:35:00+08:00
-updated_at: 2026-08-30T00:35:00+08:00
-supersedes_spec_components: []
+updated_at: 2026-08-30T13:40:00+08:00supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 0
+current_step: 10
 total_steps: 11
 ---
 
@@ -157,15 +156,15 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
 
 ## 验收标准
 
-- [ ] adapter 具备 `.on/.off/isActive/getAttributes/view`，TableMenu/
+- [x] adapter 具备 `.on/.off/isActive/getAttributes/view`，TableMenu/
   CodeBlockMenu 生成物零改动挂载成功。
-- [ ] 选中表格悬浮 TableMenu，加/删行经 commands.ts 生效且一步撤销。
-- [ ] 聚焦代码块可经 CodeBlockMenu 换语言；serialize 输出新语言 fence；
+- [x] 选中表格悬浮 TableMenu，加/删行经 commands.ts 生效且一步撤销。
+- [x] 聚焦代码块可经 CodeBlockMenu 换语言；serialize 输出新语言 fence；
   CodeEditorBlock 标题栏联动。
-- [ ] Details 在预览侧可交互折叠（open 属性持久化到 serialize）；
+- [x] Details 在预览侧可交互折叠（open 属性持久化到 serialize）；
   Math/Mermaid 预览不再 degrade。
-- [ ] WikiLinkNodeView 维持不激活（020 装饰器无双轨）。
-- [ ] EDITOR-CONTRACT 冻结面零破坏；全部门检绿；ARCHITECTURE §5/§6 的
+- [x] WikiLinkNodeView 维持不激活（020 装饰器无双轨）。
+- [x] EDITOR-CONTRACT 冻结面零破坏；全部门检绿；ARCHITECTURE §5/§6 的
   dormant 缺口销账修订。
 
 ## 执行步骤
@@ -175,41 +174,77 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
 
 ### Phase 0：adapter 协议面（headless 地基）
 
-- [ ] P0T1 事件总线：`src/editor/engine/tiptap-adapter.ts` 增 `.on/.off`
+- [✅] P0T1 事件总线：`src/editor/engine/tiptap-adapter.ts` 增 `.on/.off`
   订阅表 + engine.onChange→'selectionUpdate' 派发（选区变化门控）+
   `tiptap-adapter.test.ts` 增段（TDD 先红）。验证：`npx vitest run src/editor/__tests__/tiptap-adapter.test.ts`。
-- [ ] P0T2 isActive/getAttributes/view shim：同文件增块族判定与 attrs
+  [✅ 已完成] 5 用例先红（adapter.on is not a function）后绿：变化派发/同位去重/appendBlocks 不派发/off 解除/回跳派发；18/18 passed
+- [✅] P0T2 isActive/getAttributes/view shim：同文件增块族判定与 attrs
   读取、view.dom 惰性锚 + 测试增段。验证：同 P0T1 命令。
-- [ ] P0T3 链动词：同文件 chain 增 addRowAfter/deleteRow/
+  [✅ 已完成] BLOCK_BY_NAME 块族表 + collectFamilyKinds 祖先链 + attrsToObject；
+  getAttributes 聚焦块优先、祖先兜底；view{dom 惰性/state.selection/nodeDOM} 全 DOM 可选；
+  23/23 passed
+- [✅] P0T3 链动词：同文件 chain 增 addRowAfter/deleteRow/
   setCodeBlockLanguage（commands.ts 转发）+ 测试（树断言/undo/roundtrip）。
   验证：同 P0T1 命令。
+  [✅ 已完成] 七表动词齐（行前后/删行/列前后/删列/删表，focusedTableCell 就地解析，
+  run() 增悬空锚修复）+ setCodeBlockLanguage/setCodeBlock({language}) 走
+  setKind(language) 通道（serialize roundtrip ```ts 断言）；commands.ts 补
+  tableAddColumnAtTree/tableDeleteColumnAtTree（末列守卫）；42/42 passed
 
 ### Phase 1：node-view 桥 + 预览挂载
 
-- [ ] P1T1 node-view props 桥：新建 `src/editor/engine/node-view-host.ts`
+- [✅] P1T1 node-view props 桥：新建 `src/editor/engine/node-view-host.ts`
   （nodeViewProps fabricator）+ `src/editor/__tests__/node-view-host.test.ts`
   （TDD：props 形状/updateAttributes/deleteNode/getPos）。验证：`npx vitest run src/editor/__tests__/node-view-host.test.ts`。
-- [ ] P1T2 Details 预览挂载：`src/editor/components/EngineEditor.vue` 装配处
+  [✅ 已完成] nodeViewProps（attrs 对象+textContent+updateAttributes 单步 undo+
+  deleteNode/getPos/extension.options/decorations）+ push/pop/currentNodeViewHost
+  渲染窗口栈（模块级注册位解析当前引擎）；无 engine 静态渲染不写回；8/8 passed
+- [✅] P1T2 Details 预览挂载：`src/editor/components/EngineEditor.vue` 装配处
   `registerPanel('Details', ...)`（桥包装 DetailsNodeView）+ SSR 断言入
   `src/editor/__tests__/node-view-mount.test.ts`（data-node-view 标记/open
   属性/折叠写回）。验证：`npx vitest run src/editor/__tests__/node-view-mount.test.ts`。
-- [ ] P1T3 Math/Mermaid/Query/Embed 挂载：同式注册四面板 + SSR 断言（不再
+  [✅ 已完成] nodeViewPanel 模块级注册（blockOfWNode 回链 + host 窗口取引擎，
+  previewVNodeOf 以 push/pop 包住渲染段）；NodeViewContent 孔经 provide/inject
+  接装配内容（ext shim + NodeViewContentProvider）；serializer.at 增 detailsMd
+  （open=true 时 `, open: true`）经 pnpm gen:parser 再生（先证 regen 幂等）；
+  5/5 mount 断言绿 + 引擎全量 421/421（rust parity golden 无 open 树，零漂移）
+- [✅] P1T3 Math/Mermaid/Query/Embed 挂载：同式注册四面板 + SSR 断言（不再
   unknown-node）。验证：`npx vitest run src/editor/__tests__/node-view-mount.test.ts`。
+  [✅ 已完成] blockNodeToWNode 增 math_block/mermaid/query/embed 四型（palette
+  对位 spec），四面板 nodeViewPanel 同式注册（叶块无内嵌体）；SSR 5 断言
+  （各标记 + query attrs 通道写回 $query(b)）；mount 10/10 + 全量 426/426 +
+  build exit 0 三断言（ext 桥同步 auto/editor/ext 源）
 
 ### Phase 2：菜单激活 + 收尾
 
-- [ ] P2T1 TableMenu 激活：`src/editor/components/EngineEditor.vue` 装配
+- [✅] P2T1 TableMenu 激活：`src/editor/components/EngineEditor.vue` 装配
   `<TableMenu :editor="adapter">`（isActive 显隐 + computeMenuPosition 定位）。
   验证：`cd autodown/packages/engine && pnpm test && pnpm build`。
-- [ ] P2T2 CodeBlockMenu 激活：同装配处 `<CodeBlockMenu :editor="adapter">`
+  [✅ 已完成] 装配于 .autodown-menu-anchor 0 高定位壳（TableMenu 坐标系=
+  view.dom 内容原点）；聚焦表格经 focus 停靠语义落 TableEditorBlock（table-node
+  可被菜单 querySelector 命中）；与 023 工具栏并存（待澄清 #2 起草口径）；
+  426/426 + build exit 0
+- [✅] P2T2 CodeBlockMenu 激活：同装配处 `<CodeBlockMenu :editor="adapter">`
   （聚焦 Fence 显隐；语言→IAL 通道）。验证：同 P2T1。
-- [ ] P2T3 e2e：新建 `autodown/demo/e2e/host-protocol.spec.ts`（TableMenu
+  [✅ 已完成] fenceEditSlot 宿主壳：.autodown-codeblock-node[data-language] 包
+  CodeEditorBlock + [data-codeblock-language-badge] 徽标（生成菜单的点击契约
+  DOM，菜单坐标 root 系裸挂）；语言切换经 setCodeBlock({language})→setBlockAttrs
+  IAL 通道→重绘联动标题栏；徽标样式入 autodown-editor.css；426/426 + build exit 0
+- [✅] P2T3 e2e：新建 `autodown/demo/e2e/host-protocol.spec.ts`（TableMenu
   加行/CodeBlockMenu 换语言联动标题栏/Details 折叠）。验证：`cd autodown/demo
   && npx playwright test host-protocol.spec.ts`。
-- [ ] P2T4 ARCHITECTURE 修订 + 全量门：§5/§6 dormant 缺口销账（7 NodeViews
+  [✅ 已完成] 3 景全绿（加行落 markdown/换语言联动标题栏+badge+right pane fence/
+  Details 斜杠挂载→toggle→serialize open: true）；执行中三修复：tableTarget 表级
+  选区缺省语义（追加/末行）、deleteRange 区间感知（v1 尾截假设错）、
+  isEditableLeaf 排除 Details/Callout/Query/Embed（容器/attr 型不宿主，聚焦态
+  落 node-view）+ setDetails 内联搬子段（防序列化丢正文）；demo 全量 22/22
+- [✅] P2T4 ARCHITECTURE 修订 + 全量门：§5/§6 dormant 缺口销账（7 NodeViews
   中 6 挂载、WikiLink 在册去重；menus 激活状态）；engine `pnpm test && pnpm
   build`、demo e2e 全绿、`cd jade-garden/front && pnpm build` →
   `execution_done`。验证：四门退出码 0。
+  [✅ 已完成] §5 划账改记余量、§6 dormant 段销账为协议落地纪实、
+  node-view-host 入 §6 平台层清单；四门：engine 429/429 + build exit 0（三断言）
+  + demo e2e 22/22 + jade-garden build exit 0
 
 ## 复审记录
 

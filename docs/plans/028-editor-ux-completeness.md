@@ -2,14 +2,18 @@
 
 ---
 plan_id: PLAN-028
-status: execution_done
+status: reviewed
 feature_name: 编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T17:40:00+08:00
-updated_at: 2026-08-30T19:30:00+08:00
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+updated_at: 2026-08-31T09:20:00+08:00
+supersedes_spec_components:
+  - ".autoos/specs.json architecture P024-3: 气泡菜单「underline 裁剪」与非目标声明——028 P2T3 回填第 6 按钮（toggleUnderline 真实现），裁剪态陈述作废"
+  - ".autoos/specs.json designs P024-4: 「bubble_menu.at 移除 underline 按钮（源级）」——028 反向回填 + Mark.Underline 全链（枚举/定界/序列化/渲染/命令五臂）"
+new_spec_components:
+  - ".autoos/specs.json 六节 P028-1..6: 编辑器体验收尾——① Ctrl+Z/Y/Shift+Z UI 接线（headless undo-wiring.ts 路由表 + runHistory 全宿主重同步 + historyEpoch 聚焦面重挂载；附带引擎 redo() 存量 bug 修复：post-tree 误压 undoStack 改记 PRE 态，undo→redo→undo 可循环）；② 吞点击：归因 025 AssemblyView 稳定壳已修（028 原始鼠标事件跨重绘直点用例钉死 + 七处 e2e Save 绕行清除）；③ parser 嵌套定界（`***` 三连先于 `**` 消费→Strong(Em(...)) + scanDelim 真闭合嵌套首字符护栏放宽（`*`/`_` 开头），流式自动闭合护栏不变；`**_x_**` 同族）；④ underline 全链（Mark.Underline=6 尾部追加 + `__`/`___` 定界三连先于双连→Underline(Em) + `_`-系全长度 intraword 护栏 + serializer `__..__` 位于 em 内 del 外 + block-wnode PEEL/wrapMark + render-node `<u>` + rich-html `<u>`↔Underline 双向 + dom-marks u + adapter MARK_BY_NAME/toggleUnderline + 气泡按钮 + z-index:30 修 boundary 拦截；`___x___` 规范化为 `__*x*__`）；⑤ view.coordsAtPos（聚焦富宿主 blockRangeToDomRange→getClientRects()[0] 空退 getBoundingClientRect；AdapterView 可选成员；生成 SlashMenu 两段式定位零改动直连）；执行期两条方法论发现：e2e 须 E2E_PORT 隔离（playwright reuseExistingServer 复用主检出 5173 会假绿——原生撤销+input diff 回写曾掩盖未接线）、Auto 转译不支持 `!(expr)` 括号取反（需布尔变量式）"
+touched_goals:
+  - ".autoos/specs.json P024-2: 行内 WYSIWYG 目标——028 补齐其 v1 裁剪面（underline mark、`***` 嵌套 roundtrip、blur 吞点击产品级验证）并销 024 在档执行期发现两项（DEBTS 024 两行）"
 current_step: 10
 total_steps: 10
 ---
@@ -267,7 +271,59 @@ computeMenuPosition 消费路径接通（现有两段式定位代码已写好，
 
 ## 复审记录
 
-（/auto-plan:review 填写）
+**复审**：zcode，2026-08-31 09:20（/auto-plan:review；工作树
+`.worktrees/plan-028-dev` @ 79143a6，分支领先 master 8 commits，工作树净）。
+
+**全量门（复审唯一全量套件运行，全部退出码 0）**：engine `pnpm test`
+451/451 + `pnpm build` 三断言 + `vue-tsc -b` 0 错；demo e2e `E2E_PORT=5199`
+26/26；gen:parser + gen:editor 两连跑 `git status` 0 差异；jade-garden/front
+`pnpm build` ✓（chunk 体积警告为既有）。
+
+**逐条验收**：
+
+1. **撤销重做接线 — PASS**：undo.spec.ts 两路（富宿主含 Ctrl+Shift+Z 别名；
+   代码块 commit→undo→redo）在 26 套件内绿；headless undo-wiring 5 用例 +
+   引擎 undo→redo→undo 循环用例绿；组合期守卫代码在位
+   （EngineEditor.vue `onContentKeydown`：composing 判定先于 preventDefault
+   return）。验证口径注：Playwright 无真 IME 引擎，组合期×Ctrl+Z 的直接
+   交互为代码级验证 + 既有 CJK 冒烟绿（预存限制，非本计划引入）。
+2. **吞点击直点一次生效 — PASS**：inline-marks 直点用例（原始 mouse 事件
+   down→80ms→up 跨重绘，严于 locator.click 的 actionability 重试）绿；
+   heading 直点 + 列表深槽位直点均一次生效；七处 Save 绕行（inline-marks×3/
+   container-editing×2/host-protocol/undo）全数改直点后全套 26 绿。
+3. **`***`/`**_`/`__` roundtrip — PASS**：金标 11 用例（嵌套定界 5 +
+   underline 6）绿，含 inline_code 干扰例与 serialize→parse 往返；
+   `___x___` 规范化为 `__*x*__`（mark 无损 + 一轮后字节稳定，测试钉死）。
+4. **气泡 underline — PASS**：e2e 6 按钮 + underline 点击 + `<u><strong><em>`
+   三 mark 全链落盘断言绿；headless toggleMarkOnSpans(Underline) +
+   spansToHtml(`<u>`) 钉子绿；气泡 z-index:30 修复 boundary 拦截在案。
+5. **SlashMenu 定位 — PASS**：slash-position.spec.ts 坐标带断言绿（执行期
+   先红 menuTop=85 默认位留档）；scroll-sync slash 钳制 4 用例回归绿。
+6. **契约零破坏 + 销账 — PASS**：`git diff master..HEAD --
+   EDITOR-CONTRACT.md src/editor/components/BlockHost.vue` 0 行；AdapterView
+   仅加可选成员 coordsAtPos（惯例同 getAttributes/view 垫片）；DEBTS 五项
+   销账（021-F5 改行 + 025-D2/D4、024-***/underline 四行落地即清偿，
+   commit 79143a6）。
+
+**遗漏/延后/workaround 狩猎**：
+
+- 遗漏：无。产品文件 diff 与计划触面 1:1（22 文件 + 测试/e2e/DEBTS）；
+  计划测试设计节 sketch 的「coordsAtPos 纯函数段注入式单测」以 e2e 钉死 +
+  selection-map 既有 blockRangeToDomRange 单测覆盖落地（P3T1 执行步骤本身
+  只要求 e2e 断言）——记录为落地形态分歧，非缺失。
+- 延后：无。Dependabot 30 项与发包前置为计划明示非目标（029 单列建议在
+  DEBTS 027 行维持）。
+- Workaround：diff 内零 TODO/FIXME/HACK 新增。两条非阻塞观察（不构成债，
+  无人报告需求）：① undo 后聚焦面 remount 光标落块尾（历史恢复 caret 偏移
+  未还原——计划未要求）；② 代码块未提交草稿期间 Ctrl+Z 撤销的是上一条
+  commit 条目（草稿 blur 才入史，与 CodeEditorBlock 提交协议一致）。
+
+**计划↔实现分歧（以代码为准，均已在案）**：P1T1「确认现状红」未发生——
+025 稳定壳已修吞点击，归因改正入 DEBTS 025-D4 行；引擎 redo() 存量 bug 为
+超计划新增修复（e2e 循环用例钉出，preTree/preSel 捕获未用改记 PRE 态）。
+
+**路由**：六项验收全 PASS、无阻塞债 → `status: reviewed`，就绪
+`/auto-plan:merge`。
 
 ## 待澄清事项
 

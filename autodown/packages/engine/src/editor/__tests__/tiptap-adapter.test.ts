@@ -4,10 +4,13 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  Attr,
   BlockNode,
   BlockType,
   Mark,
   Selection,
+  Value,
+  attrSet,
   block,
   blockText,
   collapsedSel,
@@ -19,6 +22,7 @@ import {
   withChildren,
   withInlines,
 } from '../../parser/block-model'
+import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
 import { createEditorAdapter, slashQueryAt } from '../engine/tiptap-adapter'
@@ -148,6 +152,61 @@ describe('adapter event bus', () => {
     e.select(collapsedSel('p1', 1))
     e.select(collapsedSel('p1', 0)) // back to the initial position — still a change vs p1:1
     expect(seen.length).toBe(2)
+  })
+})
+
+// -- block-family surface: isActive/getAttributes/view (plan 026 P0T2) -----------
+
+describe('adapter block-family surface', () => {
+  function tableEngine() {
+    const e = new EditorEngine(
+      doc(...parse_blocks('| A | B |\n| --- | --- |\n| 1 | 2 |\n\npara', true).children),
+      collapsedSel('p-none', 0),
+    )
+    const table = e.doc.children.find((n) => n.kind === BlockType.Table)!
+    return { e, table }
+  }
+
+  it("isActive('table') is true for a selection inside any cell", () => {
+    const { e, table } = tableEngine()
+    const adapter = createEditorAdapter(e)
+    const cell = table.children[1]!.children[0]!
+    e.select(collapsedSel(cell.id, 0))
+    expect(adapter.isActive('table')).toBe(true)
+  })
+
+  it("isActive('table') is false for a selection outside the table; mark names unaffected", () => {
+    const { e, table } = tableEngine()
+    const adapter = createEditorAdapter(e)
+    const para = e.doc.children.find((n) => n.kind === BlockType.Paragraph)!
+    e.select(collapsedSel(para.id, 0))
+    expect(adapter.isActive('table')).toBe(false)
+    expect(adapter.isActive('codeBlock')).toBe(false)
+    // header cell family still counts as the table
+    const headerCell = table.children[0]!.children[0]!
+    e.select(collapsedSel(headerCell.id, 0))
+    expect(adapter.isActive('table')).toBe(true)
+  })
+
+  it("getAttributes('codeBlock') returns the focused Fence attrs as an object", () => {
+    const fence = leafBlock('f1', BlockType.Fence, 'let x = 1')
+    fence.attrs = attrSet(fence.attrs, 'language', Value.Str('ts'))
+    const e = new EditorEngine(doc(fence, leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('f1', 0))
+    const adapter = createEditorAdapter(e)
+    expect(adapter.getAttributes?.('codeBlock')).toEqual({ language: 'ts' })
+  })
+
+  it("getAttributes returns {} when the focused block is not of that family", () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    expect(adapter.getAttributes?.('codeBlock')).toEqual({})
+  })
+
+  it('view.dom lazily resolves the editor content element (null without DOM)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    // headless test env: no document — the anchor degrades instead of throwing
+    expect(adapter.view?.dom ?? null).toBe(null)
   })
 })
 

@@ -17,15 +17,18 @@ import {
   BlockNode,
   attrSet,
   replaceNode,
+  Attr,
   BlockType,
   BlockPos,
   Mark,
   Selection,
   Value,
   blockText,
+  childIndex,
   findBlock,
   hasMark,
   leafBlock,
+  parentOf,
 } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 
@@ -61,6 +64,52 @@ const MARK_BY_NAME: Record<string, Mark> = {
   link: Mark.Link,
 }
 
+/** tiptap block names → engine BlockTypes (plan 026 P0T2): isActive /
+ *  getAttributes resolve the name against the focused block's FAMILY — the
+ *  block itself plus every ancestor (a caret in a cell is "in a table"). */
+const BLOCK_BY_NAME: Record<string, BlockType> = {
+  table: BlockType.Table,
+  codeBlock: BlockType.Fence,
+  fence: BlockType.Fence,
+  blockquote: BlockType.Blockquote,
+  bulletList: BlockType.ListBlock,
+  orderedList: BlockType.ListBlock,
+  listItem: BlockType.ListItem,
+  heading: BlockType.Heading,
+  details: BlockType.Details,
+  callout: BlockType.Callout,
+  mathBlock: BlockType.MathBlock,
+  mermaid: BlockType.Mermaid,
+  queryBlock: BlockType.QueryBlock,
+  blockEmbed: BlockType.BlockEmbed,
+}
+
+/** Ancestor chain of `id` (inclusive), collected root-ward while unwinding;
+ *  `out` receives every kind on the doc→block path. */
+function collectFamilyKinds(node: BlockNode, id: string, out: Set<BlockType>): boolean {
+  if (node.id === id) {
+    out.add(node.kind)
+    return true
+  }
+  for (const c of node.children) {
+    if (collectFamilyKinds(c, id, out)) {
+      out.add(node.kind)
+      return true
+    }
+  }
+  return false
+}
+
+/** Attr list → plain object (Str/Int/Bool unwrap; structural values null). */
+function attrsToObject(attrs: Attr[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const a of attrs) {
+    const v = a.value as Value
+    out[a.key] = v != null && (v._tag === 'Str' || v._tag === 'Int' || v._tag === 'Bool') ? v.value : null
+  }
+  return out
+}
+
 export interface ChainLike {
   focus(): ChainLike
   setHeading(opts: { level: number }): ChainLike
@@ -84,10 +133,27 @@ export interface ChainLike {
  *  `editor.on('selectionUpdate', cb)` — payload unused by the widgets). */
 export type AdapterListener = () => void
 
+/** The view shim (plan 026 P0T2): the mounted chrome anchors its floating
+ *  menus against `view.dom` (the editor content element) and, on the
+ *  no-trigger fallback path, asks `nodeDOM(from)` for the focused block's
+ *  element. Lazy + DOM-optional so headless/SSR consumers never touch
+ *  `document`. */
+export interface AdapterView {
+  readonly dom: HTMLElement | null
+  readonly state: { selection: { from: number; to: number } }
+  nodeDOM(from: number): HTMLElement | null
+}
+
 export interface EditorAdapter {
   storage: Record<string, any>
   chain(): ChainLike
   isActive(_name: string, _attrs?: any): boolean
+  /** Focused-block attrs as a plain object (plan 026 P0T2); {} when the
+   *  name does not match the focused block's family. Optional on the frozen
+   *  interface — createEditorAdapter always sets it. */
+  getAttributes?(_name: string): Record<string, unknown>
+  /** Floating-menu anchor (plan 026 P0T2). Same optional-member rule. */
+  view?: AdapterView
   isEditable: boolean
   /** Event surface (plan 026 P0T1): 'selectionUpdate' subscribers are
    *  notified when an engine change moves the selection. Optional on the
@@ -144,8 +210,55 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
     isActive: (name: string) => {
       void selectionTick.value
       const m = MARK_BY_NAME[name]
-      if (m == null) return false
-      return hasMark(marksInRange(engine, engine.selection), m)
+      if (m != null) return hasMark(marksInRange(engine, engine.selection), m)
+      const kind = BLOCK_BY_NAME[name]
+      if (kind == null) return false
+      const family = new Set<BlockType>()
+      collectFamilyKinds(engine.doc, engine.selection.anchor.blockId, family)
+      return family.has(kind)
+    },
+    getAttributes: (name: string) => {
+      void selectionTick.value
+      const kind = BLOCK_BY_NAME[name]
+      if (kind == null) return {}
+      const found = findBlock(engine.doc, engine.selection.anchor.blockId)
+      if (found && found.kind === kind) return attrsToObject(found.attrs)
+      // ancestor match (caret in a cell, attrs of the table)
+      if (found) {
+        const family = new Set<BlockType>()
+        if (collectFamilyKinds(engine.doc, found.id, family) && family.has(kind)) {
+          let node: BlockNode | null = found
+          while (node) {
+            if (node.kind === kind) return attrsToObject(node.attrs)
+            node = parentOf(engine.doc, node.id) ?? null
+          }
+        }
+      }
+      return {}
+    },
+    view: {
+      get dom(): HTMLElement | null {
+        if (typeof document === 'undefined') return null
+        return document.querySelector<HTMLElement>('.autodown-editor-content')
+      },
+      get state() {
+        return {
+          selection: {
+            from: engine.selection.anchor.offset,
+            to: engine.selection.head.offset,
+          },
+        }
+      },
+      nodeDOM(_from: number): HTMLElement | null {
+        if (typeof document === 'undefined') return null
+        const content = document.querySelector<HTMLElement>('.autodown-editor-content')
+        if (!content) return null
+        const id = engine.selection.anchor.blockId
+        for (const el of content.querySelectorAll<HTMLElement>('[data-block-id]')) {
+          if (el.dataset.blockId === id) return el
+        }
+        return null
+      },
     },
     chain: () => createChain(engine),
     __engine: engine,

@@ -1,6 +1,7 @@
 # Plan 022：jade-garden VM（桌面）化——后端逻辑与 lib 层并入 Auto 双端库
 
 ---
+status: archived
 supersedes_spec_components:
   - "jade-garden back/server 手写业务逻辑体（parser/links 提取/search 匹配/tasks/agenda/query/srs 数学）: 逻辑退役至 back/auto/*.at 双发射 *_gen 壳内直调（壳保留 axum/fs/chrono 装配——薄壳化为既定形态；OfMatrix EDN parse/save 经 D5 裁定留壳：float 解析/格式化为 a2r 边界）"
   - "jade-garden 索引存储 SQLite（rusqlite + FTS5 虚拟表）: 退役为内存行表 + jade-garden-index.json 持久化（存储裁定项销号，rusqlite 依赖摘除）"

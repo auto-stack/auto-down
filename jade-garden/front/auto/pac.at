@@ -4,4 +4,8 @@ scene: "ui"
 render: "vue"
 shadcn: off
 default_classes: off
-npm_deps: ["cytoscape@^3.34.0", "cytoscape-fcose@^2.2.0"]
+npm_deps: {
+  "cytoscape": "^3.34.0"
+  "cytoscape-fcose": "^2.2.0"
+  "@autodown/engine": "link:D:/autostack/auto-down/autodown/packages/engine"
+}

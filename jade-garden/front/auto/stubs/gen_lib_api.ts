@@ -28,6 +28,15 @@ export function stripExt(path: string, _ext: string): string {
   return path
 }
 
+/** Loose mirror of tabs_store_ext.adoptSaveResult (gen-tree
+ * typecheck only — see readWikiSafe above for the idiom). */
+export function adoptSaveResult(
+  _tab: any,
+  _sentFm: Record<string, any>,
+  _sentBody: string,
+  _saved: any,
+): void {}
+
 export function confirmClose(_title: string): boolean {
   return true
 }
@@ -68,7 +77,7 @@ export interface GraphNode {
 export interface GraphEdge {
   source: string
   target: string
-  block_id?: string
+  block_id: string | null
 }
 
 export interface GraphSettings {
@@ -113,7 +122,7 @@ export interface FileNode {
   name: string
   path: string
   is_dir: boolean
-  children?: FileNode[]
+  children: FileNode[]
 }
 
 export interface Backlink {
@@ -124,14 +133,14 @@ export interface Backlink {
 
 export interface Outlink {
   target_title: string
-  target_path?: string
+  target_path: string | null
   exists: boolean
-  block_id?: string
+  block_id: string | null
 }
 
 export interface UnlinkedRef {
   page_path: string
-  block_uuid?: string
+  block_uuid: string | null
   context: string
   matched_text: string
 }
@@ -160,10 +169,10 @@ export interface TaskItem {
   line: number
   raw: string
   marker: string
-  priority?: string
+  priority: string | null
   content: string
-  scheduled?: string
-  deadline?: string
+  scheduled: string | null
+  deadline: string | null
 }
 
 export interface AgendaGroup {
@@ -180,14 +189,14 @@ export async function getAgenda(_days = 14): Promise<AgendaResponse> {
 }
 
 export interface SearchResult {
-  type: 'Page' | 'Block'
-  path?: string
-  title?: string
-  uuid?: string
-  page_path?: string
-  block_id?: string
-  content?: string
-  snippet?: string | null
+  type: string
+  path: string | null
+  title: string | null
+  uuid: string | null
+  page_path: string | null
+  block_id: string | null
+  content: string | null
+  snippet: string | null
 }
 
 export interface SearchResponse {
@@ -208,13 +217,13 @@ export interface Card {
   raw: string
   question: string
   answer: string
-  deck?: string
+  deck: string | null
   ease_factor: number
   repeats: number
   last_interval: number
-  next_schedule?: string
-  last_score?: number
-  last_reviewed?: string
+  next_schedule: string | null
+  last_score: number | null
+  last_reviewed: string | null
 }
 
 export interface CardsResponse {
@@ -272,7 +281,7 @@ export interface WhiteboardShape {
   width: number
   height: number
   label: string
-  target?: string
+  target: string | null
 }
 
 export interface WhiteboardDoc {

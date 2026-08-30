@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-026
-status: reviewed
+status: archived
 feature_name: 挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:35:00+08:00

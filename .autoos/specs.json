@@ -36,6 +36,17 @@
           "PLAN-025"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P026-2",
+        "section": "goals",
+        "title": "挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活 — 目标",
+        "content": "1. **adapter 协议面**：`.on/.off(event, cb)`（engine.onChange →\n   selectionUpdate 派发）；`isActive(name)` 块级真实现（'table'/'codeBlock'\n   等 = 选区所在块族）；`getAttributes(name)`（聚焦块 attrs——语言等）；\n   `view` shim（`view.dom` = 编辑器内容元素，菜单定位用）。\n2. **链动词**：`chain().focus().addRowAfter()/deleteRow()`（转发\n   commands.ts 表链）、`setCodeBlockLanguage(lang)`（setBlockAttrs IAL 通道）。\n3. **node-view props 桥**：`nodeViewProps(node, engine, opts)`——fabricate\n   `node{attrs}/updateAttributes/deleteNode/getPos/selected/editor`，让 7 个\n   生成物 NodeView 无改动挂载。\n4. **预览挂载**：DetailsNodeView 经 panel registry custom panel 注册为\n   Details 面板（交互 open 属性经 updateAttributes 写回）；Math/Mermaid/\n   Query/Embed 同桥注册（覆盖 builtin degrade）。\n5. **菜单激活**：TableMenu 在选中表格时悬浮（isActive('table') 驱动 +\n   computeMenuPosition 定位）；CodeBlockMenu 在聚焦 Fence 时可用，语言切换\n   经 IAL 生效（CodeEditorBlock 标题栏显示联动）。\n6. WikiLinkNodeView 不激活（020 的 wikilink 装饰器已拥有该交互——在册去重）。",
+        "file": "docs/plans/archived/026-mount-host-protocol.md",
+        "related": [
+          "PLAN-026"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -50,7 +61,8 @@
         ],
         "status": "stable",
         "superseded_by": [
-          "P025-3"
+          "P025-3",
+          "P026-3"
         ]
       },
       {
@@ -62,7 +74,10 @@
         "related": [
           "PLAN-024"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P026-3"
+        ]
       },
       {
         "id": "P025-3",
@@ -72,6 +87,17 @@
         "file": "docs/plans/archived/025-container-block-editing.md",
         "related": [
           "PLAN-025"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P026-3",
+        "section": "architecture",
+        "title": "挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活 — 架构方案",
+        "content": "```\nadapter（tiptap-adapter.ts 扩展）\n├─ 事件总线：engine.onChange → 'selectionUpdate' 订阅者\n├─ isActive/getAttributes：选区块族判定 + attrs 读取\n├─ 链动词：表格/代码块语言（commands.ts 转发）\n└─ view shim：view.dom = .autodown-editor-content（定位锚）\nnode-view 桥（新 node-view-host.ts）\n└─ nodeViewProps(node, engine)：tiptap 形状 props fabricator\n预览挂载（panel registry custom panel——017 机制，无新分叉）\n└─ Details/Math/Mermaid/Query/Embed 面板 = 桥包装的 NodeView\n菜单（EngineEditor 装配）\n└─ TableMenu（选中表格悬浮）/ CodeBlockMenu（聚焦 Fence 语言通道）\n```\n\n- **挂载路径裁定**：023 的 previewNodes 走 panel 管线（不经 BlockComponent\n  view 槽）——NodeView 挂预览用 `registerPanel`（plan 017 注册位），BlockComponent\n  契约只承载 edit/stream（维持 023 语义，不造第三条装配路径）。\n- **非目标**：BubbleMenu mark 链（024 所有）；NodeView 的编辑态深度（\n  updateAttributes 即可，源码级编辑单列）；拖拽/resize 把手。",
+        "file": "docs/plans/archived/026-mount-host-protocol.md",
+        "related": [
+          "PLAN-026"
         ],
         "status": "stable"
       }
@@ -86,7 +112,10 @@
         "related": [
           "PLAN-023"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P026-4"
+        ]
       },
       {
         "id": "P024-4",
@@ -97,7 +126,10 @@
         "related": [
           "PLAN-024"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P026-4"
+        ]
       },
       {
         "id": "P025-4",
@@ -107,6 +139,17 @@
         "file": "docs/plans/archived/025-container-block-editing.md",
         "related": [
           "PLAN-025"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P026-4",
+        "section": "designs",
+        "title": "挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活 — 详细设计",
+        "content": "### 1. adapter 协议面（tiptap-adapter.ts）\n\n```ts\non(event, cb) / off(event, cb)     // 订阅表；engine.onChange → 选区变化时派发 'selectionUpdate'\nisActive(name)                     // 'table'→选区在 Table 子树；'codeBlock'→Fence；'bold' 等 mark 名→false（024 域）\ngetAttributes(name)                // 聚焦块 attrs 对象（codeBlock→{language}）\nview: { dom: HTMLElement }         // 惰性取 .autodown-editor-content（菜单定位锚）\n```\n\n### 2. 链动词\n\n`chain().focus().addRowAfter()/deleteRow()` → `tableAddRow/tableDeleteRow`\n（选区行解析）；`setCodeBlockLanguage(lang)` → `setBlockAttrs(engine, fenceId,\n[language])`。focus() 语义 = 保持现选区（引擎无焦点抢占）。\n\n### 3. node-view 桥 `src/editor/engine/node-view-host.ts`\n\n```ts\nnodeViewProps(node: BlockNode, engine: EditorEngine, selected: boolean) => {\n  node: { attrs: attrsToObject(node.attrs), ... },\n  updateAttributes: (patch) => setBlockAttrs(engine, node.id, patch),\n  deleteNode: () => replaceNode 移除,\n  getPos: () => childIndex,\n  selected, editor: adapter,\n}\n```\n\n### 4. 预览挂载（panel registry）\n\n`registerPanel('Details', ctx => h(DetailsNodeView, nodeViewProps(...)))`\n（open 属性切换经 updateAttributes 写回 → serialize roundtrip `:::details`）；\nMath/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 EngineEditor\n装配处（与 023 的 edit 槽注册同位置、同 module-scope 语义）。\n\n### 5. 菜单激活（EngineEditor 装配）\n\n- TableMenu：`isActive('table')` 计算显隐 + computeMenuPosition 于表格矩形；\n  与 023 TableEditorBlock 工具栏并存裁定见待澄清 #2。\n- CodeBlockMenu：聚焦 Fence 显隐；语言点击 → `setCodeBlockLanguage` →\n  重绘联动 CodeEditorBlock 标题栏。",
+        "file": "docs/plans/archived/026-mount-host-protocol.md",
+        "related": [
+          "PLAN-026"
         ],
         "status": "stable"
       }
@@ -144,6 +187,17 @@
           "PLAN-025"
         ],
         "status": "verified"
+      },
+      {
+        "id": "P026-5",
+        "section": "tests",
+        "title": "挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活 — 测试设计",
+        "content": "- **headless 单测**（vitest，TDD）：事件总线（onChange→selectionUpdate 派发\n  /off 解除）；isActive/getAttributes 块族判定；链动词（表行操作树断言 +\n  undo；语言 attr 写入 + serialize roundtrip）；node-view 桥（props 形状 +\n  updateAttributes/deleteNode 效果）。\n- **SSR**：Details 面板注册后预览含 data-node-view 标记与 open 属性；\n  Math/Mermaid 注册后不再 degrade 为 unknown-node。\n- **e2e**（demo 新增 `e2e/host-protocol.spec.ts`）：表格选中出 TableMenu→\n  加行生效；聚焦代码块出 CodeBlockMenu→切语言→标题栏/fence 输出联动；\n  Details 预览折叠交互。\n- **回归门**：engine 全量、build 三断言、demo e2e 全绿、jade-garden build。",
+        "file": "docs/plans/archived/026-mount-host-protocol.md",
+        "related": [
+          "PLAN-026"
+        ],
+        "status": "verified"
       }
     ],
     "reviews": [
@@ -179,6 +233,17 @@
           "PLAN-025"
         ],
         "status": "published"
+      },
+      {
+        "id": "P026-6",
+        "section": "reviews",
+        "title": "挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活 — 验收标准与复审",
+        "content": "- [x] adapter 具备 `.on/.off/isActive/getAttributes/view`，TableMenu/\n  CodeBlockMenu 生成物零改动挂载成功。\n- [x] 选中表格悬浮 TableMenu，加/删行经 commands.ts 生效且一步撤销。\n- [x] 聚焦代码块可经 CodeBlockMenu 换语言；serialize 输出新语言 fence；\n  CodeEditorBlock 标题栏联动。\n- [x] Details 在预览侧可交互折叠（open 属性持久化到 serialize）；\n  Math/Mermaid 预览不再 degrade。\n- [x] WikiLinkNodeView 维持不激活（020 装饰器无双轨）。\n- [x] EDITOR-CONTRACT 冻结面零破坏；全部门检绿；ARCHITECTURE §5/§6 的\n  dormant 缺口销账修订。\n\n## 复审记录\n\n**复审**（/auto-plan:review，zcode，2026-08-30 15:50，工作树 `.worktrees/plan-026-dev` 内独立重跑全量门）\n\n**验收六条逐条重验（全 pass）**：\n1. ✅ adapter 协议面：`.on/off/isActive/getAttributes/view` 齐（tiptap-adapter.ts:168-178，接口冻结面以可选成员扩展，工厂恒设）；TableMenu/CodeBlockMenu 生成物零改动——`assert-editor-gen` 绿（14 部署物/9 桥逐字节同步），menus/node-views 目录 diff 为零，装配在 EngineEditor.vue:11-13。\n2. ✅ TableMenu 悬浮加/删行：e2e host-protocol.spec.ts:25（加行落 markdown）；一步撤销由单测钉死（tiptap-adapter.test.ts:232 addRowAfter one undo step + undo 断言）。\n3. ✅ CodeBlockMenu 换语言：e2e :43（标题栏/badge/right-pane fence 三联动）；serialize roundtrip 单测在册。\n4. ✅ Details 折叠持久化：e2e :69（toggle→serialize `open: true` 落右栏）；Math/Mermaid 不再 degrade：node-view-mount.test.ts SSR 断言 not.toContain('unknown-node')。\n5. ✅ WikiLinkNodeView 零挂载（grep 全库无引用），ARCHITECTURE 在册去重。\n6. ✅ 冻结面零破坏 + 门检：jade e2e 22/22（本计划新增的最硬契约证据，补跑促成）+ demo 22/22；ARCHITECTURE §5/§6 已修订。\n\n**复审独立全量门（五门全绿）**：engine vitest 429/429 · build exit 0（三断言）· demo e2e 22/22 · jade e2e 22/22（两块）· rust cargo test 3 targets ok · jade-garden front build ✓。\n\n**遗漏/延后/workaround 清查**：\n- 无未声明延期；rust 发射体同步为用户指令补充且已完成（cargo 绿）。\n- 债候选（已入 DEBTS 026 行）：Query/Embed extension.options 恒空（数据装载未接）/ NodeView 编辑态深度 / MathInlineNodeView 未挂 / TableMenu 首表定位（生成物 querySelector 语义）/ 主检出 engine dist 陈旧脚枪。另：SlashMenu coordsAtPos 仍缺（DEBTS 021 F5 维持）；nodeViewPanel 静态降级 stub 用 `as unknown as BlockNode`（无害，注释在册）；eslint 未装、lint 门本环境不可执行（环境性，非本计划引入）。\n- 计划↔代码偏差（4 项，均无害已落档）：①\"serialize roundtrip `:::details`\" 为草案笔误，实际面型 `$details(summary, open)`（方言真形）；②步骤文本\"7 NodeViews 中 6 挂载\"实为 5/7（MathInline 未在任务列，算术错，ARCHITECTURE 已勘误）；③P0T3 字面只列三动词，实现为七表动词+setDetails/setCodeBlock 超集（生成物期望面驱动，各有测试）；④新增 emitUpdate 内容去重与 isEditableLeaf 容器排除（jade e2e 实证的存量断裂修复，执行后补充节在册）。\n- 待澄清 #1/#2 维持开放（起草口径已实现并落档，留用户否决权——P023 复审同例）。\n\n**spec-impact**：见 frontmatter——supersedes P023-3/4、P024-3/4；new P026-1..6；touched_goals 空（不猜：本计划目标为新增，未直接推进既有 goals 条目）。",
+        "file": "docs/plans/archived/026-mount-host-protocol.md",
+        "related": [
+          "PLAN-026"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -212,6 +277,17 @@
         "file": "docs/plans/archived/025-container-block-editing.md",
         "related": [
           "PLAN-025"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P026-1",
+        "section": "reports",
+        "title": "挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活 — 变更摘要",
+        "content": "补上 021 在册的\"菜单宿主协议\"缺口，让休眠 chrome 真正挂上引擎：adapter 增加\n事件面（`.on/.off('selectionUpdate')`，由 engine.onChange 驱动）、块级\n`isActive`/`getAttributes`、链动词（表格行列/代码块语言）；新建 **node-view\nprops 桥**（把 BlockNode+engine 翻译成 NodeView 组件期望的 tiptap 形状\nprops）；预览侧挂载走 017 panel registry 的 custom panel 机制（现成注册位，\n避免新分叉）。激活三件高价值 chrome：**TableMenu**（表格操作菜单）、\n**CodeBlockMenu**（语言选择，接通 023 在档的 IAL 通道）、**DetailsNodeView**\n（预览侧交互折叠）；Math/Mermaid/Query/Embed 四件协议就绪按需挂载（在册）。",
+        "file": "docs/plans/archived/026-mount-host-protocol.md",
+        "related": [
+          "PLAN-026"
         ],
         "status": "published"
       }

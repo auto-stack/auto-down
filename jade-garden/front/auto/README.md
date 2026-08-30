@@ -33,6 +33,25 @@ D:/autostack/auto-lang/target/debug/auto.exe build -d .
 `Warning: Failed to compile <path>` and leaves the stale SFC in place.
 Always check the output for that warning after editing a widget.
 
+### Stub deployment (gen-tree api mirror)
+
+`stubs/gen_lib_api.ts` mirrors the wire contract (`src/lib/api_gen.ts`,
+generated from `back/auto/api.at`) so the gen project typechecks. TWO
+positions in gen consume it — neither is an orphan:
+
+- `gen/front/vue/src/lib/api.ts` — serves `@/lib/api` alias imports
+  (generated components / store composables)
+- `gen/front/vue/src/src/lib/api.ts` — the verbatim exts live under
+  `src/ext/` one level deeper, so their shared relative import
+  `../../../../src/lib/api` resolves here
+
+After editing the stub, `cp` it to BOTH positions (a full gen rebuild
+redeploys too). `../scripts/assert-api-stub-sync.mjs` (wired into
+`pretest:e2e` via `e2e-prepare.mjs`) fails fast on stub↔contract drift,
+unresolved gen api imports, or a stale deployed copy — the debt class
+paid on 2026-08-30 (backend Option-ization missed the stub: agenda
+TS2322 + adoptSaveResult TS2305).
+
 Do NOT run `auto run` / `auto build` from the jade-garden root: the legacy
 AutoUI project files were archived to `jade-garden/legacy-autoui/`
 (plan 011 Phase 5.0a) precisely because the old workflow overwrote

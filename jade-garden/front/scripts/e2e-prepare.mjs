@@ -26,6 +26,18 @@ execFileSync(
   { stdio: 'inherit' },
 )
 
+
+// API stub drift guard (2026-08-30 debt class): the gen-tree mirror
+// (auto/stubs/gen_lib_api.ts) vs the real contract (src/lib/api_gen.ts),
+// plus both deployed copies inside auto/gen. Fails fast when the backend
+// contract moves without a stub sync, or a stub edit never gets cp'd into
+// the gen tree.
+execFileSync(
+  process.execPath,
+  [path.join(frontDir, 'scripts', 'assert-api-stub-sync.mjs')],
+  { stdio: 'inherit' },
+)
+
 const exeSource = path.join(repoRoot, 'jade-garden', 'back', 'server', 'target', 'debug', 'jade-garden-back.exe')
 const fixtureWiki = path.join(repoRoot, 'tmp', 'wiki-demo', 'wiki')
 

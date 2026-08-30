@@ -16,6 +16,7 @@ import {
   withChildren,
   BlockNode,
   attrSet,
+  collapsedSel,
   replaceNode,
   Attr,
   BlockType,
@@ -34,12 +35,11 @@ import { parse_blocks } from '../../parser/markdown-parser'
 
 import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
-import { marksInRange } from './commands'
+import { marksInRange, tableAddRowTree, tableAddColumnAtTree, tableDeleteColumnAtTree } from './commands'
 import { domSetLink, domToggleMark } from './dom-marks'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
   setParagraph: BlockType.Paragraph,
-  setCodeBlock: BlockType.Fence,
   setMathBlock: BlockType.MathBlock,
   setMermaidBlock: BlockType.Mermaid,
   setCallout: BlockType.Callout,
@@ -126,6 +126,17 @@ export interface ChainLike {
   toggleUnderline(): ChainLike
   setLink(opts: { href: string }): ChainLike
   unsetLink(): ChainLike
+  /** Table verbs (plan 026 P0T3) — resolved against the focused cell. */
+  addRowBefore(): ChainLike
+  addRowAfter(): ChainLike
+  deleteRow(): ChainLike
+  addColumnBefore(): ChainLike
+  addColumnAfter(): ChainLike
+  deleteColumn(): ChainLike
+  deleteTable(): ChainLike
+  /** Code language channel (plan 026 P0T3): setBlockAttrs(language) IAL. */
+  setCodeBlockLanguage(lang: string): ChainLike
+  setCodeBlock(opts?: { language?: string }): ChainLike
   run(): boolean
 }
 
@@ -266,12 +277,38 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
   return adapter
 }
 
+/** The focused cell's table coordinates (plan 026 P0T3): the table verbs
+ *  resolve their target row/column eagerly from the engine selection. */
+interface FocusedTableCell {
+  tableId: string
+  rowId: string
+  rowIdx: number
+  colIdx: number
+}
+
+function focusedTableCell(engine: EditorEngine): FocusedTableCell | null {
+  const id = engine.selection.anchor.blockId
+  const cell = findBlock(engine.doc, id)
+  if (!cell || cell.kind !== BlockType.TableCell) return null
+  const row = parentOf(engine.doc, id)
+  if (!row || row.kind !== BlockType.TableRow) return null
+  const table = parentOf(engine.doc, row.id)
+  if (!table || table.kind !== BlockType.Table) return null
+  return { tableId: table.id, rowId: row.id, rowIdx: childIndex(table, row.id), colIdx: childIndex(row, id) }
+}
+
 function createChain(engine: EditorEngine): ChainLike {
   const pending: Array<(tree: BlockNode) => BlockNode> = []
   const chain: ChainLike = {
     focus: () => chain,
     run: () => {
       engine.applyTree((tree) => pending.reduce((t, fn) => fn(t), tree))
+      // selection repair: a verb that removed the focused block (deleteRow on
+      // the anchor's row, deleteTable) leaves a dangling anchor — collapse to
+      // the first block so the editor never sits on a ghost id.
+      if (!findBlock(engine.doc, engine.selection.anchor.blockId) && engine.doc.children[0]) {
+        engine.select(collapsedSel(engine.doc.children[0].id, 0))
+      }
       return true
     },
     setHeading: (opts: { level: number }) => {
@@ -318,6 +355,59 @@ function createChain(engine: EditorEngine): ChainLike {
       const src = String(opts?.src ?? '')
       const alt = String((opts as any)?.alt ?? '')
       pending.push((tree) => insertMarkdown(tree, engine, `![${alt}](${src})`))
+      return chain
+    },
+    // table verbs (plan 026 P0T3): forward to the commands.ts table transforms,
+    // resolved against the focused cell; tree-level so a chain stays ONE undo.
+    addRowAfter: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableAddRowTree(tree, f.tableId, f.rowId))
+      return chain
+    },
+    addRowBefore: () => {
+      const f = focusedTableCell(engine)
+      if (f) {
+        const rows = findBlock(engine.doc, f.tableId)?.children ?? []
+        const prevId = f.rowIdx > 0 ? rows[f.rowIdx - 1]!.id : null
+        pending.push((tree) => tableAddRowTree(tree, f.tableId, prevId))
+      }
+      return chain
+    },
+    deleteRow: () => {
+      const f = focusedTableCell(engine)
+      const rows = f ? findBlock(engine.doc, f.tableId)?.children ?? [] : []
+      if (f && rows.length > 1) pending.push((tree) => replaceNode(tree, f.rowId, []))
+      return chain
+    },
+    addColumnBefore: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx))
+      return chain
+    },
+    addColumnAfter: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx + 1))
+      return chain
+    },
+    deleteColumn: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableDeleteColumnAtTree(tree, f.tableId, f.colIdx))
+      return chain
+    },
+    deleteTable: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => replaceNode(tree, f.tableId, []))
+      return chain
+    },
+    // code language channel (plan 026 P0T3): setBlockAttrs on the focused
+    // Fence (023's IAL ruling); converts the kind when not a Fence yet.
+    setCodeBlockLanguage: (lang: string) => {
+      pending.push((tree) => setKind(tree, engine, BlockType.Fence, [{ key: 'language', value: Value.Str(String(lang ?? '')) }]))
+      return chain
+    },
+    setCodeBlock: (opts?: { language?: string }) => {
+      if (opts?.language != null) return chain.setCodeBlockLanguage(opts.language)
+      pending.push((tree) => setKind(tree, engine, BlockType.Fence))
       return chain
     },
     // inline mark toggles (plan 024 P3T1): wrap the FOCUSED host's live DOM —

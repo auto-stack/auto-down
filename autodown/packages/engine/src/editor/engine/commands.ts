@@ -88,6 +88,30 @@ export function tableAddColumnTree(tree: BlockNode, tableId: string): BlockNode 
   return replaceNode(tree, tableId, [withChildren(table, rows)])
 }
 
+/** Table: insert an empty column at `index` on every row (menu
+ *  addColumnBefore/addColumnAfter — plan 026 P0T3). */
+export function tableAddColumnAtTree(tree: BlockNode, tableId: string, index: number): BlockNode {
+  const table = findBlock(tree, tableId)
+  if (!table) return tree
+  const rows = table.children.map((row) => {
+    const cells = [...row.children]
+    const at = Math.max(0, Math.min(index, cells.length))
+    cells.splice(at, 0, leafBlock(`${row.id}-nc${at}`, BlockType.TableCell, ''))
+    return withChildren(row, cells)
+  })
+  return replaceNode(tree, tableId, [withChildren(table, rows)])
+}
+
+/** Table: delete column `index` from every row; refuses to empty the table
+ *  (menu deleteColumn — plan 026 P0T3). */
+export function tableDeleteColumnAtTree(tree: BlockNode, tableId: string, index: number): BlockNode {
+  const table = findBlock(tree, tableId)
+  if (!table) return tree
+  if ((table.children[0]?.children.length ?? 0) <= 1) return tree
+  const rows = table.children.map((row) => withChildren(row, row.children.filter((_, i) => i !== index)))
+  return replaceNode(tree, tableId, [withChildren(table, rows)])
+}
+
 /** Table: delete the last column of every row. One undo step. */
 export function tableDeleteColumn(engine: EditorEngine, tableId: string): void {
   engine.applyTree((tree) => {

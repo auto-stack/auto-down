@@ -210,6 +210,99 @@ describe('adapter block-family surface', () => {
   })
 })
 
+// -- chain verbs: table rows/columns + code language (plan 026 P0T3) ------------
+
+describe('adapter chain verbs', () => {
+  function tableEngine() {
+    const e = new EditorEngine(
+      doc(...parse_blocks('| A | B |\n| --- | --- |\n| 1 | 2 |', true).children),
+      collapsedSel('p-none', 0),
+    )
+    const table = e.doc.children.find((n) => n.kind === BlockType.Table)!
+    const bodyCell = table.children[1]!.children[0]!
+    e.select(collapsedSel(bodyCell.id, 0))
+    return { e, table, adapter: createEditorAdapter(e) }
+  }
+
+  function cellTexts(engine: EditorEngine, tableId: string): string[][] {
+    const t = findBlock(engine.doc, tableId)!
+    return t.children.map((r) => r.children.map((c) => blockText(c)))
+  }
+
+  it('addRowAfter inserts an empty row after the focused row, one undo step', () => {
+    const { e, table, adapter } = tableEngine()
+    adapter.chain().focus().addRowAfter().run()
+    // focus sits in the body row ('1') — the new row lands after it
+    expect(cellTexts(e, table.id)).toEqual([['A', 'B'], ['1', '2'], ['', '']])
+    e.undo()
+    expect(cellTexts(e, table.id)).toEqual([['A', 'B'], ['1', '2']])
+  })
+
+  it('addRowBefore on the first focused row inserts at index 0', () => {
+    const { e, table, adapter } = tableEngine()
+    const headerCell = table.children[0]!.children[0]!
+    e.select(collapsedSel(headerCell.id, 0))
+    adapter.chain().focus().addRowBefore().run()
+    expect(cellTexts(e, table.id).length).toBe(3)
+    expect(cellTexts(e, table.id)[0]).toEqual(['', ''])
+  })
+
+  it('deleteRow removes the focused row', () => {
+    const { e, table, adapter } = tableEngine()
+    adapter.chain().focus().deleteRow().run()
+    expect(cellTexts(e, table.id)).toEqual([['A', 'B']])
+  })
+
+  it('addColumnAfter/addColumnBefore/deleteColumn operate on the focused column', () => {
+    const { e, table, adapter } = tableEngine()
+    adapter.chain().focus().addColumnAfter().run()
+    expect(cellTexts(e, table.id)).toEqual([['A', '', 'B'], ['1', '', '2']])
+    adapter.chain().focus().addColumnBefore().run()
+    expect(cellTexts(e, table.id)).toEqual([['', 'A', '', 'B'], ['', '1', '', '2']])
+    // the focused cell ('1') shifted to column 1 — deleteColumn removes ITS column
+    adapter.chain().focus().deleteColumn().run()
+    expect(cellTexts(e, table.id)).toEqual([['', '', 'B'], ['', '', '2']])
+  })
+
+  it('deleteTable removes the table and repairs the dangling selection', () => {
+    const e = new EditorEngine(
+      doc(...parse_blocks('| A | B |\n| --- | --- |\n| 1 | 2 |\n\npara', true).children),
+      collapsedSel('p-none', 0),
+    )
+    const table = e.doc.children.find((n) => n.kind === BlockType.Table)!
+    const bodyCell = table.children[1]!.children[0]!
+    e.select(collapsedSel(bodyCell.id, 0))
+    const adapter = createEditorAdapter(e)
+    adapter.chain().focus().deleteTable().run()
+    expect(findBlock(e.doc, table.id)).toBeNull()
+    // anchor no longer dangles on the removed cell
+    expect(findBlock(e.doc, e.selection.anchor.blockId)).toBeTruthy()
+  })
+
+  it('setCodeBlockLanguage writes the language attr; serialize roundtrips the fence', () => {
+    const fence = leafBlock('f1', BlockType.Fence, 'let x = 1')
+    const e = new EditorEngine(doc(fence, leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('f1', 0))
+    const adapter = createEditorAdapter(e)
+    adapter.chain().focus().setCodeBlockLanguage('ts').run()
+    expect(serialize(e.doc, false)).toContain('```ts')
+    e.undo()
+    expect(serialize(e.doc, false)).not.toContain('```ts')
+  })
+
+  it("setCodeBlock({language}) — the generated menu's verb — routes to the language channel", () => {
+    const fence = leafBlock('f1', BlockType.Fence, 'code')
+    fence.attrs = attrSet(fence.attrs, 'language', Value.Str('js'))
+    const e = new EditorEngine(doc(fence), collapsedSel('f1', 0))
+    const adapter = createEditorAdapter(e)
+    adapter.chain().focus().setCodeBlock({ language: 'python' }).run()
+    expect(serialize(e.doc, false)).toContain('```python')
+    // no-arg form still converts the kind (slash parity)
+    const p = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    createEditorAdapter(p).chain().focus().setCodeBlock().run()
+    expect(findBlock(p.doc, 'p1')!.kind).toBe(BlockType.Fence)
+  })
+})
+
 // -- mark chain + isActive (plan 024 P3T1) --------------------------------------
 
 describe('adapter mark surface', () => {

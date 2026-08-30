@@ -6,9 +6,16 @@ export default defineConfig({
   base: './',
   plugins: [vue()],
   resolve: {
+    // plan 027: dev serve 解析 @autodown/engine 到 src（exports development
+    // 条件）。vite serve 本就激活 development，这里显式声明是双保险。
+    conditions: ['development'],
     alias: {
       '@': resolve(__dirname, './src'),
     },
+  },
+  optimizeDeps: {
+    // linked 包按源处理，不走预打包（预打包走 node 解析会命中 dist）。
+    exclude: ['@autodown/engine'],
   },
   server: {
     port: 3000,

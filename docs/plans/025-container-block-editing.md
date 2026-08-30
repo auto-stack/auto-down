@@ -149,15 +149,15 @@ indent/outdent。
 
 ## 验收标准
 
-- [ ] 点击列表项/引用内文即可编辑文字（BlockHost 就地，非预览态）。
-- [ ] "- " 输入产生合法列表且 serialize roundtrip 为 `- item`（修复裸
+- [x] 点击列表项/引用内文即可编辑文字（BlockHost 就地，非预览态）。
+- [x] "- " 输入产生合法列表且 serialize roundtrip 为 `- item`（修复裸
   ListItem 丢内容缺陷）。
-- [ ] 回车拆项 / 空项退出 / Backspace 合并 / Tab-Shift+Tab 缩进出退全部
+- [x] 回车拆项 / 空项退出 / Backspace 合并 / Tab-Shift+Tab 缩进出退全部
   经命令层生效且各一步撤销。
-- [ ] 聚焦容器的旁支子树保持预览渲染；嵌套块入 getBlockMap（滚动同步
+- [x] 聚焦容器的旁支子树保持预览渲染；嵌套块入 getBlockMap（滚动同步
   契约不破）。
-- [ ] 顶层块编辑行为与 023/024 基线完全不变（回归）。
-- [ ] EDITOR-CONTRACT 冻结面零破坏；全部门检绿。
+- [x] 顶层块编辑行为与 023/024 基线完全不变（回归）。
+- [x] EDITOR-CONTRACT 冻结面零破坏；全部门检绿。
 
 ## 执行步骤
 
@@ -210,7 +210,7 @@ indent/outdent。
 
 ### Phase 2：e2e + 收尾
 
-- [ ] P2T1 容器编辑 e2e：新建 `autodown/demo/e2e/container-editing.spec.ts`
+- [x] P2T1 容器编辑 e2e：新建 `autodown/demo/e2e/container-editing.spec.ts`
   （点击列表项编辑/回车拆项/Tab 缩进/空项退出/"> "规则/滚动同步冒烟）。
   验证：`cd autodown/demo && npx playwright test container-editing.spec.ts`。
 - [x] P2T2 全量回归：demo e2e 全绿（既有 9+1 spec + 新 1）+ `cd

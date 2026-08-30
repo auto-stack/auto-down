@@ -16,27 +16,30 @@ import {
   withChildren,
   BlockNode,
   attrSet,
+  collapsedSel,
   replaceNode,
+  Attr,
   BlockType,
   BlockPos,
   Mark,
   Selection,
   Value,
   blockText,
+  childIndex,
   findBlock,
   hasMark,
   leafBlock,
+  parentOf,
 } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 
 import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
-import { marksInRange } from './commands'
+import { marksInRange, tableAddRowTree, tableAddColumnAtTree, tableDeleteColumnAtTree } from './commands'
 import { domSetLink, domToggleMark } from './dom-marks'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
   setParagraph: BlockType.Paragraph,
-  setCodeBlock: BlockType.Fence,
   setMathBlock: BlockType.MathBlock,
   setMermaidBlock: BlockType.Mermaid,
   setCallout: BlockType.Callout,
@@ -61,6 +64,52 @@ const MARK_BY_NAME: Record<string, Mark> = {
   link: Mark.Link,
 }
 
+/** tiptap block names → engine BlockTypes (plan 026 P0T2): isActive /
+ *  getAttributes resolve the name against the focused block's FAMILY — the
+ *  block itself plus every ancestor (a caret in a cell is "in a table"). */
+const BLOCK_BY_NAME: Record<string, BlockType> = {
+  table: BlockType.Table,
+  codeBlock: BlockType.Fence,
+  fence: BlockType.Fence,
+  blockquote: BlockType.Blockquote,
+  bulletList: BlockType.ListBlock,
+  orderedList: BlockType.ListBlock,
+  listItem: BlockType.ListItem,
+  heading: BlockType.Heading,
+  details: BlockType.Details,
+  callout: BlockType.Callout,
+  mathBlock: BlockType.MathBlock,
+  mermaid: BlockType.Mermaid,
+  queryBlock: BlockType.QueryBlock,
+  blockEmbed: BlockType.BlockEmbed,
+}
+
+/** Ancestor chain of `id` (inclusive), collected root-ward while unwinding;
+ *  `out` receives every kind on the doc→block path. */
+function collectFamilyKinds(node: BlockNode, id: string, out: Set<BlockType>): boolean {
+  if (node.id === id) {
+    out.add(node.kind)
+    return true
+  }
+  for (const c of node.children) {
+    if (collectFamilyKinds(c, id, out)) {
+      out.add(node.kind)
+      return true
+    }
+  }
+  return false
+}
+
+/** Attr list → plain object (Str/Int/Bool unwrap; structural values null). */
+function attrsToObject(attrs: Attr[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const a of attrs) {
+    const v = a.value as Value
+    out[a.key] = v != null && (v._tag === 'Str' || v._tag === 'Int' || v._tag === 'Bool') ? v.value : null
+  }
+  return out
+}
+
 export interface ChainLike {
   focus(): ChainLike
   setHeading(opts: { level: number }): ChainLike
@@ -77,14 +126,51 @@ export interface ChainLike {
   toggleUnderline(): ChainLike
   setLink(opts: { href: string }): ChainLike
   unsetLink(): ChainLike
+  /** Table verbs (plan 026 P0T3) — resolved against the focused cell. */
+  addRowBefore(): ChainLike
+  addRowAfter(): ChainLike
+  deleteRow(): ChainLike
+  addColumnBefore(): ChainLike
+  addColumnAfter(): ChainLike
+  deleteColumn(): ChainLike
+  deleteTable(): ChainLike
+  /** Code language channel (plan 026 P0T3): setBlockAttrs(language) IAL. */
+  setCodeBlockLanguage(lang: string): ChainLike
+  setCodeBlock(opts?: { language?: string }): ChainLike
   run(): boolean
+}
+
+/** tiptap-shaped event callback (the mounted chrome subscribes with
+ *  `editor.on('selectionUpdate', cb)` — payload unused by the widgets). */
+export type AdapterListener = () => void
+
+/** The view shim (plan 026 P0T2): the mounted chrome anchors its floating
+ *  menus against `view.dom` (the editor content element) and, on the
+ *  no-trigger fallback path, asks `nodeDOM(from)` for the focused block's
+ *  element. Lazy + DOM-optional so headless/SSR consumers never touch
+ *  `document`. */
+export interface AdapterView {
+  readonly dom: HTMLElement | null
+  readonly state: { selection: { from: number; to: number } }
+  nodeDOM(from: number): HTMLElement | null
 }
 
 export interface EditorAdapter {
   storage: Record<string, any>
   chain(): ChainLike
   isActive(_name: string, _attrs?: any): boolean
+  /** Focused-block attrs as a plain object (plan 026 P0T2); {} when the
+   *  name does not match the focused block's family. Optional on the frozen
+   *  interface — createEditorAdapter always sets it. */
+  getAttributes?(_name: string): Record<string, unknown>
+  /** Floating-menu anchor (plan 026 P0T2). Same optional-member rule. */
+  view?: AdapterView
   isEditable: boolean
+  /** Event surface (plan 026 P0T1): 'selectionUpdate' subscribers are
+   *  notified when an engine change moves the selection. Optional on the
+   *  frozen interface — createEditorAdapter always sets it. */
+  on?(event: string, cb: AdapterListener): void
+  off?(event: string, cb: AdapterListener): void
   /** The wrapped session — engine-native readers (slash-manifest's
    *  getCurrentBlockAnchor / ensureBlockAnchor) reach the model through it.
    *  Optional: createEditorAdapter always sets it, but the interface is on
@@ -93,27 +179,122 @@ export interface EditorAdapter {
   __engine?: EditorEngine
 }
 
+function sameSelection(a: Selection, b: Selection): boolean {
+  return a.anchor.blockId === b.anchor.blockId && a.anchor.offset === b.anchor.offset && a.head.blockId === b.head.blockId && a.head.offset === b.head.offset
+}
+
 export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
   // Reactive tick read inside isActive: consumers that evaluate isActive in
   // a Vue computed (the bubble's buttons) re-evaluate on every engine change
   // — the engine itself is not Vue-reactive (plan 024 P3T2).
   const selectionTick = ref(0)
-  engine.onChange(() => {
+  // Event-bus subscriptions (plan 026 P0T1): the mounted chrome (TableMenu)
+  // subscribes by name; dispatch is gated on the selection actually moving.
+  const listeners = new Map<string, Set<AdapterListener>>()
+  let lastSel: Selection = engine.selection
+  const dispatch = (event: string): void => {
+    const subs = listeners.get(event)
+    if (!subs) return
+    for (const cb of [...subs]) cb()
+  }
+  engine.onChange((change) => {
     selectionTick.value++
+    if (!sameSelection(change.selection, lastSel)) {
+      lastSel = change.selection
+      dispatch('selectionUpdate')
+    }
   })
   const adapter: EditorAdapter = {
     storage: { 'slash-command': { query: '', range: null, handled: false } },
     isEditable: true,
+    on: (event: string, cb: AdapterListener) => {
+      let subs = listeners.get(event)
+      if (!subs) {
+        subs = new Set()
+        listeners.set(event, subs)
+      }
+      subs.add(cb)
+    },
+    off: (event: string, cb: AdapterListener) => {
+      listeners.get(event)?.delete(cb)
+    },
     isActive: (name: string) => {
       void selectionTick.value
       const m = MARK_BY_NAME[name]
-      if (m == null) return false
-      return hasMark(marksInRange(engine, engine.selection), m)
+      if (m != null) return hasMark(marksInRange(engine, engine.selection), m)
+      const kind = BLOCK_BY_NAME[name]
+      if (kind == null) return false
+      const family = new Set<BlockType>()
+      collectFamilyKinds(engine.doc, engine.selection.anchor.blockId, family)
+      return family.has(kind)
+    },
+    getAttributes: (name: string) => {
+      void selectionTick.value
+      const kind = BLOCK_BY_NAME[name]
+      if (kind == null) return {}
+      const found = findBlock(engine.doc, engine.selection.anchor.blockId)
+      if (found && found.kind === kind) return attrsToObject(found.attrs)
+      // ancestor match (caret in a cell, attrs of the table)
+      if (found) {
+        const family = new Set<BlockType>()
+        if (collectFamilyKinds(engine.doc, found.id, family) && family.has(kind)) {
+          let node: BlockNode | null = found
+          while (node) {
+            if (node.kind === kind) return attrsToObject(node.attrs)
+            node = parentOf(engine.doc, node.id) ?? null
+          }
+        }
+      }
+      return {}
+    },
+    view: {
+      get dom(): HTMLElement | null {
+        if (typeof document === 'undefined') return null
+        return document.querySelector<HTMLElement>('.autodown-editor-content')
+      },
+      get state() {
+        return {
+          selection: {
+            from: engine.selection.anchor.offset,
+            to: engine.selection.head.offset,
+          },
+        }
+      },
+      nodeDOM(_from: number): HTMLElement | null {
+        if (typeof document === 'undefined') return null
+        const content = document.querySelector<HTMLElement>('.autodown-editor-content')
+        if (!content) return null
+        const id = engine.selection.anchor.blockId
+        for (const el of content.querySelectorAll<HTMLElement>('[data-block-id]')) {
+          if (el.dataset.blockId === id) return el
+        }
+        return null
+      },
     },
     chain: () => createChain(engine),
     __engine: engine,
   }
   return adapter
+}
+
+/** The focused cell's table coordinates (plan 026 P0T3): the table verbs
+ *  resolve their target row/column eagerly from the engine selection. */
+interface FocusedTableCell {
+  tableId: string
+  rowId: string
+  rowIdx: number
+  colIdx: number
+}
+
+function focusedTableCell(engine: EditorEngine): FocusedTableCell | null {
+  const id = engine.selection.anchor.blockId
+  const cell = findBlock(engine.doc, id)
+  if (!cell || cell.kind !== BlockType.TableCell) return null
+  const row = parentOf(engine.doc, id)
+  if (!row || row.kind !== BlockType.TableRow) return null
+  const table = parentOf(engine.doc, row.id)
+  if (!table || table.kind !== BlockType.Table) return null
+  return { tableId: table.id, rowId: row.id, rowIdx: childIndex(table, row.id), colIdx: childIndex(row, id) }
 }
 
 function createChain(engine: EditorEngine): ChainLike {
@@ -122,6 +303,12 @@ function createChain(engine: EditorEngine): ChainLike {
     focus: () => chain,
     run: () => {
       engine.applyTree((tree) => pending.reduce((t, fn) => fn(t), tree))
+      // selection repair: a verb that removed the focused block (deleteRow on
+      // the anchor's row, deleteTable) leaves a dangling anchor — collapse to
+      // the first block so the editor never sits on a ghost id.
+      if (!findBlock(engine.doc, engine.selection.anchor.blockId) && engine.doc.children[0]) {
+        engine.select(collapsedSel(engine.doc.children[0].id, 0))
+      }
       return true
     },
     setHeading: (opts: { level: number }) => {
@@ -168,6 +355,59 @@ function createChain(engine: EditorEngine): ChainLike {
       const src = String(opts?.src ?? '')
       const alt = String((opts as any)?.alt ?? '')
       pending.push((tree) => insertMarkdown(tree, engine, `![${alt}](${src})`))
+      return chain
+    },
+    // table verbs (plan 026 P0T3): forward to the commands.ts table transforms,
+    // resolved against the focused cell; tree-level so a chain stays ONE undo.
+    addRowAfter: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableAddRowTree(tree, f.tableId, f.rowId))
+      return chain
+    },
+    addRowBefore: () => {
+      const f = focusedTableCell(engine)
+      if (f) {
+        const rows = findBlock(engine.doc, f.tableId)?.children ?? []
+        const prevId = f.rowIdx > 0 ? rows[f.rowIdx - 1]!.id : null
+        pending.push((tree) => tableAddRowTree(tree, f.tableId, prevId))
+      }
+      return chain
+    },
+    deleteRow: () => {
+      const f = focusedTableCell(engine)
+      const rows = f ? findBlock(engine.doc, f.tableId)?.children ?? [] : []
+      if (f && rows.length > 1) pending.push((tree) => replaceNode(tree, f.rowId, []))
+      return chain
+    },
+    addColumnBefore: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx))
+      return chain
+    },
+    addColumnAfter: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableAddColumnAtTree(tree, f.tableId, f.colIdx + 1))
+      return chain
+    },
+    deleteColumn: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => tableDeleteColumnAtTree(tree, f.tableId, f.colIdx))
+      return chain
+    },
+    deleteTable: () => {
+      const f = focusedTableCell(engine)
+      if (f) pending.push((tree) => replaceNode(tree, f.tableId, []))
+      return chain
+    },
+    // code language channel (plan 026 P0T3): setBlockAttrs on the focused
+    // Fence (023's IAL ruling); converts the kind when not a Fence yet.
+    setCodeBlockLanguage: (lang: string) => {
+      pending.push((tree) => setKind(tree, engine, BlockType.Fence, [{ key: 'language', value: Value.Str(String(lang ?? '')) }]))
+      return chain
+    },
+    setCodeBlock: (opts?: { language?: string }) => {
+      if (opts?.language != null) return chain.setCodeBlockLanguage(opts.language)
+      pending.push((tree) => setKind(tree, engine, BlockType.Fence))
       return chain
     },
     // inline mark toggles (plan 024 P3T1): wrap the FOCUSED host's live DOM —

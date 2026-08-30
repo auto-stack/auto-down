@@ -170,6 +170,7 @@ import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import { historyActionOf, runHistory } from '../engine/undo-wiring'
 import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-path'
 import { domRangeToBlockRange } from '../engine/selection-map'
 import BlockHost from './BlockHost.vue'
@@ -267,6 +268,15 @@ onBeforeUnmount(() => document.removeEventListener('selectionchange', onDocSelec
 // -- live preview assembly ----------------------------------------------------------
 
 const repaintVersion = ref(0)
+
+// History-hop epoch (plan 028 P0T1): bumped after each undo/redo. The
+// focused edit face's draft DOM (BlockHost v-html / CodeEditorBlock
+// textarea) is deliberately non-reactive to protect the user's caret, so a
+// restored tree would not show up in it — the epoch lands in the focused
+// view's vnode key and remounts that face from the live model (fresh DOM,
+// caret re-placed at end). Preview slots always re-read the model, so they
+// need nothing here.
+const historyEpoch = ref(0)
 
 interface BlockView {
   id: string
@@ -397,12 +407,17 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
         view: AssemblyView,
         props: {
           render: () => edit(node, { engine, blockId: node.id, readonly: props.streaming === true }),
+          key: `edit:${node.id}:${historyEpoch.value}`,
         },
       }
     }
     if (isEditableLeaf(node)) {
       const controller = hostFor(node.id)
-      return { id: node.id, view: BlockHost, props: { controller, blockKind: BlockType[node.kind] } }
+      return {
+        id: node.id,
+        view: BlockHost,
+        props: { controller, blockKind: BlockType[node.kind], key: `host:${node.id}:${historyEpoch.value}` },
+      }
     }
     // a focused non-hostable node (empty container / ThematicBreak) degrades
     // to preview — selection resolution normally never lands here
@@ -472,6 +487,16 @@ function selectBlock(id: string): void {
 }
 
 function onContentKeydown(e: KeyboardEvent): void {
+  // undo/redo wiring (plan 028 P0T1): Ctrl/Cmd+Z (Shift variant) and
+  // Ctrl/Cmd+Y. While any host is mid-composition the IME owns the key
+  // stream — pass through untouched.
+  const action = historyActionOf(e)
+  if (action) {
+    if (Array.from(hosts.values()).some((c) => c.composition.composing)) return
+    e.preventDefault()
+    if (runHistory(engine, hosts.values(), action)) historyEpoch.value++
+    return
+  }
   if (e.ctrlKey && e.key === 'End') {
     e.preventDefault()
     const last = lastFocusTargetOf(engine.doc)

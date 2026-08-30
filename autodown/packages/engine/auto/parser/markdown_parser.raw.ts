@@ -101,6 +101,10 @@ export function emNode(children: WNode[]): WNode {
     return WNode("emphasis", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
+export function underlineNode(children: WNode[]): WNode {
+    return WNode("underline", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+}
+
 export function strikeNode(children: WNode[]): WNode {
     return WNode("strikethrough", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
@@ -1408,6 +1412,23 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
 
 
         if (cs == "*") {
+            
+
+
+
+            if (startsWithAt(line, "***", i)) {
+                let afterT = scanDelim(line, i, "***", false, isFinal);
+                if (afterT != null) {
+                    const scT = afterT ?? DelimScan(0, "");
+                    if (buf != "") {
+                        nodes.push(textNode(buf));
+                        buf = "";
+                    }
+                    nodes.push(strongNode([emNode(parseInlineLine(scT.inner, isFinal))]));
+                    i = scT.next;
+                    continue;
+                }
+            }
             if (startsWithAt(line, "**", i)) {
                 let after = scanDelim(line, i, "**", true, isFinal);
                 if (after != null) {
@@ -1437,6 +1458,38 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             continue;
         }
         if (cs == "_") {
+            
+
+
+            if (startsWithAt(line, "___", i)) {
+                let afterU3 = scanDelim(line, i, "___", false, isFinal);
+                if (afterU3 != null) {
+                    const scU3 = afterU3 ?? DelimScan(0, "");
+                    if (buf != "") {
+                        nodes.push(textNode(buf));
+                        buf = "";
+                    }
+                    nodes.push(underlineNode([emNode(parseInlineLine(scU3.inner, isFinal))]));
+                    i = scU3.next;
+                    continue;
+                }
+            }
+            
+
+
+            if (startsWithAt(line, "__", i)) {
+                let afterU2 = scanDelim(line, i, "__", false, isFinal);
+                if (afterU2 != null) {
+                    const scU2 = afterU2 ?? DelimScan(0, "");
+                    if (buf != "") {
+                        nodes.push(textNode(buf));
+                        buf = "";
+                    }
+                    nodes.push(underlineNode(parseInlineLine(scU2.inner, isFinal)));
+                    i = scU2.next;
+                    continue;
+                }
+            }
             let afterU = scanDelim(line, i, "_", false, isFinal);
             if (afterU != null) {
                 const scU = afterU ?? DelimScan(0, "");
@@ -2103,14 +2156,38 @@ export function smartQuotes(s: string): string {
     return out;
 }
 
+export function isNestingDelimCode(c: number): boolean {
+    if (c == 42) {
+        return true;
+    }
+    return c == 95;
+}
+
 export function scanDelim(line: string, i: number, delim: string, autoCloseWhenFinal: boolean, isFinal: boolean): DelimScan | null {
     
+
 
 
     if (delim == "_") {
         if (i > 0) {
             const pc = line.char_at(i - 1);
             if (isWordCharCode(pc)) {
+                return null;
+            }
+        }
+    }
+    if (delim == "__") {
+        if (i > 0) {
+            const pc2 = line.char_at(i - 1);
+            if (isWordCharCode(pc2)) {
+                return null;
+            }
+        }
+    }
+    if (delim == "___") {
+        if (i > 0) {
+            const pc3 = line.char_at(i - 1);
+            if (isWordCharCode(pc3)) {
                 return null;
             }
         }
@@ -2132,7 +2209,18 @@ export function scanDelim(line: string, i: number, delim: string, autoCloseWhenF
 
 
 
-        return null;
+
+
+
+        let nest: boolean = false;
+        if (close != -1) {
+            if (isNestingDelimCode(innerText.char_at(0))) {
+                nest = true;
+            }
+        }
+        if (!nest) {
+            return null;
+        }
     }
     if (close != -1) {
         let next: number = afterStart + close + Number(delim.length);
@@ -2397,6 +2485,11 @@ export function convertInlines(wnodes: WNode[], marks: Mark[]): InlineSpan[] {
         }
         if (t == "emphasis") {
             for (const s of convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Em))) {
+                out.push(s);
+            }
+        }
+        if (t == "underline") {
+            for (const s of convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Underline))) {
                 out.push(s);
             }
         }

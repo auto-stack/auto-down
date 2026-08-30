@@ -36,7 +36,8 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
 import { marksInRange, tableAddRowTree, tableAddColumnAtTree, tableDeleteColumnAtTree } from './commands'
-import { domSetLink, domToggleMark } from './dom-marks'
+import { domSetLink, domToggleMark, getFocusedRichHost } from './dom-marks'
+import { blockRangeToDomRange } from './selection-map'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
   setParagraph: BlockType.Paragraph,
@@ -59,6 +60,7 @@ const MARK_BY_NAME: Record<string, Mark> = {
   em: Mark.Em,
   strike: Mark.Del,
   strikethrough: Mark.Del,
+  underline: Mark.Underline,
   code: Mark.Code,
   link: Mark.Link,
 }
@@ -154,6 +156,10 @@ export interface AdapterView {
   readonly dom: HTMLElement | null
   readonly state: { selection: { from: number; to: number } }
   nodeDOM(from: number): HTMLElement | null
+  /** Caret viewport coords for the focused rich host's char offset
+   *  (plan 028 P3T1) — the floating menus' positioning source. Optional on
+   *  the frozen interface — createEditorAdapter always sets it. */
+  coordsAtPos?(from: number): { top: number; left: number; right: number; bottom: number } | null
 }
 
 export interface EditorAdapter {
@@ -270,6 +276,23 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
           if (el.dataset.blockId === id) return el
         }
         return null
+      },
+      /** Caret viewport coords (plan 028 P3T1, 021-F5): the focused rich
+       *  host's char offset → blockRangeToDomRange → first client rect
+       *  (whole-host rect fallback). ProseMirror coordsAtPos shape — the
+       *  generated floating menus (SlashMenu two-stage positioning) consume
+       *  it to open at the caret instead of the default corner. */
+      coordsAtPos(from: number): { top: number; left: number; right: number; bottom: number } | null {
+        if (typeof document === 'undefined') return null
+        const blockId = engine.selection.anchor.blockId
+        const hostEl =
+          getFocusedRichHost() ??
+          document.querySelector<HTMLElement>(`.autodown-block-host[data-block-id="${blockId}"]`)
+        if (!hostEl) return null
+        const range = blockRangeToDomRange(hostEl, from, from)
+        const rects = range.getClientRects()
+        const r = rects.length > 0 ? rects[0] : range.getBoundingClientRect()
+        return { top: r.top, left: r.left, right: r.right, bottom: r.bottom }
       },
     },
     chain: () => createChain(engine),
@@ -473,9 +496,12 @@ function createChain(engine: EditorEngine): ChainLike {
       domToggleMark('code')
       return chain
     },
-    // underline has no Mark (button clipped at the .at source); tolerate
-    // the call from a stale bubble until the regen lands
-    toggleUnderline: () => chain,
+    // underline (plan 028 P2T2): same DOM-wrap protocol as the others —
+    // the model catches up on the blur writeback (u → Mark.Underline)
+    toggleUnderline: () => {
+      domToggleMark('u')
+      return chain
+    },
     setLink: (opts: { href: string }) => {
       domSetLink(String(opts?.href ?? ''))
       return chain

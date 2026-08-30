@@ -29,6 +29,7 @@ export function spansToHtml(spans: InlineSpan[]): string {
     if (hasMark(s.marks, Mark.Code)) inner = `<code>${inner}</code>`
     if (hasMark(s.marks, Mark.Strong)) inner = `<strong>${inner}</strong>`
     if (hasMark(s.marks, Mark.Em)) inner = `<em>${inner}</em>`
+    if (hasMark(s.marks, Mark.Underline)) inner = `<u>${inner}</u>`
     if (hasMark(s.marks, Mark.Del)) inner = `<del>${inner}</del>`
     if (hasMark(s.marks, Mark.Link)) {
       const href = escapeAttr(attrGetStr(s.attrs, 'href', ''))
@@ -56,6 +57,7 @@ function markForTag(tag: string): Mark | null {
   if (t === 'STRONG' || t === 'B') return Mark.Strong
   if (t === 'EM' || t === 'I') return Mark.Em
   if (t === 'DEL' || t === 'S') return Mark.Del
+  if (t === 'U') return Mark.Underline
   if (t === 'CODE') return Mark.Code
   return null
 }

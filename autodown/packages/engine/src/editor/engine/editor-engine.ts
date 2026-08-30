@@ -152,8 +152,10 @@ export class EditorEngine {
     const preTree = this.tree
     const preSel = this.sel
     this.thread(entry.ops, entry.after)
-    // the entry stays reusable for another undo→redo cycle
-    this.undoStack.push({ preTree: this.tree, preSel: this.sel, ops: entry.ops, after: entry.after })
+    // the entry stays reusable for another undo→redo cycle; the undo entry
+    // records the PRE state so undo-after-redo actually reverts (plan 028 —
+    // pushing the post-thread tree made that undo a no-op restore)
+    this.undoStack.push({ preTree, preSel, ops: entry.ops, after: entry.after })
     this.emit(true)
     return true
   }

@@ -10,17 +10,16 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 
 /** Click into the `n`-th list item's paragraph and wait for its in-place
  *  host. The first click expands the (possibly still preview) list — a
- *  preview container click resolves to its first item — then a Save-button
- *  blur settles the writeback repaint (a click aimed straight at the next
- *  preview slot gets swallowed mid-gesture by that repaint), and the second
- *  click lands on the item's own deeply-addressable paragraph text. */
+ *  preview container click resolves to its first item — and the direct
+ *  re-click lands on the item's own deeply-addressable paragraph text even
+ *  mid-writeback-repaint (025's stable assembly shell keeps slot DOM
+ *  identity; plan 028 P1 removed the old Save-button detour). */
 async function focusListItem(page: Page, n: number): Promise<Locator> {
   const text = n === 0 ? 'Bullet item one' : 'Bullet item two'
   const target = page.locator('.left').getByText(text, { exact: true }).first()
   await target.scrollIntoViewIfNeeded()
   await target.click()
   if (n > 0) {
-    await page.locator('.autodown-editor-save').click()
     await page.waitForTimeout(250)
     await target.click()
   }
@@ -30,10 +29,11 @@ async function focusListItem(page: Page, n: number): Promise<Locator> {
   return host
 }
 
-/** Blur through the Save button (outside the views list — the click survives
- * the writeback repaint) and let the change serialize to the right pane. */
+/** Blur by directly clicking the Heading block and let the change serialize
+ *  to the right pane — the direct click survives the writeback repaint (025
+ *  stable shell; plan 028 P1 removed the Save-button detour). */
 async function commitToRightPane(page: Page): Promise<void> {
-  await page.locator('.autodown-editor-save').click()
+  await page.locator('.left [data-node-type="Heading"]').first().click()
   await page.waitForTimeout(300)
 }
 

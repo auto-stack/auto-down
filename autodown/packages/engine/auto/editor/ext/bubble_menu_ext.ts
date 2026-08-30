@@ -26,8 +26,9 @@
 //    and needs a boolean RETURN value; DSL msg handlers always return void.
 // 4. runBubbleLink — the link action's if/else + window.prompt body needs a
 //    block-body closure, which computed expressions do not support. The
-//    set/unsetLink chains are optional-called: the engine chain adapter
-//    does not carry inline-mark commands until the inline-mark extension.
+//    mark buttons (incl. the underline restored in plan 028 P2T3) go through
+//    the chain adapter's real toggle* commands — Bold-style DOM wrap, the
+//    model catches up on the blur writeback.
 
 import { defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { computeMenuPosition, type TriggerRect } from '../composables/useMenuBounds'

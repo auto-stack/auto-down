@@ -161,6 +161,7 @@ pub enum Mark {
     Link
     Image
     Del
+    Underline
 }
 
 // Mark ops use index loops, not for-in: a2r iterates Vec by reference and

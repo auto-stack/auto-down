@@ -9,7 +9,7 @@
 //
 // Subset (fixtures-driven): blocks heading(ATX+setext)/paragraph/fence/
 // blockquote/list(ul+ol+start+nested+lazy+empty item)/thematic_break/table;
-// inline text/strong/emphasis/inline_code/link/image/strikethrough/hardbreak.
+// inline text/strong/emphasis/underline/inline_code/link/image/strikethrough/hardbreak.
 // Out of subset (whitelisted): math, footnotes, mark/sub/sup/insert, :::
 // containers, html blocks, typographer substitutions, linkify, escapes-as-
 // emphasis quirk, indented code (treated as paragraph, matching the
@@ -132,6 +132,10 @@ fn strongNode(children List<WNode>) WNode {
 
 fn emNode(children List<WNode>) WNode {
     return WNode("emphasis", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn underlineNode(children List<WNode>) WNode {
+    return WNode("underline", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn strikeNode(children List<WNode>) WNode {
@@ -1245,6 +1249,22 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
 
         // strong / emphasis / strikethrough delimiters
         if cs == "*" {
+            // *** triple (plan 028 P2T1): nested Strong(Em(...)) — consumed
+            // before the ** scan so `***x***` isn't split literal-star +
+            // strong; mixed `**_x_**` nests through the relaxed scanDelim
+            if startsWithAt(line, "***", i) {
+                var afterT = scanDelim(line, i, "***", false, isFinal)
+                if afterT != None {
+                    let scT = afterT ?? DelimScan(0, "")
+                    if buf != "" {
+                        nodes.push(textNode(buf))
+                        buf = ""
+                    }
+                    nodes.push(strongNode([emNode(parseInlineLine(scT.inner, isFinal))]))
+                    i = scT.next
+                    continue
+                }
+            }
             if startsWithAt(line, "**", i) {
                 var after = scanDelim(line, i, "**", true, isFinal)
                 if after != None {
@@ -1274,6 +1294,36 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
             continue
         }
         if cs == "_" {
+            // ___ triple (plan 028 P2T2): Underline(Em(...)) — triple
+            // consumed before __ so `___x___` is not split literal + underline
+            if startsWithAt(line, "___", i) {
+                var afterU3 = scanDelim(line, i, "___", false, isFinal)
+                if afterU3 != None {
+                    let scU3 = afterU3 ?? DelimScan(0, "")
+                    if buf != "" {
+                        nodes.push(textNode(buf))
+                        buf = ""
+                    }
+                    nodes.push(underlineNode([emNode(parseInlineLine(scU3.inner, isFinal))]))
+                    i = scU3.next
+                    continue
+                }
+            }
+            // __ double: Underline (plan 028 P2T2 — the CommonMark-unofficial
+            // extension form; single _ below stays Em)
+            if startsWithAt(line, "__", i) {
+                var afterU2 = scanDelim(line, i, "__", false, isFinal)
+                if afterU2 != None {
+                    let scU2 = afterU2 ?? DelimScan(0, "")
+                    if buf != "" {
+                        nodes.push(textNode(buf))
+                        buf = ""
+                    }
+                    nodes.push(underlineNode(parseInlineLine(scU2.inner, isFinal)))
+                    i = scU2.next
+                    continue
+                }
+            }
             var afterU = scanDelim(line, i, "_", false, isFinal)
             if afterU != None {
                 let scU = afterU ?? DelimScan(0, "")
@@ -1826,13 +1876,33 @@ fn smartQuotes(s str) str {
 // delimiter must be whitespace/punctuation/start (a*b stays literal).
 // Unclosed strong auto-closes even when final (reference applyFixStrongTokens);
 // unclosed emphasis/strikethrough auto-close only in streaming mode.
+// '*' (42) / '_' (95): leading emphasis-family delimiter chars mark a
+// NESTED span inside a real close (plan 028 P2T1)
+fn isNestingDelimCode(c int) bool {
+    if c == 42 { return true }
+    return c == 95
+}
+
 fn scanDelim(line str, i int, delim str, autoCloseWhenFinal bool, isFinal bool) DelimScan? {
     // underscore intraword restriction: "_word_" only opens at word edges
-    // (snake_case_word stays literal); "*" has no left-side restriction
+    // (snake_case_word stays literal); "*" has no left-side restriction.
+    // Every _-family length shares it (plan 028 P2T2: __ underline too)
     if delim == "_" {
         if i > 0 {
             let pc = line.char_at(i - 1)
             if isWordCharCode(pc) { return None }
+        }
+    }
+    if delim == "__" {
+        if i > 0 {
+            let pc2 = line.char_at(i - 1)
+            if isWordCharCode(pc2) { return None }
+        }
+    }
+    if delim == "___" {
+        if i > 0 {
+            let pc3 = line.char_at(i - 1)
+            if isWordCharCode(pc3) { return None }
         }
     }
     let afterStart = i + delim.length.to(int)
@@ -1849,8 +1919,15 @@ fn scanDelim(line str, i int, delim str, autoCloseWhenFinal bool, isFinal bool) 
     if isPunctuationCode(innerText.char_at(0)) {
         // e.g. "auto-plan-*: text" -- a delimiter whose content starts
         // with punctuation stays literal (markdown-it flanking); applies
-        // to both a real close and the streaming auto-close
-        return None
+        // to both a real close and the streaming auto-close. EXCEPTION
+        // (plan 028 P2T1): a REAL close whose content OPENS with an
+        // emphasis-family delimiter run is nesting (`***x***`'s strong
+        // sees inner "*x...", `**_x_**`'s strong sees "_x_"), not flanking
+        var nest bool = false
+        if close != -1 {
+            if isNestingDelimCode(innerText.char_at(0)) { nest = true }
+        }
+        if !nest { return None }
     }
     if close != -1 {
         var next = afterStart + close + delim.length.to(int)
@@ -2089,6 +2166,9 @@ fn convertInlines(wnodes List<WNode>, marks List<Mark>) List<InlineSpan> {
         }
         if t == "emphasis" {
             for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Em)) { out.push(s) }
+        }
+        if t == "underline" {
+            for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Underline)) { out.push(s) }
         }
         if t == "strikethrough" {
             for s in convertInlines(w.children ?? noNodes(), addMark(marks, Mark.Del)) { out.push(s) }

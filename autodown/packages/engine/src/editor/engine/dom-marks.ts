@@ -18,6 +18,7 @@ const TAG_ALIASES: Record<string, string[]> = {
   strong: ['strong', 'b'],
   em: ['em', 'i'],
   del: ['del', 's'],
+  u: ['u'],
   code: ['code'],
 }
 

@@ -192,7 +192,8 @@ export enum Mark {
     Code = 2,
     Link = 3,
     Image = 4,
-    Del = 5
+    Del = 5,
+    Underline = 6
 }
 
 export function hasMark(marks: Mark[], m: Mark): boolean {

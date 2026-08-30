@@ -2,14 +2,17 @@
 
 ---
 plan_id: PLAN-025
-status: execution_done
+status: reviewed
 feature_name: 容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:15:00+08:00
-updated_at: 2026-08-30T12:30:00+08:00
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+updated_at: 2026-08-30T13:05:00+08:00
+supersedes_spec_components:
+  - ".autoos/specs.json P023-2/P023-3: EngineEditor 装配描述——顶层单遍扁平预览改为聚焦路径递归装配（路径容器展开、旁支逐槽预览），渲染管线本体不变"
+new_spec_components:
+  - ".autoos/specs.json 六节 P025-1..6: 容器块编辑——list-commands 结构命令层（六命令 applyTree 一步撤销+消融护栏）、focus-path 深层选择与递归装配、输入规则容器化（wrap 语义）、宿主父链分流（Enter/Backspace/Tab）+ DOM 边界三修复（AssemblyView 稳定壳/点击 stopPropagation/nbsp 归一化）"
+touched_goals:
+  - "P024-2: 富文本宿主目标扩展——嵌套容器（列表项/引用段）内宿主就地编辑，宿主协议（输入 diff/blur 回写）不变"
 current_step: 13
 total_steps: 13
 ---
@@ -222,7 +225,54 @@ indent/outdent。
 
 ## 复审记录
 
-（/auto-plan:review 填写）
+**复审人**：zcode（/auto-plan:review）· **时间**：2026-08-30 13:05 +08:00 · **结论**：**通过 → reviewed**
+
+**验证基线**：工作树 `.worktrees/plan-025-dev`（b763178..HEAD 累计 8 提交，16 文件
++1438/-100，无生成物改动）。全量门（复审专属、全部亲自重跑）：engine 391/391
+（29 文件）+ vue-tsc 0 错 + build 三断言过；demo e2e 19/19（5 spec 含新
+container-editing 5 用例）；jade-garden front 构建退出码 0。
+
+**逐条验收**（全部 pass，证据在案）：
+
+1. 点击列表项/引用内文就地编辑 — **pass**：e2e container-editing:45（点击→宿主
+   挂载→输入→右栏回写）+ SSR focus-path 两用例（列表首/引用首文档聚焦嵌套段）。
+2. "- " 产合法列表且 roundtrip `- item` — **pass**：editor-engine.test.ts:157-174
+   （serialize `'- item\n'` + reparse 断言 + undo/redo 往返）；裸 ListItem 缺陷
+   （序列化空、无面板）已由 wrap 语义消除；"> " 同理 :176。
+3. 回车拆项/空项退出/Backspace 合并/Tab 出退经命令层且各一步撤销 — **pass**：
+   list-commands.test.ts 25 用例（5 处 e.undo() 断言；首项 indent/顶层 outdent
+   无历史 no-op 护栏；空容器消融）+ e2e 拆项/退出/Tab 往返三景。
+4. 旁支预览 + 嵌套块入 getBlockMap（滚动同步不破）— **pass**：SSR 断言旁支
+   node-slot+data-block-id；scroll-sync 5 用例 + 新嵌套滚动冒烟全绿
+   （getBlockMap 递归查询天然收编嵌套槽）。
+5. 顶层基线不变 — **pass**：023/024 既有用例全数在绿（309 基线全保留于 391）；
+   inline-marks/scroll-sync e2e 过；顶层 SSR DOM 基线断言不变（boundary/槽位
+   形状）；唯一语义增量是前驱合并加 isEditableLeaf 护栏（顶层宿主均为可编辑叶，
+   行为等价）。
+6. EDITOR-CONTRACT 冻结面零破坏 + 门检绿 — **pass**：getBlockMap 函数零 diff、
+   root classes 未动、data-block-id 仅增量（嵌套槽新增）；全量门如上全绿。
+
+**遗漏/延后/workaround 扫查**：diff 零 TODO/FIXME/HACK；九执行步均有对应代码与
+测试落点；无未经批准的延后（有序列表标记 "1. " 系待澄清 #2 起草案明示 v1 不做）。
+待澄清 #1（Tab 绑定）按起草方案落地（Tab/Shift+Tab=缩进/出退，列表外透传），
+待澄清项保持开放供翻案。
+
+**执行中发现的既有缺陷（已顺带修复，非本计划原始范围）**：EditorEngine.redo()
+丢 after 树变换（heading level/容器 wrap redo 即丢）；Chromium contenteditable
+末尾空格产 U+00A0 致 "- "/"# " 输入规则永不匹配（heading 同病）；{render} 对象
+每次重算致 Vue 换组件类型、子树整体重挂。
+
+**债候选（记录不阻塞，供 /finish-plan 或后续计划裁决）**：
+
+- D1 ext 桥装配（auto_down_editor_ext.ts EngineContentHost）仍顶层-only +
+  serialize→reparse 预览——025 聚焦路径装配未下沉该路径，widget 侧装配能力
+  双轨分叉（demo/jade 主路径均走 EngineEditor，不受影响）。
+- D2 UI 无 Ctrl+Z 键接线（引擎 undo 从未绑定——023 起既有空白；命令级一步
+  撤销由 headless 钉死，UI 级撤销不可用）。
+- D3 槽位 data-node-index 全等伪影（惰性 render 闭包读共享计数器终值，旧代码
+  同款模式；无消费方读值，纯外观）。
+- D4 blur-回写吞点击（024 在档 papercut；025 e2e 以 Save 稳定化绕行——测试
+  手法，产品修复未做）。
 
 ## 待澄清事项
 

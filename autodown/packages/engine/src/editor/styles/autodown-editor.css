@@ -395,6 +395,10 @@
   border: 1px solid var(--ad-border, #e5e7eb);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  /* above the block-boundary hover strips (z-index 10 stacking context) —
+     the menu floats over the gap above the selection and its buttons must
+     stay clickable there (plan 028 P2T3) */
+  z-index: 30;
 }
 
 .autodown-bubble-btn {

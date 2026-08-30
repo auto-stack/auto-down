@@ -22,18 +22,21 @@ test.beforeEach(async ({ page }) => {
   await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 10000 })
 })
 
-test('TableMenu floats over the focused table; add row lands in the markdown', async ({ page }) => {
+test('TableEditorBlock toolbar (single table entry) adds a row that lands in the markdown', async ({ page }) => {
   // click a body cell — the preview slot click focuses the table (focus
   // stops at the table face, plan 023 semantics) and the edit face swaps in
+  // with its ABSORBED toolbar (TableMenu went dormant, adjudication #1)
   const cell = page.locator('.left').getByText('Alpha', { exact: true })
   await cell.scrollIntoViewIfNeeded()
   await cell.click()
-  const menu = page.locator('.autodown-table-menu')
-  await expect(menu).toBeVisible()
+  const toolbar = page.locator('.left .te-toolbar')
+  await expect(toolbar).toBeVisible()
+  // the floating menu is gone — one table UI only
+  await expect(page.locator('.autodown-table-menu')).toHaveCount(0)
 
-  // header + 3 body rows before, 5 after the menu verb
+  // header + 3 body rows before; add-row-below appends after the last row
   await expect(page.locator('.left table tr')).toHaveCount(4)
-  await menu.locator('[title="Add row below"]').click()
+  await toolbar.locator('[data-te-action="add-row"]').click()
   await expect(page.locator('.left table tr')).toHaveCount(5)
 
   await commitToRightPane(page)

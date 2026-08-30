@@ -12,17 +12,25 @@
     @compositionupdate="onCompositionUpdate"
     @compositionend="onCompositionEnd"
     @paste="onPaste"
-  >{{ initialText }}</div>
+    @focus="onFocus"
+    @blur="onBlur"
+  v-html="initialHtml"></div>
 </template>
 
 <script setup lang="ts">
-// BlockHost (plan 018 Phase 2) — the per-leaf-block contenteditable shell.
-// All logic lives in BlockHostController (headless); this file only wires
-// DOM events. While focused, the host owns its DOM text (model updates flow
-// host → model); the engine repaint happens on focus leave / history only.
-import { computed, onMounted, ref } from 'vue'
+// BlockHost (plan 018 Phase 2; rich host 024 P2T1) — the per-leaf-block
+// contenteditable shell. All logic lives in BlockHostController (headless);
+// this file only wires DOM events. While focused, the host owns its DOM text
+// (model updates flow host → model); the engine repaint happens on focus
+// leave / history only. The mount render is RICH: spans become inline
+// elements (spansToHtml, evaluated once — the engine is not Vue-reactive,
+// so the computed never invalidates under the user's caret). The blur
+// writeback (controller.onRichBlur) collects the structure back.
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
+import { spansToHtml } from '../engine/rich-html'
+import { setFocusedRichHost, getFocusedRichHost, domToggleMark, domSetLink } from '../engine/dom-marks'
 
 const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
 
@@ -41,7 +49,11 @@ onMounted(() => {
   sel?.removeAllRanges()
   sel?.addRange(range)
 })
-const initialText = computed(() => props.controller.text)
+const initialHtml = computed(() => spansToHtml(props.controller.inlines))
+
+onBeforeUnmount(() => {
+  if (getFocusedRichHost() === el.value) setFocusedRichHost(null)
+})
 
 function onInput(): void {
   const text = el.value?.textContent ?? ''
@@ -53,6 +65,28 @@ function onInput(): void {
 
 function onKeydown(e: KeyboardEvent): void {
   if (props.controller.composition.composing) return
+  if (e.ctrlKey || e.metaKey) {
+    const k = e.key.toLowerCase()
+    // inline mark shortcuts (plan 024 P3T3): wrap the live DOM in place —
+    // the model catches up on blur. Overriding the browser's native <b>
+    // keeps the DOM canonical (<strong>) for the blur walk.
+    if (k === 'b') {
+      e.preventDefault()
+      domToggleMark('strong')
+      return
+    }
+    if (k === 'i') {
+      e.preventDefault()
+      domToggleMark('em')
+      return
+    }
+    if (k === 'k') {
+      e.preventDefault()
+      const url = window.prompt('Enter URL')
+      if (url) domSetLink(url)
+      return
+    }
+  }
   if (e.key === 'Enter') {
     e.preventDefault()
     const offset = caretOffset()
@@ -86,6 +120,24 @@ function onCompositionUpdate(e: CompositionEvent): void {
 
 function onCompositionEnd(e: CompositionEvent): void {
   props.controller.compositionCommit(el.value?.textContent ?? '')
+}
+
+/** Focus leave: flush any pending plain-text diff first (the normal input
+ *  path already committed each keystroke), then walk the rich structure back
+ *  into the model as one undo step (plan 024 P2T2). */
+function onBlur(): void {
+  const node = el.value
+  setFocusedRichHost(null)
+  if (!node) return
+  const text = node.textContent ?? ''
+  if (text !== props.controller.text) props.controller.onInput(text)
+  props.controller.onRichBlur(node)
+}
+
+/** Register as the focused rich host so the adapter's mark chains can wrap
+ *  this DOM in place (plan 024 P3T1). */
+function onFocus(): void {
+  if (el.value) setFocusedRichHost(el.value)
 }
 
 function caretOffset(): number {

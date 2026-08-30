@@ -122,9 +122,9 @@ describe('stream→edit readonly gate v1 (P2T2)', () => {
 describe('CodeEditorBlock.vue SSR contract (generated product, P1T7)', () => {
   // Since P1T7 the component at components/CodeEditorBlock.vue is the
   // .at-generated widget (flat chrome props; the headless controller is
-  // passed in). Its textarea fills via v-model + onMounted Init, so SSR
-  // renders it empty — the code write-back semantics are pinned by the
-  // controller tests above.
+  // passed in). Since plan 024 P4T1 the draft is prop-initialized (TDZ fix
+  // consumed), so SSR renders the committed code — the code write-back
+  // semantics are pinned by the controller tests above.
   async function ssr(readonly: boolean): Promise<string> {
     const app = createSSRApp({
       render: () =>

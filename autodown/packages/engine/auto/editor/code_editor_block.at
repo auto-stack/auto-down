@@ -2,7 +2,10 @@
 //
 // The code block's typed editing face: language title bar (code-block-header
 // DOM contract, display-only in v1 — language changes stay on the code-block
-// menu's IAL channel) over a multiline auto-resizing textarea. Host protocol
+// menu's IAL channel) over a multiline auto-resizing textarea with a syntax
+// highlight overlay (plan 024 P4T1): an aria-hidden pre.code-editor-highlight
+// carries the highlight-bridge HTML UNDER a transparent-text textarea (the
+// classic overlay — caret and selection stay the textarea's). Host protocol
 // preserved: while focused the textarea owns its text; blur commits the
 // whole code back through the CodeEditorController the EngineEditor edit
 // slot passes in (one undo step, engine kernel — see
@@ -24,13 +27,22 @@
 
 widget CodeEditorBlock(controller: Array<str>, blockId: str, language: str, code: str, readonly: bool) {
     use {
-        fn: focusCodeArea, resizeCodeArea from "ext/code_editor_block_ext.ts"
+        fn: focusCodeArea, resizeCodeArea, renderCodeHighlight, syncCodeHighlight from "ext/code_editor_block_ext.ts"
     }
 
-    msg Msg { Init, AreaInput, Blur }
+    msg Msg { Init, AreaInput, AreaScroll, Blur }
 
     model {
-        var code_draft str = ""
+        // prop-initialized since the auto-lang TDZ fix (b4b74fd09):
+        // defineProps now precedes the state refs, so the initializer is
+        // safe again — SSR renders the committed code, no .Init backfill.
+        var code_draft str = .code
+    }
+
+    computed {
+        // highlight overlay HTML; degrades to escaped plain text so the
+        // transparent-text textarea always has something under it
+        highlight_html => renderCodeHighlight(.code_draft, .language)
     }
 
     view {
@@ -62,34 +74,43 @@ widget CodeEditorBlock(controller: Array<str>, blockId: str, language: str, code
                     class: "flex items-center gap-0.5"
                 }
             }
-            textarea (spellcheck: "false") {
-                ref: "area",
-                class: "code-editor-textarea",
-                // v-model fold: value + oninput → v-model (the span-wrapping
-                // `text` is invalid inside a textarea — its content is raw
-                // text; compiler-ssr renders the v-model var as the content).
-                value: .code_draft,
-                oninput: .AreaInput($event),
-                disabled: .readonly,
-                onblur: .Blur($event)
+            div {
+                class: "code-editor-stack",
+                pre {
+                    ref: "hl",
+                    class: "code-editor-highlight",
+                    aria-hidden: "true",
+                    html: .highlight_html
+                },
+                textarea (spellcheck: "false") {
+                    ref: "area",
+                    class: "code-editor-textarea",
+                    // v-model fold: value + oninput → v-model (the span-wrapping
+                    // `text` is invalid inside a textarea — its content is raw
+                    // text; compiler-ssr renders the v-model var as the content).
+                    value: .code_draft,
+                    oninput: .AreaInput($event),
+                    onscroll: .AreaScroll($event),
+                    disabled: .readonly,
+                    onblur: .Blur($event)
+                }
             }
         }
     }
 
     on {
         .Init -> {
-            // prop→model var init must live here: the generator emits model
-            // var initializers BEFORE defineProps, so `var code_draft = .code`
-            // compiles to ref(props.code) in the TDZ (ReferenceError at
-            // runtime). SSR renders the empty draft — the textarea fills on
-            // mount (documented compiler-ordering gap, same treatment as
-            // the details_node_view idiom list).
-            .code_draft = .code
             focusCodeArea(.area, .readonly)
+            syncCodeHighlight(.area, .hl)
         }
 
         .AreaInput(e) -> {
             resizeCodeArea(e.target)
+            syncCodeHighlight(e.target, .hl)
+        }
+
+        .AreaScroll(e) -> {
+            syncCodeHighlight(e.target, .hl)
         }
 
         .Blur(e) -> {
@@ -119,6 +140,26 @@ widget CodeEditorBlock(controller: Array<str>, blockId: str, language: str, code
           border-bottom: 1px solid #fcd34d;
           user-select: none;
         }
+        .code-editor-stack {
+          position: relative;
+        }
+        .code-editor-highlight {
+          position: absolute;
+          inset: 0;
+          margin: 0;
+          box-sizing: border-box;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          overflow: hidden;
+          pointer-events: none;
+          background: transparent;
+          color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
         .code-editor-textarea {
           display: block;
           width: 100%;
@@ -130,11 +171,15 @@ widget CodeEditorBlock(controller: Array<str>, blockId: str, language: str, code
           resize: none;
           overflow: hidden;
           background: transparent;
-          color: #111827;
+          /* overlay plan 024 P4T1: the highlight pre below shows the text;
+             the caret stays visible via caret-color */
+          color: transparent;
+          caret-color: #111827;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
           font-size: 0.88rem;
           line-height: 1.5;
           white-space: pre-wrap;
+          word-break: break-word;
         }
         .code-editor-textarea:disabled {
           cursor: not-allowed;

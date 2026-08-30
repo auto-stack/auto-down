@@ -19,15 +19,20 @@ import {
   replaceNode,
   BlockType,
   BlockPos,
+  Mark,
   Selection,
   Value,
   blockText,
   findBlock,
+  hasMark,
   leafBlock,
 } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 
+import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
+import { marksInRange } from './commands'
+import { domSetLink, domToggleMark } from './dom-marks'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
   setParagraph: BlockType.Paragraph,
@@ -43,6 +48,19 @@ const KIND_COMMANDS: Record<string, BlockType> = {
   toggleBlockquote: BlockType.Blockquote,
 }
 
+/** tiptap mark names → engine Marks (plan 024 P3T1). Underline has no Mark
+ *  representation — the bubble button is clipped at the .at source. */
+const MARK_BY_NAME: Record<string, Mark> = {
+  bold: Mark.Strong,
+  strong: Mark.Strong,
+  italic: Mark.Em,
+  em: Mark.Em,
+  strike: Mark.Del,
+  strikethrough: Mark.Del,
+  code: Mark.Code,
+  link: Mark.Link,
+}
+
 export interface ChainLike {
   focus(): ChainLike
   setHeading(opts: { level: number }): ChainLike
@@ -50,6 +68,15 @@ export interface ChainLike {
   deleteRange(range: { from: number; to: number }): ChainLike
   insertTable(opts: unknown): ChainLike
   setImage(opts: Record<string, unknown>): ChainLike
+  /** Inline mark toggles (plan 024 P3T1): wrap the focused host's live DOM;
+   *  the model catches up on the blur writeback. No-op without a host. */
+  toggleBold(): ChainLike
+  toggleItalic(): ChainLike
+  toggleStrike(): ChainLike
+  toggleCode(): ChainLike
+  toggleUnderline(): ChainLike
+  setLink(opts: { href: string }): ChainLike
+  unsetLink(): ChainLike
   run(): boolean
 }
 
@@ -67,10 +94,22 @@ export interface EditorAdapter {
 }
 
 export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
+  // Reactive tick read inside isActive: consumers that evaluate isActive in
+  // a Vue computed (the bubble's buttons) re-evaluate on every engine change
+  // — the engine itself is not Vue-reactive (plan 024 P3T2).
+  const selectionTick = ref(0)
+  engine.onChange(() => {
+    selectionTick.value++
+  })
   const adapter: EditorAdapter = {
     storage: { 'slash-command': { query: '', range: null, handled: false } },
     isEditable: true,
-    isActive: () => false,
+    isActive: (name: string) => {
+      void selectionTick.value
+      const m = MARK_BY_NAME[name]
+      if (m == null) return false
+      return hasMark(marksInRange(engine, engine.selection), m)
+    },
     chain: () => createChain(engine),
     __engine: engine,
   }
@@ -129,6 +168,35 @@ function createChain(engine: EditorEngine): ChainLike {
       const src = String(opts?.src ?? '')
       const alt = String((opts as any)?.alt ?? '')
       pending.push((tree) => insertMarkdown(tree, engine, `![${alt}](${src})`))
+      return chain
+    },
+    // inline mark toggles (plan 024 P3T1): wrap the FOCUSED host's live DOM —
+    // the model catches up on the blur writeback. No focused host → no-op.
+    toggleBold: () => {
+      domToggleMark('strong')
+      return chain
+    },
+    toggleItalic: () => {
+      domToggleMark('em')
+      return chain
+    },
+    toggleStrike: () => {
+      domToggleMark('del')
+      return chain
+    },
+    toggleCode: () => {
+      domToggleMark('code')
+      return chain
+    },
+    // underline has no Mark (button clipped at the .at source); tolerate
+    // the call from a stale bubble until the regen lands
+    toggleUnderline: () => chain,
+    setLink: (opts: { href: string }) => {
+      domSetLink(String(opts?.href ?? ''))
+      return chain
+    },
+    unsetLink: () => {
+      domSetLink(null)
       return chain
     },
   }

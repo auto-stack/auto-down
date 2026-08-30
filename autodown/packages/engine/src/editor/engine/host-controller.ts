@@ -13,18 +13,25 @@ import {
   BlockNode,
   BlockPos,
   BlockType,
+  InlineSpan,
+  Mark,
   MergeBlocksOp,
   Op,
   SplitBlockOp,
   blockText,
   findBlock,
+  hasMark,
+  replaceNode,
   withChildren,
+  withInlines,
 } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
+import { inlinesMd } from '../../parser/serializer'
 import { EditorEngine } from './editor-engine'
 import { CompositionSession } from './composition'
 import { diffToOp } from './text-diff'
 import { fireRuleOn } from './input-rules'
+import { domRootToSpans } from './rich-html'
 
 export class BlockHostController {
   private engine: EditorEngine
@@ -45,6 +52,12 @@ export class BlockHostController {
 
   get text(): string {
     return this.knownText
+  }
+
+  /** The block's inline spans (rich host mount render — plan 024 P2T1). */
+  get inlines(): InlineSpan[] {
+    const found = findBlock(this.engine.doc, this.blockId)
+    return found ? found.inlines : []
   }
 
   /** The host was (re)rendered from the engine — re-sync the known text
@@ -119,6 +132,31 @@ export class BlockHostController {
     const next = [...siblings.slice(0, idx + 1), ...kids, ...siblings.slice(idx + 1)]
     this.engine.applyTree(() => withChildren(before, next))
     this.syncFromModel()
+  }
+
+  // -- rich blur writeback (plan 024 P2T2) ----------------------------------------
+
+  /** Focus-leave writeback of the rich host: DOM walk → spans → whole-block
+   *  withInlines through applyTree — ONE undo step, CodeEditorBlock protocol.
+   *  Returns true when a rewrite landed. */
+  onRichBlur(domRoot: HTMLElement): boolean {
+    return this.commitRichSpans(domRootToSpans(domRoot))
+  }
+
+  /** Headless core of onRichBlur (the walk itself is e2e-pinned). Blocks
+   *  carrying Image marks are skipped: their marks are not rendered in the
+   *  rich host, so a rewrite would silently drop them (v1 no-data-loss). */
+  commitRichSpans(spans: InlineSpan[]): boolean {
+    const found = findBlock(this.engine.doc, this.blockId)
+    if (!found) return false
+    if (this.inlines.some((s) => hasMark(s.marks, Mark.Image))) return false
+    if (inlinesMd(found.inlines) === inlinesMd(spans)) return false
+    this.engine.applyTree((tree) => {
+      const b = findBlock(tree, this.blockId)
+      return b ? replaceNode(tree, this.blockId, [withInlines(b, spans)]) : tree
+    })
+    this.syncFromModel()
+    return true
   }
 }
 

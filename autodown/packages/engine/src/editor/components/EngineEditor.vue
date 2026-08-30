@@ -3,6 +3,7 @@
     <div ref="wrapper" class="autodown-editor-content-wrapper">
       <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
+        <BubbleMenu :editor="adapter" />
         <component
           :is="block.view"
           v-for="block in views"
@@ -98,7 +99,7 @@ export interface BlockInfo {
 // AutoDownEditor switches to this assembly in Phase 4. The frozen external
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { BlockPos, BlockType, Selection } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
@@ -108,7 +109,9 @@ import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import { domRangeToBlockRange } from '../engine/selection-map'
 import BlockHost from './BlockHost.vue'
+import BubbleMenu from '../menus/BubbleMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
 import { decorateWikilinks } from '../wikilink'
@@ -159,6 +162,32 @@ watch(
     if (md != null && md !== serialize(engine.doc, true)) engine.replaceDoc(docFromMarkdown(md))
   }
 )
+
+// -- DOM selection → engine selection bridge (plan 024 P3T2) ---------------------
+// A non-collapsed selection inside a rich host maps to (blockId, lo, hi) so
+// adapter.isActive / the bubble address the selected range. Collapsed carets
+// deliberately do NOT sync (block-granular baseline; avoids per-keystroke
+// re-emits).
+
+function onDocSelectionChange(): void {
+  const sel = typeof window === 'undefined' ? null : window.getSelection()
+  if (!sel || sel.rangeCount === 0) return
+  const range = sel.getRangeAt(0)
+  if (range.collapsed) return
+  const start = range.startContainer
+  const startEl = start.nodeType === 3 ? start.parentElement : (start as HTMLElement)
+  const hostEl = startEl?.closest<HTMLElement>('.autodown-block-host')
+  if (!hostEl || !root.value?.contains(hostEl)) return
+  const blockId = hostEl.dataset.blockId
+  if (!blockId) return
+  const br = domRangeToBlockRange(hostEl, blockId)
+  if (!br || br.lo === br.hi) return
+  if (engine.selection.anchor.blockId === blockId && engine.selection.anchor.offset === br.lo && engine.selection.head.offset === br.hi) return
+  engine.select(new Selection(new BlockPos(blockId, br.lo), new BlockPos(blockId, br.hi)))
+}
+
+onMounted(() => document.addEventListener('selectionchange', onDocSelectionChange))
+onBeforeUnmount(() => document.removeEventListener('selectionchange', onDocSelectionChange))
 
 // -- live preview assembly ----------------------------------------------------------
 

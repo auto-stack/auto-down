@@ -6,7 +6,8 @@ status: reviewed
 feature_name: 挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:35:00+08:00
-updated_at: 2026-08-30T15:50:00+08:00supersedes_spec_components:
+updated_at: 2026-08-30T15:50:00+08:00
+supersedes_spec_components:
   - ".autoos/specs.json P023-3/P023-4: BlockComponent 契约描述——Fence 编辑面新增宿主壳（.autodown-codeblock-node[data-language] + language badge，CodeBlockMenu 的 DOM 契约）；扩展块（Details/Math/Mermaid/Query/Embed）预览经 017 panel registry custom 槽挂载（补全注册位语义，未造第三条装配路径）"
   - ".autoos/specs.json P024-3/P024-4: tiptap-adapter 描述——并入挂载宿主协议面（.on/.off selectionUpdate 事件总线、块族 isActive、getAttributes、view 惰性 shim、七表动词 + setCodeBlockLanguage/setDetails 语言摘要通道），原描述为 mark 链面 + isActive 恒假桩"
 new_spec_components:

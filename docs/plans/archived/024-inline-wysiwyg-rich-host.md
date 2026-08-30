@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-024
-status: reviewed
+status: archived
 feature_name: 行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色）
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T19:10:00+08:00

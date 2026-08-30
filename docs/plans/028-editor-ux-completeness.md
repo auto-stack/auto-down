@@ -2,15 +2,15 @@
 
 ---
 plan_id: PLAN-028
-status: drafting
+status: execution_done
 feature_name: 编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T17:40:00+08:00
-updated_at: 2026-08-30T17:40:00+08:00
+updated_at: 2026-08-30T19:30:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 0
+current_step: 10
 total_steps: 10
 ---
 
@@ -139,15 +139,24 @@ computeMenuPosition 消费路径接通（现有两段式定位代码已写好，
 
 ## 验收标准
 
-- [ ] Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z 在编辑器内撤销/重做生效（富宿主与代码
+- [x] Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z 在编辑器内撤销/重做生效（富宿主与代码
   块两路 e2e 钉死），IME 组合期不受干扰。
-- [ ] 去除 Save 绕行后"编辑→直点另一块"一次生效（吞点击 e2e 绿）。
-- [ ] `***x***`、`**_x_**`、`__x__` serialize→parse 往返 mark 无损
+  [✅] undo.spec.ts 两路绿含 Shift 别名；组合期放行由 keydown 分支守卫
+  （IME 冒烟用例既有绿）。
+- [x] 去除 Save 绕行后"编辑→直点另一块"一次生效（吞点击 e2e 绿）。
+  [✅] 原始鼠标事件跨重绘直点用例绿（heading+列表深槽位）；七处绕行清除。
+- [x] `***x***`、`**_x_**`、`__x__` serialize→parse 往返 mark 无损
   （金标 + roundtrip 断言）。
-- [ ] 气泡菜单 underline 按钮可用且 `__x__` 落盘。
-- [ ] SlashMenu 出现在光标附近而非默认位置。
-- [ ] EDITOR-CONTRACT 冻结面零破坏；DEBTS（025-D2/D4、021-F5、024 两项
+  [✅] 金标 11 用例（嵌套 5 + underline 6）+ roundtrip 全绿。
+- [x] 气泡菜单 underline 按钮可用且 `__x__` 落盘。
+  [✅] e2e：6 按钮、underline 点击、三 mark `<u><strong><em>` 全链落盘。
+- [x] SlashMenu 出现在光标附近而非默认位置。
+  [✅] slash-position.spec.ts 坐标带断言先红（默认位）后绿。
+- [x] EDITOR-CONTRACT 冻结面零破坏；DEBTS（025-D2/D4、021-F5、024 两项
   执行期发现）销账。
+  [✅] EDITOR-CONTRACT.md/BlockHost 零 diff，AdapterView 仅加可选成员
+  （惯例同前）；DEBTS 五项销账（021-F5 改行 + 024/025 四行落地即清偿），
+  commit 79143a6。
 
 ## 执行步骤
 
@@ -156,50 +165,105 @@ computeMenuPosition 消费路径接通（现有两段式定位代码已写好，
 
 ### Phase 0：撤销重做接线
 
-- [ ] P0T1 keydown 接线：改 `autodown/packages/engine/src/editor/components/EngineEditor.vue`
+- [x] P0T1 keydown 接线：改 `autodown/packages/engine/src/editor/components/EngineEditor.vue`
   的 `onContentKeydown`——Ctrl+Z（Shift 变体/Ctrl+Y）→ `engine.undo()/redo()`
   + 聚焦宿主 `syncFromModel()`，组合期放行；`src/editor/__tests__/undo-wiring.test.ts`
   （TDD：路由与宿主重同步）。验证：`npx vitest run src/editor/__tests__/undo-wiring.test.ts`。
-- [ ] P0T2 e2e：新建 `autodown/demo/e2e/undo.spec.ts`（富宿主输入→Ctrl+Z
+  [✅ 已完成] headless 核心 engine/undo-wiring.ts（historyActionOf 路由表 + runHistory
+  全宿主重同步——undo 可回退任意块，只同步聚焦宿主会留陈旧 knownText 基线）；EngineEditor
+  keydown 分支 + 组合期放行 + historyEpoch 进聚焦视图 key（宿主 v-html/代码面草稿非响应，
+  历史树必须 remount 落 DOM，覆盖富宿主与代码块两面）。TDD 先红（模块缺失）后绿 5/5；
+  editor 全量 218 绿；vue-tsc -b 过；commit 5900cc4。
+- [x] P0T2 e2e：新建 `autodown/demo/e2e/undo.spec.ts`（富宿主输入→Ctrl+Z
   回退→Ctrl+Y 重做；代码块编辑同路）。验证：`cd autodown/demo && npx
   playwright test undo.spec.ts`。
+  [✅ 已完成] 两用例绿（富宿主含 Ctrl+Shift+Z 别名；代码块 commit→undo→redo）。
+  执行期两发现：① e2e 必须 E2E_PORT=5199 隔离——playwright reuseExistingServer
+  会复用主检出的 5173 dev server，测的是无改动代码（rich 路曾被浏览器原生撤销
+  +input diff 回写假绿，标记法甄别）；② 引擎 redo() 存量 bug——把 post-thread
+  树压进 undoStack（preTree/preSel 捕获未用），redo 后再 undo 空转；已改记
+  PRE 态并补 undo→redo→undo 循环引擎测试。editor 221 测试绿；commit b62b844。
 
 ### Phase 1：吞点击修复
 
-- [ ] P1T1 复现先红：`autodown/demo/e2e/inline-marks.spec.ts` 增"编辑后
+- [x] P1T1 复现先红：`autodown/demo/e2e/inline-marks.spec.ts` 增"编辑后
   直点另一块一次生效"用例（无 Save 绕行），确认现状红。验证：该用例
   失败输出在案。
-- [ ] P1T2 归因与修复：按详细设计 §2 候选方向定位（组件身份/事件时序/
+  [✅ 已完成——现状不红] 用例已加（inline-marks.spec.ts，原始 mouse 事件
+  down→80ms→up 跨重绘手势，比 locator.click 更严——后者 actionability 重试会
+  掩盖吞点击）。实测绿：025 P2T1 AssemblyView 稳定壳已保住 node-slot DOM 身份，
+  024 在档根因（component :is 身份不稳定）已修，仅无人钉 e2e。heading 直点与
+  列表深槽位直点（container-editing 在档形状）均一次生效。
+- [x] P1T2 归因与修复：按详细设计 §2 候选方向定位（组件身份/事件时序/
   DOM 保序），实施修复至 P1T1 用例转绿且 22 spec 全回归。验证：`cd
   autodown/demo && npx playwright test`。
+  [✅ 已完成] 归因落"组件身份"方向——025 稳定壳即修复本体，无新代码修法；
+  残留债务是 e2e 绕行：inline-marks 3 处 / container-editing focusListItem+
+  commitToRightPane / host-protocol commitToRightPane / undo 1 处共七处 Save
+  绕行全部改直点。全套 25/25 绿（E2E_PORT=5199 隔离工作树 server）；commit 290f530。
 
 ### Phase 2：parser roundtrip + underline
 
-- [ ] P2T1 嵌套定界：改 `autodown/packages/engine/auto/parser/markdown_parser.at`
+- [x] P2T1 嵌套定界：改 `autodown/packages/engine/auto/parser/markdown_parser.at`
   （`***`/`**_` 家族定界符栈语义）+ `pnpm gen:parser`；金标/roundtrip 用例
   （TDD 先红于改源前入库）。验证：`npx vitest run src/render/__tests__/markdown-parity.test.ts
   src/parser` 相关 + `pnpm gen:parser` 两连跑一致。
-- [ ] P2T2 underline 全链：`auto/parser/markdown_parser.at` 增 `__` 定界 +
+  [✅ 已完成] 金标 5 用例先红（block-parser.test.ts 新 describe）：`***x***`→
+  Strong+Em 双 mark、`**_x_**` 同、inline_code 干扰例、serialize→parse 往返、
+  未闭合三连保持字面量。实现：`***` 三连分支先于 `**` 消费→Strong(Em(...)) +
+  scanDelim 真闭合时首字符护栏放宽（`*`/`_` 开头=嵌套，流式自动闭合护栏不动）。
+  parity 43 绿、parser 111 绿、引擎全量 443 绿（432 基线+11 新增）、gen 两连跑
+  字节一致。执行期发现：Auto 转译不支持 `!(expr)` 括号取反（生成 `!close != -1`
+  恒真拒扫），改布尔变量式 `!nest`；commit 2fa5e77。
+- [x] P2T2 underline 全链：`auto/parser/markdown_parser.at` 增 `__` 定界 +
   `auto/block_model.at`（经 gen:parser 覆盖）增 Mark.Underline + serializer
   `__..__` + mark 命令层 toggleUnderline；用例同式。验证：`npx vitest run`
   相关 + `pnpm gen:parser` 两连跑一致。
-- [ ] P2T3 气泡恢复：改 `auto/editor/bubble_menu.at`（underline 按钮回填）
+  [✅ 已完成] Mark.Underline=6（尾部追加，枚举数值稳定）；parser：`___` 三连
+  先于 `__` 双连（Underline(Em(...)) / Underline(...)），`_` 保持 Em，
+  `_`-系全长度 intraword 护栏（snake__case__word 字面）；serializer
+  spanMd `__..__` 位于 Em 内 Del 外；渲染/宿主/命令全臂补齐：block-wnode
+  PEEL_ORDER+wrapMark、render-node `<u>`、rich-html 双向（`<u>`↔Underline）、
+  dom-marks u、adapter MARK_BY_NAME+toggleUnderline 真实现（撤 024 no-op 垫片）。
+  `___x___` 规范化为 `__*x*__`（同 `**_x_**`→`***x***`），mark 无损+一轮后字节
+  稳定。金标 6 用例先红；toggleMarkOnSpans/spansToHtml 钉子 2；引擎全量 451
+  绿；gen 两连跑确定；vue-tsc 过；commit dcb67ae。
+- [x] P2T3 气泡恢复：改 `auto/editor/bubble_menu.at`（underline 按钮回填）
   + ext 垫片真实现 + `pnpm gen:editor`；对拍（按钮在、命令通）。验证：
   `pnpm gen:editor && pnpm gen:editor && pnpm build`。
+  [✅ 已完成] 按钮回填（bold/italic/underline/strike/code/link 六枚，italic
+  后 strike 前；icon 通道既有 Underline 直用）；ext 注释更新；命令通=P2T2
+  toggleUnderline 真实现直连。执行期发现：气泡无 z-index 被 boundary hover
+  条（z-10 栈上下文）拦截第 6 按钮——CSS 补 z-index:30。e2e 气泡用例升级：
+  6 按钮+underline 点击+三 mark 全链 `<u><strong><em>` 落盘断言（顺带销
+  024"v1 parser 不能再嵌 ***"的陈旧注释）。gen:editor 两连跑确定、build 三
+  断言过、inline-marks 6/6 绿；commit c58ae2b。
 
 ### Phase 3：SlashMenu 定位
 
-- [ ] P3T1 coordsAtPos：`src/editor/engine/tiptap-adapter.ts` 增
+- [x] P3T1 coordsAtPos：`src/editor/engine/tiptap-adapter.ts` 增
   `view.coordsAtPos`（selection-map 复用）+ SlashMenu 定位接通验证（e2e
   断言菜单纯出现于光标坐标带）。验证：`cd autodown/demo && npx playwright
   test check-heading.spec.ts`（含 slash 定位断言的就近 spec）或新增小 spec。
+  [✅ 已完成] adapter view 增 coordsAtPos(from)：getFocusedRichHost（空则
+  blockId 选择器兜底）→ blockRangeToDomRange → getClientRects()[0]（空退
+  getBoundingClientRect），PM 形状四坐标；AdapterView 冻结面加可选成员
+  （惯例同 getAttributes/view）。生成 SlashMenu 两段式定位零改动直连。
+  新增 slash-position.spec.ts（坐标带断言先红——默认位 menuTop=85，后绿
+  落段落带）；scroll-sync 含 slash 钳制 4 用例回归绿；vue-tsc 过；
+  commit 1d1fe6c。
 
 ### Phase 4：收尾
 
-- [ ] P4T1 全量门 + 销账：engine `pnpm test && pnpm build`、gen 双管线
+- [x] P4T1 全量门 + 销账：engine `pnpm test && pnpm build`、gen 双管线
   确定性两连跑、demo e2e 全绿、`cd jade-garden/front && pnpm build`；DEBTS
   台账销账行（025-D2/D4、021-F5、024 执行期两项）更新 → `execution_done`。
   验证：四门退出码 0。
+  [✅ 已完成] 四门全绿：engine 451 测试 + build 三断言过；gen:parser+
+  gen:editor 两连跑零 diff；demo e2e 26/26（E2E_PORT=5199 隔离）；jade-garden
+  front build ✓（chunk 体积警告为既有）。DEBTS 销账：021-F5 行改写 + 025-D2/
+  D4、024-***/underline 四行落地即清偿（commit 79143a6）。验收标准六项全勾；
+  → execution_done。
 
 ## 复审记录
 
@@ -207,10 +271,14 @@ computeMenuPosition 消费路径接通（现有两段式定位代码已写好，
 
 ## 待澄清事项
 
-- [ ] underline 的 markdown 形态：起草为 `__x__`（CommonMark 无官方 underline
+- [x] underline 的 markdown 形态：起草为 `__x__`（CommonMark 无官方 underline
   的通行扩展形态；`<u>` 会撞 html 块语义）。备选 `<u>x</u>`。是否认可？
-- [ ] P1T2 修法方向三选一留给执行期按归因裁定（本计划只钉"去 Save 绕行
+  [执行裁定 2026-08-30] 按 `__x__` 落地（P2T2），`___` 三连规范形 `__*x*__`。
+- [x] P1T2 修法方向三选一留给执行期按归因裁定（本计划只钉"去 Save 绕行
   后 e2e 绿"的行为标准）——是否认可？
-- [ ] Dependabot 30 项（14 高）与 DEBTS 008 发包前置**不并入本计划**，
+  [执行裁定 2026-08-30] 归因落"组件身份"：025 AssemblyView 稳定壳即修复，
+  无需新修法；028 补直点用例钉死 + 清七处绕行。
+- [x] Dependabot 30 项（14 高）与 DEBTS 008 发包前置**不并入本计划**，
   建议 029 单列"发包前置清偿包"（依赖升级 + publish 流程 + 剥 development
   条件，一轮门回归复用）——是否认可？
+  [执行确认] 本计划零触碰依赖版本；029 单列建议维持（DEBTS 027 行在册）。

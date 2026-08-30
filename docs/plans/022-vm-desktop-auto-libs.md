@@ -19,8 +19,8 @@ touched_goals:
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 1-3 复审通过 2026-08-29；Phase 4 执行中——slice 1
-> 成熟度确认+裁定完成，widget 迁移待后续 slice；Phase 5 待启动）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 1-3 复审通过；Phase 4 五门全量绿并 fold
+> master @ 2ce0d59，2026-08-30；Phase 5 待启动）**。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -362,6 +362,30 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > > 排程属性行落盘（card-next-schedule:: 次日）。Phase 4 验收核心流盘点：
 > > 打开工作区 ✓ / 编辑 ✓ / 保存 ✓ / 闪卡 ✓；反链、图谱（列表形态）、
 > > 双端视觉基线归 slice 5。
+> >
+> > **进度（2026-08-29 slice 5 完成：反链/图谱/搜索面板）**：app.at 四区
+> > 面板。10/10 断言：title 剥离、反链 3/出链 2 计数与点击跳转、图谱
+> > 8 边节点可点、search_pages 命中渲染为页按钮。**跨仓修复 ×2（已折
+> > 推送 auto-lang master）**：①340 改写器补 {*path} 通配 splice / GET
+> > query 发射 / percent 编码（新原生件 auto.url.encode_path 2013 保留
+> > `/`）；②属性 `.length` VM 恒 0——typed 接收者补懒表别名
+> > auto.list|str.length（NATIVE_ID_ENTRIES + bigvm 返回表），untyped 接
+> > 收者 GET_FIELD 落堆列表失配补运行时 length 回退；plan046/340 TDD 先
+> > 红后绿。**登记（auto-lang 侧备案，app 已规避）**：`.type` 撞 DSL 元
+> > 属性；NestedObject 缺席字段读 0 哨兵而非 null。结构视觉基线
+> > baseline/iced-slice5-structure.txt（snapshot 树可 diff）；像素截图通
+> > 道环境不稳登记工具链债。
+> >
+> > **进度（2026-08-30 Phase 4 收口：阶段域复核五门全量绿 + fold）**：
+> > worktree 全量门重跑全绿——八套 node 门（parity 6 / links 9 / query 21
+> > / agenda 15+2 / srs 全家 / search 15 / tasks 2 / 契约 28/28 + desktop
+> > 副本漂移对拍）+ back/server cargo **37/37** + front vue-tsc/vite 0 错
+> > + **rust 后端 e2e 23/23** + **VM 后端 e2e 23/23**。fold：plan-022 →
+> > master @ **2ce0d59**，worktree 已回同步。Phase 4 验收（核心流 iced 下
+> > 可用 + 双端视觉基线）达成；主题/设置面板与 confirm 模态、dir-picker
+> > 宿主能力三项登记项随 Phase 5 收口。**下一步：Phase 5**（桌面壳裁定
+> > Tauri vs 纯 VM 窗口、back/server 手写层全量退役、blockParser.ts 删除、
+> > 文档收口）→ 全计划终审。
 > >
 - 29 个 widget `.at` 接 ui_gen iced 发射；ext 层 DOM 依赖清单化并逐项
   裁定：clipboard / confirm / showDirectoryPicker / DOM walk（hover 定位、

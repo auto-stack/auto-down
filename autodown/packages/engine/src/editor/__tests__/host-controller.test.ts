@@ -78,6 +78,94 @@ describe('BlockHostController', () => {
   })
 })
 
+// -- parent-chain dispatch (plan 025 P1T3) --------------------------------------
+
+function ul(id: string, ...items: BlockNode[]): BlockNode {
+  return withChildren(block(id, BlockType.ListBlock), items)
+}
+
+function li(id: string, ...kids: BlockNode[]): BlockNode {
+  return withChildren(block(id, BlockType.ListItem), kids)
+}
+
+function quote(id: string, ...kids: BlockNode[]): BlockNode {
+  return withChildren(block(id, BlockType.Blockquote), kids)
+}
+
+describe('BlockHostController — nested container dispatch', () => {
+  it('Enter inside a list item splits the item (not a bare paragraph)', () => {
+    const e = new EditorEngine(
+      doc(ul('l1', li('i1', leafBlock('p1', BlockType.Paragraph, 'one two')))),
+      collapsedSel('p1', 4)
+    )
+    const c = new BlockHostController(e, 'p1')
+    c.onEnter(4, 'b-xx')
+    const list = findBlock(e.doc, 'l1')!
+    expect(list.children).toHaveLength(2)
+    expect(list.children.every((it) => it.kind === BlockType.ListItem)).toBe(true)
+    expect(blockText(list.children[0].children[0])).toBe('one ')
+    expect(blockText(list.children[1].children[0])).toBe('two')
+    expect(serialize(e.doc, false)).toBe('- one \n- two\n')
+  })
+
+  it('Backspace at an item start merges into the previous item', () => {
+    const e = new EditorEngine(
+      doc(ul('l1', li('i1', leafBlock('p1', BlockType.Paragraph, 'one ')), li('i2', leafBlock('p2', BlockType.Paragraph, 'two')))),
+      collapsedSel('p2', 0)
+    )
+    const c = new BlockHostController(e, 'p2')
+    expect(c.onBackspaceAtStart('p1')).toBe(true)
+    expect(findBlock(e.doc, 'l1')!.children).toHaveLength(1)
+    expect(blockText(findBlock(e.doc, 'l1')!.children[0].children[0])).toBe('one two')
+  })
+
+  it('Tab/Shift+Tab indent and outdent the focused item', () => {
+    const e = new EditorEngine(
+      doc(ul('l1', li('i1', leafBlock('p1', BlockType.Paragraph, 'one')), li('i2', leafBlock('p2', BlockType.Paragraph, 'two')))),
+      collapsedSel('p2', 0)
+    )
+    const c = new BlockHostController(e, 'p2')
+    expect(c.onTab(false)).toBe(true)
+    expect(serialize(e.doc, false)).toBe('- one\n  - two\n')
+    expect(c.onTab(true)).toBe(true)
+    expect(serialize(e.doc, false)).toBe('- one\n- two\n')
+  })
+
+  it('Tab outside a list is a pass-through (no command, no history)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const c = new BlockHostController(e, 'p1')
+    expect(c.onTab(false)).toBe(false)
+    expect(c.onTab(true)).toBe(false)
+    expect(e.canUndo).toBe(false)
+  })
+
+  it('Enter inside a quote continues the quote; empty paragraph exits', () => {
+    const e = new EditorEngine(doc(quote('q1', leafBlock('p1', BlockType.Paragraph, 'one'))), collapsedSel('p1', 3))
+    const c = new BlockHostController(e, 'p1')
+    c.onEnter(3, 'b-xx')
+    const q = findBlock(e.doc, 'q1')!
+    expect(q.kind).toBe(BlockType.Blockquote)
+    expect(q.children).toHaveLength(2)
+    expect(serialize(e.doc, false)).toBe('> one\n>\n>\n')
+
+    const c2 = new BlockHostController(e, q.children[1].id)
+    c2.onEnter(0, 'b-yy') // empty quote paragraph → exit
+    expect(e.doc.children.map((n) => n.kind)).toEqual([BlockType.Blockquote, BlockType.Paragraph])
+  })
+
+  it('backspace never merges into a container sibling (leaf-only guard)', () => {
+    const e = new EditorEngine(
+      doc(quote('q1', ul('l1', li('i1', leafBlock('p1', BlockType.Paragraph, 'one'))), leafBlock('p2', BlockType.Paragraph, 'two'))),
+      collapsedSel('p2', 0)
+    )
+    const c = new BlockHostController(e, 'p2')
+    // the previous DOM sibling is the list subtree — not a mergeable leaf
+    expect(c.onBackspaceAtStart('l1')).toBe(false)
+    expect(findBlock(e.doc, 'l1')).toBeTruthy()
+    expect(blockText(findBlock(e.doc, 'p2')!)).toBe('two')
+  })
+})
+
 describe('isEditableLeaf', () => {
   it('leaf text blocks are editable; containers and thematic breaks are not', () => {
     expect(isEditableLeaf(leafBlock('p', BlockType.Paragraph, 'x'))).toBe(true)

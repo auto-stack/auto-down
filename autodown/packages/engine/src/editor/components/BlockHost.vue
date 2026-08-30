@@ -95,6 +95,10 @@ function onKeydown(e: KeyboardEvent): void {
     const prev = previousSiblingId()
     if (prev) e.preventDefault()
     props.controller.onBackspaceAtStart(prev)
+  } else if (e.key === 'Tab') {
+    // list indent / outdent (plan 025 P1T3); outside a list the browser
+    // default (focus move) is untouched
+    if (props.controller.onTab(e.shiftKey)) e.preventDefault()
   }
 }
 

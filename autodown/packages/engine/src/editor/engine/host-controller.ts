@@ -21,6 +21,7 @@ import {
   blockText,
   findBlock,
   hasMark,
+  parentOf,
   replaceNode,
   withChildren,
   withInlines,
@@ -31,6 +32,7 @@ import { EditorEngine } from './editor-engine'
 import { CompositionSession } from './composition'
 import { diffToOp } from './text-diff'
 import { fireRuleOn } from './input-rules'
+import { backspaceAtItemStart, enterInItem, enterInQuote, indentItem, outdentItem } from './list-commands'
 import { domRootToSpans } from './rich-html'
 
 export class BlockHostController {
@@ -81,16 +83,53 @@ export class BlockHostController {
     return op
   }
 
-  /** Enter key at caret offset → split the block. */
+  /** Enter key at caret offset → split the block. Nested paragraphs dispatch
+   *  on the parent kind first (plan 025 P1T3): a ListItem parent splits the
+   *  ITEM, a Blockquote parent continues the quote; only top-level leaves
+   *  take the bare SplitBlock path. */
   onEnter(offset: number, newId: string): void {
+    const parent = parentOf(this.engine.doc, this.blockId)
+    if (parent?.kind === BlockType.ListItem) {
+      enterInItem(this.engine, this.blockId, offset)
+      this.syncFromModel()
+      return
+    }
+    if (parent?.kind === BlockType.Blockquote) {
+      enterInQuote(this.engine, this.blockId, offset)
+      this.syncFromModel()
+      return
+    }
     this.engine.apply(Op.SplitBlock(new SplitBlockOp(new BlockPos(this.blockId, offset), newId)))
     this.knownText = ''
   }
 
-  /** Backspace at offset 0 → merge with the previous sibling (if any). */
+  /** Backspace at offset 0 → merge with the previous sibling (if any). In a
+   *  list item the structural command owns the semantics (merge into the
+   *  previous ITEM / lift the first item out); elsewhere the merge target
+   *  must be an editable leaf of the same container — a container sibling
+   *  (nested list subtree) never merges. */
   onBackspaceAtStart(previousSiblingId: string | null): boolean {
+    const parent = parentOf(this.engine.doc, this.blockId)
+    if (parent?.kind === BlockType.ListItem) {
+      backspaceAtItemStart(this.engine, this.blockId)
+      this.syncFromModel()
+      return true
+    }
     if (!previousSiblingId) return false
+    const prev = findBlock(this.engine.doc, previousSiblingId)
+    if (!prev || !isEditableLeaf(prev)) return false
     this.engine.apply(Op.MergeBlocks(new MergeBlocksOp(previousSiblingId, this.blockId)))
+    this.syncFromModel()
+    return true
+  }
+
+  /** Tab / Shift+Tab inside a list item → indent / outdent (plan 025 P1T3).
+   *  Returns false (browser default) when the block is not in a list. */
+  onTab(shift: boolean): boolean {
+    const parent = parentOf(this.engine.doc, this.blockId)
+    if (parent?.kind !== BlockType.ListItem) return false
+    if (shift) outdentItem(this.engine, this.blockId)
+    else indentItem(this.engine, this.blockId)
     this.syncFromModel()
     return true
   }

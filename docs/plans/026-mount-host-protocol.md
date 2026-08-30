@@ -2,12 +2,15 @@
 
 ---
 plan_id: PLAN-026
-status: execution_done
+status: reviewed
 feature_name: 挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:35:00+08:00
-updated_at: 2026-08-30T15:30:00+08:00supersedes_spec_components: []
-new_spec_components: []
+updated_at: 2026-08-30T15:50:00+08:00supersedes_spec_components:
+  - ".autoos/specs.json P023-3/P023-4: BlockComponent 契约描述——Fence 编辑面新增宿主壳（.autodown-codeblock-node[data-language] + language badge，CodeBlockMenu 的 DOM 契约）；扩展块（Details/Math/Mermaid/Query/Embed）预览经 017 panel registry custom 槽挂载（补全注册位语义，未造第三条装配路径）"
+  - ".autoos/specs.json P024-3/P024-4: tiptap-adapter 描述——并入挂载宿主协议面（.on/.off selectionUpdate 事件总线、块族 isActive、getAttributes、view 惰性 shim、七表动词 + setCodeBlockLanguage/setDetails 语言摘要通道），原描述为 mark 链面 + isActive 恒假桩"
+new_spec_components:
+  - ".autoos/specs.json 六节 P026-1..6: 挂载宿主协议——adapter 事件/块族/定位面、node-view-host 桥（nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔）、五面板预览挂载（block-wnode 扩展型 + 模型回链）、TableMenu/CodeBlockMenu 激活（0 高锚壳/root 系裸挂）、serializer detailsMd open 持久化（TS+rust 双发射体同步）、emitUpdate 内容去重"
 touched_goals: []
 current_step: 10
 total_steps: 11
@@ -269,7 +272,25 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
 
 ## 复审记录
 
-（/auto-plan:review 填写）
+**复审**（/auto-plan:review，zcode，2026-08-30 15:50，工作树 `.worktrees/plan-026-dev` 内独立重跑全量门）
+
+**验收六条逐条重验（全 pass）**：
+1. ✅ adapter 协议面：`.on/off/isActive/getAttributes/view` 齐（tiptap-adapter.ts:168-178，接口冻结面以可选成员扩展，工厂恒设）；TableMenu/CodeBlockMenu 生成物零改动——`assert-editor-gen` 绿（14 部署物/9 桥逐字节同步），menus/node-views 目录 diff 为零，装配在 EngineEditor.vue:11-13。
+2. ✅ TableMenu 悬浮加/删行：e2e host-protocol.spec.ts:25（加行落 markdown）；一步撤销由单测钉死（tiptap-adapter.test.ts:232 addRowAfter one undo step + undo 断言）。
+3. ✅ CodeBlockMenu 换语言：e2e :43（标题栏/badge/right-pane fence 三联动）；serialize roundtrip 单测在册。
+4. ✅ Details 折叠持久化：e2e :69（toggle→serialize `open: true` 落右栏）；Math/Mermaid 不再 degrade：node-view-mount.test.ts SSR 断言 not.toContain('unknown-node')。
+5. ✅ WikiLinkNodeView 零挂载（grep 全库无引用），ARCHITECTURE 在册去重。
+6. ✅ 冻结面零破坏 + 门检：jade e2e 22/22（本计划新增的最硬契约证据，补跑促成）+ demo 22/22；ARCHITECTURE §5/§6 已修订。
+
+**复审独立全量门（五门全绿）**：engine vitest 429/429 · build exit 0（三断言）· demo e2e 22/22 · jade e2e 22/22（两块）· rust cargo test 3 targets ok · jade-garden front build ✓。
+
+**遗漏/延后/workaround 清查**：
+- 无未声明延期；rust 发射体同步为用户指令补充且已完成（cargo 绿）。
+- 债候选（已入 DEBTS 026 行）：Query/Embed extension.options 恒空（数据装载未接）/ NodeView 编辑态深度 / MathInlineNodeView 未挂 / TableMenu 首表定位（生成物 querySelector 语义）/ 主检出 engine dist 陈旧脚枪。另：SlashMenu coordsAtPos 仍缺（DEBTS 021 F5 维持）；nodeViewPanel 静态降级 stub 用 `as unknown as BlockNode`（无害，注释在册）；eslint 未装、lint 门本环境不可执行（环境性，非本计划引入）。
+- 计划↔代码偏差（4 项，均无害已落档）：①"serialize roundtrip `:::details`" 为草案笔误，实际面型 `$details(summary, open)`（方言真形）；②步骤文本"7 NodeViews 中 6 挂载"实为 5/7（MathInline 未在任务列，算术错，ARCHITECTURE 已勘误）；③P0T3 字面只列三动词，实现为七表动词+setDetails/setCodeBlock 超集（生成物期望面驱动，各有测试）；④新增 emitUpdate 内容去重与 isEditableLeaf 容器排除（jade e2e 实证的存量断裂修复，执行后补充节在册）。
+- 待澄清 #1/#2 维持开放（起草口径已实现并落档，留用户否决权——P023 复审同例）。
+
+**spec-impact**：见 frontmatter——supersedes P023-3/4、P024-3/4；new P026-1..6；touched_goals 空（不猜：本计划目标为新增，未直接推进既有 goals 条目）。
 
 ## 待澄清事项
 

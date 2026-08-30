@@ -52,8 +52,8 @@ test('code block: Ctrl+Z reverts a committed edit, Ctrl+Y restores it', async ({
   await page.keyboard.type('const zz = 1\n')
   await expect(editor.locator('pre.code-editor-highlight')).toContainText('const zz = 1')
 
-  // blur via the Save button — ONE commit entry (applyTree)
-  await page.locator('.autodown-editor-save').click()
+  // blur by directly clicking the Heading — ONE commit entry (applyTree)
+  await page.locator('.left [data-node-type="Heading"]').first().click()
   await page.waitForTimeout(300)
   await expect(page.locator('.right')).toContainText('const zz = 1')
 

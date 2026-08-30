@@ -12,8 +12,11 @@
 
 import { test, expect } from '@playwright/test'
 
+// Blur by directly clicking the Heading block and let the change serialize
+// to the right pane — the direct click survives the writeback repaint (025
+// stable shell; plan 028 P1 removed the Save-button detour).
 async function commitToRightPane(page: import('@playwright/test').Page): Promise<void> {
-  await page.locator('.autodown-editor-save').click()
+  await page.locator('.left [data-node-type="Heading"]').first().click()
   await page.waitForTimeout(300)
 }
 

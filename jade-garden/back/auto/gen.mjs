@@ -154,6 +154,21 @@ function emit(source) {
     fs.writeFileSync(path.join(frontDir, 'api_gen.ts'), header + tsFixed)
   }
 
+  // ---- deployed front save-path copy (plan-022 Phase 5) ----
+  // ensureBlockAnchors (tabs_store_ext) consumes parser_gen's PBlock
+  // segmentation (kind/content/blockId/lineStart/lineEnd) for save-time
+  // lazy anchor injection; deploy the TS twin next to lib/ like api_gen.
+  if (source.at === 'parser.at') {
+    const frontLib = path.join(here, '..', '..', 'front', 'src', 'lib')
+    fs.mkdirSync(frontLib, { recursive: true })
+    const header =
+      '// GENERATED from back/auto/parser.at via back/auto/gen.mjs — do not edit.\n' +
+      '// Save-path segmentation twin (PBlock: kind/content/blockId/line range).\n' +
+      '// Single source stays back/auto/parser.at; regenerate with node gen.mjs.\n\n'
+    fs.writeFileSync(path.join(frontLib, 'parser_gen.ts'), header + tsFixed)
+    console.log(`[gen] parser.at -> ${path.relative(here, path.join(frontLib, 'parser_gen.ts'))} (front save-path copy)`)
+  }
+
   // ---- desktop VM contract copy (plan-022 Phase 4 slice 3) ----
   // The desktop app's `use back.api:` resolves to <project>/src/back/api.at.
   // Deploy the contract .at verbatim (#[api] fns included — they ARE the

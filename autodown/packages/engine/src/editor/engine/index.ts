@@ -27,3 +27,11 @@ export {
   marksInRange,
 } from './commands'
 export { toggleMarkOnSpans, setLinkOnSpans, marksAtRange, normalizeSpans } from './marks'
+export {
+  enterInItem,
+  backspaceAtItemStart,
+  indentItem,
+  outdentItem,
+  enterInQuote,
+  exitQuote,
+} from './list-commands'

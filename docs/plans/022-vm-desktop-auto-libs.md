@@ -19,8 +19,15 @@ touched_goals:
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 1-3 复审通过 2026-08-29；Phase 4 执行中——slice 1
-> 成熟度确认+裁定完成，widget 迁移待后续 slice；Phase 5 待启动）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**execution_done（2026-08-30，Phase 1-5 全部收口——Phase 4 fold
+> master @ 2ce0d59；Phase 5 六流全通 + 三镜像销号 + D1/D2/D5 处置 +
+> README/ARCHITECTURE/DEBTS 收口 ec5b144；待 /auto-plan:review 终审）。
+> Phase 5 进度注记（2026-08-30）：unlinked 扫描已退役至 unlinked.at
+> （regex 依赖摘除，复审 D1 销号；双侧 parity 11/11，cargo 39/39，e2e
+> 双 23/23，de494a7）。**
+> Phase 5 进度注记（2026-08-30）：unlinked 扫描已退役至 unlinked.at
+> （regex 依赖摘除，复审 D1 销号；双侧 parity 11/11，cargo 39/39，e2e
+> 双 23/23，de494a7）。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -363,6 +370,30 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > > 打开工作区 ✓ / 编辑 ✓ / 保存 ✓ / 闪卡 ✓；反链、图谱（列表形态）、
 > > 双端视觉基线归 slice 5。
 > >
+> > **进度（2026-08-29 slice 5 完成：反链/图谱/搜索面板）**：app.at 四区
+> > 面板。10/10 断言：title 剥离、反链 3/出链 2 计数与点击跳转、图谱
+> > 8 边节点可点、search_pages 命中渲染为页按钮。**跨仓修复 ×2（已折
+> > 推送 auto-lang master）**：①340 改写器补 {*path} 通配 splice / GET
+> > query 发射 / percent 编码（新原生件 auto.url.encode_path 2013 保留
+> > `/`）；②属性 `.length` VM 恒 0——typed 接收者补懒表别名
+> > auto.list|str.length（NATIVE_ID_ENTRIES + bigvm 返回表），untyped 接
+> > 收者 GET_FIELD 落堆列表失配补运行时 length 回退；plan046/340 TDD 先
+> > 红后绿。**登记（auto-lang 侧备案，app 已规避）**：`.type` 撞 DSL 元
+> > 属性；NestedObject 缺席字段读 0 哨兵而非 null。结构视觉基线
+> > baseline/iced-slice5-structure.txt（snapshot 树可 diff）；像素截图通
+> > 道环境不稳登记工具链债。
+> >
+> > **进度（2026-08-30 Phase 4 收口：阶段域复核五门全量绿 + fold）**：
+> > worktree 全量门重跑全绿——八套 node 门（parity 6 / links 9 / query 21
+> > / agenda 15+2 / srs 全家 / search 15 / tasks 2 / 契约 28/28 + desktop
+> > 副本漂移对拍）+ back/server cargo **37/37** + front vue-tsc/vite 0 错
+> > + **rust 后端 e2e 23/23** + **VM 后端 e2e 23/23**。fold：plan-022 →
+> > master @ **2ce0d59**，worktree 已回同步。Phase 4 验收（核心流 iced 下
+> > 可用 + 双端视觉基线）达成；主题/设置面板与 confirm 模态、dir-picker
+> > 宿主能力三项登记项随 Phase 5 收口。**下一步：Phase 5**（桌面壳裁定
+> > Tauri vs 纯 VM 窗口、back/server 手写层全量退役、blockParser.ts 删除、
+> > 文档收口）→ 全计划终审。
+> >
 - 29 个 widget `.at` 接 ui_gen iced 发射；ext 层 DOM 依赖清单化并逐项
   裁定：clipboard / confirm / showDirectoryPicker / DOM walk（hover 定位、
   scrollToBlock）→ VM 能力或 iced 等价物。
@@ -383,20 +414,34 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > graph 边装配）与 links.rs graph degree 装配；③ srs.rs OfMatrix EDN
 > load/save（壳内最厚件，观察项）。
 
-- 桌面壳：Tauri（`TAURI_ENV` 钩子激活）或纯 VM 窗口（auto-cosmic）二选一，
-  Phase 4 结束按 iced 成熟度裁定。
+- 桌面壳：**已裁定（2026-08-30）——纯 VM 窗口**（auto run -r vm + auto-lang
+  桌面壳体系 462-472；否决 Tauri：零既有钩子/与 rust 退役相逆/webview 仅
+  图谱一站收益），详见 desktop/README §7.1；dir-picker→VM 宿主桥、
+  confirm→iced 模态落点随桌面壳体系。
+  **[✅ 已裁定]**
 - `back/server` 手写 Rust 全量退役；`front/src/lib/blockParser.ts` 删除
   （消费引擎 a2ts 产物）；三镜像归一完成（020 Phase 3 该项随之销号）。
+  **[进行中 2026-08-30：读路径已切 @autodown/engine/parser（ext 重写 +
+  parser 门面扩四纯助手，vue-tsc/e2e 绿，d689ee2）；save 路径
+  （ensureBlockAnchors 行拼接）阻塞于引擎行号发射（BlockNode.source 恒
+  rng(0,0)）——engine 侧工作项：markdown_parser.at 行号追踪 → source
+  填充 → pnpm gen，完成后切换并删除文件]**
+- 遗留逻辑体 .at 化（复审 D1/D2 清单）：**unlinked ✅（2026-08-30，
+  de494a7：unlinked.at 单源 + gen.mjs 注册 + 双侧 parity 11 fixtures +
+  unlinked.rs 壳化 + index.rs 改调 gen + regex 依赖摘除；a2r 配方两条：
+  `.length` 参与运算必须 `.to(int)`、结构体字面量必须显式
+  `StructName(位置参数)` 构造——发射器不解析裸 map 字面量与参数列表的
+  类型）**；index/links 装配体与 srs OfMatrix EDN 待后续 slice。
 - 验收：桌面版端到端（打开工作区/编辑/保存/搜索/闪卡/导入导出）；
   网页版 e2e 无回归；DEBTS/README/ARCHITECTURE 文档收口。
-  **[进行中 2026-08-30：核心六流中五流桌面驱动全过（links 10/10 +
-  edit 6/6 + cards 4/4，linkgraph 重构后复验）；导入导出待 D4 裁定
-  （VM 信封 multipart/二进制扩展或宿主文件桥，登记 DEBTS 🟡）。
-  D2 ✅（cdafa88：linkgraph.at 单源，反链/出链/图谱装配 + 度数，
-  rust parity 7 fixtures）；D5 ✅裁定留壳（OfMatrix EDN parse/save 为
-  float 解析/格式化的 a2r 边界——Phase 2 slice 4 既定壳保留纪律，srs
-  数学已在 srs.at 单源）；三镜像 ✅销号（5d3b4ca blockParser.ts 删除，
-  DEBTS 020 行销号）]**
+  **[✅ 2026-08-30：六流全通——打开工作区/编辑/保存/反链/图谱/闪卡
+  （links 10/10 + edit 6/6 + cards 4/4）+ 导入导出（D4 裁定"原生直连"：
+  RequestBuilder multipart_file 宿主按路径读文件发 multipart +
+  Response.body_to_file 字节直落盘，不经 #[api] JSON 改写、不加信封
+  复杂度；导出 zip PK 落盘 + 导入 8 文档实测，de494a7 系 + 5102c5fc1）。
+  D2 ✅（cdafa88 linkgraph.at）；D5 ✅裁定留壳（float 解析/格式化 a2r
+  边界）；三镜像 ✅销号（5d3b4ca）；D4 路线细节与遗留（返回列表 RC、
+  选择器宿主能力）登记 DEBTS/README]**
 
 ## 复审记录（Phase 1-3 阶段域，2026-08-29）
 

@@ -389,6 +389,14 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
   （消费引擎 a2ts 产物）；三镜像归一完成（020 Phase 3 该项随之销号）。
 - 验收：桌面版端到端（打开工作区/编辑/保存/搜索/闪卡/导入导出）；
   网页版 e2e 无回归；DEBTS/README/ARCHITECTURE 文档收口。
+  **[进行中 2026-08-30：核心六流中五流桌面驱动全过（links 10/10 +
+  edit 6/6 + cards 4/4，linkgraph 重构后复验）；导入导出待 D4 裁定
+  （VM 信封 multipart/二进制扩展或宿主文件桥，登记 DEBTS 🟡）。
+  D2 ✅（cdafa88：linkgraph.at 单源，反链/出链/图谱装配 + 度数，
+  rust parity 7 fixtures）；D5 ✅裁定留壳（OfMatrix EDN parse/save 为
+  float 解析/格式化的 a2r 边界——Phase 2 slice 4 既定壳保留纪律，srs
+  数学已在 srs.at 单源）；三镜像 ✅销号（5d3b4ca blockParser.ts 删除，
+  DEBTS 020 行销号）]**
 
 ## 复审记录（Phase 1-3 阶段域，2026-08-29）
 

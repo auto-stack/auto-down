@@ -97,6 +97,30 @@ const charAtFix = (s) => s.split('.char_at(').join('.charCodeAt(')
 // honest TS type.
 const jsonAnyFix = (s) => s.split(': JsonAny').join(': Record<string, any>')
 
+// K1 (plan 022 Phase 4 slice 2): the contract's #[api] fn layer is VM-side
+// metadata (Plan 340 call rewrite) — a2ts emits its stub bodies as TS
+// functions, which would collide with the hand-written fetch layer that
+// owns the TS client face (Phase 1 design). Strip top-level
+// `export function` blocks (header through top-level closing brace).
+const stripApiFnBlocks = (s) => {
+  const out = []
+  let depth = null // null = outside fn block; >0 = brace depth inside
+  for (const line of s.split('\n')) {
+    if (depth === null) {
+      if (/^export function /.test(line)) {
+        depth = (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length
+        if (depth <= 0) depth = null // single-line fn (defensive)
+      } else {
+        out.push(line)
+      }
+    } else {
+      depth += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length
+      if (depth <= 0) depth = null
+    }
+  }
+  return out.join('\n')
+}
+
 function emit(source) {
   const atPath = path.join(here, source.at)
   const stem = path.basename(source.at, '.at')
@@ -108,7 +132,8 @@ function emit(source) {
   const rawTs = fs.readFileSync(rawTsPath, 'utf8')
   fs.rmSync(rawTsPath, { force: true })
   const ts = b1(ctorRegexFor(source.structs), charAtFix(rawTs))
-  const tsFixed = source.at === 'api.at' ? jsonAnyFix(ts) : ts
+  let tsFixed = source.at === 'api.at' ? jsonAnyFix(ts) : ts
+  if (source.at === 'api.at') tsFixed = stripApiFnBlocks(tsFixed)
   const outTs = path.join(here, 'gen-ts', `${stem}_gen.ts`)
   fs.mkdirSync(path.dirname(outTs), { recursive: true })
   fs.writeFileSync(outTs, tsFixed)
@@ -120,8 +145,24 @@ function emit(source) {
     fs.mkdirSync(frontDir, { recursive: true })
     const header =
       '// GENERATED from back/auto/api.at via back/auto/gen.mjs — do not edit.\n' +
-      "// Contract source of truth for the /api/* wire shapes (Plan 022 Phase 1).\n\n"
+      "// Contract source of truth for the /api/* wire shapes (Plan 022 Phase 1).\n" +
+      "// #[api] fn stubs are stripped here (K1) — TS client face stays in api.ts.\n\n"
     fs.writeFileSync(path.join(frontDir, 'api_gen.ts'), header + tsFixed)
+  }
+
+  // ---- desktop VM contract copy (plan-022 Phase 4 slice 3) ----
+  // The desktop app's `use back.api:` resolves to <project>/src/back/api.at.
+  // Deploy the contract .at verbatim (#[api] fns included — they ARE the
+  // payload here, unlike the TS copy where K1 strips them).
+  if (source.at === 'api.at') {
+    const deskDir = path.join(here, '..', '..', 'front', 'desktop', 'src', 'back')
+    fs.mkdirSync(deskDir, { recursive: true })
+    const header =
+      '// GENERATED from back/auto/api.at via back/auto/gen.mjs — do not edit.\n' +
+      '// VM 前台契约副本：use back.api 解析 + #[api] 改写元数据（Phase 4 slice 3）。\n' +
+      '// 单源仍在 jade-garden/back/auto/api.at；编辑后重跑 node gen.mjs 同步。\n\n'
+    fs.writeFileSync(path.join(deskDir, 'api.at'), header + fs.readFileSync(atPath, 'utf8'))
+    console.log(`[gen] api.at -> ${path.relative(here, path.join(deskDir, 'api.at'))} (desktop contract copy)`)
   }
 
   // ---- Rust for the backend shell ----

@@ -1,3 +1,7 @@
+// GENERATED from back/auto/api.at via back/auto/gen.mjs — do not edit.
+// VM 前台契约副本：use back.api 解析 + #[api] 改写元数据（Phase 4 slice 3）。
+// 单源仍在 jade-garden/back/auto/api.at；编辑后重跑 node gen.mjs 同步。
+
 // jade-garden API contract — single source for the /api/* wire shapes.
 //
 // Plan 022 Phase 1 (api.at contract revival from legacy-autoui seed):

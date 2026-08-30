@@ -1,0 +1,238 @@
+// app.at — jade-garden 桌面（plan-022 Phase 4 slice 5：反链/图谱/搜索面板）。
+//
+// 核心流全集：open-ws → 文件点开 → textarea 编辑 → save；反链/出链
+// （按 active_title 查询，点击跳转）；闪卡 due/评分；图谱列表视图
+// （cytoscape 裁定的 iced v1：节点可见可点，exists 区分实/虚）；搜索
+// （input + 结果跳转）。骨架期为单活动文档；tabs_store 全量状态机随
+// 29-widget 迁移归位。登记偏差：脏态切换直接重读（confirm 模态到位后
+// 补守卫）。
+
+use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
+
+widget App {
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit, Save, LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph }
+
+    model {
+        var status str = "boot"
+        var root str = ""
+        var files = []
+        var open_paths = []
+        var active_path str = ""
+        var active_title str = ""
+        var active_body str = ""
+        var active_frontmatter map = {}
+        var active_dirty bool = false
+        var save_note str = ""
+        var cards = []
+        var review_note str = ""
+        var backlinks = []
+        var outlinks = []
+        var bl_count int = 0
+        var ol_count int = 0
+        var search_q str = ""
+        var search_rows = []
+        var hit_count int = 0
+        var graph_rows = []
+        var graph_edges int = 0
+    }
+
+    on {
+        .Init -> {
+            .status = "ready"
+        }
+
+        .OpenWs -> {
+            var res = open_workspace("D:/autostack/auto-down/tmp/wiki-demo")
+            .root = res.root
+            .files = list_files("", false)
+            .status = "ws-open"
+        }
+
+        .LoadFiles -> {
+            .files = list_files("", false)
+            .status = "files-reloaded"
+        }
+
+        .OpenFile(path) -> {
+            var doc = read_wiki(path)
+            .active_path = path
+            var parts = path.split(".ad")
+            .active_title = parts[0]
+            .active_body = doc.body
+            .active_frontmatter = doc.frontmatter
+            .active_dirty = false
+            var existing = .open_paths.find(p => p == path)
+            if existing == null {
+                .open_paths.push(path)
+            }
+            // 长度经本地变量取（self 字段链 .field.length 在 VM 处理器中
+            // 求值异常，登记 auto-lang 侧；本地 var 链为引擎先例形态）。
+            var bl = get_backlinks(.active_title)
+            var blLinks = bl.links
+            .backlinks = blLinks
+            .bl_count = blLinks.length
+            var ol = get_outlinks(.active_title)
+            var olLinks = ol.links
+            .outlinks = olLinks
+            .ol_count = olLinks.length
+            .status = "opened"
+        }
+
+        .Edit -> {
+            .active_dirty = true
+        }
+
+        .QChanged -> {
+            .status = "typing"
+        }
+
+        .Save -> {
+            var out = write_wiki(.active_path, .active_frontmatter, .active_body)
+            .save_note = "saved"
+            .active_dirty = false
+            .status = "saved"
+        }
+
+        .LoadCards -> {
+            var res = get_due_cards(20)
+            .cards = res.cards
+            .status = "cards-loaded"
+        }
+
+        .Grade(page_path, block_id, grade) -> {
+            var res = review_card(page_path, block_id, grade)
+            .review_note = "graded:" + res.card.block_id
+            var res2 = get_due_cards(20)
+            .cards = res2.cards
+            .status = "graded"
+        }
+
+        .DoSearch -> {
+            // v1 用页搜索（title/path 全字段在场）。混合 search 的扁平联合
+            // 在 VM 侧有两组坑：`.type` 撞 DSL 元属性；缺席字段读出 0 哨兵
+            // 而非 null，存在性分支不可靠——均已登记。
+            var res = search_pages(.search_q, 20)
+            var hits = res.results
+            .hit_count = hits.length
+            .search_rows = []
+            for h in hits {
+                .search_rows.push({ label: h.title, target: h.path })
+            }
+            .status = "searched"
+        }
+
+        .LoadGraph -> {
+            var g = get_graph()
+            var nodes = g.nodes
+            var edges = g.edges
+            .graph_edges = edges.length
+            .graph_rows = []
+            for n in nodes {
+                .graph_rows.push({ label: n.label, target: n.path })
+            }
+            .status = "graph-loaded"
+        }
+    }
+
+    view {
+        col {
+            class: "flex h-full flex-col gap-2 p-3 bg-background text-foreground",
+            row {
+                class: "flex items-center gap-2",
+                button "open-ws" { onclick: .OpenWs }
+                button "reload-files" { onclick: .LoadFiles }
+                button "save" { onclick: .Save }
+                button "cards" { onclick: .LoadCards }
+                button "graph" { onclick: .LoadGraph }
+                text .status
+                if .active_dirty {
+                    text "● unsaved"
+                }
+            }
+            row {
+                class: "flex flex-1 gap-3 overflow-hidden",
+                col {
+                    class: "w-44 shrink-0 gap-1 overflow-auto border-r pr-2",
+                    for f in .files {
+                        button (text: f.name) {
+                            onclick: .OpenFile(f.path)
+                        }
+                    }
+                }
+                col {
+                    class: "flex flex-1 flex-col gap-2",
+                    if .active_path != "" {
+                        textarea (value: .active_body, placeholder: "edit markdown here") {
+                            oninput: .Edit
+                        }
+                    }
+                    text .save_note
+                }
+                col {
+                    class: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2",
+                    row {
+                        class: "gap-1",
+                        text "backlinks"
+                        text .bl_count
+                    }
+                    for b in .backlinks {
+                        button (text: b.source_title) {
+                            onclick: .OpenFile(b.source_path)
+                        }
+                    }
+                    row {
+                        class: "gap-1",
+                        text "outlinks"
+                        text .ol_count
+                    }
+                    for o in .outlinks {
+                        if o.exists {
+                            button (text: o.target_title) {
+                                onclick: .OpenFile(o.target_path)
+                            }
+                        }
+                        if !o.exists {
+                            text o.target_title
+                        }
+                    }
+                    text "due cards"
+                    text .review_note
+                    for c in .cards {
+                        col {
+                            class: "gap-1 border-b pb-1",
+                            text c.question
+                            row {
+                                class: "gap-1",
+                                button "again" { onclick: .Grade(c.page_path, c.block_id, 1) }
+                                button "good" { onclick: .Grade(c.page_path, c.block_id, 3) }
+                            }
+                        }
+                    }
+                }
+            }
+            row {
+                class: "flex items-center gap-2 border-t pt-2",
+                input (value: .search_q, placeholder: "search") {
+                    oninput: .QChanged
+                }
+                button "search" { onclick: .DoSearch }
+                text .hit_count
+                text "graph-edges"
+                text .graph_edges
+            }
+            row {
+                class: "flex flex-wrap gap-1 overflow-auto",
+                for r in .search_rows {
+                    button (text: r.label) {
+                        onclick: .OpenFile(r.target)
+                    }
+                }
+                for n in .graph_rows {
+                    button (text: n.label) {
+                        onclick: .OpenFile(n.target)
+                    }
+                }
+            }
+        }
+    }
+}

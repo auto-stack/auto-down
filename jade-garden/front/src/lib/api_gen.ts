@@ -1,5 +1,6 @@
 // GENERATED from back/auto/api.at via back/auto/gen.mjs — do not edit.
 // Contract source of truth for the /api/* wire shapes (Plan 022 Phase 1).
+// #[api] fn stubs are stripped here (K1) — TS client face stays in api.ts.
 
 export class ApiError {
     error: string;
@@ -29,6 +30,8 @@ export class WorkspaceOpenRequest {
         this.root = root;
     }
 }
+
+
 
 export class FileNode {
     name: string;
@@ -72,6 +75,10 @@ export class FileDeleteRequest {
     }
 }
 
+
+
+
+
 export class UploadAssetResponse {
     path: string;
 
@@ -89,6 +96,8 @@ export class WikiDoc {
         this.body = body;
     }
 }
+
+
 
 export class Backlink {
     source_title: string;
@@ -115,6 +124,28 @@ export class Outlink {
         this.block_id = block_id;
     }
 }
+
+export class BacklinkList {
+    title: string;
+    links: Backlink[];
+
+    constructor(title: string, links: Backlink[]) {
+        this.title = title;
+        this.links = links;
+    }
+}
+
+export class OutlinkList {
+    title: string;
+    links: Outlink[];
+
+    constructor(title: string, links: Outlink[]) {
+        this.title = title;
+        this.links = links;
+    }
+}
+
+
 
 export class GraphNode {
     id: string;
@@ -154,6 +185,7 @@ export class GraphData {
     }
 }
 
+
 export class SearchResult {
     type: string;
     path: string | null;
@@ -185,6 +217,9 @@ export class SearchResponse {
         this.results = results;
     }
 }
+
+
+
 
 export class TaskItem {
     page_path: string;
@@ -218,6 +253,7 @@ export class TasksResponse {
     }
 }
 
+
 export class AgendaGroup {
     date: string;
     tasks: TaskItem[];
@@ -236,6 +272,7 @@ export class AgendaResponse {
     }
 }
 
+
 export class QueryResponse {
     results: TaskItem[];
 
@@ -243,6 +280,7 @@ export class QueryResponse {
         this.results = results;
     }
 }
+
 
 export class Card {
     page_path: string;
@@ -284,6 +322,7 @@ export class CardsResponse {
     }
 }
 
+
 export class CardReviewRequest {
     page_path: string;
     block_id: string;
@@ -304,6 +343,7 @@ export class CardReviewResponse {
     }
 }
 
+
 export class ImportResult {
     imported: number;
 
@@ -321,6 +361,7 @@ export class SyncStatus {
         this.message = message;
     }
 }
+
 
 export class WhiteboardShape {
     id: string;
@@ -351,6 +392,8 @@ export class WhiteboardDoc {
         this.shapes = shapes;
     }
 }
+
+
 
 export class BlockInfo {
     uuid: string;
@@ -383,6 +426,8 @@ export class BlockResponse {
         this.block = block;
     }
 }
+
+
 
 export class UnlinkedRef {
     page_path: string;

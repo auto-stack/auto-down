@@ -21,7 +21,10 @@ touched_goals:
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
 > 状态：**执行中（Phase 1-4 收口（Phase 4 fold master @ 2ce0d59）；
 > Phase 5 执行中——桌面壳已裁定（纯 VM 窗口），blockParser 读路径已
-> 切引擎产物，save 路径待引擎行号发射）**。决议来源：2026-08-27 会话方向裁定——
+> 切引擎产物，save 路径待引擎行号发射）**。
+> Phase 5 进度注记（2026-08-30）：unlinked 扫描已退役至 unlinked.at
+> （regex 依赖摘除，复审 D1 销号；双侧 parity 11/11，cargo 39/39，e2e
+> 双 23/23，de494a7）。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -420,6 +423,12 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
   （ensureBlockAnchors 行拼接）阻塞于引擎行号发射（BlockNode.source 恒
   rng(0,0)）——engine 侧工作项：markdown_parser.at 行号追踪 → source
   填充 → pnpm gen，完成后切换并删除文件]**
+- 遗留逻辑体 .at 化（复审 D1/D2 清单）：**unlinked ✅（2026-08-30，
+  de494a7：unlinked.at 单源 + gen.mjs 注册 + 双侧 parity 11 fixtures +
+  unlinked.rs 壳化 + index.rs 改调 gen + regex 依赖摘除；a2r 配方两条：
+  `.length` 参与运算必须 `.to(int)`、结构体字面量必须显式
+  `StructName(位置参数)` 构造——发射器不解析裸 map 字面量与参数列表的
+  类型）**；index/links 装配体与 srs OfMatrix EDN 待后续 slice。
 - 验收：桌面版端到端（打开工作区/编辑/保存/搜索/闪卡/导入导出）；
   网页版 e2e 无回归；DEBTS/README/ARCHITECTURE 文档收口。
 

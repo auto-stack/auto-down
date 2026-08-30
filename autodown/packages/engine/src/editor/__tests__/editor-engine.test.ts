@@ -67,6 +67,21 @@ describe('EditorEngine — Phase 0 semantics through the engine API', () => {
     e.redo()
     expect(blockText(findBlock(e.doc, 'p1')!)).toBe('abc')
   })
+
+  it('undo → redo → undo restores again (plan 028: redo records the PRE state)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'a')), collapsedSel('p1', 1))
+    e.apply(Op.InsertText(new InsertTextOp(pos('p1', 1), 'bc')))
+    e.undo()
+    e.redo()
+    expect(blockText(findBlock(e.doc, 'p1')!)).toBe('abc')
+    e.undo()
+    expect(blockText(findBlock(e.doc, 'p1')!)).toBe('a')
+    // the cycle is repeatable
+    e.redo()
+    expect(blockText(findBlock(e.doc, 'p1')!)).toBe('abc')
+    e.undo()
+    expect(blockText(findBlock(e.doc, 'p1')!)).toBe('a')
+  })
 })
 
 describe('EditorEngine — history behavior', () => {

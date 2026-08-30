@@ -4,12 +4,9 @@
       <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
         <BubbleMenu :editor="adapter" />
-        <!-- TableMenu anchors content-relative (view.dom rect) — the 0-height
-             positioned wrapper gives it that origin without layout cost.
-             CodeBlockMenu anchors root-relative, mounts bare. (plan 026 P2) -->
-        <div class="autodown-menu-anchor">
-          <TableMenu :editor="adapter" />
-        </div>
+        <!-- CodeBlockMenu anchors root-relative, mounts bare. TableMenu went
+             back to dormant: its verbs were absorbed into TableEditorBlock's
+             toolbar (plan 026 adjudication #1 — single table entry). -->
         <CodeBlockMenu :editor="adapter" />
         <component
           :is="block.view"
@@ -177,7 +174,6 @@ import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-p
 import { domRangeToBlockRange } from '../engine/selection-map'
 import BlockHost from './BlockHost.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
-import TableMenu from '../menus/TableMenu.vue'
 import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'

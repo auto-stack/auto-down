@@ -88,6 +88,40 @@ describe('TableEditorController — four command directions', () => {
     expect(c.deleteColumn()).toBe(false)
     expect(rows(engine, tableId).map((r) => r.children.length)).toEqual([1, 1])
   })
+
+  it('addRowAbove inserts at index 0 (TableMenu absorption, adjudication #1)', () => {
+    const { engine, tableId } = tableDoc()
+    const c = new TableEditorController(engine, tableId)
+    c.addRowAbove()
+    expect(rows(engine, tableId).length).toBe(3)
+    expect(rows(engine, tableId)[0].children.map((cell) => blockText(cell))).toEqual(['', ''])
+    engine.undo()
+    expect(rows(engine, tableId).length).toBe(2)
+  })
+
+  it('addColumnBefore inserts at index 0', () => {
+    const { engine, tableId } = tableDoc()
+    const c = new TableEditorController(engine, tableId)
+    c.addColumnBefore()
+    expect(rows(engine, tableId).map((r) => r.children.map((cell) => blockText(cell)))).toEqual([
+      ['', 'A', 'B'],
+      ['', '1', '2'],
+    ])
+    engine.undo()
+    expect(rows(engine, tableId)[0].children.length).toBe(2)
+  })
+
+  it('deleteTable removes the table and repairs the dangling selection', () => {
+    const doc = parse_blocks('| A | B |\n| --- | --- |\n| 1 | 2 |\n\npara', true)
+    const e = new EditorEngine(doc)
+    const table = doc.children.find((n) => n.kind === BlockType.Table)!
+    const p = new BlockPos(table.id, 0)
+    e.select(new Selection(p, p))
+    const c = new TableEditorController(e, table.id)
+    c.deleteTable()
+    expect(findBlock(e.doc, table.id)).toBeNull()
+    expect(findBlock(e.doc, e.selection.anchor.blockId)).toBeTruthy()
+  })
 })
 
 describe('TableEditorController — cell text commit (BlockHost protocol)', () => {
@@ -187,10 +221,13 @@ describe('TableEditorBlock.vue SSR contract (generated product, P1T8)', () => {
     expect(html).toContain('<thead')
     expect(html).toContain('<th')
     expect(html).toContain('<td')
+    expect(html).toContain('data-te-action="add-row-above"')
     expect(html).toContain('data-te-action="add-row"')
     expect(html).toContain('data-te-action="delete-row"')
+    expect(html).toContain('data-te-action="add-col-before"')
     expect(html).toContain('data-te-action="add-col"')
     expect(html).toContain('data-te-action="delete-col"')
+    expect(html).toContain('data-te-action="delete-table"')
     expect(html).not.toContain('autodown-stream-banner')
   })
 

@@ -295,12 +295,17 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
 
 ## 待澄清事项
 
-- [ ] TableMenu（悬浮菜单）与 023 TableEditorBlock 工具栏的功能并存口径：
+- [x] TableMenu（悬浮菜单）与 023 TableEditorBlock 工具栏的功能并存口径：
   起草为"编辑态用 TableEditorBlock 工具栏，选中（非聚焦）态悬浮 TableMenu"；
   备选：合并为单一入口（TableEditorBlock 吸收菜单项，TableMenu 继续休眠）。
-- [ ] Math/Mermaid/Query/Embed 四件的挂载深度：起草为"预览渲染 + 属性更新"
+  [✅ 用户裁定 2026-08-30：合并单一入口] TableEditorBlock 工具栏吸收七动词
+  （新增 行↑/列←/删表，保留 行↓/删行/列→/删列），TableMenu 卸载回休眠
+  （部署物保留）；执行提交见 adj-026-table-merge 分支。
+- [x] Math/Mermaid/Query/Embed 四件的挂载深度：起草为"预览渲染 + 属性更新"
   （源码级编辑单列后续）；Query/Embed 的数据装载（查询执行/资源解析）不在
   本计划（需要后端面，另立）。
+  [✅ 用户裁定 2026-08-30：认可起草深度] 深化（源码级编辑/数据装载）后置到
+  常规组件全部实现之后再考虑（DEBTS 026 行在册）。
 - [x] 与 024/025 的顺序：起草 026 最后执行（024 定 mark 链的 isActive 语义
   边界、025 定选区深层语义——两者都动 adapter/selection 相关面，026 收口
   在后最稳）。若并行，文件交集在 tiptap-adapter.ts（024 mark 链 vs 026

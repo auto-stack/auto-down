@@ -1,7 +1,8 @@
-// table_editor_block.at — TableEditorBlock widget (plan 023 P1T8).
+// table_editor_block.at — TableEditorBlock widget (plan 023 P1T8; toolbar
+// absorbed the TableMenu verbs, plan 026 adjudication #1 — single entry).
 //
-// The table's typed editing face: a command toolbar (row/column add/delete
-// through the TableEditorController — commands.ts chain, ONE undo step each)
+// The table's typed editing face: a command toolbar (seven row/column/table
+// verbs through the TableEditorController — commands.ts chain, ONE undo step each)
 // over the table-node DOM contract (thead/th + tbody/td). Cell text follows
 // the BlockHost protocol: the focused cell's DOM owns its text; blur
 // commits via the ext bridge → controller.commitCell (diffToOp).
@@ -21,7 +22,7 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
         fn: commitTableCell from "ext/table_editor_block_ext.ts"
     }
 
-    msg Msg { AddRow, DeleteRow, AddColumn, DeleteColumn, CellBlur }
+    msg Msg { AddRowAbove, AddRow, DeleteRow, AddColumnBefore, AddColumn, DeleteColumn, DeleteTable, CellBlur }
 
     view {
         div {
@@ -42,11 +43,19 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
                 aria-label: "表格工具栏",
                 button (type: "button") {
                     class: "te-btn",
+                    data-te-action: "add-row-above",
+                    title: "在上方插入一行",
+                    disabled: .readonly,
+                    onclick: .AddRowAbove,
+                    text "行↑"
+                }
+                button (type: "button") {
+                    class: "te-btn",
                     data-te-action: "add-row",
                     title: "在末尾后插入一行",
                     disabled: .readonly,
                     onclick: .AddRow,
-                    text "+ 行"
+                    text "行↓"
                 }
                 button (type: "button") {
                     class: "te-btn",
@@ -54,7 +63,15 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
                     title: "删除最后一行",
                     disabled: .readonly,
                     onclick: .DeleteRow,
-                    text "− 行"
+                    text "删行"
+                }
+                button (type: "button") {
+                    class: "te-btn",
+                    data-te-action: "add-col-before",
+                    title: "在左侧插入一列",
+                    disabled: .readonly,
+                    onclick: .AddColumnBefore,
+                    text "列←"
                 }
                 button (type: "button") {
                     class: "te-btn",
@@ -62,7 +79,7 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
                     title: "追加一列",
                     disabled: .readonly,
                     onclick: .AddColumn,
-                    text "+ 列"
+                    text "列→"
                 }
                 button (type: "button") {
                     class: "te-btn",
@@ -70,7 +87,15 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
                     title: "删除最后一列",
                     disabled: .readonly,
                     onclick: .DeleteColumn,
-                    text "− 列"
+                    text "删列"
+                }
+                button (type: "button") {
+                    class: "te-btn te-btn-danger",
+                    data-te-action: "delete-table",
+                    title: "删除整个表格",
+                    disabled: .readonly,
+                    onclick: .DeleteTable,
+                    text "删表"
                 }
             }
             table {
@@ -116,6 +141,11 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
     }
 
     on {
+        .AddRowAbove -> {
+            let c = .controller
+            c.addRowAbove()
+        }
+
         .AddRow -> {
             let c = .controller
             c.addRow()
@@ -134,6 +164,11 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
         .DeleteColumn -> {
             let c = .controller
             c.deleteColumn()
+        }
+
+        .DeleteTable -> {
+            let c = .controller
+            c.deleteTable()
         }
 
         .CellBlur(e) -> {
@@ -186,6 +221,12 @@ widget TableEditorBlock(controller: Array<str>, blockId: str, readonly: bool, he
         .te-btn:disabled {
           cursor: not-allowed;
           opacity: 0.6;
+        }
+        .te-btn.te-btn-danger {
+          color: #b91c1c;
+        }
+        .te-btn.te-btn-danger:hover:not(:disabled) {
+          background: hsl(0 74% 56% / 0.1);
         }
         .autodown-table-editor td[contenteditable='true'],
         .autodown-table-editor th[contenteditable='true'] {

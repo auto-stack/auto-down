@@ -56,8 +56,9 @@
 ## 5. 已知边界（登记在案）
 
 - ~~行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染~~
-  —— 024 激活 bubble，026 激活 TableMenu/CodeBlockMenu 与 5 件 NodeView 预览
-  挂载（Details/MathBlock/Mermaid/Query/Embed）；余量（math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
+  —— 024 激活 bubble，026 激活 CodeBlockMenu 与 5 件 NodeView 预览挂载
+  （Details/MathBlock/Mermaid/Query/Embed）；TableMenu 挂载后被裁定合并回
+  TableEditorBlock 工具栏（单一入口）；余量（math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
   020/021 行。
 - engine parser 不产出 source 行号（`SourceRange` 为占位）、`:::` 容器/
   table 子集与 jade 前端镜像的差异清单 —— 见 DEBTS.md 020 行（镜像保留
@@ -124,8 +125,10 @@
 - ~~菜单三件套与 7 块视图 dormant~~ —— plan 026 挂载宿主协议落地后销账：
   adapter 具备 `.on/.off('selectionUpdate')`/块族 `isActive`/
   `getAttributes`/`view` 定位 shim 与表链/语言链动词；EngineEditor 装配
-  TableMenu（表级选中悬浮）与 CodeBlockMenu（fence 宿主壳
-  `.autodown-codeblock-node[data-language]` + language badge 提供 DOM 契约）；
+  CodeBlockMenu（fence 宿主壳 `.autodown-codeblock-node[data-language]` +
+  language badge 提供 DOM 契约）；TableMenu 曾于本计划挂载、后按用户裁定
+  （2026-08-30 待澄清 #1）合并回单一入口——七动词吸收进 TableEditorBlock
+  工具栏（.at 源 + gen:editor 再生），悬浮菜单回休眠；
   NodeView 经 panel registry custom 槽挂预览（node-view-host.ts 桥：
   nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔），
   7 件中 5 件在挂（Details/MathBlock/Mermaid/Query/Embed 预览）；

@@ -12,10 +12,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  AddRowAbove: []
   AddRow: []
   DeleteRow: []
+  AddColumnBefore: []
   AddColumn: []
   DeleteColumn: []
+  DeleteTable: []
   CellBlur: [any]
 }>()
 
@@ -31,6 +34,13 @@ function AddRow(): void {
   c.addRow();
 
   emit('AddRow')
+}
+
+function AddRowAbove(): void {
+  let c = props.controller;
+  c.addRowAbove();
+
+  emit('AddRowAbove')
 }
 
 function CellBlur(e: any): void {
@@ -55,6 +65,17 @@ function DeleteRow(): void {
   emit('DeleteRow')
 }
 
+function DeleteTable(): void {
+  let c = props.controller;
+  c.deleteTable();
+
+  emit('DeleteTable')
+}
+
+function AddColumnBefore(): void {
+  emit('AddColumnBefore')
+}
+
 
 </script>
 
@@ -66,17 +87,26 @@ function DeleteRow(): void {
         </div>
       </template>
       <div class="te-toolbar" :aria-label="'表格工具栏'" :role="'toolbar'">
+        <button class="te-btn" :data-te-action="'add-row-above'" :disabled="readonly" :title="'在上方插入一行'" :type="'button'" @click="AddRowAbove">
+          <span>行↑</span>
+        </button>
         <button class="te-btn" :data-te-action="'add-row'" :disabled="readonly" :title="'在末尾后插入一行'" :type="'button'" @click="AddRow">
-          <span>+ 行</span>
+          <span>行↓</span>
         </button>
         <button class="te-btn" :data-te-action="'delete-row'" :disabled="readonly" :title="'删除最后一行'" :type="'button'" @click="DeleteRow">
-          <span>− 行</span>
+          <span>删行</span>
+        </button>
+        <button class="te-btn" :data-te-action="'add-col-before'" :disabled="readonly" :title="'在左侧插入一列'" :type="'button'" @click="AddColumnBefore">
+          <span>列←</span>
         </button>
         <button class="te-btn" :data-te-action="'add-col'" :disabled="readonly" :title="'追加一列'" :type="'button'" @click="AddColumn">
-          <span>+ 列</span>
+          <span>列→</span>
         </button>
         <button class="te-btn" :data-te-action="'delete-col'" :disabled="readonly" :title="'删除最后一列'" :type="'button'" @click="DeleteColumn">
-          <span>− 列</span>
+          <span>删列</span>
+        </button>
+        <button class="te-btn te-btn-danger" :data-te-action="'delete-table'" :disabled="readonly" :title="'删除整个表格'" :type="'button'" @click="DeleteTable">
+          <span>删表</span>
         </button>
       </div>
       <table class="table-node" :aria-busy="'false'">
@@ -147,6 +177,12 @@ function DeleteRow(): void {
         .te-btn:disabled {
           cursor: not-allowed;
           opacity: 0.6;
+        }
+        .te-btn.te-btn-danger {
+          color: #b91c1c;
+        }
+        .te-btn.te-btn-danger:hover:not(:disabled) {
+          background: hsl(0 74% 56% / 0.1);
         }
         .autodown-table-editor td[contenteditable='true'],
         .autodown-table-editor th[contenteditable='true'] {

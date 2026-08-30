@@ -49,7 +49,7 @@
 //    extraction; TS types the catch param `unknown` and the DSL has no
 //    casts.
 
-import { defineComponent, h, inject } from 'vue'
+import { defineComponent, h, inject, type VNode } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 
 export { renderKatexPreview, renderMermaidPreview } from '../composables/renderPreview'
@@ -82,13 +82,11 @@ export const NodeViewContent = defineComponent({
     as: { type: [String, Object], default: 'div' },
   },
   setup(props, { slots, attrs }) {
-    const provided = inject<(() => unknown[]) | null>(NODE_VIEW_CONTENT_KEY, null)
-    return () =>
-      h(
-        props.as as string,
-        { ...attrs, 'data-node-view-content': '' },
-        (provided ? provided() : undefined) ?? slots.default?.()
-      )
+    const provided = inject<(() => VNode[]) | null>(NODE_VIEW_CONTENT_KEY, null)
+    return () => {
+      const body = provided ? provided() : (slots.default?.() ?? [])
+      return h(props.as as string, { ...attrs, 'data-node-view-content': '' }, body)
+    }
   },
 })
 

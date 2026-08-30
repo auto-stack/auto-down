@@ -25,6 +25,7 @@ import { blockNodesToWNodes, blockOfWNode } from '../../render/block-wnode'
 import { EditorEngine } from '../engine/editor-engine'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
 import DetailsNodeView from '../node-views/DetailsNodeView.vue'
+import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
 // importing the assembly performs the module-scope panel registrations
 import '../components/EngineEditor.vue'
 
@@ -75,6 +76,61 @@ function findComponentVNode(vnode: any, type: unknown): VNode | null {
   }
   return null
 }
+
+describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3)', () => {
+  it('math block mounts the MathBlockNodeView (no unknown-node degrade)', async () => {
+    const html = await ssrPreview(leafBlock('m1', BlockType.MathBlock, 'E = mc^2'))
+    expect(html).toContain('data-node-view-wrapper')
+    expect(html).toContain('autodown-math-block')
+    expect(html).toContain('data-math-block')
+    expect(html).not.toContain('unknown-node')
+  })
+
+  it('mermaid block mounts the MermaidNodeView', async () => {
+    const html = await ssrPreview(leafBlock('mm1', BlockType.Mermaid, 'graph TD\nA-->B'))
+    expect(html).toContain('autodown-mermaid-block')
+    expect(html).toContain('data-mermaid-block')
+    expect(html).not.toContain('unknown-node')
+  })
+
+  it('query block mounts the QueryBlockNodeView with its query text', async () => {
+    const q = block('q1', BlockType.QueryBlock)
+    q.attrs = attrSet(q.attrs, 'query', Value.Str('table tasks where done'))
+    const html = await ssrPreview(q)
+    expect(html).toContain('autodown-query-block')
+    expect(html).toContain('data-query-block')
+    expect(html).toContain('table tasks where done')
+    expect(html).not.toContain('unknown-node')
+  })
+
+  it('block embed mounts the BlockEmbedNodeView', async () => {
+    const emb = block('e1', BlockType.BlockEmbed)
+    emb.attrs = attrSet(emb.attrs, 'src', Value.Str('../other.ad'))
+    emb.attrs = attrSet(emb.attrs, 'title', Value.Str('Other'))
+    const html = await ssrPreview(emb)
+    expect(html).toContain('autodown-block-embed')
+    expect(html).not.toContain('unknown-node')
+  })
+
+  it('updateAttributes writes back for the mounted panels (query attrs channel)', async () => {
+    const q = block('q1', BlockType.QueryBlock)
+    q.attrs = attrSet(q.attrs, 'query', Value.Str('a'))
+    const e = new EditorEngine(doc(q), collapsedSel('q1', 0))
+    pushNodeViewHost({ engine: e })
+    let vnode: VNode
+    try {
+      vnode = renderNodes(blockNodesToWNodes([findBlock(e.doc, 'q1')!]), true)[0]!
+    } finally {
+      popNodeViewHost()
+    }
+    const w = findComponentVNode(vnode, QueryBlockNodeView)
+    expect(w).toBeTruthy()
+    ;(w!.props as any).updateAttributes({ query: 'b' })
+    expect(serialize(e.doc, false)).toContain('$query(b)')
+  })
+})
+
+// keep Details describe anchored after the new suite
 
 describe('Details preview mount (plan 026 P1T2)', () => {
   it('renders the DetailsNodeView with data-node-view markers and attrs', async () => {

@@ -103,6 +103,26 @@ function convertBlockNode(node: BlockNode): WNode {
         node.children.map(blockNodeToWNode),
         null, null, null, null, null, null, null, null, null, null, null, null, null
       )
+    case BlockType.MathBlock:
+      return new WNode(
+        'math_block', null, null, null, spansText(node.inlines), null,
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+      )
+    case BlockType.Mermaid:
+      return new WNode(
+        'mermaid', null, null, null, spansText(node.inlines), null,
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+      )
+    case BlockType.QueryBlock:
+      return new WNode(
+        'query', null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+      )
+    case BlockType.BlockEmbed:
+      return new WNode(
+        'embed', null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null, null, null, null, attrGetStr(node.attrs, 'src', ''), null
+      )
     default:
       // convertBlock maps every other WNode type to a Paragraph; the mirror
       // image keeps exotic engine blocks previewing exactly like the old

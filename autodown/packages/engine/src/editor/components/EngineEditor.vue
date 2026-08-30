@@ -38,6 +38,10 @@ import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/nod
 import CodeEditorBlock from './CodeEditorBlock.vue'
 import TableEditorBlock from './TableEditorBlock.vue'
 import DetailsNodeView from '../node-views/DetailsNodeView.vue'
+import MathBlockNodeView from '../node-views/MathBlockNodeView.vue'
+import MermaidNodeView from '../node-views/MermaidNodeView.vue'
+import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
+import BlockEmbedNodeView from '../node-views/BlockEmbedNodeView.vue'
 
 // CodeEditorBlock is the generated widget (.at source): flat chrome props —
 // the headless controller + language/code are read out of the node/ctx here.
@@ -92,7 +96,7 @@ import type { PanelRenderCtx } from '../../render/panel-registry'
 function nodeViewPanel(view: unknown, kindValue: BlockType, childrenOf: (node: PanelRenderCtx['node']) => any[]) {
   return (ctx: PanelRenderCtx) => {
     const host = currentNodeViewHost()
-    const model = blockOfWNode(ctx.node) ?? ({ id: 'nv', kind: kindValue, attrs: [], children: [], inlines: [] } as BlockNode)
+    const model = blockOfWNode(ctx.node) ?? ({ id: 'nv', kind: kindValue, attrs: [], children: [], inlines: [] } as unknown as BlockNode)
     const props = nodeViewProps(model, host?.engine, false, host?.adapter)
     return mountNodeView(view, props, () => childrenOf(ctx.node))
   }
@@ -102,6 +106,14 @@ registerPanel(
   'Details',
   nodeViewPanel(DetailsNodeView, BlockType.Details, (node) => renderNodes((node as any).children ?? [], true)),
 )
+
+// the four render-type widgets (plan 026 P1T3): leaf source/attr blocks, no
+// embedded body — the NodeViewContent hole (math/mermaid source pre) stays
+// empty; attrs (query/src) drive the chrome through the same props bridge
+registerPanel('MathBlock', nodeViewPanel(MathBlockNodeView, BlockType.MathBlock, () => []))
+registerPanel('Mermaid', nodeViewPanel(MermaidNodeView, BlockType.Mermaid, () => []))
+registerPanel('Query', nodeViewPanel(QueryBlockNodeView, BlockType.QueryBlock, () => []))
+registerPanel('Embed', nodeViewPanel(BlockEmbedNodeView, BlockType.BlockEmbed, () => []))
 
 // frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
 // script block: with dual scripts, type exports must live here, and the

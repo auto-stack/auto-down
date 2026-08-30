@@ -217,3 +217,22 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
   convertBlock 填充 source（autodown 仓，pnpm gen 再生）。完成时
   save 切换 + blockParser.ts 删除（其内 parse 镜像届时仅存 save 消费）。
   三镜像销号（020 Phase 3 裁定项）随删除落账。
+
+### 7.3 D4 裁定与实施（2026-08-30）：导入导出 = 原生直连，无信封扩展
+
+- **裁定**：VM 信封不扩展。三条 multipart/二进制路由（assets/upload、
+  import/export markdown）由桌面 .at **直连既有原生族**：
+  - 导入/上传：`http.request("POST", url)` →
+    `.multipart_file(field, 本地路径)` → `.send()`——宿主按路径读文件，
+    字节不过 VM 字符串管线；
+  - 导出：`http.request("GET", url).send()` →
+    `res.body_to_file(本地路径)`——字节直落盘。
+- **auto-lang 配套原生**（已折推送 master 5102c5fc1）：
+  `Response.body_bytes`(2225，字节忠实列表) 与
+  `Response.body_to_file`(2226，字节直落盘)——`Response.body` 是 UTF-8
+  lossy 文本（446 E3），二进制经它损坏，故有此对。
+- **实测**：导出 zip PK 落盘 + 导入 8 文档（imported:8）回读可读。
+- **遗留（登记）**：①选择器宿主能力（目录/文件对话框）就位前，导入导出
+  路径为探针常量（workspace_opener 同款先例）；②返回列表在 CALL_SPEC
+  拦截返回值上缺 RC 接线（Plan 432 D26 对偶）——`.length` 恒 0，改用
+  body_to_file 直落盘规避，RC 工作项登记 auto-lang 侧。

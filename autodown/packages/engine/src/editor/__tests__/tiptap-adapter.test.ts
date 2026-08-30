@@ -108,7 +108,7 @@ describe('adapter event bus', () => {
     const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
     const adapter = createEditorAdapter(e)
     const seen: number[] = []
-    adapter.on('selectionUpdate', () => seen.push(1))
+    adapter.on?.('selectionUpdate', () => seen.push(1))
     e.select(collapsedSel('p1', 1))
     expect(seen.length).toBe(1)
     e.select(new Selection(pos('p1', 0), pos('p1', 1)))
@@ -119,7 +119,7 @@ describe('adapter event bus', () => {
     const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
     const adapter = createEditorAdapter(e)
     const seen: number[] = []
-    adapter.on('selectionUpdate', () => seen.push(1))
+    adapter.on?.('selectionUpdate', () => seen.push(1))
     e.select(collapsedSel('p1', 0)) // same anchor+head — no dispatch
     expect(seen.length).toBe(0)
   })
@@ -128,7 +128,7 @@ describe('adapter event bus', () => {
     const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
     const adapter = createEditorAdapter(e)
     const seen: number[] = []
-    adapter.on('selectionUpdate', () => seen.push(1))
+    adapter.on?.('selectionUpdate', () => seen.push(1))
     e.appendBlocks([leafBlock('p2', BlockType.Paragraph, 'streamed')])
     expect(seen.length).toBe(0)
   })
@@ -138,8 +138,8 @@ describe('adapter event bus', () => {
     const adapter = createEditorAdapter(e)
     const seen: number[] = []
     const cb = () => seen.push(1)
-    adapter.on('selectionUpdate', cb)
-    adapter.off('selectionUpdate', cb)
+    adapter.on?.('selectionUpdate', cb)
+    adapter.off?.('selectionUpdate', cb)
     e.select(collapsedSel('p1', 1))
     expect(seen.length).toBe(0)
   })
@@ -148,7 +148,7 @@ describe('adapter event bus', () => {
     const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
     const adapter = createEditorAdapter(e)
     const seen: number[] = []
-    adapter.on('selectionUpdate', () => seen.push(1))
+    adapter.on?.('selectionUpdate', () => seen.push(1))
     e.select(collapsedSel('p1', 1))
     e.select(collapsedSel('p1', 0)) // back to the initial position — still a change vs p1:1
     expect(seen.length).toBe(2)

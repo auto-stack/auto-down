@@ -100,7 +100,7 @@ export interface BlockInfo {
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BlockPos, BlockType, Selection, findBlock } from '../../parser/block-model'
+import { BlockPos, BlockType, Selection, attrGetBool, attrGetInt, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
@@ -200,71 +200,120 @@ interface BlockView {
   props: Record<string, unknown>
 }
 
+interface AssemblyCtx {
+  /** ancestor ids of the focused block — these containers render expanded */
+  path: Set<string>
+  focusedId: string
+  /** running data-node-index across the whole assembled document */
+  counter: { n: number }
+}
+
 const views = computed<BlockView[]>(() => {
   void repaintVersion.value
   const focusedId = engine.selection.anchor.blockId
-  const preview = previewNodes.value
-  let previewIdx = 0
-  return engine.doc.children.map((node) => {
-    const focused = node.id === focusedId
-    // Focused assembly through the BlockComponent contract (plan 023 P1T3):
-    // a registered edit slot wins (CodeEditorBlock / TableEditorBlock); the
-    // BlockHost text fallback covers every kind without one. The edit face
-    // commits on blur (host protocol), so the per-repaint vnode rebuild never
-    // yanks focus mid-typing.
-    if (focused) {
-      const edit = editSlotFor(BlockType[node.kind])
-      if (edit) {
-        return {
-          id: node.id,
-          view: {
-            render: () =>
-              edit(node, { engine, blockId: node.id, readonly: props.streaming === true }),
-          },
-          props: {},
-        }
-      }
-    }
-    if (focused && isEditableLeaf(node)) {
-      const controller = hostFor(node.id)
-      return {
-        id: node.id,
-        view: BlockHost,
-        props: { controller, blockKind: BlockType[node.kind] },
-      }
-    }
-    const vnode = preview[previewIdx]
-    previewIdx += 1
-    return {
-      id: node.id,
-      view: {
-        render: () =>
-          h('div', { class: 'node-slot', 'data-node-index': String(previewIdx - 1), 'data-node-type': BlockType[node.kind], 'data-block-id': node.id, onClick: () => selectBlock(node.id) }, [
-            h('div', { class: 'node-content' }, [vnode ?? h('div', { class: 'unknown-node' }, '')]),
-            h('div', { class: 'autodown-block-boundary', 'data-boundary-for': node.id }),
-          ]),
-      },
-      props: {},
-    }
-  })
+  const ctx: AssemblyCtx = { path: focusPathOf(engine.doc, focusedId), focusedId, counter: { n: 0 } }
+  return engine.doc.children.map((node) => assembleView(node, ctx, true))
 })
 
-/** Preview render of the NON-focused blocks: the engine's BlockNode children
- *  go straight through the ./render pipeline via the BlockNode->WNode bridge —
+/** Preview render of an off-path subtree: BlockNode → WNode → renderNodes —
  *  no serialize->parseDocument round trip (plan 023 P0T1, one pipeline for
  *  editor preview / MarkdownRender / StreamingRenderer). [[wikilinks]] stay
  *  plain text in the model; decorateWikilinks turns them into clickable
  *  labels on the returned VNodes (plan 020 Phase 3, click emits open-wiki-link). */
-const previewNodes = computed<VNode[]>(() => {
-  void repaintVersion.value
-  const focusedId = engine.selection.anchor.blockId
-  const wnodes = blockNodesToWNodes(
-    engine.doc.children.filter((n) => !(n.id === focusedId && isEditableLeaf(n)))
+function previewVNodeOf(node: BlockNode): VNode {
+  const vnode = renderNodes(blockNodesToWNodes([node]), true)[0]
+  if (vnode) decorateWikilinks([vnode], (title, blockId) => emit('open-wiki-link', title, blockId))
+  return vnode ?? h('div', { class: 'unknown-node' }, '')
+}
+
+/** The node-slot chrome around every assembled node: data-block-id makes the
+ *  block deep-addressable (getBlockMap + click-to-focus); the boundary
+ *  marker stays top-level only (preview DOM parity with renderEmbedded). */
+function slotChrome(node: BlockNode, inner: VNode, topLevel: boolean, counter: { n: number }): VNode {
+  return h(
+    'div',
+    {
+      class: 'node-slot',
+      'data-node-index': String(counter.n++),
+      'data-node-type': BlockType[node.kind],
+      'data-block-id': node.id,
+      onClick: () => selectBlock(node.id),
+    },
+    [
+      h('div', { class: 'node-content' }, [inner]),
+      ...(topLevel ? [h('div', { class: 'autodown-block-boundary', 'data-boundary-for': node.id })] : []),
+    ]
   )
-  const vnodes = renderNodes(wnodes, true)
-  decorateWikilinks(vnodes, (title, blockId) => emit('open-wiki-link', title, blockId))
-  return vnodes
-})
+}
+
+/** Expanded container element mirroring the builtin panel chrome (ul/li over
+ *  markdown-renderer, blockquote likewise), children assembled recursively. */
+function expandedElement(node: BlockNode, ctx: AssemblyCtx): VNode {
+  if (node.kind === BlockType.Blockquote) {
+    return h('blockquote', { class: 'blockquote', dir: 'auto' }, [
+      h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx))),
+    ])
+  }
+  const ordered = attrGetBool(node.attrs, 'ordered', false)
+  return h(
+    ordered ? 'ol' : 'ul',
+    {
+      class: ordered ? 'list-node list-decimal' : 'list-node list-disc',
+      ...(ordered ? { start: attrGetInt(node.attrs, 'start', 1) } : {}),
+    },
+    node.children.map((item) =>
+      h('li', { class: 'list-item', dir: 'auto' }, [
+        h('div', { class: 'markdown-renderer' }, item.children.map((ch) => childSlot(ch, ctx))),
+      ])
+    )
+  )
+}
+
+/** A child of an expanded container: on the focus path → recursive assembly
+ *  (deepest focused leaf mounts the BlockHost); off it → preview subtree in
+ *  its own clickable slot. */
+function childSlot(ch: BlockNode, ctx: AssemblyCtx): VNode {
+  if (ch.id === ctx.focusedId || ctx.path.has(ch.id)) return viewVNode(assembleView(ch, ctx, false))
+  return slotChrome(ch, previewVNodeOf(ch), false, ctx.counter)
+}
+
+function viewVNode(v: BlockView): VNode {
+  if (v.view === BlockHost)
+    return h(BlockHost, v.props as { controller: BlockHostController; blockKind: string })
+  return (v.view as { render: () => VNode }).render()
+}
+
+/** One assembled node: focused leaf → edit face / BlockHost (plan 023 P1T3
+ * contract, bare — no node-slot); focus-path container → expanded chrome;
+ *  everything else → preview slot. */
+function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): BlockView {
+  if (node.id === ctx.focusedId) {
+    const edit = editSlotFor(BlockType[node.kind])
+    if (edit) {
+      return {
+        id: node.id,
+        view: {
+          render: () => edit(node, { engine, blockId: node.id, readonly: props.streaming === true }),
+        },
+        props: {},
+      }
+    }
+    if (isEditableLeaf(node)) {
+      const controller = hostFor(node.id)
+      return { id: node.id, view: BlockHost, props: { controller, blockKind: BlockType[node.kind] } }
+    }
+    // a focused non-hostable node (empty container / ThematicBreak) degrades
+    // to preview — selection resolution normally never lands here
+  }
+  if (ctx.path.has(node.id) && isExpandableContainer(node)) {
+    return { id: node.id, view: { render: () => slotChrome(node, expandedElement(node, ctx), topLevel, ctx.counter) }, props: {} }
+  }
+  return { id: node.id, view: { render: () => slotChrome(node, previewVNodeOf(node), topLevel, ctx.counter) }, props: {} }
+}
+
+function isExpandableContainer(node: BlockNode): boolean {
+  return node.children.length > 0 && (node.kind === BlockType.ListBlock || node.kind === BlockType.Blockquote)
+}
 
 // -- host registry -------------------------------------------------------------------
 

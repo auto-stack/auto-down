@@ -22,6 +22,17 @@
 
 - **四出口 + style.css**：`.` / `./parser` / `./render` / `./editor` ——
   新增出口非破坏；改/删出口符号 = 破坏性变更，须升主版本。
+- **development 条件（plan 027 加性扩展）**：四 JS 出口与 `./style.css`
+  各增 `development` 条件映射到 **src**（style.css →
+  `src/editor/styles/autodown-editor.css`）；`import` / `types` / default
+  路径与 `files: ["dist"]` 发布形状零变化——对 017/020 出口冻结是纯加性
+  （新增条件分支，不删不改既有分支），冻结的是出口集合与生产解析路径。
+  效果：vite dev serve（jade-garden/front、demo）直连引擎源码，"src 有、
+  dist 没有"的静默过期事故结构性消失。**dist 角色收窄为纯发布产物**
+  （npm 发布 / production build）；dist 消费路径前置新鲜度卫兵：build 链尾
+  `scripts/write-dist-stamp.mjs` 对 `src/**` + `auto/**` 取内容 sha256 写
+  `dist/.dist-stamp`，消费方 `scripts/assert-dist-fresh.mjs` 重算比对，
+  不符即非零退出并提示 `pnpm --filter @autodown/engine build`。
 - **DOM/事件面**：EDITOR-CONTRACT.md 全清单（根 class、`data-block-id`、
   `.autodown-wikilink-label`、CustomEvent 四则、`getBlockMap`/`containerRef`
   expose）。

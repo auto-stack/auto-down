@@ -52,6 +52,9 @@ export function spanMd(s: InlineSpan): string {
     if (hasMark(s.marks, Mark.Em)) {
         t = "*" + t + "*";
     }
+    if (hasMark(s.marks, Mark.Underline)) {
+        t = "__" + t + "__";
+    }
     if (hasMark(s.marks, Mark.Del)) {
         t = "~~" + t + "~~";
     }

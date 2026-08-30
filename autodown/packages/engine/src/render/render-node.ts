@@ -71,6 +71,8 @@ function renderInlineNode(node: any, final: boolean | undefined, budget?: Reveal
       return h('strong', { class: 'strong-node' }, renderInlineChildren(node.children, final, budget))
     case 'emphasis':
       return h('em', { class: 'emphasis-node' }, renderInlineChildren(node.children, final, budget))
+    case 'underline':
+      return h('u', { class: 'underline-node' }, renderInlineChildren(node.children, final, budget))
     case 'strikethrough':
       return h('del', { class: 'strikethrough-node' }, renderInlineChildren(node.children, final, budget))
     case 'inline_code':

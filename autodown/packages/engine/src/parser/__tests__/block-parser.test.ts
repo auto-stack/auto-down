@@ -211,3 +211,58 @@ describe('nested emphasis delimiters (plan 028 P2T1)', () => {
     expect(spans.some((s) => hasMark(s.marks, Mark.Strong) || hasMark(s.marks, Mark.Em))).toBe(false)
   })
 })
+
+describe('underline delimiter (plan 028 P2T2)', () => {
+  const spansOf = (md: string) => parse_blocks(md, true).children[0].inlines
+
+  it('__x__ parses to an Underline-marked span', () => {
+    const spans = spansOf('a __under__ b\n')
+    const target = spans.find((s) => s.text === 'under')
+    expect(target).toBeDefined()
+    expect(hasMark(target!.marks, Mark.Underline)).toBe(true)
+    expect(hasMark(target!.marks, Mark.Em)).toBe(false)
+  })
+
+  it('___x___ triple nests Underline(Em(...)) — triple before double', () => {
+    const spans = spansOf('a ___deep___ b\n')
+    const target = spans.find((s) => s.text === 'deep')
+    expect(target).toBeDefined()
+    expect(hasMark(target!.marks, Mark.Underline)).toBe(true)
+    expect(hasMark(target!.marks, Mark.Em)).toBe(true)
+  })
+
+  it('single _ stays Em (not Underline)', () => {
+    const spans = spansOf('a _em_ b\n')
+    const target = spans.find((s) => s.text === 'em')
+    expect(hasMark(target!.marks, Mark.Em)).toBe(true)
+    expect(hasMark(target!.marks, Mark.Underline)).toBe(false)
+  })
+
+  it('__ intraword restriction keeps snake__case__word literal', () => {
+    const spans = spansOf('snake__case__word\n')
+    expect(spansText(spans)).toBe('snake__case__word')
+    expect(spans.some((s) => hasMark(s.marks, Mark.Underline))).toBe(false)
+  })
+
+  it('serialize→parse roundtrip is mark-lossless and canonical-stable', () => {
+    const src = 'plain __under__ and ___deep___\n'
+    const md = serialize(parse_blocks(src, true), true)
+    // `___` canonicalizes to the nested form `__*x*__` (same as `**_x_**`
+    // → `***x***`); marks survive, and the canonical form is byte-stable
+    expect(md).toBe('plain __under__ and __*deep*__\n')
+    expect(serialize(parse_blocks(md, true), true)).toBe(md)
+    const spans = parse_blocks(md, true).children[0].inlines
+    expect(hasMark(spans.find((s) => s.text === 'under')!.marks, Mark.Underline)).toBe(true)
+    const deep = spans.find((s) => s.text === 'deep')!.marks
+    expect(hasMark(deep, Mark.Underline) && hasMark(deep, Mark.Em)).toBe(true)
+  })
+
+  it('Underline+Em nests in both directions through the mixed family', () => {
+    // __ *x* __ and **_x_**-style mixes keep every mark
+    const spans = spansOf('__*mix*__\n')
+    const target = spans.find((s) => s.text === 'mix')
+    expect(target).toBeDefined()
+    expect(hasMark(target!.marks, Mark.Underline)).toBe(true)
+    expect(hasMark(target!.marks, Mark.Em)).toBe(true)
+  })
+})

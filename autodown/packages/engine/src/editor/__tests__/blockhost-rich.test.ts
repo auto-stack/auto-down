@@ -23,6 +23,13 @@ describe('spansToHtml (pure)', () => {
     expect(html).toContain('href="https://x"')
   })
 
+  it('renders Underline as <u> (plan 028 P2T2)', async () => {
+    const { spans } = await richSpans('__u__ and ___ue___')
+    const html = spansToHtml(spans)
+    expect(html).toContain('<u>u</u>')
+    expect(html).toContain('<u><em>ue</em></u>')
+  })
+
   it('renders anchors uneditable (contenteditable=false) and click-proof', async () => {
     const { spans } = await richSpans('[l](https://x)')
     const html = spansToHtml(spans)

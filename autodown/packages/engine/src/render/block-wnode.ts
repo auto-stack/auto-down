@@ -45,6 +45,7 @@ import {
   strongNode,
   tableNode,
   thematicNode,
+  underlineNode,
 } from '../parser/markdown-parser'
 
 // Model back-link (plan 026 P1T2): the node-view panels registered on the
@@ -146,8 +147,9 @@ function tableCellToWNode(cell: BlockNode): WNode {
 // -- flat mark spans -> nested inline WNode tree -----------------------------------
 
 // Marks peel outermost-first, in the order the serializer writes wrappers
-// (spanMd: code `..` inside ** .. inside * .. inside ~~..~~ inside [..](..)).
-const PEEL_ORDER: Mark[] = [Mark.Strong, Mark.Em, Mark.Del, Mark.Link]
+// (spanMd: code `..` inside ** .. inside * .. inside __..__ inside ~~..~~
+// inside [..](..)).
+const PEEL_ORDER: Mark[] = [Mark.Strong, Mark.Em, Mark.Underline, Mark.Del, Mark.Link]
 
 function inlineTree(spans: InlineSpan[]): WNode[] {
   return peel(spans, 0)
@@ -180,6 +182,8 @@ function wrapMark(mark: Mark, run: InlineSpan[], kids: WNode[]): WNode {
       return strongNode(kids)
     case Mark.Em:
       return emNode(kids)
+    case Mark.Underline:
+      return underlineNode(kids)
     case Mark.Del:
       return strikeNode(kids)
     case Mark.Link: {

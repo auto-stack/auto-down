@@ -17,6 +17,12 @@ describe('toggleMarkOnSpans', () => {
     expect(out[1].marks).not.toContain(Mark.Strong)
   })
 
+  it('Underline toggles through the same resplit core (plan 028 P2T2)', () => {
+    const out = toggleMarkOnSpans([span('hello world')], 0, 5, Mark.Underline)
+    expect(round(out)).toEqual(['hello|6|', ' world|-|'])
+    expect(out[0].marks).toContain(Mark.Underline)
+  })
+
   it('merges adjacent spans that end up with the same marks (同 mark 合并)', () => {
     const out = toggleMarkOnSpans([span('ab'), span('cd')], 0, 4, Mark.Strong)
     expect(out).toHaveLength(1)

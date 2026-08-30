@@ -59,6 +59,7 @@ const MARK_BY_NAME: Record<string, Mark> = {
   em: Mark.Em,
   strike: Mark.Del,
   strikethrough: Mark.Del,
+  underline: Mark.Underline,
   code: Mark.Code,
   link: Mark.Link,
 }
@@ -473,9 +474,12 @@ function createChain(engine: EditorEngine): ChainLike {
       domToggleMark('code')
       return chain
     },
-    // underline has no Mark (button clipped at the .at source); tolerate
-    // the call from a stale bubble until the regen lands
-    toggleUnderline: () => chain,
+    // underline (plan 028 P2T2): same DOM-wrap protocol as the others —
+    // the model catches up on the blur writeback (u → Mark.Underline)
+    toggleUnderline: () => {
+      domToggleMark('u')
+      return chain
+    },
     setLink: (opts: { href: string }) => {
       domSetLink(String(opts?.href ?? ''))
       return chain

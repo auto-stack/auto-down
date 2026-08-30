@@ -47,11 +47,29 @@ import {
   thematicNode,
 } from '../parser/markdown-parser'
 
+// Model back-link (plan 026 P1T2): the node-view panels registered on the
+// registry receive WNodes; this map carries the originating BlockNode so the
+// node-view host bridge can fabricate attrs/writeback props. Populated by
+// blockNodeToWNode, keyed per conversion (fresh WNode every render).
+const wnodeBlock = new WeakMap<WNode, BlockNode>()
+
+/** The model block a converted WNode came from (undefined for parse-side
+ *  WNodes — static render, no writeback). */
+export function blockOfWNode(w: WNode): BlockNode | undefined {
+  return wnodeBlock.get(w)
+}
+
 export function blockNodesToWNodes(nodes: BlockNode[]): WNode[] {
   return (nodes ?? []).map(blockNodeToWNode)
 }
 
 export function blockNodeToWNode(node: BlockNode): WNode {
+  const w = convertBlockNode(node)
+  wnodeBlock.set(w, node)
+  return w
+}
+
+function convertBlockNode(node: BlockNode): WNode {
   switch (node.kind) {
     case BlockType.Heading:
       return headingNode(attrGetInt(node.attrs, 'level', 1), inlineTree(node.inlines))
@@ -77,6 +95,14 @@ export function blockNodeToWNode(node: BlockNode): WNode {
     }
     case BlockType.ThematicBreak:
       return thematicNode()
+    case BlockType.Details:
+      // extension panels (plan 026): the WNode type drives the palette spec
+      // (panelOfBlock('details') -> Details); attrs ride the model back-link
+      return new WNode(
+        'details', null, null, null, null, null,
+        node.children.map(blockNodeToWNode),
+        null, null, null, null, null, null, null, null, null, null, null, null, null
+      )
     default:
       // convertBlock maps every other WNode type to a Paragraph; the mirror
       // image keeps exotic engine blocks previewing exactly like the old

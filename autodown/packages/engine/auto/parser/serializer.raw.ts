@@ -371,6 +371,15 @@ export function componentBlockMd(name: string, argName: string, node: BlockNode,
     return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children, withId) + "\n}";
 }
 
+export function detailsMd(node: BlockNode, withId: boolean): string {
+    const summary = attrGetStr(node.attrs, "summary", "");
+    let open: string = "";
+    if (attrGetBool(node.attrs, "open", false)) {
+        open = ", open: true";
+    }
+    return "$details(summary: \"" + summary + "\"" + open + ") {\n" + joinChildren(node.children, withId) + "\n}";
+}
+
 export function wikilinkMd(node: BlockNode): string {
     const target = attrGetStr(node.attrs, "target", "");
     const anchor = attrGetStr(node.attrs, "anchor", "");
@@ -413,7 +422,7 @@ export function blockMd(node: BlockNode, withId: boolean): string {
         return componentBlockMd("callout", "type", node, withId);
     }
     if (k == BlockType.Details) {
-        return componentBlockMd("details", "summary", node, withId);
+        return detailsMd(node, withId);
     }
     if (k == BlockType.WikilinkBlock) {
         return wikilinkMd(node);

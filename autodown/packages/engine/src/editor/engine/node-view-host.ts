@@ -21,6 +21,8 @@ import {
   parentOf,
   replaceNode,
 } from '../../parser/block-model'
+import { defineComponent, h, provide } from 'vue'
+import { NODE_VIEW_CONTENT_KEY } from '../ext/node_view_ext'
 import { setBlockAttrs } from './commands'
 import type { EditorEngine } from './editor-engine'
 import type { EditorAdapter } from './tiptap-adapter'
@@ -73,6 +75,24 @@ function attrsToObject(attrs: Attr[]): Record<string, unknown> {
     out[a.key] = v != null && (v._tag === 'Str' || v._tag === 'Int' || v._tag === 'Bool') ? v.value : null
   }
   return out
+}
+
+/** Wrap a NodeView widget mount with the NodeViewContent body source: the
+ *  widget templates render the hole bare, the provider injects the block's
+ *  embedded VNodes (plan 026 P1T2). */
+export const NodeViewContentProvider = defineComponent({
+  name: 'NodeViewContentProvider',
+  props: { content: { type: Function, required: true } },
+  setup(rp, { slots }) {
+    provide(NODE_VIEW_CONTENT_KEY, () => (rp.content as () => unknown[])())
+    return () => slots.default?.()
+  },
+})
+
+/** Mount a NodeView widget with fabricated props, its NodeViewContent hole
+ *  fed by `content` (embedded body VNodes). */
+export function mountNodeView(view: unknown, props: NodeViewProps, content: () => unknown[]) {
+  return h(NodeViewContentProvider, { content }, { default: () => h(view as any, props) })
 }
 
 /** Fabricate the tiptap-shaped widget props for a model block. `engine`

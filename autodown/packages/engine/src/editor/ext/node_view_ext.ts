@@ -49,10 +49,17 @@
 //    extraction; TS types the catch param `unknown` and the DSL has no
 //    casts.
 
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, inject } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 
 export { renderKatexPreview, renderMermaidPreview } from '../composables/renderPreview'
+
+/** Injection key for the NodeViewContent hole's body (plan 026 P1T2): the
+ *  mounting bridge provides the block's embedded VNodes; the widget templates
+ *  use NodeViewContent bare (no own children), so the hole renders what the
+ *  assembly injected. Nearest provider wins — nested node-views resolve to
+ *  their own wrapper. */
+export const NODE_VIEW_CONTENT_KEY = 'autodown-node-view-content'
 
 // The block-view host components (engine replacements for tiptap's
 // NodeViewWrapper/NodeViewContent). Render-thin: element type via `as`,
@@ -75,8 +82,13 @@ export const NodeViewContent = defineComponent({
     as: { type: [String, Object], default: 'div' },
   },
   setup(props, { slots, attrs }) {
+    const provided = inject<(() => unknown[]) | null>(NODE_VIEW_CONTENT_KEY, null)
     return () =>
-      h(props.as as string, { ...attrs, 'data-node-view-content': '' }, slots.default?.())
+      h(
+        props.as as string,
+        { ...attrs, 'data-node-view-content': '' },
+        (provided ? provided() : undefined) ?? slots.default?.()
+      )
   },
 })
 

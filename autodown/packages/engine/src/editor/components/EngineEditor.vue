@@ -30,10 +30,14 @@ import { attrGetStr, blockText } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import type { BlockEditCtx } from '../../render/block-component'
+import { registerPanel } from '../../render/panel-registry'
+import { blockOfWNode } from '../../render/block-wnode'
 import { CodeEditorController } from '../engine/code-editor-controller'
 import { TableEditorController } from '../engine/table-editor-controller'
+import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/node-view-host'
 import CodeEditorBlock from './CodeEditorBlock.vue'
 import TableEditorBlock from './TableEditorBlock.vue'
+import DetailsNodeView from '../node-views/DetailsNodeView.vue'
 
 // CodeEditorBlock is the generated widget (.at source): flat chrome props —
 // the headless controller + language/code are read out of the node/ctx here.
@@ -76,6 +80,29 @@ function alignClass(align: string): string {
 
 registerBlockComponent('Table', { edit: tableEditSlot })
 
+// Node-view preview panels (plan 026 P1T2): the generated NodeView widgets
+// mount through the 017 panel registry's custom slot — same registration
+// surface as the edit slots above, module scope. renderNodes/BlockType come
+// from the setup script's imports (dual-script hoisting — the `h` rule).
+import type { PanelRenderCtx } from '../../render/panel-registry'
+
+/** Wrap a generated NodeView widget as a PanelRenderer: the WNode's model
+ *  back-link + the current host window fabricate the tiptap-shaped props;
+ *  mountNodeView feeds the NodeViewContent hole with the embedded body. */
+function nodeViewPanel(view: unknown, kindValue: BlockType, childrenOf: (node: PanelRenderCtx['node']) => any[]) {
+  return (ctx: PanelRenderCtx) => {
+    const host = currentNodeViewHost()
+    const model = blockOfWNode(ctx.node) ?? ({ id: 'nv', kind: kindValue, attrs: [], children: [], inlines: [] } as BlockNode)
+    const props = nodeViewProps(model, host?.engine, false, host?.adapter)
+    return mountNodeView(view, props, () => childrenOf(ctx.node))
+  }
+}
+
+registerPanel(
+  'Details',
+  nodeViewPanel(DetailsNodeView, BlockType.Details, (node) => renderNodes((node as any).children ?? [], true)),
+)
+
 // frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
 // script block: with dual scripts, type exports must live here, and the
 // script setup below sees the module-scope type.
@@ -115,6 +142,7 @@ import BlockHost from './BlockHost.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
+import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
 import { decorateWikilinks } from '../wikilink'
 
 const props = defineProps<{
@@ -231,14 +259,22 @@ const views = computed<BlockView[]>(() => {
 })
 
 /** Preview render of an off-path subtree: BlockNode → WNode → renderNodes —
- *  no serialize->parseDocument round trip (plan 023 P0T1, one pipeline for
+ *  no serialize->parseDocument round trip (plan 023 P0T0, one pipeline for
  *  editor preview / MarkdownRender / StreamingRenderer). [[wikilinks]] stay
  *  plain text in the model; decorateWikilinks turns them into clickable
- *  labels on the returned VNodes (plan 020 Phase 3, click emits open-wiki-link). */
+ *  labels on the returned VNodes (plan 020 Phase 3, click emits open-wiki-link).
+ *  The host window (plan 026 P1T2) scopes the mounted node-view panels to
+ *  THIS editor's engine — panel renderers execute synchronously inside
+ *  renderNodes, so push/pop brackets the whole conversion+render leg. */
 function previewVNodeOf(node: BlockNode): VNode {
-  const vnode = renderNodes(blockNodesToWNodes([node]), true)[0]
-  if (vnode) decorateWikilinks([vnode], (title, blockId) => emit('open-wiki-link', title, blockId))
-  return vnode ?? h('div', { class: 'unknown-node' }, '')
+  pushNodeViewHost({ engine, adapter })
+  try {
+    const vnode = renderNodes(blockNodesToWNodes([node]), true)[0]
+    if (vnode) decorateWikilinks([vnode], (title, blockId) => emit('open-wiki-link', title, blockId))
+    return vnode ?? h('div', { class: 'unknown-node' }, '')
+  } finally {
+    popNodeViewHost()
+  }
 }
 
 /** The node-slot chrome around every assembled node: data-block-id makes the

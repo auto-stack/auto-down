@@ -173,15 +173,15 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
 
 ## 验收标准
 
-- [ ] 聚焦含加粗/斜体/链接的段落，宿主直接呈现富文本（非纯文本源码）。
-- [ ] 选中一段文字 Ctrl+B / 气泡 bold / Ctrl+K 链接：失焦后预览与
+- [x] 聚焦含加粗/斜体/链接的段落，宿主直接呈现富文本（非纯文本源码）。
+- [x] 选中一段文字 Ctrl+B / 气泡 bold / Ctrl+K 链接：失焦后预览与
   `serialize` 输出含对应 markdown 标记；撤销一步恢复。
-- [ ] IME 在富宿主内输入正常（composition 协议回归）。
-- [ ] BubbleMenu 在选区上方出现，isActive 反映当前选区 marks，无 underline
+- [x] IME 在富宿主内输入正常（composition 协议回归）。
+- [x] BubbleMenu 在选区上方出现，isActive 反映当前选区 marks，无 underline
   按钮；为其裁剪后 `pnpm gen:editor` 确定性保持。
-- [ ] CodeEditorBlock 编辑区呈现语法着色叠加层，输入/滚动同步无错位。
-- [ ] 跨块选区调用映射返回 null 且不崩溃（在档 v1 限制）。
-- [ ] EDITOR-CONTRACT 冻结面零破坏；既有 9 spec 全绿。
+- [x] CodeEditorBlock 编辑区呈现语法着色叠加层，输入/滚动同步无错位。
+- [x] 跨块选区调用映射返回 null 且不崩溃（在档 v1 限制）。
+- [x] EDITOR-CONTRACT 冻结面零破坏；既有 9 spec 全绿。
 
 ## 执行步骤
 
@@ -194,7 +194,7 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
   `src/editor/__tests__/marks.test.ts`（TDD 先红：跨界切分/同 mark 合并/
   部分覆盖取消/嵌套保持/link attrs）。验证：`npx vitest run src/editor/__tests__/marks.test.ts`。
   [✅ 已完成] marks.ts 落地（toggleMarkOnSpans/setLinkOnSpans/marksAtRange/normalizeSpans），13/13 绿（2026-08-30）
-- [ ] P0T2 mark 命令与 isActive 源：`src/editor/engine/commands.ts` 增
+- [x] P0T2 mark 命令与 isActive 源：`src/editor/engine/commands.ts` 增
   `toggleMark/setLink`（applyTree 一步撤销）与 `marksInRange(engine, sel)`；
   `commands.test.ts` 增段（toggle→serialize roundtrip + undo）。验证：
   `npx vitest run src/editor/__tests__/commands.test.ts`。
@@ -202,7 +202,7 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
 
 ### Phase 1：选区映射
 
-- [ ] P1T1 选区映射层：新建 `src/editor/engine/selection-map.ts`
+- [x] P1T1 选区映射层：新建 `src/editor/engine/selection-map.ts`
   （domRangeToBlockRange/blockRangeToDomRange + 偏移 walk 纯函数抽出）+
   `src/editor/__tests__/selection-map.test.ts`（纯函数注入节点序列测；
   跨块 null 语义）。验证：`npx vitest run src/editor/__tests__/selection-map.test.ts`。
@@ -210,47 +210,47 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
 
 ### Phase 2：富文本宿主（核心）
 
-- [ ] P2T1 富渲染：改 `src/editor/components/BlockHost.vue`——挂载内容由
+- [x] P2T1 富渲染：改 `src/editor/components/BlockHost.vue`——挂载内容由
   spans 渲染内联元素（strong/em/del/code/a，a 禁跳转），保持既有事件面；
   SSR 断言入 `src/editor/__tests__/blockhost-rich.test.ts`。验证：
   `npx vitest run src/editor/__tests__/blockhost-rich.test.ts`。
   [✅ 已完成] rich-html.ts（spansToHtml 纯函数，转义+a 禁跳转）+ controller.inlines 出口 + BlockHost v-html 挂载渲染；4/4 绿，engine 全量 338/338（2026-08-30）
-- [ ] P2T2 失焦富回写：`src/editor/engine/host-controller.ts` 增
+- [x] P2T2 失焦富回写：`src/editor/engine/host-controller.ts` 增
   `onRichBlur(domRoot)`（DOM walk 收集 spans → 整块 applyTree 回写，
   CodeEditor 同构）+ host-controller.test.ts 增（walk 纯函数注入测）。
   BlockHost @blur 分流（纯文本 diff 已无未提交变化时走富回写）。验证：
   `npx vitest run src/editor/__tests__/host-controller.test.ts`。
   [✅ 已完成] richTreeToSpans/domRootToSpans（walk 纯函数注入测）+ commitRichSpans（一步撤销/无变化 no-op/Image 块跳过保数据）+ BlockHost @blur 分流；6 新测绿（2026-08-30）
-- [ ] P2T3 输入期语义在档回归：确认输入 diff/IME/Enter/Backspace 协议在富
+- [x] P2T3 输入期语义在档回归：确认输入 diff/IME/Enter/Backspace 协议在富
   DOM 下不破（textContent 语义覆盖富结构）；`pnpm test` 全绿。验证：
   `cd autodown/packages/engine && pnpm test`。
   [✅ 已完成] engine 全量 344/344 绿（309 基线 + 35 新增；输入/组合/结构键协议测全数通过）（2026-08-30）
-- [ ] P2T4 e2e 钉死：新建 `autodown/demo/e2e/inline-marks.spec.ts`——
+- [x] P2T4 e2e 钉死：新建 `autodown/demo/e2e/inline-marks.spec.ts`——
   选中→Ctrl+B→失焦→预览 strong + roundtrip；IME 冒烟（type 中文）。
   验证：`cd autodown/demo && npx playwright test inline-marks.spec.ts`。
   [✅ 已完成] inline-marks.spec.ts 2 例绿（富渲染断言/Ctrl+B 原生包裹/blur 经 Save 按钮触发/双窗 roundtrip/CJK 冒烟）；demo 全量 e2e 11/11（2026-08-30）
 
 ### Phase 3：气泡菜单激活
 
-- [ ] P3T1 adapter mark 链：`src/editor/engine/tiptap-adapter.ts`——
+- [x] P3T1 adapter mark 链：`src/editor/engine/tiptap-adapter.ts`——
   isActive(name) 真实现（marksInRange）+ chain 增 toggleBold/Italic/Strike/
   Code（转发聚焦宿主 DOM 包裹）+ `tiptap-adapter.test.ts` 增段。验证：
   `npx vitest run src/editor/__tests__/tiptap-adapter.test.ts`。
   [✅ 已完成] isActive（MARK_BY_NAME→marksInRange）+ chain 七 mark 方法（dom-marks.ts 聚焦宿主注册表 + surround/解包；setLink/unsetLink 就位）+ BlockHost @focus/@blur 注册；13/13 绿 + build 三断言（2026-08-30）
-- [ ] P3T2 BubbleMenu 激活与裁剪：改 `auto/editor/bubble_menu.at` 移除
+- [x] P3T2 BubbleMenu 激活与裁剪：改 `auto/editor/bubble_menu.at` 移除
   underline 按钮；`src/editor/components/EngineEditor.vue` 装配
   `<BubbleMenu :editor="adapter">` + 选区矩形定位（computeMenuPosition
   通道）；`pnpm gen:editor` 两连跑确定性 + 对拍（underline 缺席）。
   验证：`pnpm gen:editor && pnpm gen:editor && pnpm build`。
   [✅ 已完成] .at 裁 underline→重生成（BubbleMenu.vue 无 underline）；ext 重写 EngineBubbleMenu（DOM 选区真值 + computeMenuPosition 选区矩形定位 + mousedown.prevent 保宿主焦点 + selectionchange 驱动）；EngineEditor 装配 + selectionchange→engine.select 桥；adapter isActive 响应式 tick；gen 两连跑确定性 + build 三断言 + engine 348/348 + e2e 11/11（2026-08-30）
-- [ ] P3T3 快捷键与链接：Ctrl+B/I/K（BlockHost keydown 或内容级）+
+- [x] P3T3 快捷键与链接：Ctrl+B/I/K（BlockHost keydown 或内容级）+
   链接 prompt 通道（runBubbleLink 既有）+ e2e 增例（气泡出现/isActive/
   italic/链接）。验证：`cd autodown/demo && npx playwright test inline-marks.spec.ts`。
   [✅ 已完成] BlockHost keydown Ctrl+B/I（覆盖原生 <b> 保 <strong> 规范形）+ Ctrl+K prompt→domSetLink；e2e 增 2 例（气泡出现/5 按钮/无 underline/isActive active 类/italic 就地包裹/链接 prompt roundtrip）——inline-marks 4/4、全量 e2e 13/13（2026-08-30）
 
 ### Phase 4：代码编辑态着色（023 待澄清 #2 收编）
 
-- [ ] P4T1 着色叠加层：改 `auto/editor/code_editor_block.at`——textarea
+- [x] P4T1 着色叠加层：改 `auto/editor/code_editor_block.at`——textarea
   叠于 `pre.code-editor-highlight`（aria-hidden）之上，文本色透明保留
   caret；`auto/editor/ext/code_editor_block_ext.ts` 增
   renderCodeHighlight（highlight 桥）与滚动/高度同步；gen 重生成 + 对拍 +
@@ -260,7 +260,7 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
 
 ### Phase 5：收尾
 
-- [ ] P5T1 全量门：engine `pnpm test && pnpm build`、gen 确定性两连跑、
+- [x] P5T1 全量门：engine `pnpm test && pnpm build`、gen 确定性两连跑、
   demo e2e 全绿（9+1 spec）、`cd jade-garden/front && pnpm build`——四门
   全绿后状态推进 `execution_done`。
   [✅ 已完成] 四门全绿：engine 348/348 + build 三断言；gen 两连跑工作树零漂移；demo e2e 14/14（4 既有 spec + inline-marks 5 例）；jade-garden front build ✓（2026-08-30）

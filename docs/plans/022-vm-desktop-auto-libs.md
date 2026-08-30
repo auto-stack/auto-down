@@ -21,7 +21,10 @@ touched_goals:
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
 > 状态：**执行中（Phase 1-4 收口（Phase 4 fold master @ 2ce0d59）；
 > Phase 5 执行中——桌面壳已裁定（纯 VM 窗口），blockParser 读路径已
-> 切引擎产物，save 路径待引擎行号发射）**。
+> 切引擎产物，save 路径待引擎行号发射）。
+> Phase 5 进度注记（2026-08-30）：unlinked 扫描已退役至 unlinked.at
+> （regex 依赖摘除，复审 D1 销号；双侧 parity 11/11，cargo 39/39，e2e
+> 双 23/23，de494a7）。**
 > Phase 5 进度注记（2026-08-30）：unlinked 扫描已退役至 unlinked.at
 > （regex 依赖摘除，复审 D1 销号；双侧 parity 11/11，cargo 39/39，e2e
 > 双 23/23，de494a7）。决议来源：2026-08-27 会话方向裁定——

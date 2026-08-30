@@ -99,7 +99,7 @@ export interface BlockInfo {
 // AutoDownEditor switches to this assembly in Phase 4. The frozen external
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { BlockPos, BlockType, Selection, attrGetBool, attrGetInt, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
@@ -208,6 +208,21 @@ interface AssemblyCtx {
   counter: { n: number }
 }
 
+// Stable shell for the vnode-producing views (plan 025 P2T1). Handing the
+// template a fresh `{ render }` object per assembly made Vue treat every
+// repaint as a component-type change → the whole subtree (nested hosts
+// included) unmounted and remounted on EVERY engine emit: the focused
+// host's DOM was rebuilt mid-typing (trailing spaces normalized away,
+// caret churn). One component type + the render closure as a prop patches
+// the same instance and re-runs only the closure.
+const AssemblyView = defineComponent({
+  name: 'AssemblyView',
+  props: { render: { type: Function, required: true } },
+  setup(rp) {
+    return () => (rp.render as () => VNode)()
+  },
+})
+
 const views = computed<BlockView[]>(() => {
   void repaintVersion.value
   const focusedId = engine.selection.anchor.blockId
@@ -237,7 +252,13 @@ function slotChrome(node: BlockNode, inner: VNode, topLevel: boolean, counter: {
       'data-node-index': String(counter.n++),
       'data-node-type': BlockType[node.kind],
       'data-block-id': node.id,
-      onClick: () => selectBlock(node.id),
+      // the innermost addressable slot wins — an expanded container's outer
+      // chrome must not re-handle the bubbled click (it would resolve the
+      // whole container back to its first leaf)
+      onClick: (ev: MouseEvent) => {
+        ev.stopPropagation()
+        selectBlock(node.id)
+      },
     },
     [
       h('div', { class: 'node-content' }, [inner]),
@@ -278,24 +299,23 @@ function childSlot(ch: BlockNode, ctx: AssemblyCtx): VNode {
 }
 
 function viewVNode(v: BlockView): VNode {
-  if (v.view === BlockHost)
-    return h(BlockHost, v.props as { controller: BlockHostController; blockKind: string })
-  return (v.view as { render: () => VNode }).render()
+  return h(v.view as Parameters<typeof h>[0], v.props)
 }
 
 /** One assembled node: focused leaf → edit face / BlockHost (plan 023 P1T3
- * contract, bare — no node-slot); focus-path container → expanded chrome;
- *  everything else → preview slot. */
+ *  contract, bare — no node-slot); focus-path container → expanded chrome;
+ *  everything else → preview slot. VNode-producing views go through the
+ *  stable AssemblyView shell (see its comment). */
 function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): BlockView {
   if (node.id === ctx.focusedId) {
     const edit = editSlotFor(BlockType[node.kind])
     if (edit) {
       return {
         id: node.id,
-        view: {
+        view: AssemblyView,
+        props: {
           render: () => edit(node, { engine, blockId: node.id, readonly: props.streaming === true }),
         },
-        props: {},
       }
     }
     if (isEditableLeaf(node)) {
@@ -306,9 +326,17 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
     // to preview — selection resolution normally never lands here
   }
   if (ctx.path.has(node.id) && isExpandableContainer(node)) {
-    return { id: node.id, view: { render: () => slotChrome(node, expandedElement(node, ctx), topLevel, ctx.counter) }, props: {} }
+    return {
+      id: node.id,
+      view: AssemblyView,
+      props: { render: () => slotChrome(node, expandedElement(node, ctx), topLevel, ctx.counter) },
+    }
   }
-  return { id: node.id, view: { render: () => slotChrome(node, previewVNodeOf(node), topLevel, ctx.counter) }, props: {} }
+  return {
+    id: node.id,
+    view: AssemblyView,
+    props: { render: () => slotChrome(node, previewVNodeOf(node), topLevel, ctx.counter) },
+  }
 }
 
 function isExpandableContainer(node: BlockNode): boolean {

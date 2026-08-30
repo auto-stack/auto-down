@@ -6,6 +6,7 @@
     :data-node-type="blockKind"
     contenteditable="true"
     spellcheck="false"
+    @click.stop
     @input="onInput"
     @keydown="onKeydown"
     @compositionstart="onCompositionStart"
@@ -55,11 +56,33 @@ onBeforeUnmount(() => {
   if (getFocusedRichHost() === el.value) setFocusedRichHost(null)
 })
 
+/** Chromium renders a trailing space in contenteditable as U+00A0 —
+ *  normalize at the DOM boundary or the "- "/"# " input-rule markers never
+ *  match and the model collects nbsp pollution. */
+function hostText(): string {
+  return (el.value?.textContent ?? '').replace(/\u00A0/g, ' ')
+}
+
 function onInput(): void {
-  const text = el.value?.textContent ?? ''
+  const text = hostText()
   props.controller.onInput(text)
+  // An input rule may have consumed the marker in the model (kind change /
+  // container wrap) while the DOM still shows it — resync the host DOM to
+  // the model so the marker cannot leak back into the next keystroke diff
+  // (plan 025 P2T1; also fixes the pre-existing heading-marker leak).
+  // Skipped mid-composition: the preedit lives only in the DOM.
+  const node = el.value
+  if (node && !props.controller.composition.composing && hostText() !== props.controller.text) {
+    node.innerHTML = spansToHtml(props.controller.inlines)
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    range.collapse(false)
+    const sel = window.getSelection()
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+  }
   if (typeof document !== 'undefined') {
-    dispatchSlashState(slashQueryAt(text, caretOffset()), props.controller.id, caretOffset())
+    dispatchSlashState(slashQueryAt(props.controller.text, caretOffset()), props.controller.id, caretOffset())
   }
 }
 
@@ -123,7 +146,7 @@ function onCompositionUpdate(e: CompositionEvent): void {
 }
 
 function onCompositionEnd(e: CompositionEvent): void {
-  props.controller.compositionCommit(el.value?.textContent ?? '')
+  props.controller.compositionCommit(hostText())
 }
 
 /** Focus leave: flush any pending plain-text diff first (the normal input
@@ -133,7 +156,7 @@ function onBlur(): void {
   const node = el.value
   setFocusedRichHost(null)
   if (!node) return
-  const text = node.textContent ?? ''
+  const text = hostText()
   if (text !== props.controller.text) props.controller.onInput(text)
   props.controller.onRichBlur(node)
 }

@@ -17,7 +17,11 @@ function escapeAttr(s: string): string {
 }
 
 /** The focused host's initial inner HTML. The v1 mark set is exactly the
- *  five inline elements; anything else renders as escaped plain text. */
+ *  five inline elements; anything else renders as escaped plain text.
+ *  Trailing spaces become &nbsp; — a collapsible trailing space in a
+ *  contenteditable gets normalized away by the browser on the next edit
+ *  (Chromium drops it mid-typing); nbsp keeps it until the blur walk
+ *  normalizes back (plan 025 P2T1). */
 export function spansToHtml(spans: InlineSpan[]): string {
   let out = ''
   for (const s of spans) {
@@ -34,7 +38,7 @@ export function spansToHtml(spans: InlineSpan[]): string {
     }
     out += inner
   }
-  return out
+  return out.replace(/ +$/, (run) => '&nbsp;'.repeat(run.length))
 }
 
 // -- blur walk: rich DOM → spans (the spansToHtml inverse) -----------------------
@@ -63,7 +67,11 @@ export function richTreeToSpans(root: RichNode): InlineSpan[] {
   const out: InlineSpan[] = []
   const walk = (n: RichNode, marks: Mark[], attrs: Attr[]): void => {
     if (n.text !== undefined) {
-      if (n.text !== '') out.push(new InlineSpan(n.text, marks, attrs))
+      // DOM boundary hygiene: Chromium leaves U+00A0 for typed spaces in
+      // contenteditable — normalize or the model/serializer collect nbsp
+      // that the parser later drops (plan 025 P2T1)
+      const text = n.text.replace(/\u00A0/g, ' ')
+      if (text !== '') out.push(new InlineSpan(text, marks, attrs))
       return
     }
     let m = marks

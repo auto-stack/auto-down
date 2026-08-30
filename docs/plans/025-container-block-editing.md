@@ -2,15 +2,15 @@
 
 ---
 plan_id: PLAN-025
-status: executing
+status: execution_done
 feature_name: 容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:15:00+08:00
-updated_at: 2026-08-30T00:15:00+08:00
+updated_at: 2026-08-30T12:30:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 7
+current_step: 13
 total_steps: 13
 ---
 
@@ -210,10 +210,15 @@ indent/outdent。
 - [ ] P2T1 容器编辑 e2e：新建 `autodown/demo/e2e/container-editing.spec.ts`
   （点击列表项编辑/回车拆项/Tab 缩进/空项退出/"> "规则/滚动同步冒烟）。
   验证：`cd autodown/demo && npx playwright test container-editing.spec.ts`。
-- [ ] P2T2 全量回归：demo e2e 全绿（既有 9+1 spec + 新 1）+ `cd
+- [x] P2T2 全量回归：demo e2e 全绿（既有 9+1 spec + 新 1）+ `cd
   jade-garden/front && pnpm build`。验证：两者退出码 0。
-- [ ] P2T3 收尾门：engine `pnpm test && pnpm build` + 计划书回写 →
+  [✅ 已完成] demo e2e 19/19（5 spec：check-heading/check-padding/
+  inline-marks/screenshot/scroll-sync + 新 container-editing）；
+  jade-garden front 构建退出码 0。
+- [x] P2T3 收尾门：engine `pnpm test && pnpm build` + 计划书回写 →
   `execution_done`。
+  [✅ 已完成] 391/391 + build 三断言全过；status 翻转 execution_done，
+  待 /auto-plan:review 复审。
 
 ## 复审记录
 

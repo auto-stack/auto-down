@@ -1,14 +1,16 @@
 ---
 plan_id: PLAN-027
-status: execution_done
+status: reviewed
 feature_name: 下游 dev 直连 engine 源码（development 条件出口）
 author: zhaopuming
 created_at: 2026-08-30T16:30:00+08:00
-updated_at: 2026-08-30T17:35:00+08:00
+updated_at: 2026-08-30T18:20:00+08:00
 
 supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+new_spec_components:
+  - ".autoos/specs.json 六节 P027-1..6: engine 出口 development 条件——四 JS 出口 + style.css 各增 development 条件映射 src（vite dev serve 直连引擎源码），import/types/default 保持 dist（对 017/020 出口冻结纯加性，files/dist 发布形状零变化）；dist 角色收窄为纯发布产物（npm/production build）；src/auto 内容 sha256 卫兵链（engine build 尾 write-dist-stamp → dist/.dist-stamp；jade prebuild + e2e-prepare 前置 assert-dist-fresh，不符即拦截并给重建命令）；dev 解析探针 verify-dev-resolves-src（74 engine URL 全 src 断言）；jade vite conditions 仅 serve 生效（vite 6 conditions 数组整体替换默认集且 serve/build 共用——无条件声明会泄漏 build，实证修正）；demo optimizeDeps.exclude 同步；DEBTS 026 stale dist 脚枪销账"
+touched_goals:
+  - ".autoos/specs.json P022-3: 即日生效纪律（防迁移债增殖）——本计划销账其针对的 stale dist 债型（DEBTS 026）：dev/e2e 路径结构性免疫（直连 src），剩余 dist 消费路径由 hash 卫兵前置拦截变显式失败"
 
 current_step: 10
 total_steps: 10
@@ -270,7 +272,38 @@ serve 默认激活）。demo e2e 作为 workspace:* 路径的回归门。
 
 ## 复审记录
 
-（待 /auto-plan:review 填写）
+**复审人**：zcode（/auto-plan:review，2026-08-30）
+**复审基线**：worktree `.worktrees/plan-027-dev`（base 369721a → HEAD，14 文件 +535/-5，与计划任务面一一对应，无杂散文件）
+
+### 验收标准逐条重验（全部独立复跑，不信任执行期勾选）
+
+| # | 标准 | 判定 | 证据 |
+|---|---|---|---|
+| 1 | jade vite dev 下 engine URL 全指 src | **PASS** | `node scripts/verify-dev-resolves-src.mjs` 复跑：74 个 engine resource URL 全 `/engine/src/`、零 dist，exit 0 |
+| 2 | engine build 三断言 + 432；jade 23/23；demo 22/22 | **PASS** | 复审全量门连跑：engine `pnpm test` 432/432（31 文件）+ 三断言 + stamp（4630ab0b…）；jade `pnpm test:e2e` 23 passed（33.9s）；demo e2e 22 passed（18.5s） |
+| 3 | stale → jade build 前置拦截并输出重建命令；重建后通过 | **PASS** | 改 engine src 不重建 → jade `pnpm build` exit 1，输出 `engine dist stale — rebuild with: pnpm --filter @autodown/engine build`，且 vue-tsc 零次执行（真前置，非 build 中途失败）；恢复重建 → `pnpm build` exit 0（9.18s） |
+| 4 | 无 development 条件的 node 环境仍解析 dist；files/发布形状不变 | **PASS** | `node -e "import('@autodown/engine/parser')"`（link: 路径）8 导出键正常；exports import/types 路径与 files 字段对 base 逐项比对不变；`npm pack --dry-run`：tarball 零 `src/` 文件、dist（含 .dist-stamp）入包 |
+| 5 | 文档三处落账 | **PASS** | ARCHITECTURE.md §2 含 development 条件条款（加性关系/dist 角色收窄/卫兵机制）；DEBTS.md 026 行划线销账（✅已销号 plan 027）；front/README.md（新建）含依赖形态两则 |
+
+### 懒收敛排查（遗漏/延后/workaround）
+
+- **遗漏**：无。T1-T10 每步均有对应 diff（14 文件与任务面一一核对）；D5 `predev` 省略为计划明文优先级裁定（执行期已留痕），非静默丢弃。
+- **延后**：无。无任何任务被推迟到"后续计划"。
+- **Workaround**：无。新增脚本零 TODO/FIXME/HACK。
+- **计划内偏差（裁定为正确修正，非 workaround）**：D3 字面写法（无条件 `resolve.conditions:['development']`）经 vite 6.4.3 源码（mergeWithDefaults 数组整体替换 + serve/build 共用）与实证（该配置下 production build 陷入 src 依赖图 >10min；Node `--conditions development` 命中 `src/parser.ts`）确认违反核心不变量"build 吃 dist"；执行修正为 `command === 'serve'` 时声明 `['module','browser','development|production','development']`（真加性），修正后 build 9 秒级绿、dev 探针不回归。与 D3 注释本意（"serve 默认已激活，双保险"）一致。
+
+### 债务候选（非阻塞）
+
+- **npm publish 边界**：tarball（`files:["dist"]`）的 exports `development` 条件指向包内不存在的 `./src/*.ts`——vite dev serve 消费**已发布**包会命中 development 条件且无按存在性回退（Node exports 语义）→ 报错。当前全部消费面（link: / workspace:\* / vendor 快照）不受影响（本次门全绿佐证）；npm publish 本就是 DEBTS 008 已登记的延期项——**建议 merge 时在该前置清单追加"发布时剥除 development 条件"**，无需新开计划。
+
+### 待澄清事项闭环
+
+1. **D4 类型吃源 vs dist**：复审确认**保留** `customConditions`——`pnpm build`（vue-tsc 段）零类型错，--traceResolution 证实类型解析深入 engine src。
+2. **桌面资产构建入口盘点**：front 侧 production 入口唯一（`pnpm build`，已挂卫兵）；desktop/README 核对无独立 engine dist 消费构建入口。无需补挂。
+
+### 结论
+
+五条验收全 PASS，无遗漏/延后/workaround，一项非阻塞债务候选（npm publish 边界，归 DEBTS 008 前置清单）。**通过复审，路由 reviewed。**
 
 ## 待澄清事项
 

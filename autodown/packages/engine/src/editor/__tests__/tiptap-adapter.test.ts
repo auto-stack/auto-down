@@ -97,6 +97,60 @@ describe('slashQueryAt (Suggestion-compatible trigger)', () => {
   })
 })
 
+// -- event bus + selectionUpdate dispatch (plan 026 P0T1) ------------------------
+
+describe('adapter event bus', () => {
+  it("dispatches 'selectionUpdate' when the engine selection changes", () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    const seen: number[] = []
+    adapter.on('selectionUpdate', () => seen.push(1))
+    e.select(collapsedSel('p1', 1))
+    expect(seen.length).toBe(1)
+    e.select(new Selection(pos('p1', 0), pos('p1', 1)))
+    expect(seen.length).toBe(2)
+  })
+
+  it('does not dispatch when the same selection is re-set (change gating)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    const seen: number[] = []
+    adapter.on('selectionUpdate', () => seen.push(1))
+    e.select(collapsedSel('p1', 0)) // same anchor+head — no dispatch
+    expect(seen.length).toBe(0)
+  })
+
+  it('does not dispatch for selection-neutral changes (streaming append)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    const seen: number[] = []
+    adapter.on('selectionUpdate', () => seen.push(1))
+    e.appendBlocks([leafBlock('p2', BlockType.Paragraph, 'streamed')])
+    expect(seen.length).toBe(0)
+  })
+
+  it("off() removes the subscription", () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    const seen: number[] = []
+    const cb = () => seen.push(1)
+    adapter.on('selectionUpdate', cb)
+    adapter.off('selectionUpdate', cb)
+    e.select(collapsedSel('p1', 1))
+    expect(seen.length).toBe(0)
+  })
+
+  it('undo/redo selection restores still dispatch (selection moved back)', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, 'x')), collapsedSel('p1', 0))
+    const adapter = createEditorAdapter(e)
+    const seen: number[] = []
+    adapter.on('selectionUpdate', () => seen.push(1))
+    e.select(collapsedSel('p1', 1))
+    e.select(collapsedSel('p1', 0)) // back to the initial position — still a change vs p1:1
+    expect(seen.length).toBe(2)
+  })
+})
+
 // -- mark chain + isActive (plan 024 P3T1) --------------------------------------
 
 describe('adapter mark surface', () => {

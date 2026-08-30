@@ -80,11 +80,20 @@ export interface ChainLike {
   run(): boolean
 }
 
+/** tiptap-shaped event callback (the mounted chrome subscribes with
+ *  `editor.on('selectionUpdate', cb)` — payload unused by the widgets). */
+export type AdapterListener = () => void
+
 export interface EditorAdapter {
   storage: Record<string, any>
   chain(): ChainLike
   isActive(_name: string, _attrs?: any): boolean
   isEditable: boolean
+  /** Event surface (plan 026 P0T1): 'selectionUpdate' subscribers are
+   *  notified when an engine change moves the selection. Optional on the
+   *  frozen interface — createEditorAdapter always sets it. */
+  on?(event: string, cb: AdapterListener): void
+  off?(event: string, cb: AdapterListener): void
   /** The wrapped session — engine-native readers (slash-manifest's
    *  getCurrentBlockAnchor / ensureBlockAnchor) reach the model through it.
    *  Optional: createEditorAdapter always sets it, but the interface is on
@@ -93,17 +102,45 @@ export interface EditorAdapter {
   __engine?: EditorEngine
 }
 
+function sameSelection(a: Selection, b: Selection): boolean {
+  return a.anchor.blockId === b.anchor.blockId && a.anchor.offset === b.anchor.offset && a.head.blockId === b.head.blockId && a.head.offset === b.head.offset
+}
+
 export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
   // Reactive tick read inside isActive: consumers that evaluate isActive in
   // a Vue computed (the bubble's buttons) re-evaluate on every engine change
   // — the engine itself is not Vue-reactive (plan 024 P3T2).
   const selectionTick = ref(0)
-  engine.onChange(() => {
+  // Event-bus subscriptions (plan 026 P0T1): the mounted chrome (TableMenu)
+  // subscribes by name; dispatch is gated on the selection actually moving.
+  const listeners = new Map<string, Set<AdapterListener>>()
+  let lastSel: Selection = engine.selection
+  const dispatch = (event: string): void => {
+    const subs = listeners.get(event)
+    if (!subs) return
+    for (const cb of [...subs]) cb()
+  }
+  engine.onChange((change) => {
     selectionTick.value++
+    if (!sameSelection(change.selection, lastSel)) {
+      lastSel = change.selection
+      dispatch('selectionUpdate')
+    }
   })
   const adapter: EditorAdapter = {
     storage: { 'slash-command': { query: '', range: null, handled: false } },
     isEditable: true,
+    on: (event: string, cb: AdapterListener) => {
+      let subs = listeners.get(event)
+      if (!subs) {
+        subs = new Set()
+        listeners.set(event, subs)
+      }
+      subs.add(cb)
+    },
+    off: (event: string, cb: AdapterListener) => {
+      listeners.get(event)?.delete(cb)
+    },
     isActive: (name: string) => {
       void selectionTick.value
       const m = MARK_BY_NAME[name]

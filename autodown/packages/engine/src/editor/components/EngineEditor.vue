@@ -210,6 +210,15 @@ const engine = new EditorEngine(docFromMarkdown(props.modelValue ?? props.conten
 const adapter = createEditorAdapter(engine)
 const slashItems = getSlashItems({ extraSlashItems: props.extraSlashItems })
 
+// Content-event dedup: `update` means the DOCUMENT CHANGED. Selection-only
+// engine changes (mount-time focusFirstBlock, caret moves, history hops that
+// restore the same tree) re-emit byte-identical md — consumers would run
+// their save path for nothing, and jade's EditorTab handler isn't even
+// initialized before the child mounts (mount-time select crashed it — found
+// by the plan 026 jade e2e supplement). Seeded with the initial doc so the
+// mount-time select never emits.
+let lastEmittedMd: string | null = serialize(engine.doc, true)
+
 engine.onChange(() => {
   repaintVersion.value++ // async content loads / every change repaints
   emitUpdate()
@@ -220,6 +229,8 @@ function emitUpdate(): void {
   // store/save round trip never loses them (the text itself stays clean —
   // applyAnchorsDeep stripped them at parse time).
   const md = serialize(engine.doc, true)
+  if (md === lastEmittedMd) return
+  lastEmittedMd = md
   emit('update', md)
   emit('update:modelValue', md)
 }

@@ -8,22 +8,29 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "development": "./src/index.ts",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./parser": {
+      "development": "./src/parser.ts",
       "import": "./dist/parser.js",
       "types": "./dist/parser.d.ts"
     },
     "./render": {
+      "development": "./src/render.ts",
       "import": "./dist/render.js",
       "types": "./dist/render.d.ts"
     },
     "./editor": {
+      "development": "./src/editor.ts",
       "import": "./dist/editor.js",
       "types": "./dist/editor.d.ts"
     },
-    "./style.css": "./dist/style.css"
+    "./style.css": {
+      "development": "./src/editor/styles/autodown-editor.css",
+      "default": "./dist/style.css"
+    }
   },
   "files": [
     "dist"

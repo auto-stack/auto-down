@@ -1,0 +1,89 @@
+{
+  "cases": [
+    {
+      "name": "case-insensitive mention",
+      "text": "See cap theorem for details.",
+      "names": ["CAP 定理"],
+      "expected": []
+    },
+    {
+      "name": "ascii name case-insensitive",
+      "text": "See Cap paper for details.",
+      "names": ["cap"],
+      "expected": [
+        { "matched": "Cap", "context": "See Cap paper for details." }
+      ]
+    },
+    {
+      "name": "cjk boundary rejects substring",
+      "text": "项目二 covers 项目 planning.",
+      "names": ["项目"],
+      "expected": [
+        { "matched": "项目", "context": "项目二 covers 项目 planning." }
+      ]
+    },
+    {
+      "name": "ascii boundary rejects suffix",
+      "text": "CAPS lock and CAP file.",
+      "names": ["CAP"],
+      "expected": [
+        { "matched": "CAP", "context": "CAPS lock and CAP file." }
+      ]
+    },
+    {
+      "name": "wiki link excluded",
+      "text": "Link [[CAP 定理]] here and CAP 定理 plain.",
+      "names": ["CAP 定理"],
+      "expected": [
+        { "matched": "CAP 定理", "context": "Link [[CAP 定理]] here and CAP 定理 plain." }
+      ]
+    },
+    {
+      "name": "leftmost first and alternation order",
+      "text": "alpha then beta then alpha.",
+      "names": ["beta", "alpha"],
+      "expected": [
+        { "matched": "alpha", "context": "alpha then beta then alpha." },
+        { "matched": "beta", "context": "alpha then beta then alpha." },
+        { "matched": "alpha", "context": "alpha then beta then alpha." }
+      ]
+    },
+    {
+      "name": "context trims and isolates line",
+      "text": "intro line\n\n  mention of Gamma here  \n",
+      "names": ["Gamma"],
+      "expected": [
+        { "matched": "Gamma", "context": "mention of Gamma here" }
+      ]
+    },
+    {
+      "name": "empty names or text",
+      "text": "anything",
+      "names": [],
+      "expected": []
+    },
+    {
+      "name": "empty text",
+      "text": "",
+      "names": ["CAP"],
+      "expected": []
+    },
+    {
+      "name": "multiple occurrences same line",
+      "text": "delta and delta.",
+      "names": ["delta"],
+      "expected": [
+        { "matched": "delta", "context": "delta and delta." },
+        { "matched": "delta", "context": "delta and delta." }
+      ]
+    },
+    {
+      "name": "unterminated wiki span not excluded",
+      "text": "[[broken link and CAP here.",
+      "names": ["CAP"],
+      "expected": [
+        { "matched": "CAP", "context": "[[broken link and CAP here." }
+      ]
+    }
+  ]
+}

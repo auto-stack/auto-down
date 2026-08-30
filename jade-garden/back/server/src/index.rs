@@ -272,16 +272,15 @@ impl Index {
         &self,
         names: &[String],
     ) -> Result<Vec<crate::unlinked::UnlinkedRef>, String> {
-        use crate::unlinked::find_unlinked_references;
-
         let mut refs = Vec::new();
         for block in &self.data.blocks {
-            for (matched, context) in find_unlinked_references(&block.content, names) {
+            // plan-022 Phase 5: scan retired to unlinked_gen (unlinked.at).
+            for hit in crate::unlinked_gen::findUnlinkedRefs(&block.content, names.to_vec()) {
                 refs.push(crate::unlinked::UnlinkedRef {
                     page_path: block.page_path.clone(),
                     block_uuid: Some(block.uuid.clone()),
-                    context,
-                    matched_text: matched,
+                    context: hit.context,
+                    matched_text: hit.matched,
                 });
             }
         }
@@ -326,107 +325,166 @@ impl Index {
         &self,
         title: &str,
     ) -> Result<Vec<BacklinkRow>, String> {
-        let target_path = match self.resolve_page_path(title) {
-            Some(p) => p,
-            None => return Ok(Vec::new()),
-        };
-        // Links are stored by target title/alias, not by path, so look up the
-        // canonical page title and match case-insensitively.
-        let canonical_title = self
+        // plan-022 Phase 5: filter/sort retired to linkgraph_gen
+        // (linkgraph.at). Rows hand over as sentinel strings; "" maps back
+        // to None on the way out.
+        let pages: Vec<crate::linkgraph_gen::LgPage> = self
             .data
             .pages
             .iter()
-            .find(|p| p.path == target_path)
-            .map(|p| p.title.clone())
-            .ok_or("Indexed page row missing")?;
-        let mut rows: Vec<BacklinkRow> = self
+            .map(|p| crate::linkgraph_gen::LgPage {
+                path: p.path.clone(),
+                title: p.title.clone(),
+            })
+            .collect();
+        let aliases: Vec<crate::linkgraph_gen::LgAlias> = self
+            .data
+            .tags
+            .iter()
+            .map(|t| crate::linkgraph_gen::LgAlias {
+                tagName: t.tag_name.clone(),
+                pagePath: t.page_path.clone(),
+            })
+            .collect();
+        let links: Vec<crate::linkgraph_gen::LgLink> = self
             .data
             .links
             .iter()
-            .filter(|l| {
-                l.target_page
-                    .as_deref()
-                    .map(|t| t.eq_ignore_ascii_case(&canonical_title))
-                    .unwrap_or(false)
-            })
-            .map(|l| BacklinkRow {
-                source_page: l.source_page.clone(),
-                source_block_uuid: l.source_block_uuid.clone(),
+            .map(|l| crate::linkgraph_gen::LgLink {
+                sourcePage: l.source_page.clone(),
+                targetPage: l.target_page.clone().unwrap_or_default(),
                 context: l.context.clone(),
+                sourceBlockUuid: l.source_block_uuid.clone().unwrap_or_default(),
+                targetBlockUuid: l.target_block_uuid.clone().unwrap_or_default(),
+                linkType: l.link_type.clone(),
             })
             .collect();
-        rows.sort_by(|a, b| a.source_page.cmp(&b.source_page));
-        Ok(rows)
+        let rows = crate::linkgraph_gen::backlinksOf(pages, aliases, links, title);
+        Ok(rows
+            .into_iter()
+            .map(|r| BacklinkRow {
+                source_page: r.sourcePage,
+                source_block_uuid: if r.sourceBlockUuid.is_empty() {
+                    None
+                } else {
+                    Some(r.sourceBlockUuid)
+                },
+                context: r.context,
+            })
+            .collect())
     }
 
     pub fn outlinks(
         &self,
         title: &str,
     ) -> Result<Vec<OutlinkRow>, String> {
-        let source = match self.resolve_page_path(title) {
-            Some(p) => p,
-            None => return Ok(Vec::new()),
-        };
-        let mut rows: Vec<OutlinkRow> = self
-            .data
-            .links
-            .iter()
-            .filter(|l| l.source_page == source)
-            .map(|l| OutlinkRow {
-                target_page: l.target_page.clone(),
-                target_block_uuid: l.target_block_uuid.clone(),
-                link_type: l.link_type.clone(),
-            })
-            .collect();
-        rows.sort_by(|a, b| a.target_page.cmp(&b.target_page));
-        Ok(rows)
-    }
-
-    pub fn graph_data(&self) -> Result<GraphData, String> {
-        let mut nodes: Vec<GraphNodeRow> = self
+        // plan-022 Phase 5: filter/sort retired to linkgraph_gen.
+        let pages: Vec<crate::linkgraph_gen::LgPage> = self
             .data
             .pages
             .iter()
-            .map(|p| GraphNodeRow {
+            .map(|p| crate::linkgraph_gen::LgPage {
                 path: p.path.clone(),
                 title: p.title.clone(),
             })
             .collect();
-        nodes.sort_by(|a, b| a.path.cmp(&b.path));
-
-        let resolve_target = |target: &str| -> Option<String> {
-            if let Some(page) = self
-                .data
-                .pages
-                .iter()
-                .find(|p| p.title.eq_ignore_ascii_case(target))
-            {
-                return Some(page.path.clone());
-            }
-            self.data
-                .tags
-                .iter()
-                .find(|t| t.tag_name.eq_ignore_ascii_case(target))
-                .map(|t| t.page_path.clone())
-        };
-
-        let mut edges: Vec<GraphEdgeRow> = self
+        let aliases: Vec<crate::linkgraph_gen::LgAlias> = self
+            .data
+            .tags
+            .iter()
+            .map(|t| crate::linkgraph_gen::LgAlias {
+                tagName: t.tag_name.clone(),
+                pagePath: t.page_path.clone(),
+            })
+            .collect();
+        let links: Vec<crate::linkgraph_gen::LgLink> = self
             .data
             .links
             .iter()
-            .filter_map(|l| {
-                let target = l.target_page.as_deref()?;
-                let target_path = resolve_target(target)?;
-                Some(GraphEdgeRow {
-                    source: l.source_page.clone(),
-                    target: target_path,
-                    link_type: l.link_type.clone(),
-                })
+            .map(|l| crate::linkgraph_gen::LgLink {
+                sourcePage: l.source_page.clone(),
+                targetPage: l.target_page.clone().unwrap_or_default(),
+                context: l.context.clone(),
+                sourceBlockUuid: l.source_block_uuid.clone().unwrap_or_default(),
+                targetBlockUuid: l.target_block_uuid.clone().unwrap_or_default(),
+                linkType: l.link_type.clone(),
             })
             .collect();
-        edges.sort_by(|a, b| a.source.cmp(&b.source));
+        let rows = crate::linkgraph_gen::outlinksOf(pages, aliases, links, title);
+        Ok(rows
+            .into_iter()
+            .map(|r| OutlinkRow {
+                target_page: if r.targetPage.is_empty() {
+                    None
+                } else {
+                    Some(r.targetPage)
+                },
+                target_block_uuid: if r.targetBlockUuid.is_empty() {
+                    None
+                } else {
+                    Some(r.targetBlockUuid)
+                },
+                link_type: r.linkType,
+            })
+            .collect())
+    }
 
-        Ok(GraphData { nodes, edges })
+    pub fn graph_data(&self) -> Result<GraphData, String> {
+        // plan-022 Phase 5: node/edge assembly + degrees retired to
+        // linkgraph_gen (nodes pre-sorted, unresolved targets dropped).
+        let pages: Vec<crate::linkgraph_gen::LgPage> = self
+            .data
+            .pages
+            .iter()
+            .map(|p| crate::linkgraph_gen::LgPage {
+                path: p.path.clone(),
+                title: p.title.clone(),
+            })
+            .collect();
+        let aliases: Vec<crate::linkgraph_gen::LgAlias> = self
+            .data
+            .tags
+            .iter()
+            .map(|t| crate::linkgraph_gen::LgAlias {
+                tagName: t.tag_name.clone(),
+                pagePath: t.page_path.clone(),
+            })
+            .collect();
+        let links: Vec<crate::linkgraph_gen::LgLink> = self
+            .data
+            .links
+            .iter()
+            .map(|l| crate::linkgraph_gen::LgLink {
+                sourcePage: l.source_page.clone(),
+                targetPage: l.target_page.clone().unwrap_or_default(),
+                context: l.context.clone(),
+                sourceBlockUuid: l.source_block_uuid.clone().unwrap_or_default(),
+                targetBlockUuid: l.target_block_uuid.clone().unwrap_or_default(),
+                linkType: l.link_type.clone(),
+            })
+            .collect();
+        let graph = crate::linkgraph_gen::graphData(pages, aliases, links);
+        Ok(GraphData {
+            nodes: graph
+                .nodes
+                .into_iter()
+                .map(|n| GraphNodeRow {
+                    path: n.path,
+                    title: n.label,
+                    degree: n.degree,
+                })
+                .collect(),
+            edges: graph
+                .edges
+                .into_iter()
+                .map(|e| GraphEdgeRow {
+                    source: e.source,
+                    target: e.target,
+                    // dead downstream (graph_impl always built block_id None)
+                    link_type: String::new(),
+                })
+                .collect(),
+        })
     }
 
     pub fn search(
@@ -526,6 +584,8 @@ pub struct OutlinkRow {
 pub struct GraphNodeRow {
     pub path: String,
     pub title: String,
+    // plan-022 Phase 5: computed by linkgraph_gen during assembly.
+    pub degree: i64,
 }
 
 #[derive(Debug, Clone)]

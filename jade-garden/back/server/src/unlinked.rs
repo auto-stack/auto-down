@@ -4,7 +4,6 @@ use axum::{
     extract::{Path, State},
     response::Json,
 };
-use regex::Regex;
 use serde::Serialize;
 
 use crate::state::AppState;
@@ -54,31 +53,48 @@ pub async fn get_unlinked_refs(
     Ok(Json(unlinked_impl(&state, &title)?))
 }
 
-pub fn find_unlinked_references(text: &str, names: &[String]) -> Vec<(String, String)> {
-    if names.is_empty() || text.is_empty() {
-        return Vec::new();
-    }
-    let escaped: Vec<String> = names.iter().map(|n| regex::escape(n)).collect();
-    let pattern = format!(r"(?i)\b({})\b", escaped.join("|"));
-    let Ok(re) = Regex::new(&pattern) else {
-        return Vec::new();
-    };
-    let wiki_re = Regex::new(r"\[\[.*?\]\]").unwrap();
+// plan-022 Phase 5: the scan itself retired to the single source
+// (back/auto/unlinked.at → unlinked_gen.rs); the regex crate's last
+// consumer is gone.
 
-    let mut results = Vec::new();
-    for mat in re.find_iter(text) {
-        // Skip matches that fall inside a [[...]] wiki link.
-        if wiki_re.find_iter(text).any(|m| m.start() <= mat.start() && mat.end() <= m.end()) {
-            continue;
+#[cfg(test)]
+mod unlinked_gen_parity {
+    // Cross-language parity with the TS twin (../../auto/tests/unlinked-parity.mjs).
+    // Both sides drive unlinked_gen::findUnlinkedRefs over the same fixture
+    // file; the shell-level Index::unlinked_references row mapping stays
+    // covered by index.rs tests.
+
+    fn fixtures() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../auto/tests/unlinked-fixtures.json")).unwrap()
+    }
+
+    #[test]
+    fn unlinked_parity_fixtures() {
+        let fx = fixtures();
+        for c in fx["cases"].as_array().unwrap() {
+            let name = c["name"].as_str().unwrap();
+            let text = c["text"].as_str().unwrap();
+            let names: Vec<String> = c["names"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|n| n.as_str().unwrap().to_string())
+                .collect();
+            let hits = crate::unlinked_gen::findUnlinkedRefs(text, names);
+            let expected = c["expected"].as_array().unwrap();
+            assert_eq!(hits.len(), expected.len(), "case `{name}`: hit count");
+            for (i, (hit, e)) in hits.iter().zip(expected.iter()).enumerate() {
+                assert_eq!(hit.matched, e["matched"].as_str().unwrap(), "case `{name}` #{i}: matched");
+                assert_eq!(hit.context, e["context"].as_str().unwrap(), "case `{name}` #{i}: context");
+            }
         }
-        let context = extract_context(text, mat.start());
-        results.push((mat.as_str().to_string(), context));
     }
-    results
-}
 
-fn extract_context(text: &str, pos: usize) -> String {
-    let start = text[..pos].rfind('\n').map(|i| i + 1).unwrap_or(0);
-    let end = text[pos..].find('\n').map(|i| pos + i).unwrap_or(text.len());
-    text[start..end].trim().to_string()
+    #[test]
+    fn empty_inputs_short_circuit() {
+        let hits = crate::unlinked_gen::findUnlinkedRefs("anything", vec![]);
+        assert!(hits.is_empty());
+        let hits = crate::unlinked_gen::findUnlinkedRefs("", vec!["CAP".to_string()]);
+        assert!(hits.is_empty());
+    }
 }

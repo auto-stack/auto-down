@@ -1,0 +1,278 @@
+// linkgraph.at — plan-022 Phase 5: single-source port of the index/links
+// assembly bodies (review D2): page resolution, backlink/outlink filtering
+// + ordering, graph node/edge assembly + degree counts.
+//
+// Semantics preserved from index.rs/links.rs:
+// - title resolution: page title match first (ASCII-case-insensitive),
+//   then alias rows; "" = unresolved (sentinel — the shell maps to Option)
+// - backlinks: target_page ASCII-case-insensitive == the canonical title of
+//   the resolved page; sorted by source_page (byte order)
+// - outlinks: source_page exact == resolved path; sorted by target_page
+//   ("" sentinel sorts before all — equivalent to rust None < Some)
+// - graph: nodes = pages sorted by id(=path); edges = links whose
+//   target_page resolves, both endpoints known pages; degree = per-node
+//   endpoint count; nodes re-sorted by id after degrees
+//
+// Dual-portable discipline: no regex/sort primitives — insertion sorts via
+// strCompare (lexicographic char codes ≈ rust String::cmp byte order for
+// BMP); no if-expressions; `.length` arithmetic uses `.to(int)`; structs
+// constructed with explicit StructName(args) calls.
+
+pub type LgPage {
+    path str
+    title str
+}
+
+pub type LgAlias {
+    tagName str
+    pagePath str
+}
+
+pub type LgLink {
+    sourcePage str
+    targetPage str
+    context str
+    sourceBlockUuid str
+    targetBlockUuid str
+    linkType str
+}
+
+pub type LgBacklink {
+    sourcePage str
+    sourceBlockUuid str
+    context str
+}
+
+pub type LgOutlink {
+    targetPage str
+    targetBlockUuid str
+    linkType str
+}
+
+pub type LgNode {
+    id str
+    label str
+    path str
+    exists bool
+    degree int
+}
+
+pub type LgEdge {
+    source str
+    target str
+}
+
+pub type LgGraph {
+    nodes List<LgNode>
+    edges List<LgEdge>
+}
+
+fn asciiLower(s str) str {
+    var out str = ""
+    let lower = "abcdefghijklmnopqrstuvwxyz"
+    var i int = 0
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        if c >= 65 && c <= 90 {
+            out = out + lower.slice(c - 65, c - 64)
+        } else {
+            out = out + s.slice(i, i + 1)
+        }
+        i += 1
+    }
+    return out
+}
+
+fn eqIgnoreCase(a str, b str) bool {
+    return asciiLower(a) == asciiLower(b)
+}
+
+/// Lexicographic comparison by char code (rust String::cmp byte order is
+/// code-point order for BMP content).
+fn strCompare(a str, b str) int {
+    let n = a.length.to(int)
+    let m = b.length.to(int)
+    var minLen int = n
+    if m < n {
+        minLen = m
+    }
+    var i int = 0
+    while i < minLen {
+        let ca = a.char_at(i)
+        let cb = b.char_at(i)
+        if ca < cb { return -1 }
+        if ca > cb { return 1 }
+        i += 1
+    }
+    if n < m { return -1 }
+    if n > m { return 1 }
+    return 0
+}
+
+pub fn resolvePagePath(pages List<LgPage>, aliases List<LgAlias>, title str) str {
+    for p in pages {
+        if eqIgnoreCase(p.title, title) {
+            // "" + 字段：发射为独立 String（直接 return 借用字段会 move 报错）
+            return "" + p.path
+        }
+    }
+    for a in aliases {
+        if eqIgnoreCase(a.tagName, title) {
+            return "" + a.pagePath
+        }
+    }
+    return ""
+}
+
+fn canonicalTitleOf(pages List<LgPage>, path str) str {
+    for p in pages {
+        if p.path == path {
+            return "" + p.title
+        }
+    }
+    return ""
+}
+
+fn sortBacklinks(items List<LgBacklink>) List<LgBacklink> {
+    var out List<LgBacklink> = []
+    for it in items {
+        var inserted bool = false
+        var res List<LgBacklink> = []
+        for e in out {
+            if !inserted && strCompare(it.sourcePage, e.sourcePage) < 0 {
+                res.push(it)
+                inserted = true
+            }
+            res.push(e)
+        }
+        if !inserted {
+            res.push(it)
+        }
+        out = res
+    }
+    return out
+}
+
+fn sortOutlinks(items List<LgOutlink>) List<LgOutlink> {
+    var out List<LgOutlink> = []
+    for it in items {
+        var inserted bool = false
+        var res List<LgOutlink> = []
+        for e in out {
+            if !inserted && strCompare(it.targetPage, e.targetPage) < 0 {
+                res.push(it)
+                inserted = true
+            }
+            res.push(e)
+        }
+        if !inserted {
+            res.push(it)
+        }
+        out = res
+    }
+    return out
+}
+
+pub fn backlinksOf(pages List<LgPage>, aliases List<LgAlias>, links List<LgLink>, title str) List<LgBacklink> {
+    var out List<LgBacklink> = []
+    let targetPath = resolvePagePath(pages, aliases, title)
+    if targetPath == "" {
+        return out
+    }
+    let canonical = canonicalTitleOf(pages, targetPath)
+    if canonical == "" {
+        return out
+    }
+    for l in links {
+        if l.targetPage != "" {
+            if eqIgnoreCase(l.targetPage, canonical) {
+                out.push(LgBacklink(l.sourcePage, l.sourceBlockUuid, l.context))
+            }
+        }
+    }
+    return sortBacklinks(out)
+}
+
+pub fn outlinksOf(pages List<LgPage>, aliases List<LgAlias>, links List<LgLink>, title str) List<LgOutlink> {
+    var out List<LgOutlink> = []
+    let source = resolvePagePath(pages, aliases, title)
+    if source == "" {
+        return out
+    }
+    for l in links {
+        if l.sourcePage == source {
+            out.push(LgOutlink(l.targetPage, l.targetBlockUuid, l.linkType))
+        }
+    }
+    return sortOutlinks(out)
+}
+
+fn nodeKnown(nodes List<LgNode>, id str) bool {
+    for n in nodes {
+        if n.id == id {
+            return true
+        }
+    }
+    return false
+}
+
+fn sortNodes(items List<LgNode>) List<LgNode> {
+    var out List<LgNode> = []
+    for it in items {
+        var inserted bool = false
+        var res List<LgNode> = []
+        for e in out {
+            if !inserted && strCompare(it.id, e.id) < 0 {
+                res.push(it)
+                inserted = true
+            }
+            res.push(e)
+        }
+        if !inserted {
+            res.push(it)
+        }
+        out = res
+    }
+    return out
+}
+
+pub fn graphData(pages List<LgPage>, aliases List<LgAlias>, links List<LgLink>) LgGraph {
+    // nodes = pages, sorted by id (= path); rust sorts the rows by path
+    // before assembly and re-sorts after degrees — identical result.
+    var nodes List<LgNode> = []
+    for p in pages {
+        nodes.push(LgNode(p.path, p.title, p.path, true, 0))
+    }
+    nodes = sortNodes(nodes)
+
+    var edges List<LgEdge> = []
+    for l in links {
+        if l.targetPage != "" {
+            let targetPath = resolvePagePath(pages, aliases, l.targetPage)
+            if targetPath != "" {
+                let sourceId = l.sourcePage
+                let targetId = targetPath
+                if nodeKnown(nodes, sourceId) && nodeKnown(nodes, targetId) {
+                    edges.push(LgEdge(sourceId, targetId))
+                }
+            }
+        }
+    }
+
+    // 度数 = 端点出现次数，按边扫描本地计（a2r 的 Vec 参数按值传递，
+    // 跨函数突变不回传——不能走 out-param 累积）。
+    var out List<LgNode> = []
+    for n in nodes {
+        var degree int = 0
+        for e in edges {
+            if e.source == n.id {
+                degree += 1
+            }
+            if e.target == n.id {
+                degree += 1
+            }
+        }
+        out.push(LgNode(n.id, n.label, n.path, n.exists, degree))
+    }
+    return LgGraph(out, edges)
+}

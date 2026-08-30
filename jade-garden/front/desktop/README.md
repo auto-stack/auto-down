@@ -188,3 +188,51 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
 - 驱动/断言：AutoUI MCP（`AUTOUI_MCP_PORT=<port>`，autoui_state /
   autoui_snapshot / autoui_action），先例 auto-lang plan446 corpora；
   物理点击通道在探针环境不稳定（§5 slice 3 登记项 ②）。
+
+## 7. Phase 5 记录（2026-08-30 起）
+
+### 7.1 桌面壳裁定：纯 VM 窗口（auto run -r vm 体系），否决 Tauri
+
+- **裁定**：桌面壳走纯 VM 窗口路线——`auto run -r vm`（Phase 4 全程实测
+  通路）+ auto-lang 桌面壳体系（462-472 虚拟窗口/dock/任务栏，MCP 实机
+  验收；auto-cosmic Plan 365 W3/W4 活跃）。
+- **否决 Tauri 的依据**：①jade 前端无任何 TAURI 钩子残留（vite.config 零
+  匹配），Tauri 壳是从零新建；②与「back/server 手写 Rust 全量退役」方向
+  相逆（Tauri = 又一个 rust 宿主）；③webview 子区的唯一收益是 cytoscape
+  图谱一站，而图谱已有列表形态 v1（本 README §3 裁定）。
+- **宿主能力落点**：dir-picker → VM 宿主能力桥（host bridge 能力面，
+  桌面侧 OS 对话框）；confirm → iced 模态；均随桌面壳体系在 auto-lang
+  侧提案，不在 jade 侧绕过。
+
+### 7.2 blockParser.ts 退役（进行中：读路径已切换）
+
+- **读路径 ✅**：blocks_store_ext.ts 解析改接 `@autodown/engine/parser`
+  （单源 auto/markdown_parser.at 的 a2ts 产物；ext 只做 BlockNode 树 →
+  扁平行模型的视图装配），outline/blocks 缓存不再消费镜像。parser 门面
+  （src/parser.ts，017 冻结面）扩充四个纯助手：BlockType/anchorOf/
+  attrGetInt/spansText（vue-free 断言保持绿）。vue-tsc + rust e2e 23/23。
+- **save 路径 ⏳**：ensureBlockAnchors（保存时 `^锚点` 懒注入）需要块
+  **行号**做文本拼接，而引擎 parse_blocks 的 BlockNode.source 恒
+  rng(0,0)——阻塞于引擎侧行号发射工作项：markdown_parser.at 行号追踪 →
+  convertBlock 填充 source（autodown 仓，pnpm gen 再生）。完成时
+  save 切换 + blockParser.ts 删除（其内 parse 镜像届时仅存 save 消费）。
+  三镜像销号（020 Phase 3 裁定项）随删除落账。
+
+### 7.3 D4 裁定与实施（2026-08-30）：导入导出 = 原生直连，无信封扩展
+
+- **裁定**：VM 信封不扩展。三条 multipart/二进制路由（assets/upload、
+  import/export markdown）由桌面 .at **直连既有原生族**：
+  - 导入/上传：`http.request("POST", url)` →
+    `.multipart_file(field, 本地路径)` → `.send()`——宿主按路径读文件，
+    字节不过 VM 字符串管线；
+  - 导出：`http.request("GET", url).send()` →
+    `res.body_to_file(本地路径)`——字节直落盘。
+- **auto-lang 配套原生**（已折推送 master 5102c5fc1）：
+  `Response.body_bytes`(2225，字节忠实列表) 与
+  `Response.body_to_file`(2226，字节直落盘)——`Response.body` 是 UTF-8
+  lossy 文本（446 E3），二进制经它损坏，故有此对。
+- **实测**：导出 zip PK 落盘 + 导入 8 文档（imported:8）回读可读。
+- **遗留（登记）**：①选择器宿主能力（目录/文件对话框）就位前，导入导出
+  路径为探针常量（workspace_opener 同款先例）；②返回列表在 CALL_SPEC
+  拦截返回值上缺 RC 接线（Plan 432 D26 对偶）——`.length` 恒 0，改用
+  body_to_file 直落盘规避，RC 工作项登记 auto-lang 侧。

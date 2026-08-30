@@ -18,8 +18,8 @@ import {
   cacheClear,
   parseIntoCache,
   type PageBlocks,
+  type ParsedBlock,
 } from '../../auto/src/front/utils/blocks_store_ext'
-import { type ParsedBlock } from '@/lib/blockParser'
 import { useTabsStore } from './tabs'
 
 export type { PageBlocks }

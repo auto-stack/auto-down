@@ -1,16 +1,16 @@
 ---
 plan_id: PLAN-027
-status: executing
+status: execution_done
 feature_name: 下游 dev 直连 engine 源码（development 条件出口）
 author: zhaopuming
 created_at: 2026-08-30T16:30:00+08:00
-updated_at: 2026-08-30T17:05:00+08:00
+updated_at: 2026-08-30T17:35:00+08:00
 
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 9
+current_step: 10
 total_steps: 10
 ---
 
@@ -261,7 +261,12 @@ serve 默认激活）。demo e2e 作为 workspace:* 路径的回归门。
   [✅ 已完成] 汇总连跑全绿：engine `pnpm test` **432/432**（31 文件）+
   `pnpm build` 三断言 + stamp（4630ab0b…）；jade `pnpm test:e2e` **23/23**
   （39.0s，e2e 吃 engine src 跑）；demo e2e **22/22**（17.4s）。
-- [ ] **T10** 提交折叠回 master（worktree 清理、默认检出计划状态同步）。
+- [x] **T10** 提交折叠回 master（worktree 清理、默认检出计划状态同步）。
+  [✅ 已完成] 前置全量门（T9 三扇门连跑全绿）后折叠：plan-027-dev 7 个提交
+  ff 合入 master（be487b6 落点），计划文件入库；worktree 无未提交残留，
+  master 回同步至 worktree；主检出 engine dist 重建（stamp 4630ab0b…），
+  主检出侧卫兵即开即绿。worktree `.worktrees/plan-027-dev` 按规程保留，
+  终局清理归 /auto-plan:merge。
 
 ## 复审记录
 

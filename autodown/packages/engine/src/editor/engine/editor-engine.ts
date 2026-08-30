@@ -151,7 +151,7 @@ export class EditorEngine {
     if (!entry) return false
     const preTree = this.tree
     const preSel = this.sel
-    this.thread(entry.ops)
+    this.thread(entry.ops, entry.after)
     // the entry stays reusable for another undo→redo cycle
     this.undoStack.push({ preTree: this.tree, preSel: this.sel, ops: entry.ops, after: entry.after })
     this.emit(true)

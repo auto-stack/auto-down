@@ -19,8 +19,9 @@ touched_goals:
 
 > 改号（2026-08-28）：原序号 021 与「编辑层 UI 再 Auto 化」计划（2026-08-26
 > 立项先占、已终审归档且全域引用）冲突，本计划顺延为 **022**，内容零改动。
-> 状态：**执行中（Phase 1-3 复审通过；Phase 4 五门全量绿并 fold
-> master @ 2ce0d59，2026-08-30；Phase 5 待启动）**。决议来源：2026-08-27 会话方向裁定——
+> 状态：**执行中（Phase 1-4 收口（Phase 4 fold master @ 2ce0d59）；
+> Phase 5 执行中——桌面壳已裁定（纯 VM 窗口），blockParser 读路径已
+> 切引擎产物，save 路径待引擎行号发射）**。决议来源：2026-08-27 会话方向裁定——
 > 执行注记（2026-08-28 改号会话）：本计划 Phase 2 的 slice 1-3 由前序会话按
 > 旧号执行并已合 master（accf064 slice1 块解析 / bdcccfc slice2 链接提取 /
 > e20de45 slice3 查询求值器+任务扫描——提交信息写的 plan-021，历史不改，
@@ -407,10 +408,18 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
 > graph 边装配）与 links.rs graph degree 装配；③ srs.rs OfMatrix EDN
 > load/save（壳内最厚件，观察项）。
 
-- 桌面壳：Tauri（`TAURI_ENV` 钩子激活）或纯 VM 窗口（auto-cosmic）二选一，
-  Phase 4 结束按 iced 成熟度裁定。
+- 桌面壳：**已裁定（2026-08-30）——纯 VM 窗口**（auto run -r vm + auto-lang
+  桌面壳体系 462-472；否决 Tauri：零既有钩子/与 rust 退役相逆/webview 仅
+  图谱一站收益），详见 desktop/README §7.1；dir-picker→VM 宿主桥、
+  confirm→iced 模态落点随桌面壳体系。
+  **[✅ 已裁定]**
 - `back/server` 手写 Rust 全量退役；`front/src/lib/blockParser.ts` 删除
   （消费引擎 a2ts 产物）；三镜像归一完成（020 Phase 3 该项随之销号）。
+  **[进行中 2026-08-30：读路径已切 @autodown/engine/parser（ext 重写 +
+  parser 门面扩四纯助手，vue-tsc/e2e 绿，d689ee2）；save 路径
+  （ensureBlockAnchors 行拼接）阻塞于引擎行号发射（BlockNode.source 恒
+  rng(0,0)）——engine 侧工作项：markdown_parser.at 行号追踪 → source
+  填充 → pnpm gen，完成后切换并删除文件]**
 - 验收：桌面版端到端（打开工作区/编辑/保存/搜索/闪卡/导入导出）；
   网页版 e2e 无回归；DEBTS/README/ARCHITECTURE 文档收口。
 

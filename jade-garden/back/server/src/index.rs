@@ -272,16 +272,15 @@ impl Index {
         &self,
         names: &[String],
     ) -> Result<Vec<crate::unlinked::UnlinkedRef>, String> {
-        use crate::unlinked::find_unlinked_references;
-
         let mut refs = Vec::new();
         for block in &self.data.blocks {
-            for (matched, context) in find_unlinked_references(&block.content, names) {
+            // plan-022 Phase 5: scan retired to unlinked_gen (unlinked.at).
+            for hit in crate::unlinked_gen::findUnlinkedRefs(&block.content, names.to_vec()) {
                 refs.push(crate::unlinked::UnlinkedRef {
                     page_path: block.page_path.clone(),
                     block_uuid: Some(block.uuid.clone()),
-                    context,
-                    matched_text: matched,
+                    context: hit.context,
+                    matched_text: hit.matched,
                 });
             }
         }

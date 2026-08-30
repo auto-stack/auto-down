@@ -56,6 +56,10 @@ const SOURCES = [
     structs: ['SrPage', 'SrBlock', 'SrHit'],
   },
   {
+    at: 'unlinked.at',
+    structs: ['UnlinkedHit'],
+  },
+  {
     at: 'api.at',
     structs: [
       'ApiError',

@@ -1,0 +1,167 @@
+// unlinked.at — plan-022 Phase 5: single-source port of the unlinked
+// reference scan (unlinked.rs find_unlinked_references, the regex crate's
+// last consumer).
+//
+// Semantics preserved from the rust regex form (?i)\b(name|…)\b with
+// \[\[...\]\] exclusion (see server history):
+// - ASCII-case-folded matching (corpus is zh/en BMP text — same discipline
+//   as search.at; rust (?i) is unicode-fold, accepted deviation registered
+//   alongside search's ascii fold)
+// - word boundary: the chars adjacent to a match are not word chars
+//   (ASCII alnum/underscore or CJK — practical \b set for our corpus; so
+//   "项目" does NOT match inside "项目二", faithful to rust \b)
+// - matches inside a [[...]] span are skipped (spans end at newline — the
+//   rust wiki regex's `.` cannot cross one)
+// - one hit per occurrence, leftmost-first; on a tie the earlier name in
+//   the list wins (rust alternation order)
+// - context = the containing line, trimmed
+//
+// Dual-portable discipline: no regex, no map indexing (List index get on
+// locals only), char_at/slice/length string ops (see parser.at header).
+
+pub type UnlinkedHit {
+    matched str
+    context str
+}
+
+fn asciiLower(s str) str {
+    var out str = ""
+    let lower = "abcdefghijklmnopqrstuvwxyz"
+    var i int = 0
+    while i < s.length.to(int) {
+        let c = s.char_at(i)
+        if c >= 65 && c <= 90 {
+            out = out + lower.slice(c - 65, c - 64)
+        } else {
+            out = out + s.slice(i, i + 1)
+        }
+        i += 1
+    }
+    return out
+}
+
+fn isWordChar(c int) bool {
+    if c >= 97 && c <= 122 { return true }
+    if c >= 65 && c <= 90 { return true }
+    if c >= 48 && c <= 57 { return true }
+    if c == 95 { return true }
+    // CJK unified ideographs — word chars under rust \b unicode semantics.
+    if c >= 19968 && c <= 40959 { return true }
+    return false
+}
+
+fn boundaryOk(text str, start int, end int) bool {
+    if start > 0 {
+        if isWordChar(text.char_at(start - 1)) { return false }
+    }
+    if end < text.length.to(int) {
+        if isWordChar(text.char_at(end)) { return false }
+    }
+    return true
+}
+
+fn lineEndAt(text str, pos int) int {
+    var i int = pos
+    while i < text.length.to(int) {
+        if text.char_at(i) == 10 { return i }
+        i += 1
+    }
+    return text.length.to(int)
+}
+
+fn contextAt(text str, pos int) str {
+    var start int = 0
+    var i int = 0
+    while i < pos {
+        if text.char_at(i) == 10 { start = i + 1 }
+        i += 1
+    }
+    let end = lineEndAt(text, pos)
+    // trim (search.at trimWs semantics)
+    var p int = start
+    var e int = end
+    while p < e {
+        let c = text.char_at(p)
+        if c != 32 && c != 9 && c != 10 && c != 13 { break }
+        p += 1
+    }
+    while e > p {
+        let c = text.char_at(e - 1)
+        if c != 32 && c != 9 && c != 10 && c != 13 { break }
+        e -= 1
+    }
+    return text.slice(p, e)
+}
+
+fn inWikiSpan(text str, start int, end int) bool {
+    var i int = 0
+    while i < text.length.to(int) {
+        if text.slice(i, i + 2) == "[[" {
+            var j int = i + 2
+            var close int = -1
+            while j < text.length.to(int) {
+                if text.char_at(j) == 10 { break }
+                if text.slice(j, j + 2) == "]]" {
+                    close = j
+                    break
+                }
+                j += 1
+            }
+            if close >= 0 {
+                if start >= i && end <= close + 2 { return true }
+                i = close + 2
+            } else {
+                i += 2
+            }
+        } else {
+            i += 1
+        }
+    }
+    return false
+}
+
+fn scanNames(text str, names List<str>) List<UnlinkedHit> {
+    // 结构体字面量的类型解析只认本地带类型列表（search.at 同款形态），
+    // out 不能作为参数传入扫描函数。
+    var out List<UnlinkedHit> = []
+    var pos int = 0
+    while pos < text.length.to(int) {
+        var matchedLen int = 0
+        var k int = 0
+        while k < names.length.to(int) {
+            let name = asciiLower(names[k])
+            if name.length.to(int) > 0 && pos + name.length.to(int) <= text.length.to(int) {
+                let slice = asciiLower(text.slice(pos, pos + name.length.to(int)))
+                if slice == name && boundaryOk(text, pos, pos + name.length.to(int)) {
+                    if !inWikiSpan(text, pos, pos + name.length.to(int)) {
+                        out.push(UnlinkedHit(text.slice(pos, pos + name.length.to(int)), contextAt(text, pos)))
+                    }
+                    matchedLen = name.length.to(int)
+                    break
+                }
+            }
+            k += 1
+        }
+        if matchedLen > 0 {
+            pos += matchedLen
+        } else {
+            pos += 1
+        }
+    }
+    return out
+}
+
+pub fn findUnlinkedRefs(text str, names List<str>) List<UnlinkedHit> {
+    var out List<UnlinkedHit> = []
+    if names.length.to(int) == 0 {
+        return out
+    }
+    if text.length.to(int) == 0 {
+        return out
+    }
+    var scanned List<UnlinkedHit> = scanNames(text, names)
+    for h in scanned {
+        out.push(h)
+    }
+    return out
+}

@@ -1495,7 +1495,6 @@ dependencies = [
  "lazy_static",
  "notify 8.2.0",
  "rand 0.9.4",
- "regex",
  "serde",
  "serde_json",
  "serde_yaml",

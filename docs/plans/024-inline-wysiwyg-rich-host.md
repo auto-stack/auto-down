@@ -2,11 +2,11 @@
 
 ---
 plan_id: PLAN-024
-status: execution_done
+status: reviewed
 feature_name: 行内 WYSIWYG（富文本宿主 + mark 命令层 + 选区映射 + 气泡菜单激活 + 代码编辑态着色）
 author: [zhaopuming, zcode]
 created_at: 2026-08-29T19:10:00+08:00
-updated_at: 2026-08-30T01:30:00+08:00
+updated_at: 2026-08-30T02:10:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
@@ -267,7 +267,43 @@ hi, href)`——读块 spans → 工具重切分 → `applyTree` 整块 withInli
 
 ## 复审记录
 
-（/auto-plan:review 填写）
+**复审**：zcode（/auto-plan:review），2026-08-30，于 `.worktrees/plan-024-dev` 内复现全部验证。
+
+**全量门（review 唯一一次全量）**：engine `pnpm test` 348/348（27 文件；309 基线 + 39 新增）；
+`pnpm build` 三断言全过（parser-pure / no-tiptap / editor-gen 桥同步）；`gen:editor` 两连跑
+工作树哈希零漂移；demo e2e 14/14（4 既有 spec + inline-marks 5 例）；jade-garden front
+build ✓。diff 对账：master...HEAD 26 文件 +1644/-88，全部在计划范围，无计划外改动。
+
+**验收标准逐条裁定**：
+
+1. 富文本宿主聚焦直呈 — **过**：e2e inline-marks #1（宿主 strong/em/code/a 全断言）。
+2. Ctrl+B / 气泡 bold / Ctrl+K → 失焦预览+serialize 标记+撤销一步 — **过**：Ctrl+B 与
+   Ctrl+K 有 e2e（右窗 serialize roundtrip `<strong>`/`<a href>`）；撤销一步恢复由
+   headless commands.test 钉死（undo → 原文 + canUndo=false）。注：气泡按钮 e2e 点的是
+   italic（与 bold 同一 domToggleMark 通道，bold 的 active 态已断言）。
+3. IME 富宿主回归 — **过**：e2e CJK 冒烟 + 组合协议既有测试全绿。
+4. BubbleMenu 选区上方出现/isActive/无 underline/gen 确定性 — **过**：e2e #3（5 按钮、
+   Underline 缺席、Bold active 类）；对拍 BubbleMenu.vue 含 underline 0 处；gen 稳定。
+   注：定位复用 computeMenuPosition('top')（slash 菜单同通道），e2e 钉可见性未钉坐标。
+5. 代码着色叠加层输入/滚动同步 — **过**：e2e #5（hljs span、输入实时更新、
+   高度差 ≤2px）；滚动同步走 onscroll→syncCodeHighlight，自动增高下少有可滚场景，
+   代码路径在档。
+6. 跨块选区映射 null 不崩溃 — **过**：selection-map.test（外部容器 -1 / 无选区 null）。
+7. EDITOR-CONTRACT 冻结面零破坏 + 既有 9 spec — **过**：契约文档 diff 0 行；根类/
+   getBlockMap/expose 面未动；14/14 含全部既有 spec。
+
+**遗漏/延后/绕行排查**：12 任务均有对应 diff，无静默丢弃。在档事项：
+- 执行期发现 3 项已记入待澄清（blur 回写吞点击 / `***` 嵌套 parser 不支持 / 含
+  Image mark 块跳过富回写）——前两项为计划外相邻缺陷（视图身份域/parser 生成物域），
+  非本计划任务缩减，作为 debt candidate 移交；第三项为数据安全裁定，代码注释+计划双档。
+- 小注①：气泡旧 underline 按钮在重生成前调用的 toggleUnderline 保留为 no-op 垫片
+  （重生成后 UI 已不可达）。
+- 小注②：段落内 hardbreak（`
+` span）在富宿主中随空白折叠渲染，未单独断言（罕见路径）。
+
+**spec-impact**：supersedes/new_spec_components/touched_goals 留空不猜（沿用 023 先例——
+账本为计划派生型，无 specs/modules 树）；行内 WYSIWYG 的持久裁定（失焦整块回写/五 mark
+渲染/单块选区 v1）已随本计划各节沉淀，合并时按 §映射入账。
 
 ## 待澄清事项
 

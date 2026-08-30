@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-027
-status: reviewed
+status: archived
 feature_name: 下游 dev 直连 engine 源码（development 条件出口）
 author: zhaopuming
 created_at: 2026-08-30T16:30:00+08:00

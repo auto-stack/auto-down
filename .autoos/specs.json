@@ -58,6 +58,17 @@
           "PLAN-022"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P027-2",
+        "section": "goals",
+        "title": "下游 dev 直连 engine 源码（development 条件出口） — 目标",
+        "content": "1. jade vite dev / e2e 下所有 engine 模块从 src 解析（可断言：页面 resource\n   entries 含 `/src/`、无 `/dist/`）。\n2. 出口面向后完全兼容：`import`/`types` 条件与 `files: [\"dist\"]` 发布形状\n   零变化，production build 与 npm 消费路径不受影响。\n3. dist 消费路径（jade `build`、未来桌面资产构建）前置新鲜度卫兵：src/auto\n   内容 hash 与 `dist/.dist-stamp` 不符即拦截并给出重建命令。\n4. demo（`workspace:*` 同样吃 exports）同步验证不回归。",
+        "file": "docs/plans/archived/027-engine-dev-source-exports.md",
+        "related": [
+          "PLAN-027"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -123,6 +134,17 @@
         ],
         "status": "stable",
         "superseded_by": null
+      },
+      {
+        "id": "P027-3",
+        "section": "architecture",
+        "title": "下游 dev 直连 engine 源码（development 条件出口） — 架构方案",
+        "content": "**解析分层（本计划的核心不变量）：**\n\n| 场景 | 激活条件 | 解析目标 |\n|---|---|---|\n| vite dev serve（jade e2e / demo e2e） | `development`（vite serve 默认激活） | engine **src** |\n| `vite build` production | `production`/`import` | engine **dist** |\n| npm 发布消费 | `import`/`types`/default | engine **dist** |\n\n**style.css 等价性**：dist 的 `style.css` = `src/editor/styles/autodown-editor.css`\n（手写聚合入口）+ 15 个 chrome SFC 的样式块（vite build 聚合）。源码消费下\nSFC 样式随组件自动注入，`./style.css` 的 development 条件只需映射到\n`autodown-editor.css`，覆盖等价。\n\n**与 plan 017 出口冻结的关系**：冻结的是出口集合与生产解析路径；本计划为\n**加性扩展**（新增条件分支，不删不改既有分支），dist 产物形状零变化。需在\nengine ARCHITECTURE.md 出口章节落账这一语义。\n\n**新鲜度卫兵（hash 制，非 mtime 制）**：mtime 在本仓库高频 git 操作\n（worktree/fold/switch）下会虚警；采用内容 hash——engine build 链尾对\n`src/**` + `auto/**`（排除 `auto/**/*.raw.ts`、`_stage`）计算 sha256 写入\n`dist/.dist-stamp`；消费者侧 `assert-dist-fresh.mjs` 重算比对，不符即非零\n退出并提示 `pnpm --filter @autodown/engine build`。仅在 dist 消费路径前置\n（build / e2e-prepare），dev 直连源后 dev 路径天然免疫。",
+        "file": "docs/plans/archived/027-engine-dev-source-exports.md",
+        "related": [
+          "PLAN-027"
+        ],
+        "status": "stable"
       }
     ],
     "designs": [
@@ -187,6 +209,17 @@
         ],
         "status": "stable",
         "superseded_by": null
+      },
+      {
+        "id": "P027-4",
+        "section": "designs",
+        "title": "下游 dev 直连 engine 源码（development 条件出口） — 详细设计",
+        "content": "### D1 engine exports（`autodown/packages/engine/package.json`）\n\n```jsonc\n\"exports\": {\n  \".\":           { \"development\": \"./src/index.ts\",  \"import\": \"./dist/index.js\",  \"types\": \"./dist/index.d.ts\" },\n  \"./parser\":    { \"development\": \"./src/parser.ts\", \"import\": \"./dist/parser.js\", \"types\": \"./dist/parser.d.ts\" },\n  \"./render\":    { \"development\": \"./src/render.ts\", \"import\": \"./dist/render.js\", \"types\": \"./dist/render.d.ts\" },\n  \"./editor\":    { \"development\": \"./src/editor.ts\", \"import\": \"./dist/editor.js\", \"types\": \"./dist/editor.d.ts\" },\n  \"./style.css\": { \"development\": \"./src/editor/styles/autodown-editor.css\", \"default\": \"./dist/style.css\" }\n}\n```\n\n条件顺序：`development` 在前（vite serve 命中即短路）；`types` 保持在\n`import` 之后（TS 默认解析不受 dev 条件影响，除非消费方显式开 customConditions，\n见 D4）。`main`/`module`/`types` 顶层字段与 `files` 不动。\n\n### D2 新鲜度卫兵（engine 侧两脚本）\n\n- `autodown/packages/engine/scripts/write-dist-stamp.mjs`：遍历 `src/**`（.ts/.vue/.css）\n  与 `auto/**`（.at + ext/*.ts，排除 `*.raw.ts`、`gen/`、`_stage`），按相对路径\n  排序拼接 `(path + '\\0' + content)` 取 sha256，写 `dist/.dist-stamp`（单行 hex）。\n  挂到 `package.json` 的 `build` 链最末（三断言之后）。\n- `autodown/packages/engine/scripts/assert-dist-fresh.mjs`：同一算法重算，\n  与 stamp 比对；`dist/` 或 stamp 缺失、内容不符 → stderr 输出\n  `engine dist stale — rebuild with: pnpm --filter @autodown/engine build`，\n  exit 1。供消费方以相对路径调用：\n  `node ../../autodown/packages/engine/scripts/assert-dist-fresh.mjs`。\n\n### D3 jade vite 配置（`jade-garden/front/vite.config.ts`）\n\n```ts\nresolve: {\n  conditions: ['development'],            // 显式加性声明（serve 默认已激活，双保险）\n  alias: { '@': resolve(__dirname, './src') },\n},\noptimizeDeps: {\n  exclude: ['@autodown/engine'],          // linked 包按源处理，不走预打包\n},\n```\n\n`optimizeDeps.exclude` 后，engine src 对 katex/mermaid/lowlight 的 import 由\nvite 按普通依赖发现并各自预打包（CJS 互操作保持正确）；mermaid 体积大，dev\n首启预打包一次后走缓存，可接受。\n\n### D4 类型侧（`jade-garden/front/tsconfig.json`）\n\n`\"customConditions\": [\"development\"]` 使 vue-tsc/volar 的类型解析也吃 engine\nsrc。**决策规则**：跑 `pnpm build`（vue-tsc 段）；若 engine 源在 jade 的\ntsconfig 标志组合下报类型错（两侧 strictness 差异），**不加** customConditions\n（类型退回 dist d.ts，运行时不受影响），差异清单记入复审记录——类型吃源是\n增益项不是阻塞项。\n\n### D5 消费方卫兵挂点（`jade-garden/front`）\n\n- `scripts/e2e-prepare.mjs` 头部：execFileSync 调 engine 的\n  `assert-dist-fresh.mjs`（e2e 虽已直连源，保留卫兵兜底 dist 消费面并给\n  并行会话一个即早失败信号）。\n- `package.json`：`\"prebuild\": \"node ../../autodown/packages/engine/scripts/assert-dist-fresh.mjs\"`、\n  `\"predev\": \"node ../../autodown/packages/engine/scripts/assert-dist-fresh.mjs || exit 0\"`\n  （dev 直连源后 stale 不应阻塞，仅 build 严格拦截；predev 可省略，执行时\n  按此优先级取舍）。\n\n### D6 demo（`autodown/demo/vite.config.ts`）\n\n同样加 `optimizeDeps.exclude: ['@autodown/engine']`（`resolve.conditions` 可省，\nserve 默认激活）。demo e2e 作为 workspace:* 路径的回归门。",
+        "file": "docs/plans/archived/027-engine-dev-source-exports.md",
+        "related": [
+          "PLAN-027"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -231,6 +264,17 @@
         "file": "docs/plans/archived/026-mount-host-protocol.md",
         "related": [
           "PLAN-026"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P027-5",
+        "section": "tests",
+        "title": "下游 dev 直连 engine 源码（development 条件出口） — 测试设计",
+        "content": "- **T-脚本自测**（新增 `autodown/packages/engine/src/__tests__/` 不适用——卫兵\n  是构建脚本非运行时，自测走命令行验证，见执行步骤 T2 的三态验证）。\n- **解析路径断言**（新增 `jade-garden/front/scripts/verify-dev-resolves-src.mjs`）：\n  起本地 vite（复用 e2e 的 backend+vite 组装或仅 vite 静态页面）→ playwright\n  打开 → `performance.getEntriesByType('resource')` 收集模块 URL → 断言含\n  `engine/src/` 且无 `engine/dist/`。\n- **门（全量复跑）**：\n  - engine：`pnpm test`（432）+ `pnpm build`（三断言）——证明 dist 产物面零回归；\n  - jade：`pnpm test:e2e` 全量 23/23（此时已吃 src 跑）；\n  - demo：demo e2e 22/22。",
+        "file": "docs/plans/archived/027-engine-dev-source-exports.md",
+        "related": [
+          "PLAN-027"
         ],
         "status": "verified"
       }
@@ -290,6 +334,17 @@
           "PLAN-022"
         ],
         "status": "published"
+      },
+      {
+        "id": "P027-6",
+        "section": "reviews",
+        "title": "下游 dev 直连 engine 源码（development 条件出口） — 验收标准与复审",
+        "content": "1. jade vite dev 下 engine 模块 URL 全部指向 src（verify-dev-resolves-src 通过）。\n2. engine `pnpm build` 三断言 + 432 单测不回归；jade e2e 23/23；demo e2e 22/22。\n3. 卫兵有效：构造 stale（修改 engine 任一 src 文件内容不重建）→ jade\n   `pnpm build` 前置拦截并输出重建命令；重建后通过。\n4. 出口兼容：`node -e \"import('@autodown/engine/parser')\"` 在无 development\n   条件激活的 node 环境仍解析 dist（`files`/发布形状不变）。\n5. 文档落账：engine ARCHITECTURE.md 出口章节含 development 条件语义与 dist\n   角色收窄说明；DEBTS.md 的 stale dist 行销账。\n\n---\n\n## 复审记录（摘）\n\n**复审人**：zcode（/auto-plan:review，2026-08-30）\n**复审基线**：worktree `.worktrees/plan-027-dev`（base 369721a → HEAD，14 文件 +535/-5，与计划任务面一一对应，无杂散文件）\n\n### 验收标准逐条重验（全部独立复跑，不信任执行期勾选）\n\n| # | 标准 | 判定 | 证据 |\n|---|---|---|---|\n| 1 | jade vite dev 下 engine URL 全指 src | **PASS** | `node scripts/verify-dev-resolves-src.mjs` 复跑：74 个 engine resource URL 全 `/engine/src/`、零 dist，exit 0 |\n| 2 | engine build 三断言 + 432；jade 23/23；demo 22/22 | **PASS** | 复审全量门连跑：engine `pnpm test` 432/432（31 文件）+ 三断言 + stamp（4630ab0b…）；jade `pnpm test:e2e` 23 passed（33.9s）；demo e2e 22 passed（18.5s） |\n| 3 | stale → jade build 前置拦截并输出重建命令；重建后通过 | **PASS** | 改 engine src 不重建 → jade `pnpm build` exit 1，输出 `engine dist stale — rebuild with: pnpm --filter @autodown/engine build`，且 vue-tsc 零次执行（真前置，非 build 中途失败）；恢复重建 → `pnpm build` exit 0（9.18s） |\n| 4 | 无 development 条件的 node 环境仍解析 dist；files/发布形状不变 | **PASS** | `node -e \"import('@autodown/engine/parser')\"`（link: 路径）8 导出键正常；exports import/types 路径与 files 字段对 base 逐项比对不变；`npm pack --dry-run`：tarball 零 `src/` 文件、dist（含 .dist-stamp）入包 |\n| 5 | 文档三处落账 | **PASS** | ARCHITECTURE.md §2 含 development 条件条款（加性关系/dist 角色收窄/卫兵机制）；DEBTS.md 026 行划线销账（✅已销号 plan 027）；front/README.md（新建）含依赖形态两则 |\n\n### 懒收敛排查（遗漏/延后/workaround）\n\n- **遗漏**：无。T1-T10 每步均有对应 diff（14 文件与任务面一一核对）；D5 `predev` 省略为计划明文优先级裁定（执行期已留痕），非静默丢弃。\n- **延后**：无。无任何任务被推迟到\"后续计划\"。\n- **Workaround**：无。新增脚本零 TODO/FIXME/HACK。\n- **计划内偏差（裁定为正确修正，非 workaround）**：D3 字面写法（无条件 `resolve.conditions:['development']`）经 vite 6.4.3 源码（mergeWithDefaults 数组整体替换 + serve/build 共用）与实证（该配置下 production build 陷入 src 依赖图 >10min；Node `--conditions development` 命中 `src/parser.ts`）确认违反核心不变量\"build 吃 dist\"；执行修正为 `command === 'serve'` 时声明 `['module','browser','development|production','development']`（真加性），修正后 build 9 秒级绿、dev 探针不回归。与 D3 注释本意（\"serve 默认已激活，双保险\"）一致。\n\n### 债务候选（非阻塞）\n\n- **npm publish 边界**：tarball（`files:[\"dist\"]`）的 exports `development` 条件指向包内不存在的 `./src/*.ts`——vite dev serve 消费**已发布**包会命中 development 条件且无按存在性回退（Node exports 语义）→ 报错。当前全部消费面（link: / workspace:\\* / vendor 快照）不受影响（本次门全绿佐证）；npm publish 本就是 DEBTS 008 已登记的延期项——**建议 merge 时在该前置清单追加\"发布时剥除 development 条件\"**，无需新开计划。\n\n### 待澄清事项闭环\n\n1. **D4 类型吃源 vs dist**：复审确认**保留** `customConditions`——`pnpm build`（vue-tsc 段）零类型错，--traceResolution 证实类型解析深入 engine src。\n2. **桌面资产构建入口盘点**：front 侧 production 入口唯一（`pnpm build`，已挂卫兵）；desktop/README 核对无独立 engine dist 消费构建入口。无需补挂。\n\n### 结论\n\n五条验收全 PASS，无遗漏/延后/workaround，一项非阻塞债务候选（npm publish 边界，归 DEBTS 008 前置清单）。**通过复审，路由 reviewed。**",
+        "file": "docs/plans/archived/027-engine-dev-source-exports.md",
+        "related": [
+          "PLAN-027"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -345,6 +400,17 @@
         "file": "docs/plans/archived/022-vm-desktop-auto-libs.md",
         "related": [
           "PLAN-022"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P027-1",
+        "section": "reports",
+        "title": "下游 dev 直连 engine 源码（development 条件出口） — 变更摘要",
+        "content": "`@autodown/engine` 的四个 JS 出口与 `./style.css` 出口增加 `development` 条件，\ndev 场景（vite serve，mode=development）解析到 **src**；`import`/`types`/default\n路径保持指向 **dist** 不变。配套：jade-garden/front 的 vite/tsconfig 配置、\ndist 新鲜度卫兵（内容 hash stamp）、demo 回归、文档销账。\n\n效果：jade 的 dev/e2e 永远消费 engine 当前源码，\"src 有、dist 没有\"这类静默\n过期事故（2026-08-30 实录：`BlockType` 白屏排查）结构性消失；dist 退为纯\n发布产物（npm 发布、production build）。",
+        "file": "docs/plans/archived/027-engine-dev-source-exports.md",
+        "related": [
+          "PLAN-027"
         ],
         "status": "published"
       }

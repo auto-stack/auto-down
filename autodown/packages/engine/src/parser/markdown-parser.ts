@@ -1418,6 +1418,23 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
 
 
         if (cs == "*") {
+            
+
+
+
+            if (startsWithAt(line, "***", i)) {
+                let afterT = scanDelim(line, i, "***", false, isFinal);
+                if (afterT != null) {
+                    const scT = afterT ?? new DelimScan(0, "");
+                    if (buf != "") {
+                        nodes.push(textNode(buf));
+                        buf = "";
+                    }
+                    nodes.push(strongNode([emNode(parseInlineLine(scT.inner, isFinal))]));
+                    i = scT.next;
+                    continue;
+                }
+            }
             if (startsWithAt(line, "**", i)) {
                 let after = scanDelim(line, i, "**", true, isFinal);
                 if (after != null) {
@@ -2113,6 +2130,13 @@ export function smartQuotes(s: string): string {
     return out;
 }
 
+export function isNestingDelimCode(c: number): boolean {
+    if (c == 42) {
+        return true;
+    }
+    return c == 95;
+}
+
 export function scanDelim(line: string, i: number, delim: string, autoCloseWhenFinal: boolean, isFinal: boolean): DelimScan | null {
     
 
@@ -2142,7 +2166,18 @@ export function scanDelim(line: string, i: number, delim: string, autoCloseWhenF
 
 
 
-        return null;
+
+
+
+        let nest: boolean = false;
+        if (close != -1) {
+            if (isNestingDelimCode(innerText.charCodeAt(0))) {
+                nest = true;
+            }
+        }
+        if (!nest) {
+            return null;
+        }
     }
     if (close != -1) {
         let next: number = afterStart + close + Number(delim.length);

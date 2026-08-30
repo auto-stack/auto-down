@@ -19,6 +19,7 @@ import {
   spansText,
 } from '../block-model'
 import { parse_blocks, parseDocument } from '../markdown-parser'
+import { serialize } from '../serializer'
 
 describe('parse_blocks tree shape', () => {
   it('returns a doc root with indexed top-level ids', () => {
@@ -162,5 +163,51 @@ describe('parseDocument legacy behavior is unchanged', () => {
     expect(weak.map((n) => n.type)).toEqual(['table', 'paragraph'])
     const strong = parse_blocks(doc, true)
     expect(strong.children.map((b) => b.kind)).toEqual([BlockType.Table])
+  })
+})
+
+describe('nested emphasis delimiters (plan 028 P2T1)', () => {
+  const spansOf = (md: string) => parse_blocks(md, true).children[0].inlines
+
+  it('***x*** parses to one span carrying BOTH Strong and Em', () => {
+    const spans = spansOf('both ***marks*** now\n')
+    const target = spans.find((s) => s.text === 'marks')
+    expect(target).toBeDefined()
+    expect(hasMark(target!.marks, Mark.Strong)).toBe(true)
+    expect(hasMark(target!.marks, Mark.Em)).toBe(true)
+  })
+
+  it('**_x_** mixed-delimiter nesting parses to the same double mark', () => {
+    const spans = spansOf('a **_deep_** b\n')
+    const target = spans.find((s) => s.text === 'deep')
+    expect(target).toBeDefined()
+    expect(hasMark(target!.marks, Mark.Strong)).toBe(true)
+    expect(hasMark(target!.marks, Mark.Em)).toBe(true)
+  })
+
+  it('inline code inside the nesting keeps its own span, text keeps both marks', () => {
+    const spans = spansOf('***a `b` c***\n')
+    expect(spans.map((s) => s.text).join('')).toBe('a b c')
+    expect(spans.find((s) => hasMark(s.marks, Mark.Code))?.text).toBe('b')
+    for (const s of spans.filter((s) => !hasMark(s.marks, Mark.Code))) {
+      expect(hasMark(s.marks, Mark.Strong)).toBe(true)
+      expect(hasMark(s.marks, Mark.Em)).toBe(true)
+    }
+  })
+
+  it('serialize→parse roundtrip loses neither mark (md reload path)', () => {
+    const src = 'both ***marks*** and **_deep_**\n'
+    const md = serialize(parse_blocks(src, true), true)
+    const spans = parse_blocks(md, true).children[0].inlines
+    const marks = spans.find((s) => s.text === 'marks')?.marks ?? []
+    const deep = spans.find((s) => s.text === 'deep')?.marks ?? []
+    expect(hasMark(marks, Mark.Strong) && hasMark(marks, Mark.Em)).toBe(true)
+    expect(hasMark(deep, Mark.Strong) && hasMark(deep, Mark.Em)).toBe(true)
+  })
+
+  it('unclosed triples stay literal (no phantom nesting)', () => {
+    const spans = spansOf('a *** b\n')
+    expect(spansText(spans)).toBe('a *** b')
+    expect(spans.some((s) => hasMark(s.marks, Mark.Strong) || hasMark(s.marks, Mark.Em))).toBe(false)
   })
 })

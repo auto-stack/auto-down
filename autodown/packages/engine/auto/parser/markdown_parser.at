@@ -1245,6 +1245,22 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
 
         // strong / emphasis / strikethrough delimiters
         if cs == "*" {
+            // *** triple (plan 028 P2T1): nested Strong(Em(...)) — consumed
+            // before the ** scan so `***x***` isn't split literal-star +
+            // strong; mixed `**_x_**` nests through the relaxed scanDelim
+            if startsWithAt(line, "***", i) {
+                var afterT = scanDelim(line, i, "***", false, isFinal)
+                if afterT != None {
+                    let scT = afterT ?? DelimScan(0, "")
+                    if buf != "" {
+                        nodes.push(textNode(buf))
+                        buf = ""
+                    }
+                    nodes.push(strongNode([emNode(parseInlineLine(scT.inner, isFinal))]))
+                    i = scT.next
+                    continue
+                }
+            }
             if startsWithAt(line, "**", i) {
                 var after = scanDelim(line, i, "**", true, isFinal)
                 if after != None {
@@ -1826,6 +1842,13 @@ fn smartQuotes(s str) str {
 // delimiter must be whitespace/punctuation/start (a*b stays literal).
 // Unclosed strong auto-closes even when final (reference applyFixStrongTokens);
 // unclosed emphasis/strikethrough auto-close only in streaming mode.
+// '*' (42) / '_' (95): leading emphasis-family delimiter chars mark a
+// NESTED span inside a real close (plan 028 P2T1)
+fn isNestingDelimCode(c int) bool {
+    if c == 42 { return true }
+    return c == 95
+}
+
 fn scanDelim(line str, i int, delim str, autoCloseWhenFinal bool, isFinal bool) DelimScan? {
     // underscore intraword restriction: "_word_" only opens at word edges
     // (snake_case_word stays literal); "*" has no left-side restriction
@@ -1849,8 +1872,15 @@ fn scanDelim(line str, i int, delim str, autoCloseWhenFinal bool, isFinal bool) 
     if isPunctuationCode(innerText.char_at(0)) {
         // e.g. "auto-plan-*: text" -- a delimiter whose content starts
         // with punctuation stays literal (markdown-it flanking); applies
-        // to both a real close and the streaming auto-close
-        return None
+        // to both a real close and the streaming auto-close. EXCEPTION
+        // (plan 028 P2T1): a REAL close whose content OPENS with an
+        // emphasis-family delimiter run is nesting (`***x***`'s strong
+        // sees inner "*x...", `**_x_**`'s strong sees "_x_"), not flanking
+        var nest bool = false
+        if close != -1 {
+            if isNestingDelimCode(innerText.char_at(0)) { nest = true }
+        }
+        if !nest { return None }
     }
     if close != -1 {
         var next = afterStart + close + delim.length.to(int)

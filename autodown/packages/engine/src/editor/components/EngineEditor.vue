@@ -100,7 +100,7 @@ export interface BlockInfo {
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BlockPos, BlockType, Selection } from '../../parser/block-model'
+import { BlockPos, BlockType, Selection, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
@@ -109,6 +109,7 @@ import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-path'
 import { domRangeToBlockRange } from '../engine/selection-map'
 import BlockHost from './BlockHost.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
@@ -301,28 +302,33 @@ function getBlockMap(): BlockInfo[] {
 }
 
 function selectBlock(id: string): void {
-  const found = engine.doc.children.find((c) => c.id === id)
-  if (found) {
-    const p = new BlockPos(id, 0)
-    engine.select(new Selection(p, p))
-    repaintVersion.value++
-  }
+  // deep selection (plan 025 P1T1): a clicked container resolves to its
+  // first focusable descendant — containers never host.
+  const found = findBlock(engine.doc, id)
+  if (!found) return
+  const target = focusTargetOf(found) ?? found
+  const p = new BlockPos(target.id, 0)
+  engine.select(new Selection(p, p))
+  repaintVersion.value++
 }
 
 function onContentKeydown(e: KeyboardEvent): void {
   if (e.ctrlKey && e.key === 'End') {
     e.preventDefault()
-    const last = engine.doc.children[engine.doc.children.length - 1]
+    const last = lastFocusTargetOf(engine.doc)
     if (last) selectBlock(last.id)
   }
 }
 
 function focusFirstBlock(): void {
-  const first = engine.doc.children[0]
-  if (first) { const p = new BlockPos(first.id, 0); engine.select(new Selection(p, p)) }
+  const first = focusTargetOf(engine.doc)
+  if (first) {
+    const p = new BlockPos(first.id, 0)
+    engine.select(new Selection(p, p))
+  }
 }
 
-if (!engine.selection.anchor.blockId) focusFirstBlock()
+focusFirstBlock()
 
 function emitSave(): void {
   emit('save', serialize(engine.doc, true))

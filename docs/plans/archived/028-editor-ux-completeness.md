@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-028
-status: reviewed
+status: archived
 feature_name: 编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T17:40:00+08:00

@@ -69,6 +69,17 @@
           "PLAN-027"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P028-2",
+        "section": "goals",
+        "title": "编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位） — 目标",
+        "content": "1. **撤销重做接线**：EngineEditor 内容级 keydown 增 Ctrl+Z（undo）/\n   Ctrl+Y、Ctrl+Shift+Z（redo）；历史变更后聚焦宿主 knownText 经\n   syncFromModel 重同步（预览路径随 repaint 自动）；IME 组合期不拦截。\n2. **吞点击修复**：blur 提交引发的 views 重算不得吃掉引发它的那次点击——\n   去除 e2e 的 Save 绕行，产品路径直修（归因方向在档：组件身份稳定壳已\n   落地，残留在聚焦态↔预览态分支切换的事件时序）。\n3. **roundtrip 完整性**：`***x***` 与 `**_x_**` 家族经 serialize→parse\n   往返 Strong+Em 双 mark 无损（定界符解析增强，parser .at 源）。\n4. **underline mark**：`__x__` 定界（Mark 枚举 + parser + serializer +\n   气泡按钮恢复），全链 roundtrip。\n5. **SlashMenu 定位**：adapter 暴露 coordsAtPos（复用 024 selection-map\n   的 blockRangeToDomRange→getClientRects），菜单随光标出现。\n6. 全程 EDITOR-CONTRACT 冻结面零破坏；DEBTS 台账相应行销账。",
+        "file": "docs/plans/archived/028-editor-ux-completeness.md",
+        "related": [
+          "PLAN-028"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -98,7 +109,8 @@
         ],
         "status": "stable",
         "superseded_by": [
-          "P026-3"
+          "P026-3",
+          "P028-3"
         ]
       },
       {
@@ -145,6 +157,17 @@
           "PLAN-027"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P028-3",
+        "section": "architecture",
+        "title": "编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位） — 架构方案",
+        "content": "```\n键盘层（EngineEditor.onContentKeydown 扩展）\n└─ Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z → engine.undo/redo\n   └─ 聚焦宿主 syncFromModel（knownText 重同步；预览随 repaint）\n点击可靠性（blur 提交时序）\n└─ 归因→修复：提交引发的重绘与点击命中解耦（方向：mousedown 锚定\n   / 延迟 selectBlock / 分支切换 DOM 保序——执行期以复现用例裁定）\nmark 域（auto/ 单源，本仓 gen 再生）\n├─ parser .at：`***`/`**_` 嵌套定界 + `__` underline 定界\n├─ block_model .at：Mark.Underline\n└─ bubble_menu .at：underline 按钮恢复（撤 no-op 垫片）\n定位（adapter view 面）\n└─ coordsAtPos：selection-map.blockRangeToDomRange → client rects\n```\n\n- **非目标**：跨块选区（后续）、math/mermaid 编辑态深化（026 余量在册）、\n  Dependabot 依赖清偿与发包前置（DEBTS 008/027，建议 029 单列）。",
+        "file": "docs/plans/archived/028-editor-ux-completeness.md",
+        "related": [
+          "PLAN-028"
+        ],
+        "status": "stable"
       }
     ],
     "designs": [
@@ -173,7 +196,8 @@
         ],
         "status": "stable",
         "superseded_by": [
-          "P026-4"
+          "P026-4",
+          "P028-4"
         ]
       },
       {
@@ -218,6 +242,17 @@
         "file": "docs/plans/archived/027-engine-dev-source-exports.md",
         "related": [
           "PLAN-027"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P028-4",
+        "section": "designs",
+        "title": "编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位） — 详细设计",
+        "content": "### 1. 撤销重做接线（EngineEditor.vue）\n\n`onContentKeydown` 增分支：`(ctrl||meta) && key==='z'` → undo（shift 则\nredo）；`'y'` → redo。执行后 `hostFor(focusedId)?.syncFromModel()`（宿主\nknownText 对齐历史树）；`e.preventDefault()`。组合期（任一宿主\ncomposition.composing）直接放行不拦截。\n\n### 2. 吞点击修复（执行期归因裁定）\n\n复现用例先红：e2e 移除 Save 绕行、直点目标块。候选修法（按归因落）：\nmousedown 时锚定目标块 id（pointerdown 捕获阶段记录，click 读锚而非命中\n元素）/ blur 提交的重绘推迟到 microtask 后 / 聚焦↔预览分支切换保持外层\nnode-slot DOM 节点身份。修后该 e2e 转绿且既有 22 spec 不回归。\n\n### 3. parser 嵌套定界 + underline（auto/parser/markdown_parser.at）\n\n定界符扫描增强：`***`/`___` 三连（含混合 `**_x_**` 家族）按 CommonMark\n定界符栈语义拆解为嵌套 Strong(Em(...))；`__x__` 独立为 Underline（优先级：\n三连先于双连消费）。block_model.at 增 `Underline = 6`；serializer\nspanMd 增 `__..__` 包裹（顺序与 Mark 语义对齐）；convertInlines 增\nunderline 通道。金标用例：`***x***`、`**_x_**`、`__x__`、嵌套含\ninline_code 干扰例。\n\n### 4. 气泡 underline 恢复（auto/editor/bubble_menu.at）\n\n按钮回填（icon/btn 通道既有）+ `chain().focus().toggleUnderline()`；ext\n垫片注释更新（真实现经 mark 命令层补 toggleUnderline——与 Bold 同式，\ncommands/marks 域顺带补全）。\n\n### 5. coordsAtPos（tiptap-adapter.ts）\n\n`view.coordsAtPos(blockId, offset)`：blockRangeToDomRange 取\n`getClientRects()[0]`（空则退回 range.getBoundingClientRect）；SlashMenu\ncomputeMenuPosition 消费路径接通（现有两段式定位代码已写好，只缺坐标源）。",
+        "file": "docs/plans/archived/028-editor-ux-completeness.md",
+        "related": [
+          "PLAN-028"
         ],
         "status": "stable"
       }
@@ -275,6 +310,17 @@
         "file": "docs/plans/archived/027-engine-dev-source-exports.md",
         "related": [
           "PLAN-027"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P028-5",
+        "section": "tests",
+        "title": "编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位） — 测试设计",
+        "content": "- **headless（TDD 先红）**：undo 接线（engine 级 undo/redo 树断言已有——\n  补 keydown 路由的控制器级测试）；`***`/`**_`/`__` 金标 parse 往返 +\n  serialize roundtrip；toggleUnderline 命令；coordsAtPos 纯函数段（range\n  构造逻辑注入式）。\n- **e2e**：`e2e/undo.spec.ts`（输入→Ctrl+Z 回退→Ctrl+Y 重做，富宿主与\n  代码块两路）；`inline-marks.spec.ts` 增吞点击直点用例（去 Save 绕行）+\n  underline 按钮用例；slash 菜单定位断言（菜单纯出现在光标附近坐标带）。\n- **回归门**：engine 全量（432 基线）、build 三断言、gen:parser/gen:editor\n  两连跑确定性、demo e2e（22+新增）、jade-garden build。",
+        "file": "docs/plans/archived/028-editor-ux-completeness.md",
+        "related": [
+          "PLAN-028"
         ],
         "status": "verified"
       }
@@ -345,6 +391,17 @@
           "PLAN-027"
         ],
         "status": "published"
+      },
+      {
+        "id": "P028-6",
+        "section": "reviews",
+        "title": "编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位） — 验收标准与复审",
+        "content": "- [x] Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z 在编辑器内撤销/重做生效（富宿主与代码\n  块两路 e2e 钉死），IME 组合期不受干扰。\n  [✅] undo.spec.ts 两路绿含 Shift 别名；组合期放行由 keydown 分支守卫\n  （IME 冒烟用例既有绿）。\n- [x] 去除 Save 绕行后\"编辑→直点另一块\"一次生效（吞点击 e2e 绿）。\n  [✅] 原始鼠标事件跨重绘直点用例绿（heading+列表深槽位）；七处绕行清除。\n- [x] `***x***`、`**_x_**`、`__x__` serialize→parse 往返 mark 无损\n  （金标 + roundtrip 断言）。\n  [✅] 金标 11 用例（嵌套 5 + underline 6）+ roundtrip 全绿。\n- [x] 气泡菜单 underline 按钮可用且 `__x__` 落盘。\n  [✅] e2e：6 按钮、underline 点击、三 mark `<u><strong><em>` 全链落盘。\n- [x] SlashMenu 出现在光标附近而非默认位置。\n  [✅] slash-position.spec.ts 坐标带断言先红（默认位）后绿。\n- [x] EDITOR-CONTRACT 冻结面零破坏；DEBTS（025-D2/D4、021-F5、024 两项\n  执行期发现）销账。\n  [✅] EDITOR-CONTRACT.md/BlockHost 零 diff，AdapterView 仅加可选成员\n  （惯例同前）；DEBTS 五项销账（021-F5 改行 + 024/025 四行落地即清偿），\n  commit 79143a6。\n\n**复审**：zcode，2026-08-31 09:20（/auto-plan:review；工作树\n`.worktrees/plan-028-dev` @ 79143a6，分支领先 master 8 commits，工作树净）。\n\n**全量门（复审唯一全量套件运行，全部退出码 0）**：engine `pnpm test`\n451/451 + `pnpm build` 三断言 + `vue-tsc -b` 0 错；demo e2e `E2E_PORT=5199`\n26/26；gen:parser + gen:editor 两连跑 `git status` 0 差异；jade-garden/front\n`pnpm build` ✓（chunk 体积警告为既有）。\n\n**逐条验收**：\n\n1. **撤销重做接线 — PASS**：undo.spec.ts 两路（富宿主含 Ctrl+Shift+Z 别名；\n   代码块 commit→undo→redo）在 26 套件内绿；headless undo-wiring 5 用例 +\n   引擎 undo→redo→undo 循环用例绿；组合期守卫代码在位\n   （EngineEditor.vue `onContentKeydown`：composing 判定先于 preventDefault\n   return）。验证口径注：Playwright 无真 IME 引擎，组合期×Ctrl+Z 的直接\n   交互为代码级验证 + 既有 CJK 冒烟绿（预存限制，非本计划引入）。\n2. **吞点击直点一次生效 — PASS**：inline-marks 直点用例（原始 mouse 事件\n   down→80ms→up 跨重绘，严于 locator.click 的 actionability 重试）绿；\n   heading 直点 + 列表深槽位直点均一次生效；七处 Save 绕行（inline-marks×3/\n   container-editing×2/host-protocol/undo）全数改直点后全套 26 绿。\n3. **`***`/`**_`/`__` roundtrip — PASS**：金标 11 用例（嵌套定界 5 +\n   underline 6）绿，含 inline_code 干扰例与 serialize→parse 往返；\n   `___x___` 规范化为 `__*x*__`（mark 无损 + 一轮后字节稳定，测试钉死）。\n4. **气泡 underline — PASS**：e2e 6 按钮 + underline 点击 + `<u><strong><em>`\n   三 mark 全链落盘断言绿；headless toggleMarkOnSpans(Underline) +\n   spansToHtml(`<u>`) 钉子绿；气泡 z-index:30 修复 boundary 拦截在案。\n5. **SlashMenu 定位 — PASS**：slash-position.spec.ts 坐标带断言绿（执行期\n   先红 menuTop=85 默认位留档）；scroll-sync slash 钳制 4 用例回归绿。\n6. **契约零破坏 + 销账 — PASS**：`git diff master..HEAD --\n   EDITOR-CONTRACT.md src/editor/components/BlockHost.vue` 0 行；AdapterView\n   仅加可选成员 coordsAtPos（惯例同 getAttributes/view 垫片）；DEBTS 五项\n   销账（021-F5 改行 + 025-D2/D4、024-***/underline 四行落地即清偿，\n   commit 79143a6）。\n\n**遗漏/延后/workaround 狩猎**：\n\n- 遗漏：无。产品文件 diff 与计划触面 1:1（22 文件 + 测试/e2e/DEBTS）；\n  计划测试设计节 sketch 的「coordsAtPos 纯函数段注入式单测」以 e2e 钉死 +\n  selection-map 既有 blockRangeToDomRange 单测覆盖落地（P3T1 执行步骤本身\n  只要求 e2e 断言）——记录为落地形态分歧，非缺失。\n- 延后：无。Dependabot 30 项与发包前置为计划明示非目标（029 单列建议在\n  DEBTS 027 行维持）。\n- Workaround：diff 内零 TODO/FIXME/HACK 新增。两条非阻塞观察（不构成债，\n  无人报告需求）：① undo 后聚焦面 remount 光标落块尾（历史恢复 caret 偏移\n  未还原——计划未要求）；② 代码块未提交草稿期间 Ctrl+Z 撤销的是上一条\n  commit 条目（草稿 blur 才入史，与 CodeEditorBlock 提交协议一致）。\n\n**计划↔实现分歧（以代码为准，均已在案）**：P1T1「确认现状红」未发生——\n025 稳定壳已修吞点击，归因改正入 DEBTS 025-D4 行；引擎 redo() 存量 bug 为\n超计划新增修复（e2e 循环用例钉出，preTree/preSel 捕获未用改记 PRE 态）。\n\n**路由**：六项验收全 PASS、无阻塞债 → `status: reviewed`，就绪\n`/auto-plan:merge`。",
+        "file": "docs/plans/archived/028-editor-ux-completeness.md",
+        "related": [
+          "PLAN-028"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -411,6 +468,17 @@
         "file": "docs/plans/archived/027-engine-dev-source-exports.md",
         "related": [
           "PLAN-027"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P028-1",
+        "section": "reports",
+        "title": "编辑器体验收尾（Ctrl+Z 撤销 UI 接线 + blur 回写吞点击修复 + `***` 嵌套 roundtrip + underline mark 补齐 + SlashMenu 选区定位） — 变更摘要",
+        "content": "清偿编辑器线（023-027）遗留的四项用户可感债务：① **Ctrl+Z/Y 撤销重做 UI\n接线**（025-D2：引擎 undo 自 023 起从未绑定键盘——命令级一步撤销由 headless\n钉死但用户按不了）；② **blur 回写吞点击产品修复**（024 在档 papercut、025-D4：\n\"Ctrl+B 后点另一块第一次没反应\"，e2e 至今以点 Save 绕行）；③ **parser 嵌套\n定界 roundtrip 修复**（024 执行期发现：Strong+Em 序列化 `***x***` 后再解析\n丢 Em——md 重载路径数据受损）；④ **underline mark 补齐**（024 v1 裁掉的\n气泡按钮背后是 Mark/解析/序列化三处缺失，一并补上）。顺带 **SlashMenu\n选区坐标定位**（021-F5：菜单现落默认位置，024 选区映射原语已可直接复用）。",
+        "file": "docs/plans/archived/028-editor-ux-completeness.md",
+        "related": [
+          "PLAN-028"
         ],
         "status": "published"
       }

@@ -434,14 +434,14 @@ back.pac.at` 种子（plan-011 归档原因是旧工具链覆盖问题，非方�
   类型）**；index/links 装配体与 srs OfMatrix EDN 待后续 slice。
 - 验收：桌面版端到端（打开工作区/编辑/保存/搜索/闪卡/导入导出）；
   网页版 e2e 无回归；DEBTS/README/ARCHITECTURE 文档收口。
-  **[进行中 2026-08-30：核心六流中五流桌面驱动全过（links 10/10 +
-  edit 6/6 + cards 4/4，linkgraph 重构后复验）；导入导出待 D4 裁定
-  （VM 信封 multipart/二进制扩展或宿主文件桥，登记 DEBTS 🟡）。
-  D2 ✅（cdafa88：linkgraph.at 单源，反链/出链/图谱装配 + 度数，
-  rust parity 7 fixtures）；D5 ✅裁定留壳（OfMatrix EDN parse/save 为
-  float 解析/格式化的 a2r 边界——Phase 2 slice 4 既定壳保留纪律，srs
-  数学已在 srs.at 单源）；三镜像 ✅销号（5d3b4ca blockParser.ts 删除，
-  DEBTS 020 行销号）]**
+  **[✅ 2026-08-30：六流全通——打开工作区/编辑/保存/反链/图谱/闪卡
+  （links 10/10 + edit 6/6 + cards 4/4）+ 导入导出（D4 裁定"原生直连"：
+  RequestBuilder multipart_file 宿主按路径读文件发 multipart +
+  Response.body_to_file 字节直落盘，不经 #[api] JSON 改写、不加信封
+  复杂度；导出 zip PK 落盘 + 导入 8 文档实测，de494a7 系 + 5102c5fc1）。
+  D2 ✅（cdafa88 linkgraph.at）；D5 ✅裁定留壳（float 解析/格式化 a2r
+  边界）；三镜像 ✅销号（5d3b4ca）；D4 路线细节与遗留（返回列表 RC、
+  选择器宿主能力）登记 DEBTS/README]**
 
 ## 复审记录（Phase 1-3 阶段域，2026-08-29）
 

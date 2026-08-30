@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-025
-status: drafting
+status: executing
 feature_name: 容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复）
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:15:00+08:00
@@ -10,7 +10,7 @@ updated_at: 2026-08-30T00:15:00+08:00
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
-current_step: 0
+current_step: 7
 total_steps: 13
 ---
 
@@ -163,31 +163,47 @@ indent/outdent。
 
 ### Phase 0：结构命令层 + 输入规则修复（headless 地基）
 
-- [ ] P0T1 list-commands：新建 `autodown/packages/engine/src/editor/engine/list-commands.ts`
+- [x] P0T1 list-commands：新建 `autodown/packages/engine/src/editor/engine/list-commands.ts`
   （enterInItem/backspaceAtItemStart/indentItem/outdentItem/enterInQuote/
   exitQuote，applyTree 一步撤销 + 消融护栏）+
   `src/editor/__tests__/list-commands.test.ts`（TDD 先红：六命令 × 树
   断言/undo/护栏）。验证：`npx vitest run src/editor/__tests__/list-commands.test.ts`。
-- [ ] P0T2 输入规则容器化：改 `src/editor/engine/input-rules.ts`——规则表
+  [✅ 已完成] 25/25 绿（f734423）；六命令全 applyTree 一步撤销，空容器消融，
+  首项 indent/顶层 outdent 为无历史 no-op；barrel 已导出；vue-tsc 过。
+- [x] P0T2 输入规则容器化：改 `src/editor/engine/input-rules.ts`——规则表
   增 wrap 字段，inputRuleOps 对 ListItem/Blockquote 标记产容器结构（不再
   SetBlockType 裸 ListItem）；`input-rules` 相关测试更新 +
   roundtrip 断言。验证：`npx vitest run src/editor/__tests__ -t rule`。
+  [✅ 已完成] 9/9 规则测试绿 + 包全量 376/376（086f80e）；顺带修复
+  EditorEngine.redo 丢 after 树变换的既有缺陷（heading level/容器 wrap
+  redo 不再丢）；serialize roundtrip `- item`/`> quoted` 达成。
 
 ### Phase 1：聚焦路径装配 + 宿主父链感知
 
-- [ ] P1T1 深层选择基础：`EngineEditor.vue` 的 selectBlock/focusFirstBlock/
+- [x] P1T1 深层选择基础：`EngineEditor.vue` 的 selectBlock/focusFirstBlock/
   onContentKeydown(Ctrl+End) 改深层 findBlock/全树末叶；单测或既有回归
   确认顶层行为不变。验证：`cd autodown/packages/engine && pnpm test`。
-- [ ] P1T2 聚焦路径递归装配：views 重构为 assemble 递归（focusPath 展开、
+  [✅ 已完成] 376/376 全绿（既有回归确认顶层不变）；新增
+  engine/focus-path.ts（focusPathOf/focusTargetOf/lastFocusTargetOf，
+  编辑面类型短路下钻——表聚焦到表面非单元格）；初始聚焦改无条件深层解析。
+- [x] P1T2 聚焦路径递归装配：views 重构为 assemble 递归（focusPath 展开、
   旁支 blockNodeToWNodes→renderNodes 预览、嵌套叶块 node-slot onClick/
   data-block-id）；SSR 断言入 `src/editor/__tests__/focus-path.test.ts`。
   验证：`npx vitest run src/editor/__tests__/focus-path.test.ts`。
-- [ ] P1T3 宿主父链分流：`src/editor/engine/host-controller.ts`——
+  [✅ 已完成] 9/9 绿；展开容器镜像 builtin 面板壳层（ul/li/blockquote +
+  markdown-renderer），旁支预览槽挂深层 data-block-id；顶层 DOM 基线断言
+  不变；flat previewNodes 计算属性退役（按槽按需生成）。
+- [x] P1T3 宿主父链分流：`src/editor/engine/host-controller.ts`——
   onEnter/onBackspaceAtStart 按 parent.kind 分流到 list-commands；BlockHost
   增 Tab/Shift+Tab keydown（indent/outdent）；host-controller.test.ts 增
   嵌套用例。验证：`npx vitest run src/editor/__tests__/host-controller.test.ts`。
-- [ ] P1T4 契约回归门：`pnpm test`（全量）+ `pnpm build`（三断言）——
+  [✅ 已完成] 17/17 绿（216b995）；Tab 绑定按待澄清 1 起草案落地
+  （Tab/Shift+Tab=缩进/出退，列表外透传浏览器默认）；前驱合并加
+  isEditableLeaf 护栏（容器兄弟永不并入）。
+- [x] P1T4 契约回归门：`pnpm test`（全量）+ `pnpm build`（三断言）——
   顶层基线与冻结面确认。验证：两命令退出码 0。
+  [✅ 已完成] 391/391（基线 376 + 新 15）+ build 三断言全过；顶层
+  SSR/DOM 基线断言不变（focus-path.test.ts baseline 用例）。
 
 ### Phase 2：e2e + 收尾
 

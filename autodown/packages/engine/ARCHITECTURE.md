@@ -55,8 +55,10 @@
 
 ## 5. 已知边界（登记在案）
 
-- 行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染
-  （math/mermaid 编辑态）待行内 mark/面板注入位扩展 —— 见 DEBTS.md 020 行。
+- ~~行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染~~
+  —— 024 激活 bubble，026 激活 TableMenu/CodeBlockMenu 与 6 件 NodeView 预览
+  挂载；余量（math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
+  020/021 行。
 - engine parser 不产出 source 行号（`SourceRange` 为占位）、`:::` 容器/
   table 子集与 jade 前端镜像的差异清单 —— 见 DEBTS.md 020 行（镜像保留
   裁定的前置条件）。
@@ -69,7 +71,8 @@
 **手写平台层（不 .at 化）**
 
 - 引擎内核 `src/editor/engine/`：editor-engine / commands / composition /
-  host-controller / input-rules / text-diff / tiptap-adapter。
+  host-controller / input-rules / text-diff / tiptap-adapter /
+  node-view-host（plan 026 挂载宿主协议桥）。
 - 装配壳 `components/EngineEditor.vue` + `components/BlockHost.vue`：
   IME/composition 平台逻辑密集（BlockHost 的 `contenteditable` +
   compositionstart/update/end 接线、光标偏移读取、CompositionSession 协议）
@@ -118,8 +121,14 @@
   EngineContentHost 是活预览折衷的桥内移植，保留为"装配路径可行"的原型
   （过 vue-tsc、tree-shaken 不进 dist）；如未来重启装配 .at 化，须先移植
   wikilink 装饰与 slash 派发并过 IME 手验。
-- 菜单三件套与 7 块视图目前为 **dormant 生成物**（已部署、未被
-  EngineEditor 挂载）：运行时挂载需引擎菜单宿主协议（adapter
-  `.on/.off('selectionUpdate')`、`isActive('table')`、`getAttributes`、
-  表链命令、`view.dom` 定位 shim）与 block-view 挂载协议——见 §5 与
-  DEBTS.md 020/021 行。
+- ~~菜单三件套与 7 块视图 dormant~~ —— plan 026 挂载宿主协议落地后销账：
+  adapter 具备 `.on/.off('selectionUpdate')`/块族 `isActive`/
+  `getAttributes`/`view` 定位 shim 与表链/语言链动词；EngineEditor 装配
+  TableMenu（表级选中悬浮）与 CodeBlockMenu（fence 宿主壳
+  `.autodown-codeblock-node[data-language]` + language badge 提供 DOM 契约）；
+  NodeView 经 panel registry custom 槽挂预览（node-view-host.ts 桥：
+  nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔），
+  7 件中 6 件在挂（Details/Math/Mermaid/Query/Embed 预览 + MathInline 随
+  024），WikiLinkNodeView 在册不激活（020 装饰器已拥有该交互，无双轨）。
+  余量：Query/Embed 数据装载（runQuery/loadBlock 注入面）与 NodeView
+  编辑态深度，见 DEBTS.md 020/021 行。

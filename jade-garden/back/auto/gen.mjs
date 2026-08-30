@@ -60,6 +60,10 @@ const SOURCES = [
     structs: ['UnlinkedHit'],
   },
   {
+    at: 'linkgraph.at',
+    structs: ['LgPage', 'LgAlias', 'LgLink', 'LgBacklink', 'LgOutlink', 'LgNode', 'LgEdge', 'LgGraph'],
+  },
+  {
     at: 'api.at',
     structs: [
       'ApiError',

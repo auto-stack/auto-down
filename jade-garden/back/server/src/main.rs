@@ -22,6 +22,7 @@ mod tasks;
 mod tasks_gen;
 mod unlinked;
 mod unlinked_gen;
+mod linkgraph_gen;
 mod vm_dispatch;
 mod vm_server;
 mod whiteboard;

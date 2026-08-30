@@ -107,6 +107,10 @@ pub async fn get_backlinks(
 
 // Plan 022 Phase 3: logic core shared by the axum shell and vm_dispatch.
 pub fn graph_impl(state: &AppState) -> Result<GraphData, crate::error::ApiError> {
+    // plan-022 Phase 5: node/edge assembly, degree counts and ordering all
+    // live in linkgraph.at (linkgraph_gen) — the shell only maps rows to
+    // the wire shape. (block_id stays None: target_block_uuid would be a
+    // uuid, not a user-visible block id.)
     let data = state
         .with_index(|idx| idx.graph_data().unwrap_or_else(|_| crate::index::GraphData {
             nodes: Vec::new(),
@@ -114,7 +118,7 @@ pub fn graph_impl(state: &AppState) -> Result<GraphData, crate::error::ApiError>
         }))
         .ok_or("No workspace open")?;
 
-    let mut nodes: Vec<GraphNode> = data
+    let nodes: Vec<GraphNode> = data
         .nodes
         .into_iter()
         .map(|n| GraphNode {
@@ -122,44 +126,116 @@ pub fn graph_impl(state: &AppState) -> Result<GraphData, crate::error::ApiError>
             label: n.title,
             path: n.path,
             exists: true,
-            degree: 0,
+            degree: n.degree as usize,
         })
         .collect();
 
-    let mut node_degrees: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
     let edges: Vec<GraphEdge> = data
         .edges
         .into_iter()
-        .filter_map(|e| {
-            let source_id = e.source;
-            let target_id = e.target;
-            // Both source and target must be known pages.
-            if !nodes.iter().any(|n| n.id == source_id) || !nodes.iter().any(|n| n.id == target_id) {
-                return None;
-            }
-            *node_degrees.entry(source_id.clone()).or_insert(0) += 1;
-            *node_degrees.entry(target_id.clone()).or_insert(0) += 1;
-            Some(GraphEdge {
-                source: source_id,
-                target: target_id,
-                block_id: if e.link_type == "block" {
-                    None // target_block_uuid would be a uuid, not a user-visible block id
-                } else {
-                    None
-                },
-            })
+        .map(|e| GraphEdge {
+            source: e.source,
+            target: e.target,
+            block_id: None,
         })
         .collect();
 
-    for node in &mut nodes {
-        if let Some(d) = node_degrees.get(&node.id) {
-            node.degree = *d;
-        }
+    Ok(GraphData { nodes, edges })
+}
+
+#[cfg(test)]
+mod linkgraph_gen_parity {
+    // Cross-language parity with the TS twin (../../auto/tests/linkgraph-parity.mjs).
+    // Both sides drive linkgraph_gen over the same fixture file; the
+    // shell-level row mapping stays covered by index.rs tests.
+
+    fn fixtures() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../auto/tests/linkgraph-fixtures.json")).unwrap()
     }
 
-    nodes.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(GraphData { nodes, edges })
+    fn rows(c: &serde_json::Value) -> (Vec<crate::linkgraph_gen::LgPage>, Vec<crate::linkgraph_gen::LgAlias>, Vec<crate::linkgraph_gen::LgLink>) {
+        let pages = c["pages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| crate::linkgraph_gen::LgPage {
+                path: p["path"].as_str().unwrap().to_string(),
+                title: p["title"].as_str().unwrap().to_string(),
+            })
+            .collect();
+        let aliases = c["aliases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|a| crate::linkgraph_gen::LgAlias {
+                tagName: a["tagName"].as_str().unwrap().to_string(),
+                pagePath: a["pagePath"].as_str().unwrap().to_string(),
+            })
+            .collect();
+        let links = c["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| crate::linkgraph_gen::LgLink {
+                sourcePage: l["sourcePage"].as_str().unwrap().to_string(),
+                targetPage: l["targetPage"].as_str().unwrap().to_string(),
+                context: l["context"].as_str().unwrap().to_string(),
+                sourceBlockUuid: l["sourceBlockUuid"].as_str().unwrap().to_string(),
+                targetBlockUuid: l["targetBlockUuid"].as_str().unwrap().to_string(),
+                linkType: l["linkType"].as_str().unwrap().to_string(),
+            })
+            .collect();
+        (pages, aliases, links)
+    }
+
+    #[test]
+    fn linkgraph_parity_fixtures() {
+        let fx = fixtures();
+        for c in fx["cases"].as_array().unwrap() {
+            let name = c["name"].as_str().unwrap();
+            let kind = c["kind"].as_str().unwrap();
+            let (pages, aliases, links) = rows(c);
+            match kind {
+                "backlinks" => {
+                    let hits = crate::linkgraph_gen::backlinksOf(pages, aliases, links, c["title"].as_str().unwrap());
+                    let expected = c["expected"].as_array().unwrap();
+                    assert_eq!(hits.len(), expected.len(), "case `{name}`: count");
+                    for (i, (h, e)) in hits.iter().zip(expected.iter()).enumerate() {
+                        assert_eq!(h.sourcePage, e["sourcePage"].as_str().unwrap(), "case `{name}` #{i}");
+                        assert_eq!(h.context, e["context"].as_str().unwrap(), "case `{name}` #{i}");
+                    }
+                }
+                "outlinks" => {
+                    let hits = crate::linkgraph_gen::outlinksOf(pages, aliases, links, c["title"].as_str().unwrap());
+                    let expected = c["expected"].as_array().unwrap();
+                    assert_eq!(hits.len(), expected.len(), "case `{name}`: count");
+                    for (i, (h, e)) in hits.iter().zip(expected.iter()).enumerate() {
+                        assert_eq!(h.targetPage, e["targetPage"].as_str().unwrap(), "case `{name}` #{i}");
+                        assert_eq!(h.linkType, e["linkType"].as_str().unwrap(), "case `{name}` #{i}");
+                    }
+                }
+                "graph" => {
+                    let g = crate::linkgraph_gen::graphData(pages, aliases, links);
+                    let expected = &c["expected"];
+                    assert_eq!(g.nodes.len(), expected["nodes"].as_array().unwrap().len(), "case `{name}`: nodes");
+                    for (i, (n, e)) in g.nodes.iter().zip(expected["nodes"].as_array().unwrap().iter()).enumerate() {
+                        assert_eq!(n.id, e["id"].as_str().unwrap(), "case `{name}` node #{i}");
+                        assert_eq!(n.degree, e["degree"].as_i64().unwrap(), "case `{name}` node #{i}");
+                    }
+                    assert_eq!(g.edges.len(), expected["edges"].as_array().unwrap().len(), "case `{name}`: edges");
+                    for (i, (e, ex)) in g.edges.iter().zip(expected["edges"].as_array().unwrap().iter()).enumerate() {
+                        assert_eq!(e.source, ex["source"].as_str().unwrap(), "case `{name}` edge #{i}");
+                        assert_eq!(e.target, ex["target"].as_str().unwrap(), "case `{name}` edge #{i}");
+                    }
+                }
+                "resolve" => {
+                    let path = crate::linkgraph_gen::resolvePagePath(pages, aliases, c["title"].as_str().unwrap());
+                    assert_eq!(path, c["expected"].as_str().unwrap(), "case `{name}`");
+                }
+                other => panic!("unknown kind {other}"),
+            }
+        }
+    }
 }
 
 pub async fn get_graph(

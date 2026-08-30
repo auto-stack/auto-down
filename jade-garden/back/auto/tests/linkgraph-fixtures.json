@@ -1,0 +1,117 @@
+{
+  "cases": [
+    {
+      "name": "backlinks case-insensitive + source sort",
+      "kind": "backlinks",
+      "pages": [
+        { "path": "a.ad", "title": "Alpha" },
+        { "path": "b.ad", "title": "Beta" },
+        { "path": "c.ad", "title": "Gamma" }
+      ],
+      "aliases": [],
+      "links": [
+        { "sourcePage": "c.ad", "targetPage": "beta", "context": "link to Beta", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" },
+        { "sourcePage": "a.ad", "targetPage": "BETA", "context": "another", "sourceBlockUuid": "u1", "targetBlockUuid": "", "linkType": "wiki" },
+        { "sourcePage": "a.ad", "targetPage": "Gamma", "context": "other target", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" }
+      ],
+      "title": "Beta",
+      "expected": [
+        { "sourcePage": "a.ad", "sourceBlockUuid": "u1", "context": "another" },
+        { "sourcePage": "c.ad", "sourceBlockUuid": "", "context": "link to Beta" }
+      ]
+    },
+    {
+      "name": "backlinks alias-stored target not matched (rust filter is canonical-title only)",
+      "kind": "backlinks",
+      "pages": [
+        { "path": "a.ad", "title": "Alpha" },
+        { "path": "j.ad", "title": "Journal" }
+      ],
+      "aliases": [
+        { "tagName": "daily", "pagePath": "j.ad" }
+      ],
+      "links": [
+        { "sourcePage": "a.ad", "targetPage": "daily", "context": "to alias", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" }
+      ],
+      "title": "Journal",
+      "expected": []
+    },
+    {
+      "name": "backlinks unknown title empty",
+      "kind": "backlinks",
+      "pages": [{ "path": "a.ad", "title": "Alpha" }],
+      "aliases": [],
+      "links": [],
+      "title": "Ghost",
+      "expected": []
+    },
+    {
+      "name": "outlinks sorted, empty-target first",
+      "kind": "outlinks",
+      "pages": [
+        { "path": "a.ad", "title": "Alpha" },
+        { "path": "b.ad", "title": "Beta" },
+        { "path": "z.ad", "title": "Zed" }
+      ],
+      "aliases": [],
+      "links": [
+        { "sourcePage": "a.ad", "targetPage": "Zed", "context": "to zed", "sourceBlockUuid": "", "targetBlockUuid": "tz", "linkType": "wiki" },
+        { "sourcePage": "a.ad", "targetPage": "", "context": "embed no target", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "embed" },
+        { "sourcePage": "a.ad", "targetPage": "Beta", "context": "to beta", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" }
+      ],
+      "title": "Alpha",
+      "expected": [
+        { "targetPage": "", "targetBlockUuid": "", "linkType": "embed" },
+        { "targetPage": "Beta", "targetBlockUuid": "", "linkType": "wiki" },
+        { "targetPage": "Zed", "targetBlockUuid": "tz", "linkType": "wiki" }
+      ]
+    },
+    {
+      "name": "graph assembly degree and unresolved dropped",
+      "kind": "graph",
+      "pages": [
+        { "path": "a.ad", "title": "Alpha" },
+        { "path": "b.ad", "title": "Beta" },
+        { "path": "c.ad", "title": "Gamma" }
+      ],
+      "aliases": [],
+      "links": [
+        { "sourcePage": "a.ad", "targetPage": "Beta", "context": "", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" },
+        { "sourcePage": "b.ad", "targetPage": "Ghost", "context": "", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" },
+        { "sourcePage": "c.ad", "targetPage": "Alpha", "context": "", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" },
+        { "sourcePage": "b.ad", "targetPage": "alpha", "context": "", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" }
+      ],
+      "title": "",
+      "expected": {
+        "nodes": [
+          { "id": "a.ad", "label": "Alpha", "degree": 3 },
+          { "id": "b.ad", "label": "Beta", "degree": 2 },
+          { "id": "c.ad", "label": "Gamma", "degree": 1 }
+        ],
+        "edges": [
+          { "source": "a.ad", "target": "b.ad" },
+          { "source": "c.ad", "target": "a.ad" },
+          { "source": "b.ad", "target": "a.ad" }
+        ]
+      }
+    },
+    {
+      "name": "resolve via alias",
+      "kind": "resolve",
+      "pages": [{ "path": "a.ad", "title": "Alpha" }],
+      "aliases": [{ "tagName": "the-alpha", "pagePath": "a.ad" }],
+      "links": [],
+      "title": "The-Alpha",
+      "expected": "a.ad"
+    },
+    {
+      "name": "resolve miss empty",
+      "kind": "resolve",
+      "pages": [{ "path": "a.ad", "title": "Alpha" }],
+      "aliases": [],
+      "links": [],
+      "title": "Ghost",
+      "expected": ""
+    }
+  ]
+}

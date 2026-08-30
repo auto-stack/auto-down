@@ -6,7 +6,7 @@ status: execution_done
 feature_name: 挂载宿主协议（adapter 事件面/isActive/getAttributes/view shim + node-view props 桥）+ TableMenu/CodeBlockMenu/NodeViews 激活
 author: [zhaopuming, zcode]
 created_at: 2026-08-30T00:35:00+08:00
-updated_at: 2026-08-30T13:40:00+08:00supersedes_spec_components: []
+updated_at: 2026-08-30T15:30:00+08:00supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 current_step: 10
@@ -249,6 +249,24 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
   node-view-host 入 §6 平台层清单；四门：engine 429/429 + build exit 0（三断言）
   + demo e2e 22/22 + jade-garden build exit 0
 
+### 执行后补充（用户指令"先把需要补充的事情做完"，2026-08-30）
+
+- rust 发射体同步：auto trans serializer.at rust → core/rust/src/serializer.rs
+  （detailsMd + 分发），cargo test 全绿（已折叠）。
+- ARCHITECTURE 勘误：NodeView 在挂真数 5/7（MathInline 未挂——原记 6/7 系
+  照抄计划稿算术，grep 实证无挂载）；§5/§6 同步修正。
+- DEBTS.md 落账：021 dormant 行销号、020 菜单行部分落地、026 新行（Query/
+  Embed 数据装载未接/NodeView 编辑态深度/MathInline 未挂/TableMenu 首表定位）
+  + 主检出 engine dist 陈旧脚枪行。
+- jade e2e 补跑（EDITOR-CONTRACT 冻结面最硬证据）：后端工作树 cargo build
+  （主检出 exe 落后 back/ 源 19 天）+ journals 夹具补齐（gitignore 本地数据，
+  工作树缺）→ **22/22 全绿**。
+- 顺带修复（jade e2e 实证的存量断裂，025 引入、主检出陈旧 dist 掩盖）：
+  EngineEditor emitUpdate 内容去重——挂载期 focusFirstBlock 的 selection 发
+  update，jade EditorTab OnUpdate 早于父 onMounted 触发 debounced_save null
+  崩溃；现 selection-only 变化不再重发 md。回归：engine 429/429、demo 22/22。
+- lint 门不可执行说明：workspace 从未安装 eslint（主检出同），非本计划引入。
+
 ## 复审记录
 
 （/auto-plan:review 填写）
@@ -261,7 +279,10 @@ Math/Mermaid/Query/Embed 同式注册（各自 attrs 驱动）。注册在 Engin
 - [ ] Math/Mermaid/Query/Embed 四件的挂载深度：起草为"预览渲染 + 属性更新"
   （源码级编辑单列后续）；Query/Embed 的数据装载（查询执行/资源解析）不在
   本计划（需要后端面，另立）。
-- [ ] 与 024/025 的顺序：起草 026 最后执行（024 定 mark 链的 isActive 语义
+- [x] 与 024/025 的顺序：起草 026 最后执行（024 定 mark 链的 isActive 语义
   边界、025 定选区深层语义——两者都动 adapter/selection 相关面，026 收口
   在后最稳）。若并行，文件交集在 tiptap-adapter.ts（024 mark 链 vs 026
   事件面），需错峰。
+  [✅ 已按起草口径执行] 024/025 均已 reviewed 后 026 收口；adapter 改动无冲突
+  （mark 面/事件面分立），未需错峰。#1/#2 留用户裁定（执行按起草默认：并存挂载、
+  预览渲染+属性更新深度）。

@@ -166,12 +166,23 @@ function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlo
     const rightNext = rightBlocks[rightIdx + 1]
 
     // Align the very first matched pair. The editor's first block may have a
-    // top margin (e.g. H1) while the preview slot may not, so use viewport
-    // coordinates to compute the actual first-block vertical offset.
+    // top margin (e.g. H1) while the preview slot may not, so compute the
+    // first-block vertical offset from container-relative coordinates — each
+    // side normalized by its own container's scrollTop. A measure() pass can
+    // land while the panes sit at different scroll offsets (e.g. focus mounts
+    // a host right after scrollIntoViewIfNeeded scrolled only the left pane);
+    // raw viewport coordinates would bake that transient difference into the
+    // injected margin (observed as a -951px rule once plan 029 made the
+    // focused host geometry match the preview so exactly that no corrective
+    // re-measure fired).
     if (i === 0) {
-      // normalizeBlocks() resets the first block top to 0, so use viewport
-      // coordinates to compute the actual first-block vertical offset.
-      const topOffset = left.el.getBoundingClientRect().top - right.el.getBoundingClientRect().top
+      const leftContainer = left.el.closest('.autodown-editor-content-wrapper') as HTMLElement | null
+      const rightContainer = right.el.closest('.streaming-document') as HTMLElement | null
+      const topOffset =
+        left.el.getBoundingClientRect().top -
+        (leftContainer?.getBoundingClientRect().top ?? 0) +
+        (leftContainer?.scrollTop ?? 0) -
+        (right.el.getBoundingClientRect().top - (rightContainer?.getBoundingClientRect().top ?? 0) + (rightContainer?.scrollTop ?? 0))
       if (Math.abs(topOffset) > 0.5) {
         rules.push(
           `.streaming-document .node-slot[data-block-slot-id="${right.id}"] { margin-top: ${topOffset}px !important; }`

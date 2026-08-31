@@ -38,12 +38,16 @@
 //    are typed `ref<HTMLElement | null>` and the language has no casts, so
 //    `.select()` (HTMLInputElement-only) fails vue-tsc on the generated
 //    SFC.
-// 6. renderKatexPreview / renderMermaidPreview — re-exports from the real
-//    composables/renderPreview.ts facade (single source of truth in the
-//    render layer, src/render/preview.ts). The npm library calls +
-//    try/catch error paths of the render-type node views genuinely cannot
-//    live in the DSL (no npm imports, no exceptions). v-html IS expressible
-//    (the `html:` prop), so no setInnerHTML shim is needed.
+// 6. renderKatexPreview / renderMermaidPreview / renderMathBlockPreview —
+//    the render-type node views' render bridges (single implementation in
+//    the render layer, src/render/preview.ts). The npm library calls +
+//    try/catch error paths genuinely cannot live in the DSL (no npm
+//    imports, no exceptions). v-html IS expressible (the `html:` prop),
+//    so no setInnerHTML shim is needed. Since plan 031 T8 the BLOCK
+//    bridges (renderMathBlockPreview, renderMermaidPreview) additionally
+//    record successful final renders into the host artifact store via
+//    recordArtifact; the plain renderKatexPreview re-export stays
+//    put-free for MathInline (inline math is not a block artifact).
 //
 // 7. errorMessage — the catch-branch `err.message || String(err)`
 //    extraction; TS types the catch param `unknown` and the DSL has no
@@ -51,8 +55,33 @@
 
 import { defineComponent, h, inject, type VNode } from 'vue'
 import { Pencil } from 'lucide-vue-next'
+import { recordArtifact, renderKatexPreview, renderMermaidPreview as renderMermaidPreviewImpl } from '../../render/preview'
 
-export { renderKatexPreview, renderMermaidPreview } from '../composables/renderPreview'
+export { renderKatexPreview }
+
+// MathBlock/Mermaid FINAL render (plan 031 T8): the node-view render
+// success branches land their artifacts in the host-injected store (the
+// put choke point is recordArtifact in src/render/preview.ts — a no-op
+// without a store, so unregistered hosts keep the exact pre-031 behavior).
+// MathInline keeps the plain renderKatexPreview re-export above — inline
+// math is not a block artifact (plan 031 不做 MathInline).
+export function renderMathBlockPreview(source: string): { html: string; error: string } {
+  const res = renderKatexPreview(source, true)
+  if (res.error === '') {
+    recordArtifact('MathBlock', source, { kind: 'html', body: res.html, error: '' })
+  }
+  return res
+}
+
+// Same call shape as the render-layer bridge (mermaid_node_view.at is
+// unchanged); a successful svg is additionally recorded as an artifact.
+export async function renderMermaidPreview(source: string): Promise<{ svg: string; error: string }> {
+  const res = await renderMermaidPreviewImpl(source)
+  if (res.error === '') {
+    recordArtifact('Mermaid', source, { kind: 'svg', body: res.svg, error: '' })
+  }
+  return res
+}
 
 /** Injection key for the NodeViewContent hole's body (plan 026 P1T2): the
  *  mounting bridge provides the block's embedded VNodes; the widget templates

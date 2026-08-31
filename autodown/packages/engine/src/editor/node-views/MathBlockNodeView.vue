@@ -3,7 +3,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewContent } from '../ext/node_view_ext'
 import { NodeViewWrapper } from '../ext/node_view_ext'
-import { renderKatexPreview } from '../ext/node_view_ext'
+import { renderMathBlockPreview } from '../ext/node_view_ext'
 
 
 const props = defineProps<{
@@ -30,14 +30,14 @@ const emit = defineEmits<{
 }>()
 
 watch(source, () => {
-  let result = renderKatexPreview(source.value, true);
+  let result = renderMathBlockPreview(source.value);
   html.value = result.html;
   error_text.value = result.error;
 })
 
 onMounted(() => {
 
-  let result = renderKatexPreview(source.value, true);
+  let result = renderMathBlockPreview(source.value);
   html.value = result.html;
   error_text.value = result.error;
 })

@@ -12,6 +12,8 @@
 
 import katex from 'katex'
 import mermaid from 'mermaid'
+import { artifactHash } from './artifact-key'
+import { getArtifactStore } from './optional-capabilities'
 
 mermaid.initialize({ startOnLoad: false, theme: 'default' })
 
@@ -75,14 +77,33 @@ export interface RenderedArtifact {
 
 export type ArtifactBlockKind = 'MathBlock' | 'Mermaid'
 
+/** The single put choke point (plan 031 D6/T8): a SUCCESSFUL final render
+ *  lands in the host-injected store under the single-source artifactHash
+ *  key. No store registered -> no-op (pre-031 behavior, byte for byte).
+ *  Repeated puts of the same (kind, source) rewrite the same key — the
+ *  "exactly once" semantics come from final-renders-only + idempotent
+ *  keys, not from call counting. Exported for the node-view bridge's
+ *  synchronous katex path (the bridge family in src/editor/ext/). */
+export function recordArtifact(blockKind: ArtifactBlockKind, source: string, artifact: RenderedArtifact): void {
+  if (artifact.error !== '') return
+  const store = getArtifactStore()
+  if (!store) return
+  store.put(artifactHash(blockKind, source), artifact)
+}
+
 /** Produce the persistable artifact for a final render: math -> katex HTML
  *  (display mode, same face as the node view), mermaid -> SVG. Errors are
- *  data, not exceptions (the preview-bridge idiom). */
+ *  data, not exceptions (the preview-bridge idiom). A successful result is
+ *  recorded into the artifact store when one is registered. */
 export async function artifactFor(blockKind: ArtifactBlockKind, source: string): Promise<RenderedArtifact> {
   if (blockKind === 'MathBlock') {
     const res = renderKatexPreview(source, true)
-    return { kind: 'html', body: res.html, error: res.error }
+    const artifact: RenderedArtifact = { kind: 'html', body: res.html, error: res.error }
+    recordArtifact(blockKind, source, artifact)
+    return artifact
   }
   const res = await renderMermaidPreview(source)
-  return { kind: 'svg', body: res.svg, error: res.error }
+  const artifact: RenderedArtifact = { kind: 'svg', body: res.svg, error: res.error }
+  recordArtifact(blockKind, source, artifact)
+  return artifact
 }

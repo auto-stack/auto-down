@@ -34,7 +34,7 @@
 widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes: Array<str>, selected: bool, extension: Array<str>, getPos: Array<str>, deleteNode: Array<str>, decorations: []str) {
     use {
         component: NodeViewWrapper, NodeViewContent from "ext/node_view_ext.ts"
-        fn: renderKatexPreview from "ext/node_view_ext.ts"
+        fn: renderMathBlockPreview from "ext/node_view_ext.ts"
     }
 
     msg Msg { Init }
@@ -81,7 +81,7 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
         // run happens in .Init (the DSL watch has no immediate option; the
         // body is DUPLICATED — see mermaid_node_view.at).
         .source -> {
-            let result = renderKatexPreview(.source, true)
+            let result = renderMathBlockPreview(.source)
             .html = result.html
             .error_text = result.error
         }
@@ -90,7 +90,7 @@ widget MathBlockNodeView(node: Array<str>, editor: Array<str>, updateAttributes:
     on {
         .Init -> {
             // render() — duplicated in the watch above.
-            let result = renderKatexPreview(.source, true)
+            let result = renderMathBlockPreview(.source)
             .html = result.html
             .error_text = result.error
         }

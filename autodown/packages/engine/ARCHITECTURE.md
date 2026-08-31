@@ -69,8 +69,18 @@
 - ~~行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染~~
   —— 024 激活 bubble，026 激活 CodeBlockMenu 与 5 件 NodeView 预览挂载
   （Details/MathBlock/Mermaid/Query/Embed）；TableMenu 挂载后被裁定合并回
-  TableEditorBlock 工具栏（单一入口）；余量（math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
-  020/021 行。
+  TableEditorBlock 工具栏（单一入口）；030 补 Callout builtin 面板与容器块
+  WYSIWYG 装配（Callout/Details 聚焦保卡片 chrome，title/summary 走
+  AttrHost 就地无框编辑，Mermaid 编辑面复用 fence 高亮编辑）；余量
+  （math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
+  020/021/026 行。
+- **解析子集（plan 030 扩集）**：blocks = heading(ATX+setext)/paragraph/
+  fence/`%{ }%` math 块/```` ```mermaid ```` closed fence→Mermaid/
+  blockquote/list(ul+ol+任务项 `- [ ]`/`- [x]`)/thematic_break/table/
+  `$callout/$details/$query/$embed` 引擎方言组件块（roundtrip-first，
+  语法=serializer 自家写出形状；未闭合/未知 `$name` 降级段落字面）。
+  siyuan 系 `:::`/`$$` 旧方言 alias 不做（DEBTS.md 030 行）；footnote/
+  mark/sub/sup/insert/html 块/linkify 仍在白名单外。
 - engine parser 不产出 source 行号（`SourceRange` 为占位）、`:::` 容器/
   table 子集与 jade 前端镜像的差异清单 —— 见 DEBTS.md 020 行（镜像保留
   裁定的前置条件）。

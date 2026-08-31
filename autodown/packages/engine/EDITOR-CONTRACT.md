@@ -21,6 +21,10 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.streaming-document` | 渲染根 | demo scroll-sync |
 | `.node-slot` / `.node-content` | 渲染块包裹 | 渲染契约（render.test.ts 在册） |
 | `[contenteditable]` | 编辑宿主（聚焦宿主为语义化标签——Heading→h1-h6、Paragraph→p、其余 div；class 与 data 面不变，plan 029） | jade e2e 02 |
+| `.callout-node[data-callout-type]` + `.autodown-callout*` 类链 | Callout 卡片（builtin 面板与编辑装配共用同一链，CSS 单通道，plan 030） | demo extension-blocks e2e |
+| `.autodown-details[data-open]` + `.autodown-details-*` | Details 卡片（node-view 预览与编辑装配同链，plan 030） | demo extension-blocks e2e |
+| `.autodown-attr-host` | 容器块 attr 就地无框编辑宿主（Callout title / Details summary；blur→setBlockAttrs 一步 undo，Enter/Esc=blur 提交，plan 030） | demo extension-blocks e2e |
+| `.task-item` > `.task-checkbox` | GFM 任务项（view/stream 态 disabled 只读；编辑装配态可点，点击翻转 checked attr，plan 030） | demo extension-blocks e2e |
 
 ## 2. CustomEvent（document 级）
 
@@ -49,6 +53,10 @@ Tiptap 退役前后都必须全绿。
 
 - 中文 IME：输入中 / 确认 / 组合中途撤销（微软拼音，循 auto-lang 413 清单）
 - 拖拽块（DragHandle 交互面）、表格行列增删、粘贴（纯文本 + markdown 多行）
+- 容器块 WYSIWYG（plan 030）：聚焦 Callout/Details 内段落时卡片 chrome
+  不变、正文就地编辑；title/summary 无框就地编辑 blur 落盘一步 undo；
+  任务项 checkbox 点击翻转；```` ```mermaid ```` 块聚焦为高亮代码编辑
+  （复用 CodeEditorBlock），预览为 SVG 面板
 
 ## 核验责任
 

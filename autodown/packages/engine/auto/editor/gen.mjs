@@ -175,6 +175,10 @@ const EXT_DEPLOY = [
   // plan 023 P1T7/P1T8 — the editing faces' DOM helpers.
   'code_editor_block_ext.ts',
   'table_editor_block_ext.ts',
+  // plan 031 T3 — the math/mermaid edit faces' bridges (preview re-exports,
+  // the debounce scheduler, textarea rows/focus helpers).
+  'math_edit_ext.ts',
+  'mermaid_edit_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',

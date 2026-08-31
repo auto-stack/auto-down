@@ -9,10 +9,15 @@
 //   palette_map  <- packages/engine/auto/render/palette_map.at
 //                  (block type -> panel spec, the panel vocabulary single
 //                  source for iced panel renderers — plan 019 / plan-450)
+//   artifact_hash <- packages/engine/auto/render/artifact_hash.at
+//                  (rendered-artifact cache key, FNV-1a over UTF-16 units —
+//                  plan 031 D5; the encode_utf16 wrapper is appended by the
+//                  engine gen.mjs RP2 post-fix)
 //
 // Regenerate with the commands in rust/README.md (requires a locally built
 // auto.exe from the auto-lang checkout). Do not edit the modules by hand.
 
+pub mod artifact_hash;
 pub mod block_model;
 pub mod ial;
 pub mod markdown_parser;

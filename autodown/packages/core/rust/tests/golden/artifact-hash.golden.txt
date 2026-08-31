@@ -1,0 +1,18 @@
+# artifact-hash cross-target parity golden (plan 031 D5).
+# Rewritten by engine src/render/__tests__/artifact-hash.test.ts on
+# every `pnpm test`; asserted by rust tests/artifact_hash_parity.rs.
+# Format: <corpus index> <kind>:<utf16 len>:<8-hex FNV-1a>.
+# The corpus lives in BOTH tests (kept in lockstep by the golden:
+# adding an entry there without regenerating fails here and vice versa).
+# Do not edit.
+
+0 MathBlock:8:079c89ac
+1 MathBlock:22:c0984ab4
+2 MathBlock:0:adcee2e0
+3 Mermaid:16:061b15d9
+4 Mermaid:43:a576c2f5
+5 Mermaid:29:75eabe09
+6 Mermaid:52:60f7cfcf
+7 MathBlock:29:6f7d94f7
+8 MathBlock:16:76c82319
+9 Mermaid:38:8dd49bfb

@@ -1,0 +1,140 @@
+// AutoDown Engine — rendered-artifact cache key (plan 031 D5).
+//
+// Single source of the artifact hash: web (TS) and VM (rust) must compute
+// the SAME key for the same (kind, source) so a persisted artifact written
+// by one side is found by the other. Key shape:
+//
+//     kind + ":" + len(source) + ":" + hex32(h)
+//
+// where h = FNV-1a 32 over the UTF-16 code units of kind + U+0000 + source
+// (the NUL separator keeps kind/source boundaries unambiguous; the len mix
+// shrinks collision damage). len(source) is the UTF-16 length.
+//
+// Portability constraints that shaped this source (probe-verified against
+// the a2ts/a2r emitters, see gen.mjs):
+// - No bitwise ops — `^`/`&` are not lexable in Auto. The FNV xor is
+//   emulated arithmetically (xor32: 32-iteration bit loop).
+// - No portable division — rust i64 `/` truncates, JS `/` yields floats.
+//   Every division here operates on an exactly-divisible numerator via the
+//   `(x - x % d) / d` idiom, so both targets agree.
+// - No portable char->int — `charCodeAt` emits TS but not rust, `char_at`
+//   emits rust (unicode scalar) but not TS, and `.length` emits UTF-16
+//   count in TS vs scalar count in rust. The UTF-16 unit list is therefore
+//   materialized at the platform boundary (TS: charCodeAt loop in
+//   src/render/artifact-key.ts; rust: encode_utf16 wrapper appended by
+//   gen.mjs) — the same "DSL cannot express it -> bridge" boundary as npm
+//   imports and timers. UTF-16 is the common denominator both sides
+//   encode identically, and the parity golden (rust
+//   tests/artifact_hash_parity.rs, CJK/emoji/multiline corpus) locks the
+//   two emissions byte for byte.
+// - All values stay in [0, 2^32), but the naive FNV multiply peaks at
+//   2^32 * 2^25 = 2^57 — BEYOND the exact-integer range of JS doubles
+//   (2^53), where it silently rounds and diverges from i64. mulMod32
+//   below splits the multiply into 16-bit halves so every intermediate
+//   stays < 2^49: no Math.imul / wrapping_mul emulation needed, the plain
+//   emitted arithmetic is identical on both targets.
+//
+// Auto constructs used (proven in palette_map.at / serializer.at):
+// `var`/`let`, while/for loops, `%`/`*`/`+`/`-`, int comparisons,
+// `.to(str)`, ASCII `.slice(a,b)`, `List<int>` indexing + `.length`.
+
+// FNV-1a 32 offset basis (2166136261 = 0x811C9DC5) and prime. Literals
+// above i32 max (2147483647) are typed i64 and NOT emittable by a2ts, so
+// the two large constants are built arithmetically from i32-range parts.
+pub fn fnvOffsetBasis() int {
+    return 2000000000 + 166136261
+}
+
+pub fn fnvPrime() int {
+    return 16777619
+}
+
+// 2^32 — the FNV state modulus (also not emittable as a literal).
+pub fn u32Modulus() int {
+    return 65536 * 65536
+}
+
+// i-th bit of x, where p = 2^i. Emitter constraint: the a2ts/a2r printers
+// DROP parentheses on mixed-precedence arithmetic (`(x - x % p) / p` emits
+// as `x - x % p / p`, which truncates to different values in JS and rust),
+// so every statement here carries exactly ONE operator — the intermediate
+// vars make the exact-division idiom paren-free.
+pub fn bitAt(x int, p int) int {
+    let r int = x % p
+    let t int = x - r
+    let q int = t / p
+    return q % 2
+}
+
+// a ^ b for a, b in [0, 2^32) — arithmetic emulation (no `^` in Auto).
+pub fn xor32(a int, b int) int {
+    var r int = 0
+    var p int = 1
+    var i int = 0
+    while i < 32 {
+        let ab int = bitAt(a, p)
+        let bb int = bitAt(b, p)
+        if ab != bb {
+            r = r + p
+        }
+        p = p * 2
+        i = i + 1
+    }
+    return r
+}
+
+// (a * b) mod 2^32 for a < 2^32 and b < 2^25 (the FNV prime fits), via a
+// 16-bit split: a = hi*2^16 + lo, so a*b = hi*b*2^16 + lo*b; each half is
+// reduced mod 2^32 BEFORE the shift-and-add, keeping every intermediate
+// < 2^49 (exact in JS doubles — see the header bullet). Single-operator
+// statements throughout (the emitter drops parens on mixed precedence).
+pub fn mulMod32(a int, b int) int {
+    let lo int = a % 65536
+    let t int = a - lo
+    let hi int = t / 65536
+    let ph int = hi * b
+    let pl int = lo * b
+    let phr int = ph % u32Modulus()
+    let plr int = pl % u32Modulus()
+    let s1 int = phr * 65536
+    let s int = s1 + plr
+    return s % u32Modulus()
+}
+
+// One FNV-1a round: h = ((h ^ u) * prime) mod 2^32.
+pub fn fnvStep(h int, u int) int {
+    let x int = xor32(h, u)
+    return mulMod32(x, fnvPrime())
+}
+
+pub fn hexDigit(d int) str {
+    let digits str = "0123456789abcdef"
+    return digits.slice(d, d + 1)
+}
+
+// v in [0, 2^32) -> 8 lowercase hex chars, zero-padded. Single-operator
+// statements (see bitAt): `x = (x - d) / 16` would emit paren-less.
+pub fn hex32(v int) str {
+    var out str = ""
+    var x int = v
+    var i int = 0
+    while i < 8 {
+        let d int = x % 16
+        out = hexDigit(d) + out
+        let t int = x - d
+        x = t / 16
+        i = i + 1
+    }
+    return out
+}
+
+// The artifact cache key: FNV-1a 32 over `units` (the UTF-16 code units of
+// kind + U+0000 + source, materialized by the platform wrapper) with the
+// source's UTF-16 length mixed into the readable prefix.
+pub fn artifactKeyOf(kind str, source_len int, units List<int>) str {
+    var h int = fnvOffsetBasis()
+    for i in 0..units.length.to(int) {
+        h = fnvStep(h, units[i])
+    }
+    return kind + ":" + source_len.to(str) + ":" + hex32(h)
+}

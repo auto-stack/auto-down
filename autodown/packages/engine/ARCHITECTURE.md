@@ -71,9 +71,10 @@
   （Details/MathBlock/Mermaid/Query/Embed）；TableMenu 挂载后被裁定合并回
   TableEditorBlock 工具栏（单一入口）；030 补 Callout builtin 面板与容器块
   WYSIWYG 装配（Callout/Details 聚焦保卡片 chrome，title/summary 走
-  AttrHost 就地无框编辑，Mermaid 编辑面复用 fence 高亮编辑）；余量
-  （math/mermaid 编辑态深化、Query/Embed 数据装载）见 DEBTS.md
-  020/021/026 行。
+  AttrHost 就地无框编辑）；031 落 math/mermaid 专用编辑面（源码+实时
+  预览同屏，MathEditBlock 同步 katex / MermaidEditBlock debounce 三态，
+  替换 030 的 fence 复用与 BlockHost 文本兜底）；余量（Query/Embed
+  数据装载）见 DEBTS.md 020/021/026 行。
 - **解析子集（plan 030 扩集）**：blocks = heading(ATX+setext)/paragraph/
   fence/`%{ }%` math 块/```` ```mermaid ```` closed fence→Mermaid/
   blockquote/list(ul+ol+任务项 `- [ ]`/`- [x]`)/thematic_break/table/
@@ -107,13 +108,13 @@
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 14 个部署物：`menus/{SlashMenu,BubbleMenu,TableMenu,CodeBlockMenu}.vue`、
-  `components/{CodeLanguageIcon,CodeEditorBlock,TableEditorBlock}.vue`、
+- 16 个部署物：`menus/{SlashMenu,BubbleMenu,TableMenu,CodeBlockMenu}.vue`、
+  `components/{CodeLanguageIcon,CodeEditorBlock,TableEditorBlock,MathEditBlock,MermaidEditBlock}.vue`、
   `node-views/*.vue`（7）——gen 管线
   （暂存工程 `auto build --gen-only --lenient` → 收割 → E1 import 后修 →
   部署），两连跑逐字节确定。
-- 9 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
-  部署（引擎接口，零 Tiptap）。
+- 11 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
+  部署（引擎接口，零 Tiptap；031 增 math_edit_ext / mermaid_edit_ext）。
 - build guard：`scripts/assert-editor-gen.mjs`——生成头注 ↔ .at 源存在性、
   部署清单精确性（增删均须显式改 guard 清单）、ext 桥同步，三项断言。
 
@@ -157,3 +158,22 @@
   026 行）；WikiLinkNodeView 在册不激活（020 装饰器已拥有该交互，无双轨）。
   余量：Query/Embed 数据装载（runQuery/loadBlock 注入面）与 NodeView
   编辑态深度、MathInline 挂载位，见 DEBTS.md 020/021/026 行。
+
+**渲染工件契约（plan 031，view 模式的持久化通道）**
+
+- view 渲染成功即产出工件：mermaid→SVG（天然 VM/iced 可显示物）、
+  math→HTML v1（KaTeX→SVG 生成器选型后置，DEBTS 跟踪）。契约
+  `RenderedArtifact { kind: 'html'|'svg', body, error }` +
+  `artifactFor(kind, source)` 在 `src/render/preview.ts`（npm/try-catch
+  不可 DSL 化的同一老边界）。
+- 工件键 = **单源 hash**：`auto/render/artifact_hash.at`（FNV-1a 32 over
+  kind+U+0000+source 的 UTF-16 码单元 + len 混入，键形
+  `kind:<len>:<8hex>`）双发射——a2ts → `src/render/artifact-hash.generated.ts`
+  （零 post-fix），a2r → core rust `artifact_hash.rs`（RP2 encode_utf16
+  包装器追加）；TS/rust 金标对拍（中文/星面 emoji 语料）钉死字节一致。
+  .at 侧适配约束（字面量上限/括号丢弃/double 精确域）见该 .at 头注。
+- 存储经注入：`enableArtifactStore({ get, put })`（optional-capabilities
+  既有模式）——engine 零落盘、`.ad` 序列化零变化；put 咽喉点
+  `recordArtifact`（成功 final 才写、键幂等），node-view 桥
+  （renderMathBlockPreview / renderMermaidPreview 包装）挂接；未注册 =
+  行为与 031 前逐字节一致。VM 端将来接磁盘缓存 + resvg 显示。

@@ -51,3 +51,38 @@ export async function renderMermaidPreview(source: string): Promise<RenderedMerm
     return { svg: '', error: e.message || String(e) }
   }
 }
+
+// -- rendered artifacts (plan 031 D6) -----------------------------------------
+//
+// The persistable product of a successful view render: mermaid -> SVG (a
+// natural VM/iced displayable), math -> HTML v1 (a KaTeX-to-SVG generator
+// is deliberately out of scope — tracked in DEBTS; the kind field already
+// reserves the choice). renderKatexPreview / renderMermaidPreview stay
+// untouched (their in-register consumers keep zero disturbance); artifactFor
+// is the NEW final-artifact producer the artifact store hooks into (the
+// put-on-success wiring lives with the store registration, T8).
+
+export type ArtifactKind = 'html' | 'svg'
+
+export interface RenderedArtifact {
+  /** the body's display form — drives the VM-side displayer */
+  kind: ArtifactKind
+  /** the rendered body ("" when error != "") */
+  body: string
+  /** "" on success; the render error message otherwise */
+  error: string
+}
+
+export type ArtifactBlockKind = 'MathBlock' | 'Mermaid'
+
+/** Produce the persistable artifact for a final render: math -> katex HTML
+ *  (display mode, same face as the node view), mermaid -> SVG. Errors are
+ *  data, not exceptions (the preview-bridge idiom). */
+export async function artifactFor(blockKind: ArtifactBlockKind, source: string): Promise<RenderedArtifact> {
+  if (blockKind === 'MathBlock') {
+    const res = renderKatexPreview(source, true)
+    return { kind: 'html', body: res.html, error: res.error }
+  }
+  const res = await renderMermaidPreview(source)
+  return { kind: 'svg', body: res.svg, error: res.error }
+}

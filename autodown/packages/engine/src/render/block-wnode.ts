@@ -19,6 +19,7 @@ import {
   BlockType,
   InlineSpan,
   Mark,
+  attrGet,
   attrGetBool,
   attrGetInt,
   attrGetStr,
@@ -88,41 +89,57 @@ function convertBlockNode(node: BlockNode): WNode {
         attrGetInt(node.attrs, 'start', 1),
         node.children.map(blockNodeToWNode)
       )
-    case BlockType.ListItem:
-      return itemNode(node.children.map(blockNodeToWNode))
+    case BlockType.ListItem: {
+      // task item (plan 030): a present `checked` attr rides the WNode slot
+      const found = attrGet(node.attrs, 'checked')
+      const checked = found == null ? null : attrGetBool(node.attrs, 'checked', false)
+      return itemNode(node.children.map(blockNodeToWNode), checked)
+    }
     case BlockType.Table: {
       const rows = node.children.map(tableRowToWNode)
       return tableNode(rows.length > 0 ? [rows[0]] : [], rows.slice(1), attrGetBool(node.attrs, 'loading', false))
     }
     case BlockType.ThematicBreak:
       return thematicNode()
+    case BlockType.Callout: {
+      // plan 030: parse-side slot layout — language = callout type,
+      // title = title (the builtin renderCalloutPanel reads both)
+      const w = new WNode(
+        'callout', null, null, null, null, null,
+        node.children.map(blockNodeToWNode),
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+      )
+      w.language = attrGetStr(node.attrs, 'type', '')
+      w.title = attrGetStr(node.attrs, 'title', '')
+      return w
+    }
     case BlockType.Details:
       // extension panels (plan 026): the WNode type drives the palette spec
       // (panelOfBlock('details') -> Details); attrs ride the model back-link
       return new WNode(
         'details', null, null, null, null, null,
         node.children.map(blockNodeToWNode),
-        null, null, null, null, null, null, null, null, null, null, null, null, null
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null
       )
     case BlockType.MathBlock:
       return new WNode(
         'math_block', null, null, null, spansText(node.inlines), null,
-        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
       )
     case BlockType.Mermaid:
       return new WNode(
         'mermaid', null, null, null, spansText(node.inlines), null,
-        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
       )
     case BlockType.QueryBlock:
       return new WNode(
         'query', null, null, null, null, null,
-        null, null, null, null, null, null, null, null, null, null, null, null, null, null
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
       )
     case BlockType.BlockEmbed:
       return new WNode(
         'embed', null, null, null, null, null,
-        null, null, null, null, null, null, null, null, null, null, null, null, attrGetStr(node.attrs, 'src', ''), null
+        null, null, null, null, null, null, null, null, null, null, null, null, attrGetStr(node.attrs, 'src', ''), null, null
       )
     default:
       // convertBlock maps every other WNode type to a Paragraph; the mirror

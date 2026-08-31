@@ -101,6 +101,49 @@ describe('MarkdownRender DOM contract', () => {
   })
 })
 
+describe('extension block panels (plan 030 T6)', () => {
+  it('renders $callout as a callout card — no unknown-node degrade', async () => {
+    const html = clean(await render('$callout(type: "warning", title: "注意") {\n正文段落\n}\n'))
+    expect(html).toContain('callout-node')
+    expect(html).toContain('autodown-callout-warning')
+    expect(html).toContain('data-callout-type="warning"')
+    expect(html).toContain('autodown-callout-header')
+    expect(html).toContain('autodown-callout-icon-warning')
+    expect(html).toContain('autodown-callout-title')
+    expect(html).toContain('注意')
+    expect(html).toContain('autodown-callout-content')
+    expect(html).toContain('正文段落')
+    expect(html).not.toContain('unknown-node')
+  })
+
+  it('callout title falls back to the type label when empty; unknown type drops the icon', async () => {
+    const html = clean(await render('$callout(type: "note") {\nx\n}\n'))
+    expect(html).toContain('autodown-callout-icon-note')
+    expect(html).toMatch(/autodown-callout-title[^>]*>note</)
+    const exotic = clean(await render('$callout(type: "custom") {\ny\n}\n'))
+    expect(exotic).toContain('autodown-callout-custom')
+    expect(exotic).not.toContain('autodown-callout-icon-custom')
+  })
+
+  it('task items render inert checkboxes; plain items render none', async () => {
+    const html = clean(await render('- [ ] a\n- [x] b\n- c\n'))
+    const boxes = html.split('<input').slice(1)
+    expect(boxes).toHaveLength(2)
+    const firstTag = boxes[0].slice(0, boxes[0].indexOf('>'))
+    const secondTag = boxes[1].slice(0, boxes[1].indexOf('>'))
+    expect(firstTag).toContain('type="checkbox"')
+    expect(firstTag).toContain('disabled')
+    expect(firstTag).not.toContain('checked')
+    expect(secondTag).toContain('type="checkbox"')
+    expect(secondTag).toContain('disabled')
+    expect(secondTag).toContain('checked')
+    expect(html).toContain('task-item')
+    expect(html).toContain('<li class="list-item"')
+    expect(html).toContain('<span>a</span>')
+    expect(html).toContain('<span>c</span>')
+  })
+})
+
 describe('optional capabilities (plan 008 goal 3)', () => {
   it('library works with no katex/mermaid/highlight registered (degraded path)', async () => {
     clearOptionalCapabilities()

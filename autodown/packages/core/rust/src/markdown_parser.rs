@@ -24,6 +24,7 @@ pub struct WNode {
     pub text: Option<String>,
     pub src: Option<String>,
     pub alt: Option<String>,
+    pub checked: Option<bool>,
 }
 
 pub fn noNodes() -> Vec<WNode> {
@@ -32,75 +33,79 @@ pub fn noNodes() -> Vec<WNode> {
 }
 
 fn codeNode(language: &str, code: &str, loading: bool) -> WNode {
-    return WNode { r#type: "code_block".to_string(), content: None, level: None, language: Some(language.to_string()), code: Some(code.to_string()), loading: Some(loading), children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "code_block".to_string(), content: None, level: None, language: Some(language.to_string()), code: Some(code.to_string()), loading: Some(loading), children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn headingNode(level: i64, children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "heading".to_string(), content: None, level: Some(level), language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "heading".to_string(), content: None, level: Some(level), language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn thematicNode() -> WNode {
-    return WNode { r#type: "thematic_break".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "thematic_break".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn quoteNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "blockquote".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "blockquote".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn paraNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "paragraph".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "paragraph".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn tableNode(header: Vec<WNode>, rows: Vec<WNode>, loading: bool) -> WNode {
-    return WNode { r#type: "table".to_string(), content: None, level: None, language: None, code: None, loading: Some(loading), children: None, ordered: None, start: None, items: None, cells: None, header: Some(header), rows: Some(rows), isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "table".to_string(), content: None, level: None, language: None, code: None, loading: Some(loading), children: None, ordered: None, start: None, items: None, cells: None, header: Some(header), rows: Some(rows), isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn rowNode(cells: Vec<WNode>) -> WNode {
-    return WNode { r#type: "table_row".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: Some(cells), header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "table_row".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: Some(cells), header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn cellNode(isHeaderCell: bool, children: Vec<WNode>, align: &str) -> WNode {
-    return WNode { r#type: "table_cell".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: Some(isHeaderCell), align: Some(align.to_string()), href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "table_cell".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: Some(isHeaderCell), align: Some(align.to_string()), href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn listNode(ordered: bool, startN: Option<i64>, items: Vec<WNode>) -> WNode {
-    return WNode { r#type: "list".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: Some(ordered), start: startN, items: Some(items), cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "list".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: Some(ordered), start: startN, items: Some(items), cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn itemNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "list_item".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "list_item".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn strongNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "strong".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "strong".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn emNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "emphasis".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "emphasis".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
+}
+
+fn underlineNode(children: Vec<WNode>) -> WNode {
+    return WNode { r#type: "underline".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn strikeNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "strikethrough".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "strikethrough".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn codeSpanNode(code: &str) -> WNode {
-    return WNode { r#type: "inline_code".to_string(), content: None, level: None, language: None, code: Some(code.to_string()), loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "inline_code".to_string(), content: None, level: None, language: None, code: Some(code.to_string()), loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn hardbreakNode() -> WNode {
-    return WNode { r#type: "hardbreak".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "hardbreak".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn imageNode(src: &str, alt: &str) -> WNode {
-    return WNode { r#type: "image".to_string(), content: None, level: None, language: None, code: None, loading: Some(false), children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: Some(src.to_string()), alt: Some(alt.to_string()) };
+    return WNode { r#type: "image".to_string(), content: None, level: None, language: None, code: None, loading: Some(false), children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: Some(src.to_string()), alt: Some(alt.to_string()), checked: None };
 }
 
 fn linkNode(href: &str, title: Option<String>, textContent: &str, children: Vec<WNode>, loading: bool) -> WNode {
-    return WNode { r#type: "link".to_string(), content: None, level: None, language: None, code: None, loading: Some(loading), children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: Some(href.to_string()), title: title, text: Some(textContent.to_string()), src: None, alt: None };
+    return WNode { r#type: "link".to_string(), content: None, level: None, language: None, code: None, loading: Some(loading), children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: Some(href.to_string()), title: title, text: Some(textContent.to_string()), src: None, alt: None, checked: None };
 }
 
 fn rawTextNode(content: &str) -> WNode {
-    return WNode { r#type: "text".to_string(), content: Some(content.to_string()), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "text".to_string(), content: Some(content.to_string()), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -1347,7 +1352,21 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
         
 
         if cs == "*" {
-            if startsWithAt(line, "**", i) {
+            
+
+
+
+            if startsWithAt(line, "***", i) {
+                let mut afterT = scanDelim(line, i, "***", false, isFinal);
+                if afterT != None {
+                    let scT = afterT.unwrap_or(DelimScan { next: 0, inner: "".to_string() });
+                    if buf != "" {
+                        nodes.push(textNode(buf.as_str()));
+                        buf = "".to_string();
+                    }                    nodes.push(strongNode(vec![emNode(parseInlineLine(scT.inner.as_str(), isFinal))]));
+                    i = scT.next;
+                    continue;
+                }            }            if startsWithAt(line, "**", i) {
                 let mut after = scanDelim(line, i, "**", true, isFinal);
                 if after != None {
                     let sc = after.unwrap_or(DelimScan { next: 0, inner: "".to_string() });
@@ -1371,7 +1390,33 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
             continue;
         }
         if cs == "_" {
-            let mut afterU = scanDelim(line, i, "_", false, isFinal);
+            
+
+
+            if startsWithAt(line, "___", i) {
+                let mut afterU3 = scanDelim(line, i, "___", false, isFinal);
+                if afterU3 != None {
+                    let scU3 = afterU3.unwrap_or(DelimScan { next: 0, inner: "".to_string() });
+                    if buf != "" {
+                        nodes.push(textNode(buf.as_str()));
+                        buf = "".to_string();
+                    }                    nodes.push(underlineNode(vec![emNode(parseInlineLine(scU3.inner.as_str(), isFinal))]));
+                    i = scU3.next;
+                    continue;
+                }            }            
+
+
+            if startsWithAt(line, "__", i) {
+                let mut afterU2 = scanDelim(line, i, "__", false, isFinal);
+                if afterU2 != None {
+                    let scU2 = afterU2.unwrap_or(DelimScan { next: 0, inner: "".to_string() });
+                    if buf != "" {
+                        nodes.push(textNode(buf.as_str()));
+                        buf = "".to_string();
+                    }                    nodes.push(underlineNode(parseInlineLine(scU2.inner.as_str(), isFinal)));
+                    i = scU2.next;
+                    continue;
+                }            }            let mut afterU = scanDelim(line, i, "_", false, isFinal);
             if afterU != None {
                 let scU = afterU.unwrap_or(DelimScan { next: 0, inner: "".to_string() });
                 if buf != "" {
@@ -1714,7 +1759,7 @@ pub fn textNode(content: &str) -> WNode {
 
     s = s.split(&char::from_u32((1) as u32).unwrap_or('\u{0}').to_string()).map(|s| s.to_string()).collect::<Vec<String>>().join("\"");
     s = s.split(&char::from_u32((2) as u32).unwrap_or('\u{0}').to_string()).map(|s| s.to_string()).collect::<Vec<String>>().join("'");
-    return WNode { r#type: "text".to_string(), content: Some(s), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None };
+    return WNode { r#type: "text".to_string(), content: Some(s), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
 fn isWordCharCode(c: i64) -> bool {
@@ -1971,13 +2016,33 @@ fn smartQuotes(s: &str) -> String {
     return out;
 }
 
+fn isNestingDelimCode(c: i64) -> bool {
+    if c == 42 {
+        return true;
+    }
+    return c == 95;
+}
+
 fn scanDelim(line: &str, i: i64, delim: &str, autoCloseWhenFinal: bool, isFinal: bool) -> Option<DelimScan> {
+
 
 
     if delim == "_" {
         if i > 0 {
             let pc = line.chars().nth((i - 1) as usize).unwrap_or('\0') as i64;
             if isWordCharCode(pc) {
+                return None;
+            }        }    }
+    if delim == "__" {
+        if i > 0 {
+            let pc2 = line.chars().nth((i - 1) as usize).unwrap_or('\0') as i64;
+            if isWordCharCode(pc2) {
+                return None;
+            }        }    }
+    if delim == "___" {
+        if i > 0 {
+            let pc3 = line.chars().nth((i - 1) as usize).unwrap_or('\0') as i64;
+            if isWordCharCode(pc3) {
                 return None;
             }        }    }
     let afterStart: i64 = i + (delim.chars().count() as i64);
@@ -1997,8 +2062,16 @@ fn scanDelim(line: &str, i: i64, delim: &str, autoCloseWhenFinal: bool, isFinal:
 
 
 
-        return None;
-    }
+
+
+
+        let mut nest: bool = false;
+        if close != -1 {
+            if isNestingDelimCode(innerText.chars().nth((0) as usize).unwrap_or('\0') as i64) {
+                nest = true;
+            }        }        if !(nest) {
+            return None;
+        }    }
     if close != -1 {
         let mut next: i64 = afterStart + close + (delim.chars().count() as i64);
         return Some(DelimScan { next: next, inner: innerText.to_string() });
@@ -2252,6 +2325,11 @@ fn convertInlines(wnodes: Vec<WNode>, mut marks: Vec<Mark>) -> Vec<InlineSpan> {
         }
         if t == "emphasis" {
             for s in convertInlines(w.children.clone().unwrap_or(noNodes()), addMark(marks.clone(), Mark::Em.clone())) {
+                out.push(s.clone());
+            }
+        }
+        if t == "underline" {
+            for s in convertInlines(w.children.clone().unwrap_or(noNodes()), addMark(marks.clone(), Mark::Underline.clone())) {
                 out.push(s.clone());
             }
         }

@@ -23,8 +23,9 @@ export class WNode {
     text: string | null;
     src: string | null;
     alt: string | null;
+    checked: boolean | null;
 
-    constructor(type: string, content: string | null, level: number | null, language: string | null, code: string | null, loading: boolean | null, children: WNode[] | null, ordered: boolean | null, start: number | null, items: WNode[] | null, cells: WNode[] | null, header: WNode[] | null, rows: WNode[] | null, isHeader: boolean | null, align: string | null, href: string | null, title: string | null, text: string | null, src: string | null, alt: string | null) {
+    constructor(type: string, content: string | null, level: number | null, language: string | null, code: string | null, loading: boolean | null, children: WNode[] | null, ordered: boolean | null, start: number | null, items: WNode[] | null, cells: WNode[] | null, header: WNode[] | null, rows: WNode[] | null, isHeader: boolean | null, align: string | null, href: string | null, title: string | null, text: string | null, src: string | null, alt: string | null, checked: boolean | null) {
         this.type = type;
         this.content = content;
         this.level = level;
@@ -45,6 +46,7 @@ export class WNode {
         this.text = text;
         this.src = src;
         this.alt = alt;
+        this.checked = checked;
     }
 }
 
@@ -54,79 +56,79 @@ export function noNodes(): WNode[] {
 }
 
 export function codeNode(language: string, code: string, loading: boolean): WNode {
-    return WNode("code_block", null, null, language, code, loading, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("code_block", null, null, language, code, loading, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function headingNode(level: number, children: WNode[]): WNode {
-    return WNode("heading", null, level, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("heading", null, level, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function thematicNode(): WNode {
-    return WNode("thematic_break", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("thematic_break", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function quoteNode(children: WNode[]): WNode {
-    return WNode("blockquote", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("blockquote", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function paraNode(children: WNode[]): WNode {
-    return WNode("paragraph", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("paragraph", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function tableNode(header: WNode[], rows: WNode[], loading: boolean): WNode {
-    return WNode("table", null, null, null, null, loading, null, null, null, null, null, header, rows, null, null, null, null, null, null, null);
+    return WNode("table", null, null, null, null, loading, null, null, null, null, null, header, rows, null, null, null, null, null, null, null, null);
 }
 
 export function rowNode(cells: WNode[]): WNode {
-    return WNode("table_row", null, null, null, null, null, null, null, null, null, cells, null, null, null, null, null, null, null, null, null);
+    return WNode("table_row", null, null, null, null, null, null, null, null, null, cells, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function cellNode(isHeaderCell: boolean, children: WNode[], align: string): WNode {
-    return WNode("table_cell", null, null, null, null, null, children, null, null, null, null, null, null, isHeaderCell, align, null, null, null, null, null);
+    return WNode("table_cell", null, null, null, null, null, children, null, null, null, null, null, null, isHeaderCell, align, null, null, null, null, null, null);
 }
 
 export function listNode(ordered: boolean, startN: number | null, items: WNode[]): WNode {
-    return WNode("list", null, null, null, null, null, null, ordered, startN, items, null, null, null, null, null, null, null, null, null, null);
+    return WNode("list", null, null, null, null, null, null, ordered, startN, items, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function itemNode(children: WNode[]): WNode {
-    return WNode("list_item", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("list_item", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function strongNode(children: WNode[]): WNode {
-    return WNode("strong", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("strong", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function emNode(children: WNode[]): WNode {
-    return WNode("emphasis", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("emphasis", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function underlineNode(children: WNode[]): WNode {
-    return WNode("underline", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("underline", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function strikeNode(children: WNode[]): WNode {
-    return WNode("strikethrough", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("strikethrough", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function codeSpanNode(code: string): WNode {
-    return WNode("inline_code", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("inline_code", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function hardbreakNode(): WNode {
-    return WNode("hardbreak", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("hardbreak", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function imageNode(src: string, alt: string): WNode {
-    return WNode("image", null, null, null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, src, alt);
+    return WNode("image", null, null, null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, src, alt, null);
 }
 
 export function linkNode(href: string, title: string | null, textContent: string, children: WNode[], loading: boolean): WNode {
-    return WNode("link", null, null, null, null, loading, children, null, null, null, null, null, null, null, null, href, title, textContent, null, null);
+    return WNode("link", null, null, null, null, loading, children, null, null, null, null, null, null, null, null, href, title, textContent, null, null, null);
 }
 
 export function rawTextNode(content: string): WNode {
-    return WNode("text", content, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("text", content, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export class DelimScan {
@@ -1874,7 +1876,7 @@ export function textNode(content: string): WNode {
 
     s = s.split(String.fromCharCode(1)).join("\"");
     s = s.split(String.fromCharCode(2)).join("'");
-    return WNode("text", s, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return WNode("text", s, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function isWordCharCode(c: number): boolean {

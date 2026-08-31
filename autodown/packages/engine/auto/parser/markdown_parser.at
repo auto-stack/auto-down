@@ -35,7 +35,7 @@ use ial: preprocessMarkdown, startsWithStr, startsWithAt, endsWithStr, trimStart
 use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRange, rng, span, attrSet, addMark, spansText, spanWith, blockFull, attrOf, withIdAndAnchor
 
 // ---------------------------------------------------------------- weak tree
-// The parser-internal node representation. Field order (20 fields):
+// The parser-internal node representation. Field order (21 fields):
 //   1 type        node discriminator string
 //   2 content     text
 //   3 level       heading
@@ -57,6 +57,7 @@ use block_model: BlockNode, BlockType, InlineSpan, Mark, Attr, Value, SourceRang
 //  18 text        link text mirror
 //  19 src         image
 //  20 alt         image
+//  21 checked     list_item (GFM task; None = plain bullet)
 
 pub type WNode {
     type str
@@ -79,6 +80,7 @@ pub type WNode {
     text str?
     src str?
     alt str?
+    checked bool?
 }
 
 pub fn noNodes() List<WNode> {
@@ -87,81 +89,81 @@ pub fn noNodes() List<WNode> {
 }
 
 fn codeNode(language str, code str, loading bool) WNode {
-    return WNode("code_block", None, None, Some(language), Some(code), Some(loading), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("code_block", None, None, Some(language), Some(code), Some(loading), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn headingNode(level int, children List<WNode>) WNode {
-    return WNode("heading", None, Some(level), None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("heading", None, Some(level), None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn thematicNode() WNode {
-    return WNode("thematic_break", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("thematic_break", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn quoteNode(children List<WNode>) WNode {
-    return WNode("blockquote", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("blockquote", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn paraNode(children List<WNode>) WNode {
-    return WNode("paragraph", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("paragraph", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn tableNode(header List<WNode>, rows List<WNode>, loading bool) WNode {
-    return WNode("table", None, None, None, None, Some(loading), None, None, None, None, None, Some(header), Some(rows), None, None, None, None, None, None, None)
+    return WNode("table", None, None, None, None, Some(loading), None, None, None, None, None, Some(header), Some(rows), None, None, None, None, None, None, None, None)
 }
 
 fn rowNode(cells List<WNode>) WNode {
-    return WNode("table_row", None, None, None, None, None, None, None, None, None, Some(cells), None, None, None, None, None, None, None, None, None)
+    return WNode("table_row", None, None, None, None, None, None, None, None, None, Some(cells), None, None, None, None, None, None, None, None, None, None)
 }
 
 fn cellNode(isHeaderCell bool, children List<WNode>, align str) WNode {
-    return WNode("table_cell", None, None, None, None, None, Some(children), None, None, None, None, None, None, Some(isHeaderCell), Some(align), None, None, None, None, None)
+    return WNode("table_cell", None, None, None, None, None, Some(children), None, None, None, None, None, None, Some(isHeaderCell), Some(align), None, None, None, None, None, None)
 }
 
 fn listNode(ordered bool, startN int?, items List<WNode>) WNode {
-    return WNode("list", None, None, None, None, None, None, Some(ordered), startN, Some(items), None, None, None, None, None, None, None, None, None, None)
+    return WNode("list", None, None, None, None, None, None, Some(ordered), startN, Some(items), None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn itemNode(children List<WNode>) WNode {
-    return WNode("list_item", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("list_item", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn strongNode(children List<WNode>) WNode {
-    return WNode("strong", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("strong", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn emNode(children List<WNode>) WNode {
-    return WNode("emphasis", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("emphasis", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn underlineNode(children List<WNode>) WNode {
-    return WNode("underline", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("underline", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn strikeNode(children List<WNode>) WNode {
-    return WNode("strikethrough", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("strikethrough", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn codeSpanNode(code str) WNode {
-    return WNode("inline_code", None, None, None, Some(code), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("inline_code", None, None, None, Some(code), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn hardbreakNode() WNode {
-    return WNode("hardbreak", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("hardbreak", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 fn imageNode(src str, alt str) WNode {
-    return WNode("image", None, None, None, None, Some(false), None, None, None, None, None, None, None, None, None, None, None, None, Some(src), Some(alt))
+    return WNode("image", None, None, None, None, Some(false), None, None, None, None, None, None, None, None, None, None, None, None, Some(src), Some(alt), None)
 }
 
 fn linkNode(href str, title str?, textContent str, children List<WNode>, loading bool) WNode {
-    return WNode("link", None, None, None, None, Some(loading), Some(children), None, None, None, None, None, None, None, None, Some(href), title, Some(textContent), None, None)
+    return WNode("link", None, None, None, None, Some(loading), Some(children), None, None, None, None, None, None, None, None, Some(href), title, Some(textContent), None, None, None)
 }
 
 // text node WITHOUT re-running smartQuotes (the streaming-tail trimmer
 // rebuilds an already-processed text node).
 fn rawTextNode(content str) WNode {
-    return WNode("text", Some(content), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("text", Some(content), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 // Scan results for inline delimiters/links (the retired `[a, b]` tuples).
@@ -1685,7 +1687,7 @@ pub fn textNode(content str) WNode {
     // escaped quotes arrived as sentinels; restore them literally
     s = s.split(String.fromCharCode(1)).join("\"")
     s = s.split(String.fromCharCode(2)).join("'")
-    return WNode("text", Some(s), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    return WNode("text", Some(s), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
 }
 
 // ASCII \w (the u-flag \w class is ASCII-only; exact parity).

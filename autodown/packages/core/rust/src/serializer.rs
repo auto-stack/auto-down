@@ -43,6 +43,9 @@ pub fn spanMd(mut s: InlineSpan) -> String {
     if hasMark(s.marks.clone(), Mark::Em.clone()) {
         t = format!("{}{}", format!("{}{}", "*", t), "*");
     }
+    if hasMark(s.marks.clone(), Mark::Underline.clone()) {
+        t = format!("{}{}", format!("{}{}", "__", t), "__");
+    }
     if hasMark(s.marks.clone(), Mark::Del.clone()) {
         t = format!("{}{}", format!("{}{}", "~~", t), "~~");
     }

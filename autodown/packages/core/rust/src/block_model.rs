@@ -125,6 +125,7 @@ pub enum Mark {
     Link = 3,
     Image = 4,
     Del = 5,
+    Underline = 6,
 }
 
 impl std::fmt::Display for Mark {
@@ -136,6 +137,7 @@ impl std::fmt::Display for Mark {
             Mark::Link => write!(f, "Link"),
             Mark::Image => write!(f, "Image"),
             Mark::Del => write!(f, "Del"),
+            Mark::Underline => write!(f, "Underline"),
         }
     }
 }
@@ -148,6 +150,7 @@ impl Mark {
             "Link" | "link" => Mark::Link,
             "Image" | "image" => Mark::Image,
             "Del" | "del" => Mark::Del,
+            "Underline" | "underline" => Mark::Underline,
             _ => Mark::Strong
         }
     }

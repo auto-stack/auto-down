@@ -413,14 +413,21 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
     }
     if (isEditableLeaf(node)) {
       const controller = hostFor(node.id)
+      const level = node.kind === BlockType.Heading ? attrGetInt(node.attrs, 'level', 1) : undefined
       return {
         id: node.id,
         view: BlockHost,
         props: {
           controller,
           blockKind: BlockType[node.kind],
-          level: node.kind === BlockType.Heading ? attrGetInt(node.attrs, 'level', 1) : undefined,
-          key: `host:${node.id}:${historyEpoch.value}`,
+          level,
+          // The face lives in the key: a kind/level flip mid-typing (input
+          // rules) must REMOUNT the host. <component :is> would swap the
+          // DOM element under the caret without re-running onMounted —
+          // focus lands nowhere and every post-flip keystroke is lost.
+          // The remount re-focuses at end (plan 029; rules match only a
+          // whole-block marker, so the caret IS at end on every flip).
+          key: `host:${node.id}:${BlockType[node.kind]}:${level ?? ''}:${historyEpoch.value}`,
         },
       }
     }

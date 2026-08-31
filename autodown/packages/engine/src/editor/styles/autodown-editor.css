@@ -1101,3 +1101,10 @@
 .autodown-editor .autodown-wikilink-label:hover {
   text-decoration-style: solid;
 }
+
+/* Focused edit host hygiene (plan 029): the semantic hosts (h1-h6 / p)
+   draw the browser focus outline like any focusable — suppress it, the
+   caret is the focus indicator (matches the old tiptap build). */
+.autodown-editor-content .autodown-block-host {
+  outline: none;
+}

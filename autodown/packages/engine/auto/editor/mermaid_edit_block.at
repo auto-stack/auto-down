@@ -1,0 +1,193 @@
+// mermaid_edit_block.at — MermaidEditBlock widget (plan 031 T2): the
+// mermaid block's typed editing face. Source textarea + debounced live
+// preview in one chrome (preview ABOVE the source). Replaces plan 030's
+// transitional fenceEditSlot reuse (D2 ruling): mermaid wants a preview
+// state machine, not a highlight overlay.
+//
+// Preview tri-state (async — mermaid.render initializes the whole library
+// on first call, ~100ms class):
+//   loading  -> div.mermaid-editor-loading "渲染中…" (covers the debounce
+//               window too: the handler sets .loading before scheduling)
+//   error    -> .autodown-mermaid-error banner (same idiom as
+//               mermaid_node_view.at), preview drops
+//   svg      -> .autodown-mermaid-preview with native v-html
+//
+// The DSL has no timer primitives, so the 300ms debounce + stale-version
+// discard live in the ext bridge (scheduleMermaidRender); the widget's
+// callback closure carries the { svg, error, loading } state back into the
+// model (same closure-over-model idiom as mermaid_node_view.at's .then).
+//
+// Other idioms: controller-prop protocol (blur commits the whole source,
+// one undo step — CodeEditorController is kind-agnostic); rows-attr
+// growth + focusCodeArea via the ext bridge (math_edit_block.at T1 list).
+
+widget MermaidEditBlock(controller: Array<str>, blockId: str, source: str, readonly: bool) {
+    use {
+        fn: scheduleMermaidRender, focusCodeArea, textareaRows from "ext/mermaid_edit_ext.ts"
+    }
+
+    msg Msg { Init, AreaInput, Blur }
+
+    model {
+        var draft str = .source
+        var svg str = ""
+        var error_text str = ""
+        var loading bool = false
+    }
+
+    computed {
+        show_preview => .loading == false && .error_text == "" && .svg != ""
+        show_error => .loading == false && .error_text != ""
+        rows_value => textareaRows(.draft)
+    }
+
+    view {
+        div {
+            class: "autodown-mermaid-editor",
+            style: { "is-readonly": .readonly },
+            data-block-id: .blockId,
+            data-node-type: "Mermaid",
+
+            if .readonly {
+                div {
+                    class: "autodown-stream-banner",
+                    text "流式生成中"
+                }
+            }
+            div {
+                class: "mermaid-editor-stack",
+                if .show_preview {
+                    div {
+                        class: "autodown-mermaid-preview",
+                        html: .svg
+                    }
+                }
+                if .show_error {
+                    div {
+                        class: "autodown-mermaid-error",
+                        title: "Mermaid render error",
+                        text .error_text
+                    }
+                }
+                if .loading {
+                    div {
+                        class: "mermaid-editor-loading",
+                        text "渲染中…"
+                    }
+                }
+                textarea (spellcheck: "false") {
+                    ref: "area",
+                    class: "mermaid-editor-textarea",
+                    value: .draft,
+                    rows: .rows_value,
+                    oninput: .AreaInput($event),
+                    disabled: .readonly,
+                    onblur: .Blur($event)
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            focusCodeArea(.area, .readonly)
+            .loading = true
+            scheduleMermaidRender(.source, res => {
+                .svg = res.svg
+                .error_text = res.error
+                .loading = res.loading
+            })
+        }
+
+        .AreaInput(e) -> {
+            .draft = e.target.value
+            .loading = true
+            scheduleMermaidRender(.draft, res => {
+                .svg = res.svg
+                .error_text = res.error
+                .loading = res.loading
+            })
+        }
+
+        .Blur(e) -> {
+            if !.readonly {
+                let c = .controller
+                c.commit(e.target.value)
+            }
+        }
+    }
+
+    style {
+        .autodown-mermaid-editor {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #f8f9fa;
+          overflow: hidden;
+        }
+        .autodown-mermaid-editor.is-readonly {
+          opacity: 0.75;
+        }
+        .autodown-stream-banner {
+          padding: 0.3rem 0.75rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          border-bottom: 1px solid #fcd34d;
+          user-select: none;
+        }
+        .mermaid-editor-stack {
+          display: flex;
+          flex-direction: column;
+        }
+        .autodown-mermaid-preview {
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+          border-bottom: 1px solid #e5e7eb;
+          background: #ffffff;
+        }
+        .autodown-mermaid-preview :deep(svg) {
+          margin: 0 auto;
+          display: block;
+          max-width: 100%;
+        }
+        .autodown-mermaid-error {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          color: hsl(var(--destructive, 0 72% 51%));
+          background: hsl(var(--destructive/10, 0 72% 51% / 0.1));
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .mermaid-editor-loading {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+          background: hsl(var(--muted, 210 20% 96%));
+          border-bottom: 1px solid #e5e7eb;
+          user-select: none;
+        }
+        .mermaid-editor-textarea {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 3rem;
+          max-height: 24rem;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          outline: none;
+          resize: none;
+          overflow: auto;
+          background: transparent;
+          color: #111827;
+          caret-color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .mermaid-editor-textarea:disabled {
+          cursor: not-allowed;
+        }
+    }
+}

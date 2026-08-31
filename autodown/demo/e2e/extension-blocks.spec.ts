@@ -92,11 +92,13 @@ test('task checkboxes flip on click and serialize the flag', async ({ page }) =>
 
 test('%{ }% renders a KaTeX panel and the mermaid fence a mermaid panel in the right pane', async ({ page }) => {
   const right = page.locator('.right')
-  await expect(right.locator('.autodown-math-block .autodown-math-preview')).toBeVisible()
-  await expect(right.locator('.katex')).toHaveCount(1)
+  await expect(right.locator('.autodown-math-block .autodown-math-preview').first()).toBeVisible()
+  // plan 031 T10 added a second math sample — assert katex renders without
+  // pinning the demo's sample count
+  await expect(right.locator('.katex').first()).toBeVisible()
   // mermaid renders async — poll for the SVG inside the mermaid panel
-  await expect(right.locator('.autodown-mermaid-block')).toBeVisible()
-  await expect(right.locator('.autodown-mermaid-block svg')).toBeVisible({ timeout: 10000 })
+  await expect(right.locator('.autodown-mermaid-block').first()).toBeVisible()
+  await expect(right.locator('.autodown-mermaid-block svg').first()).toBeVisible({ timeout: 10000 })
 })
 
 test('Save round-trips the dialect verbatim ($callout / - [x])', async ({ page }) => {

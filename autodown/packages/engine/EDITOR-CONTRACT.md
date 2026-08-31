@@ -25,6 +25,8 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.autodown-details[data-open]` + `.autodown-details-*` | Details 卡片（node-view 预览与编辑装配同链，plan 030） | demo extension-blocks e2e |
 | `.autodown-attr-host` | 容器块 attr 就地无框编辑宿主（Callout title / Details summary；blur→setBlockAttrs 一步 undo，Enter/Esc=blur 提交，plan 030） | demo extension-blocks e2e |
 | `.task-item` > `.task-checkbox` | GFM 任务项（view/stream 态 disabled 只读；编辑装配态可点，点击翻转 checked attr，plan 030） | demo extension-blocks e2e |
+| `.autodown-math-editor` + `.autodown-math-preview` / `.autodown-math-error` / `.math-editor-textarea` | MathBlock 专用编辑面：源码 textarea + 同步 katex 实时预览同屏（blur 整段一步 undo 提交，非法源错误横幅，plan 031） | demo extension-blocks e2e |
+| `.autodown-mermaid-editor` + `.autodown-mermaid-preview` / `.autodown-mermaid-error` / `.mermaid-editor-loading` / `.mermaid-editor-textarea` | Mermaid 专用编辑面：300ms debounce 异步预览三态 loading/svg/error（plan 031，替换 030 的 fenceEditSlot 复用） | demo extension-blocks e2e |
 
 ## 2. CustomEvent（document 级）
 
@@ -55,8 +57,11 @@ Tiptap 退役前后都必须全绿。
 - 拖拽块（DragHandle 交互面）、表格行列增删、粘贴（纯文本 + markdown 多行）
 - 容器块 WYSIWYG（plan 030）：聚焦 Callout/Details 内段落时卡片 chrome
   不变、正文就地编辑；title/summary 无框就地编辑 blur 落盘一步 undo；
-  任务项 checkbox 点击翻转；```` ```mermaid ```` 块聚焦为高亮代码编辑
-  （复用 CodeEditorBlock），预览为 SVG 面板
+  任务项 checkbox 点击翻转
+- math/mermaid 专用编辑面（plan 031）：聚焦 `%{ }%` 块 → 源码 textarea +
+  同步 katex 预览同屏，改字即刷、非法源错误横幅且预览降级；聚焦闭合
+  ```` ```mermaid ```` 块 → debounce 异步三态（渲染中… → SVG 面板 / 错误
+  横幅）；两面 blur 整段提交一步 undo，流式生成中 readonly + 横幅
 
 ## 核验责任
 

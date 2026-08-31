@@ -94,6 +94,19 @@ graph TD
   B -->|No| D[End]
 \`\`\`
 
+%{
+\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}
+}%
+
+\`\`\`mermaid
+flowchart LR
+  Start[Start] --> Input[Source textarea]
+  Input --> Preview[Live preview]
+  Preview --> Save{Looks good?}
+  Save -->|yes| Done[Blur commits]
+  Save -->|no| Input
+\`\`\`
+
 ---
 
 ![A placeholder image](https://placehold.co/400x100/f3f4f6/9ca3af?text=Image)

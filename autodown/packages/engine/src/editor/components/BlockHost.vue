@@ -1,9 +1,11 @@
 <template>
-  <div
+  <component
+    :is="hostTag"
     ref="el"
-    class="autodown-block-host"
+    :class="['autodown-block-host', face.cls]"
     :data-block-id="controller.id"
     :data-node-type="blockKind"
+    dir="auto"
     contenteditable="true"
     spellcheck="false"
     @click.stop
@@ -15,7 +17,7 @@
     @paste="onPaste"
     @focus="onFocus"
     @blur="onBlur"
-  v-html="initialHtml"></div>
+  :innerHTML="initialHtml"></component>
 </template>
 
 <script setup lang="ts">
@@ -31,9 +33,18 @@ import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 import { spansToHtml } from '../engine/rich-html'
+import { hostFaceFor } from '../engine/host-face'
 import { setFocusedRichHost, getFocusedRichHost, domToggleMark, domSetLink } from '../engine/dom-marks'
 
-const props = defineProps<{ controller: BlockHostController; blockKind: string }>()
+const props = defineProps<{ controller: BlockHostController; blockKind: string; level?: number }>()
+
+// semantic host face (plan 029): the root renders the view-side tag/class
+// (Heading → h1-h6.heading-node, Paragraph → p.paragraph-node) so the editor
+// CSS hits it like the preview — WYSIWYG parity. Same mount-once semantics
+// as initialHtml: the engine is not Vue-reactive, and a kind/level change
+// remounts via the epoch key.
+const face = computed(() => hostFaceFor(props.blockKind, props.level))
+const hostTag = computed(() => face.value.tag)
 
 const el = ref<HTMLElement | null>(null)
 

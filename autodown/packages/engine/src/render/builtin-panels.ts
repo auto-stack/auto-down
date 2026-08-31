@@ -95,7 +95,7 @@ function renderListPanel({ node, final, budget, renderEmbedded }: PanelRenderCtx
 // adds the .callout-node tag; data-callout-type carries the type for
 // downstream consumers (EngineEditor's expanded container must stay in
 // verbatim lockstep with this shape).
-const CALLOUT_TYPES = ['note', 'info', 'tip', 'warning', 'caution', 'danger', 'error']
+export const CALLOUT_TYPES = ['note', 'info', 'tip', 'warning', 'caution', 'danger', 'error']
 
 function renderCalloutPanel({ node, final, budget, renderEmbedded }: PanelRenderCtx): VNode {
   const type = String(node.language ?? '')

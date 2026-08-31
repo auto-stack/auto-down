@@ -392,3 +392,58 @@ describe('adapter mark surface', () => {
     expect(c.focus().unsetLink().run()).toBe(true)
   })
 })
+
+describe('callout/task verbs (plan 030 T7)', () => {
+  function select(e: EditorEngine, id: string): void {
+    const p = pos(id, 0)
+    e.select(new Selection(p, p))
+  }
+
+  it('setCallout lands kind + type/title attrs and moves text into a child', () => {
+    const e = new EditorEngine(doc(leafBlock('b0', BlockType.Paragraph, '正文')))
+    select(e, 'b0')
+    const adapter = createEditorAdapter(e)
+    expect((adapter.chain() as any).focus().setCallout({ type: 'note', title: '提示' }).run()).toBe(true)
+    const callout = e.doc.children[0]
+    expect(callout.kind).toBe(BlockType.Callout)
+    expect(attrGetStrOf(callout, 'type')).toBe('note')
+    expect(attrGetStrOf(callout, 'title')).toBe('提示')
+    expect(callout.children[0].kind).toBe(BlockType.Paragraph)
+    expect(blockText(callout.children[0])).toBe('正文')
+    // P1 roundtrip: the serialized dialect reparses to the same attrs
+    const md = serialize(e.doc, true)
+    expect(md).toContain('$callout(type: "note", title: "提示") {')
+    expect(parse_blocks(md, true).children[0].kind).toBe(BlockType.Callout)
+  })
+
+  it('toggleTaskList flips a plain item to a task and back (one undo step each)', () => {
+    const e = new EditorEngine(parse_blocks('- [ ] a\n- [x] b\n- plain c\n', true))
+    const adapter = createEditorAdapter(e)
+    const items = () => e.doc.children[0].children
+    // caret sits on the plain item's child paragraph — the verb resolves the item
+    select(e, items()[2].children[0].id)
+    expect((adapter.chain() as any).focus().toggleTaskList().run()).toBe(true)
+    const plainNowTask = items()[2]
+    expect(attrGetStrOf(plainNowTask, 'checked')).toBe('false')
+    expect(serialize(e.doc, true)).toContain('- [ ] plain c')
+    // toggle again → back to a plain bullet (attr removed)
+    select(e, items()[2].children[0].id)
+    expect((adapter.chain() as any).focus().toggleTaskList().run()).toBe(true)
+    expect(serialize(e.doc, true)).toContain('- plain c')
+    expect(e.undo()).toBe(true)
+    expect(serialize(e.doc, true)).toContain('- [ ] plain c')
+  })
+
+  it('toggleTaskList on a checked item clears the flag (task ⇄ bullet)', () => {
+    const e = new EditorEngine(parse_blocks('- [x] done\n', true))
+    const adapter = createEditorAdapter(e)
+    select(e, e.doc.children[0].children[0].children[0].id)
+    expect((adapter.chain() as any).focus().toggleTaskList().run()).toBe(true)
+    expect(serialize(e.doc, true)).toBe('- done\n')
+  })
+})
+
+function attrGetStrOf(node: BlockNode, key: string): string {
+  const a = node.attrs.find((x: Attr) => x.key === key)
+  return a == null ? '' : String((a.value as any).value ?? '')
+}

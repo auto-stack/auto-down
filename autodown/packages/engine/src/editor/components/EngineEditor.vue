@@ -30,11 +30,12 @@
 // ('Fence' IS the code block kind); the slots carry no view, so final-state
 // previews stay on the builtin panel pipeline. `h` comes from the setup
 // script's vue import — dual-script imports share one module scope.
-import { attrGetStr, blockText } from '../../parser/block-model'
+import { Value, attrGetStr, attrSet, blockText } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import type { BlockEditCtx } from '../../render/block-component'
 import { registerPanel } from '../../render/panel-registry'
+import { CALLOUT_TYPES } from '../../render/builtin-panels'
 import { blockOfWNode } from '../../render/block-wnode'
 import { CodeEditorController } from '../engine/code-editor-controller'
 import { TableEditorController } from '../engine/table-editor-controller'
@@ -78,6 +79,15 @@ function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
 }
 
 registerBlockComponent('Fence', { edit: fenceEditSlot })
+// plan 030: the Mermaid edit face reuses the fence slot verbatim (highlighted
+// CodeEditorBlock) — only the language badge differs (always "mermaid", the
+// kind carries no language attr).
+function mermaidEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  const asFence: BlockNode = { ...node, attrs: attrSet(node.attrs, 'language', Value.Str('mermaid')) }
+  return fenceEditSlot(asFence, ctx)
+}
+
+registerBlockComponent('Mermaid', { edit: mermaidEditSlot })
 // TableEditorBlock is the generated widget (.at source, P1T8): flat chrome
 // data — the adapter flattens the table's BlockNode into plain cell objects
 // ({id, text, cls}) on every render; commands/cell-commit semantics stay on
@@ -161,7 +171,9 @@ export interface BlockInfo {
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BlockPos, BlockType, Selection, attrGetBool, attrGetInt, findBlock } from '../../parser/block-model'
+// Value/attrSet come from the plain script block's import (dual scripts share
+// one module scope)
+import { BlockPos, BlockType, Selection, attrGet, attrGetBool, attrGetInt, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
@@ -170,10 +182,12 @@ import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import { setBlockAttrs } from '../engine/commands'
 import { historyActionOf, runHistory } from '../engine/undo-wiring'
 import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-path'
 import { domRangeToBlockRange } from '../engine/selection-map'
 import BlockHost from './BlockHost.vue'
+import AttrHost from './AttrHost.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
 import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
@@ -360,11 +374,74 @@ function slotChrome(node: BlockNode, inner: VNode, topLevel: boolean, counter: {
 }
 
 /** Expanded container element mirroring the builtin panel chrome (ul/li over
- *  markdown-renderer, blockquote likewise), children assembled recursively. */
+ *  markdown-renderer, blockquote likewise), children assembled recursively.
+ *  Plan 030: Callout/Details keep their card chrome while focused — the class
+ *  chains mirror renderCalloutPanel / DetailsNodeView verbatim (CSS
+ *  single-channel); title/summary edit in place through AttrHost. */
 function expandedElement(node: BlockNode, ctx: AssemblyCtx): VNode {
   if (node.kind === BlockType.Blockquote) {
     return h('blockquote', { class: 'blockquote', dir: 'auto' }, [
       h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx))),
+    ])
+  }
+  if (node.kind === BlockType.Callout) {
+    const type = attrGetStr(node.attrs, 'type', '')
+    const known = CALLOUT_TYPES.includes(type)
+    return h('div', {
+      class: ['callout-node', 'autodown-callout', `autodown-callout-${type}`],
+      'data-callout-type': type,
+    }, [
+      h('div', { class: 'autodown-callout-header' }, [
+        ...(known
+          ? [h('span', { class: ['autodown-callout-icon', `autodown-callout-icon-${type}`], 'aria-hidden': 'true' })]
+          : []),
+        h(AttrHost, {
+          blockId: node.id,
+          attrKey: 'title',
+          engine,
+          placeholder: type || '标题',
+          hostClass: 'autodown-callout-title',
+          version: repaintVersion.value,
+          readonly: props.streaming === true,
+        }),
+      ]),
+      h('div', { class: 'autodown-callout-content' }, [
+        h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx))),
+      ]),
+    ])
+  }
+  if (node.kind === BlockType.Details) {
+    const open = attrGetBool(node.attrs, 'open', false)
+    return h('div', { class: 'autodown-details', 'data-open': String(open) }, [
+      h('div', { class: 'autodown-details-summary' }, [
+        h(
+          'span',
+          {
+            class: 'autodown-details-marker',
+            'aria-hidden': 'true',
+            title: '点击展开详细内容',
+            onClick: (ev: MouseEvent) => {
+              ev.stopPropagation()
+              setBlockAttrs(engine, node.id, [{ key: 'open', value: Value.Bool(!open) }])
+            },
+          },
+          [h('span', open ? '▼' : '▶')]
+        ),
+        h(AttrHost, {
+          blockId: node.id,
+          attrKey: 'summary',
+          engine,
+          placeholder: 'Details',
+          hostClass: 'autodown-details-summary-text',
+          version: repaintVersion.value,
+          readonly: props.streaming === true,
+        }),
+      ]),
+      h(
+        'div',
+        { class: 'autodown-details-content', style: open ? undefined : 'display: none' },
+        [h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx)))]
+      ),
     ])
   }
   const ordered = attrGetBool(node.attrs, 'ordered', false)
@@ -374,12 +451,43 @@ function expandedElement(node: BlockNode, ctx: AssemblyCtx): VNode {
       class: ordered ? 'list-node list-decimal' : 'list-node list-disc',
       ...(ordered ? { start: attrGetInt(node.attrs, 'start', 1) } : {}),
     },
-    node.children.map((item) =>
-      h('li', { class: 'list-item', dir: 'auto' }, [
-        h('div', { class: 'markdown-renderer' }, item.children.map((ch) => childSlot(ch, ctx))),
-      ])
-    )
+    node.children.map((item) => {
+      // task items (plan 030): LIVE checkbox in the editing assembly — a
+      // click flips the attr through the command channel (one undo step);
+      // the inert view/stream copy stays in renderListPanel
+      const isTask = attrGet(item.attrs, 'checked') != null
+      return h(
+        'li',
+        { class: 'list-item' + (isTask ? ' task-item' : ''), dir: 'auto' },
+        [
+          ...(isTask
+            ? [
+                h('input', {
+                  type: 'checkbox',
+                  class: 'task-checkbox',
+                  checked: attrGetBool(item.attrs, 'checked', false),
+                  'aria-label': 'toggle task',
+                  onClick: (ev: MouseEvent) => {
+                    ev.stopPropagation()
+                    toggleTaskChecked(item.id)
+                  },
+                }),
+              ]
+            : []),
+          h('div', { class: 'markdown-renderer' }, item.children.map((ch) => childSlot(ch, ctx))),
+        ]
+      )
+    })
   )
+}
+
+/** Flip one task item's checked attr (single undo step — the 023 command
+ *  protocol; stopPropagation on the click keeps the selection untouched). */
+function toggleTaskChecked(itemId: string): void {
+  const item = findBlock(engine.doc, itemId)
+  if (!item) return
+  const cur = attrGetBool(item.attrs, 'checked', false)
+  setBlockAttrs(engine, itemId, [{ key: 'checked', value: Value.Bool(!cur) }])
 }
 
 /** A child of an expanded container: on the focus path → recursive assembly
@@ -449,7 +557,15 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
 }
 
 function isExpandableContainer(node: BlockNode): boolean {
-  return node.children.length > 0 && (node.kind === BlockType.ListBlock || node.kind === BlockType.Blockquote)
+  // plan 030: Callout/Details keep their card chrome while a child is
+  // focused (029's WYSIWYG ruling extended to container blocks)
+  return (
+    node.children.length > 0 &&
+    (node.kind === BlockType.ListBlock ||
+      node.kind === BlockType.Blockquote ||
+      node.kind === BlockType.Callout ||
+      node.kind === BlockType.Details)
+  )
 }
 
 // -- host registry -------------------------------------------------------------------

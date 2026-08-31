@@ -24,6 +24,7 @@ import {
   Mark,
   Selection,
   Value,
+  attrGet,
   blockText,
   childIndex,
   findBlock,
@@ -43,11 +44,9 @@ const KIND_COMMANDS: Record<string, BlockType> = {
   setParagraph: BlockType.Paragraph,
   setMathBlock: BlockType.MathBlock,
   setMermaidBlock: BlockType.Mermaid,
-  setCallout: BlockType.Callout,
   setHorizontalRule: BlockType.ThematicBreak,
   toggleBulletList: BlockType.ListItem,
   toggleOrderedList: BlockType.ListItem,
-  toggleTaskList: BlockType.ListItem,
   toggleBlockquote: BlockType.Blockquote,
 }
 
@@ -140,6 +139,11 @@ export interface ChainLike {
   setCodeBlock(opts?: { language?: string }): ChainLike
   /** Slash Details template (plan 026 P2T3): kind + summary attr. */
   setDetails(opts?: { summary?: string }): ChainLike
+  /** Slash Callout template (plan 030 T7): kind + type/title attrs. */
+  setCallout(opts?: { type?: string; title?: string }): ChainLike
+  /** Task list verb (plan 030 T7): focused ListItem toggles the checked
+   *  attr (task ⇄ plain bullet); non-list converts like toggleBulletList. */
+  toggleTaskList(): ChainLike
   run(): boolean
 }
 
@@ -475,6 +479,48 @@ function createChain(engine: EditorEngine): ChainLike {
         let next: BlockNode = { ...found, kind: BlockType.Details, children: kids }
         if (opts?.summary != null) next = { ...next, attrs: attrSet(next.attrs, 'summary', Value.Str(String(opts.summary))) }
         return replaceNode(tree, id, [next])
+      })
+      return chain
+    },
+    // slash Callout template carries { type, title } (plan 030 T7): same
+    // conversion shape as setDetails — before this the kind-only KIND_COMMANDS
+    // path silently dropped both attrs (the lost-title roundtrip break).
+    setCallout: (opts?: { type?: string; title?: string }) => {
+      pending.push((tree) => {
+        const id = currentBlockId(engine)
+        const found = findBlock(tree, id)
+        if (!found) return tree
+        const kids =
+          found.children.length > 0
+            ? found.children
+            : blockText(found).length > 0
+              ? [leafBlock(`${id}-p`, BlockType.Paragraph, blockText(found))]
+              : []
+        let next: BlockNode = { ...found, kind: BlockType.Callout, children: kids }
+        if (opts?.type != null) next = { ...next, attrs: attrSet(next.attrs, 'type', Value.Str(String(opts.type))) }
+        if (opts?.title != null) next = { ...next, attrs: attrSet(next.attrs, 'title', Value.Str(String(opts.title))) }
+        return replaceNode(tree, id, [next])
+      })
+      return chain
+    },
+    // task list (plan 030 T7): a real verb distinct from toggleBulletList —
+    // the focused ListItem (a caret usually sits on its child paragraph, so
+    // resolve the ListItem ancestor first — the list-commands 选中定位
+    // discipline) gains/loses the `checked` attr (task ⇄ plain bullet);
+    // outside a list it converts like the bullet verb.
+    toggleTaskList: () => {
+      pending.push((tree) => {
+        const id = currentBlockId(engine)
+        let found: BlockNode | null = findBlock(tree, id)
+        while (found != null && found.kind !== BlockType.ListItem) {
+          found = parentOf(tree, found.id)
+        }
+        if (found == null) return setKind(tree, engine, BlockType.ListItem)
+        const isTask = attrGet(found.attrs, 'checked') != null
+        const attrs = isTask
+          ? found.attrs.filter((a) => a.key !== 'checked')
+          : attrSet(found.attrs, 'checked', Value.Bool(false))
+        return replaceNode(tree, found.id, [{ ...found, attrs }])
       })
       return chain
     },

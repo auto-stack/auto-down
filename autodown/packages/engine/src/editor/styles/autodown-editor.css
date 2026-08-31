@@ -701,6 +701,77 @@
   outline: none;
 }
 
+/* ─── AttrHost (plan 030 T7): borderless in-place attr editing ─── */
+.autodown-editor-content .autodown-attr-host {
+  outline: none;
+  min-width: 2rem;
+  border-bottom: 1px dashed transparent;
+  /* the summary row is user-select:none (DetailsNodeView parity) — the host
+     inside it must stay selectable/editable */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.autodown-editor-content .autodown-attr-host:hover {
+  border-bottom-color: var(--ad-border, #e5e7eb);
+}
+
+.autodown-editor-content .autodown-attr-host:focus {
+  border-bottom-color: var(--ad-primary, #3b82f6);
+}
+
+.autodown-editor-content .autodown-attr-host:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* the callout title host keeps the palette title's single-line ellipsis */
+.autodown-editor-content .autodown-callout .autodown-attr-host.autodown-callout-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autodown-editor-content .autodown-details .autodown-attr-host.autodown-details-summary-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Task list checkboxes (plan 030 T4/T7) ─── */
+.autodown-editor-content .list-item.task-item {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.autodown-editor-content .list-item.task-item > .task-checkbox {
+  margin-top: 0.35em;
+  accent-color: var(--ad-primary, #3b82f6);
+  flex-shrink: 0;
+  /* the editing copy is live (pointer + stopPropagation); the view/stream
+     copy carries `disabled` and keeps the default cursor */
+  cursor: pointer;
+}
+
+.autodown-editor-content .list-item.task-item > .task-checkbox:disabled {
+  cursor: default;
+}
+
+.autodown-editor-content .list-item.task-item > .markdown-renderer {
+  flex: 1;
+  min-width: 0;
+}
+
+
 .autodown-editor-content .autodown-details-edit-btn {
   position: absolute;
   right: 0.4rem;

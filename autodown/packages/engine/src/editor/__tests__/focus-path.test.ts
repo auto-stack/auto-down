@@ -54,6 +54,18 @@ describe('focus-path primitives', () => {
     expect(blockText(qtarget)).toBe('quoted')
   })
 
+  it('Callout/Details descend to their first leaf through the generic recursion (plan 030 T7)', () => {
+    const doc = parse_blocks('$callout(type: "note") {\n卡片正文\n}\n', true)
+    const callout = doc.children[0]
+    const body = callout.children[0]
+    expect(focusTargetOf(doc)?.id).toBe(body.id)
+    expect(focusPathOf(doc, body.id).has(callout.id)).toBe(true)
+
+    const ddoc = parse_blocks('$details(summary: "s") {\n隐藏正文\n}\n', true)
+    const details = ddoc.children[0]
+    expect(focusTargetOf(ddoc)?.id).toBe(details.children[0].id)
+  })
+
   it('focusTargetOf stops at registered edit faces (table, not its cell)', () => {
     const doc = parse_blocks('| a | b |\n| --- | --- |\n| c | d |', true)
     const table = doc.children[0]

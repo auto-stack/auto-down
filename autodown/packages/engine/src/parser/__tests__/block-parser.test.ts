@@ -166,6 +166,78 @@ describe('parseDocument legacy behavior is unchanged', () => {
   })
 })
 
+describe('$ component blocks (plan 030 T2)', () => {
+  it('parses $callout with type/title attrs and paragraph children', () => {
+    const root = parse_blocks('$callout(type: "note", title: "提示") {\n正文段落\n}\n', true)
+    const c = root.children[0]
+    expect(c.kind).toBe(BlockType.Callout)
+    expect(attrGetStr(c.attrs, 'type', '')).toBe('note')
+    expect(attrGetStr(c.attrs, 'title', '')).toBe('提示')
+    expect(c.children).toHaveLength(1)
+    expect(c.children[0].kind).toBe(BlockType.Paragraph)
+    expect(spansText(c.children[0].inlines)).toBe('正文段落')
+  })
+
+  it('parses $details summary + open attrs', () => {
+    const root = parse_blocks('$details(summary: "更多", open: true) {\n内容\n}\n', true)
+    const d = root.children[0]
+    expect(d.kind).toBe(BlockType.Details)
+    expect(attrGetStr(d.attrs, 'summary', '')).toBe('更多')
+    expect(attrGetBool(d.attrs, 'open', false)).toBe(true)
+    expect(d.children[0].kind).toBe(BlockType.Paragraph)
+    expect(spansText(d.children[0].inlines)).toBe('内容')
+  })
+
+  it('details without open attr stays closed', () => {
+    const root = parse_blocks('$details(summary: "s") {\nx\n}\n', true)
+    const d = root.children[0]
+    expect(attrGetBool(d.attrs, 'open', false)).toBe(false)
+    expect(attrGet(d.attrs, 'open')).toBeNull()
+  })
+
+  it('parses $query bare-arg leaf with query attr', () => {
+    const root = parse_blocks('$query(TAG #project)\n', true)
+    const q = root.children[0]
+    expect(q.kind).toBe(BlockType.QueryBlock)
+    expect(attrGetStr(q.attrs, 'query', '')).toBe('TAG #project')
+    expect(q.children).toHaveLength(0)
+  })
+
+  it('parses $embed src leaf', () => {
+    const root = parse_blocks('$embed(src: "https://example.com/x")\n', true)
+    const e = root.children[0]
+    expect(e.kind).toBe(BlockType.BlockEmbed)
+    expect(attrGetStr(e.attrs, 'src', '')).toBe('https://example.com/x')
+  })
+
+  it('unknown $name degrades to paragraph literal', () => {
+    const root = parse_blocks('$unknown(x: "y") {\nbody\n}\n', true)
+    expect(root.children[0].kind).toBe(BlockType.Paragraph)
+  })
+
+  it('unclosed $callout degrades to paragraph literal (streaming safety)', () => {
+    const root = parse_blocks('$callout(type: "note") {\nbody\n', false)
+    expect(root.children[0].kind).toBe(BlockType.Paragraph)
+    const fin = parse_blocks('$callout(type: "note") {\nbody\n', true)
+    expect(fin.children[0].kind).toBe(BlockType.Paragraph)
+  })
+
+  it('a component open line breaks a preceding paragraph', () => {
+    const root = parse_blocks('para text\n$callout(type: "n") {\nx\n}\n', true)
+    expect(root.children.map((b) => b.kind)).toEqual([BlockType.Paragraph, BlockType.Callout])
+  })
+
+  it('nested $ containers pair their braces (inner } does not close outer)', () => {
+    const md = '$details(summary: "s") {\n$callout(type: "warn") {\n内层\n}\n外层尾段\n}\n'
+    const root = parse_blocks(md, true)
+    const d = root.children[0]
+    expect(d.kind).toBe(BlockType.Details)
+    expect(d.children.map((b) => b.kind)).toEqual([BlockType.Callout, BlockType.Paragraph])
+    expect(attrGetStr(d.children[0].attrs, 'type', '')).toBe('warn')
+    expect(spansText(d.children[1].inlines)).toBe('外层尾段')
+  })
+})
+
 describe('nested emphasis delimiters (plan 028 P2T1)', () => {
   const spansOf = (md: string) => parse_blocks(md, true).children[0].inlines
 

@@ -137,6 +137,22 @@ export function linkNode(href: string, title: string | null, textContent: string
     return new WNode("link", null, null, null, null, loading, children, null, null, null, null, null, null, null, null, href, title, textContent, null, null, null);
 }
 
+export function calloutNode(ctype: string, title: string, children: WNode[]): WNode {
+    return new WNode("callout", null, null, ctype, null, null, children, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
+}
+
+export function detailsNode(summary: string, openFlag: boolean, children: WNode[]): WNode {
+    return new WNode("details", null, null, null, null, openFlag, children, null, null, null, null, null, null, null, null, null, null, summary, null, null, null);
+}
+
+export function queryNode(query: string): WNode {
+    return new WNode("query", query, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+}
+
+export function embedNode(src: string): WNode {
+    return new WNode("embed", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, src, null, null);
+}
+
 export function rawTextNode(content: string): WNode {
     return new WNode("text", content, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
@@ -855,6 +871,269 @@ export function stripParaIndent(s: string): string {
     return s.slice(n);
 }
 
+export class CompScan {
+    name: string;
+    argstr: string;
+    afterParen: number;
+
+    constructor(name: string, argstr: string, afterParen: number) {
+        this.name = name;
+        this.argstr = argstr;
+        this.afterParen = afterParen;
+    }
+}
+
+export function isIdentChar(c: number): boolean {
+    if (c >= 97) {
+        if (c <= 122) {
+            return true;
+        }
+    }
+    if (c >= 65) {
+        if (c <= 90) {
+            return true;
+        }
+    }
+    if (c >= 48) {
+        if (c <= 57) {
+            return true;
+        }
+    }
+    if (c == 95) {
+        return true;
+    }
+    return false;
+}
+
+export function compOpenScan(line: string): CompScan | null {
+    let p: number = 0;
+    let sp: number = 0;
+    while (p < Number(line.length)) {
+        if (line.charCodeAt(p) == 32) {
+            sp += 1;
+            p += 1;
+        } else {
+            break;
+        }
+    }
+    if (sp > 3) {
+        return null;
+    }
+    if (p >= Number(line.length)) {
+        return null;
+    }
+    if (line.charCodeAt(p) != 36) {
+        return null;
+    }
+    let q: number = p + 1;
+    const nameStart: number = q;
+    while (q < Number(line.length)) {
+        if (isIdentChar(line.charCodeAt(q))) {
+            q += 1;
+        } else {
+            break;
+        }
+    }
+    if (q == nameStart) {
+        return null;
+    }
+    if (q >= Number(line.length)) {
+        return null;
+    }
+    if (line.charCodeAt(q) != 40) {
+        return null;
+    }
+    let r: number = q + 1;
+    let inQuote: boolean = false;
+    while (r < Number(line.length)) {
+        const c = line.charCodeAt(r);
+        if (inQuote) {
+            if (c == 34) {
+                inQuote = false;
+            }
+        } else {
+            if (c == 34) {
+                inQuote = true;
+            } else {
+                if (c == 41) {
+                    break;
+                }
+            }
+        }
+        r += 1;
+    }
+    if (r >= Number(line.length)) {
+        return null;
+    }
+    const name = line.slice(nameStart, q);
+    const argstr = line.slice(q + 1, r);
+    return new CompScan(name, argstr, r);
+}
+
+export function isContainerCompOpen(line: string): boolean {
+    const found = compOpenScan(line);
+    if (found == null) {
+        return false;
+    }
+    const cs = found ?? new CompScan("", "", 0);
+    if (cs.name != "callout") {
+        if (cs.name != "details") {
+            return false;
+        }
+    }
+    let b: number = cs.afterParen + 1;
+    while (b < Number(line.length)) {
+        if (line.charCodeAt(b) == 32) {
+            b += 1;
+        } else {
+            break;
+        }
+    }
+    if (b >= Number(line.length)) {
+        return false;
+    }
+    if (line.charCodeAt(b) != 123) {
+        return false;
+    }
+    let t: number = b + 1;
+    while (t < Number(line.length)) {
+        if (line.charCodeAt(t) != 32) {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
+export function leafEndsAfterParen(line: string, afterParen: number): boolean {
+    let t: number = afterParen + 1;
+    while (t < Number(line.length)) {
+        if (line.charCodeAt(t) != 32) {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
+export function isCompCloseLine(line: string): boolean {
+    if (Number(line.length) == 0) {
+        return false;
+    }
+    if (line.charCodeAt(0) != 125) {
+        return false;
+    }
+    let t: number = 1;
+    while (t < Number(line.length)) {
+        if (line.charCodeAt(t) != 32) {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
+export function argValueAt(args: string, key: string): number {
+    const want: string = key + ":";
+    let i: number = 0;
+    const n: number = Number(args.length);
+    while (i < n) {
+        const sc = args.charCodeAt(i);
+        if (sc == 44) {
+            i += 1;
+        } else {
+            if (sc == 32) {
+                i += 1;
+            }
+        }
+        
+
+        let m: number = i;
+        while (m < n) {
+            if (args.charCodeAt(m) == 32) {
+                m += 1;
+            } else {
+                break;
+            }
+        }
+        if (m + Number(want.length) <= n) {
+            if (args.slice(m, m + Number(want.length)) == want) {
+                let v: number = m + Number(want.length);
+                while (v < n) {
+                    if (args.charCodeAt(v) == 32) {
+                        v += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if (v < n) {
+                    return v;
+                }
+            }
+        }
+        
+
+        let inQ: boolean = false;
+        while (i < n) {
+            const c = args.charCodeAt(i);
+            if (inQ) {
+                if (c == 34) {
+                    inQ = false;
+                }
+            } else {
+                if (c == 34) {
+                    inQ = true;
+                } else {
+                    if (c == 44) {
+                        break;
+                    }
+                }
+            }
+            i += 1;
+        }
+        if (i < n) {
+            i += 1;
+        }
+    }
+    return -1;
+}
+
+export function argStrOf(args: string, key: string): string | null {
+    const v = argValueAt(args, key);
+    if (v == -1) {
+        return null;
+    }
+    if (args.charCodeAt(v) != 34) {
+        return null;
+    }
+    let e: number = v + 1;
+    const n: number = Number(args.length);
+    while (e < n) {
+        if (args.charCodeAt(e) == 34) {
+            break;
+        }
+        e += 1;
+    }
+    if (e >= n) {
+        return null;
+    }
+    return args.slice(v + 1, e);
+}
+
+export function argBoolOf(args: string, key: string): boolean | null {
+    const v = argValueAt(args, key);
+    if (v == -1) {
+        return null;
+    }
+    if (args.slice(v, v + 4) == "true") {
+        return true;
+    }
+    if (args.slice(v, v + 5) == "false") {
+        return false;
+    }
+    return null;
+}
+
 export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
     let nodes: WNode[] = [];
     let i: number = 0;
@@ -938,6 +1217,67 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
             nodes.push(thematicNode());
             i += 1;
             continue;
+        }
+        
+
+
+        const comp = compOpenScan(line);
+        if (comp != null) {
+            const cs = comp ?? new CompScan("", "", 0);
+            if (isContainerCompOpen(line)) {
+                
+
+
+
+                let body: string[] = [];
+                let j: number = i + 1;
+                let depth: number = 1;
+                let compClosed: boolean = false;
+                while (j < Number(lines.length)) {
+                    if (isCompCloseLine(lines[j])) {
+                        depth -= 1;
+                        if (depth == 0) {
+                            compClosed = true;
+                            break;
+                        }
+                    } else {
+                        if (isContainerCompOpen(lines[j])) {
+                            depth += 1;
+                        }
+                    }
+                    body.push(lines[j]);
+                    j += 1;
+                }
+                if (compClosed) {
+                    const inner = parseBlocks(body, isFinal);
+                    if (cs.name == "callout") {
+                        const ctitle: string = argStrOf(cs.argstr, "title") ?? "";
+                        nodes.push(calloutNode(argStrOf(cs.argstr, "type") ?? "", ctitle, inner));
+                    } else {
+                        const dopen: boolean = argBoolOf(cs.argstr, "open") ?? false;
+                        nodes.push(detailsNode(argStrOf(cs.argstr, "summary") ?? "", dopen, inner));
+                    }
+                    i = j + 1;
+                    continue;
+                }
+                
+
+            } else {
+                if (cs.name == "query") {
+                    if (leafEndsAfterParen(line, cs.afterParen)) {
+                        nodes.push(queryNode(cs.argstr.trim()));
+                        i += 1;
+                        continue;
+                    }
+                }
+                if (cs.name == "embed") {
+                    if (leafEndsAfterParen(line, cs.afterParen)) {
+                        nodes.push(embedNode(argStrOf(cs.argstr, "src") ?? ""));
+                        i += 1;
+                        continue;
+                    }
+                }
+            }
         }
         
 
@@ -1121,6 +1461,9 @@ export function paraBreaks(cur: string, lines: string[], idx: number): boolean {
         return true;
     }
     if (olMarkerNum(cur) >= 0) {
+        return true;
+    }
+    if (compOpenScan(cur) != null) {
         return true;
     }
     return false;
@@ -2601,6 +2944,32 @@ export function convertBlock(wnode: WNode, id: string): BlockNode {
     }
     if (t == "thematic_break") {
         return blockFull(id, BlockType.ThematicBreak, [], [], [], rng(0, 0));
+    }
+    if (t == "callout") {
+        let attrsC: Attr[] = [];
+        attrsC = attrSet(attrsC, "type", Value.Str(wnode.language ?? ""));
+        attrsC = attrSet(attrsC, "title", Value.Str(wnode.title ?? ""));
+        return blockFull(id, BlockType.Callout, attrsC, convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0));
+    }
+    if (t == "details") {
+        let attrsD: Attr[] = [];
+        attrsD = attrSet(attrsD, "summary", Value.Str(wnode.text ?? ""));
+        
+
+        if (wnode.loading ?? false) {
+            attrsD = attrSet(attrsD, "open", Value.Bool(true));
+        }
+        return blockFull(id, BlockType.Details, attrsD, convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0));
+    }
+    if (t == "query") {
+        let attrsQ: Attr[] = [];
+        attrsQ = attrSet(attrsQ, "query", Value.Str(wnode.content ?? ""));
+        return blockFull(id, BlockType.QueryBlock, attrsQ, [], [], rng(0, 0));
+    }
+    if (t == "embed") {
+        let attrsE: Attr[] = [];
+        attrsE = attrSet(attrsE, "src", Value.Str(wnode.src ?? ""));
+        return blockFull(id, BlockType.BlockEmbed, attrsE, [], [], rng(0, 0));
     }
     
 

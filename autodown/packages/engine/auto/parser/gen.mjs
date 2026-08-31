@@ -118,6 +118,8 @@ const structNames = [
   'WNode',
   'DelimScan',
   'LinkScan',
+  // plan 030: $ component block opener scan
+  'CompScan',
 ]
 const ctorRe = new RegExp(`(?<!new )\\b(${structNames.join('|')})\\(`, 'g')
 const addNewToStructCtors = (s) =>

@@ -104,6 +104,22 @@ fn linkNode(href: &str, title: Option<String>, textContent: &str, children: Vec<
     return WNode { r#type: "link".to_string(), content: None, level: None, language: None, code: None, loading: Some(loading), children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: Some(href.to_string()), title: title, text: Some(textContent.to_string()), src: None, alt: None, checked: None };
 }
 
+fn calloutNode(ctype: &str, title: &str, children: Vec<WNode>) -> WNode {
+    return WNode { r#type: "callout".to_string(), content: None, level: None, language: Some(ctype.to_string()), code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: Some(title.to_string()), text: None, src: None, alt: None, checked: None };
+}
+
+fn detailsNode(summary: &str, openFlag: bool, children: Vec<WNode>) -> WNode {
+    return WNode { r#type: "details".to_string(), content: None, level: None, language: None, code: None, loading: Some(openFlag), children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: Some(summary.to_string()), src: None, alt: None, checked: None };
+}
+
+fn queryNode(query: &str) -> WNode {
+    return WNode { r#type: "query".to_string(), content: Some(query.to_string()), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
+}
+
+fn embedNode(src: &str) -> WNode {
+    return WNode { r#type: "embed".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: Some(src.to_string()), alt: None, checked: None };
+}
+
 fn rawTextNode(content: &str) -> WNode {
     return WNode { r#type: "text".to_string(), content: Some(content.to_string()), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
@@ -816,6 +832,259 @@ fn stripParaIndent(s: &str) -> String {
     return s.chars().skip((n) as usize).collect::<String>().to_string();
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CompScan {
+    pub name: String,
+    pub argstr: String,
+    pub afterParen: i64,
+}
+
+fn isIdentChar(c: i64) -> bool {
+    if c >= 97 {
+        if c <= 122 {
+            return true;
+        }    }
+    if c >= 65 {
+        if c <= 90 {
+            return true;
+        }    }
+    if c >= 48 {
+        if c <= 57 {
+            return true;
+        }    }
+    if c == 95 {
+        return true;
+    }
+    return false;
+}
+
+fn compOpenScan(line: &str) -> Option<CompScan> {
+    let mut p: i64 = 0;
+    let mut sp: i64 = 0;
+    while p < (line.chars().count() as i64) {
+        if line.chars().nth((p) as usize).unwrap_or('\0') as i64 == 32 {
+            sp += 1;
+            p += 1;
+        } else {
+            break;
+        }
+
+    }
+    if sp > 3 {
+        return None;
+    }
+    if p >= (line.chars().count() as i64) {
+        return None;
+    }
+    if line.chars().nth((p) as usize).unwrap_or('\0') as i64 != 36 {
+        return None;
+    }
+    let mut q: i64 = p + 1;
+    let nameStart: i64 = q;
+    while q < (line.chars().count() as i64) {
+        if isIdentChar(line.chars().nth((q) as usize).unwrap_or('\0') as i64) {
+            q += 1;
+        } else {
+            break;
+        }
+
+    }
+    if q == nameStart {
+        return None;
+    }
+    if q >= (line.chars().count() as i64) {
+        return None;
+    }
+    if line.chars().nth((q) as usize).unwrap_or('\0') as i64 != 40 {
+        return None;
+    }
+    let mut r: i64 = q + 1;
+    let mut inQuote: bool = false;
+    while r < (line.chars().count() as i64) {
+        let c = line.chars().nth((r) as usize).unwrap_or('\0') as i64;
+        if inQuote {
+            if c == 34 {
+                inQuote = false;
+            }        } else {
+            if c == 34 {
+                inQuote = true;
+            } else {
+                if c == 41 {
+                    break;
+                }            }
+        }
+
+        r += 1;
+    }
+    if r >= (line.chars().count() as i64) {
+        return None;
+    }
+    let name = line.chars().take((q) as usize).skip((nameStart) as usize).collect::<String>();
+    let argstr = line.chars().take((r) as usize).skip((q + 1) as usize).collect::<String>();
+    return Some(CompScan { name: name.to_string(), argstr: argstr.to_string(), afterParen: r });
+}
+
+fn isContainerCompOpen(line: &str) -> bool {
+    let found = compOpenScan(line);
+    if found == None {
+        return false;
+    }
+    let cs = found.unwrap_or(CompScan { name: "".to_string(), argstr: "".to_string(), afterParen: 0 });
+    if cs.name != "callout" {
+        if cs.name != "details" {
+            return false;
+        }    }
+    let mut b: i64 = cs.afterParen + 1;
+    while b < (line.chars().count() as i64) {
+        if line.chars().nth((b) as usize).unwrap_or('\0') as i64 == 32 {
+            b += 1;
+        } else {
+            break;
+        }
+
+    }
+    if b >= (line.chars().count() as i64) {
+        return false;
+    }
+    if line.chars().nth((b) as usize).unwrap_or('\0') as i64 != 123 {
+        return false;
+    }
+    let mut t: i64 = b + 1;
+    while t < (line.chars().count() as i64) {
+        if line.chars().nth((t) as usize).unwrap_or('\0') as i64 != 32 {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
+fn leafEndsAfterParen(line: &str, afterParen: i64) -> bool {
+    let mut t: i64 = afterParen + 1;
+    while t < (line.chars().count() as i64) {
+        if line.chars().nth((t) as usize).unwrap_or('\0') as i64 != 32 {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
+fn isCompCloseLine(line: &str) -> bool {
+    if (line.chars().count() as i64) == 0 {
+        return false;
+    }
+    if line.chars().nth((0) as usize).unwrap_or('\0') as i64 != 125 {
+        return false;
+    }
+    let mut t: i64 = 1;
+    while t < (line.chars().count() as i64) {
+        if line.chars().nth((t) as usize).unwrap_or('\0') as i64 != 32 {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
+fn argValueAt(args: &str, key: &str) -> i64 {
+    let want: String = format!("{}{}", key, ":");
+    let mut i: i64 = 0;
+    let n: i64 = (args.chars().count() as i64);
+    while i < n {
+        let sc = args.chars().nth((i) as usize).unwrap_or('\0') as i64;
+        if sc == 44 {
+            i += 1;
+        } else {
+            if sc == 32 {
+                i += 1;
+            }        }
+
+        
+        let mut m: i64 = i;
+        while m < n {
+            if args.chars().nth((m) as usize).unwrap_or('\0') as i64 == 32 {
+                m += 1;
+            } else {
+                break;
+            }
+
+        }
+        if m + (want.chars().count() as i64) <= n {
+            if args.chars().take((m + (want.chars().count() as i64)) as usize).skip((m) as usize).collect::<String>() == want {
+                let mut v: i64 = m + (want.chars().count() as i64);
+                while v < n {
+                    if args.chars().nth((v) as usize).unwrap_or('\0') as i64 == 32 {
+                        v += 1;
+                    } else {
+                        break;
+                    }
+
+                }
+                if v < n {
+                    return v;
+                }            }        }
+        
+        let mut inQ: bool = false;
+        while i < n {
+            let c = args.chars().nth((i) as usize).unwrap_or('\0') as i64;
+            if inQ {
+                if c == 34 {
+                    inQ = false;
+                }            } else {
+                if c == 34 {
+                    inQ = true;
+                } else {
+                    if c == 44 {
+                        break;
+                    }                }
+            }
+
+            i += 1;
+        }
+        if i < n {
+            i += 1;
+        }
+    }
+    return -1;
+}
+
+fn argStrOf(args: &str, key: &str) -> Option<String> {
+    let v = argValueAt(args, key);
+    if v == -1 {
+        return None;
+    }
+    if args.chars().nth((v) as usize).unwrap_or('\0') as i64 != 34 {
+        return None;
+    }
+    let mut e: i64 = v + 1;
+    let n: i64 = (args.chars().count() as i64);
+    while e < n {
+        if args.chars().nth((e) as usize).unwrap_or('\0') as i64 == 34 {
+            break;
+        }
+        e += 1;
+    }
+    if e >= n {
+        return None;
+    }
+    return Some(args.chars().take((e) as usize).skip((v + 1) as usize).collect::<String>());
+}
+
+fn argBoolOf(args: &str, key: &str) -> Option<bool> {
+    let v = argValueAt(args, key);
+    if v == -1 {
+        return None;
+    }
+    if args.chars().take((v + 4) as usize).skip((v) as usize).collect::<String>() == "true" {
+        return Some(true);
+    }
+    if args.chars().take((v + 5) as usize).skip((v) as usize).collect::<String>() == "false" {
+        return Some(false);
+    }
+    return None;
+}
+
 fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
     let mut nodes: Vec<WNode> = vec![];
     let mut i: i64 = 0;
@@ -895,6 +1164,60 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
             nodes.push(thematicNode());
             i += 1;
             continue;
+        }
+        
+
+        let comp = compOpenScan(line.as_str());
+        if comp != None {
+            let mut cs = comp.unwrap_or(CompScan { name: "".to_string(), argstr: "".to_string(), afterParen: 0 });
+            if isContainerCompOpen(line.as_str()) {
+                
+
+
+
+                let mut body: Vec<String> = vec![];
+                let mut j: i64 = i + 1;
+                let mut depth: i64 = 1;
+                let mut compClosed: bool = false;
+                while j < (lines.len() as i64) {
+                    if isCompCloseLine(lines[(j) as usize].as_str()) {
+                        depth -= 1;
+                        if depth == 0 {
+                            compClosed = true;
+                            break;
+                        }                    } else {
+                        if isContainerCompOpen(lines[(j) as usize].as_str()) {
+                            depth += 1;
+                        }                    }
+
+                    body.push(lines[(j) as usize].clone());
+                    j += 1;
+                }
+                if compClosed {
+                    let inner = parseBlocks(body.clone(), isFinal);
+                    if cs.name == "callout" {
+                        let ctitle: String = argStrOf(cs.argstr.as_str(), "title").unwrap_or("".to_string());
+                        nodes.push(calloutNode(argStrOf(cs.argstr.as_str(), "type").unwrap_or("".to_string()).as_str(), ctitle.as_str(), inner.clone()));
+                    } else {
+                        let dopen: bool = argBoolOf(cs.argstr.as_str(), "open").unwrap_or(false);
+                        nodes.push(detailsNode(argStrOf(cs.argstr.as_str(), "summary").unwrap_or("".to_string()).as_str(), dopen, inner.clone()));
+                    }
+                    i = j + 1;
+                    continue;
+                }                
+
+            } else {
+                if cs.name == "query" {
+                    if leafEndsAfterParen(line.as_str(), cs.afterParen) {
+                        nodes.push(queryNode(cs.argstr.trim()));
+                        i += 1;
+                        continue;
+                    }                }                if cs.name == "embed" {
+                    if leafEndsAfterParen(line.as_str(), cs.afterParen) {
+                        nodes.push(embedNode(argStrOf(cs.argstr.as_str(), "src").unwrap_or("".to_string()).as_str()));
+                        i += 1;
+                        continue;
+                    }                }            }
         }
         
 
@@ -1062,6 +1385,9 @@ fn paraBreaks(cur: &str, lines: Vec<String>, idx: i64) -> bool {
         return true;
     }
     if olMarkerNum(cur) >= 0 {
+        return true;
+    }
+    if compOpenScan(cur) != None {
         return true;
     }
     return false;
@@ -2425,6 +2751,31 @@ fn convertBlock(wnode: WNode, id: &str) -> BlockNode {
     }
     if t == "thematic_break" {
         return blockFull(id, BlockType::ThematicBreak.clone(), vec![], vec![], vec![], rng(0, 0));
+    }
+    if t == "callout" {
+        let mut attrsC: Vec<Attr> = vec![];
+        attrsC = attrSet(attrsC.clone(), "type", Value::Str(wnode.language.unwrap_or("".to_string())));
+        attrsC = attrSet(attrsC.clone(), "title", Value::Str(wnode.title.unwrap_or("".to_string())));
+        return blockFull(id, BlockType::Callout.clone(), attrsC.clone(), convertChildren(wnode.children.unwrap_or(noNodes()), id), vec![], rng(0, 0));
+    }
+    if t == "details" {
+        let mut attrsD: Vec<Attr> = vec![];
+        attrsD = attrSet(attrsD.clone(), "summary", Value::Str(wnode.text.unwrap_or("".to_string())));
+        
+
+        if wnode.loading.unwrap_or(false) {
+            attrsD = attrSet(attrsD.clone(), "open", Value::Bool(true));
+        }        return blockFull(id, BlockType::Details.clone(), attrsD.clone(), convertChildren(wnode.children.unwrap_or(noNodes()), id), vec![], rng(0, 0));
+    }
+    if t == "query" {
+        let mut attrsQ: Vec<Attr> = vec![];
+        attrsQ = attrSet(attrsQ.clone(), "query", Value::Str(wnode.content.unwrap_or("".to_string())));
+        return blockFull(id, BlockType::QueryBlock.clone(), attrsQ.clone(), vec![], vec![], rng(0, 0));
+    }
+    if t == "embed" {
+        let mut attrsE: Vec<Attr> = vec![];
+        attrsE = attrSet(attrsE.clone(), "src", Value::Str(wnode.src.unwrap_or("".to_string())));
+        return blockFull(id, BlockType::BlockEmbed.clone(), attrsE.clone(), vec![], vec![], rng(0, 0));
     }
 
     return blockFull(id, BlockType::Paragraph.clone(), vec![], vec![], convertInlines(wnode.children.unwrap_or(noNodes()), vec![]), rng(0, 0));

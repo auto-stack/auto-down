@@ -91,9 +91,10 @@ const widgets = readdirSync(here)
   .filter((f) => f.endsWith('.at') && f !== 'pac.at')
   .sort()
 // 14 plan-013-era widgets + code_editor_block.at (P1T7) and
-// table_editor_block.at (P1T8), both plan 023.
-if (widgets.length !== 16) {
-  console.error(`expected 16 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// table_editor_block.at (P1T8), both plan 023; math_edit_block.at and
+// mermaid_edit_block.at (plan 031 T1/T2).
+if (widgets.length !== 17) {
+  console.error(`expected 17 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 

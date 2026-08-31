@@ -1,0 +1,170 @@
+// math_edit_block.at — MathEditBlock widget (plan 031 T1): the math block's
+// typed editing face. Source textarea + live KaTeX preview in one chrome
+// (preview ABOVE the source, distinguishing the editing face from the
+// node-view's preview-below layout); blur commits the whole source through
+// the CodeEditorController the EngineEditor edit slot passes in (one undo
+// step — math editing is whole-text editing, exactly the Fence shape, so
+// the controller is reused rather than forked).
+//
+// Props are FLAT chrome primitives (controller-prop protocol, plan 023):
+// the VM object (controller) arrives typed Array<str> (emits `any`), same
+// idiom as code_editor_block.at / table_editor_block.at.
+//
+// Idioms:
+// - KaTeX is SYNCHRONOUS — the preview is a pair of computeds over .draft
+//   (renderKatexPreview runs twice per keystroke: once for the html, once
+//   for the error; katex renderToString is cheap and this keeps the DSL
+//   free of statement-level result juggling). Invalid source flips
+//   show_error and drops the preview — same banner idiom as
+//   math_block_node_view.at.
+// - The textarea grows via the rows attr computed from the draft's line
+//   count (textareaRows in the ext bridge) — no resize-on-input machinery
+//   (D1 v1 ruling); CSS caps height with overflow.
+// - value + oninput fold into v-model (code_editor_block.at idiom); the
+//   AreaInput body re-asserts the draft so the handler carries a body.
+// - focus comes from focusCodeArea (code_editor_block_ext re-export — no
+//   element casts in the DSL), .Init runs it on mount, skipped when
+//   readonly (stream banner + disabled textarea instead).
+
+widget MathEditBlock(controller: Array<str>, blockId: str, source: str, readonly: bool) {
+    use {
+        fn: renderKatexPreview, focusCodeArea, textareaRows from "ext/math_edit_ext.ts"
+    }
+
+    msg Msg { Init, AreaInput, Blur }
+
+    model {
+        // prop-initialized (TDZ-safe since b4b74fd09, code_editor_block idiom)
+        var draft str = .source
+    }
+
+    computed {
+        preview_html => renderKatexPreview(.draft, true).html
+        error_text => renderKatexPreview(.draft, true).error
+        show_preview => .error_text == ""
+        show_error => .error_text != ""
+        rows_value => textareaRows(.draft)
+    }
+
+    view {
+        div {
+            class: "autodown-math-editor",
+            style: { "is-readonly": .readonly },
+            data-block-id: .blockId,
+            data-node-type: "MathBlock",
+
+            if .readonly {
+                div {
+                    class: "autodown-stream-banner",
+                    text "流式生成中"
+                }
+            }
+            div {
+                class: "math-editor-stack",
+                if .show_preview {
+                    div {
+                        class: "autodown-math-preview",
+                        html: .preview_html
+                    }
+                }
+                if .show_error {
+                    div {
+                        class: "autodown-math-error",
+                        title: "Math preview error",
+                        text .error_text
+                    }
+                }
+                textarea (spellcheck: "false") {
+                    ref: "area",
+                    class: "math-editor-textarea",
+                    value: .draft,
+                    rows: .rows_value,
+                    oninput: .AreaInput($event),
+                    disabled: .readonly,
+                    onblur: .Blur($event)
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            focusCodeArea(.area, .readonly)
+        }
+
+        .AreaInput(e) -> {
+            .draft = e.target.value
+        }
+
+        .Blur(e) -> {
+            if !.readonly {
+                let c = .controller
+                c.commit(e.target.value)
+            }
+        }
+    }
+
+    style {
+        .autodown-math-editor {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #f8f9fa;
+          overflow: hidden;
+        }
+        .autodown-math-editor.is-readonly {
+          opacity: 0.75;
+        }
+        .autodown-stream-banner {
+          padding: 0.3rem 0.75rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          border-bottom: 1px solid #fcd34d;
+          user-select: none;
+        }
+        .math-editor-stack {
+          display: flex;
+          flex-direction: column;
+        }
+        .autodown-math-preview {
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+          border-bottom: 1px solid #e5e7eb;
+          background: #ffffff;
+        }
+        .autodown-math-preview :deep(.katex-display) {
+          margin: 0;
+        }
+        .autodown-math-error {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          color: hsl(var(--destructive, 0 72% 51%));
+          background: hsl(var(--destructive/10, 0 72% 51% / 0.1));
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .math-editor-textarea {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 3rem;
+          max-height: 24rem;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          outline: none;
+          resize: none;
+          overflow: auto;
+          background: transparent;
+          color: #111827;
+          caret-color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .math-editor-textarea:disabled {
+          cursor: not-allowed;
+        }
+    }
+}

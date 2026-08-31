@@ -329,6 +329,27 @@ describe('extended block placeholders (directed construction)', () => {
   })
 })
 
+describe('dialect roundtrip conservation table (plan 030 T5)', () => {
+  const cases: Array<[string, string]> = [
+    ['callout type+title', '$callout(type: "note", title: "提示") {\n正文\n}\n'],
+    ['callout type only', '$callout(type: "warning") {\nrisk\n}\n'],
+    ['details summary', '$details(summary: "更多") {\n内容\n}\n'],
+    ['details summary+open', '$details(summary: "更多", open: true) {\n内容\n}\n'],
+    ['query', '$query(TAG #x)\n'],
+    ['embed', '$embed(src: "https://e.com/x")\n'],
+    ['math', '%{\ne = mc^2\n}%\n'],
+    ['mermaid', '```mermaid\ngraph TD;\nA-->B;\n```\n'],
+    ['task list', '- [ ] a\n- [x] b\n'],
+  ]
+
+  it.each(cases)('%s: parse→serialize is byte-canonical and idempotent', (_name, src) => {
+    const once = serialize(parse_blocks(src, true), true)
+    expect(once).toBe(src)
+    const twice = serialize(parse_blocks(once, true), true)
+    expect(twice).toBe(src)
+  })
+})
+
 describe('task list roundtrip (plan 030 T4)', () => {
   it('checked flags survive serialize→parse byte-stable', () => {
     const src = '- [ ] todo a\n- [x] done b\n- plain c\n'

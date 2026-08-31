@@ -335,18 +335,29 @@ pub fn headingMd(node: BlockNode, withId: bool) -> String {
     return format!("{}{}", format!("{}{}", repeatStr("#", level), " "), t);
 }
 
-pub fn componentBlockMd(name: &str, argName: &str, node: BlockNode, withId: bool) -> String {
-    let arg = attrGetStr(node.attrs.clone(), argName, "");
-    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$", name), "("), argName), ": \""), arg), "\") {\n"), joinChildren(node.children.clone(), withId)), "\n}");
+pub fn quotedArg(k: &str, v: &str) -> String {
+    return format!("{}{}", format!("{}{}", format!("{}{}", k, ": \""), v), "\"");
 }
 
-pub fn detailsMd(node: BlockNode, withId: bool) -> String {
-    let summary = attrGetStr(node.attrs.clone(), "summary", "");
-    let mut open: String = "".to_string();
-    if attrGetBool(node.attrs.clone(), "open", false) {
-        open = ", open: true".to_string();
+pub fn componentBlockMd(name: &str, argsText: &str, node: BlockNode, withId: bool) -> String {
+    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$", name), "("), argsText), ") {\n"), joinChildren(node.children.clone(), withId)), "\n}");
+}
+
+pub fn calloutMd(mut node: BlockNode, withId: bool) -> String {
+    let mut argsText: String = quotedArg("type", attrGetStr(node.attrs.clone(), "type", "").as_str());
+    let title = attrGetStr(node.attrs.clone(), "title", "");
+    if (title.chars().count() as i64) > 0 {
+        argsText = format!("{}{}", format!("{}{}", argsText, ", "), quotedArg("title", title.as_str()));
     }
-    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", "$details(summary: \"", summary), "\""), open), ") {\n"), joinChildren(node.children.clone(), withId)), "\n}");
+    return componentBlockMd("callout", argsText.as_str(), node.clone(), withId);
+}
+
+pub fn detailsMd(mut node: BlockNode, withId: bool) -> String {
+    let mut argsText: String = quotedArg("summary", attrGetStr(node.attrs.clone(), "summary", "").as_str());
+    if attrGetBool(node.attrs.clone(), "open", false) {
+        argsText = format!("{}{}", argsText, ", open: true");
+    }
+    return componentBlockMd("details", argsText.as_str(), node.clone(), withId);
 }
 
 pub fn wikilinkMd(node: BlockNode) -> String {
@@ -388,7 +399,7 @@ pub fn blockMd(mut node: BlockNode, withId: bool) -> String {
         return "---".to_string();
     }
     if k == BlockType::Callout {
-        return componentBlockMd("callout", "type", node.clone(), withId);
+        return calloutMd(node.clone(), withId);
     }
     if k == BlockType::Details {
         return detailsMd(node.clone(), withId);

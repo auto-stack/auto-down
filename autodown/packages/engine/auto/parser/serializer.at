@@ -26,9 +26,10 @@
 //   Paragraph/Heading gets ` ^<id>` appended unless its text already ends
 //   with that token; reparse re-extracts the anchor, so ids do not drift.
 //   Only Paragraph/Heading carry inlines the anchor extractor reads.
-// - Extended block placeholder surface syntax (AutoDown dialect,
-//   auto-lang docs/design/raw/auto-down.md):
-//     Callout      -> $callout(type: "<type>") { <children md> }
+// - Extended block surface syntax (AutoDown dialect, auto-lang
+//   docs/design/raw/auto-down.md; parsed back since plan 030):
+//     Callout      -> $callout(type: "<type>"[, title: "<title>"]) { <children md> }
+//       (plan 030 T5: title emitted when non-empty)
 //     Details      -> $details(summary: "<summary>"[, open: true]) { <children md> }
 //       (plan 026 P1T2: the interactive open flag persists when true)
 //     WikilinkBlock-> [[<target>]]  (optional attr anchor -> [[t#anchor]])
@@ -36,6 +37,7 @@
 //     BlockEmbed   -> $embed(src: "<src>")
 //     Mermaid      -> ```mermaid fence
 //     MathBlock    -> %{ <text> }%
+//     Task list    -> "- [ ] " / "- [x] " item prefixes (checked attr)
 //   Attr values are emitted unescaped (placeholder level).
 //
 // Known fidelity limits (registered, Phase 3 acceptance unaffected):
@@ -361,19 +363,36 @@ pub fn headingMd(node BlockNode, withId bool) str {
 
 // ---------- extended block placeholders ----------
 
-pub fn componentBlockMd(name str, argName str, node BlockNode, withId bool) str {
-    let arg = attrGetStr(node.attrs, argName, "")
-    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children, withId) + "\n}"
+// One `k: "v"` args entry (values carry no embedded `"` — v1 concat shape).
+pub fn quotedArg(k str, v str) str {
+    return k + ": \"" + v + "\""
 }
 
-// detailsMd — plan 026 P1T2: like componentBlockMd but the Details toggle's
-// `open` attr persists (", open: true" — emitted only when set, the closed
-// state stays the historical form).
+// Generalized $-component emitter (plan 030 T5): the caller builds the args
+// blob (callout: type[, title when non-empty]; details: summary[, open:
+// true]); the block shape `$name(<args>) { <children> }` lives here once.
+pub fn componentBlockMd(name str, argsText str, node BlockNode, withId bool) str {
+    return "$" + name + "(" + argsText + ") {\n" + joinChildren(node.children, withId) + "\n}"
+}
+
+pub fn calloutMd(node BlockNode, withId bool) str {
+    var argsText str = quotedArg("type", attrGetStr(node.attrs, "type", ""))
+    let title = attrGetStr(node.attrs, "title", "")
+    if title.length.to(int) > 0 {
+        argsText = argsText + ", " + quotedArg("title", title)
+    }
+    return componentBlockMd("callout", argsText, node, withId)
+}
+
+// detailsMd — plan 026 P1T2 + 030 T5: through the same componentBlockMd;
+// the Details toggle's `open` attr persists (emitted only when set, the
+// closed state stays the historical form).
 pub fn detailsMd(node BlockNode, withId bool) str {
-    let summary = attrGetStr(node.attrs, "summary", "")
-    var open str = ""
-    if attrGetBool(node.attrs, "open", false) { open = ", open: true" }
-    return "$details(summary: \"" + summary + "\"" + open + ") {\n" + joinChildren(node.children, withId) + "\n}"
+    var argsText str = quotedArg("summary", attrGetStr(node.attrs, "summary", ""))
+    if attrGetBool(node.attrs, "open", false) {
+        argsText = argsText + ", open: true"
+    }
+    return componentBlockMd("details", argsText, node, withId)
 }
 
 pub fn wikilinkMd(node BlockNode) str {
@@ -398,7 +417,7 @@ pub fn blockMd(node BlockNode, withId bool) str {
     if k == BlockType.TableRow { return tableRowMd(node) }
     if k == BlockType.TableCell { return inlinesMd(node.inlines) }
     if k == BlockType.ThematicBreak { return "---" }
-    if k == BlockType.Callout { return componentBlockMd("callout", "type", node, withId) }
+    if k == BlockType.Callout { return calloutMd(node, withId) }
     if k == BlockType.Details { return detailsMd(node, withId) }
     if k == BlockType.WikilinkBlock { return wikilinkMd(node) }
     if k == BlockType.QueryBlock { return "$query(" + attrGetStr(node.attrs, "query", "") + ")" }

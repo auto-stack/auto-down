@@ -393,18 +393,29 @@ export function headingMd(node: BlockNode, withId: boolean): string {
     return repeatStr("#", level) + " " + t;
 }
 
-export function componentBlockMd(name: string, argName: string, node: BlockNode, withId: boolean): string {
-    const arg = attrGetStr(node.attrs, argName, "");
-    return "$" + name + "(" + argName + ": \"" + arg + "\") {\n" + joinChildren(node.children, withId) + "\n}";
+export function quotedArg(k: string, v: string): string {
+    return k + ": \"" + v + "\"";
+}
+
+export function componentBlockMd(name: string, argsText: string, node: BlockNode, withId: boolean): string {
+    return "$" + name + "(" + argsText + ") {\n" + joinChildren(node.children, withId) + "\n}";
+}
+
+export function calloutMd(node: BlockNode, withId: boolean): string {
+    let argsText: string = quotedArg("type", attrGetStr(node.attrs, "type", ""));
+    const title = attrGetStr(node.attrs, "title", "");
+    if (Number(title.length) > 0) {
+        argsText = argsText + ", " + quotedArg("title", title);
+    }
+    return componentBlockMd("callout", argsText, node, withId);
 }
 
 export function detailsMd(node: BlockNode, withId: boolean): string {
-    const summary = attrGetStr(node.attrs, "summary", "");
-    let open: string = "";
+    let argsText: string = quotedArg("summary", attrGetStr(node.attrs, "summary", ""));
     if (attrGetBool(node.attrs, "open", false)) {
-        open = ", open: true";
+        argsText = argsText + ", open: true";
     }
-    return "$details(summary: \"" + summary + "\"" + open + ") {\n" + joinChildren(node.children, withId) + "\n}";
+    return componentBlockMd("details", argsText, node, withId);
 }
 
 export function wikilinkMd(node: BlockNode): string {
@@ -446,7 +457,7 @@ export function blockMd(node: BlockNode, withId: boolean): string {
         return "---";
     }
     if (k == BlockType.Callout) {
-        return componentBlockMd("callout", "type", node, withId);
+        return calloutMd(node, withId);
     }
     if (k == BlockType.Details) {
         return detailsMd(node, withId);

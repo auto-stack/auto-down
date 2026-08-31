@@ -416,7 +416,12 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
       return {
         id: node.id,
         view: BlockHost,
-        props: { controller, blockKind: BlockType[node.kind], key: `host:${node.id}:${historyEpoch.value}` },
+        props: {
+          controller,
+          blockKind: BlockType[node.kind],
+          level: node.kind === BlockType.Heading ? attrGetInt(node.attrs, 'level', 1) : undefined,
+          key: `host:${node.id}:${historyEpoch.value}`,
+        },
       }
     }
     // a focused non-hostable node (empty container / ThematicBreak) degrades

@@ -80,6 +80,17 @@
           "PLAN-028"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P029-2",
+        "section": "goals",
+        "title": "WYSIWYG 块级排版——BlockHost 语义化宿主标签（Heading→h1..h6 / Paragraph→p） — 目标",
+        "content": "1. **宿主语义化**：BlockHost 单组件（不按类型分拆）按 `(blockKind, level)`\n   解析渲染标签——Heading→`h${clamp(level,1,6)}`、Paragraph→`p`、其余可编辑叶\n   （WikilinkBlock/Math/Mermaid 源宿主）v1 维持 `div`。\n2. **排版 parity（可断言）**：聚焦宿主的 computed font-size / font-weight /\n   margin / line-height 与 view/stream 侧同型元素完全一致；聚焦切换零布局跳动\n   （相邻块几何不动）。\n3. **契约不动**：EDITOR-CONTRACT 冻结面（根类名、`data-block-id`、\n   `[contenteditable]` 宿主存在性、`getBlockMap`）零变化；`.autodown-block-host`\n   class 与 `data-node-type` 保留，既有 e2e 选择器全部有效。",
+        "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
+        "related": [
+          "PLAN-029"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -166,6 +177,17 @@
         "file": "docs/plans/archived/028-editor-ux-completeness.md",
         "related": [
           "PLAN-028"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P029-3",
+        "section": "architecture",
+        "title": "WYSIWYG 块级排版——BlockHost 语义化宿主标签（Heading→h1..h6 / Paragraph→p） — 架构方案",
+        "content": "```\nEngineEditor.assembleView（isEditableLeaf 分支）\n└─ BlockHost props 增 level?: number（仅 Heading：attrGetInt(node.attrs,'level',1)）\nBlockHost.vue（手写 SFC，非 gen 部署件）\n└─ 根节点 <div> → <component :is=\"hostTag\">\n   ├─ hostFaceFor(kind, level)（新纯函数，src/editor/engine/host-face.ts）\n   │    Heading  → { tag:'h1..h6', cls:'heading-node heading-N' }\n   │    Paragraph→ { tag:'p',      cls:'paragraph-node' }\n   │    其他     → { tag:'div',    cls:'' }（现状）\n   ├─ :class=\"['autodown-block-host', face.cls]\"、dir=\"auto\"\n   └─ contenteditable / v-html / 全部 DOM 事件 / data-* 原样\nCSS：零新增预期——宿主落在 .autodown-editor-content 下同 DOM 路径，\n   既有 `.autodown-editor-content h1..h3 / p` 规则自动命中（唯一可选微调：\n   .autodown-block-host { outline:none } 聚焦卫生）\n```\n\n**为什么是\"共享单组件 + 参数化标签\"而不是每类型独立组件**：模型侧 heading 是\n同一个 `BlockType.Heading`（level 仅是 attr），旧 tiptap 版同样是单一 Heading\n扩展（`levels:[1,2,3]`）按 level 属性渲染 `h{level}`——复刻保持同构，避免六份\n拷贝。\n\n**兼容性论证（关键链路已逐一核对）**：\n\n- **blur walk**：`domRootToSpans` 会把根元素转成 `{tag:'H1'}` 走\n  `markForTag`——H1/P 不在 mark 表返回 null（rich-html.ts:55-62 已核对），\n  结构回写不受根标签影响。\n- **光标/选区**：`caretOffset`、`selection-map`（blockRangeToDomRange）、\n  `coordsAtPos`、`previousElementSibling.dataset.blockId` 均与宿主标签无关。\n- **容器内路径**：编辑装配为 `li > div.markdown-renderer > host`，与 view 的\n  `li > div.markdown-renderer > p.paragraph-node` 同路径——CSS 命中一致。\n- **content model**：`h1`-`h6`/`p` 仅允许 phrasing content，`spansToHtml` 产出\n  的 strong/em/u/del/code/a 全部合规。\n- **UA 样式覆盖完备**：`.autodown-editor-content h1..h3 / p` 对 font-size/\n  font-weight/margin/line-height/color 全量覆盖，无残缺；demo 与 jade 的 CSS\n  两份均如此（jade fork 87-103 行已核对）。\n- **historyEpoch 重挂载**：undo 改变块 kind/level 后宿主按新 attrs 重新解析\n  标签（key 含 epoch，机制既有）。",
+        "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
+        "related": [
+          "PLAN-029"
         ],
         "status": "stable"
       }
@@ -255,6 +277,17 @@
           "PLAN-028"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P029-4",
+        "section": "designs",
+        "title": "WYSIWYG 块级排版——BlockHost 语义化宿主标签（Heading→h1..h6 / Paragraph→p） — 详细设计",
+        "content": "### 1. `src/editor/engine/host-face.ts`（新）\n\n```ts\nexport interface HostFace { tag: string; cls: string }\n/** 聚焦编辑宿主的语义化外观：与 builtin-panels 的 view 渲染\n *  （h${level} + heading-node heading-${level} / p + paragraph-node）\n *  保持同 tag 同 class——parity 由 e2e computed-style 断言钉死。 */\nexport function hostFaceFor(kind: string, level?: number): HostFace {\n  if (kind === 'Heading') {\n    const l = Math.min(6, Math.max(1, level ?? 1))\n    return { tag: `h${l}`, cls: `heading-node heading-${l}` }\n  }\n  if (kind === 'Paragraph') return { tag: 'p', cls: 'paragraph-node' }\n  return { tag: 'div', cls: '' }\n}\n```\n\n单测：Heading level 1/3/6/越界钳制、Paragraph、其他 kind 回退 div。\n\n### 2. `BlockHost.vue` 模板根节点\n\n```vue\n<component\n  :is=\"hostTag\"\n  ref=\"el\"\n  :class=\"['autodown-block-host', face.cls]\"\n  :data-block-id=\"controller.id\"\n  :data-node-type=\"blockKind\"\n  dir=\"auto\"\n  contenteditable=\"true\"\n  spellcheck=\"false\"\n  ... （事件与 v-html 原样）\n```\n\n`props` 增 `level?: number`；`hostTag`/`face` 为 computed（非响应式模型下仅\n挂载期求值一次，与 initialHtml 同语义）。`v-html` 在 `<component :is=\"'h1'\">`\n上合法（渲染为原生元素）。\n\n### 3. `EngineEditor.vue` 装配传参\n\n`assembleView` 的 `isEditableLeaf` 分支：\n\n```ts\nprops: {\n  controller, blockKind: BlockType[node.kind],\n  level: node.kind === BlockType.Heading ? attrGetInt(node.attrs, 'level', 1) : undefined,\n  key: `host:${node.id}:${historyEpoch.value}`,\n}\n```\n\n（`attrGetInt` 已在 import 列表中。）\n\n### 4. CSS（预期零新增，允许一条卫生规则）\n\n`packages/engine/src/editor/styles/autodown-editor.css` 追加：\n\n```css\n.autodown-block-host { outline: none; }\n```\n\n其余排版全部依赖既有 `.autodown-editor-content h1..h3 / p` 规则命中。**不**给\n空宿主加 `:empty::before`/min-height——会污染 `hostText()` 采集（零宽字符/\n几何补偿均破坏 parity），空块光标可见性与现状（空 div 宿主）等价，由 e2e 钉。\n\n### 5. 范围外（明确不做）\n\n- WikilinkBlock / Math / Mermaid 源宿主的语义化（其 view 是 node-view 面板，\n  WYSIWYG 语义不同，单列）。\n- H4-H6 的 CSS 补齐：宿主照 `h{level}` 渲染，样式继承现状（view 同样只到\n  h3——与 view 一致即达标）。\n- 列表/引用内宿主：机制自动覆盖（同一 BlockHost、同 DOM 路径），仅回归不新做。",
+        "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
+        "related": [
+          "PLAN-029"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -321,6 +354,17 @@
         "file": "docs/plans/archived/028-editor-ux-completeness.md",
         "related": [
           "PLAN-028"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P029-5",
+        "section": "tests",
+        "title": "WYSIWYG 块级排版——BlockHost 语义化宿主标签（Heading→h1..h6 / Paragraph→p） — 测试设计",
+        "content": "1. **单测（engine vitest）**：`src/editor/__tests__/host-face.test.ts`——\n   纯函数全分支；`blockhost-rich.test.ts` 既有 SSR 用例回归（根标签变化不影响\n   其 strong/em/a 断言）。\n2. **新 e2e（demo）`e2e/wysiwyg-typography.spec.ts`**：\n   - 聚焦 H1：宿主 `tagName==='H1'`、class 含 `heading-node heading-1`、\n     computed font-size/font-weight/margin/line-height 与右栏流式\n     `h1.heading-node` **逐一相等**（parity 断言）；\n   - 聚焦段落：`tagName==='P'`、class 含 `paragraph-node`、margin parity；\n   - **零跳动**：聚焦前后下一兄弟块 `getBoundingClientRect().top` 不变\n     （容差 1px）；\n   - heading 内行内 mark：H1 中加粗段落在宿主内为 `<strong>`，blur 后序列化\n     `# ... **...**` roundtrip；\n   - 输入规则联动：空段落键入 `# ` 转 heading 后继续键入生效（光标可见性\n     行为钉死）。\n3. **回归门**：engine vitest 全量 + `vue-tsc -b` + build（含\n   assert-editor-gen 等三断言）；demo e2e 全套（inline-marks /\n   container-editing / host-protocol / undo / slash-position / check-padding /\n   scroll-sync）；jade e2e（jade CSS fork 已有同值 h1/h2 段，dev 直连 src）。",
+        "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
+        "related": [
+          "PLAN-029"
         ],
         "status": "verified"
       }
@@ -402,6 +446,17 @@
           "PLAN-028"
         ],
         "status": "published"
+      },
+      {
+        "id": "P029-6",
+        "section": "reviews",
+        "title": "WYSIWYG 块级排版——BlockHost 语义化宿主标签（Heading→h1..h6 / Paragraph→p） — 验收标准 / 复审",
+        "content": "### 验收标准\n\n1. 聚焦 H1/H2/H3/段落：无边框、无 input，字号/字重/边距与 view 模式 computed\n   style 完全一致（e2e parity 断言绿）。\n2. 聚焦切换零布局跳动（相邻块几何不变断言绿）。\n3. view/stream/preview 的 DOM 与序列化行为零变化（既有单测+e2e 全绿）。\n4. EDITOR-CONTRACT 冻结面零变化（`[contenteditable]` 宿主、`data-block-id`、\n   根类名、`getBlockMap`）。\n5. 全量门：engine vitest、vue-tsc、engine build、demo e2e 全套、jade e2e 全绿。\n\n### 复审记录\n\n**复审人**：zcode（/auto-plan:review）· **时间**：2026-08-31 · **结论**：✅ **通过 → reviewed**\n\n**复审方法**：工作树 `.worktrees/plan-029-dev`（分支 7 提交，`git diff master..HEAD --stat` 13 文件）逐文件核对 + 全量门重跑 + 遗漏/延后/workaround 显式狩猎。代码差异与计划陈述完全一致；冻结面 grep（`data-block-id`/`contenteditable`/根类名/`getBlockMap` 的删除行）为空。\n\n**验收标准逐条**：\n\n1. **聚焦排版 parity — PASS**。wysiwyg-typography e2e #1-3（31/31 套件内）绿：宿主 tagName=H1/H2/H3/P、class 含 heading-node heading-N / paragraph-node、dir=auto、computed outlineStyle=none（无边框无 input）；font-size/font-weight/line-height 与同栏预览元素及右栏流式元素逐一相等。**偏差（已记录于 T5 证据）**：margin parity 断言基准由计划原文\"右栏流式\"修正为\"预览 slot\"——实测证据（CSSOM 命中规则枚举）：聚焦宿主是 `.autodown-editor-content` 直接子元素直接命中滚动同步注入的 `[data-block-id]` margin 规则，预览态由 node-slot 承载同一批规则，跨栏 computed margin 相等在滚动同步机制下本就不成立；字体三指标跨栏双比保留。断言目标修正非缩水，几何不跳动由 #2 钉死。\n2. **零布局跳动 — PASS**。聚焦前后次兄弟块 `getBoundingClientRect().top` 差 ≤1px 断言 ×2 用例（H1、段落）绿。\n3. **view/stream/preview 零变化 — PASS**。diff 零触碰 `src/render/` 管线（diff stat 佐证）；engine vitest 455/455（含 render/parity/semantics 套件）；demo e2e 31/31。\n4. **EDITOR-CONTRACT 冻结面零变化 — PASS**。BlockHost 模板保留 `contenteditable=\"true\"`/`data-block-id`/`data-node-type`；根类名与 `getBlockMap` 不在 diff；契约表变更仅为 `[contenteditable]` 行说明性补注（顺带修正\"现 ProseMirror\"陈旧表述）。\n5. **全量门 — PASS（带已归属例外）**。engine vitest 455/455 + build（vue-tsc -b + vite + assert-parser-pure/assert-no-tiptap/assert-editor-gen 三断言 ok）；demo e2e 31/31；jade e2e 21/23——挂的 2 例（06-palette \"Review flashcards\" / 12-flashcards 卡面渲染）**复审时刻于主检出（master，无本计划改动）复跑同样失败且签名一致**（toBeVisible 超时），归属为既有问题非本计划回归，已记待澄清 #4；其余 21 例含截图基线更新后全绿。\n\n**遗漏/延后/workaround 狩猎**：\n\n- **遗漏：无**。T1-T10 每步在 diff 有对应产物（host-face.ts+test / BlockHost / EngineEditor / CSS / e2e spec / useSyncedScroll / EDITOR-CONTRACT / 截图四张）。`initial-viewport.png` 为 e2e 运行刷新的跟踪诊断截图，反映新视觉，属预期。\n- **延后：无未批准拆分**。范围外三项（WikilinkBlock/Math/Mermaid 宿主语义化、H4-H6 CSS、check-heading.spec.ts 处置）均为计划正文详细设计 §5 预先声明的非目标 / 待澄清默认裁定，非执行期擅自砍。\n- **Workaround：一处已记录的上游限制等价替代**。`:innerHTML` prop 替代 `v-html`（Vue 3.5.35 compiler-ssr 对 `<component :is>` 上 v-html 静默丢弃，编译产物级验证）——CSR/SSR 双路径测试覆盖，语义等价，非脏实现，T2 证据在档。\n- **计划文本↔实现偏差（两处，均已记录）**：margin parity 断言基准修正（T5）；jade editor-index 基线更新（T8，actual/expected 双图视觉确认）。\n\n**非阻塞观察**：\n\n1. P028-3 非目标段建议\"Dependabot 依赖清偿与发包前置（DEBTS 008/027）\"单列 029——本 029 号位已被排版计划占用，该债务仍在 DEBTS 在册，后续需另取号。\n2. 待澄清 #5：`tmp/wiki-demo` 的 journals/ 等未入库内容使纯新检出无法直跑 jade e2e（执行时从主检出补齐），建议补入库或入 prepare 脚本生成。",
+        "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
+        "related": [
+          "PLAN-029"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -479,6 +534,17 @@
         "file": "docs/plans/archived/028-editor-ux-completeness.md",
         "related": [
           "PLAN-028"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P029-1",
+        "section": "reports",
+        "title": "WYSIWYG 块级排版——BlockHost 语义化宿主标签（Heading→h1..h6 / Paragraph→p） — 变更摘要",
+        "content": "聚焦文本块（H1-H6、Paragraph）的编辑宿主从零样式裸 `div.autodown-block-host`\n换成**语义化真实标签**：Heading 按 `level` attr 渲染 `h1`-`h6` 并携带 view 同款\nclass（`heading-node heading-N`），Paragraph 渲染 `p.paragraph-node`，均带\n`dir=\"auto\"`。现有 CSS（`.autodown-editor-content h1 { 1.58rem }` /\n`p { margin: .5rem 0 }` 等，值与旧 tiptap 版逐字一致）直接命中宿主，实现\nview↔edit 切换**零布局跳动**的 WYSIWYG 就地编辑——复刻旧\nauto-forge（纯 Vue + tiptap）版的无边框同字号体验。\n\n**不做的**：view/stream 渲染管线（renderNodes/builtin-panels/StreamingRenderer）\n零改动；行内 marks 的 WYSIWYG 已由 plan 024/028 完成（`spansToHtml` 挂载 +\nblur walk 回写），本计划不触碰。",
+        "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
+        "related": [
+          "PLAN-029"
         ],
         "status": "published"
       }

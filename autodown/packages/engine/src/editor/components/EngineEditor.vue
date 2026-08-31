@@ -30,7 +30,7 @@
 // ('Fence' IS the code block kind); the slots carry no view, so final-state
 // previews stay on the builtin panel pipeline. `h` comes from the setup
 // script's vue import — dual-script imports share one module scope.
-import { Value, attrGetStr, attrSet, blockText } from '../../parser/block-model'
+import { Value, attrGetStr, attrSet, blockText, span } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import type { BlockEditCtx } from '../../render/block-component'
@@ -128,10 +128,37 @@ import type { PanelRenderCtx } from '../../render/panel-registry'
 function nodeViewPanel(view: unknown, kindValue: BlockType, childrenOf: (node: PanelRenderCtx['node']) => any[]) {
   return (ctx: PanelRenderCtx) => {
     const host = currentNodeViewHost()
-    const model = blockOfWNode(ctx.node) ?? ({ id: 'nv', kind: kindValue, attrs: [], children: [], inlines: [] } as unknown as BlockNode)
+    const model =
+      blockOfWNode(ctx.node) ??
+      // static render (right panes, no host): parse-side WNodes carry no
+      // back-link — fabricate the model from the WNode slots so math/mermaid
+      // source and query/embed attrs reach the widget (plan 030)
+      wnodeFallbackModel(kindValue, ctx.node)
     const props = nodeViewProps(model, host?.engine, false, host?.adapter)
     return mountNodeView(view, props, () => childrenOf(ctx.node))
   }
+}
+
+/** Static-render fallback model: kind + the WNode slot data the widget reads
+ *  (blockText ← inlines for math/mermaid source; attrs for details/query/
+ *  embed). Callout renders through its builtin panel, not a node view. */
+function wnodeFallbackModel(kindValue: BlockType, w: any): BlockNode {
+  const attrs: { key: string; value: Value }[] = []
+  if (w?.type === 'query') attrs.push({ key: 'query', value: Value.Str(String(w.content ?? '')) })
+  if (w?.type === 'embed') attrs.push({ key: 'src', value: Value.Str(String(w.src ?? '')) })
+  if (w?.type === 'details') {
+    attrs.push({ key: 'summary', value: Value.Str(String(w.text ?? '')) })
+    if (w?.loading === true) attrs.push({ key: 'open', value: Value.Bool(true) })
+  }
+  const src = typeof w?.code === 'string' ? w.code : ''
+  return {
+    id: 'nv',
+    kind: kindValue,
+    attrs,
+    children: [],
+    inlines: src.length > 0 ? [span(src)] : [],
+    source: { start: 0, end: 0 },
+  } as unknown as BlockNode
 }
 
 registerPanel(

@@ -67,25 +67,25 @@ with no language specified
 | Bar  | 2     | Beta  |
 | Baz  | 3     | Gamma |
 
-:::warning Warning
+$callout(type: "warning", title: "Warning") {
 This is a **warning** callout. It uses a light yellow background and an amber title/icon.
-:::
+}
 
-:::info Info
+$callout(type: "info", title: "Info") {
 This is an **info** callout. It uses a light blue background and a sky-blue title/icon.
-:::
+}
 
-:::error Error
+$callout(type: "error", title: "Error") {
 This is an **error** callout. It uses a light red background and a red title/icon.
-:::
+}
 
-:::details Click to expand
+$details(summary: "Click to expand") {
 This is a **Details** block. The content is collapsed by default and expanded when the summary is clicked.
-:::
+}
 
-$$
+%{
 E = mc^2
-$$
+}%
 
 \`\`\`mermaid
 graph TD

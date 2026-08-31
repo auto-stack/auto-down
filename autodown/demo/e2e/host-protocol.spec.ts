@@ -86,8 +86,10 @@ test('Details: slash template mounts the node-view; toggle persists open', async
   await expect(slash).toBeVisible()
   await slash.locator('.autodown-slash-menu-item', { hasText: 'Details' }).first().click()
 
-  // the paragraph became a Details block: node-view mounted, closed
-  const details = page.locator('.left .autodown-details')
+  // the paragraph became a Details block: node-view mounted, closed. The
+  // demo document already carries a $details sample (plan 030), so scope to
+  // the converted one by its body text.
+  const details = page.locator('.left .autodown-details').filter({ hasText: 'This is a paragraph' })
   await expect(details).toBeVisible()
   await expect(details).toHaveAttribute('data-open', 'false')
 
@@ -95,8 +97,11 @@ test('Details: slash template mounts the node-view; toggle persists open', async
   await details.locator('.autodown-details-marker').click()
   await expect(details).toHaveAttribute('data-open', 'true')
 
-  // and it persists to the serialized markdown (right pane renders the raw
-  // $details surface form as text)
+  // and it persists through serialization — since plan 030 the right pane
+  // PARSES the $details dialect, so the open flag surfaces as the rendered
+  // panel's data-open (not raw surface text)
   await commitToRightPane(page)
-  await expect(page.locator('.right')).toContainText('open: true')
+  await expect(
+    page.locator('.right .autodown-details').filter({ hasText: 'This is a paragraph' })
+  ).toHaveAttribute('data-open', 'true')
 })

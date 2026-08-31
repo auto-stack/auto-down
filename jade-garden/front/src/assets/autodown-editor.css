@@ -490,3 +490,177 @@
   padding: 0.5rem 1rem;
   margin: 0.75rem 0;
 }
+
+/* ─── Details + AttrHost + task checkboxes (plan 030 port from engine fork) ─── */
+.autodown-editor-content .autodown-details {
+  margin: 0.75rem 0;
+  border: 1px solid var(--ad-border, #e5e7eb);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.autodown-editor-content .autodown-details-summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: hsl(var(--ad-muted, 220 9% 46%) / 0.06);
+  border-bottom: 1px solid transparent;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--ad-fg, #111827);
+  user-select: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.autodown-editor-content .autodown-details[data-open='true'] .autodown-details-summary {
+  border-bottom-color: var(--ad-border, #e5e7eb);
+}
+
+.autodown-editor-content .autodown-details-summary:hover {
+  background: hsl(var(--ad-muted, 220 9% 46%) / 0.1);
+}
+
+.autodown-editor-content .autodown-details-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 0.7rem;
+  color: var(--ad-muted, #6b7280);
+  border-radius: 4px;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.autodown-editor-content .autodown-details-marker:hover {
+  background: hsl(var(--ad-muted, 220 9% 46%) / 0.18);
+  color: var(--ad-fg, #111827);
+}
+
+.autodown-editor-content .autodown-details-summary-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.autodown-editor-content .autodown-details-summary-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--ad-primary, #3b82f6);
+  border-radius: 4px;
+  background: var(--ad-surface, #ffffff);
+  color: var(--ad-fg, #111827);
+  font: inherit;
+  font-weight: 500;
+  outline: none;
+}
+
+/* ─── AttrHost (plan 030 T7): borderless in-place attr editing ─── */
+.autodown-editor-content .autodown-attr-host {
+  outline: none;
+  min-width: 2rem;
+  border-bottom: 1px dashed transparent;
+  /* the summary row is user-select:none (DetailsNodeView parity) — the host
+     inside it must stay selectable/editable */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.autodown-editor-content .autodown-attr-host:hover {
+  border-bottom-color: var(--ad-border, #e5e7eb);
+}
+
+.autodown-editor-content .autodown-attr-host:focus {
+  border-bottom-color: var(--ad-primary, #3b82f6);
+}
+
+.autodown-editor-content .autodown-attr-host:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* the callout title host keeps the palette title's single-line ellipsis */
+.autodown-editor-content .autodown-callout .autodown-attr-host.autodown-callout-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autodown-editor-content .autodown-details .autodown-attr-host.autodown-details-summary-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Task list checkboxes (plan 030 T4/T7) ─── */
+.autodown-editor-content .list-item.task-item {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.autodown-editor-content .list-item.task-item > .task-checkbox {
+  margin-top: 0.35em;
+  accent-color: var(--ad-primary, #3b82f6);
+  flex-shrink: 0;
+  /* the editing copy is live (pointer + stopPropagation); the view/stream
+     copy carries `disabled` and keeps the default cursor */
+  cursor: pointer;
+}
+
+.autodown-editor-content .list-item.task-item > .task-checkbox:disabled {
+  cursor: default;
+}
+
+.autodown-editor-content .list-item.task-item > .markdown-renderer {
+  flex: 1;
+  min-width: 0;
+}
+
+
+.autodown-editor-content .autodown-details-edit-btn {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ad-muted, #6b7280);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.autodown-editor-content .autodown-details-summary:hover .autodown-details-edit-btn,
+.autodown-editor-content .autodown-details-edit-btn:focus-visible {
+  opacity: 1;
+}
+
+.autodown-editor-content .autodown-details-edit-btn:hover {
+  background: hsl(var(--ad-muted, 220 9% 46%) / 0.14);
+  color: var(--ad-fg, #111827);
+}

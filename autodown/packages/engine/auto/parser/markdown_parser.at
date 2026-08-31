@@ -182,6 +182,36 @@ fn embedNode(src str) WNode {
     return WNode("embed", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Some(src), None, None)
 }
 
+// %{ }% math block + closed mermaid fence (plan 030): the code slot carries
+// the RAW source (never inline-parsed — math/graph markup would trip the
+// emphasis delimiters); convertBlock lifts it into a single source span.
+fn mathNode(src str) WNode {
+    return WNode("math_block", None, None, None, Some(src), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+fn mermaidNode(src str) WNode {
+    return WNode("mermaid", None, None, None, Some(src), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
+// `%{` alone on a line (≤3 spaces indent, trailing spaces tolerated) opens a
+// math block; a column-0 `}%` line closes it (fence-style machine).
+fn isMathOpenLine(line str) bool {
+    if indentWidth(line) >= 4 { return false }
+    return line.trim() == "%{"
+}
+
+fn isMathCloseLine(line str) bool {
+    if line.length.to(int) < 2 { return false }
+    if line.char_at(0) != 125 { return false }
+    if line.char_at(1) != 37 { return false }
+    var t int = 2
+    while t < line.length.to(int) {
+        if line.char_at(t) != 32 { return false }
+        t += 1
+    }
+    return true
+}
+
 // text node WITHOUT re-running smartQuotes (the streaming-tail trimmer
 // rebuilds an already-processed text node).
 fn rawTextNode(content str) WNode {
@@ -1006,7 +1036,17 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
                 } else {
                     code = ""
                 }
-                nodes.push(codeNode(language, code, false))
+                // plan 030: a CLOSED ```mermaid fence is the Mermaid kind
+                // (source span, no trailing newline — serializer shape); an
+                // open one stays codeNode(loading) for streaming semantics
+                if language == "mermaid" {
+                    // (bind first: a2r borrows let-bound join results but
+                    // not inline call results in argument position)
+                    let msrc = body.join("\n")
+                    nodes.push(mermaidNode(msrc))
+                } else {
+                    nodes.push(codeNode(language, code, false))
+                }
             } else {
                 // a trailing partial close-fence line (only ` or ~ chars)
                 // belongs to the fence being typed, not to the code body
@@ -1028,6 +1068,28 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
             }
             i = j + 1
             continue
+        }
+
+        // --- %{ }% math block (plan 030, fence-style machine) ---
+        if isMathOpenLine(line) {
+            var mathBody List<str> = []
+            var j = i + 1
+            var mathClosed bool = false
+            while j < lines.length.to(int) {
+                if isMathCloseLine(lines[j]) {
+                    mathClosed = true
+                    break
+                }
+                mathBody.push(lines[j])
+                j += 1
+            }
+            if mathClosed {
+                let mathSrc = mathBody.join("\n")
+                nodes.push(mathNode(mathSrc))
+                i = j + 1
+                continue
+            }
+            // unclosed → paragraph literal degrade (fall through)
         }
 
         // --- ATX heading ---
@@ -1263,6 +1325,7 @@ fn paraBreaks(cur str, lines List<str>, idx int) bool {
     if bulletMarkerBare(cur) { return true }
     if olMarkerNum(cur) >= 0 { return true }
     if compOpenScan(cur) != None { return true }
+    if isMathOpenLine(cur) { return true }
     return false
 }
 
@@ -2583,6 +2646,12 @@ fn convertBlock(wnode WNode, id str) BlockNode {
         var attrsE List<Attr> = []
         attrsE = attrSet(attrsE, "src", Value.Str(wnode.src ?? ""))
         return blockFull(id, BlockType.BlockEmbed, attrsE, [], [], rng(0, 0))
+    }
+    if t == "math_block" {
+        return blockFull(id, BlockType.MathBlock, [], [], [span(wnode.code ?? "")], rng(0, 0))
+    }
+    if t == "mermaid" {
+        return blockFull(id, BlockType.Mermaid, [], [], [span(wnode.code ?? "")], rng(0, 0))
     }
     // paragraph and anything unrecognized degrade to Paragraph
     return blockFull(id, BlockType.Paragraph, [], [], convertInlines(wnode.children ?? noNodes(), []), rng(0, 0))

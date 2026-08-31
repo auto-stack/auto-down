@@ -120,6 +120,41 @@ fn embedNode(src: &str) -> WNode {
     return WNode { r#type: "embed".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: Some(src.to_string()), alt: None, checked: None };
 }
 
+fn mathNode(src: &str) -> WNode {
+    return WNode { r#type: "math_block".to_string(), content: None, level: None, language: None, code: Some(src.to_string()), loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
+}
+
+fn mermaidNode(src: &str) -> WNode {
+    return WNode { r#type: "mermaid".to_string(), content: None, level: None, language: None, code: Some(src.to_string()), loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
+}
+
+fn isMathOpenLine(line: &str) -> bool {
+    if indentWidth(line) >= 4 {
+        return false;
+    }
+    return line.trim().to_string() == "%{";
+}
+
+fn isMathCloseLine(line: &str) -> bool {
+    if (line.chars().count() as i64) < 2 {
+        return false;
+    }
+    if line.chars().nth((0) as usize).unwrap_or('\0') as i64 != 125 {
+        return false;
+    }
+    if line.chars().nth((1) as usize).unwrap_or('\0') as i64 != 37 {
+        return false;
+    }
+    let mut t: i64 = 2;
+    while t < (line.chars().count() as i64) {
+        if line.chars().nth((t) as usize).unwrap_or('\0') as i64 != 32 {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
 fn rawTextNode(content: &str) -> WNode {
     return WNode { r#type: "text".to_string(), content: Some(content.to_string()), level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
@@ -1119,7 +1154,19 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
                 } else {
                     code = "".to_string();
                 }
-                nodes.push(codeNode(language.as_str(), code.as_str(), false));
+                
+
+
+
+                if language == "mermaid" {
+                    
+
+
+                    let msrc = body.join("\n");
+                    nodes.push(mermaidNode(msrc.as_str()));
+                } else {
+                    nodes.push(codeNode(language.as_str(), code.as_str(), false));
+                }
             } else {
                 
 
@@ -1143,6 +1190,28 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
             }
             i = j + 1;
             continue;
+        }
+        
+
+        if isMathOpenLine(line.as_str()) {
+            let mut mathBody: Vec<String> = vec![];
+            let mut j: i64 = i + 1;
+            let mut mathClosed: bool = false;
+            while j < (lines.len() as i64) {
+                if isMathCloseLine(lines[(j) as usize].as_str()) {
+                    mathClosed = true;
+                    break;
+                }
+                mathBody.push(lines[(j) as usize].clone());
+                j += 1;
+            }
+            if mathClosed {
+                let mathSrc = mathBody.join("\n");
+                nodes.push(mathNode(mathSrc.as_str()));
+                i = j + 1;
+                continue;
+            }            
+
         }
         
 
@@ -1388,6 +1457,9 @@ fn paraBreaks(cur: &str, lines: Vec<String>, idx: i64) -> bool {
         return true;
     }
     if compOpenScan(cur) != None {
+        return true;
+    }
+    if isMathOpenLine(cur) {
         return true;
     }
     return false;
@@ -2776,6 +2848,12 @@ fn convertBlock(wnode: WNode, id: &str) -> BlockNode {
         let mut attrsE: Vec<Attr> = vec![];
         attrsE = attrSet(attrsE.clone(), "src", Value::Str(wnode.src.unwrap_or("".to_string())));
         return blockFull(id, BlockType::BlockEmbed.clone(), attrsE.clone(), vec![], vec![], rng(0, 0));
+    }
+    if t == "math_block" {
+        return blockFull(id, BlockType::MathBlock.clone(), vec![], vec![], vec![span(wnode.code.unwrap_or("".to_string()).as_str())], rng(0, 0));
+    }
+    if t == "mermaid" {
+        return blockFull(id, BlockType::Mermaid.clone(), vec![], vec![], vec![span(wnode.code.unwrap_or("".to_string()).as_str())], rng(0, 0));
     }
 
     return blockFull(id, BlockType::Paragraph.clone(), vec![], vec![], convertInlines(wnode.children.unwrap_or(noNodes()), vec![]), rng(0, 0));

@@ -230,6 +230,88 @@ block my-anchor Paragraph
 block my-anchor Paragraph
   attr anchor Str(my-anchor)
   span 带锚点块 []
+=== callout-closed final=false ===
+block block-0 Callout
+  attr type Str(note)
+  attr title Str(提示)
+  block block-0-0 Paragraph
+    span 正文段落 []
+=== callout-closed final=true ===
+block block-0 Callout
+  attr type Str(note)
+  attr title Str(提示)
+  block block-0-0 Paragraph
+    span 正文段落 []
+=== callout-unclosed final=false ===
+block block-0 Paragraph
+  span $callout(type: “note”) {\n正文 []
+=== callout-unclosed final=true ===
+block block-0 Paragraph
+  span $callout(type: “note”) {\n正文 []
+=== details-open final=false ===
+block block-0 Details
+  attr summary Str(更多)
+  attr open Bool(true)
+  block block-0-0 Paragraph
+    span 内容 []
+=== details-open final=true ===
+block block-0 Details
+  attr summary Str(更多)
+  attr open Bool(true)
+  block block-0-0 Paragraph
+    span 内容 []
+=== query-embed final=false ===
+block block-0 QueryBlock
+  attr query Str(TAG #project)
+block block-1 BlockEmbed
+  attr src Str(https://example.com/x)
+=== query-embed final=true ===
+block block-0 QueryBlock
+  attr query Str(TAG #project)
+block block-1 BlockEmbed
+  attr src Str(https://example.com/x)
+=== math-block final=false ===
+block block-0 MathBlock
+  span e = mc^2 []
+=== math-block final=true ===
+block block-0 MathBlock
+  span e = mc^2 []
+=== mermaid-closed final=false ===
+block block-0 Mermaid
+  span graph TD;\nA-->B; []
+=== mermaid-closed final=true ===
+block block-0 Mermaid
+  span graph TD;\nA-->B; []
+=== mermaid-open final=false ===
+block block-0 Fence
+  attr language Str(mermaid)
+  attr loading Bool(true)
+  span graph TD;\n []
+=== mermaid-open final=true ===
+block block-0 Fence
+  attr language Str(mermaid)
+  attr loading Bool(false)
+  span graph TD;\n []
+=== comp-nested final=false ===
+block block-0 Details
+  attr summary Str(s)
+  block block-0-0 Callout
+    attr type Str(warn)
+    attr title Str()
+    block block-0-0-0 Paragraph
+      span 内层 []
+  block block-0-1 Paragraph
+    span 外层尾段 []
+=== comp-nested final=true ===
+block block-0 Details
+  attr summary Str(s)
+  block block-0-0 Callout
+    attr type Str(warn)
+    attr title Str()
+    block block-0-0-0 Paragraph
+      span 内层 []
+  block block-0-1 Paragraph
+    span 外层尾段 []
 === streaming-heading final=false ===
 block block-0 Heading
   attr level Int(2)

@@ -143,6 +143,41 @@ export function embedNode(src: string): WNode {
     return WNode("embed", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, src, null, null);
 }
 
+export function mathNode(src: string): WNode {
+    return WNode("math_block", null, null, null, src, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+}
+
+export function mermaidNode(src: string): WNode {
+    return WNode("mermaid", null, null, null, src, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+}
+
+export function isMathOpenLine(line: string): boolean {
+    if (indentWidth(line) >= 4) {
+        return false;
+    }
+    return line.trim() == "%{";
+}
+
+export function isMathCloseLine(line: string): boolean {
+    if (Number(line.length) < 2) {
+        return false;
+    }
+    if (line.char_at(0) != 125) {
+        return false;
+    }
+    if (line.char_at(1) != 37) {
+        return false;
+    }
+    let t: number = 2;
+    while (t < Number(line.length)) {
+        if (line.char_at(t) != 32) {
+            return false;
+        }
+        t += 1;
+    }
+    return true;
+}
+
 export function rawTextNode(content: string): WNode {
     return WNode("text", content, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
@@ -1159,7 +1194,19 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
                 } else {
                     code = "";
                 }
-                nodes.push(codeNode(language, code, false));
+                
+
+
+
+                if (language == "mermaid") {
+                    
+
+
+                    const msrc = body.join("\n");
+                    nodes.push(mermaidNode(msrc));
+                } else {
+                    nodes.push(codeNode(language, code, false));
+                }
             } else {
                 
 
@@ -1183,6 +1230,30 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
             }
             i = j + 1;
             continue;
+        }
+        
+
+
+        if (isMathOpenLine(line)) {
+            let mathBody: string[] = [];
+            let j: number = i + 1;
+            let mathClosed: boolean = false;
+            while (j < Number(lines.length)) {
+                if (isMathCloseLine(lines[j])) {
+                    mathClosed = true;
+                    break;
+                }
+                mathBody.push(lines[j]);
+                j += 1;
+            }
+            if (mathClosed) {
+                const mathSrc = mathBody.join("\n");
+                nodes.push(mathNode(mathSrc));
+                i = j + 1;
+                continue;
+            }
+            
+
         }
         
 
@@ -1454,6 +1525,9 @@ export function paraBreaks(cur: string, lines: string[], idx: number): boolean {
         return true;
     }
     if (compOpenScan(cur) != null) {
+        return true;
+    }
+    if (isMathOpenLine(cur)) {
         return true;
     }
     return false;
@@ -2960,6 +3034,12 @@ export function convertBlock(wnode: WNode, id: string): BlockNode {
         let attrsE: Attr[] = [];
         attrsE = attrSet(attrsE, "src", Value.Str(wnode.src ?? ""));
         return blockFull(id, BlockType.BlockEmbed, attrsE, [], [], rng(0, 0));
+    }
+    if (t == "math_block") {
+        return blockFull(id, BlockType.MathBlock, [], [], [span(wnode.code ?? "")], rng(0, 0));
+    }
+    if (t == "mermaid") {
+        return blockFull(id, BlockType.Mermaid, [], [], [span(wnode.code ?? "")], rng(0, 0));
     }
     
 

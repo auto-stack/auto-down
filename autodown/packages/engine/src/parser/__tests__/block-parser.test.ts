@@ -238,6 +238,55 @@ describe('$ component blocks (plan 030 T2)', () => {
   })
 })
 
+describe('%{ }% math block + mermaid fence (plan 030 T3)', () => {
+  it('parses %{ }% to MathBlock with raw source span', () => {
+    const root = parse_blocks('%{\ne = mc^2\n}%\n', true)
+    const m = root.children[0]
+    expect(m.kind).toBe(BlockType.MathBlock)
+    expect(spansText(m.inlines)).toBe('e = mc^2')
+    expect(m.inlines).toHaveLength(1)
+  })
+
+  it('math source keeps raw markup chars (no inline parsing)', () => {
+    const root = parse_blocks('%{\na_1 * b_2\n}%\n', true)
+    const m = root.children[0]
+    expect(m.kind).toBe(BlockType.MathBlock)
+    expect(m.inlines).toHaveLength(1)
+    expect(spansText(m.inlines)).toBe('a_1 * b_2')
+  })
+
+  it('unclosed %{ degrades to paragraph literal (streaming safety)', () => {
+    const root = parse_blocks('%{\ne = mc^2\n', false)
+    expect(root.children[0].kind).toBe(BlockType.Paragraph)
+    expect(spansText(root.children[0].inlines)).toContain('e = mc^2')
+  })
+
+  it('closed mermaid fence becomes Mermaid kind carrying the source', () => {
+    const root = parse_blocks('```mermaid\ngraph TD;\nA-->B;\n```\n', true)
+    const mm = root.children[0]
+    expect(mm.kind).toBe(BlockType.Mermaid)
+    expect(spansText(mm.inlines)).toBe('graph TD;\nA-->B;')
+  })
+
+  it('open mermaid fence stays a loading Fence while streaming', () => {
+    const root = parse_blocks('```mermaid\ngraph TD;\n', false)
+    const f = root.children[0]
+    expect(f.kind).toBe(BlockType.Fence)
+    expect(attrGetStr(f.attrs, 'language', '')).toBe('mermaid')
+    expect(attrGetBool(f.attrs, 'loading', false)).toBe(true)
+  })
+
+  it('non-mermaid closed fences stay Fence', () => {
+    const root = parse_blocks('```rust\nfn main() {}\n```\n', true)
+    expect(root.children[0].kind).toBe(BlockType.Fence)
+  })
+
+  it('a %{ opener line breaks a preceding paragraph', () => {
+    const root = parse_blocks('para\n%{\nx\n}%\n', true)
+    expect(root.children.map((b) => b.kind)).toEqual([BlockType.Paragraph, BlockType.MathBlock])
+  })
+})
+
 describe('nested emphasis delimiters (plan 028 P2T1)', () => {
   const spansOf = (md: string) => parse_blocks(md, true).children[0].inlines
 

@@ -36,6 +36,16 @@ const FIXTURES: Array<[string, string]> = [
       '硬断行  \n转义 \\*字面\\* 智能 "引号" 与 撇号 \'don\'t\' 以及中英混排 “已经弯的”。\n',
   ],
   ['anchor', '带锚点块 ^my-anchor\n'],
+  // plan 030: extension block dialect fixtures ($ components / %{ }% math /
+  // mermaid fence) — parse→BlockNode projections asserted cross-target.
+  ['callout-closed', '$callout(type: "note", title: "提示") {\n正文段落\n}\n'],
+  ['callout-unclosed', '$callout(type: "note") {\n正文\n'],
+  ['details-open', '$details(summary: "更多", open: true) {\n内容\n}\n'],
+  ['query-embed', '$query(TAG #project)\n\n$embed(src: "https://example.com/x")\n'],
+  ['math-block', '%{\ne = mc^2\n}%\n'],
+  ['mermaid-closed', '```mermaid\ngraph TD;\nA-->B;\n```\n'],
+  ['mermaid-open', '```mermaid\ngraph TD;\n'],
+  ['comp-nested', '$details(summary: "s") {\n$callout(type: "warn") {\n内层\n}\n外层尾段\n}\n'],
   ['streaming-heading', '## 编辑中的标题\n\n- 列表项\n- '],
   ['streaming-link', '半截链接 [文本](https://example.\n'],
   ['streaming-pretable', '| a | b |\n| --- |\n'],

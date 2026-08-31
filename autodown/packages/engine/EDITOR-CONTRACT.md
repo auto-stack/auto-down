@@ -20,7 +20,7 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `[data-node-index]` | 渲染侧块序号（滚动同步） | demo scroll-sync |
 | `.streaming-document` | 渲染根 | demo scroll-sync |
 | `.node-slot` / `.node-content` | 渲染块包裹 | 渲染契约（render.test.ts 在册） |
-| `[contenteditable]` | 编辑宿主（现 ProseMirror） | jade e2e 02 |
+| `[contenteditable]` | 编辑宿主（聚焦宿主为语义化标签——Heading→h1-h6、Paragraph→p、其余 div；class 与 data 面不变，plan 029） | jade e2e 02 |
 
 ## 2. CustomEvent（document 级）
 

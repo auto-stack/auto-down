@@ -68,25 +68,34 @@ describe('palette map (auto/palette_map.at)', () => {
 
 describe('panel registry (plan 017 Phase 2)', () => {
   it('extension panels are consumer-pluggable and degrade when absent', async () => {
-    const node = { type: 'callout', children: [] }
+    // plan 030: Callout gained a builtin renderer — the degrade slot is
+    // exercised through a still-unregistered extension kind (query)
+    const node = { type: 'query', children: [] }
     // unregistered extension slot -> degraded unknown-node
     const degraded = await renderBlock(node)
     expect(degraded).toContain('unknown-node')
 
-    registerPanel('Callout', ({ renderInlineChildren, node: n, final }) =>
-      h('aside', { class: 'callout-node' }, renderInlineChildren(n.children, final))
+    registerPanel('Query', ({ renderInlineChildren, node: n, final }) =>
+      h('aside', { class: 'query-node' }, renderInlineChildren(n.children, final))
     )
     try {
       const custom = await renderBlock(node)
-      expect(custom).toContain('callout-node')
-      expect(custom).toContain('data-node-type="callout"')
+      expect(custom).toContain('query-node')
+      expect(custom).toContain('data-node-type="query"')
       expect(custom).not.toContain('unknown-node')
     } finally {
-      unregisterPanel('Callout')
+      unregisterPanel('Query')
     }
 
     // back to degraded after unregister
     expect(await renderBlock(node)).toContain('unknown-node')
+  })
+
+  it('callout renders through its builtin panel since plan 030', async () => {
+    const html = await renderBlock({ type: 'callout', language: 'note', title: 'T', children: [] })
+    expect(html).toContain('callout-node')
+    expect(html).toContain('data-callout-type="note"')
+    expect(html).not.toContain('unknown-node')
   })
 
   it('custom registration overrides a builtin panel renderer', async () => {

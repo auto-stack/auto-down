@@ -215,6 +215,10 @@ const DEPLOY_COMPONENTS = {
   'CodeEditorBlock.vue': 'components/CodeEditorBlock.vue',
   // plan 023 P1T8 — the table's typed editing face (same path as P1T7).
   'TableEditorBlock.vue': 'components/TableEditorBlock.vue',
+  // plan 031 T4 — the math/mermaid typed editing faces (source + live
+  // preview in one chrome; mounted by EngineEditor's edit slots).
+  'MathEditBlock.vue': 'components/MathEditBlock.vue',
+  'MermaidEditBlock.vue': 'components/MermaidEditBlock.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

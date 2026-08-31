@@ -63,6 +63,10 @@ const EXPECTED = [
   'components/CodeEditorBlock.vue',
   // plan 023 P1T8 — the table's typed editing face.
   'components/TableEditorBlock.vue',
+  // plan 031 T4 — the math/mermaid typed editing faces (source + live
+  // preview; the ext bridges land via the section-3 scan below).
+  'components/MathEditBlock.vue',
+  'components/MermaidEditBlock.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',

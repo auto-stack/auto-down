@@ -91,6 +91,17 @@
           "PLAN-029"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P030-2",
+        "section": "goals",
+        "title": "扩展块解析通道（$组件族/%{ }%/任务列表/mermaid 判定）+ 容器块 WYSIWYG 编辑面（Callout/Details/checkbox） — 目标",
+        "content": "1. **roundtrip 全通**：上列七类语法 解析→BlockNode→序列化→再解析 稳定\n   （kind 与 attrs 守恒；mermaid 例外见设计 §5——fence↔Mermaid kind 双向\n   归一）；TS 与 rust 双发射对拍逐字节绿。\n2. **容器 WYSIWYG**：聚焦 Callout/Details 内部段落时卡片外观不变（同 view\n   class），正文走 029 语义化宿主；summary/title 为 attr 宿主（无框就地\n   编辑，blur 回写一步 undo）；任务项 checkbox 在 view/stream 可见、编辑态\n   可点翻转。\n3. **stream 兼容**：未闭合 `$`/`%{`（isFinal=false）降级为段落字面文本不\n   报错（008 方言哲学平移）；闭合后流式侧与 view 同型渲染。",
+        "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
+        "related": [
+          "PLAN-030"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -188,6 +199,17 @@
         "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
         "related": [
           "PLAN-029"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P030-3",
+        "section": "architecture",
+        "title": "扩展块解析通道（$组件族/%{ }%/任务列表/mermaid 判定）+ 容器块 WYSIWYG 编辑面（Callout/Details/checkbox） — 架构方案",
+        "content": "```\nP1（解析层，.at 单源）\nauto/parser/markdown_parser.at\n├─ WNode type 增 checked bool? 字段（61 行 type 定义；rust 结构同发射）\n├─ parseBlocks（738 行主循环）增三条规则：\n│   ① $name(k: \"v\", ...) {  … 扫列 0 的 } 配对 → 递归 parseBlocks 为\n│      children → callout/details/query/embed 四实例（attrs: type/title/\n│      summary/open/query/src）；未闭合 → 段落字面降级\n│   ② %{ … }% fence 式规则 → mathBlock（inlines=源码文本）\n│   ③ ```mermaid closed fence → Mermaid kind（其余语言仍为 Fence）\n├─ 列表项：marker 剥离后识别 [ ]/[x]/[X] 前缀 → itemNode(checked)\n└─ convertBlock（2223 行）：list_item 的 checked → ListItem attr；\n    callout/details/math_block/mermaid/query/embed 的 WNode→BlockNode 落 attrs\nauto/parser/serializer.at\n├─ componentBlockMd 泛化为多 args（callout: type+title；details 既有）\n└─ listMd：checked 项 marker 后写 [ ]/[x]\n双发射：pnpm gen:parser（TS）+ auto.exe trans --path ×4 rust + cp\n（core/rust README 命令）；对拍金标 rust-parse-parity-gen fixtures 增补后重写\n\nP2（装配层，手写源）\npackages/engine/src/editor/components/EngineEditor.vue\n├─ isExpandableContainer += Callout/Details\n├─ expandedElement 分支：Callout → 卡片 chrome（class 对齐 builtin\n│   renderCalloutPanel：callout-node + data-callout-type + 标题行）；\n│   Details → details-node chrome + SummaryHost + body childSlot\n├─ editSlotFor('Mermaid') = fenceEditSlot 复用（CodeEditorBlock 高亮编辑）\n└─ toggleTaskList 真实现：focused ListItem 落/清 checked attr（区别于 bullet）\npackages/engine/src/editor/components/AttrHost.vue（新）\n└─ attr 读写型宿主：contenteditable 无框、挂载排版对齐 node-view 同位元素，\n   blur → setBlockAttrs（单步 undo）；Details summary / Callout title 复用\npackages/engine/src/render/builtin-panels.ts\n├─ 新增 renderCalloutPanel（view/stream 共用；卡片 + icon + title + children）\n└─ renderListPanel item 增 checked → 前置 <input type=checkbox disabled>\n    （view 态；点击翻转在编辑装配层做）\n```\n\n**为何 attr 宿主而非模型改造**：Details summary/Callout title 是 attrs（序列化\n方言即 args），改造为 inlines 子块会破坏既有序列化格式与 node-view\nupdateAttributes 通道；AttrHost 保持模型零变动。",
+        "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
+        "related": [
+          "PLAN-030"
         ],
         "status": "stable"
       }
@@ -288,6 +310,17 @@
           "PLAN-029"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P030-4",
+        "section": "designs",
+        "title": "扩展块解析通道（$组件族/%{ }%/任务列表/mermaid 判定）+ 容器块 WYSIWYG 编辑面（Callout/Details/checkbox） — 详细设计",
+        "content": "### 1. `$` 组件块规则（markdown_parser.at parseBlocks）\n\n- 触发：行首（indent<4）`$` + 标识符 + `(`；本行或后续行出现 `) {`（args\n  允许跨行 v1 不做——单行 args）。\n- args 解析：`k: \"v\"` 逗号序列；`open: true` 布尔。转义按 serialize 写出\n  形状（`\"` 包裹，v1 不支持内嵌 `\"`——与 serializer.at 字符串拼接现状对齐）。\n- 闭合：列 0 的 `}` 行；body 行收集 → 递归 parseBlocks → children。\n- kind 映射：callout→Callout(type,title)、details→Details(summary,open)、\n  query→QueryBlock(query)、embed→BlockEmbed(src)；未知 `$name` → 段落字面。\n- 未闭合（isFinal=false）：整段按段落字面降级（流式安全）。\n\n### 2. `%{ }%` math 块与 ```mermaid 判定\n\n- `%{` 单独行开启，`}%` 列 0 行闭合（fence 式状态机复用 isCloseFence 模式）；\n  body 为源码行 → MathBlock(inlines=[源码文本])；未闭合降级段落。\n- fence 分支：`language == \"mermaid\" && closed` → Mermaid(inlines=源码)；\n  开放态维持 codeNode(loading) 流式语义。Mermaid kind 的编辑面=\n  editSlotFor('Mermaid') 复用 fenceEditSlot（CodeEditorBlock，语言徽章\n  mermaid）——无裸 div 倒退。\n\n### 3. 任务列表\n\n- 列表项 marker 剥离后：`[ ] `/`[x] `/`[X] ` 前缀识别 → 前缀从文本剥除、\n  itemNode(checked=true/false)；仅 bullet 列表（ordered 不识别，与 CommonMark\n  GFM 对齐）。\n- WNode type 定义加 `checked bool?`（markdown_parser.at 61 行；21 参构造\n  调用点全部补位 null——TS/rust 同发射）；convertBlock list_item 分支落\n  ListItem attr `checked`。\n- serializer.at listMd：marker 写出 `- [ ] `/`- [x] `（有 checked attr 时）。\n- block-wnode.ts ListItem 转换：checked attr → itemNode checked。\n- renderListPanel：item 有 checked → li 前置 disabled checkbox（view/stream）。\n- 编辑装配：checkbox 点击 → 列表命令通道翻转 attr（复用 list-commands 的\n  选中定位）；toggleTaskList 动词= focused ListItem 置 checked（清除则转\n  普通 bullet）。\n\n### 4. Callout/Details 容器装配（EngineEditor）\n\n- isExpandableContainer：`children.length > 0 && (ListBlock | Blockquote |\n  Callout | Details)`。\n- expandedElement(Callout)：`div.callout-node[data-callout-type]` > 标题行\n  （icon + AttrHost(title)）> `div.markdown-renderer` > childSlot 递归——\n  class 链与 renderCalloutPanel 逐字一致（CSS 单通道）。\n- expandedElement(Details)：details chrome（对齐 DetailsNodeView 外观 class）\n  + summary 行（三角 + AttrHost(summary)）+ body childSlot；open 翻转走\n  updateAttributes 既有通道。\n- AttrHost.vue：props `{ blockId, attrKey, engine, placeholder? }`；挂载值=\n  attrGetStr；blur → setBlockAttrs 单步 undo；排版 class 由调用方传（对齐\n  node-view 同位元素）；Enter/Escape 直接 blur 提交；不走 BlockHostController\n  （无 inlines/拆块语义）。\n- focus-path：focusTargetOf 对 Callout/Details 已走\"最深叶块\"通用递归\n  （children 存在即下钻），无需改动——装配洞仅因 isExpandableContainer 缺席。\n\n### 5. 序列化对齐（serializer.at）\n\n- componentBlockMd 泛化：`args: List<(k, v)>`；callout 发出\n  `$callout(type: \"..\", title: \"..\")`（title 空省略）；details 既有\n  detailsMd 并入同一泛化。\n- roundtrip 守恒表（金标钉）：callout(type,title)/details(summary,open)/\n  math/mermaid/task 逐对用例。",
+        "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
+        "related": [
+          "PLAN-030"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -365,6 +398,17 @@
         "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
         "related": [
           "PLAN-029"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P030-5",
+        "section": "tests",
+        "title": "扩展块解析通道（$组件族/%{ }%/任务列表/mermaid 判定）+ 容器块 WYSIWYG 编辑面（Callout/Details/checkbox） — 测试设计",
+        "content": "1. **金标**：rust-parse-parity-gen.test.ts FIXTURES 增 8 组（$callout 闭合/\n   未闭合、$details open、$query/$embed、%{}%、- [ ]/- [x] 混排、\n   ```mermaid 闭合/开放），双侧绿（engine `pnpm test` 重写 golden +\n   `cargo test`）。\n2. **单测**：serializer-roundtrip 新方言守恒用例；block-parser 新 kind\n   attrs 断言；render.test 补 renderCalloutPanel DOM + List checkbox。\n3. **e2e（demo）`extension-blocks.spec.ts`**：demo 文档含四类样例块——\n   左栏聚焦 callout 内段落（卡片 chrome 保持、宿主无框就地编辑）、details\n   summary 无框编辑、任务项点击翻转、`%{ %}` 右栏出 KaTeX 面板；\n   Save 后 textarea/落盘断言 `$callout`/`- [x]` roundtrip。\n4. **回归门**：engine 全量 + build（三断言）+ demo e2e 全套 + jade\n   build/e2e（jade CSS fork 若缺 callout-node/details 段则对照引擎补）。",
+        "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
+        "related": [
+          "PLAN-030"
         ],
         "status": "verified"
       }
@@ -457,6 +501,17 @@
           "PLAN-029"
         ],
         "status": "published"
+      },
+      {
+        "id": "P030-6",
+        "section": "reviews",
+        "title": "扩展块解析通道（$组件族/%{ }%/任务列表/mermaid 判定）+ 容器块 WYSIWYG 编辑面（Callout/Details/checkbox） — 验收标准 / 复审",
+        "content": "### 验收标准\n\n1. 七类语法 roundtrip 守恒（金标 + 单测绿，TS/rust 双侧一致）。\n2. Callout view 不再 unknown-node；聚焦卡片内正文=卡片外观不变 + 就地编辑。\n3. Details summary / Callout title 无 input 边框就地编辑，blur 落盘一步 undo。\n4. 任务项 checkbox：view/stream 可见、编辑态可点翻转、roundtrip 落盘。\n5. ```mermaid 文档块 view 呈 SVG 面板、聚焦为高亮代码编辑（无裸 div）。\n6. 全量门绿：engine vitest + cargo test + engine build + demo e2e + jade。\n\n### 复审记录\n\n**复审人**：zhaopuming（/auto-plan:review，2026-08-31）\n**复审方式**：工作树 `.worktrees/plan-030-dev`（branch `plan-030-dev`，11 commits，\nmaster..HEAD diff 32 文件 +3383/−195）内重跑全量门 + 逐条验收复验 + 一次性\nplaywright 探针（验证后删除，不落库）。\n\n### 逐条验收判定\n\n1. **七类语法 roundtrip 守恒（TS/rust 双侧一致）— PASS**\n   证据：engine vitest 494/494（block-parser 新 13 用例 + serializer-roundtrip\n   守恒表 9 组 byte-canonical+idempotent + rust-parse-parity-gen 金标重写）；\n   `cargo test` 全绿（parse_blocks_matches_ts_golden 逐字节，金标 +9 组 fixture\n   双侧手工同步在 diff 中核验：rust-parse-parity-gen.test.ts 与\n   core/rust/tests/parse_parity.rs FIXTURES 一一对应）。\n2. **Callout 不再 unknown-node + 聚焦卡片外观不变就地编辑 — PASS**\n   证据：render.test「renders $callout as a callout card — no unknown-node」+\n   palette-map「callout renders through its builtin panel since plan 030」；\n   demo e2e「focusing a callout body keeps the card chrome and edits in place」\n   （卡片链/AttrHost 无框/无 input 断言全绿）。\n3. **Details summary / Callout title 无框就地编辑 blur 一步 undo — PASS**\n   证据：e2e「the details summary edits through the borderless AttrHost」（编辑\n   →右栏联动）+ callout title AttrHost 可见性断言；「一步 undo」机制证据=\n   AttrHost.commit→setBlockAttrs→engine.applyTree 单 undo 条\n   （commands.test.ts setBlockAttrs 在册单步断言）。小缺口见债候选 ③。\n4. **任务项 checkbox 三态 — PASS**\n   证据：render.test（view 态 disabled checkbox 形状 checked/unchecked）+\n   e2e「task checkboxes flip on click and serialize the flag」+\n   serializer-roundtrip task 3 用例。\n5. **```mermaid view 呈 SVG 面板 + 聚焦高亮代码编辑（无裸 div）— PASS**\n   证据：e2e 右栏 `.autodown-mermaid-block svg` 可见断言；聚焦编辑面无自动化\n   钉子——复审一次性探针实测（聚焦 Mermaid 块 → `.autodown-codeblock-node`\n   + 语言徽章文本 `mermaid` + 可编辑面，881ms 绿，探针已删）。缺口见债候选 ①。\n6. **全量门绿 — PASS（本复审独立重跑）**\n   engine vitest 494/494；cargo test 全绿；engine build ✓（三断言\n   parser-pure/no-tiptap/editor-gen 全过）；demo e2e 36/36；jade build ✓ +\n   e2e 23/23（CSS fork 三段已在 diff）。\n\n### 遗漏 / 延后 / workaround 清查\n\n- **遗漏**：无——T1-T10 每步在 diff 中有对应落点；测试设计四项（金标 8→实际\n  9 组、单测、e2e、回归门）全数兑现。\n- **延后（均经用户在计划内裁定/登记）**：`:::`/`$$` alias 不做（待澄清#1）；\n  args 无内嵌引号（#2）；ordered 任务列表（#3）；Math/Mermaid 编辑态深化\n  （DEBTS 020 余量维持）；Query/Embed 数据装载（DEBTS 026① 维持）——全部\n  已入 DEBTS 030/020/026 行，非隐匿缩水。\n- **Workaround**：a2r 参数位内联 `.join()` 结果不自动借用 → 源内先绑定变量\n  绕道（.at 注释在案，019 家族发射器缺口类）——债候选 ②。\n- **偏差（已记录非隐匿）**：T7「demo dev 手检」由 T8 e2e 系统化覆盖替代\n  （计划证据行在案）；plan 017 旧契约测试「扩展面板无 builtin 时降级」随\n  Callout 获得 builtin 迁移到 Query（palette-map.test.ts 改版，行为变更即\n  本计划设计意图）。\n\n### 债候选（复审新增，非阻塞）\n\n① 聚焦 mermaid 编辑面缺自动化 e2e 钉子（复审探针已验证行为；建议把探针\n用例并入 extension-blocks.spec.ts，5 行级改动）。\n② a2r 发射器：参数位内联方法调用结果不自动借用（本次 .join() 实证；\n019 家族，建议归并进 auto-lang 侧发射器缺口登记）。\n③ AttrHost blur 回写的「一步 undo」无专属 e2e undo 用例（机制由\ncommands.test setBlockAttrs 单步断言覆盖，端到端未钉）。\n④（观察项）palette spec tag 类名（`mermaid-block-container`）与 node-view\n实际类名（`autodown-mermaid-block`）不一致——既有现象，非本计划引入。\n⑤（非本计划债）jade fixture `tmp/wiki-demo/wiki/journals/` 主检出未提交\n（待澄清#5）——master 提交态 fresh worktree 上 01-workspace 必红，需用户\n裁决归位。\n\n### 判定\n\n六条验收全 PASS，无阻塞债 → **status: reviewed**，可交 `/auto-plan:merge`。",
+        "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
+        "related": [
+          "PLAN-030"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -545,6 +600,17 @@
         "file": "docs/plans/archived/029-wysiwyg-host-typography.md",
         "related": [
           "PLAN-029"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P030-1",
+        "section": "reports",
+        "title": "扩展块解析通道（$组件族/%{ }%/任务列表/mermaid 判定）+ 容器块 WYSIWYG 编辑面（Callout/Details/checkbox） — 变更摘要",
+        "content": "两个互相锁定的阶段打包（P2 的验收依赖 P1 的 roundtrip）：\n\n**P1 解析通道**：把 Callout/Details/Query/Embed/MathBlock/任务列表/mermaid 从\n\"slash 能插入、序列化能写出、解析器不认识\"（roundtrip 断链）补成全通。语法\n采用**引擎自家序列化方言**（roundtrip-first）：`$callout(type: \"..\", title:\n\"..\") { .. }`、`$details(summary: \"..\", open: true) { .. }`、`$query(..)`、\n`$embed(src: \"..\")`、`%{ .. }%`、`- [ ] `/`- [x] `、```` ```mermaid ```` fence\n判定。单源 `.at` 双发射（TS `gen:parser` + rust `auto.exe trans`），金标对拍\n双侧钉死。\n\n**P2 容器编辑面 WYSIWYG**：Callout/Details 聚焦时保持卡片 chrome、正文/摘要/\n标题就地编辑（029 哲学延伸到容器块）；Callout 补 view 渲染器（消灭\nunknown-node degrade）；Details summary 从单行 input 换成就地无框编辑；\n任务列表 checkbox 双侧可点、落盘 roundtrip。\n\n**不做的**：`:::`/`$$` 旧方言 alias（记 DEBTS）；Math/Mermaid 编辑态深化\n（源码+实时预览同屏，DEBTS 020/026 余量维持后置）；Query/Embed 数据装载\n（DEBTS 026 ① 后置）；行内 wikilink/image/MathInline（行内层，独立计划）。",
+        "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
+        "related": [
+          "PLAN-030"
         ],
         "status": "published"
       }

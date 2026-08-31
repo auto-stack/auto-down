@@ -4,6 +4,14 @@
 // the details summary edits through the borderless AttrHost; task checkboxes
 // flip on click; %{ }% renders a KaTeX panel in the right pane; the Save
 // output round-trips the dialect verbatim.
+//
+// plan 031 T9 additions — the math/mermaid typed edit faces: focusing the
+// blocks mounts source+live-preview editors (MathEditBlock synchronously via
+// katex, MermaidEditBlock debounced with the loading/error/svg tri-state);
+// blur commits through the shared CodeEditorController protocol and Save
+// round-trips. (The streaming readonly banner is pinned at SSR level in the
+// engine tests — math-mermaid-edit-block.test.ts, the 023 CodeEditorBlock
+// precedent: the demo app exposes no streaming toggle.)
 
 import { test, expect, type Page } from '@playwright/test'
 
@@ -109,4 +117,77 @@ test('Save round-trips the dialect verbatim ($callout / - [x])', async ({ page }
   await expect
     .poll(() => lastSave())
     .toContain('%{')
+})
+
+// -- plan 031 T9: the math/mermaid typed edit faces --------------------------------
+
+test('focusing the math block mounts the source + live-preview edit face', async ({ page }) => {
+  const left = page.locator('.left')
+  const preview = left.locator('.autodown-math-block').first()
+  await expect(preview).toBeVisible()
+  await preview.scrollIntoViewIfNeeded()
+  await preview.click()
+  await page.waitForTimeout(250)
+  const editor = left.locator('.autodown-math-editor')
+  await expect(editor).toBeVisible()
+  const area = editor.locator('textarea.math-editor-textarea')
+  await expect(area).toBeVisible()
+  await expect(area).toHaveValue(/E = mc\^2/)
+  // katex is synchronous — the live preview paints over the textarea
+  await expect(editor.locator('.autodown-math-preview .katex')).toBeVisible()
+})
+
+test('editing math source updates the preview live; invalid source shows the error banner; blur commits', async ({ page }) => {
+  const lastSave = await captureSaves(page)
+  const left = page.locator('.left')
+  await left.locator('.autodown-math-block').first().scrollIntoViewIfNeeded()
+  await left.locator('.autodown-math-block').first().click()
+  await page.waitForTimeout(250)
+  const editor = left.locator('.autodown-math-editor')
+  const area = editor.locator('textarea.math-editor-textarea')
+  // fill() (not keyboard.type): the local Windows layout drops literal
+  // backslashes from simulated keystrokes — fill sets the value and fires
+  // the input event through the same v-model path
+  await area.fill('\\int_0^1 x^2 \\, dx')
+  // live: the new source renders immediately
+  await expect(editor.locator('.autodown-math-preview .katex')).toBeVisible()
+  // invalid source: the banner replaces the preview (no crash)
+  await area.fill('\\frac{')
+  await expect(editor.locator('.autodown-math-error')).toBeVisible()
+  await expect(editor.locator('.autodown-math-preview')).toHaveCount(0)
+  // fix and commit: blur writes the whole source back (one undo step)
+  await area.fill('\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}')
+  await expect(editor.locator('.autodown-math-preview .katex')).toBeVisible()
+  await left.getByText('Heading One').click()
+  await page.waitForTimeout(300)
+  await page.locator('.autodown-editor-save').click()
+  await expect
+    .poll(() => lastSave())
+    .toContain('\\frac{n(n+1)}{2}')
+})
+
+test('focusing the mermaid block mounts the debounced face (loading → svg, error banner on bad source)', async ({ page }) => {
+  const left = page.locator('.left')
+  const preview = left.locator('.autodown-mermaid-block').first()
+  await expect(preview).toBeVisible()
+  await preview.scrollIntoViewIfNeeded()
+  await preview.click()
+  await page.waitForTimeout(250)
+  const editor = left.locator('.autodown-mermaid-editor')
+  await expect(editor).toBeVisible()
+  const area = editor.locator('textarea.mermaid-editor-textarea')
+  await expect(area).toBeVisible()
+  await expect(area).toHaveValue(/graph TD/)
+  // the initial render settles into an svg preview (debounce + first
+  // mermaid.render is slow — poll generously)
+  await expect(editor.locator('.autodown-mermaid-preview svg')).toBeVisible({ timeout: 10000 })
+  // typing flips to loading synchronously (inside the 300ms debounce
+  // window), then settles back to the svg
+  await area.fill('graph LR\n  A[开始] --> B[结束]')
+  await expect(editor.locator('.mermaid-editor-loading')).toBeVisible()
+  await expect(editor.locator('.autodown-mermaid-preview svg')).toBeVisible({ timeout: 10000 })
+  // invalid source: the error banner replaces the preview
+  await area.fill('this is not a diagram')
+  await expect(editor.locator('.autodown-mermaid-error')).toBeVisible({ timeout: 10000 })
+  await expect(editor.locator('.autodown-mermaid-preview')).toHaveCount(0)
 })

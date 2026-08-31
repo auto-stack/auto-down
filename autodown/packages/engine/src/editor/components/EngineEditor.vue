@@ -30,7 +30,7 @@
 // ('Fence' IS the code block kind); the slots carry no view, so final-state
 // previews stay on the builtin panel pipeline. `h` comes from the setup
 // script's vue import — dual-script imports share one module scope.
-import { Value, attrGetStr, attrSet, blockText, span } from '../../parser/block-model'
+import { Value, attrGetStr, blockText, span } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import type { BlockEditCtx } from '../../render/block-component'
@@ -42,6 +42,8 @@ import { TableEditorController } from '../engine/table-editor-controller'
 import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/node-view-host'
 import CodeEditorBlock from './CodeEditorBlock.vue'
 import TableEditorBlock from './TableEditorBlock.vue'
+import MathEditBlock from './MathEditBlock.vue'
+import MermaidEditBlock from './MermaidEditBlock.vue'
 import DetailsNodeView from '../node-views/DetailsNodeView.vue'
 import MathBlockNodeView from '../node-views/MathBlockNodeView.vue'
 import MermaidNodeView from '../node-views/MermaidNodeView.vue'
@@ -79,14 +81,33 @@ function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
 }
 
 registerBlockComponent('Fence', { edit: fenceEditSlot })
-// plan 030: the Mermaid edit face reuses the fence slot verbatim (highlighted
-// CodeEditorBlock) — only the language badge differs (always "mermaid", the
-// kind carries no language attr).
-function mermaidEditSlot(node: BlockNode, ctx: BlockEditCtx) {
-  const asFence: BlockNode = { ...node, attrs: attrSet(node.attrs, 'language', Value.Str('mermaid')) }
-  return fenceEditSlot(asFence, ctx)
+
+// plan 031: the math/mermaid typed editing faces — source + live preview in
+// one chrome (the generated Math/MermaidEditBlock widgets). Math replaces
+// the generic BlockHost text fallback; mermaid replaces plan 030's
+// transitional fenceEditSlot reuse (D4 ruling: a preview state machine, not
+// a highlight overlay). Both commit through the shared CodeEditorController
+// — whole-text blur commit, one undo step; math/mermaid source lives in
+// inlines since plan 030, exactly the shape the controller writes.
+function mathEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  return h(MathEditBlock, {
+    controller: new CodeEditorController(ctx.engine, ctx.blockId),
+    blockId: ctx.blockId,
+    source: blockText(node),
+    readonly: ctx.readonly,
+  })
 }
 
+function mermaidEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+  return h(MermaidEditBlock, {
+    controller: new CodeEditorController(ctx.engine, ctx.blockId),
+    blockId: ctx.blockId,
+    source: blockText(node),
+    readonly: ctx.readonly,
+  })
+}
+
+registerBlockComponent('MathBlock', { edit: mathEditSlot })
 registerBlockComponent('Mermaid', { edit: mermaidEditSlot })
 // TableEditorBlock is the generated widget (.at source, P1T8): flat chrome
 // data — the adapter flattens the table's BlockNode into plain cell objects
@@ -198,7 +219,7 @@ export interface BlockInfo {
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-// Value/attrSet come from the plain script block's import (dual scripts share
+// Value comes from the plain script block's import (dual scripts share
 // one module scope)
 import { BlockPos, BlockType, Selection, attrGet, attrGetBool, attrGetInt, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'

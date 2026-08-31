@@ -328,3 +328,24 @@ describe('extended block placeholders (directed construction)', () => {
     expect(serialize(doc([bare]), false)).toBe('[[CAP 定理]]\n')
   })
 })
+
+describe('task list roundtrip (plan 030 T4)', () => {
+  it('checked flags survive serialize→parse byte-stable', () => {
+    const src = '- [ ] todo a\n- [x] done b\n- plain c\n'
+    const md = serialize(parse_blocks(src, true), true)
+    expect(md).toBe(src)
+    const again = serialize(parse_blocks(md, true), true)
+    expect(again).toBe(src)
+  })
+
+  it('mixed with nested content keeps the flag on the right item', () => {
+    const src = '- [x] top\n  - [ ] child\n'
+    const md = serialize(parse_blocks(src, true), true)
+    expect(md).toBe('- [x] top\n  - [ ] child\n')
+  })
+
+  it('plain items serialize without a checkbox prefix (no regressions)', () => {
+    const md = serialize(parse_blocks('- a\n- b\n', true), true)
+    expect(md).toBe('- a\n- b\n')
+  })
+})

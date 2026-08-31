@@ -295,13 +295,27 @@ pub fn listMd(node BlockNode, withId bool) str {
     for i in 0..node.children.length.to(int) {
         if i > 0 { out = out + "\n" }
         var marker str = "- "
+        var padLen int = 2
         if ordered {
             let n = start + i
             marker = n.to(str) + ". "
+            padLen = marker.length.to(int)
+        } else {
+            // GFM task item (plan 030): a present `checked` attr on the
+            // ListItem re-emits the `- [ ] `/`- [x] ` prefix; continuation
+            // lines keep padding by the plain bullet width (2), GFM style
+            let item = node.children[i]
+            if attrGet(item.attrs, "checked") != None {
+                if attrGetBool(item.attrs, "checked", false) {
+                    marker = "- [x] "
+                } else {
+                    marker = "- [ ] "
+                }
+            }
         }
         let body = joinChildren(node.children[i].children, withId)
         let lines = body.split("\n")
-        let pad = repeatStr(" ", marker.length.to(int))
+        let pad = repeatStr(" ", padLen)
         for j in 0..lines.length.to(int) {
             if j > 0 { out = out + "\n" }
             if j == 0 {

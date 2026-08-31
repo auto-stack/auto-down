@@ -124,8 +124,8 @@ fn listNode(ordered bool, startN int?, items List<WNode>) WNode {
     return WNode("list", None, None, None, None, None, None, Some(ordered), startN, Some(items), None, None, None, None, None, None, None, None, None, None, None)
 }
 
-fn itemNode(children List<WNode>) WNode {
-    return WNode("list_item", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+fn itemNode(children List<WNode>, checkedFlag bool?) WNode {
+    return WNode("list_item", None, None, None, None, None, Some(children), None, None, None, None, None, None, None, None, None, None, None, None, None, checkedFlag)
 }
 
 fn strongNode(children List<WNode>) WNode {
@@ -1446,6 +1446,25 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, mut nodes L
         // collect this item's lines
         var itemLines List<str> = []
         var firstText = line.slice(contentStart)
+        // GFM task prefix (plan 030): bullet items only — `[ ] `/`[x] `/`[X] `
+        // after the marker becomes the checked flag, the prefix leaves the text
+        var itemChecked bool? = None
+        if !orderedHere {
+            if startsWithStr(firstText, "[ ] ") {
+                firstText = firstText.slice(4)
+                itemChecked = Some(false)
+            } else {
+                if startsWithStr(firstText, "[x] ") {
+                    firstText = firstText.slice(4)
+                    itemChecked = Some(true)
+                } else {
+                    if startsWithStr(firstText, "[X] ") {
+                        firstText = firstText.slice(4)
+                        itemChecked = Some(true)
+                    }
+                }
+            }
+        }
         itemLines.push(firstText)
         i += 1
         while i < lines.length.to(int) {
@@ -1493,7 +1512,7 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, mut nodes L
             break
         }
         let itemNodes = parseBlocks(itemLines, isFinal)
-        items.push(itemNode(itemNodes))
+        items.push(itemNode(itemNodes, itemChecked))
     }
     if ordered {
         if startN != None {
@@ -2603,7 +2622,13 @@ fn convertBlock(wnode WNode, id str) BlockNode {
         return blockFull(id, BlockType.ListBlock, attrs3, convertChildren(wnode.items ?? noNodes(), id), [], rng(0, 0))
     }
     if t == "list_item" {
-        return blockFull(id, BlockType.ListItem, [], convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0))
+        var attrsLI List<Attr> = []
+        // `checked` rides only when the item is a task (None = plain bullet)
+        let ck = wnode.checked
+        if ck != None {
+            attrsLI = attrSet(attrsLI, "checked", Value.Bool(ck ?? false))
+        }
+        return blockFull(id, BlockType.ListItem, attrsLI, convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0))
     }
     if t == "table" {
         var kids List<BlockNode> = []

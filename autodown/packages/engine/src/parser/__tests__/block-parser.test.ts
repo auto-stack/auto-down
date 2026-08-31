@@ -287,6 +287,36 @@ describe('%{ }% math block + mermaid fence (plan 030 T3)', () => {
   })
 })
 
+describe('task list items (plan 030 T4)', () => {
+  it('parses - [ ] / - [x] prefixes into ListItem checked attrs', () => {
+    const root = parse_blocks('- [ ] todo a\n- [x] done b\n- plain c\n', true)
+    const list = root.children[0]
+    expect(list.kind).toBe(BlockType.ListBlock)
+    expect(list.children.map((li) => attrGet(li.attrs, 'checked')?._tag)).toEqual([
+      'Bool',
+      'Bool',
+      undefined,
+    ])
+    expect(attrGetBool(list.children[0].attrs, 'checked', true)).toBe(false)
+    expect(attrGetBool(list.children[1].attrs, 'checked', false)).toBe(true)
+    expect(spansText(list.children[0].children[0].inlines)).toBe('todo a')
+    expect(spansText(list.children[1].children[0].inlines)).toBe('done b')
+    expect(spansText(list.children[2].children[0].inlines)).toBe('plain c')
+  })
+
+  it('recognizes uppercase [X] as checked', () => {
+    const root = parse_blocks('- [X] big\n', true)
+    expect(attrGetBool(root.children[0].children[0].attrs, 'checked', false)).toBe(true)
+  })
+
+  it('ordered lists do NOT recognize task prefixes (GFM alignment)', () => {
+    const root = parse_blocks('1. [ ] nope\n', true)
+    const li = root.children[0].children[0]
+    expect(attrGet(li.attrs, 'checked')).toBeNull()
+    expect(spansText(li.children[0].inlines)).toBe('[ ] nope')
+  })
+})
+
 describe('nested emphasis delimiters (plan 028 P2T1)', () => {
   const spansOf = (md: string) => parse_blocks(md, true).children[0].inlines
 

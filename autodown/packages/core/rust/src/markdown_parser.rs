@@ -68,8 +68,8 @@ fn listNode(ordered: bool, startN: Option<i64>, items: Vec<WNode>) -> WNode {
     return WNode { r#type: "list".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: Some(ordered), start: startN, items: Some(items), cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
 }
 
-fn itemNode(children: Vec<WNode>) -> WNode {
-    return WNode { r#type: "list_item".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
+fn itemNode(children: Vec<WNode>, checkedFlag: Option<bool>) -> WNode {
+    return WNode { r#type: "list_item".to_string(), content: None, level: None, language: None, code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: checkedFlag };
 }
 
 fn strongNode(children: Vec<WNode>) -> WNode {
@@ -1588,6 +1588,24 @@ fn parseList(mut lines: Vec<String>, start: i64, ordered: bool, firstNum: i64, m
 
         let mut itemLines: Vec<String> = vec![];
         let mut firstText = line.chars().skip((contentStart) as usize).collect::<String>();
+        
+
+        let mut itemChecked: Option<bool> = None;
+        if !(orderedHere) {
+            if startsWithStr(firstText.as_str(), "[ ] ") {
+                firstText = firstText.chars().skip((4) as usize).collect::<String>();
+                itemChecked = Some(false);
+            } else {
+                if startsWithStr(firstText.as_str(), "[x] ") {
+                    firstText = firstText.chars().skip((4) as usize).collect::<String>();
+                    itemChecked = Some(true);
+                } else {
+                    if startsWithStr(firstText.as_str(), "[X] ") {
+                        firstText = firstText.chars().skip((4) as usize).collect::<String>();
+                        itemChecked = Some(true);
+                    }                }
+            }
+        }
         itemLines.push(firstText.to_string());
         i += 1;
         while i < (lines.len() as i64) {
@@ -1637,7 +1655,7 @@ fn parseList(mut lines: Vec<String>, start: i64, ordered: bool, firstNum: i64, m
             break;
         }
         let itemNodes = parseBlocks(itemLines.clone(), isFinal);
-        items.push(itemNode(itemNodes.clone()));
+        items.push(itemNode(itemNodes.clone(), itemChecked.clone()));
     }
     if ordered {
         if startN != None {
@@ -2806,7 +2824,13 @@ fn convertBlock(wnode: WNode, id: &str) -> BlockNode {
         }        return blockFull(id, BlockType::ListBlock.clone(), attrs3.clone(), convertChildren(wnode.items.unwrap_or(noNodes()), id), vec![], rng(0, 0));
     }
     if t == "list_item" {
-        return blockFull(id, BlockType::ListItem.clone(), vec![], convertChildren(wnode.children.unwrap_or(noNodes()), id), vec![], rng(0, 0));
+        let mut attrsLI: Vec<Attr> = vec![];
+        
+
+        let ck: Option<bool> = wnode.checked.clone();
+        if ck != None {
+            attrsLI = attrSet(attrsLI.clone(), "checked", Value::Bool(ck.unwrap_or(false)));
+        }        return blockFull(id, BlockType::ListItem.clone(), attrsLI.clone(), convertChildren(wnode.children.unwrap_or(noNodes()), id), vec![], rng(0, 0));
     }
     if t == "table" {
         let mut kids: Vec<BlockNode> = vec![];

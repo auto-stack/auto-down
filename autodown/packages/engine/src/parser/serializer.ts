@@ -324,13 +324,28 @@ export function listMd(node: BlockNode, withId: boolean): string {
             out = out + "\n";
         }
         let marker: string = "- ";
+        let padLen: number = 2;
         if (ordered) {
             const n: number = start + i;
             marker = String(n) + ". ";
+            padLen = Number(marker.length);
+        } else {
+            
+
+
+
+            const item = node.children[i];
+            if (attrGet(item.attrs, "checked") != null) {
+                if (attrGetBool(item.attrs, "checked", false)) {
+                    marker = "- [x] ";
+                } else {
+                    marker = "- [ ] ";
+                }
+            }
         }
         const body = joinChildren(node.children[i].children, withId);
         const lines = body.split("\n");
-        const pad = repeatStr(" ", Number(marker.length));
+        const pad = repeatStr(" ", padLen);
         for (let j = 0; j < Number(lines.length); j++) {
             if (j > 0) {
                 out = out + "\n";

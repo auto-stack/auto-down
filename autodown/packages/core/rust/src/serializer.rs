@@ -269,13 +269,28 @@ pub fn listMd(node: BlockNode, withId: bool) -> String {
             out = format!("{}{}", out, "\n");
         }
         let mut marker: String = "- ".to_string();
+        let mut padLen: i64 = 2;
         if ordered {
             let n: i64 = start + i;
             marker = format!("{}{}", format!("{:?}", n), ". ");
-        }
+            padLen = (marker.chars().count() as i64);
+        } else {
+            
+
+
+
+            let item = node.children[(i) as usize].clone();
+            if attrGet(item.attrs.clone(), "checked") != None {
+                if attrGetBool(item.attrs.clone(), "checked", false) {
+                    marker = "- [x] ".to_string();
+                } else {
+                    marker = "- [ ] ".to_string();
+                }
+            }        }
+
         let body = joinChildren(node.children[(i) as usize].clone().children.clone(), withId);
         let lines = body.split("\n").map(|s| s.to_string()).collect::<Vec<String>>();
-        let pad = repeatStr(" ", (marker.chars().count() as i64));
+        let pad = repeatStr(" ", padLen);
         for j in 0..(lines.len() as i64) {
             if j > 0 {
                 out = format!("{}{}", out, "\n");

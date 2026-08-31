@@ -91,8 +91,8 @@ export function listNode(ordered: boolean, startN: number | null, items: WNode[]
     return WNode("list", null, null, null, null, null, null, ordered, startN, items, null, null, null, null, null, null, null, null, null, null, null);
 }
 
-export function itemNode(children: WNode[]): WNode {
-    return WNode("list_item", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+export function itemNode(children: WNode[], checkedFlag: boolean | null): WNode {
+    return WNode("list_item", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, checkedFlag);
 }
 
 export function strongNode(children: WNode[]): WNode {
@@ -1664,6 +1664,26 @@ export function parseList(lines: string[], start: number, ordered: boolean, firs
 
         let itemLines: string[] = [];
         let firstText = line.slice(contentStart);
+        
+
+
+        let itemChecked: boolean | null = null;
+        if (!orderedHere) {
+            if (startsWithStr(firstText, "[ ] ")) {
+                firstText = firstText.slice(4);
+                itemChecked = false;
+            } else {
+                if (startsWithStr(firstText, "[x] ")) {
+                    firstText = firstText.slice(4);
+                    itemChecked = true;
+                } else {
+                    if (startsWithStr(firstText, "[X] ")) {
+                        firstText = firstText.slice(4);
+                        itemChecked = true;
+                    }
+                }
+            }
+        }
         itemLines.push(firstText);
         i += 1;
         while (i < Number(lines.length)) {
@@ -1715,7 +1735,7 @@ export function parseList(lines: string[], start: number, ordered: boolean, firs
             break;
         }
         const itemNodes = parseBlocks(itemLines, isFinal);
-        items.push(itemNode(itemNodes));
+        items.push(itemNode(itemNodes, itemChecked));
     }
     if (ordered) {
         if (startN != null) {
@@ -2990,7 +3010,14 @@ export function convertBlock(wnode: WNode, id: string): BlockNode {
         return blockFull(id, BlockType.ListBlock, attrs3, convertChildren(wnode.items ?? noNodes(), id), [], rng(0, 0));
     }
     if (t == "list_item") {
-        return blockFull(id, BlockType.ListItem, [], convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0));
+        let attrsLI: Attr[] = [];
+        
+
+        const ck: boolean | null = wnode.checked;
+        if (ck != null) {
+            attrsLI = attrSet(attrsLI, "checked", Value.Bool(ck ?? false));
+        }
+        return blockFull(id, BlockType.ListItem, attrsLI, convertChildren(wnode.children ?? noNodes(), id), [], rng(0, 0));
     }
     if (t == "table") {
         let kids: BlockNode[] = [];

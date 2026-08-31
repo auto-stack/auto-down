@@ -312,6 +312,34 @@ block block-0 Details
       span 内层 []
   block block-0-1 Paragraph
     span 外层尾段 []
+=== task-list final=false ===
+block block-0 ListBlock
+  attr ordered Bool(false)
+  block block-0-0 ListItem
+    attr checked Bool(false)
+    block block-0-0-0 Paragraph
+      span 待办甲 []
+  block block-0-1 ListItem
+    attr checked Bool(true)
+    block block-0-1-0 Paragraph
+      span 已办乙 []
+  block block-0-2 ListItem
+    block block-0-2-0 Paragraph
+      span 普通丙 []
+=== task-list final=true ===
+block block-0 ListBlock
+  attr ordered Bool(false)
+  block block-0-0 ListItem
+    attr checked Bool(false)
+    block block-0-0-0 Paragraph
+      span 待办甲 []
+  block block-0-1 ListItem
+    attr checked Bool(true)
+    block block-0-1-0 Paragraph
+      span 已办乙 []
+  block block-0-2 ListItem
+    block block-0-2-0 Paragraph
+      span 普通丙 []
 === streaming-heading final=false ===
 block block-0 Heading
   attr level Int(2)

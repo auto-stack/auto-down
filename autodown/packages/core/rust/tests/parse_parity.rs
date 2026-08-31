@@ -51,6 +51,10 @@ const FIXTURES: &[(&str, &str)] = &[
         "comp-nested",
         "$details(summary: \"s\") {\n$callout(type: \"warn\") {\n内层\n}\n外层尾段\n}\n",
     ),
+    (
+        "task-list",
+        "- [ ] 待办甲\n- [x] 已办乙\n- 普通丙\n",
+    ),
     ("streaming-heading", "## 编辑中的标题\n\n- 列表项\n- "),
     ("streaming-link", "半截链接 [文本](https://example.\n"),
     ("streaming-pretable", "| a | b |\n| --- |\n"),

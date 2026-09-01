@@ -42,6 +42,8 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
   的三重依赖）、`handleSave`；props/emits：
   `modelValue`/`content`/`canEdit`/`placeholder`/`@update`/`@save`/
   `@open-wiki-link`/`loadBlock`/`assetUpload`/`runQuery`/`extraSlashItems`。
+  其中 `runQuery`/`loadBlock` 自 plan 038 起实际声明并驱动装载（§10
+  数据通道平台面）；`assetUpload` 仍在册未接（粘贴图片链路，另行立项）。
 - `StreamingRenderer` expose：`containerRef`（demo 滚动同步消费）。
 - `getBlockMap()` 返回 `BlockInfo { id, index, pos, el, top, height }`。
 
@@ -206,6 +208,66 @@ idiom，NodeViewWrapper 同型第二例）。
 - **载荷**：label 点击 stopPropagation + open-wiki-link(title, blockId)
   ——应用回调经 `render/wikilink-opener.ts` seam 注册（EngineEditor
   open-wiki-link 事件面不变；静态渲染无注册=惰性）。
+
+## 10. 数据通道平台面（plan 038 定型——VM 后端实现基准）
+
+Query/Embed 块的异步数据装载通道（DEBTS 026① 销号面）。
+
+### 10.1 签名与信封（`src/editor/engine/data-loaders.ts`，./editor 出口）
+
+- `RunQueryFn = (q: string) => Promise<QueryResultEnvelope>`；
+  `QueryResultEnvelope = { results: QueryResultItem[] }`（jade
+  `/api/query` 的 QueryResponse 同构）；
+  `QueryResultItem { marker?, priority?, content, title?, page_path? }`
+  （仅 `content` 必填；widget 侧 normalize 预计算
+  `source = title || page_path`、`priority_label = [#N]`）。
+- `LoadBlockFn = (id: string) => Promise<EmbeddedBlock | null>`；
+  `EmbeddedBlock { title?, content }`（jade `/api/blocks/{id}` 的 block
+  DTO 同构；null = 未找到）。id 为**裸锚 id**（无 `^` 前缀）。
+
+### 10.2 通道与所有权（声明才拥有）
+
+- EngineEditor 声明 `runQuery?`/`loadBlock?` props → immediate watch →
+  模块级槽 `setDataLoaders/getDataLoaders`（nodeViewProps 深处无组件树
+  上下文，宿主窗口栈同型解；消费面经 widget ext 桥读取）。
+- **声明才拥有**：仅当至少一个 prop 非 undefined 时编辑器写槽；双
+  undefined 的编辑器不清洗既有注册（demo 入口 mockLoaders 注册在先的
+  场景，T7 e2e 抓获后冻结的语义）。卸载仅在"当前槽仍是自己的函数"时
+  清空（wikilink-opener 同款 identity guard）。
+- 未配置 loader 时 widget 落位占位态文案（"No query runner
+  configured" / "No block loader configured"），静态渲染不报错。
+
+### 10.3 装载时序（032 裁定 A 延伸）
+
+- **loader 只在 final 触发**：流式进行中（final=false）query/embed 为
+  占位骨架（loading 文案），零装载调用；块闭合/final 渲染时 `.Init`
+  装载一次（流式管线中未闭合 `$query(`/`$embed(` 本就保持段落字面，
+  三态机 028/032 在册）。query attr 外部变更经 watch 重载（语义保留）。
+- **embed 锚定装载**：仅 `src` 解析出块锚的 embed 调 loader（页面级
+  引用渲染 label 面，零装载——jade 装载通道按块 id 键控）。
+
+### 10.4 embed src 三形裁定（待澄清③ 落档）
+
+`attrs.src` 为正典（roundtrip 原样守恒，金标零变化）；title/blockId
+由 ext `parseEmbedSrc` 派生，仅显示/装载层消费：
+
+| src 形 | title | blockId（裸） | display_label |
+|---|---|---|---|
+| `"title"`（页面级引用） | `title` | null | `title` |
+| `"title#^id"`（页内块锚） | `title` | `id` | `title#id` |
+| `"^id"`（当前页块锚） | `''` | `id` | `id` |
+
+siyuan 时代旧形状（`attrs.raw`/`title`/`blockId` 读取面）随 node view
+退役；widget 根不落 `data-block-id`（派生锚 id 不进编辑器
+`[data-block-id]` 块图命名空间）。
+
+### 10.5 VM host-bridge 映射注记
+
+VM 端（iced/auto 场景）实现同签名通道（runQuery/loadBlock 的
+QueryResponse/BlockDTO 形状即 10.1），经 host-bridge 注入装载位——
+jade `vm_server` 走 `/api/query`/`/api/blocks` 同模式的先例（plan 022
+Phase 3：axum shell 与 vm_dispatch 共享 impl core）。VM 侧实现本身不在
+本计划（消费面就绪即插）。
 
 ## 核验责任
 

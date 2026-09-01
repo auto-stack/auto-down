@@ -174,6 +174,45 @@ export function listItemsOfPanel(ctx: PanelRenderCtx): unknown[] {
   }))
 }
 
+// -- table family (plan 037 T3) ----------------------------------------------------
+//
+// The table panel adapter: WNode header/rows flattened to the widget's flat
+// cell data ({id, cls, children_slot}) — the retired tablePanel's reads,
+// cell for cell (dir/align class/embedded body). The edit adapter's cell
+// shape is {id, text, cls} over the model — same flat boundary, the fields
+// each face reads (view never reads text; edit owns it). The children hole
+// carries the captured panel decorator (the 035 T6 idiom — the outer
+// decorateWikilinks walker cannot descend into component props).
+
+/** The retired tablePanel's alignClass, verbatim. */
+function tableAlignClass(cell: any): string {
+  if (cell?.align === 'center') return 'text-center'
+  if (cell?.align === 'right') return 'text-right'
+  return 'text-left'
+}
+
+function tableCellsOfPanel(ctx: PanelRenderCtx, cells: unknown[]): unknown[] {
+  const final = ctx.final ?? true
+  const dec = currentPanelDecorator()
+  return (cells ?? []).map((cell: any, i: number) => ({
+    id: `cell-${i}`,
+    cls: tableAlignClass(cell),
+    children_slot: decorateBody(dec, () => ctx.renderEmbedded(cell.children ?? [], final, ctx.budget)),
+  }))
+}
+
+/** plan 019: the WNode carries the table header as a 0-or-1 array. */
+export function tableHeaderCellsOfPanel(ctx: PanelRenderCtx): unknown[] {
+  return tableCellsOfPanel(ctx, (ctx.node as WNode).header?.[0]?.cells ?? [])
+}
+
+export function tableRowsOfPanel(ctx: PanelRenderCtx): unknown[] {
+  return ((ctx.node as WNode).rows ?? []).map((row: any, i: number) => ({
+    id: `tr-${i}`,
+    cells: tableCellsOfPanel(ctx, row.cells),
+  }))
+}
+
 /** Wrap a body closure so its vnodes get the construction-time decorator
  *  applied before they mount (shared by the render-side panel adapters and
  *  EngineEditor's editor-side Details registration). renderEmbedded returns

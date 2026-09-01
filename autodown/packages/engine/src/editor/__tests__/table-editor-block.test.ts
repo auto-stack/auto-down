@@ -5,8 +5,9 @@
 //   text commits follow the BlockHost protocol (DOM owns text while
 //   focused, blur → diffToOp writeback). Guards: never delete the last
 //   remaining row / column.
-// - TableEditorBlock.vue (SSR): table-node DOM contract (thead/th + tbody/td)
-//   + toolbar; readonly renders the streaming banner and disables the face.
+// - The table EDIT FACE's chrome (toolbar + cells + readonly banner) lives
+//   on TableBlockWidget's edit mode since plan 037; this file keeps the
+//   controller kernel + the assembly-level readonly gate (EngineEditor SSR).
 
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
@@ -16,7 +17,6 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
 import { TableEditorController } from '../engine/table-editor-controller'
-import TableEditorBlock from '../components/TableEditorBlock.vue'
 import EngineEditor from '../components/EngineEditor.vue'
 
 function tableDoc(): { engine: EditorEngine; tableId: string } {
@@ -187,54 +187,8 @@ describe('stream→edit readonly gate v1 (P2T2)', () => {
   })
 })
 
-describe('TableEditorBlock.vue SSR contract (generated product, P1T8)', () => {
-  // Since P1T8 the component at components/TableEditorBlock.vue is the
-  // .at-generated widget: flat chrome props (controller + pre-flattened
-  // cell objects), built from the BlockNode by the EngineEditor adapter.
-  // Command/cell-commit semantics are pinned by the controller tests above.
-  async function ssr(readonly: boolean): Promise<string> {
-    const app = createSSRApp({
-      render: () =>
-        h(TableEditorBlock as any, {
-          controller: { addRow() {}, deleteRow() {}, addColumn() {}, deleteColumn() {} },
-          blockId: 't-gen',
-          readonly,
-          header_cells: [
-            { id: 'h0', text: 'A', cls: 'text-left' },
-            { id: 'h1', text: 'B', cls: 'text-left' },
-          ],
-          body_rows: [
-            { id: 'r0', cells: [
-              { id: 'r0c0', text: '1', cls: 'text-left' },
-              { id: 'r0c1', text: '2', cls: 'text-left' },
-            ] },
-          ],
-        }),
-    })
-    return renderToString(app)
-  }
-
-  it('renders the table-node DOM + command toolbar', async () => {
-    const html = (await ssr(false)).replace(/<!--.*?-->/g, '')
-    expect(html).toContain('autodown-table-editor')
-    expect(html).toContain('table-node')
-    expect(html).toContain('<thead')
-    expect(html).toContain('<th')
-    expect(html).toContain('<td')
-    expect(html).toContain('data-te-action="add-row-above"')
-    expect(html).toContain('data-te-action="add-row"')
-    expect(html).toContain('data-te-action="delete-row"')
-    expect(html).toContain('data-te-action="add-col-before"')
-    expect(html).toContain('data-te-action="add-col"')
-    expect(html).toContain('data-te-action="delete-col"')
-    expect(html).toContain('data-te-action="delete-table"')
-    expect(html).not.toContain('autodown-stream-banner')
-  })
-
-  it('readonly (streaming) renders the banner and disables the face', async () => {
-    const html = (await ssr(true)).replace(/<!--.*?-->/g, '')
-    expect(html).toContain('autodown-stream-banner')
-    expect(html).toContain('流式生成中')
-    expect(html).toContain('disabled')
-  })
-})
+// TableEditorBlock.vue retired (plan 037 T5): its SSR contract (the
+// table-node DOM + toolbar + readonly banner) is absorbed byte-identically
+// by TableBlockWidget's edit face — pinned in table-block-widget.test.ts
+// (the toolbar verbs / cell blur / readonly gate stay headless here: the
+// controller kernel is untouched by the family switch).

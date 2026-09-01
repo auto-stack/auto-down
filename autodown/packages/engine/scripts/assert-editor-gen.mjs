@@ -55,11 +55,11 @@ const generated = scanDir(editorSrc)
 const EXPECTED = [
   'menus/SlashMenu.vue',
   'menus/BubbleMenu.vue',
-  'menus/TableMenu.vue',
   'menus/CodeBlockMenu.vue',
   'components/CodeLanguageIcon.vue',
-  // plan 023 P1T8 — the table's typed editing face.
-  'components/TableEditorBlock.vue',
+  // plan 037 — the table family's three-mode widget (replaced
+  // TableEditorBlock + the retired StreamingTable/table_menu faces).
+  'components/TableBlockWidget.vue',
   // plan 033 T2-T4 — the pilot families' three-mode widgets (view/stream/
   // edit one chrome; replaced CodeEditorBlock + Math/MermaidEditBlock +
   // the block Math/Mermaid node views — deployed set 16 → 14).

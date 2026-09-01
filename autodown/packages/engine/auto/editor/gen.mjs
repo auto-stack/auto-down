@@ -1,11 +1,12 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (20 widget sources: 11 plan-013-era views/menus
-//                            + table_editor_block + the three family
-//                            widgets of plan 033 + rich_text_host of plan
-//                            034 — see README.md; the MathInline node view
-//                            retired in plan 036 T7)
+//   auto/editor/*.at        (19 widget sources: 10 plan-013-era views/menus
+//                            + the three family widgets of plan 033 +
+//                            rich_text_host of plan 034 + table_block_widget
+//                            of plan 037 — see README.md; MathInline node
+//                            view retired in 036 T7, TableEditorBlock +
+//                            the dormant TableMenu in 037 T5)
 //   auto/editor/ext/*.ts    (11 hand-written TS extension bridges)
 //
 // Usage:  pnpm gen:editor        (from packages/engine)
@@ -99,9 +100,12 @@ const widgets = readdirSync(here)
 // math/mermaid node views (plan 013 era) — one widget per pilot kind,
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
-// hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 20) {
-  console.error(`expected 20 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// hand-written AttrHost.vue (plan 030 T7); table_block_widget.at (plan 037
+// T2) replaced table_editor_block.at as the table family's three-mode
+// widget — the T5 retirement also dropped the dormant table_menu.at
+// (026 #1 absorption made it dead) and the two ext bridges: 21 -> 19.
+if (widgets.length !== 19) {
+  console.error(`expected 19 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -175,12 +179,13 @@ console.log(
 const EXT_DEPLOY = [
   'slash_menu_ext.ts',
   'code_language_icon_ext.ts',
-  'table_menu_ext.ts',
   'code_block_menu_ext.ts',
   'bubble_menu_ext.ts',
   'node_view_ext.ts',
-  // plan 023 P1T8 — the table editing face's DOM helpers.
-  'table_editor_block_ext.ts',
+  // plan 037 — the table family widget's bridge (commitTableCell from the
+  // retired table_editor_block_ext + the three-mode dyn-root chrome reads
+  // + the streaming_table.at normalization absorbed at T3/T4).
+  'table_block_widget_ext.ts',
   // plan 033 T2-T4 — the pilot families' widget bridges (view-highlight
   // parity + absorbed edit helpers + node-view render bridges with the
   // artifact final-put; replaced code_editor_block_ext / math_edit_ext /
@@ -217,14 +222,15 @@ const DEPLOY_COMPONENTS = {
   // decorator (src/editor/wikilink.ts) — WikiLinkNodeView deploys as a
   // generated source only.
   'BubbleMenu.vue': 'menus/BubbleMenu.vue',
-  'TableMenu.vue': 'menus/TableMenu.vue',
   'CodeBlockMenu.vue': 'menus/CodeBlockMenu.vue',
   'CodeLanguageIcon.vue': 'components/CodeLanguageIcon.vue',
   'WikiLinkNodeView.vue': 'node-views/WikiLinkNodeView.vue',
   'QueryBlockNodeView.vue': 'node-views/QueryBlockNodeView.vue',
   'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',
-  // plan 023 P1T8 — the table's typed editing face.
-  'TableEditorBlock.vue': 'components/TableEditorBlock.vue',
+  // plan 037 — the table family's three-mode widget (replaced
+  // TableEditorBlock: view absorbs tablePanel, stream absorbs the
+  // StreamingTable SFC, edit absorbs the TableEditorBlock toolbar).
+  'TableBlockWidget.vue': 'components/TableBlockWidget.vue',
   // plan 033 T2-T4 — the pilot families' three-mode widgets (view/stream/
   // edit one chrome; replaced CodeEditorBlock + Math/MermaidEditBlock +
   // the block Math/Mermaid node views).

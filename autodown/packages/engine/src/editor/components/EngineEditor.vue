@@ -4,9 +4,10 @@
       <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
         <BubbleMenu :editor="adapter" />
-        <!-- CodeBlockMenu anchors root-relative, mounts bare. TableMenu went
-             back to dormant: its verbs were absorbed into TableEditorBlock's
-             toolbar (plan 026 adjudication #1 — single table entry). -->
+        <!-- CodeBlockMenu anchors root-relative, mounts bare. TableMenu was
+             retired (plan 037 T5): its verbs live in the table family
+             widget's toolbar since the 026 #1 absorption — single table
+             entry, no floating menu face at all. -->
         <CodeBlockMenu :editor="adapter" />
         <component
           :is="block.view"
@@ -41,7 +42,7 @@ import { registerPanel } from '../../render/panel-registry'
 import { blockOfWNode } from '../../render/block-wnode'
 import { TableEditorController } from '../engine/table-editor-controller'
 import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/node-view-host'
-import TableEditorBlock from './TableEditorBlock.vue'
+import TableBlockWidget from './TableBlockWidget.vue'
 import CodeBlockWidget from './CodeBlockWidget.vue'
 import MathBlockWidget from './MathBlockWidget.vue'
 import MermaidBlockWidget from './MermaidBlockWidget.vue'
@@ -58,10 +59,12 @@ registerBlockWidget('Fence', CodeBlockWidget)
 registerBlockWidget('MathBlock', MathBlockWidget)
 registerBlockWidget('Mermaid', MermaidBlockWidget)
 
-// TableEditorBlock is the generated widget (.at source, P1T8): flat chrome
-// data — the adapter flattens the table's BlockNode into plain cell objects
-// ({id, text, cls}) on every render; commands/cell-commit semantics stay on
-// the TableEditorController.
+// Table's edit face is the family widget's edit mode (plan 037 T3 — the
+// TableEditorBlock boundary unchanged): flat chrome data — the adapter
+// flattens the table's BlockNode into plain cell objects ({id, text, cls})
+// on every render; commands/cell-commit semantics stay on the
+// TableEditorController. columns/rows/final are filler for the generated
+// required-prop checks (the 033 ctx:null idiom) — the edit face reads none.
 function tableEditSlot(node: BlockNode, ctx: any) {
   const cellData = (c: BlockNode) => ({
     id: c.id,
@@ -69,12 +72,16 @@ function tableEditSlot(node: BlockNode, ctx: any) {
     cls: alignClass(attrGetStr(c.attrs, 'align', 'left')),
   })
   const rows = node.children
-  return h(TableEditorBlock, {
+  return h(TableBlockWidget, {
+    mode: 'edit',
     controller: new TableEditorController(ctx.engine, ctx.blockId),
     blockId: ctx.blockId,
     readonly: ctx.readonly,
+    final: true,
     header_cells: (rows[0]?.children ?? []).map(cellData),
     body_rows: rows.slice(1).map((row) => ({ id: row.id, cells: row.children.map(cellData) })),
+    columns: [],
+    rows: [],
   })
 }
 

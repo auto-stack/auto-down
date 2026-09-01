@@ -1,0 +1,400 @@
+// table_block_widget.at — TableBlockWidget (plan 037 T2): the table
+// family's three-mode widget — ONE chrome source for view / stream / edit
+// (the 033 family mechanism). Absorbs, byte-identically:
+// - the StreamingTable module's terminal face (view): tablePanel's
+//   table.table-node contract — thead/th(+resize handle) over tbody/td,
+//   dir=auto + align classes, cells mounted through the BlockChildren hole
+//   (children_slot closures the panel adapter builds over renderEmbedded,
+//   the 035 list idiom);
+// - TableEditorBlock (edit): the seven-verb toolbar over contenteditable
+//   cells with blur commit (plan 023 P1T8 + the 026 #1 absorption — single
+//   table entry), the readonly stream banner included;
+// - the StreamingTable SFC's progressive face (stream, T3): the
+//   .streaming-table chrome with header-first columns, streaming rows, the
+//   loading row and the final flip.
+//
+// Props are the TableEditorBlock flat boundary (D1): the adapters flatten
+// per mode — EngineEditor's edit slot builds {id, text, cls} cells + the
+// controller; the panel adapter builds {id, text, cls, children_slot}
+// cells; the streaming component adapter passes the normalized
+// {columns, rows} shape. The controller (TableEditorController) is passed
+// in whole — the kernel is untouched.
+//
+// Codegen-forced idioms (probe-verified, the 033/035 list):
+// - the three faces have three different roots, so the root is a DYN
+//   element (tag from the ext bridge: table for view, div otherwise — the
+//   view root IS the table; a wrapper div would break the byte contract).
+//   The per-face class chain / attr presence fold into single ext-computed
+//   values (undefined drops the attr; two :class bindings on one element
+//   collide);
+// - edit-face cell text keeps `text` (the <span>{{}}</span> wrapper —
+//   exactly what TableEditorBlock emitted; byte-stable absorption);
+// - view-face cells mount their embedded markdown-renderer through the
+//   BlockChildren hole (render-thin fragment, no wrapper of its own);
+// - `type:` in PAREN form (keyword token); VM props typed Array<str>
+//   (emits `any`).
+//
+// T3 adds the stream branch (columns/rows/normalized computeds) — the
+// columns/rows props are declared here from the start (D1 signature).
+
+widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonly: bool, final: bool, header_cells: Array<str>, body_rows: Array<str>, columns: Array<str>, rows: Array<str>) {
+    use {
+        fn: commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText from "ext/table_block_widget_ext.ts"
+        component: BlockChildren from "ext/container_ext.ts"
+    }
+
+    msg Msg { AddRowAbove, AddRow, DeleteRow, AddColumnBefore, AddColumn, DeleteColumn, DeleteTable, CellBlur }
+
+    computed {
+        is_edit => .mode == "edit"
+        is_view => .mode == "view"
+        root_tag => rootTag(.mode)
+        root_class => rootClass(.mode, .final, .readonly)
+        root_aria_busy => rootAriaBusy(.mode)
+        root_block_id => rootBlockId(.mode, .blockId)
+        root_node_type => rootNodeType(.mode)
+        // stream face: the StreamingTable normalization absorbed into the
+        // ext bridge (待澄清 #1 ruling — computed has no `??` / [] literal);
+        // {col, html} shapes keep the template loops property-read-only
+        // (bare-text children via v-html, the SFC byte contract).
+        stream_header => streamHeader(.columns)
+        stream_body => streamBody(.columns, .rows)
+        loading_colspan => streamColspan(.columns)
+        loading_html => htmlText("Loading")
+    }
+
+    view {
+        dyn (.root_tag) {
+            class: .root_class,
+            aria-busy: .root_aria_busy,
+            data-block-id: .root_block_id,
+            data-node-type: .root_node_type,
+
+            if .is_edit {
+                if .readonly {
+                    div {
+                        class: "autodown-stream-banner",
+                        text "流式生成中"
+                    }
+                }
+                div {
+                    class: "te-toolbar",
+                    role: "toolbar",
+                    aria-label: "表格工具栏",
+                    button (type: "button") {
+                        class: "te-btn",
+                        data-te-action: "add-row-above",
+                        title: "在上方插入一行",
+                        disabled: .readonly,
+                        onclick: .AddRowAbove,
+                        text "行↑"
+                    }
+                    button (type: "button") {
+                        class: "te-btn",
+                        data-te-action: "add-row",
+                        title: "在末尾后插入一行",
+                        disabled: .readonly,
+                        onclick: .AddRow,
+                        text "行↓"
+                    }
+                    button (type: "button") {
+                        class: "te-btn",
+                        data-te-action: "delete-row",
+                        title: "删除最后一行",
+                        disabled: .readonly,
+                        onclick: .DeleteRow,
+                        text "删行"
+                    }
+                    button (type: "button") {
+                        class: "te-btn",
+                        data-te-action: "add-col-before",
+                        title: "在左侧插入一列",
+                        disabled: .readonly,
+                        onclick: .AddColumnBefore,
+                        text "列←"
+                    }
+                    button (type: "button") {
+                        class: "te-btn",
+                        data-te-action: "add-col",
+                        title: "追加一列",
+                        disabled: .readonly,
+                        onclick: .AddColumn,
+                        text "列→"
+                    }
+                    button (type: "button") {
+                        class: "te-btn",
+                        data-te-action: "delete-col",
+                        title: "删除最后一列",
+                        disabled: .readonly,
+                        onclick: .DeleteColumn,
+                        text "删列"
+                    }
+                    button (type: "button") {
+                        class: "te-btn te-btn-danger",
+                        data-te-action: "delete-table",
+                        title: "删除整个表格",
+                        disabled: .readonly,
+                        onclick: .DeleteTable,
+                        text "删表"
+                    }
+                }
+                table {
+                    class: "table-node",
+                    aria-busy: "false",
+                    thead {
+                        tr {
+                            for h_i, cell in .header_cells {
+                                th {
+                                    key: cell.id,
+                                    dir: "auto",
+                                    class: cell.cls,
+                                    data-cell-id: cell.id,
+                                    contenteditable: .readonly == false,
+                                    spellcheck: "false",
+                                    onblur: .CellBlur($event),
+                                    text cell.text
+                                }
+                            }
+                        }
+                    }
+                    tbody {
+                        for r_i, row in .body_rows {
+                            tr {
+                                key: row.id,
+                                for c_i, cell in row.cells {
+                                    td {
+                                        key: cell.id,
+                                        dir: "auto",
+                                        class: cell.cls,
+                                        data-cell-id: cell.id,
+                                        contenteditable: .readonly == false,
+                                        spellcheck: "false",
+                                        onblur: .CellBlur($event),
+                                        text cell.text
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if .is_view {
+                thead {
+                    tr {
+                        for hv_i, cell in .header_cells {
+                            th {
+                                key: cell.id,
+                                dir: "auto",
+                                class: cell.cls,
+                                BlockChildren {
+                                    children_slot: cell.children_slot
+                                },
+                                button (type: "button") {
+                                    class: "table-node__resize-handle"
+                                }
+                            }
+                        }
+                    }
+                }
+                tbody {
+                    for rv_i, row in .body_rows {
+                        tr {
+                            key: row.id,
+                            for cv_i, cell in row.cells {
+                                td {
+                                    key: cell.id,
+                                    dir: "auto",
+                                    class: cell.cls,
+                                    BlockChildren {
+                                        children_slot: cell.children_slot
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if .mode == "stream" {
+                table {
+                    thead {
+                        tr {
+                            for hs_i, col in .stream_header {
+                                th {
+                                    key: col.col,
+                                    html: col.html
+                                }
+                            }
+                        }
+                    }
+                    tbody {
+                        for rs_i, row in .stream_body {
+                            tr {
+                                key: rs_i,
+                                for cs_i, cell in row {
+                                    td {
+                                        key: cell.col,
+                                        html: cell.html
+                                    }
+                                }
+                            }
+                        }
+                        if !.final {
+                            tr {
+                                class: "loading-row",
+                                td {
+                                    colspan: .loading_colspan,
+                                    span {
+                                        class: "loading-dots",
+                                        html: .loading_html
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .AddRowAbove -> {
+            let c = .controller
+            c.addRowAbove()
+        }
+
+        .AddRow -> {
+            let c = .controller
+            c.addRow()
+        }
+
+        .DeleteRow -> {
+            let c = .controller
+            c.deleteRow()
+        }
+
+        .AddColumn -> {
+            let c = .controller
+            c.addColumn()
+        }
+
+        .DeleteColumn -> {
+            let c = .controller
+            c.deleteColumn()
+        }
+
+        .DeleteTable -> {
+            let c = .controller
+            c.deleteTable()
+        }
+
+        .CellBlur(e) -> {
+            if !.readonly {
+                let c = .controller
+                commitTableCell(c, e)
+            }
+        }
+    }
+
+    style {
+        .autodown-table-editor {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #ffffff;
+          overflow: hidden;
+        }
+        .autodown-table-editor.is-readonly {
+          opacity: 0.75;
+        }
+        .autodown-stream-banner {
+          padding: 0.3rem 0.75rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          border-bottom: 1px solid #fcd34d;
+          user-select: none;
+        }
+        .te-toolbar {
+          display: flex;
+          gap: 0.25rem;
+          padding: 0.35rem 0.5rem;
+          background: hsl(220 9% 46% / 0.06);
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .te-btn {
+          padding: 0.15rem 0.5rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          background: #ffffff;
+          color: #374151;
+          font-size: 0.8rem;
+          line-height: 1.4;
+          cursor: pointer;
+        }
+        .te-btn:hover:not(:disabled) {
+          background: hsl(220 9% 46% / 0.1);
+        }
+        .te-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+        .te-btn.te-btn-danger {
+          color: #b91c1c;
+        }
+        .te-btn.te-btn-danger:hover:not(:disabled) {
+          background: hsl(0 74% 56% / 0.1);
+        }
+        .autodown-table-editor td[contenteditable='true'],
+        .autodown-table-editor th[contenteditable='true'] {
+          outline: none;
+          cursor: text;
+        }
+        .autodown-table-editor td[contenteditable='true']:focus,
+        .autodown-table-editor th[contenteditable='true']:focus {
+          box-shadow: inset 0 0 0 1.5px #6366f1;
+          border-radius: 2px;
+        }
+        /* stream face — the retired StreamingTable SFC's styles, verbatim
+           (plan 037 T3; scoped to the widget now, same rules) */
+        .streaming-table {
+          margin: 0.75rem 0;
+          overflow-x: auto;
+        }
+        .streaming-table table {
+          border-collapse: collapse;
+          width: 100%;
+          font-size: 0.95rem;
+        }
+        .streaming-table th,
+        .streaming-table td {
+          border: 1px solid #e5e7eb;
+          padding: 0.9rem 0.6rem;
+          text-align: left;
+        }
+        .streaming-table th {
+          background: hsl(220 9% 46% / 0.06);
+          font-weight: 600;
+          color: #111827;
+        }
+        .streaming-table td {
+          color: #111827;
+        }
+        .streaming-table tr:nth-child(even) {
+          background: #f9fafb;
+        }
+        .streaming-table .loading-row td {
+          color: #6b7280;
+          font-style: italic;
+          text-align: center;
+        }
+        .loading-dots::after {
+          content: '';
+          animation: dots 1.4s infinite both;
+        }
+        @keyframes dots {
+          0%, 80%, 100% { content: ''; }
+          40% { content: '.'; }
+          60% { content: '..'; }
+        }
+    }
+}

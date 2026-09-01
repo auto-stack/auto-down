@@ -4,7 +4,6 @@
 export {
   MarkdownRender,
   StreamingRenderer,
-  StreamingTable,
   useStreamingDocument,
   enableKatex,
   enableMermaid,

@@ -59,7 +59,6 @@ import { spansToHtml } from '../engine/rich-html'
 // generated products. EngineContentHost is local (see below).
 export { default as SlashMenu } from '../menus/SlashMenu.vue'
 export { default as BubbleMenu } from '../menus/BubbleMenu.vue'
-export { default as TableMenu } from '../menus/TableMenu.vue'
 export { default as CodeBlockMenu } from '../menus/CodeBlockMenu.vue'
 
 // Lucide icons for the Save/Cancel buttons, rendered via `dyn` (the

@@ -49,13 +49,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, h } from 'vue'
 import MarkdownRender from './MarkdownRender.vue'
 import { enableKatex, enableMermaid, enableHighlight, isCapabilityEnabled } from './optional-capabilities'
 import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
-import StreamingTable from './StreamingTable.vue'
+import TableBlockWidget from '../editor/components/TableBlockWidget.vue'
 import { resolveBlockComponent } from './block-component'
 import type { VNode } from 'vue'
 
@@ -143,8 +143,27 @@ const codeBlockProps = {
   showExpandButton: true,
 }
 
+// plan 037 T3: the ```json table component segments render through the
+// table family widget's STREAM face — the retired StreamingTable SFC's
+// progressive contract (header-first columns, streaming rows, loading row,
+// final flip), absorbed with byte parity pinned by
+// streaming-table-gold.test.ts. The filler props keep the generated
+// required-prop checks quiet (the 033 ctx:null idiom).
+const StreamingTableFace = (p: { columns?: string[]; rows?: Record<string, any>[]; final?: boolean }) =>
+  h(TableBlockWidget as any, {
+    mode: 'stream',
+    controller: null,
+    blockId: '',
+    readonly: true,
+    final: p.final ?? false,
+    header_cells: [],
+    body_rows: [],
+    columns: p.columns,
+    rows: p.rows,
+  })
+
 const registry: Record<string, any> = {
-  table: StreamingTable,
+  table: StreamingTableFace,
   // Future: chart: StreamingChart, form: StreamingForm, ...
 }
 

@@ -16,13 +16,12 @@ import { h, type VNode } from 'vue'
 import { resolvePanelRenderer, specForNode, type RevealBudget } from './panel-registry'
 import { openWikilink } from './wikilink-opener'
 import { renderKatexPreview } from './preview'
-// side effect only: StreamingTable registers its terminal panel on the
-// registry custom slot (plan 032 P2 — single table channel). It must be
-// pulled in OUTSIDE the panel-registry ↔ builtin-panels import cycle, and
-// render-node is the dispatch point every rendering consumer loads anyway.
-// The fence family widget's panel face registers the same way (plan 033
-// T5 — renderCodeblockPanel's replacement).
-import './StreamingTable.vue'
+// side effect only: block-widget-panels registers the family widgets' view
+// faces on the registry custom slot (plan 033 T5 renderCodeblockPanel's
+// replacement; the Table slot joined at plan 037 T3 — tablePanel retired).
+// It must be pulled in OUTSIDE the panel-registry ↔ builtin-panels import
+// cycle, and render-node is the dispatch point every rendering consumer
+// loads anyway.
 import './block-widget-panels'
 
 export type { RevealBudget } from './panel-registry'

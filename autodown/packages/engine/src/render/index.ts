@@ -23,6 +23,12 @@ export {
   sfcEditSlot,
 } from './block-component'
 export type { BlockComponent, BlockEditCtx } from './block-component'
+export {
+  registerBlockWidget,
+  unregisterBlockWidget,
+  panelOf,
+} from './block-widget'
+export type { BlockWidgetMode, BlockWidgetProps } from './block-widget'
 export type {
   MarkdownSegment,
   ComponentSegment,

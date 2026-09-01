@@ -1,9 +1,10 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (16 widget sources: 12 plan-013-era views/menus
+//   auto/editor/*.at        (17 widget sources: 12 plan-013-era views/menus
 //                            + table_editor_block + the three family
-//                            widgets of plan 033 — see README.md)
+//                            widgets of plan 033 + rich_text_host of plan
+//                            034 — see README.md)
 //   auto/editor/ext/*.ts    (11 hand-written TS extension bridges)
 //
 // Usage:  pnpm gen:editor        (from packages/engine)
@@ -95,9 +96,10 @@ const widgets = readdirSync(here)
 // three family widgets (plan 033 T2-T4) replaced code_editor_block.at,
 // math_edit_block.at / mermaid_edit_block.at (plan 031) and the block
 // math/mermaid node views (plan 013 era) — one widget per pilot kind,
-// three modes each.
-if (widgets.length !== 16) {
-  console.error(`expected 16 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// three modes each; rich_text_host.at (plan 034 T2) replaces the
+// hand-written BlockHost.vue.
+if (widgets.length !== 17) {
+  console.error(`expected 17 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -184,6 +186,9 @@ const EXT_DEPLOY = [
   'code_block_widget_ext.ts',
   'math_block_widget_ext.ts',
   'mermaid_block_widget_ext.ts',
+  // plan 034 T3 — the rich text host's platform wiring (all of the retired
+  // BlockHost.vue's event/mount/caret logic; the widget owns only chrome).
+  'rich_text_host_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -219,6 +224,9 @@ const DEPLOY_COMPONENTS = {
   'CodeBlockWidget.vue': 'components/CodeBlockWidget.vue',
   'MathBlockWidget.vue': 'components/MathBlockWidget.vue',
   'MermaidBlockWidget.vue': 'components/MermaidBlockWidget.vue',
+  // plan 034 T3 — the text-leaf editing host (replaces the hand-written
+  // BlockHost.vue; mounted by EngineEditor's assembleNode from T5).
+  'RichTextHost.vue': 'components/RichTextHost.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

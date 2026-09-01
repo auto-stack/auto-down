@@ -18,8 +18,11 @@
 //    (attrGetStr), the CALLOUT_TYPES known-type check, and the wide ctx
 //    accessors (engine/blockId/readonly) reused from the 033 family idiom.
 
-import { attrGetStr, type BlockNode } from '../../parser/block-model'
+import { attrGetBool, attrGetStr, Value, type BlockNode } from '../../parser/block-model'
 import { CALLOUT_TYPES } from '../../render/builtin-panels'
+import { setBlockAttrs } from '../engine/commands'
+import type { EditorEngine } from '../engine/editor-engine'
+import { ctxBlockId as ctxBlockIdOf } from './code_block_widget_ext'
 
 export { BlockChildren } from '../components/BlockChildren'
 export { default as AttrHost } from '../components/AttrHost.vue'
@@ -39,4 +42,26 @@ export function nodeAttrStr(node: BlockNode | undefined, key: string): string {
 /** The builtin renderCalloutPanel known-type check (shared list). */
 export function calloutTypeKnown(type: string): boolean {
   return CALLOUT_TYPES.includes(type)
+}
+
+/** One bool attr off the model node (default false). */
+export function nodeAttrBool(node: BlockNode | undefined, key: string): boolean {
+  return node ? attrGetBool(node.attrs, key, false) : false
+}
+
+/** The block id a container verb addresses: the edit ctx's blockId, falling
+ *  back to the model node's own id (the panel path passes no ctx). */
+export function blockRef(node: BlockNode | undefined, ctx: unknown): string {
+  const fromCtx = ctxBlockIdOf(ctx)
+  if (fromCtx) return fromCtx
+  return node?.id ?? ''
+}
+
+/** The details marker verb (both faces): flip `open` through setBlockAttrs
+ *  as ONE undo step — the expandedElement inline onClick semantics, with
+ *  stopPropagation riding the DSL modifier. */
+export function toggleDetailsOpen(controller: unknown, blockId: string, open: boolean): void {
+  const engine = controller as EditorEngine | null
+  if (!engine || !blockId) return
+  setBlockAttrs(engine, blockId, [{ key: 'open', value: Value.Bool(!open) }])
 }

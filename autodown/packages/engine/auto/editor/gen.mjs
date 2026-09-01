@@ -1,7 +1,7 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (19 widget sources: 12 plan-013-era views/menus
+//   auto/editor/*.at        (20 widget sources: 12 plan-013-era views/menus
 //                            + table_editor_block + the three family
 //                            widgets of plan 033 + rich_text_host of plan
 //                            034 — see README.md)
@@ -99,8 +99,8 @@ const widgets = readdirSync(here)
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
 // hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 19) {
-  console.error(`expected 19 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+if (widgets.length !== 20) {
+  console.error(`expected 20 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -244,6 +244,7 @@ const DEPLOY_COMPONENTS = {
   // chrome; deployed as generated sources until the T6 assembly switch —
   // the 021 Phase 3 dormant-deploy idiom).
   'CalloutBlockWidget.vue': 'components/CalloutBlockWidget.vue',
+  'DetailsBlockWidget.vue': 'components/DetailsBlockWidget.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

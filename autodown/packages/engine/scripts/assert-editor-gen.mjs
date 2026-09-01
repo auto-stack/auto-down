@@ -76,6 +76,7 @@ const EXPECTED = [
   // plan 035 T3 — the callout family widget (absorbs renderCalloutPanel +
   // expandedElement's Callout branch at the T6 assembly switch).
   'components/CalloutBlockWidget.vue',
+  'components/DetailsBlockWidget.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',

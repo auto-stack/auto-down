@@ -39,7 +39,7 @@
 
 widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonly: bool, final: bool, header_cells: Array<str>, body_rows: Array<str>, columns: Array<str>, rows: Array<str>) {
     use {
-        fn: commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType from "ext/table_block_widget_ext.ts"
+        fn: commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText from "ext/table_block_widget_ext.ts"
         component: BlockChildren from "ext/container_ext.ts"
     }
 
@@ -53,6 +53,14 @@ widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonl
         root_aria_busy => rootAriaBusy(.mode)
         root_block_id => rootBlockId(.mode, .blockId)
         root_node_type => rootNodeType(.mode)
+        // stream face: the StreamingTable normalization absorbed into the
+        // ext bridge (待澄清 #1 ruling — computed has no `??` / [] literal);
+        // {col, html} shapes keep the template loops property-read-only
+        // (bare-text children via v-html, the SFC byte contract).
+        stream_header => streamHeader(.columns)
+        stream_body => streamBody(.columns, .rows)
+        loading_colspan => streamColspan(.columns)
+        loading_html => htmlText("Loading")
     }
 
     view {
@@ -206,6 +214,45 @@ widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonl
                     }
                 }
             }
+            if .mode == "stream" {
+                table {
+                    thead {
+                        tr {
+                            for hs_i, col in .stream_header {
+                                th {
+                                    key: col.col,
+                                    html: col.html
+                                }
+                            }
+                        }
+                    }
+                    tbody {
+                        for rs_i, row in .stream_body {
+                            tr {
+                                key: rs_i,
+                                for cs_i, cell in row {
+                                    td {
+                                        key: cell.col,
+                                        html: cell.html
+                                    }
+                                }
+                            }
+                        }
+                        if !.final {
+                            tr {
+                                class: "loading-row",
+                                td {
+                                    colspan: .loading_colspan,
+                                    span {
+                                        class: "loading-dots",
+                                        html: .loading_html
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -306,6 +353,48 @@ widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonl
         .autodown-table-editor th[contenteditable='true']:focus {
           box-shadow: inset 0 0 0 1.5px #6366f1;
           border-radius: 2px;
+        }
+        /* stream face — the retired StreamingTable SFC's styles, verbatim
+           (plan 037 T3; scoped to the widget now, same rules) */
+        .streaming-table {
+          margin: 0.75rem 0;
+          overflow-x: auto;
+        }
+        .streaming-table table {
+          border-collapse: collapse;
+          width: 100%;
+          font-size: 0.95rem;
+        }
+        .streaming-table th,
+        .streaming-table td {
+          border: 1px solid #e5e7eb;
+          padding: 0.9rem 0.6rem;
+          text-align: left;
+        }
+        .streaming-table th {
+          background: hsl(220 9% 46% / 0.06);
+          font-weight: 600;
+          color: #111827;
+        }
+        .streaming-table td {
+          color: #111827;
+        }
+        .streaming-table tr:nth-child(even) {
+          background: #f9fafb;
+        }
+        .streaming-table .loading-row td {
+          color: #6b7280;
+          font-style: italic;
+          text-align: center;
+        }
+        .loading-dots::after {
+          content: '';
+          animation: dots 1.4s infinite both;
+        }
+        @keyframes dots {
+          0%, 80%, 100% { content: ''; }
+          40% { content: '.'; }
+          60% { content: '..'; }
         }
     }
 }

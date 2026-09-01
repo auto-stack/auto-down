@@ -16,16 +16,25 @@
 // builtin fallback), the shape Table/Codeblock already have. Details
 // registers editor-side (EngineEditor): its marker verb needs the live
 // host window's engine.
+//
+// plan 037 T3: tablePanel retired the same way — the table family widget's
+// view face owns the Table slot (table.table-node contract), cells riding
+// the renderEmbedded closure through the BlockChildren hole (the list
+// adapter's sibling). StreamingTable.vue no longer registers anything; the
+// module goes fully dead until the T5 retirement deletes it.
 
 import { h } from 'vue'
 import CodeBlockWidget from '../editor/components/CodeBlockWidget.vue'
 import CalloutBlockWidget from '../editor/components/CalloutBlockWidget.vue'
 import ListBlockWidget from '../editor/components/ListBlockWidget.vue'
+import TableBlockWidget from '../editor/components/TableBlockWidget.vue'
 import {
   containerPanelModel,
   listItemsOfPanel,
   panelOf,
   panelOfContainer,
+  tableHeaderCellsOfPanel,
+  tableRowsOfPanel,
 } from './block-widget'
 import { registerPanel } from './panel-registry'
 
@@ -39,5 +48,21 @@ registerPanel('List', (ctx) =>
     ctx: null,
     items: listItemsOfPanel(ctx),
     version: 0,
+  }),
+)
+registerPanel('Table', (ctx) =>
+  h(TableBlockWidget, {
+    mode: 'view',
+    final: ctx.final ?? true,
+    ctx: null,
+    // filler values for the generated required-prop checks (the 033
+    // ctx:null idiom): the view face reads none of these
+    controller: null,
+    blockId: '',
+    readonly: false,
+    columns: [],
+    rows: [],
+    header_cells: tableHeaderCellsOfPanel(ctx),
+    body_rows: tableRowsOfPanel(ctx),
   }),
 )

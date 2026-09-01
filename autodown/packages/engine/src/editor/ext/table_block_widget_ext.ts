@@ -26,6 +26,10 @@
 // Deployed verbatim to src/editor/ext/table_block_widget_ext.ts by gen.mjs
 // (assert-editor-gen guards the byte sync).
 
+import { htmlText } from './code_block_widget_ext'
+
+export { htmlText }
+
 export function commitTableCell(controller: any, e: any): void {
   const el = e?.target as HTMLElement | null
   const cellId = el?.dataset?.cellId
@@ -62,4 +66,40 @@ export function rootNodeType(mode: string): string | undefined {
   return mode === 'edit' ? 'Table' : undefined
 }
 
-export { htmlText } from './code_block_widget_ext'
+// -- stream face (the retired StreamingTable SFC's progressive contract) ---------
+//
+// 契约注记（plan 037 待澄清 #1 裁定落档）：streaming_table.at 的
+// normalizeTableProps（nullish 兜底 `columns ?? []` / `rows ?? []`）随本桥
+// 走 TS 而非 .at computed——computed 表达式不支持 `??`（probe 见
+// table_menu.at）也无数组字面量；语义零改动（streaming-parity.test.ts 的
+// nullish 断言由 streamHeader/streamBody 的 `?? []` 承接），.at 单源让位于
+// 家族 widget 单源（streaming_table.at 本体 T5 退役）。
+
+/** The stream face's normalized header list, pre-shaped for the template
+ *  loop: {col, html} pairs — html is the escaped header text because the
+ *  DSL's `text` emits a <span>{{}}</span> wrapper while the SFC template
+ *  pinned bare <th>col</th> children. */
+export function streamHeader(columns: unknown): Array<{ col: string; html: string }> {
+  const cols = (columns ?? []) as string[]
+  return cols.map((col) => ({ col: String(col), html: htmlText(String(col)) }))
+}
+
+/** The stream face's normalized body: rows × columns of {col, html} cells —
+ *  `row[col] ?? ''` per cell (the SFC's missing-key fallback), keys carried
+ *  for the template loops (col per cell, index per row — the SFC's keys). */
+export function streamBody(
+  columns: unknown,
+  rows: unknown,
+): Array<Array<{ col: string; html: string }>> {
+  const cols = (columns ?? []) as string[]
+  const data = (rows ?? []) as Record<string, unknown>[]
+  return data.map((row) =>
+    cols.map((col) => ({ col: String(col), html: htmlText(String(row?.[col] ?? '')) })),
+  )
+}
+
+/** The loading row's colspan: Math.max(1, columns.length) — never a 0 span. */
+export function streamColspan(columns: unknown): number {
+  const len = ((columns ?? []) as string[]).length
+  return Math.max(1, len)
+}

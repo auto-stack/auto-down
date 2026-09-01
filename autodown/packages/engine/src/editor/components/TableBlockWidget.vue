@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { BlockChildren } from '../ext/container_ext'
-import { commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType } from '../ext/table_block_widget_ext'
+import { commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText } from '../ext/table_block_widget_ext'
 
 
 const props = defineProps<{
@@ -24,6 +24,10 @@ const root_class = computed<any>(() => rootClass(props.mode, props.final, props.
 const root_aria_busy = computed<any>(() => rootAriaBusy(props.mode))
 const root_block_id = computed<any>(() => rootBlockId(props.mode, props.blockId))
 const root_node_type = computed<any>(() => rootNodeType(props.mode))
+const stream_header = computed<any>(() => streamHeader(props.columns))
+const stream_body = computed<any>(() => streamBody(props.columns, props.rows))
+const loading_colspan = computed<any>(() => streamColspan(props.columns))
+const loading_html = computed<any>(() => htmlText('Loading'))
 
 const emit = defineEmits<{
   AddRowAbove: []
@@ -158,6 +162,27 @@ function AddColumnBefore(): void {
           </tr>
         </tbody>
       </template>
+      <template v-if="mode == 'stream'">
+        <table>
+          <thead>
+            <tr>
+              <th v-html="col.html" :key="col.col"  v-for="(col, hs_i) in stream_header"/>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :key="rs_i" v-for="(row, rs_i) in stream_body">
+              <td v-html="cell.html" :key="cell.col"  v-for="(cell, cs_i) in row"/>
+            </tr>
+            <template v-if="! final">
+              <tr class="loading-row">
+                <td :colspan="loading_colspan">
+                  <span class="loading-dots" v-html="loading_html" />
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </template>
     </component>
 
 </template>
@@ -226,5 +251,47 @@ function AddColumnBefore(): void {
         .autodown-table-editor th[contenteditable='true']:focus {
           box-shadow: inset 0 0 0 1.5px #6366f1;
           border-radius: 2px;
+        }
+        /* stream face — the retired StreamingTable SFC's styles, verbatim
+           (plan 037 T3; scoped to the widget now, same rules) */
+        .streaming-table {
+          margin: 0.75rem 0;
+          overflow-x: auto;
+        }
+        .streaming-table table {
+          border-collapse: collapse;
+          width: 100%;
+          font-size: 0.95rem;
+        }
+        .streaming-table th,
+        .streaming-table td {
+          border: 1px solid #e5e7eb;
+          padding: 0.9rem 0.6rem;
+          text-align: left;
+        }
+        .streaming-table th {
+          background: hsl(220 9% 46% / 0.06);
+          font-weight: 600;
+          color: #111827;
+        }
+        .streaming-table td {
+          color: #111827;
+        }
+        .streaming-table tr:nth-child(even) {
+          background: #f9fafb;
+        }
+        .streaming-table .loading-row td {
+          color: #6b7280;
+          font-style: italic;
+          text-align: center;
+        }
+        .loading-dots::after {
+          content: '';
+          animation: dots 1.4s infinite both;
+        }
+        @keyframes dots {
+          0%, 80%, 100% { content: ''; }
+          40% { content: '.'; }
+          60% { content: '..'; }
         }
     </style>

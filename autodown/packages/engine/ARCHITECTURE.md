@@ -71,11 +71,15 @@
   完整、开放 fence=loading code 骨架 `.autodown-block-placeholder.is-loading`
   （等高占位 min-height，无动画 v1）、闭合=终态面板且 final=false/true 下
   DOM 一致）。17 kind 裁定全 A 零 stream 槽注册（裁定表 plan 032 D2，
-  `render/__tests__/stream-tri-state.test.ts` 同源钉死）；表格双实现归一——
-  builtin renderTablePanel 退役，StreamingTable.vue 单源双面（渐进面=模板
-  （```json 组件段）、终态面=tablePanel 渲染函数经 panel registry custom 槽，
-  render.test.ts 零改动守卫；触发点=render-node 的副作用 import，避开
-  panel-registry↔builtin-panels 运行时环）。stream 槽机制契约在
+  `render/__tests__/stream-tri-state.test.ts` 同源钉死）；表格通道归一
+  （plan 037 收官）——builtin renderTablePanel（032 退役）→
+  StreamingTable.vue 单源双面（032）→ **TableBlockWidget 三模式**：view
+  （tablePanel 契约）经 `block-widget-panels.ts` 的 registerPanel custom
+  槽、stream（```json 组件段渐进面）经 StreamingRenderer registry 直挂、
+  edit（TableEditorBlock 七动词）经 EngineEditor edit 槽；五态 DOM 金标
+  逐字节对拍（`render/__tests__/streaming-table-gold.test.ts`）+
+  render.test.ts 零改动守卫；触发点=render-node 的副作用 import（同 033
+  fence 通道），避开 panel-registry↔builtin-panels 运行时环。stream 槽机制契约在
   `render/__tests__/block-component-stream.test.ts`；parity 四类与三态序列在
   `demo/e2e/stream-tri-state.spec.ts`（扩展块 parity 待 033 共享 chrome）。
 - ~~行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染~~
@@ -136,17 +140,23 @@
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 18 个部署物（plan 036 起：19 → 18，20 widget 源）：`menus/{SlashMenu,
-  BubbleMenu,TableMenu,CodeBlockMenu}.vue`、`components/{CodeLanguageIcon,
-  TableEditorBlock,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget,
+- 17 个部署物（plan 037 块级家族化收官：19 → 17，19 widget 源）：
+  `menus/{SlashMenu,BubbleMenu,CodeBlockMenu}.vue`、`components/{
+  CodeLanguageIcon,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget,
   RichTextHost,AttrHost,CalloutBlockWidget,DetailsBlockWidget,
-  BlockquoteBlockWidget,ListBlockWidget}.vue`、`node-views/*.vue`（3：
-  WikiLink/Query/BlockEmbed——DetailsNodeView 随 plan 035 并入
-  DetailsBlockWidget 退役，MathInlineNodeView 随 plan 036 T7 退役——
-  行内 math 走 render-node span 直渲）——gen 管线（暂存工程 `auto
-  build --gen-only
-  --lenient` → 收割 → E1 import 后修 → 部署），两连跑逐字节确定。
-- 14 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
+  BlockquoteBlockWidget,ListBlockWidget,TableBlockWidget}.vue`、
+  `node-views/*.vue`（3：WikiLink/Query/BlockEmbed——DetailsNodeView
+  随 plan 035 并入 DetailsBlockWidget 退役，MathInlineNodeView 随
+  plan 036 T7 退役——行内 math 走 render-node span 直渲；TableMenu/
+  TableEditorBlock 随 plan 037 T5 退役——Table 族归一进
+  TableBlockWidget，dormant 菜单源一并销账）——gen 管线（暂存工程
+  `auto build --gen-only --lenient` → 收割 → E1 import 后修 → 部署），
+  两连跑逐字节确定。块级家族化至此全员单 widget：Fence（033）/
+  Math/Mermaid（033）/容器四族（035）/Table（037）。
+- 13 个 ext 桥（plan 037：table_menu_ext/table_editor_block_ext 退役，
+  table_block_widget_ext 接棒——commitTableCell 迁入 + 三根 chrome 读数
+  + streaming_table.at 规范化归并）：`src/editor/ext/*.ts` 是
+  `auto/editor/ext/*.ts` 的逐字节
   部署（引擎接口，零 Tiptap；plan 033 起三族桥 code_block_widget_ext /
   math_block_widget_ext / mermaid_block_widget_ext 替换 code_editor_
   block_ext / math_edit_ext / mermaid_edit_ext——家族读取器
@@ -190,14 +200,16 @@
   面（编辑器预览列 / 纯渲染）同源。
 - 试点三族（一 kind 一 .at widget，约 250-350 行）：`CodeBlockWidget`
   （吸收退役的 renderCodeblockPanel——Codeblock 面板经
-  `src/render/block-widget-panels.ts` 注册，render-node 副作用导入，032
-  StreamingTable 同通道——与 CodeEditorBlock 含 CodeBlockMenu 宿主契约
-  badge 包裹）、`MathBlockWidget` / `MermaidBlockWidget`（吸收对应
+  `src/render/block-widget-panels.ts` 注册，render-node 副作用导入（032
+  StreamingTable 开创的通道——该模块已随 plan 037 Table 族归一退役）——
+  与 CodeEditorBlock 含 CodeBlockMenu 宿主契约 badge 包裹）、`MathBlockWidget` / `MermaidBlockWidget`（吸收对应
   NodeView + 031 编辑面，工件 final-put 随 widget 桥迁移）。
 - parity 套件在册：`src/render/__tests__/block-widget-parity.test.ts`
-  （happy-dom computed-style，三 kind × 三 mode 容器盒模型/共享件类链/
-  view≡stream 全链逐项相等；edit 白名单——textarea/caret/横幅/stack
-  分隔——冻结在文件头注）。
+  （happy-dom computed-style；033 三 pilot kind × 三 mode 容器盒模型/
+  共享件类链/view≡stream 全链逐项相等 + 035 容器四族类链/结构标记 +
+  037 Table 族——table-node 单链/cell chrome 共享/stream loading 族/
+  readonly 门；edit 白名单——textarea/caret/横幅/stack 分隔/toolbar/
+  contenteditable——冻结在文件头注与各 describe 注记）。
 - 推广边界（待后续计划）：Table 合流依赖 032 归一终态；Query/Embed 依赖
   数据装载（DEBTS 026①）；~~Callout/Details/Blockquote/List 容器族~~——
   **plan 035 已落地**：`BlockChildren` 孔（`components/BlockChildren.ts`，

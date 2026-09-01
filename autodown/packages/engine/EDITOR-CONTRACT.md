@@ -78,11 +78,18 @@ plan 032 D2，`stream-tri-state.test.ts` 同源钉死）：
   骨架 class（见 §1 表）。
 - **闭合**：终态面板；同一闭合构造在流式中（final=false）与终态
   （final=true）下 DOM 逐标记一致（翻转无跳变的机制根据）。
-- **Table 单通道**：`table.table-node` DOM 契约（thead+th/.table-node__
-  resize-handle/tbody+td/embedded renderer）由 StreamingTable.vue 的
-  tablePanel 经 panel registry **custom 槽**渲染（builtin renderTablePanel
-  已退役）；`unregisterPanel('Table')` 语义 = 降级 unknown-node（无 builtin
-  兜底）。```json `{"type":"table"}` 渐进通道（列头先行/loading 行）不变。
+- **Table 单通道（plan 037 家族化归一）**：`table.table-node` DOM 契约
+  （thead+th/.table-node__resize-handle/tbody+td/embedded renderer）由
+  Table 家族 widget **TableBlockWidget 的 view 模式**经 panel registry
+  **custom 槽**渲染（block-widget-panels 注册；原 StreamingTable.vue 的
+  tablePanel、TableEditorBlock、StreamingTable 渐进模板三面退役）。
+  同一 widget 三模式：edit = 七动词工具栏（`.autodown-table-editor` 宿主
+  + contenteditable 单元格 blur 提交，选择器不变）经 EngineEditor edit
+  槽；stream = ```json `{"type":"table"}` 渐进通道（列头先行/loading 行/
+  final 翻转，`.streaming-table` 契约）经 StreamingRenderer registry 直挂。
+  五态 DOM 金标逐字节对拍在册（`streaming-table-gold.test.ts`）；
+  `unregisterPanel('Table')` 语义 = 降级 unknown-node（无 builtin
+  兜底）。
 - **stream 槽机制**：注册即覆盖该 kind 的段路径（组件段=props 传参去
   `type` 键、details 段=part 本身；final 随段闭合/streaming flag 翻转）；
   `clearBlockComponents()` teardown 干净（block-component-stream.test.ts）。

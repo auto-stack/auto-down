@@ -397,11 +397,12 @@ function expandedElement(node: BlockNode, ctx: AssemblyCtx): VNode {
           ? [h('span', { class: ['autodown-callout-icon', `autodown-callout-icon-${type}`], 'aria-hidden': 'true' })]
           : []),
         h(AttrHost, {
+          controller: engine,
           blockId: node.id,
-          attrKey: 'title',
-          engine,
+          attr_key: 'title',
+          value: attrGetStr(node.attrs, 'title', ''),
           placeholder: type || '标题',
-          hostClass: 'autodown-callout-title',
+          host_class: 'autodown-callout-title',
           version: repaintVersion.value,
           readonly: props.streaming === true,
         }),
@@ -429,11 +430,12 @@ function expandedElement(node: BlockNode, ctx: AssemblyCtx): VNode {
           [h('span', open ? '▼' : '▶')]
         ),
         h(AttrHost, {
+          controller: engine,
           blockId: node.id,
-          attrKey: 'summary',
-          engine,
+          attr_key: 'summary',
+          value: attrGetStr(node.attrs, 'summary', ''),
           placeholder: 'Details',
-          hostClass: 'autodown-details-summary-text',
+          host_class: 'autodown-details-summary-text',
           version: repaintVersion.value,
           readonly: props.streaming === true,
         }),

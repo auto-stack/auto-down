@@ -1,0 +1,80 @@
+// attr_host.at — AttrHost widget (plan 035 T2): the single-line attr
+// read/write host, .at-sourced. Replaces the hand-written
+// src/editor/components/AttrHost.vue (plan 030 T7) line-for-line — it is the
+// Details-summary / Callout-title in-place editor: unlike RichTextHost this
+// carries NO inlines/split-block semantics — a plain contenteditable bound
+// to one block attr. Mounted value comes from the model (the flat `value`
+// prop — the assembler's snapshot); blur writes back through setBlockAttrs
+// (ONE undo step, the 023 command protocol — lives in the ext bridge);
+// Enter/Escape simply blur (commit, preventDefault rides the DSL key
+// modifiers — the details_node_view input idiom). The parent's repaint
+// version re-syncs the text when the model changed elsewhere (undo,
+// checkbox flips) — never while focused, so the user's caret is never
+// clobbered mid-edit. Layout classes come from the caller: the host aligns
+// with the node-view element it replaces (CSS single-channel).
+//
+// Props (D3, the Callout-title / Details-summary host contract):
+// - controller: the engine passed wide-typed (Array<str> = any, the 033
+//   fenceEditSlot idiom) — commands and model reads go through the bridge;
+// - value: the mounted model snapshot (textContent injection on Init);
+// - version: the parent repaint version — the model-side sync trigger
+//   (watch below, skipped while focused);
+// - host_class: the caller's layout class (CSS single-channel).
+//
+// Codegen-forced idioms: the Enter/Escape keydown modifiers are native
+// (.enter.prevent / .escape.prevent, details_node_view idiom); everything
+// imperative (model read, nbsp normalization, setBlockAttrs, focus checks)
+// lives in ext/attr_host_ext.ts.
+
+widget AttrHost(controller: Array<str>, blockId: str, attr_key: str, value: str, placeholder: str, host_class: str, readonly: bool, version: int) {
+    use {
+        fn: mountAttrHost, syncAttrFromModel, commitAttr, blurAttrHost from "ext/attr_host_ext.ts"
+    }
+
+    msg Msg { Init, KeyEnter, KeyEscape, Blur }
+
+    computed {
+        editable => !.readonly
+        host_cls => "autodown-attr-host " + .host_class
+    }
+
+    view {
+        span {
+            ref: "host",
+            class: .host_cls,
+            data-placeholder: .placeholder,
+            contenteditable: .editable,
+            spellcheck: "false",
+            onkeydown.enter.prevent: .KeyEnter,
+            onkeydown.escape.prevent: .KeyEscape,
+            onblur: .Blur($event)
+        }
+    }
+
+    watch {
+        // model-side sync: repaint version moved and the host is not
+        // focused → re-read the attr (the retired AttrHost.vue watch,
+        // verbatim semantics via the bridge).
+        .version -> {
+            syncAttrFromModel(.host, .controller, .blockId, .attr_key)
+        }
+    }
+
+    on {
+        .Init -> {
+            mountAttrHost(.host, .value)
+        }
+
+        .KeyEnter -> {
+            blurAttrHost(.host)
+        }
+
+        .KeyEscape -> {
+            blurAttrHost(.host)
+        }
+
+        .Blur(e) -> {
+            commitAttr(e.target, .controller, .blockId, .attr_key, .readonly)
+        }
+    }
+}

@@ -1,74 +1,67 @@
-<!-- AttrHost (plan 030 T7) — attr read/write host for container blocks. -->
-<template>
-  <span
-    ref="el"
-    class="autodown-attr-host"
-    :class="hostClass"
-    :data-placeholder="placeholder"
-    :contenteditable="readonly ? 'false' : 'true'"
-    :spellcheck="false"
-    @keydown="onKeydown"
-    @blur="commit"
-  />
-</template>
-
+<!-- AttrHost component - Auto-generated from Auto language -->
 <script setup lang="ts">
-// The Details-summary / Callout-title in-place editor (plan 030's attr-host
-// ruling): unlike BlockHost this carries NO inlines/split-block semantics —
-// a plain contenteditable bound to one block attr. Mounted value comes from
-// the model; blur writes back through setBlockAttrs (ONE undo step, the
-// 023 command protocol); Enter/Escape simply blur (commit). The parent's
-// repaint version re-syncs the text when the model changed elsewhere (undo,
-// checkbox flips) — never while focused, so the user's caret is never
-// clobbered mid-edit. Layout classes come from the caller: the host aligns
-// with the node-view element it replaces (CSS single-channel).
-import { onMounted, ref, watch } from 'vue'
-import { Value, attrGetStr, findBlock } from '../../parser/block-model'
-import { setBlockAttrs } from '../engine/commands'
-import type { EditorEngine } from '../engine/editor-engine'
+import { ref, computed, onMounted, watch } from 'vue'
+import { mountAttrHost, syncAttrFromModel, commitAttr, blurAttrHost } from '../ext/attr_host_ext'
+
 
 const props = defineProps<{
+  controller: any
   blockId: string
-  attrKey: string
-  engine: EditorEngine
-  placeholder?: string
-  hostClass?: string
-  /** parent repaint version — model-side sync trigger (skipped while focused) */
-  version?: number
-  /** stream→edit v1 gate: render read-only while streaming */
-  readonly?: boolean
+  attr_key: string
+  value: string
+  placeholder: string
+  host_class: string
+  readonly: boolean
+  version: number
 }>()
 
-const el = ref<HTMLElement | null>(null)
+const host = ref<HTMLElement | null>(null)
 
-function modelValue(): string {
-  const found = findBlock(props.engine.doc, props.blockId)
-  return found ? attrGetStr(found.attrs, props.attrKey, '') : ''
+const editable = computed<boolean>(() => !props.readonly)
+const host_cls = computed<string>(() => 'autodown-attr-host ' + props.host_class)
+
+const emit = defineEmits<{
+  Init: []
+  KeyEnter: []
+  KeyEscape: []
+  Blur: [any]
+}>()
+
+watch(() => props.version, () => {
+  syncAttrFromModel(host.value!, props.controller, props.blockId, props.attr_key);
+})
+
+function Blur(e: any): void {
+  commitAttr(e.target, props.controller, props.blockId, props.attr_key, props.readonly);
+
+  emit('Blur', e)
+}
+
+function KeyEnter(): void {
+  blurAttrHost(host.value!);
+
+  emit('KeyEnter')
+}
+
+function KeyEscape(): void {
+  blurAttrHost(host.value!);
+
+  emit('KeyEscape')
 }
 
 onMounted(() => {
-  if (el.value) el.value.textContent = modelValue()
+  mountAttrHost(host.value!, props.value);
 })
 
-watch(
-  () => props.version,
-  () => {
-    if (el.value && document.activeElement !== el.value) el.value.textContent = modelValue()
-  },
-)
 
-function commit(): void {
-  if (props.readonly) return
-  // nbsp from contentediting normalizes back to a plain space
-  const text = (el.value?.textContent ?? '').replace(/\u00a0/g, ' ').trim()
-  if (text === modelValue()) return
-  setBlockAttrs(props.engine, props.blockId, [{ key: props.attrKey, value: Value.Str(text) }])
-}
-
-function onKeydown(e: KeyboardEvent): void {
-  if (e.key === 'Enter' || e.key === 'Escape') {
-    e.preventDefault()
-    el.value?.blur()
-  }
-}
 </script>
+
+<template>
+    <span :class="host_cls" :contenteditable="editable" :data-placeholder="placeholder" ref="host" :spellcheck="'false'" @blur="Blur($event)" @keydown.enter.prevent="KeyEnter" @keydown.esc.prevent="KeyEscape" />
+
+</template>
+
+<style>
+/* Component styles */
+
+</style>

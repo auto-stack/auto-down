@@ -1,7 +1,7 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (17 widget sources: 12 plan-013-era views/menus
+//   auto/editor/*.at        (18 widget sources: 12 plan-013-era views/menus
 //                            + table_editor_block + the three family
 //                            widgets of plan 033 + rich_text_host of plan
 //                            034 — see README.md)
@@ -97,9 +97,10 @@ const widgets = readdirSync(here)
 // math_edit_block.at / mermaid_edit_block.at (plan 031) and the block
 // math/mermaid node views (plan 013 era) — one widget per pilot kind,
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
-// hand-written BlockHost.vue.
-if (widgets.length !== 17) {
-  console.error(`expected 17 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
+// hand-written AttrHost.vue (plan 030 T7).
+if (widgets.length !== 18) {
+  console.error(`expected 18 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -189,6 +190,10 @@ const EXT_DEPLOY = [
   // plan 034 T3 — the rich text host's platform wiring (all of the retired
   // BlockHost.vue's event/mount/caret logic; the widget owns only chrome).
   'rich_text_host_ext.ts',
+  // plan 035 T2 — the single-line attr host's wiring (the retired AttrHost.vue
+  // semantics: mount/sync/commit; shared by the Callout-title and
+  // Details-summary container widgets).
+  'attr_host_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -227,6 +232,11 @@ const DEPLOY_COMPONENTS = {
   // plan 034 T3 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; mounted by EngineEditor's assembleNode from T5).
   'RichTextHost.vue': 'components/RichTextHost.vue',
+  // plan 035 T2 — the attr read/write host (replaces the hand-written
+  // AttrHost.vue, plan 030 T7; name collision forced the swap in T2 —
+  // EngineEditor's two expandedElement call sites moved to the generated
+  // prop face). The Callout/Details container widgets embed it from T3/T4.
+  'AttrHost.vue': 'components/AttrHost.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

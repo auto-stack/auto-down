@@ -69,6 +69,10 @@ const EXPECTED = [
   // plan 034 T3/T5 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; deployed set 14 → 15).
   'components/RichTextHost.vue',
+  // plan 035 T2 — the single-line attr host (replaces the hand-written
+  // AttrHost.vue; deployed set 15 → 16. The Callout/Details container
+  // widgets embed it from T3/T4).
+  'components/AttrHost.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',

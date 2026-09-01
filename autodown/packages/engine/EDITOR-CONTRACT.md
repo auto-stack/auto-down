@@ -14,7 +14,8 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.autodown-editor-actions` | 底部动作条（toolbar 遮挡测试） | demo scroll-sync |
 | `.autodown-slash-menu` | 斜杠菜单 | demo + jade e2e |
 | `.autodown-wikilink-label` | wikilink 节点视图 | jade e2e 04 |
-| `.autodown-block-placeholder` | 块编辑占位（滚动同步空挡） | demo scroll-sync |
+| `.autodown-block-placeholder` | 块编辑占位（滚动同步空挡；**仅 `.node-slot` 直接子级**会被 clearPlaceholders 清除——同 class 家族的开放态骨架在更深层，plan 032） | demo scroll-sync |
+| `.code-block-container.autodown-block-placeholder.is-loading` + `pre[aria-busy="true"]` | 开放 fence 骨架（含 ```` ```mermaid ```` 开 fence；等高占位 min-height 5.5rem；闭合翻转即摘除，plan 032） | demo stream-tri-state e2e |
 | `.autodown-block-boundary` | 块边界插入把手 | demo scroll-sync |
 | `[data-block-id]` | 块定位（`getBlockMap` 消费） | demo + jade e2e（11 处） |
 | `[data-node-index]` | 渲染侧块序号（滚动同步） | demo scroll-sync |
@@ -62,6 +63,31 @@ Tiptap 退役前后都必须全绿。
   同步 katex 预览同屏，改字即刷、非法源错误横幅且预览降级；聚焦闭合
   ```` ```mermaid ```` 块 → debounce 异步三态（渲染中… → SVG 面板 / 错误
   横幅）；两面 blur 整段提交一步 undo，流式生成中 readonly + 横幅
+
+## 6. stream 面契约（plan 032 定型）
+
+三态语义（17 kind 裁定**全 A**——默认面板路径，零 stream 槽注册；裁定表
+plan 032 D2，`stream-tri-state.test.ts` 同源钉死）：
+
+- **未闭合**：构造降级为段落字面（`%{` 无 `}%`、`$callout(` 无 `}`、表头
+  无分隔线、`$query(` 无 `)` 等）；行构造（heading/paragraph/quote/list/
+  thematic）即刻完整。
+- **开放**（fence 族）：loading code 块——源码可见、终态面板（mermaid
+  svg/math katex）不渲染；容器加 `.autodown-block-placeholder.is-loading`
+  骨架 class（见 §1 表）。
+- **闭合**：终态面板；同一闭合构造在流式中（final=false）与终态
+  （final=true）下 DOM 逐标记一致（翻转无跳变的机制根据）。
+- **Table 单通道**：`table.table-node` DOM 契约（thead+th/.table-node__
+  resize-handle/tbody+td/embedded renderer）由 StreamingTable.vue 的
+  tablePanel 经 panel registry **custom 槽**渲染（builtin renderTablePanel
+  已退役）；`unregisterPanel('Table')` 语义 = 降级 unknown-node（无 builtin
+  兜底）。```json `{"type":"table"}` 渐进通道（列头先行/loading 行）不变。
+- **stream 槽机制**：注册即覆盖该 kind 的段路径（组件段=props 传参去
+  `type` 键、details 段=part 本身；final 随段闭合/streaming flag 翻转）；
+  `clearBlockComponents()` teardown 干净（block-component-stream.test.ts）。
+- **e2e 面签**：`demo/stream-harness.html`（streaming/final 双 pane）+
+  `demo/e2e/stream-tri-state.spec.ts`（三态序列 + computed-style parity
+  四类 Heading/Paragraph/Fence/Table；扩展块 parity 待 plan 033 共享 chrome）。
 
 ## 核验责任
 

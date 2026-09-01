@@ -66,6 +66,18 @@
 
 ## 5. 已知边界（登记在案）
 
+- **stream 模式定型（plan 032）**：流式期间 markdown 段走全量 parser +
+  panel 管线（final flag 驱动三态：未闭合=安全降级段落字面或行构造即刻
+  完整、开放 fence=loading code 骨架 `.autodown-block-placeholder.is-loading`
+  （等高占位 min-height，无动画 v1）、闭合=终态面板且 final=false/true 下
+  DOM 一致）。17 kind 裁定全 A 零 stream 槽注册（裁定表 plan 032 D2，
+  `render/__tests__/stream-tri-state.test.ts` 同源钉死）；表格双实现归一——
+  builtin renderTablePanel 退役，StreamingTable.vue 单源双面（渐进面=模板
+  （```json 组件段）、终态面=tablePanel 渲染函数经 panel registry custom 槽，
+  render.test.ts 零改动守卫；触发点=render-node 的副作用 import，避开
+  panel-registry↔builtin-panels 运行时环）。stream 槽机制契约在
+  `render/__tests__/block-component-stream.test.ts`；parity 四类与三态序列在
+  `demo/e2e/stream-tri-state.spec.ts`（扩展块 parity 待 033 共享 chrome）。
 - ~~行内 mark 层（bold/italic bubble）、表格/代码块菜单、node view 富渲染~~
   —— 024 激活 bubble，026 激活 CodeBlockMenu 与 5 件 NodeView 预览挂载
   （Details/MathBlock/Mermaid/Query/Embed）；TableMenu 挂载后被裁定合并回

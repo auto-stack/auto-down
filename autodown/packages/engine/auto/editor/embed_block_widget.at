@@ -1,0 +1,188 @@
+// embed_block_widget.at — EmbedBlockWidget (plan 038 T5): the embed
+// family's view/stream widget, absorbing the retired BlockEmbedNodeView
+// (plan 013 port) with the src-semantics ruling applied (待澄清③):
+// title/blockId DERIVE from attrs.src via parseEmbedSrc (three forms —
+// page ref / "title#^id" block anchor / "^id" current-page anchor); the
+// siyuan-era attrs.raw/title/blockId reads are retired (the live dialect
+// never carried them — the old display defaulted to "![[Untitled]]"
+// dead shape). attrs.src stays canonical: the roundtrip never rewrites
+// it, only display/loading consume the parse.
+//
+// Loading semantics, migrated from the node view with the same final
+// ruling as the query widget (032 A extended): the loader fires only on
+// final and only for an ANCHOR src (blockId != null — jade's loader is
+// block-id keyed; a page-level reference renders its label face without
+// loader work). "Block not found" when the loader resolves null; the
+// loader read moved off extension.options into the ext bridge's
+// blockLoader() — the module-level data-loader slot (plan 038 T1/T2).
+//
+// DOM deltas vs the retired node view, deliberate: the NodeViewWrapper
+// root becomes the plain family root div (math/mermaid precedent), and
+// the root's data-block-id DROPS — it was part of the dead siyuan shape,
+// and a DERIVED anchor id on the root would pollute the editor's
+// [data-block-id] block-map namespace (getBlockMap / click-to-focus
+// resolve block ids, an embedded block's anchor is not a model block).
+// data-title stays (display-only).
+//
+// edit is v1 EMPTY by ruling (embed is a non-editable leaf,
+// isEditableLeaf) — the edit slot never registers, the face never mounts.
+// The load body is DUPLICATED in watch and .Init (a msg handler no view
+// event references is not emitted — the plan 013 constraint).
+
+widget EmbedBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool) {
+    use {
+        fn: embedTitle, embedBlockId, blockLoader, errorMessage from "ext/embed_block_widget_ext.ts"
+    }
+
+    msg Msg { Init }
+
+    model {
+        var block Array<str> = null
+        var loading bool = false
+        var error_text str = ""
+    }
+
+    computed {
+        // parseEmbedSrc readers — title is '' only for the pure-anchor
+        // form ("^id"), blockId null for a page-level reference.
+        title_value => embedTitle(.node)
+        block_id => embedBlockId(.node)
+        // title#blockId / blockId / title — the old `${title}#${blockId}`
+        // when a title exists, the bare anchor id when it doesn't.
+        display_label => .block_id != null ? (.title_value != "" ? .title_value + "#" + .block_id : .block_id) : .title_value
+        loading_text => "Loading " + .display_label + "…" || "Loading…"
+        // block.content, guarded (block is null until loaded). `.block`
+        // auto-unwraps to block.value in computeds.
+        block_content => .block && .block.content || ""
+        // The three mutually exclusive view states (the retired node
+        // view's v-if chain), gated on final; show_block uses bare
+        // truthiness (the codegen emits `!== undefined` for `!= null`,
+        // which is TRUE for a null block — the error branch's shape).
+        show_loading => .loading || !.final
+        show_error => .final && !.loading && .error_text != ""
+        show_block => .final && !.loading && .error_text == "" && .block
+        // the label face: the loaded block face OR a page-level reference
+        // (no loader work — the header alone carries the reference).
+        show_header => .final && !.loading && .error_text == ""
+    }
+
+    view {
+        div {
+            class: "autodown-block-embed",
+            data-title: .title_value,
+
+            if .show_loading {
+                div { class: "embed-state", text .loading_text }
+            }
+            if .show_error {
+                div { class: "embed-state embed-error", text .error_text }
+            }
+            if .show_header {
+                div {
+                    class: "embed-header",
+                    span { class: "embed-title", text .display_label }
+                }
+            }
+            if .show_block {
+                div { class: "embed-content", text .block_content }
+            }
+        }
+    }
+
+    watch {
+        // The retired node view's watch(() => attrs.blockId, load) — the
+        // reload channel for external src writes (a flipped anchor
+        // re-loads). Final-gated and anchor-gated. The load body is
+        // DUPLICATED here and in .Init (see the header comment).
+        .block_id -> {
+            if .final {
+                if .block_id != null {
+                    let loader = blockLoader()
+                    if loader == null {
+                        .error_text = "No block loader configured"
+                    }
+                    if loader != null {
+                        .loading = true
+                        .error_text = ""
+                        try {
+                            var result = loader(.block_id).await
+                            .block = result
+                            if !result {
+                                .error_text = "Block not found"
+                            }
+                        } catch (e) {
+                            .error_text = errorMessage(e)
+                            .block = null
+                        } finally {
+                            .loading = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            // load() — duplicated in the watch above (see the comment
+            // there). Loader fires only on final + anchor srcs.
+            if .final {
+                if .block_id != null {
+                    let loader = blockLoader()
+                    if loader == null {
+                        .error_text = "No block loader configured"
+                    }
+                    if loader != null {
+                        .loading = true
+                        .error_text = ""
+                        try {
+                            var result = loader(.block_id).await
+                            .block = result
+                            if !result {
+                                .error_text = "Block not found"
+                            }
+                        } catch (e) {
+                            .error_text = errorMessage(e)
+                            .block = null
+                        } finally {
+                            .loading = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    style {
+        .autodown-block-embed {
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--muted, 210 20% 96%));
+          padding: 0.75rem;
+          margin: 0.5rem 0;
+        }
+        .embed-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .embed-title {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: hsl(var(--primary, 238 55% 58%));
+        }
+        .embed-content {
+          font-size: 0.875rem;
+          color: hsl(var(--foreground, 224 64% 33%));
+          white-space: pre-wrap;
+        }
+        .embed-state {
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+        }
+        .embed-error {
+          color: hsl(var(--destructive, 0 72% 51%));
+        }
+    }
+}

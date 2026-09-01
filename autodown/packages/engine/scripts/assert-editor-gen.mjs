@@ -69,6 +69,9 @@ const EXPECTED = [
   // plan 038 T4 — the query family's view/stream widget (absorbs the
   // QueryBlockNodeView at the T6 assembly switch).
   'components/QueryBlockWidget.vue',
+  // plan 038 T5 — the embed family's view/stream widget (absorbs the
+  // BlockEmbedNodeView at the T6 assembly switch).
+  'components/EmbedBlockWidget.vue',
   // plan 034 T3/T5 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; deployed set 14 → 15).
   'components/RichTextHost.vue',

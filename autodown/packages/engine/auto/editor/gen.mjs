@@ -100,8 +100,8 @@ const widgets = readdirSync(here)
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
 // hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 21) {
-  console.error(`expected 21 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+if (widgets.length !== 22) {
+  console.error(`expected 22 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -191,6 +191,9 @@ const EXT_DEPLOY = [
   // plan 038 T4 — the query family's widget bridge (loader slot read +
   // normalizeQueryResults/errorMessage absorbed from node_view_ext).
   'query_block_widget_ext.ts',
+  // plan 038 T5 — the embed family's widget bridge (parseEmbedSrc readers
+  // + loader slot read + errorMessage absorbed from node_view_ext).
+  'embed_block_widget_ext.ts',
   // plan 034 T3 — the rich text host's platform wiring (all of the retired
   // BlockHost.vue's event/mount/caret logic; the widget owns only chrome).
   'rich_text_host_ext.ts',
@@ -237,6 +240,9 @@ const DEPLOY_COMPONENTS = {
   // plan 038 T4 — the query family's view/stream widget (absorbs the
   // QueryBlockNodeView; the T6 assembly switch mounts it).
   'QueryBlockWidget.vue': 'components/QueryBlockWidget.vue',
+  // plan 038 T5 — the embed family's view/stream widget (absorbs the
+  // BlockEmbedNodeView at the T6 assembly switch).
+  'EmbedBlockWidget.vue': 'components/EmbedBlockWidget.vue',
   // plan 034 T3 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; mounted by EngineEditor's assembleNode from T5).
   'RichTextHost.vue': 'components/RichTextHost.vue',

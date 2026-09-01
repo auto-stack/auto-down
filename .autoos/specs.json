@@ -146,6 +146,17 @@
           "PLAN-034"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P035-1",
+        "section": "goals",
+        "title": "BlockChildren 子块挂载孔（组件组合原语）+ Callout/Details/Blockquote/List 四类容器 chrome 迁 .at 家族 widget + AttrHost .at 化 + expandedElement 收缩退役 — 目标",
+        "content": "1. **组合原语在册**：BlockChildren 孔组件（props/闭包契约/epoch 语义）\n   + VM 契约段（EDITOR-CONTRACT 平台面增补）；.at widget 内嵌先例立。\n2. **四类容器单 widget**：Callout/Details/Blockquote/List 各一件 .at\n   widget 服务 view/edit（stream 沿 032 裁定 A=面板路径，widget view\n   模式即面板）；旧面（renderCalloutPanel/renderListPanel/\n   DetailsNodeView/expandedElement 分支/AttrHost.vue）物理退役。\n3. **契约零漂移**：container-editing / host-protocol / extension-blocks\n   e2e、render.test.ts extension panels 段**零改动**通过；030 钉死的\n   \"Callout 卡片链 edit==view CSS 单通道\"从约定升级为同源事实。\n4. **装配收缩**：expandedElement 退役或缩为分派；gen 清单与\n   assert-editor-gen 同步（widgets +5、部署物与 ext 桥重计）。",
+        "file": "docs/plans/archived/035-container-block-children.md",
+        "related": [
+          "PLAN-035"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -301,6 +312,17 @@
         "file": "docs/plans/archived/034-rich-text-host-platform.md",
         "related": [
           "PLAN-034"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P035-2",
+        "section": "architecture",
+        "title": "BlockChildren 子块挂载孔（组件组合原语）+ Callout/Details/Blockquote/List 四类容器 chrome 迁 .at 家族 widget + AttrHost .at 化 + expandedElement 收缩退役 — 架构方案",
+        "content": "```\n组合原语（手写平台层）\nsrc/editor/components/BlockChildren.tsx（或 .vue 函数组件）\n├─ props：children_slot Array<str>（() => VNode[] 闭包，controller-prop\n│   宽类型 idiom——装配层构造，闭包持有 AssemblyCtx）\n├─ 语义：render 期求值闭包 → 子块 VNode 列表（assembleNode 递归产物）\n│   epoch/version 驱动的重挂由闭包捕获的 ctx 天然继承（029 机制不动）\n└─ VM 契约：children 孔 = 原生递归装配入口（契约段冻结形状）\n\n容器家族（chrome 层 .at 单源，033 机制直用）\nauto/editor/callout_block_widget.at\n├─ view：callout-node 卡片链（class/data-callout-type/icon 条件/\n│   header+content）+ AttrHost（title）+ BlockChildren 孔\n├─ edit：同 chrome，readonly 横幅（streaming）——030\"聚焦保卡片\"语义\n└─ mode: view | edit（stream = view，032 裁定 A）\nauto/editor/details_block_widget.at\n├─ marker（▼/▶ + 点击 → controller 面动词 open 翻转）+ AttrHost\n│   （summary）+ content 显隐 + BlockChildren 孔\n└─ 吸收 DetailsNodeView（其 onkeydown.enter/escape 提交语义随 AttrHost 迁）\nauto/editor/blockquote_block_widget.at（薄壳）\nauto/editor/list_block_widget.at\n├─ ol/ul + start 属性 + li（task-item 条件 class + checkbox）\n├─ edit：checkbox 活点（点击 → toggleTaskChecked 单步 undo）\n└─ view：checkbox 惰态（disabled，renderListPanel 现语义）\nauto/editor/attr_host.at\n└─ contenteditable 单行 attr 宿主：挂载模型值/blur→setBlockAttrs/\n    Enter·Esc=blur 提交/version 非聚焦同步（AttrHost.vue 语义全量）\n\n装配（src/editor/components/EngineEditor.vue）\n├─ expandedElement 四分支删除 → assembleNode 容器路径直挂家族 widget\n│   （registerBlockWidget('Callout'/'Details'/'Blockquote'/'ListBlock', …)）\n├─ renderCalloutPanel/renderListPanel 退役（builtin-panels 删两项，\n│   custom 槽 panelOf 挂 widget——033 Codeblock 同通道）\n├─ DetailsNodeView registerPanel → panelOf(details_block_widget)\n└─ AttrHost.vue 删除（.at 产物接管）\n\ngen 面\n└─ 清单：17 widgets（034 后）→ +5 = 22；部署物/ ext 桥按实际归并重计\n   （attr 域动词桥合并进各容器 ext 或独立 attr_host_ext——执行期冻结）\n```\n\n**为何孔走闭包而非数据化 children**：子块装配依赖 EngineEditor 运行态\n（epoch 版本号/宿主注册表/焦点路径/重绘调度），数据化即复制这套状态机；\n闭包孔把递归留在唯一装配点，.at 只持 chrome——与 033\"controller-prop\n扁平 chrome\"同哲学（孔是渲染域的 controller）。",
+        "file": "docs/plans/archived/035-container-block-children.md",
+        "related": [
+          "PLAN-035"
         ],
         "status": "stable"
       }
@@ -459,6 +481,17 @@
           "PLAN-034"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P035-3",
+        "section": "designs",
+        "title": "BlockChildren 子块挂载孔（组件组合原语）+ Callout/Details/Blockquote/List 四类容器 chrome 迁 .at 家族 widget + AttrHost .at 化 + expandedElement 收缩退役 — 详细设计",
+        "content": "### D1 BlockChildren 孔（平台组件）\n\n```ts\n// src/editor/components/BlockChildren.ts\nexport const BlockChildren = defineComponent({\n  props: { children_slot: { type: Function, required: true } },\n  setup(p) { return () => (p.children_slot as () => VNode[])() },\n})\n```\n\n- .at 内嵌：`use { component: BlockChildren from \"ext/container_ext.ts\" }`\n  → `BlockChildren { children_slot: .children }`（.children 为\n  Array<str> 宽类型 prop，装配层传入闭包）。\n- 闭包构造：适配器 `childrenOf(node, ctx)` 返回\n  `() => node.children.map((ch) => childSlot(ch, ctx))`——childSlot/\n  assembleNode 递归不动。\n- 测试 teardown/重挂语义由闭包捕获的 ctx 保证（epoch key 机制 029）。\n\n### D2 容器 widget 的 mode 与动词\n\n- 三 mode 同 chrome（033 idiom）：`mode: view | stream | edit`；stream\n  沿 032 裁定 A=面板路径（widget view 模式即面板，无 stream 分支行为）。\n- 动词面（经 ext 桥/controller，.at 不写命令逻辑）：\n  - details marker 点击 → `toggleDetailsOpen(controller, blockId)`（ext\n    桥转发 setBlockAttrs——现 inline onClick 的 stopPropagation 语义保留）；\n  - list checkbox 点击 → `toggleTaskChecked(controller, blockId)`（edit\n    mode 活点；view mode 渲染 disabled checkbox——renderListPanel 语义）；\n  - AttrHost blur → `commitAttr(controller, blockId, attrKey, text)`。\n- controller prop：容器域薄控制器（`ContainerController` 包装\n  engine+blockId，或直接传 engine 宽类型 + blockId——033 CodeBlockWidget\n  的 fenceEditSlot 现状是后者，沿用）。\n\n### D3 attr_host.at（单行 attr 宿主）\n\n- props：`controller Array<str>, blockId str, attr_key str, value str,\n  placeholder str, host_class str, readonly bool, version int`。\n- 语义逐条对齐 AttrHost.vue：挂载排版值（textContent 注入）、\n  `onkeydown.enter.prevent/escape.prevent` → blur 提交、blur →\n  commitAttr（一步 undo）、version 变化且非聚焦 → 同步模型值（失焦\n  重挂机制）、contenteditable 无框样式。\n- ext 桥 `attr_host_ext.ts`：commitAttr/isFocused/模型同步三函数。\n\n### D4 装配切换与退役清单\n\n- EngineEditor：四 `registerBlockWidget` + 适配器（childrenOf/attrs\n  扁平化/readonly 传 streaming）+ expandedElement 删除（assembleNode\n  容器分支直挂 widget，isExpandableContainer 判定保留为分派条件）。\n- builtin-panels：renderCalloutPanel / renderListPanel 删（Callout/\n  ListBlock 经 custom 槽 panelOf；ListItem/TableRow/TableCell 等中介\n  面板不动）；DetailsNodeView registerPanel → panelOf(details widget)。\n- 删除：DetailsNodeView.vue（gen 产物）、AttrHost.vue、gen 部署物增删\n  按实际（.at 源 DetailsNodeView 退役；node_view_ext 相应导出收缩）。\n- assert-editor-gen 清单重冻结；ARCHITECTURE §6 清单数同步。\n\n### D5 parity 与契约\n\n- 三模式 parity：容器四 kind 进 033 block-widget-parity 套件（chrome\n  层属性矩阵，edit 白名单外零差异）。\n- EDITOR-CONTRACT：容器装配面四段补 mode 语义注记（033 同口径）+\n  §BlockChildren 平台面（孔契约：children_slot 闭包形状/epoch 语义/\n  VM 映射=原生递归装配）。",
+        "file": "docs/plans/archived/035-container-block-children.md",
+        "related": [
+          "PLAN-035"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -591,6 +624,17 @@
         "file": "docs/plans/archived/034-rich-text-host-platform.md",
         "related": [
           "PLAN-034"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P035-4",
+        "section": "tests",
+        "title": "BlockChildren 子块挂载孔（组件组合原语）+ Callout/Details/Blockquote/List 四类容器 chrome 迁 .at 家族 widget + AttrHost .at 化 + expandedElement 收缩退役 — 测试设计",
+        "content": "- **零改动回归（硬验收）**：container-editing / host-protocol /\n  extension-blocks / stream-tri-state 四 e2e spec；render.test.ts\n  extension panels 段；semantics.test.ts（内核零改动佐证）。\n- **新增单测**：BlockChildren 孔（闭包求值/epoch 重挂/teardown）；\n  attr_host.at 产物（提交键序/blur 提交单步/version 同步）；四容器\n  widget 三 mode DOM 契约（对齐现 renderCalloutPanel 断言形状）；\n  parity 矩阵扩展四 kind。\n- **gen**：两连跑逐字节确定；清单断言。\n- **手验**：容器聚焦编辑三例（Callout 标题就地/Details 摘要+开合/\n  任务 checkbox 翻转）截图留档（029 T10 口径）。",
+        "file": "docs/plans/archived/035-container-block-children.md",
+        "related": [
+          "PLAN-035"
         ],
         "status": "verified"
       }
@@ -738,6 +782,17 @@
           "PLAN-034"
         ],
         "status": "published"
+      },
+      {
+        "id": "P035-5",
+        "section": "reviews",
+        "title": "BlockChildren 子块挂载孔（组件组合原语）+ Callout/Details/Blockquote/List 四类容器 chrome 迁 .at 家族 widget + AttrHost .at 化 + expandedElement 收缩退役 — 验收标准与复审",
+        "content": "1. Callout/Details/Blockquote/List 四 kind 各一件 .at widget 服务\n   view/edit（stream=面板路径）；renderCalloutPanel/renderListPanel/\n   DetailsNodeView/AttrHost.vue/expandedElement 分支物理退役。\n2. BlockChildren 孔组件 + 契约段在册；.at 内嵌组件组合 idiom 二例\n   在案（NodeViewWrapper 先例外再加本计划）。\n3. 零改动回归清单（四 e2e + render.test.ts + semantics）全绿；\n   parity 矩阵含容器四 kind。\n4. gen 清单/assert-editor-gen/ARCHITECTURE §6 同步冻结；\"Callout\n   edit==view CSS 单通道\"从人盯约定变同源事实（复审记录验明）。\n5. 文档三件（EDITOR-CONTRACT 容器 mode 注记 + BlockChildren 平台面 /\n   ARCHITECTURE / DEBTS 026② 容器族销号）更新完。\n\n**复审人**：ZCode（/auto-plan:review，2026-09-01）\n**复审基线**：worktree `.worktrees/plan-035-dev`（branch plan-035-dev @ 6516e86，工作树干净；diff master 40 文件 +2384/−671，含 f7f983a 之后的 9 个计划提交）\n\n### 验收标准逐条复核（全部重跑/重验，不采信勾选框）\n\n1. **四 kind .at widget + 旧面物理退役** — PASS。五 .at 源在树（callout/details/blockquote/list_block_widget/attr_host）；`EngineEditor.vue` expandedElement 已删（仅 :408 注释提及；isExpandableContainer 保留为分派条件，:500/:514，符合 D4）；builtin-panels.ts 无 renderCalloutPanel/renderListPanel 活代码（仅 callout-block-widget.test.ts 内冻结逐字节参照，属测试资产）；DetailsNodeView.vue（−122）与 details_node_view.at（−190）物理删除；AttrHost.vue 手写版退役——文件现为 gen 产物（gen.mjs 映射 `'AttrHost.vue': 'components/AttrHost.vue'`，T2 名字冲突裁定的提前执行）。\n2. **BlockChildren 孔 + 契约段 + 组合 idiom 二例** — PASS。`src/editor/components/BlockChildren.ts:16`（children_slot 闭包 prop，裸 fragment 无自包裹）；EDITOR-CONTRACT.md:134 §8 平台面（children_slot 闭包形状/epoch 语义/VM 映射=原生递归装配/装饰器窗）；container_ext.ts 内嵌 BlockChildren/AttrHost——NodeViewWrapper 之后第二例 idiom 在案。\n3. **零改动回归 + parity** — PASS。六文件（container-editing/host-protocol/extension-blocks/stream-tri-state 四 e2e + render.test.ts + semantics.test.ts）`git diff master..HEAD` 为空；engine vitest 全量 **673/673**（49 文件，复审重跑）；demo playwright 全量 **48/48**（复审重跑，含四零改动 spec）；parity 套件 19/19 含容器四 kind（view≡stream + edit 白名单：AttrHost 宿主/活点 checkbox/markdown-renderer 孔/横幅）。\n4. **gen 冻结 + CSS 单通道同源事实** — PASS。`node scripts/assert-editor-gen.mjs` 零退出（19 chrome products / 14 ext bridges，复审重跑）；engine build 四断言绿（parser-pure/no-tiptap/editor-gen/dist-stamp，复审重跑）；ARCHITECTURE §6 部署物 15→19、ext 桥 12→14 与清单一致；\"Callout edit==view CSS 单通道\"已从约定变同源事实——view 与 edit 同一 .at 单源 + callout-block-widget.test view 面 norm 后逐字节全等断言钉死。\n5. **文档三件** — PASS。EDITOR-CONTRACT 容器四行 mode 注记 + §8；ARCHITECTURE §6 数字与容器族落地段；DEBTS.md:37 026② \"容器族已销（plan 035，2026-09-01）\"，余量收窄为 Table 族与其余 kind。\n\n### 遗漏/延后/workaround 排查\n\n- 无未勾任务、无静默裁剪。待澄清事项全部闭合：#1（034 merge 阻塞）已解除；List/Quote 薄壳已做（T5）；attr 桥独立 attr_host_ext.ts 已落地；ListItem/TableRow/TableCell 中介面不动与 Table 家族化另行立项均为计划\"不做的\"声明边界（DEBTS 026② 同步注记），非未批准延后。\n- 执行裁定五条（计划内有记录，非静默）：① AttrHost 名字冲突致退役切片提前到 T2；② 容器编辑面不走 editSlotFor 改 containerEditSlot 焦点路径直挂（childSlot 需 AssemblyCtx 闭包，T6）；③ view 面标题静态 div（render.test 零改动硬验收优先于架构草图字样，T3）；④ panel-registry 新增 §面板体装饰器窗 + renderEmbedded 单 vnode 归一（T6 范围增量；node-view-mount/wikilink 两测试随新装配改写——不在零改动清单内，合规）；⑤ gen 清单 22→21 widgets 修正（DetailsNodeView .at 同批退役）。\n- 环境级注记（非本计划引入）：vue-tsc -b 增量态首跑 .vue 解析失败（--force 后全新态绿；主检出同样现象），已在 T7 记录为观察项。\n- **结论：五条验收全 PASS，无阻塞债——复审通过，路由 `reviewed`，可进 /auto-plan:merge。**",
+        "file": "docs/plans/archived/035-container-block-children.md",
+        "related": [
+          "PLAN-035"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -881,6 +936,17 @@
         "file": "docs/plans/archived/034-rich-text-host-platform.md",
         "related": [
           "PLAN-034"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P035-6",
+        "section": "reports",
+        "title": "BlockChildren 子块挂载孔（组件组合原语）+ Callout/Details/Blockquote/List 四类容器 chrome 迁 .at 家族 widget + AttrHost .at 化 + expandedElement 收缩退役 — 变更摘要",
+        "content": "\"完美态\"路线图 M2 第二步：容器块的 chrome 单源化。现状容器编辑装配\n全部在手写 TS 里——`EngineEditor.expandedElement`（429 行起）：Blockquote\n薄壳、Callout 卡片链（icon+AttrHost 标题+正文）、Details（marker 翻转+\nAttrHost 摘要+显隐）、List（ol/ul+li+任务 checkbox 活点）；view 侧又一\n套（builtin renderCalloutPanel / renderListPanel / DetailsNodeView）。\n本计划按 033 家族模式收编：\n\n**组合原语**：`BlockChildren` 平台组件（TS 手写层，`use { component }`\n导入 .at——NodeViewWrapper 同 idiom）——子块递归挂载孔，闭包持有\nAssemblyCtx（epoch 重挂/宿主注册表/焦点路径不变），.at chrome 内嵌即\n得递归；VM 契约段同步冻结（孔 → 原生递归装配）。\n\n**四类容器家族 widget**（一 kind 一 widget，view/edit 同 chrome，\n033 registerBlockWidget/panelOf 机制直用）：\n- `callout_block_widget.at`：吸收 renderCalloutPanel（退役）+\n  expandedElement Callout 分支；\n- `details_block_widget.at`：吸收 DetailsNodeView（退役）+ expandedElement\n  Details 分支（marker 点击 → setBlockAttrs open 单步 undo）；\n- `blockquote_block_widget.at` / `list_block_widget.at`：薄壳收编\n  （list 含任务 checkbox 活点/惰态的 mode 区分；renderListPanel 退役，\n  view 惰态 checkbox 进 widget view 模式）；\n- `attr_host.at`：AttrHost.vue（74 行 TS SFC）.at 化——attr 读写宿主\n  （挂载模型值/blur→setBlockAttrs 一步 undo/Enter·Esc=blur 提交/version\n  联动），Callout 标题与 Details 摘要的宿主内件。\n\n**收缩**：expandedElement 四分支 → 家族分派薄壳（或整体退役，assembleNode\n直挂 widget）；EngineEditor 净缩 ~180 行。\n\n**不做的**：文本叶子宿主（PLAN-034）；Table 家族化（依赖 032 归一终态\n后的行为面复验，独立小计划）；Query/Embed 数据装载（DEBTS 026①）；\nVM 端实现。",
+        "file": "docs/plans/archived/035-container-block-children.md",
+        "related": [
+          "PLAN-035"
         ],
         "status": "published"
       }

@@ -168,12 +168,16 @@ onMounted(() => {
           padding: 0.5rem 0.75rem;
           font-size: 0.75rem;
           color: hsl(var(--muted-foreground, 220 9% 46%));
-          white-space: pre-wrap;
+          /* the hole stays EMPTY by design (preview carries the content);
+             normal collapses the generated template's indentation
+             whitespace — the old NodeViewContent component rendered no
+             text nodes, pre-wrap would bill two phantom lines (~40px) */
+          white-space: normal;
         }
-        // family container chrome (plan 033 T7): ONE set of values for the
-        // container in every mode — the view face's document-card chrome is
-        // the family canon (the 031 edit face's gray #f8f9fa card is
-        // retired; parity suite pins border/radius/background equality).
+        /* family container chrome (plan 033 T7): ONE set of values for the
+           container in every mode — the view face's document-card chrome is
+           the family canon (the 031 edit face's gray #f8f9fa card is
+           retired; parity suite pins border/radius/background equality). */
         .autodown-mermaid-editor {
           border: 1px solid hsl(var(--border, 220 13% 91%));
           border-radius: 0.375rem;

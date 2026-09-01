@@ -120,13 +120,19 @@
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 16 个部署物：`menus/{SlashMenu,BubbleMenu,TableMenu,CodeBlockMenu}.vue`、
-  `components/{CodeLanguageIcon,CodeEditorBlock,TableEditorBlock,MathEditBlock,MermaidEditBlock}.vue`、
-  `node-views/*.vue`（7）——gen 管线
-  （暂存工程 `auto build --gen-only --lenient` → 收割 → E1 import 后修 →
-  部署），两连跑逐字节确定。
+- 14 个部署物（plan 033 起：16 → 14——三族 widget 替换 CodeEditorBlock
+  + Math/MermaidEditBlock + 两 NodeView）：`menus/{SlashMenu,BubbleMenu,
+  TableMenu,CodeBlockMenu}.vue`、
+  `components/{CodeLanguageIcon,TableEditorBlock,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget}.vue`、
+  `node-views/*.vue`（5：Details/WikiLink/Query/BlockEmbed/MathInline）——
+  gen 管线（暂存工程 `auto build --gen-only --lenient` → 收割 → E1 import
+  后修 → 部署），两连跑逐字节确定。
 - 11 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
-  部署（引擎接口，零 Tiptap；031 增 math_edit_ext / mermaid_edit_ext）。
+  部署（引擎接口，零 Tiptap；plan 033 起三族桥 code_block_widget_ext /
+  math_block_widget_ext / mermaid_block_widget_ext 替换 code_editor_
+  block_ext / math_edit_ext / mermaid_edit_ext——家族读取器
+  nodeText/ctxReadonly/codeController 等以 code_block_widget_ext 为正典家，
+  其余桥 re-export）。
 - build guard：`scripts/assert-editor-gen.mjs`——生成头注 ↔ .at 源存在性、
   部署清单精确性（增删均须显式改 guard 清单）、ext 桥同步，三项断言。
 
@@ -148,6 +154,27 @@
 - 在册缺口：行内 WYSIWYG（段落内 mark 就地编辑、选区映射）不在 plan 023
   范围，单列后续计划；表格嵌套块单元格 v1 仅文本单元格可编辑。
 
+**BlockWidget 家族机制（plan 033，三模式同 chrome 的结构解）**
+
+- `src/render/block-widget.ts`（手写平台层，同 block-component 模式）：
+  `registerBlockWidget(kind, widget)` 一次注册填满三槽（view/stream/edit
+  包装成 `h(widget, { mode, node, final, ctx })` 槽位工厂——家族是糖，
+  既有按槽 registerBlockComponent API 零破坏）；`panelOf(widget)` 把同一
+  widget 包成 PanelRenderer 挂 panel-registry custom 槽，view 的两个消费
+  面（编辑器预览列 / 纯渲染）同源。
+- 试点三族（一 kind 一 .at widget，约 250-350 行）：`CodeBlockWidget`
+  （吸收退役的 renderCodeblockPanel——Codeblock 面板经
+  `src/render/block-widget-panels.ts` 注册，render-node 副作用导入，032
+  StreamingTable 同通道——与 CodeEditorBlock 含 CodeBlockMenu 宿主契约
+  badge 包裹）、`MathBlockWidget` / `MermaidBlockWidget`（吸收对应
+  NodeView + 031 编辑面，工件 final-put 随 widget 桥迁移）。
+- parity 套件在册：`src/render/__tests__/block-widget-parity.test.ts`
+  （happy-dom computed-style，三 kind × 三 mode 容器盒模型/共享件类链/
+  view≡stream 全链逐项相等；edit 白名单——textarea/caret/横幅/stack
+  分隔——冻结在文件头注）。
+- 推广边界（待后续计划）：Table 合流依赖 032 归一终态；Callout/Details/
+  Query/Embed 依赖递归组合原语；文本叶子走 RichTextHost 计划。
+
 **在册不部署的源（dormant，guard 豁免）**
 
 - `app.at`：强制占位根（生成器总发 App.vue，产物丢弃）。
@@ -164,8 +191,9 @@
   （2026-08-30 待澄清 #1）合并回单一入口——七动词吸收进 TableEditorBlock
   工具栏（.at 源 + gen:editor 再生），悬浮菜单回休眠；
   NodeView 经 panel registry custom 槽挂预览（node-view-host.ts 桥：
-  nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔），
-  7 件中 5 件在挂（Details/MathBlock/Mermaid/Query/Embed 预览）；
+  nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔）；
+  plan 033 起 MathBlock/Mermaid 预览改挂各自家族 widget（panelOf 面），
+  NodeView 在挂 3 件（Details/Query/Embed）；
   MathInlineNodeView 未挂（行内 math 无块级承载，仍 dormant——见 DEBTS.md
   026 行）；WikiLinkNodeView 在册不激活（020 装饰器已拥有该交互，无双轨）。
   余量：Query/Embed 数据装载（runQuery/loadBlock 注入面）与 NodeView

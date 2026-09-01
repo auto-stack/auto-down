@@ -15,7 +15,7 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.autodown-slash-menu` | 斜杠菜单 | demo + jade e2e |
 | `.autodown-wikilink-label` | wikilink 节点视图 | jade e2e 04 |
 | `.autodown-block-placeholder` | 块编辑占位（滚动同步空挡；**仅 `.node-slot` 直接子级**会被 clearPlaceholders 清除——同 class 家族的开放态骨架在更深层，plan 032） | demo scroll-sync |
-| `.code-block-container.autodown-block-placeholder.is-loading` + `pre[aria-busy="true"]` | 开放 fence 骨架（含 ```` ```mermaid ```` 开 fence；等高占位 min-height 5.5rem；闭合翻转即摘除，plan 032） | demo stream-tri-state e2e |
+| `.code-block-container.autodown-block-placeholder.is-loading` + `pre[aria-busy="true"]` | 开放 fence 骨架（含 ```` ```mermaid ```` 开 fence；等高占位 min-height 5.5rem；闭合翻转即摘除，plan 032）；**plan 033 起该面板为 CodeBlockWidget 的 view/stream 模式**（edit 模式走 `.autodown-codeblock-node` 宿主链 + badge + `.autodown-code-editor` 编辑面，CodeBlockMenu 点击契约不变） | demo stream-tri-state e2e |
 | `.autodown-block-boundary` | 块边界插入把手 | demo scroll-sync |
 | `[data-block-id]` | 块定位（`getBlockMap` 消费） | demo + jade e2e（11 处） |
 | `[data-node-index]` | 渲染侧块序号（滚动同步） | demo scroll-sync |
@@ -26,8 +26,8 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.autodown-details[data-open]` + `.autodown-details-*` | Details 卡片（node-view 预览与编辑装配同链，plan 030） | demo extension-blocks e2e |
 | `.autodown-attr-host` | 容器块 attr 就地无框编辑宿主（Callout title / Details summary；blur→setBlockAttrs 一步 undo，Enter/Esc=blur 提交，plan 030） | demo extension-blocks e2e |
 | `.task-item` > `.task-checkbox` | GFM 任务项（view/stream 态 disabled 只读；编辑装配态可点，点击翻转 checked attr，plan 030） | demo extension-blocks e2e |
-| `.autodown-math-editor` + `.autodown-math-preview` / `.autodown-math-error` / `.math-editor-textarea` | MathBlock 专用编辑面：源码 textarea + 同步 katex 实时预览同屏（blur 整段一步 undo 提交，非法源错误横幅，plan 031） | demo extension-blocks e2e |
-| `.autodown-mermaid-editor` + `.autodown-mermaid-preview` / `.autodown-mermaid-error` / `.mermaid-editor-loading` / `.mermaid-editor-textarea` | Mermaid 专用编辑面：300ms debounce 异步预览三态 loading/svg/error（plan 031，替换 030 的 fenceEditSlot 复用） | demo extension-blocks e2e |
+| `.autodown-math-editor` + `.autodown-math-preview` / `.autodown-math-error` / `.math-editor-textarea` | MathBlock 专用编辑面：源码 textarea + 同步 katex 实时预览同屏（blur 整段一步 undo 提交，非法源错误横幅，plan 031）；**plan 033 起为 MathBlockWidget 的 edit 模式**（view/stream 模式走 `.autodown-math-block` + `.math-block-source` 节点视图链——一 widget 三态同 chrome） | demo extension-blocks e2e |
+| `.autodown-mermaid-editor` + `.autodown-mermaid-preview` / `.autodown-mermaid-error` / `.mermaid-editor-loading` / `.mermaid-editor-textarea` | Mermaid 专用编辑面：300ms debounce 异步预览三态 loading/svg/error（plan 031，替换 030 的 fenceEditSlot 复用）；**plan 033 起为 MermaidBlockWidget 的 edit 模式**（view/stream 走 `.autodown-mermaid-block` + `.mermaid-source` 链） | demo extension-blocks e2e |
 
 ## 2. CustomEvent（document 级）
 

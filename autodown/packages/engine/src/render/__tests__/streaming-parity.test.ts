@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { buildSegments as legacyBuildSegments } from './legacy-streaming'
 import { buildSegments } from '../streaming.generated'
-import { normalizeTableProps } from '../streaming-table.generated'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -166,19 +165,7 @@ describe('buildSegments parity — streaming prefix scans', () => {
   })
 })
 
-describe('normalizeTableProps (StreamingTable logic)', () => {
-  it('nullish props fall back to empty arrays', () => {
-    expect(normalizeTableProps(undefined, undefined)).toEqual([[], []])
-    expect(normalizeTableProps(null, null)).toEqual([[], []])
-  })
-
-  it('passes provided values through unchanged', () => {
-    const columns = ['a', 'b']
-    const rows = [{ a: 1 }]
-    expect(normalizeTableProps(columns, rows)).toEqual([columns, rows])
-  })
-
-  it('does not default falsy-but-non-nullish props (?? semantics)', () => {
-    expect(normalizeTableProps([], [])).toEqual([[], []])
-  })
-})
+// normalizeTableProps retired with streaming-table.generated.ts (plan 037
+// T5): its nullish-normalization semantics moved into the table family
+// widget's ext bridge (streamHeader/streamBody — `?? []`) and are pinned by
+// src/editor/__tests__/table-block-widget.test.ts (the 待澄清 #1 归并).

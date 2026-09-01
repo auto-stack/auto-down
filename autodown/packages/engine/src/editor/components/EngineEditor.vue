@@ -4,9 +4,10 @@
       <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
         <BubbleMenu :editor="adapter" />
-        <!-- CodeBlockMenu anchors root-relative, mounts bare. TableMenu went
-             back to dormant: its verbs were absorbed into TableEditorBlock's
-             toolbar (plan 026 adjudication #1 — single table entry). -->
+        <!-- CodeBlockMenu anchors root-relative, mounts bare. TableMenu was
+             retired (plan 037 T5): its verbs live in the table family
+             widget's toolbar since the 026 #1 absorption — single table
+             entry, no floating menu face at all. -->
         <CodeBlockMenu :editor="adapter" />
         <component
           :is="block.view"

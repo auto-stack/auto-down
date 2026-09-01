@@ -1,5 +1,6 @@
-// Regenerate src/render/streaming.generated.ts + src/render/streaming-table.generated.ts
-// from the Auto language sources in this directory (plan 008, Phase 1).
+// Regenerate src/render/streaming.generated.ts (and the other render-side
+// .at products) from the Auto language sources in this directory (plan 008,
+// Phase 1; streaming_table.at retired by plan 037).
 //
 // Usage:  pnpm gen           (from packages/vue)
 //         node auto/gen.mjs  (same thing)
@@ -127,23 +128,10 @@ const streamingHeader = `/**
 writeFileSync(join(pkgRoot, 'src', 'render', 'streaming.generated.ts'), streamingHeader + out)
 console.log('[gen] auto/streaming.at -> src/render/streaming.generated.ts (raw kept at auto/streaming.raw.ts)')
 
-// streaming_table.at needs no post-fixes today; still run through the same
-// pipeline so the raw output stays inspectable.
-const tableOut = transpile('streaming_table')
-const tableHeader = `/**
- * @autodown/vue — StreamingTable prop normalization.
- *
- * GENERATED FILE — do not edit by hand.
- * Source: auto/streaming_table.at (Auto language). Regenerate with: pnpm gen
- * (see auto/README.md for the pipeline and the applied post-fixes)
- */
-
-`
-
-writeFileSync(join(pkgRoot, 'src', 'render', 'streaming-table.generated.ts'), tableHeader + tableOut)
-console.log(
-  '[gen] auto/streaming_table.at -> src/render/streaming-table.generated.ts (raw kept at auto/streaming_table.raw.ts)'
-)
+// streaming_table.at retired (plan 037 T3-T5): its nullish normalization
+// (`columns ?? []` / `rows ?? []`) moved into the table family widget's ext
+// bridge (auto/editor/ext/table_block_widget_ext.ts — streamHeader /
+// streamBody / streamColspan), pinned by table-block-widget.test.ts.
 
 // markdown_parser.at moved to @autodown/core in plan 016 Phase 2
 // (packages/core/auto/markdown_parser.at -> core src/markdown-parser.ts).

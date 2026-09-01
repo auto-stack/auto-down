@@ -172,7 +172,14 @@ function slotFinalOf(part: Part): boolean {
 const containerRef = ref<HTMLElement | null>(null)
 
 function clearPlaceholders(container: HTMLElement) {
-  container.querySelectorAll('.autodown-block-placeholder').forEach((el) => el.remove())
+  // Scoped to the slot's DIRECT children: the editing placeholder this
+  // component inserts lives at .node-slot > .autodown-block-placeholder
+  // (matching the :scope > guard in applyBlockIdsAndPlaceholder). The open
+  // -fence skeleton (plan 032 P3) reuses the same class family DEEPER in the
+  // tree (.node-content .code-block-container) and must survive refreshes —
+  // an unscoped querySelectorAll here would rip the code panel out of the
+  // DOM while Vue's VDOM still believes it is mounted.
+  container.querySelectorAll('.node-slot > .autodown-block-placeholder').forEach((el) => el.remove())
 }
 
 const COPY_ICON = '<span class="codeblock-copy-icon"></span>'

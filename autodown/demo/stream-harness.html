@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Stream tri-state e2e harness (plan 032 T8): a dev-server-only page
+     (NOT part of the production build inputs) that mounts two
+     StreamingRenderer panes over one source ref, driven frame-by-frame by
+     e2e/stream-tri-state.spec.ts through window.__streamHarness. -->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoDown stream tri-state harness</title>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+      .harness-panes { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; }
+      .harness-pane { width: 800px; max-width: 100%; margin: 0 auto; }
+      .pane-label { font-size: 0.8rem; color: #6b7280; margin: 0 0 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/stream-harness-main.ts"></script>
+  </body>
+</html>

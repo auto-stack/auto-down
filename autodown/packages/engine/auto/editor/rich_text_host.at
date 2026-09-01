@@ -1,0 +1,115 @@
+// rich_text_host.at — RichTextHost widget (plan 034): the text-leaf editing
+// host's chrome, .at-sourced. Replaces the hand-written BlockHost.vue (plan
+// 018 Phase 2; rich host 024 P2T1) — partial reversal of plan 021's "never
+// .at" ruling: the contenteditable attribute face was already disproven by
+// table_editor_block.at, and the T1 probe (this plan's 复审记录) verified the
+// composition event face emits. What stays out of the DSL is exactly what the
+// probe found broken there: html injection on a dyn root (:html attribute
+// pollution, not v-html), template refs on a dyn root (no const declaration
+// emitted) and str() (no builtin) — those live in the ext bridge
+// (ext/rich_text_host_ext.ts), which also carries ALL of BlockHost.vue's
+// platform wiring verbatim (mount focus + end caret, nbsp normalization,
+// input-rule resync, key routing, paste channels, composition trio, blur
+// rich-writeback, slash dispatch, Ctrl+B/I/K marks).
+//
+// Contract freeze (EDITOR-CONTRACT §RichTextHost): the props here are the
+// VM-facing platform surface — controller as the wide Array<str> (any) type
+// (controller-prop idiom), blockId/blockKind/level the flat chrome data, and
+// initial_html the mount-once rich snapshot (spansToHtml, evaluated by the
+// assembler — the engine is not Vue-reactive, a kind/level flip remounts via
+// the epoch key so the snapshot never goes stale under the caret).
+//
+// Codegen-forced idioms (T1 probe-verified, see 复审记录):
+// - dyn (.tag) root: heading/paragraph/other kinds render h1-h6 / p / div —
+//   the host-face.ts face computation absorbed into the ext bridge
+//   (hostTag/hostCls carry the 1-6 clamp; str() has no DSL builtin).
+// - Event face rides the DSL: oninput/onkeydown/onpaste/onfocus/onblur +
+//   the three composition events all emit Vue listeners (route a ruling).
+//   Handlers receive $event and pass e.target (=== the host root for every
+//   event here) into the ext bridge — no template ref needed.
+// - onclick.stop takes a payloaded no-op msg (modifier-only bindings need a
+//   handler; a zero-payload msg would make the template's $event argument
+//   fail vue-tsc — details_node_view Noop idiom).
+// - .Init is the onMounted hook: mountHost grabs the root via
+//   getCurrentInstance().$el (auto_down_editor_ext idiom), injects
+//   initial_html, focuses with the caret at end, and registers the
+//   onBeforeUnmount focusedRichHost deregistration.
+
+widget RichTextHost(controller: Array<str>, blockId: str, blockKind: str, level: int, initial_html: str) {
+    use {
+        fn: hostTag, hostCls, mountHost, hostInput, hostKeydown, hostPaste, hostCompositionBegin, hostCompositionUpdate, hostCompositionCommit, hostFocus, hostBlur from "ext/rich_text_host_ext.ts"
+    }
+
+    msg Msg { Init, ClickStop, Input, Keydown, Paste, Focus, Blur, CompositionStart, CompositionUpdate, CompositionEnd }
+
+    computed {
+        // host-face.ts absorbed: Heading → h1-h6 + heading-node heading-N,
+        // Paragraph → p + paragraph-node, everything else the bare div.
+        tag => hostTag(.blockKind, .level)
+        cls => hostCls(.blockKind, .level)
+    }
+
+    view {
+        dyn (.tag) {
+            class: .cls,
+            data-block-id: .blockId,
+            data-node-type: .blockKind,
+            dir: "auto",
+            contenteditable: true,
+            spellcheck: "false",
+            onclick.stop: .ClickStop($event),
+            oninput: .Input($event),
+            onkeydown: .Keydown($event),
+            oncompositionstart: .CompositionStart($event),
+            oncompositionupdate: .CompositionUpdate($event),
+            oncompositionend: .CompositionEnd($event),
+            onpaste: .Paste($event),
+            onfocus: .Focus($event),
+            onblur: .Blur($event)
+        }
+    }
+
+    on {
+        .Init -> {
+            mountHost(.initial_html)
+        }
+
+        // BlockHost's bare @click.stop — the handler is required by the DSL,
+        // the stop modifier is the whole point (keeps wrapper clicks from
+        // stealing selection).
+        .ClickStop(e) -> {
+        }
+
+        .Input(e) -> {
+            hostInput(e.target, .controller)
+        }
+
+        .Keydown(e) -> {
+            hostKeydown(e, .controller)
+        }
+
+        .Paste(e) -> {
+            hostPaste(e, .controller)
+        }
+
+        .CompositionStart(e) -> {
+            hostCompositionBegin(e.target, .controller)
+        }
+
+        .CompositionUpdate(e) -> {
+            hostCompositionUpdate(e, .controller)
+        }
+
+        .CompositionEnd(e) -> {
+            hostCompositionCommit(e.target, .controller)
+        }
+
+        .Focus(e) -> {
+            hostFocus(e.target, .controller)
+        }
+
+        .Blur(e) -> {
+            hostBlur(e.target, .controller)
+        }
+    }
+}

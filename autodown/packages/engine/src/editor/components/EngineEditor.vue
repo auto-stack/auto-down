@@ -186,7 +186,8 @@ import { setBlockAttrs } from '../engine/commands'
 import { historyActionOf, runHistory } from '../engine/undo-wiring'
 import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-path'
 import { domRangeToBlockRange } from '../engine/selection-map'
-import BlockHost from './BlockHost.vue'
+import { spansToHtml } from '../engine/rich-html'
+import RichTextHost from './RichTextHost.vue'
 import AttrHost from './AttrHost.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
 import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
@@ -524,11 +525,17 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
       const level = node.kind === BlockType.Heading ? attrGetInt(node.attrs, 'level', 1) : undefined
       return {
         id: node.id,
-        view: BlockHost,
+        view: RichTextHost,
         props: {
           controller,
+          // flat chrome data (plan 034 D4): the widget derives tag/cls from
+          // blockKind/level itself (the host-face computation is absorbed);
+          // initial_html is the mount-once rich snapshot, evaluated here —
+          // the engine is not Vue-reactive, the snapshot never invalidates.
+          blockId: controller.id,
           blockKind: BlockType[node.kind],
-          level,
+          level: level ?? 0,
+          initial_html: spansToHtml(controller.inlines),
           // The face lives in the key: a kind/level flip mid-typing (input
           // rules) must REMOUNT the host. <component :is> would swap the
           // DOM element under the caret without re-running onMounted —

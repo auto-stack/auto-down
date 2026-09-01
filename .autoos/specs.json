@@ -135,6 +135,17 @@
           "PLAN-033"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P034-1",
+        "section": "goals",
+        "title": "RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结（EDITOR-CONTRACT 平台面） — 目标",
+        "content": "1. **单源 chrome**：文本叶子编辑宿主的 DOM 契约（语义 tag/class/\n   data-block-id/data-node-type/[contenteditable] 选择器面）出自一份\n   .at 源；gen:editor 两连跑逐字节确定。\n2. **行为零漂移**：semantics.test.ts、wysiwyg-typography / inline-marks /\n   undo / scroll-sync e2e、EDITOR-CONTRACT 选择器面**零改动**通过；\n   中文 IME 手验（413 清单三例）通过并留档。\n3. **接线有主**：BlockHost.vue 的全部平台接线迁移至 ext 桥并有单测\n   （composition 暂存/提交、input-rule 重同步、粘贴通道、caret 计算）。\n4. **VM 契约在册**：RichTextHost 平台面（组件 props、事件载荷、\n   controller 协议、语义 tag 映射表）冻结进 EDITOR-CONTRACT——后续\n   auto-lang iced 后端实现的对齐面。",
+        "file": "docs/plans/archived/034-rich-text-host-platform.md",
+        "related": [
+          "PLAN-034"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -279,6 +290,17 @@
         "file": "docs/plans/archived/033-block-widget-family-chrome.md",
         "related": [
           "PLAN-033"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P034-2",
+        "section": "architecture",
+        "title": "RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结（EDITOR-CONTRACT 平台面） — 架构方案",
+        "content": "```\nauto/editor/rich_text_host.at（新 widget）\n├─ props 扁平：controller Array<str>, blockId str, blockKind str,\n│  level int, initial_html str（chrome 全数据化，VM 对象走 Array<str>\n│  宽类型——controller-prop idiom）\n├─ view：dyn (.tag) 根元素（h1-h6/p/div 由 .at 条件计算，吸收\n│  host-face.ts）+ class/契约 data + contenteditable/dir/spellcheck +\n│  html: .initial_html（挂载注入，数学预览/高亮 overlay 同 idiom）\n├─ 事件（T1 探针二选一）：\n│   a) DSL 面：oninput/onkeydown/onfocus/onblur/onpaste +\n│      oncompositionstart/update/end（若可解析）\n│   b) ext 命令式：.Init -> wireHostEvents(.root, controller 回调包)\n│      （addEventListener 全套，零 DSL 依赖——兜底保底路线）\n└─ msg：Input/Keydown/CompositionX/Paste/Focus/Blur → 全部薄转发 ext 桥\n\nauto/editor/ext/rich_text_host_ext.ts（新桥，BlockHost.vue 接线迁移）\n├─ mountHost(el, controller)：聚焦+末光标（Range/selectNodeContents）\n├─ hostText(el)：nbsp 归一\n├─ handleInput(el, controller)：diff 派发 + input-rule 重同步\n│   （span-resync+caret 回末，025 P2T1 语义）+ slash 派发\n├─ handleKeydown(e, controller, hostApi)：Enter/Backspace/Tab +\n│   Ctrl+B/I/K（domToggleMark/domSetLink 就地包裹，024 P3T3）\n├─ handlePaste(ev, controller)：纯文本 vs markdown 通道\n├─ handleCompositionX(el, controller)：CompositionSession 三委托\n├─ handleBlur(el, controller)：pending flush + onRichBlur 结构回写\n└─ caretOffset(el)/previousSiblingId(el)：Range 数学\n\n装配\nsrc/editor/components/EngineEditor.vue\n├─ `view: BlockHost` → RichTextHost（props 经适配器扁平化：\n│   tag/cls 由 widget 自算，initial_html=spansToHtml(controller.inlines)）\n├─ hostFor/BlockHostController 注册表不动（内核零改动）\n└─ components/BlockHost.vue 删除；engine/host-face.ts 并入 .at 后留\n    薄 re-export（wysiwyg-typography 测试引用面过渡）\n\n契约\nEDITOR-CONTRACT.md 新增 §RichTextHost 平台面\n└─ props/事件载荷/controller 协议/h1-h6·p·div 语义 tag 表\n   （iced text_editor 后端实现基准）\n```\n\n**为何 ext 桥而非 DSL 原语（v1）**：composition 三事件与 Selection API\n是否入 DSL 是 auto-lang 仓的长期决策；ext 桥路线让 engine 侧零依赖落地，\nDSL 原语化后可平滑收回（.at 事件面替换命令式接线，桥瘦身）。",
+        "file": "docs/plans/archived/034-rich-text-host-platform.md",
+        "related": [
+          "PLAN-034"
         ],
         "status": "stable"
       }
@@ -426,6 +448,17 @@
           "PLAN-033"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P034-3",
+        "section": "designs",
+        "title": "RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结（EDITOR-CONTRACT 平台面） — 详细设计",
+        "content": "### D1 探针（T1）：composition 事件面\n\nscratch 工程 `auto build --gen-only --lenient`（gen.mjs 既有暂存通道）：\nwidget 声明 `oncompositionstart: .CS($event)` 等三事件，观产物 SFC 是否\n发出 `onCompositionstart` 监听。**裁定规则**：三事件全发且 vue-tsc 过 →\n路线 a（DSL 面）；任一不发 → 路线 b（ext 命令式，.Init 一站式接线）。\n裁定连同探针产物摘要记入本计划复审记录。\n\n### D2 widget props 与 face 计算\n\n```\nwidget RichTextHost(controller: Array<str>, blockId: str, blockKind: str,\n                    level: int, initial_html: str) {\n    computed {\n        tag => if .blockKind == \"Heading\" { \"h\" + str(.level) } else {\n                 if .blockKind == \"Paragraph\" { \"p\" } else { \"div\" } }\n        cls => if .blockKind == \"Heading\" { \"autodown-block-host heading-node heading-\" + str(.level) }\n               else { if .blockKind == \"Paragraph\" { \"autodown-block-host paragraph-node\" }\n                      else { \"autodown-block-host\" } }\n    }\n    view { dyn (.tag) { class: .cls, data-block-id: .blockId,\n             data-node-type: .blockKind, dir: \"auto\",\n             contenteditable: true, spellcheck: \"false\",\n             html: .initial_html, …事件面（D1 裁定） } }\n}\n```\n\n（level 钳位 1-6 的 clamp 逻辑同 host-face.ts；.at 条件链已证可承载\ndetails_node_view 级复杂度。）\n\n### D3 ext 桥 API 面（rich_text_host_ext.ts）\n\n导出纯函数集，widget msg 薄转发或 .Init 命令式接线（按 D1）。关键语义\n逐条对齐 BlockHost.vue 注释：① input-rule 消费后 host DOM 重同步跳过\ncomposition 中（preedit 只在 DOM）；② Ctrl+B/I/K preventDefault 覆盖\n浏览器原生 `<b>`（DOM 规范化 strong）；③ blur 先 flush pending 纯文本\ndiff 再 onRichBlur 富回写；④ onBeforeUnmount 清 focusedRichHost 登记\n（widget Unmount msg → ext 清理函数）。\n\n### D4 装配切换与退役\n\n- EngineEditor：`import RichTextHost from './RichTextHost.vue'`，\n  assembleNode 宿主分支 props 适配（controller 传递不变，initial_html\n  现算）；BlockHost.vue 删除。\n- host-face.ts：face 计算并入 .at 后，TS 侧改 re-export gen 产物常量表\n  （或直接删除，视 wysiwyg-typography 测试引用面——执行期定，倾向删除\n  并改测试引用选择器而非 face 函数）。\n- gen 清单：16 widgets → 17；部署物 +1（RichTextHost.vue）；ext 桥\n  11 → 12。assert-editor-gen 三断言同步。\n\n### D5 VM 契约段（EDITOR-CONTRACT 新增）\n\n- props 表：controller（宿主控制器对象——方法面清单）、blockId/\n  blockKind/level/initial_html；\n- 事件表（载荷形状）：input{text}、keydown{key,ctrl/meta,shift}、\n  composition{phase,data}、paste{textPlain}、focus/blur；\n- controller 协议：BlockHostController 公开方法签名（onInput/onEnter/\n  onBackspaceAtStart/onTab/onPasteMarkdown/onRichBlur/composition 三\n  委托/id/text/inlines）；\n- 语义 tag 映射表（blockKind×level → tag+class，与 D2 同源）。",
+        "file": "docs/plans/archived/034-rich-text-host-platform.md",
+        "related": [
+          "PLAN-034"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -547,6 +580,17 @@
         "file": "docs/plans/archived/033-block-widget-family-chrome.md",
         "related": [
           "PLAN-033"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P034-4",
+        "section": "tests",
+        "title": "RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结（EDITOR-CONTRACT 平台面） — 测试设计",
+        "content": "- **零改动回归（硬验收）**：semantics.test.ts 全量；demo e2e\n  wysiwyg-typography / inline-marks / undo / scroll-sync / check-heading /\n  check-padding；EDITOR-CONTRACT 选择器 grep 面不变。\n- **新增单测**：ext 桥行为（composition 暂存/提交单步、input-rule\n  重同步、粘贴 markdown 通道、caret 数学、focusedRichHost 登记/清理）；\n  gen 两连跑字节确定；face 计算等价（.at 产物 vs 旧 host-face 快照）。\n- **手验**：413 IME 清单三例（微软拼音：preedit 跟随/上屏/候选取消）\n  于 demo 执行并回填记录（销 DEBTS 019④）。\n- **回归**：engine vitest + build + demo playwright 全量。",
+        "file": "docs/plans/archived/034-rich-text-host-platform.md",
+        "related": [
+          "PLAN-034"
         ],
         "status": "verified"
       }
@@ -683,6 +727,17 @@
           "PLAN-033"
         ],
         "status": "published"
+      },
+      {
+        "id": "P034-5",
+        "section": "reviews",
+        "title": "RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结（EDITOR-CONTRACT 平台面） — 验收标准与复审",
+        "content": "1. 文本叶子编辑宿主 chrome 单源 .at；BlockHost.vue 物理删除；gen 清单\n   17/部署物/ext 桥数与 guard 一致。\n2. D5 零改动回归清单全绿；wysiwyg-typography computed-style 断言零改动。\n3. ext 桥单测在册（composition/重同步/粘贴/caret 四组）；D1 探针裁定\n   与产物摘要记录在案。\n4. EDITOR-CONTRACT §RichTextHost 平台面在册（props/事件/controller/\n   tag 表四件）；ARCHITECTURE §6 手写平台层边界改写（BlockHost 移出\n   \"永不 .at\"名单，接线归 ext 桥，EngineEditor 装配壳维持手写）。\n5. IME 手验三例回填 DEBTS 019④ 销号。\n\n### T1 探针裁定（2026-09-01，执行期填入）\n\n**裁定：路线 a——DSL 事件面**。探针工程 `auto/editor/gen/_probe/`（复用\ngen.mjs 的 staging 通道结构：pac.at + src/front/*.at + ext/，`auto build\n-d . --gen-only --lenient`），三轮迭代后 v3 终形 build exit 0 且 vue-tsc\n（engine node_modules，minimal tsconfig）零错误。探针产物摘要：\n\n- **P1 composition 三事件（通过）**：`oncompositionstart/update/end` 在\n  DSL 可解析，产物模板逐一直发 `@compositionstart=\"CompositionStart($event)\"`\n  等监听（v1 即证实，推翻 021 裁定的最后一项事实依据）。\n- **P2 html: on dyn（不通过，绕开）**：dyn 元素上的 `html:` 发出\n  `:html=\"...\"` 普通属性绑定而非 v-html（与 code_block_widget.at 头注\n  033 记录一致）——DOM 契约污染，弃用；挂载 HTML 注入移入 ext 桥\n  mountHost（$el innerHTML），语义等价（挂载即定格）。\n- **P3 ref: on dyn（不通过，绕开）**：dyn 根的 `ref:` 只发 `:ref=\"'root'\"`\n  绑定、不发 `const root` 声明——处理器引用 `.root` 得 TS2304。绕法：事件\n  处理器一律用 `e.target`（九事件全部在宿主根上触发，等价 el.value）；\n  挂载用 ext 侧 `getCurrentInstance()?.proxy?.$el`（auto_down_editor_ext.\n  ts:131 既有 idiom）；卸载清理（focusedRichHost 注销）在 mountHost 内\n  注册 `onBeforeUnmount`（生命周期钩子内注册合法）。\n- **P4 str() 内建（不存在，绕开）**：computed 里 `str(.level)` 裸发调用，\n  TS2304/运行时 ReferenceError。tag/cls 计算移 ext 桥（hostTag/hostCls，\n  承接 host-face.ts 的 clamp 语义），.at 以 computed 调 ext fn（033 家族\n  wide-prop idiom）。\n- 附带确认：`onclick.stop: .ClickStop($event)`（裸修饰符绑定需带参 msg\n  ——details_node_view 的 Noop idiom，msg 无参则模板 `$event` 实参 TS2554）。\n\n（/auto-plan:review 填定）\n\n### /auto-plan:review 复审（2026-09-01，worktree plan-034-dev @ 2d3af22）\n\n**逐条验收裁决**\n\n1. **chrome 单源 + BlockHost 删除 + 清单一致 — PASS**：`auto/editor/\n   rich_text_host.at`（115 行）在册；diff 实证 BlockHost.vue（-194）/\n   host-face.ts（-18）/host-face.test.ts（-32）物理删除；`.at` 源 18 文件\n   含 pac.at/app.at = 17 widget 与 gen.mjs 断言一致；\n   `assert-editor-gen` 15 部署物/12 ext 桥零退出（复审门内重跑）。\n2. **零改动回归 — PASS**：`git diff master..HEAD -- demo/e2e/` 仅\n   math-edit-face.png（见下取证），**spec 文件零改动**；engine vitest\n   636/636（semantics.test.ts 零改动，复审门重跑）；六 spec 批 T7\n   21/21；demo 全量 47/47。\n3. **ext 桥单测 + 探针裁定 — PASS**：rich-text-host-ext.test.ts 28 例\n   （四组 + 守卫反例 + 挂载端到端）全绿；T1 裁定与产物摘要在本文件\n   复审记录节。\n4. **文档三件 — PASS**：EDITOR-CONTRACT §7（props/九事件/controller\n   协议/tag 映射四件，:92 起）；ARCHITECTURE §6 边界改写（+42/-19 行）；\n   DEBTS 019④ 销号 + 026② 文本叶子销。\n5. **IME 三例回填 — PASS（带注记）**：CDP 实输入管线 3/3（原生\n   composition 事件 + 浏览器自管 preedit）；形态注记与 019④ 原范围\n   （auto-lang 042 VM 壳）差已在待澄清 #5 双注，DEBTS 行如实保留\n   残余注记。\n\n**全量门（本 skill 唯一全量跑）**：engine 清缓存 build 四断言绿 +\nvitest 44 文件 636/636 + demo playwright **47/47**（本连跑含 scroll-sync\n两用例全过）。\n\n**遗漏 / 延后 / workaround 猎查**\n\n- 遗漏：无计划内子项缺失（9 步各有 diff 物证）。残留 \"BlockHost\"\n  字样均为注释/概念引用（vue-tsc 证无悬空导入）。\n- 延后：mark 快捷键选区抽象/MathInline/VM 实现/装配壳 .at 化——\n  全部为计划\"不做的\"显式边界，非静默缩水。\n- Workaround（有档非隐瞒）：① liveHosts WeakSet——重挂载 late-blur\n  守卫，T7 根因修复的忠实移植（旧 el.value 卸载清空语义），非凑合；\n  ② hostKeydown `currentTarget ?? target`——直调单测兜底，真分发\n  两者等价；③ SSR 富内容自 mount 始（旧 :innerHTML SSR 可见）——\n  D1 探针裁定的既定语义变化，消费面全客户端，测试改造已注记。\n- diff 假象澄清：`docs/plans/archived/033-*.md` \"删除\"系执行期间\n  master 被并行推进（033 merge 提交 3daad6b 归档该文件），本分支\n  早于该提交所致，非本计划改动。\n- 取证：math-edit-face.png 重生成（screenshot.spec 无条件覆写式留档）\n  ——与 master 版逐像素对比 11/93600 px 差异，全部位于右缘 3px 滚动条\n  条带 ±1-2 灰阶（抗锯声噪声），无内容变化。\n\n**债候选（记录不阻塞）**\n\n- ① `auto/editor/README.md` widget 清单陈旧（\"14 sources + 7 ext\"，\n  013 时代文档，033/034 均未同步；gen.mjs 头注指向它）。\n- ② `host-controller.ts:2` 头注仍写 \"The Vue shell (BlockHost.vue)\n  wires\"（壳已换 RichTextHost + ext 桥）。\n- ③ scroll-sync e2e 存量 flaky（master A/B 4 跑 3 败同症状，033 复审\n  亦取证过）——建议后续计划单独治理。\n- ④ gen:editor 重写部署物后 vue-tsc -b 增量缓存出 .vue TS2307 幻影\n  （rm tsconfig.tsbuildinfo 即清；master 干净缓存同状，非 034 引入）。\n\n**裁决：五条验收全 PASS，无阻塞债 → status: reviewed。**",
+        "file": "docs/plans/archived/034-rich-text-host-platform.md",
+        "related": [
+          "PLAN-034"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -815,6 +870,17 @@
         "file": "docs/plans/archived/033-block-widget-family-chrome.md",
         "related": [
           "PLAN-033"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P034-6",
+        "section": "reports",
+        "title": "RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结（EDITOR-CONTRACT 平台面） — 变更摘要",
+        "content": "\"完美态\"路线图 M2 第一步，也是编辑器 **.at 单源化的最大单点解锁**。现状：\nParagraph/Heading/ListItem/Blockquote 内文/WikilinkBlock 等全部文本叶子的\n编辑面 = 手写 `BlockHost.vue`（194 行，contenteditable + composition 三事件\n+ 选区 API + mark 快捷键），plan 021 曾以\"widget DSL 无 contenteditable 与\ncomposition 事件面\"裁定其**永不 .at 化**。本计划部分推翻该裁定：\n\n- **chrome 归 .at**：`rich_text_host.at` 新 widget——语义化宿主标签\n  （h1-h6/p/div，吸收 host-face.ts 的 face 计算）、class 链、data 契约、\n  contenteditable/dir/spellcheck 属性、挂载 HTML 注入孔；\n- **接线归 ext 桥**：`rich_text_host_ext.ts` 承接 BlockHost.vue 现全部\n  平台接线（挂载聚焦+末尾光标、nbsp 归一、input-rule 重同步、键路由\n  Enter/Backspace/Tab、粘贴 markdown 通道、**composition 三事件**、\n  blur 富结构回写、slash 派发）——composition 事件面若 DSL 不支持则\n  命令式 addEventListener 兜底（T1 探针裁定），**零 auto-lang 仓依赖**；\n- **语义不动**：BlockHostController（引擎内核）一行不改——\n  semantics.test.ts 是零改动回归基线；\n- **VM 契约冻结**：EDITOR-CONTRACT 新增 RichTextHost 平台面一节\n  （props/事件/controller 方法签名/语义 tag 表）——auto-lang iced\n  text_editor 后端照此实现，RichTextHost 成为首个跨平台编辑基础件。\n\n**吸收与退役**：BlockHost.vue 退役；host-face.ts face 计算并入 widget\n（.at 条件分支），TS 侧留薄 re-export 一版过渡。装配点：\nEngineEditor `view: BlockHost`（assembleNode 419 行）切到生成的\nRichTextHost.vue。\n\n**不做的**：mark 快捷键的选区模型抽象（Ctrl+B/I/K 的 DOM Selection\n依赖留 ext 桥，跨平台选区模型 = 路线图计划 6 行内层）；EngineEditor\n装配壳 .at 化（维持 021 裁定的手写平台层）；MathInline（行内层）；\nVM 端实现本身。",
+        "file": "docs/plans/archived/034-rich-text-host-platform.md",
+        "related": [
+          "PLAN-034"
         ],
         "status": "published"
       }

@@ -89,6 +89,48 @@ plan 032 D2，`stream-tri-state.test.ts` 同源钉死）：
   `demo/e2e/stream-tri-state.spec.ts`（三态序列 + computed-style parity
   四类 Heading/Paragraph/Fence/Table；扩展块 parity 待 plan 033 共享 chrome）。
 
+## 7. RichTextHost 平台面（plan 034 定型——VM 后端实现基准）
+
+文本叶子编辑宿主（原手写 `components/BlockHost.vue`，034 起 `.at` 单源
+`auto/editor/rich_text_host.at` → `components/RichTextHost.vue` + 平台接线
+`ext/rich_text_host_ext.ts`）。本节冻结跨平台实现面（auto-lang iced
+text_editor 后端照此实现 RichTextHost + 控制器协议）。
+
+- **props（全扁平 chrome 数据，装配层现算）**：`controller`（宿主控制器
+  对象——方法面见下）、`blockId`（str，= controller.id）、`blockKind`
+  （str，BlockType 枚举名：Paragraph/Heading/ListItem/…）、`level`
+  （int，Heading 的 1-6，非 heading 传 0）、`initial_html`（str，
+  spansToHtml(controller.inlines) 的挂载即定格快照——引擎非 Vue 响应式，
+  kind/level/epoch 翻转经 vnode key 重挂载重注，不持响应式依赖）。
+- **事件面（九事件，全部薄转发 ext 桥；T1 探针证 DSL 可直发）**：
+  `input{text}`、`keydown{key,ctrlKey/metaKey,shiftKey}`、
+  `compositionstart{}`、`compositionupdate{data}`、
+  `compositionend{}`（提交文本读宿主 DOM——preedit 只在 DOM 的既定语义）、
+  `paste{textPlain}`（ClipboardEvent，双通道判定在桥）、`focus{}`、
+  `blur{}`、`click.stop{}`（选择保护空操作）。浏览器侧事件载荷形状即
+  VM 端事件载荷形状。
+- **controller 协议（BlockHostController 公开面，VM 端按同协议实现）**：
+  `id`/`text`/`inlines`（只读）、`onInput(newText)`、`onEnter(offset,
+  newId)`、`onBackspaceAtStart(prevSiblingId|null)`、`onTab(shift): bool`
+  （true=已消费需 preventDefault）、`onPasteMarkdown(md)`、
+  `onRichBlur(domRoot)`（富结构整段回写一步 undo）、
+  `compositionBegin(baseline, offset)`/`compositionUpdate(preedit)`/
+  `compositionCommit(finalText)`（CompositionSession 三委托）、
+  `syncFromModel()`（历史跳变后重对齐 knownText）。
+- **语义 tag 映射表（chrome 单源，wysiwyg-typography e2e computed-style
+  钉死）**：Heading → `h1-h6` + `autodown-block-host heading-node
+  heading-N`（level 钳位 1-6，缺省 1）；Paragraph → `p` +
+  `autodown-block-host paragraph-node`；其余可编辑 kind → `div` +
+  `autodown-block-host`。恒定属性：`data-block-id`/`data-node-type`/
+  `dir="auto"`/`contenteditable="true"`/`spellcheck="false"`。
+- **平台接线归属（ext 桥 `rich_text_host_ext.ts`，VM 端等价物）**：
+  挂载注入 + 聚焦末光标 + 卸载注销（liveHosts 存活守卫——重挂载场景的
+  late-blur 不得回写，T7 实证）；nbsp 归一；input-rule 消费后 DOM 重同步
+  （composition 中跳过）+ slash 派发；Enter/Backspace/Tab 键路由与
+  Ctrl+B/I/K mark 快捷键（DOM Selection 依赖留桥，跨平台选区模型 =
+  路线图行内层）；粘贴纯文本/markdown 双通道；blur 先 flush 纯文本 diff
+  再 onRichBlur 富回写。单测面：`rich-text-host-ext.test.ts` 28 例。
+
 ## 核验责任
 
 Phase 2/3 每次桥接换向后跑 demo e2e（9 用例含以上选择器）；Phase 4 逐项

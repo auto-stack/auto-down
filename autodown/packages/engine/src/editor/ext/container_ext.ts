@@ -18,7 +18,7 @@
 //    (attrGetStr), the CALLOUT_TYPES known-type check, and the wide ctx
 //    accessors (engine/blockId/readonly) reused from the 033 family idiom.
 
-import { attrGetBool, attrGetStr, Value, type BlockNode } from '../../parser/block-model'
+import { attrGetBool, attrGetInt, attrGetStr, findBlock, Value, type BlockNode } from '../../parser/block-model'
 import { CALLOUT_TYPES } from '../../render/builtin-panels'
 import { setBlockAttrs } from '../engine/commands'
 import type { EditorEngine } from '../engine/editor-engine'
@@ -47,6 +47,30 @@ export function calloutTypeKnown(type: string): boolean {
 /** One bool attr off the model node (default false). */
 export function nodeAttrBool(node: BlockNode | undefined, key: string): boolean {
   return node ? attrGetBool(node.attrs, key, false) : false
+}
+
+/** One int attr off the model node (default 1 — the list start). */
+export function nodeAttrInt(node: BlockNode | undefined, key: string): number {
+  return node ? attrGetInt(node.attrs, key, 1) : 1
+}
+
+/** The edit face's ordered-list start attr: present only in edit mode on an
+ *  ordered list (the builtin renderListPanel view carries no start attr —
+ *  returning undefined omits it, the Vue attr rule). */
+export function editOrderedStart(mode: string, ordered: boolean, start: number): number | undefined {
+  return mode === 'edit' && ordered ? start : undefined
+}
+
+/** The task checkbox verb (edit face): flip `checked` through setBlockAttrs
+ *  as ONE undo step — expandedElement's toggleTaskChecked, stopPropagation
+ *  riding the DSL modifier. */
+export function toggleTaskChecked(controller: unknown, itemId: string): void {
+  const engine = controller as EditorEngine | null
+  if (!engine || !itemId) return
+  const item = findBlock(engine.doc, itemId)
+  if (!item) return
+  const cur = attrGetBool(item.attrs, 'checked', false)
+  setBlockAttrs(engine, itemId, [{ key: 'checked', value: Value.Bool(!cur) }])
 }
 
 /** The block id a container verb addresses: the edit ctx's blockId, falling

@@ -1,0 +1,41 @@
+// blockquote_block_widget.at — BlockquoteBlockWidget (plan 035 T5): the
+// blockquote family's thin-shell widget — ONE chrome source for view /
+// stream / edit (the 033 family mechanism). Absorbs:
+// - the builtin renderQuotePanel (view/stream): blockquote.blockquote
+//   [dir=auto] over renderEmbedded children — NO markdown-renderer wrapper;
+// - EngineEditor's expandedElement Blockquote branch (edit): the same
+//   blockquote with the children behind a .markdown-renderer wrapper.
+//
+// The recursion rides the BlockChildren hole (the assembly-built closure);
+// the widget owns only the shell.
+
+widget BlockquoteBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool, children: Array<str>, version: int) {
+    use {
+        component: BlockChildren from "ext/container_ext.ts"
+    }
+
+    computed {
+        is_edit => .mode == "edit"
+    }
+
+    view {
+        blockquote {
+            class: "blockquote",
+            dir: "auto",
+
+            if .is_edit {
+                div {
+                    class: "markdown-renderer",
+                    BlockChildren {
+                        children_slot: .children
+                    }
+                }
+            },
+            if !.is_edit {
+                BlockChildren {
+                    children_slot: .children
+                }
+            }
+        }
+    }
+}

@@ -46,7 +46,10 @@
         "related": [
           "PLAN-026"
         ],
-        "status": "proposed"
+        "status": "proposed",
+        "superseded_by": [
+          "P038-2"
+        ]
       },
       {
         "id": "P022-2",
@@ -123,7 +126,10 @@
         "related": [
           "PLAN-032"
         ],
-        "status": "proposed"
+        "status": "proposed",
+        "superseded_by": [
+          "P038-3"
+        ]
       },
       {
         "id": "P033-2",
@@ -134,7 +140,10 @@
         "related": [
           "PLAN-033"
         ],
-        "status": "proposed"
+        "status": "proposed",
+        "superseded_by": [
+          "P038-3"
+        ]
       },
       {
         "id": "P034-1",
@@ -177,6 +186,17 @@
         "file": "docs/plans/archived/037-table-block-family.md",
         "related": [
           "PLAN-037"
+        ],
+        "status": "proposed"
+      },
+      {
+        "id": "P038-2",
+        "section": "goals",
+        "title": "runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证 — 目标",
+        "content": "1. **通道通**：EngineEditor 声明并转发 runQuery/loadBlock props →\n   装载四态在 demo/jade 实际驱动；jade 侧零改动点亮。\n2. **attrs 无损**：query 文本经模型→WNode 桥不丢（render 路径与编辑\n   预览同值）；embed src 派生 title/blockId 的裁定落档，roundtrip\n   金标零变化。\n3. **家族闭环**：Query/Embed 两件家族 widget；两个 node view 与\n   wiki_link dormant 源退役；gen 清单同步（17 kind 全员单 widget）。\n4. **契约在册**：EDITOR-CONTRACT §数据通道平台面（签名/信封/VM\n   host-bridge 映射）；DEBTS 026① 销号。",
+        "file": "docs/plans/archived/038-query-embed-data-loading.md",
+        "related": [
+          "PLAN-038"
         ],
         "status": "proposed"
       }
@@ -375,6 +395,17 @@
           "PLAN-037"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P038-3",
+        "section": "architecture",
+        "title": "runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证 — 架构方案",
+        "content": "```\nP1 loader 通道（手写平台层）\nsrc/editor/engine/node-view-host.ts\n├─ 模块级 loader 槽：setDataLoaders({ runQuery?, loadBlock? }) /\n│   getDataLoaders()（宿主窗口栈同模式；EngineEditor props watch 更新）\n└─ nodeViewProps：extension.options = { runQuery, loadBlock }\n   （现 {options:{}} 恒空点改注）\nsrc/editor/components/EngineEditor.vue\n└─ props 增 runQuery?: (q: string) => Promise<QueryResultEnvelope>\n   loadBlock?: (id: string) => Promise<EmbeddedBlock | null>\n   （类型 engine 出口导出；watch → setDataLoaders；undefined 即回落\n   \"No query runner configured\" 现占位语义）\n\nP2 attrs 归位\nsrc/render/block-wnode.ts\n└─ QueryBlock case：attrGetStr(node.attrs,'query','') → WNode content\n   槽（镜像 parser queryNode；Embed case 已在册 src 槽，不动）\nauto/editor/ext/embed_ext.ts（随 P3 widget 桥）\n└─ parseEmbedSrc(src) → { title, blockId }（\"title\"/\"title#^id\"/\"^id\"\n   三形，待澄清③裁定）——widget computed 消费，旧 attrs.raw 缺省\n   \"![[Untitled]]\" 退役\n\nP3 家族收官（chrome 层 .at 单源）\nauto/editor/query_block_widget.at   四态装载 + mode（view=结果面板 /\n                                   stream=final 前占位骨架（032 裁定 A）/\n                                   edit=v1 无（非 editable leaf 维持））\nauto/editor/embed_block_widget.at   同型（loading/error/block 三态 +\n                                   display_label 派生）\nauto/editor/ext/{query,embed}_widget_ext.ts\n   normalizeQueryResults / errorMessage / parseEmbedSrc 迁入归一\nsrc/editor/components/EngineEditor.vue\n└─ registerPanel('Query'/'Embed', nodeViewPanel(...)) → panelOf(widget)；\n   旧 QueryBlockNodeView/BlockEmbedNodeView（.at 源+产物）退役；\n   wiki_link_node_view.at dormant 源处置（退役）\nP4 验证与契约\ndemo/src/{content.ts, mockLoaders.ts} + e2e 四态断言\nEDITOR-CONTRACT §数据通道平台面 + ARCHITECTURE §6 家族闭环注记\n```\n\n**装载时机与 stream 裁定**：loader 只在 final 触发（032 裁定 A 的\n延伸——流式中 query/embed 是占位面板，final 成块后 .Init 装载一次；\nquery attr 变更 watch 重载语义保留）。**为何模块级注册而非逐层 props**：\nnodeViewProps 的 fabricator 深处无组件树上下文（宿主窗口栈同问题的\n既有解），模块级槽 + EngineEditor watch 是最小面；纯渲染消费面\n（StreamingRenderer）后续同经 setDataLoaders 受益（待澄清④）。",
+        "file": "docs/plans/archived/038-query-embed-data-loading.md",
+        "related": [
+          "PLAN-038"
+        ],
+        "status": "stable"
       }
     ],
     "designs": [
@@ -570,6 +601,17 @@
           "PLAN-037"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P038-4",
+        "section": "designs",
+        "title": "runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证 — 详细设计",
+        "content": "### D1 类型与通道（P1）\n\n```ts\n// src/editor/engine/data-loaders.ts（新）\nexport interface QueryResultItem { marker?: string; priority?: number;\n  content: string; title?: string; page_path?: string }\nexport interface QueryResultEnvelope { results: QueryResultItem[] }\nexport interface EmbeddedBlock { title?: string; content: string }\nexport type RunQueryFn = (q: string) => Promise<QueryResultEnvelope>\nexport type LoadBlockFn = (id: string) => Promise<EmbeddedBlock | null>\nsetDataLoaders / getDataLoaders  // 模块级槽（undefined 回落占位语义）\n```\n\n- EngineEditor：props 增两函数 + `watch(() => [props.runQuery,\n  props.loadBlock], …, immediate)` → setDataLoaders；出口\n  `./editor` 导出四类型。\n- nodeViewProps：`extension: { options: { runQuery, loadBlock } }`\n  （getDataLoaders()）。\n\n### D2 attrs 归位（P2）\n\n- block-wnode QueryBlock：`content: attrGetStr(node.attrs,'query','')`\n  ——镜像 parser；render 路径（无 back-link 的静态 fallback）即刻受益。\n- embed：attrs.src 保持正典（roundtrip 金标零变化）；title/blockId\n  派生进 widget（D3），node view 旧 attrs.raw 读取面随家族化消亡。\n\n### D3 家族 widget（P3）\n\n- `query_block_widget.at`：props（mode/controller/blockId/readonly/\n  final/query str）+ 四态装载（.Init + watch query——现 node view 的\n  双载体重制 idiom 原样迁）；结果列表 DOM 契约逐字节对齐现\n  QueryBlockNodeView（.query-results 链与 class 面 e2e 可能依赖）。\n- `embed_block_widget.at`：props + parseEmbedSrc 派生\n  display_label/blockId；装载/错误/块三态。\n- ext 桥：normalizeQueryResults/errorMessage/parseEmbedSrc 归一\n  （node_view_ext 相应导出收缩——036 已开始该文件瘦身）。\n- 注册：panelOf 两件 + registerBlockWidget（edit 槽 v1 不注册，\n  isEditableLeaf 语义不变）。\n\n### D4 契约段（EDITOR-CONTRACT 增）\n\n- §数据通道平台面：RunQueryFn/LoadBlockFn 签名、QueryResultEnvelope\n  信封、EmbeddedBlock 形状、\"loader 只在 final 触发\"时序约定、VM\n  host-bridge 映射注记（vm_server jade.api 同模式，022 先例）。",
+        "file": "docs/plans/archived/038-query-embed-data-loading.md",
+        "related": [
+          "PLAN-038"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -741,6 +783,17 @@
         "file": "docs/plans/archived/037-table-block-family.md",
         "related": [
           "PLAN-037"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P038-5",
+        "section": "tests",
+        "title": "runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证 — 测试设计",
+        "content": "- **零改动回归（硬验收）**：serializer-roundtrip / parse_parity 全量\n  （attrs 零变化守卫）；render.test.ts extension panels 段（Query/Embed\n  占位面）；demo 既有 e2e 全量；jade e2e（零改动点亮——Query 页/\n  含 $query 文档渲染结果）。\n- **新增单测**：data-loaders 通道（注册/回落/props watch 更新）；\n  parseEmbedSrc 三形；block-wnode query 桥（attrs→content 槽）；\n  两 widget 四态（mock loader resolve/reject/空/not-found）。\n- **e2e 增**：demo mock 装载四态断言（query 三态 + embed 三态）+\n  final 触发时序（流式中不装载）。\n- **gen**：两连跑字节确定；清单断言。",
+        "file": "docs/plans/archived/038-query-embed-data-loading.md",
+        "related": [
+          "PLAN-038"
         ],
         "status": "verified"
       }
@@ -921,6 +974,17 @@
           "PLAN-037"
         ],
         "status": "published"
+      },
+      {
+        "id": "P038-6",
+        "section": "reviews",
+        "title": "runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证 — 验收标准",
+        "content": "1. jade 传入的 :runQuery/:loadBlock 零改动生效（jade e2e 或手验截图\n   佐证 Query 结果渲染）；demo mock 四态 e2e 绿。\n2. block-wnode query 桥修复有单测；roundtrip 金标零改动通过。\n3. 17 kind 家族化闭环（两 widget 上、三源退役——两 node view +\n   wiki_link dormant）；gen 清单/assert-editor-gen 同步冻结；\n   ARCHITECTURE §6 收官注记。\n4. EDITOR-CONTRACT §数据通道平台面在册；DEBTS 026① 销号。\n5. embed src 语义裁定落档（三形 + 派生规则），待澄清③结论记入。\n\n## 复审记录（review gate）\n\n（/auto-plan:review 填定）\n\n- **复审人/时间**：ZCode（/auto-plan:review），2026-09-01，于\n  `.worktrees/plan-038-dev` 全量重跑验证（不信任绿勾，逐项重证）。\n- **全量门禁（复审重跑）**：engine 763/763 全绿；engine build 四断言\n  全绿（parser-pure / no-tiptap / editor-gen 17 产物 16 桥 /\n  dist-stamp 89667c5c…）；demo playwright 全量 58/58 绿。\n- **验收① PASS**：jade 侧零改动实证（`git diff e85c791..HEAD --\n  jade-garden` 空输出）；手验探针经既有 :runQuery/:loadBlock props\n  渲染真实 /api/query 结果与 /api/blocks 嵌入块（DOM 断言全过后截图\n  docs/plans/attachments/038-jade-query-lit.png）；demo mock 四态\n  e2e 8 例绿（query-embed-loading.spec.ts，含流式时序断言）。\n- **验收② PASS**：block-wnode query 桥单测三例在册\n  （node-view-mount.test.ts\"query text through the model→WNode\n  bridge\"）；serializer-roundtrip / parse-parity 全量绿零改动\n  （763 之内）。\n- **验收③ PASS**：assert-editor-gen 17 chrome 产物 sourced / 16 ext\n  桥 in sync；三源三产物物理缺席（auto/editor 无 node_view 源、\n  src/editor/node-views/ 目录不存在）；ARCHITECTURE §6 收官注记在册\n  （\"17 kind 全员家族 widget 闭环\"）。\n- **验收④ PASS**：EDITOR-CONTRACT §10 数据通道平台面在册（10.1-10.5\n  五节）；DEBTS 026① 销号行在册。\n- **验收⑤ PASS**：embed src 三形表落档（EDITOR-CONTRACT §10.4）；\n  待澄清③ 结论记入计划（含执行期落定四项 + 新增裁定⑤）。\n- **遗漏/延后/workaround 猎获**：无阻塞项。三项非阻塞注记：① embed\n  widget 根 data-block-id 退役与 data-node-view-wrapper 标记退役为\n  计划内 DOM delta（widget 头注 + 契约 §10.4 明示，query 结果链\n  逐字节对齐不受影响）；② T7 执行期发现并修复\"空 props immediate\n  watch 清洗外部注册\"缺陷，精化为「声明才拥有」语义（超计划文本的\n  缺陷修复，契约 §10.2 + 回归单测冻结）；③ 复审期发现 master 已被\n  并行会话推进（036/037 merge，触碰 ARCHITECTURE/EDITOR-CONTRACT/\n  DEBTS/guard 清单等同面文件）——本分支基于 e85c791，折入时\n  /auto-plan:merge 需解交叠冲突（非计划缺陷，移交 merge 处置）。\n- **结论**：五条验收全 PASS，路由 `status: reviewed`，待\n  /auto-plan:merge。",
+        "file": "docs/plans/archived/038-query-embed-data-loading.md",
+        "related": [
+          "PLAN-038"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1097,6 +1161,17 @@
         "file": "docs/plans/archived/037-table-block-family.md",
         "related": [
           "PLAN-037"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P038-1",
+        "section": "reports",
+        "title": "runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证 — 变更摘要",
+        "content": "销 DEBTS 026①（\"Query/Embed 数据装载未接——nodeViewProps 的\nextension.options 恒空\"，用户原裁定\"常规组件全实现后再考虑\"，036/037\n后条件成熟）。调研结论：**链路两端就绪，中段断线**——\n\n- 装载协议早已实现：`query_block_node_view.at` / `block_embed_node_view.at`\n  具备完整四态异步装载（loading/error/results/empty，async/await +\n  try/catch/finally），从 `extension.options.runQuery / .loadBlock` 取\n  注入；\n- 消费端早已就绪：jade-garden `EditorTab.vue` 已把 `:loadBlock/\n  :runQuery/:assetUpload` 传给编辑器（EDITOR-CONTRACT 在册 props）；\n- 后端求值器早已就绪：jade `/api/query`（plan 022 query.at 双发射，\n  `QueryResponse{results}` 信封与 normalizeQueryResults 形状吻合）；\n- **断线三处**：① EngineEditor（= 导出的 AutoDownEditor）不声明\n  runQuery/loadBlock/assetUpload props（jade 传入即 attrs 落地无声\n  丢弃）；② `node-view-host.ts:127` `extension: { options: {} }` 恒空\n  （注释在案：026 范围外）；③ 两处 attrs 错位——block-wnode 的\n  QueryBlock case 全 null（**query 文本在模型→WNode 桥上丢失**）、\n  embed node view 读 `attrs.raw/title/blockId` 而方言与 roundtrip 携带\n  的是 `attrs.src`（siyuan 时代旧形状）。\n\n本计划四段：\n\n**P1 loader 通道**：props 声明 → 模块级 loader 注册（宿主窗口同模式）→\n`nodeViewProps` 的 `extension.options` 装填。最小路径即可点亮 jade 现有\n传入（jade 侧零改动）。\n\n**P2 attrs 归位**：block-wnode QueryBlock case 补 query（镜像 parser 的\ncontent 槽）；embed 语义裁定（待澄清③）——`attrs.src` 为正典（roundtrip\n已在册），title/blockId 由 src 派生（ext helper `parseEmbedSrc`），\n旧 `raw` 形状退役。\n\n**P3 家族收官**：Query/Embed 转 `query_block_widget.at` /\n`embed_block_widget.at` 家族 widget（033 模式，吸收两个 node view 的\n四态装载与 normalizeQueryResults/query 归一 ext），nodeViewPanel 注册\n→ panelOf；**17 kind 家族化闭环**（037 Table 后仅剩此两件）；顺手处置\ndormant 的 `wiki_link_node_view.at` 源（036 wikilink 模型化后无双轨，\n源退役销挂账）。\n\n**P4 验证**：demo mock runner（固定结果/空/错三态）+ e2e；jade 点亮\n验证（既有 props 零改动生效）；EDITOR-CONTRACT §数据通道平台面\n（loader 签名/信封形状/VM host-bridge 映射——022 vm_server 先例口径）。\n\n**不做的**：Query/Embed 的 edit 面（query 文本就地编辑 via AttrHost，\n待澄清②后置）；assetUpload 粘贴图片链路（待澄清①，倾向独立小计划）；\nVM 端实现本身；jade 后端任何改动。",
+        "file": "docs/plans/archived/038-query-embed-data-loading.md",
+        "related": [
+          "PLAN-038"
         ],
         "status": "published"
       }

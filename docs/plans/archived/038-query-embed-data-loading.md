@@ -2,7 +2,7 @@
 
 ---
 plan_id: PLAN-038
-status: reviewed
+status: archived
 feature_name: runQuery/loadBlock 注入通道（props→extension.options→node view 四态装载）+ block-wnode Query attr 修复 + embed src 语义归位 + Query/Embed 家族 widget 收官（17 kind 家族化闭环）+ demo mock 与 jade 点亮验证
 author: [zhaopuming]
 created_at: 2026-09-01

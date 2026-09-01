@@ -79,7 +79,6 @@ const EXPECTED = [
   'components/DetailsBlockWidget.vue',
   'components/BlockquoteBlockWidget.vue',
   'components/ListBlockWidget.vue',
-  'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',
   'node-views/BlockEmbedNodeView.vue',

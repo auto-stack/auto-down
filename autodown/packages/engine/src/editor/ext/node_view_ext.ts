@@ -1,8 +1,8 @@
 // node_view_ext.ts — Hand-written TS extension shared by the Auto
-// node-view widgets (../details_node_view.at, ../wiki_link_node_view.at,
-// ../query_block_node_view.at, ../block_embed_node_view.at,
-// ../math_inline_node_view.at — the block math/mermaid views joined the
-// family widgets in plan 033). The gen pipeline copies this file into the
+// node-view widgets (../wiki_link_node_view.at, ../query_block_node_view.at,
+// ../block_embed_node_view.at, ../math_inline_node_view.at — the block
+// math/mermaid views joined the family widgets in plan 033, the details
+// node view joined the DetailsBlockWidget family in plan 035 T7). The gen pipeline copies this file into the
 // transient gen project (never type-checked there) and deploys it verbatim
 // to src/editor/ext/node_view_ext.ts; the generated SFCs import it from
 // ../ext/node_view_ext (gen.mjs E1 rewrite).
@@ -123,36 +123,6 @@ export function parseWikiLinkRaw(raw: string): WikiLinkParsed {
 // the same class list so the stylesheet rules keep applying).
 export function wikiLinkPencilIcon(): unknown {
   return Pencil
-}
-
-// The Details summary edit button's inline SVG (pencil), verbatim from the
-// original DetailsNodeView template.
-const DETAILS_EDIT_ICON = defineComponent({
-  name: 'DetailsEditIcon',
-  setup() {
-    return () =>
-      h(
-        'svg',
-        {
-          viewBox: '0 0 24 24',
-          width: '12',
-          height: '12',
-          fill: 'none',
-          stroke: 'currentColor',
-          'stroke-width': '2',
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-        },
-        [
-          h('path', { d: 'M12 20h9' }),
-          h('path', { d: 'M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z' }),
-        ],
-      )
-  },
-})
-
-export function detailsEditIcon(): unknown {
-  return DETAILS_EDIT_ICON
 }
 
 // normalizeQueryResults — the QueryBlock result list with the template's

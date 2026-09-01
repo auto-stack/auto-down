@@ -57,7 +57,7 @@ function norm(html: string): string {
 }
 
 function panelCtx(w: unknown, kind: string, body: () => any[]): PanelRenderCtx {
-  return { node: w, final: true, budget: undefined, spec: { kind } as any, renderEmbedded: () => body(), renderInlineChildren: () => [] }
+  return { node: w, final: true, budget: undefined, spec: { kind } as any, renderEmbedded: (() => body()) as any, renderInlineChildren: () => [] }
 }
 
 const PARA = (key: string) => [h('p', { key }, `${key} 正文`)]
@@ -125,7 +125,7 @@ describe('ListBlockWidget', () => {
   it('view face (unordered + task item): byte-identical to the builtin renderListPanel — inert checkbox, no start attr', async () => {
     const node = listNode(false, true)
     const w = blockNodeToWNode(node)
-    const builtin = await ssr(builtinListPanel(panelCtx(w, 'List')))
+    const builtin = await ssr(builtinListPanel(panelCtx(w, 'List', () => PARA('v'))))
     const widget = await ssr(h(ListBlockWidget as any, {
       mode: 'view', node, ctx: null, final: true, items: viewItems(w), version: 0,
     }))

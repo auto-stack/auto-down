@@ -1,7 +1,7 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (22 widget sources: 12 plan-013-era views/menus
+//   auto/editor/*.at        (21 widget sources: 11 plan-013-era views/menus
 //                            + table_editor_block + the three family
 //                            widgets of plan 033 + rich_text_host of plan
 //                            034 — see README.md)
@@ -99,8 +99,8 @@ const widgets = readdirSync(here)
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
 // hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 22) {
-  console.error(`expected 22 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+if (widgets.length !== 21) {
+  console.error(`expected 21 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -219,7 +219,6 @@ const DEPLOY_COMPONENTS = {
   'TableMenu.vue': 'menus/TableMenu.vue',
   'CodeBlockMenu.vue': 'menus/CodeBlockMenu.vue',
   'CodeLanguageIcon.vue': 'components/CodeLanguageIcon.vue',
-  'DetailsNodeView.vue': 'node-views/DetailsNodeView.vue',
   'WikiLinkNodeView.vue': 'node-views/WikiLinkNodeView.vue',
   'QueryBlockNodeView.vue': 'node-views/QueryBlockNodeView.vue',
   'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',

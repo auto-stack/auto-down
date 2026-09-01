@@ -33,7 +33,6 @@ function builtinCalloutPanel({ node }: PanelRenderCtx) {
   ])
 }
 import { blockNodeToWNode } from '../../render/block-wnode'
-import type { PanelRenderCtx } from '../../render/panel-registry'
 import CalloutBlockWidget from '../components/CalloutBlockWidget.vue'
 
 async function ssr(vnode: unknown): Promise<string> {
@@ -64,7 +63,7 @@ function panelCtx(node: ReturnType<typeof calloutNode>, final: boolean, body: ()
     final,
     budget: undefined,
     spec: { kind: 'Callout' } as any,
-    renderEmbedded: () => body(),
+    renderEmbedded: (() => body()) as any,
     renderInlineChildren: () => [],
   }
 }
@@ -74,7 +73,7 @@ const BODY = () => [h('p', { key: 'p' }, '正文段落')]
 describe('view/stream face: the builtin renderCalloutPanel contract, byte-for-byte', () => {
   it('known type: full card chain identical to the builtin panel', async () => {
     const node = calloutNode('warning', '注意')
-    const builtin = await ssr(builtinCalloutPanel(panelCtx(node, true)))
+    const builtin = await ssr(builtinCalloutPanel(panelCtx(node, true, BODY)))
     const widget = await ssr(h(CalloutBlockWidget as any, {
       mode: 'view', node, ctx: null, final: true, children: BODY, version: 0,
     }))

@@ -214,6 +214,7 @@ import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
 import { currentPanelDecorator } from '../../render/panel-registry'
 import { decorateBody } from '../../render/block-widget'
 import { registerWikilinkOpener, currentWikilinkOpener, type WikilinkOpener } from '../../render/wikilink-opener'
+import { setDataLoaders, getDataLoaders, type RunQueryFn, type LoadBlockFn } from '../engine/data-loaders'
 
 const props = defineProps<{
   content?: string
@@ -224,6 +225,11 @@ const props = defineProps<{
    *  faces render read-only (banner + disabled) via BlockEditCtx.readonly;
    *  the stream landing flips it back and the faces unlock. */
   streaming?: boolean
+  /** Query/Embed data loaders (plan 038 T1): jade passes both straight
+   *  through EditorShell — unpassed props keep the "No query runner
+   *  configured" placeholder states. */
+  runQuery?: RunQueryFn
+  loadBlock?: LoadBlockFn
 }>()
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
@@ -237,6 +243,21 @@ const wikilinkOpener: WikilinkOpener = (title, blockId) => emit('open-wiki-link'
 registerWikilinkOpener(wikilinkOpener)
 onBeforeUnmount(() => {
   if (currentWikilinkOpener() === wikilinkOpener) registerWikilinkOpener(null)
+})
+
+// Data-loader channel (plan 038 T2): the nodeViewProps fabricator sits at
+// the bottom of the render pipeline with no component-tree context, so the
+// loaders register on the module-level slot and this watch keeps them
+// current (the wikilink-opener seam's last-mounted-wins shape — including
+// the identity-guarded unmount cleanup).
+watch(
+  () => [props.runQuery, props.loadBlock],
+  () => setDataLoaders({ runQuery: props.runQuery, loadBlock: props.loadBlock }),
+  { immediate: true }
+)
+onBeforeUnmount(() => {
+  const cur = getDataLoaders()
+  if (cur.runQuery === props.runQuery && cur.loadBlock === props.loadBlock) setDataLoaders({})
 })
 
 const root = ref<HTMLElement | null>(null)

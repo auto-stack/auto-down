@@ -376,66 +376,53 @@ describe('hostPaste', () => {
 
 describe('focusedRichHost registration & blur writeback', () => {
   it('focus registers the host; blur clears it, flushes pending text, then rich-writes back', () => {
-    const el = hostEl('hello!')
+    // the liveHosts guard keys blur/focus off MOUNT liveness — use a real
+    // mounted root (mountFace from the mount describe below)
+    const { root, stop } = mountFace('hello', 'Paragraph', 0)
+    root.innerHTML = 'hello!' // the user typed since mount
     const c = fakeController({ text: 'hello' })
-    hostFocus(el, c)
-    expect(getFocusedRichHost()).toBe(el)
+    hostFocus(root, c)
+    expect(getFocusedRichHost()).toBe(root)
 
-    hostBlur(el, c)
+    hostBlur(root, c)
     expect(getFocusedRichHost()).toBeNull()
     // pending plain diff flushed BEFORE the rich walk
     expect(c.onInput).toHaveBeenCalledWith('hello!')
-    expect(c.onRichBlur).toHaveBeenCalledWith(el)
+    expect(c.onRichBlur).toHaveBeenCalledWith(root)
     const order: string[] = []
     c.onInput.mockImplementation(() => order.push('input'))
     c.onRichBlur.mockImplementation(() => order.push('rich'))
-    hostBlur(el, c)
+    hostBlur(root, c)
     expect(order).toEqual(['input', 'rich'])
+    stop()
+  })
+
+  it('unmounted hosts never flush or write back (remount guard, plan 034 T7)', () => {
+    // a bare element outside any mount is not live: focus does not
+    // register, blur only clears the slot — this is what keeps a remount's
+    // late blur from resurrecting stale DOM text into the restored model
+    const bare = hostEl('hello!')
+    const c = fakeController({ text: 'hello' })
+    hostFocus(bare, c)
+    expect(getFocusedRichHost()).toBeNull()
+    hostBlur(bare, c)
+    expect(c.onInput).not.toHaveBeenCalled()
+    expect(c.onRichBlur).not.toHaveBeenCalled()
   })
 
   it('blur skips the flush when the text already matches the model', () => {
-    const el = hostEl('hello')
+    const { root, stop } = mountFace('hello', 'Paragraph', 0)
     const c = fakeController({ text: 'hello' })
-    hostBlur(el, c)
+    hostBlur(root, c)
     expect(c.onInput).not.toHaveBeenCalled()
-    expect(c.onRichBlur).toHaveBeenCalledWith(el)
+    expect(c.onRichBlur).toHaveBeenCalledWith(root)
+    stop()
   })
 })
 
 // -- mount end-to-end (the generated RichTextHost.vue) --------------------------------------
 
 describe('RichTextHost.vue mount (chrome + focus + caret + unmount cleanup)', () => {
-  /** Mount the generated widget over the first editable leaf of a parsed
-   *  markdown source (blockKind/level are the assembler's chrome data —
-   *  EngineEditor passes BlockType[node.kind] + the level attr). */
-  function mountFace(
-    md: string,
-    blockKind: string,
-    level: number
-  ): { root: HTMLElement; stop: () => void; controller: BlockHostController } {
-    const doc = parse_blocks(md, true)
-    const top = doc.children[0]
-    const leaf =
-      top.children && top.children.length > 0 ? (top.children[0] as typeof top) : top
-    const engine = new EditorEngine(doc, collapsedSel(leaf.id, 0))
-    const controller = new BlockHostController(engine, leaf.id)
-    const initialHtml = spansToHtml(controller.inlines)
-    const app = createApp({
-      render: () =>
-        h(RichTextHost as never, {
-          controller,
-          blockId: controller.id,
-          blockKind,
-          level,
-          initial_html: initialHtml,
-        }),
-    })
-    const wrap = document.createElement('div')
-    document.body.appendChild(wrap)
-    app.mount(wrap)
-    return { root: wrap.firstElementChild as HTMLElement, stop: () => app.unmount(), controller }
-  }
-
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -479,3 +466,34 @@ describe('RichTextHost.vue mount (chrome + focus + caret + unmount cleanup)', ()
     expect(getFocusedRichHost()).toBeNull()
   })
 })
+
+  /** Mount the generated widget over the first editable leaf of a parsed
+   *  markdown source (blockKind/level are the assembler's chrome data —
+   *  EngineEditor passes BlockType[node.kind] + the level attr). */
+  function mountFace(
+    md: string,
+    blockKind: string,
+    level: number
+  ): { root: HTMLElement; stop: () => void; controller: BlockHostController } {
+    const doc = parse_blocks(md, true)
+    const top = doc.children[0]
+    const leaf =
+      top.children && top.children.length > 0 ? (top.children[0] as typeof top) : top
+    const engine = new EditorEngine(doc, collapsedSel(leaf.id, 0))
+    const controller = new BlockHostController(engine, leaf.id)
+    const initialHtml = spansToHtml(controller.inlines)
+    const app = createApp({
+      render: () =>
+        h(RichTextHost as never, {
+          controller,
+          blockId: controller.id,
+          blockKind,
+          level,
+          initial_html: initialHtml,
+        }),
+    })
+    const wrap = document.createElement('div')
+    document.body.appendChild(wrap)
+    app.mount(wrap)
+    return { root: wrap.firstElementChild as HTMLElement, stop: () => app.unmount(), controller }
+  }

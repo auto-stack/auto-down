@@ -55,6 +55,18 @@ function hostFaceFor(kind: string, level?: number): { tag: string; cls: string }
 
 // -- mount / unmount ----------------------------------------------------------------
 
+/** Live-mounted host elements (per-instance liveness). The retired
+ *  BlockHost keyed its blur/focus guards off the template ref (el.value),
+ *  which Vue nulls when the component starts unmounting — that is what
+ *  neutralized the blur Chromium fires while a focused host is being
+ *  REMOUNTED (Enter-split kind flip, input-rule flip, undo/redo epoch hop):
+ *  the old element's late blur would otherwise flush its stale DOM text
+ *  back into the just-restored model and drag the selection back with it
+ *  (found live in the demo, plan 034 T7). The WeakSet reproduces exactly
+ *  that lifetime: set at mount, cleared in the same unmount phase the
+ *  template ref was nulled in. */
+const liveHosts = new WeakSet<HTMLElement>()
+
 /** Mount: when the host mounts it IS the newly focused block — inject the
  *  rich snapshot (spansToHtml of the model inlines, evaluated once by the
  *  assembler — the engine is not Vue-reactive, so it never invalidates
@@ -66,10 +78,12 @@ export function mountHost(initialHtml: string): void {
   const inst = getCurrentInstance()
   const node = (inst?.proxy?.$el as HTMLElement | undefined) ?? null
   if (!node) return
+  liveHosts.add(node)
   node.innerHTML = initialHtml
   node.focus()
   caretToEnd(node)
   onBeforeUnmount(() => {
+    liveHosts.delete(node)
     if (getFocusedRichHost() === node) setFocusedRichHost(null)
   })
 }
@@ -204,14 +218,22 @@ export function hostCompositionCommit(
  *  this DOM in place (plan 024 P3T1). */
 export function hostFocus(el: HTMLElement, _controller: BlockHostController): void {
   void _controller
-  setFocusedRichHost(el)
+  if (liveHosts.has(el)) setFocusedRichHost(el)
 }
 
 /** Focus leave: flush any pending plain-text diff first (the normal input
  *  path already committed each keystroke), then walk the rich structure back
- *  into the model as one undo step (plan 024 P2T2). */
+ *  into the model as one undo step (plan 024 P2T2).
+ *
+ * Remount guard: replacing the focused host (Enter-split kind flip,
+ * input-rule flip, undo/redo epoch hop) fires blur on the OLD element while
+ * it still carries the pre-transition DOM — flushing then would re-insert
+ * stale text into the just-restored model and drag the selection back. The
+ * retired BlockHost guarded via its template ref (unmount nulls el.value);
+ * the liveHosts WeakSet is that lifetime here. */
 export function hostBlur(el: HTMLElement, controller: BlockHostController): void {
   setFocusedRichHost(null)
+  if (!liveHosts.has(el)) return
   const text = hostText(el)
   if (text !== controller.text) controller.onInput(text)
   controller.onRichBlur(el)

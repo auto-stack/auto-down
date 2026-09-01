@@ -38,6 +38,7 @@ import {
   itemNode,
   linkNode,
   listNode,
+  mathInlineNode,
   paraNode,
   quoteNode,
   rawTextNode,
@@ -226,6 +227,11 @@ function leaves(spans: InlineSpan[]): WNode[] {
     // preview renders the label contract instead of bare text
     if (attrGetStr(s.attrs, 'wikilink', '') !== '') {
       out.push(wikilinkNode(s.text))
+      continue
+    }
+    // inline math (plan 036 T6): same bridge, source rides the code slot
+    if (attrGetStr(s.attrs, 'math_inline', '') !== '') {
+      out.push(mathInlineNode(s.text))
       continue
     }
     if (hasMark(s.marks, Mark.Image)) {

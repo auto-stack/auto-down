@@ -110,5 +110,7 @@ flowchart LR
 ---
 
 ![A placeholder image](https://placehold.co/400x100/f3f4f6/9ca3af?text=Image)
+
+Inline faces (plan 036): a [[Hello World]] wiki link, inline math $a^2+b^2=c^2$, and plain \`code\` after them.
 `
 }

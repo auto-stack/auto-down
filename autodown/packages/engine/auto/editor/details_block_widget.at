@@ -1,0 +1,106 @@
+// details_block_widget.at — DetailsBlockWidget (plan 035 T4): the details
+// family's three-mode widget — ONE chrome source for view / stream / edit
+// (the 033 family mechanism; panelOf mounts the view face on the panel
+// custom slot, registerBlockWidget the edit slots, T6).
+//
+// Absorbs:
+// - the generated DetailsNodeView (view/stream, retired at T7): the
+//   .autodown-details card with data-open, the ▼/▶ marker (click flips
+//   `open` through setBlockAttrs — ONE undo step), the static summary text
+//   (`summary || "Details"`, click toggles open too), and the v-show
+//   content. The node view's summary edit flow (pencil + input, whose
+//   enter/escape commit semantics) is superseded by the AttrHost face
+//   below — plan 030's in-place ruling, one interaction model everywhere.
+//   The NodeViewWrapper/NodeViewContent markers drop with it: the panel
+//   path feeds children through the BlockChildren closure (panelOf), not
+//   the node-view injection key.
+// - EngineEditor's expandedElement Details branch (edit): the SAME card
+//   with the summary swapped for the AttrHost in-place editor and the
+//   children behind a .markdown-renderer wrapper.
+//
+// The toggle verb lives in the ext bridge (toggleDetailsOpen); the marker's
+// stopPropagation rides the DSL modifier (.stop), keeping wrapper clicks
+// from stealing selection (expandedElement semantics).
+
+widget DetailsBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool, children: Array<str>, version: int) {
+    use {
+        fn: nodeAttrStr, nodeAttrBool, blockRef, toggleDetailsOpen, ctxReadonly, ctxBlockId, ctxEngine from "ext/container_ext.ts"
+        component: AttrHost, BlockChildren from "ext/container_ext.ts"
+    }
+
+    msg Msg { ToggleOpen }
+
+    computed {
+        is_edit => .mode == "edit"
+        readonly => ctxReadonly(.ctx)
+        block_id => ctxBlockId(.ctx)
+        engine_ref => ctxEngine(.ctx)
+        block_ref => blockRef(.node, .ctx)
+        is_open => nodeAttrBool(.node, "open")
+        marker => .is_open ? "▼" : "▶"
+        summary => nodeAttrStr(.node, "summary")
+        // the node view fallback: empty summary renders the "Details" label
+        summary_text => .summary != "" ? .summary : "Details"
+    }
+
+    view {
+        div {
+            class: "autodown-details",
+            data-open: .is_open,
+
+            div {
+                class: "autodown-details-summary",
+                span {
+                    class: "autodown-details-marker",
+                    aria-hidden: "true",
+                    title: "点击展开详细内容",
+                    onclick.stop: .ToggleOpen,
+                    text .marker
+                },
+                if .is_edit {
+                    AttrHost {
+                        controller: .engine_ref,
+                        blockId: .block_ref,
+                        attr_key: "summary",
+                        value: .summary,
+                        placeholder: "Details",
+                        host_class: "autodown-details-summary-text",
+                        readonly: .readonly,
+                        version: .version
+                    }
+                },
+                if !.is_edit {
+                    span {
+                        class: "autodown-details-summary-text",
+                        onclick.stop: .ToggleOpen,
+                        text .summary_text
+                    }
+                }
+            },
+            div {
+                class: "autodown-details-content",
+                show: .is_open,
+
+                if .is_edit {
+                    div {
+                        class: "markdown-renderer",
+                        BlockChildren {
+                            children_slot: .children
+                        }
+                    }
+                },
+                if !.is_edit {
+                    BlockChildren {
+                        children_slot: .children
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .ToggleOpen -> {
+            toggleDetailsOpen(.engine_ref, .block_ref, .is_open)
+        }
+    }
+}

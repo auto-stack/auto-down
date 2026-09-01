@@ -38,7 +38,6 @@ import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import { registerBlockWidget, panelOf } from '../../render/block-widget'
 import { registerPanel } from '../../render/panel-registry'
-import { CALLOUT_TYPES } from '../../render/builtin-panels'
 import { blockOfWNode } from '../../render/block-wnode'
 import { TableEditorController } from '../engine/table-editor-controller'
 import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/node-view-host'
@@ -46,7 +45,7 @@ import TableEditorBlock from './TableEditorBlock.vue'
 import CodeBlockWidget from './CodeBlockWidget.vue'
 import MathBlockWidget from './MathBlockWidget.vue'
 import MermaidBlockWidget from './MermaidBlockWidget.vue'
-import DetailsNodeView from '../node-views/DetailsNodeView.vue'
+import DetailsBlockWidget from './DetailsBlockWidget.vue'
 import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
 import BlockEmbedNodeView from '../node-views/BlockEmbedNodeView.vue'
 
@@ -136,7 +135,24 @@ function wnodeFallbackModel(kindValue: BlockType, w: any): BlockNode {
 
 registerPanel(
   'Details',
-  nodeViewPanel(DetailsNodeView, BlockType.Details, (node) => renderNodes((node as any).children ?? [], true)),
+  // plan 035 T6: the family widget replaces the retired DetailsNodeView —
+  // same view face, plus the marker verb riding the live host window's
+  // engine (the preview-side toggle writes `open` back through the model,
+  // the host-protocol contract) and the body through the BlockChildren
+  // closure instead of the node-view injection key.
+  (ctx: PanelRenderCtx) => {
+    const host = currentNodeViewHost()
+    const model = blockOfWNode(ctx.node) ?? wnodeFallbackModel(BlockType.Details, ctx.node)
+    return h(DetailsBlockWidget, {
+      mode: 'view',
+      node: model,
+      final: ctx.final ?? true,
+      ctx: host ? { engine: host.engine, blockId: model.id, readonly: true } : null,
+      children: decorateBody(currentPanelDecorator(), () =>
+        renderNodes((ctx.node as any).children ?? [], true)),
+      version: 0,
+    })
+  },
 )
 
 // the two render-type pilot families: the widget's view face IS the panel
@@ -182,18 +198,21 @@ import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
-import { setBlockAttrs } from '../engine/commands'
 import { historyActionOf, runHistory } from '../engine/undo-wiring'
 import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-path'
 import { domRangeToBlockRange } from '../engine/selection-map'
 import { spansToHtml } from '../engine/rich-html'
 import RichTextHost from './RichTextHost.vue'
-import AttrHost from './AttrHost.vue'
+import CalloutBlockWidget from './CalloutBlockWidget.vue'
+import BlockquoteBlockWidget from './BlockquoteBlockWidget.vue'
+import ListBlockWidget from './ListBlockWidget.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
 import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
+import { withPanelDecorator, currentPanelDecorator, type PanelBodyDecorator } from '../../render/panel-registry'
+import { decorateBody } from '../../render/block-widget'
 import { decorateWikilinks } from '../wikilink'
 
 const props = defineProps<{
@@ -338,10 +357,16 @@ const views = computed<BlockView[]>(() => {
  *  THIS editor's engine — panel renderers execute synchronously inside
  *  renderNodes, so push/pop brackets the whole conversion+render leg. */
 function previewVNodeOf(node: BlockNode): VNode {
+  const open = (title: string, blockId?: string) => emit('open-wiki-link', title, blockId)
+  // plan 035 T6: container widget bodies ride closures the outer pass
+  // cannot descend into — the decorator registers here for the window and
+  // the container panel adapters apply it inside their closures; the plain
+  // tree below keeps the ordinary top-level pass (channels never overlap).
+  const dec: PanelBodyDecorator = (vnodes) => decorateWikilinks(vnodes, open)
   pushNodeViewHost({ engine, adapter })
   try {
-    const vnode = renderNodes(blockNodesToWNodes([node]), true)[0]
-    if (vnode) decorateWikilinks([vnode], (title, blockId) => emit('open-wiki-link', title, blockId))
+    const vnode = withPanelDecorator(dec, () => renderNodes(blockNodesToWNodes([node]), true))[0]
+    if (vnode) decorateWikilinks([vnode], open)
     return vnode ?? h('div', { class: 'unknown-node' }, '')
   } finally {
     popNodeViewHost()
@@ -374,121 +399,44 @@ function slotChrome(node: BlockNode, inner: VNode, topLevel: boolean, counter: {
   )
 }
 
-/** Expanded container element mirroring the builtin panel chrome (ul/li over
- *  markdown-renderer, blockquote likewise), children assembled recursively.
- *  Plan 030: Callout/Details keep their card chrome while focused — the class
- *  chains mirror renderCalloutPanel / DetailsNodeView verbatim (CSS
- *  single-channel); title/summary edit in place through AttrHost. */
-function expandedElement(node: BlockNode, ctx: AssemblyCtx): VNode {
-  if (node.kind === BlockType.Blockquote) {
-    return h('blockquote', { class: 'blockquote', dir: 'auto' }, [
-      h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx))),
-    ])
+/** The focus-path container face (plan 035): the family widget in edit mode
+ *  with the assembly-built children closure — chrome is .at-sourced
+ *  (callout/details/blockquote/list_block_widget.at), the recursion stays
+ *  HERE at the single assembly point (the BlockChildren hole's closure:
+ *  epoch remounts / host registry / focus path all ride the captured ctx).
+ *  Plan 030's keep-card-while-focused ruling carries over unchanged: the
+ *  widgets render the same card chains the retired expandedElement hand-
+ *  built (byte-pinned by the widget suites). */
+function containerEditSlot(node: BlockNode, ctx: AssemblyCtx): VNode {
+  const childrenOf = () => node.children.map((ch) => childSlot(ch, ctx))
+  const base = {
+    mode: 'edit',
+    node,
+    ctx: { engine, blockId: node.id, readonly: props.streaming === true },
+    final: true,
+    version: repaintVersion.value,
   }
-  if (node.kind === BlockType.Callout) {
-    const type = attrGetStr(node.attrs, 'type', '')
-    const known = CALLOUT_TYPES.includes(type)
-    return h('div', {
-      class: ['callout-node', 'autodown-callout', `autodown-callout-${type}`],
-      'data-callout-type': type,
-    }, [
-      h('div', { class: 'autodown-callout-header' }, [
-        ...(known
-          ? [h('span', { class: ['autodown-callout-icon', `autodown-callout-icon-${type}`], 'aria-hidden': 'true' })]
-          : []),
-        h(AttrHost, {
-          blockId: node.id,
-          attrKey: 'title',
-          engine,
-          placeholder: type || '标题',
-          hostClass: 'autodown-callout-title',
-          version: repaintVersion.value,
-          readonly: props.streaming === true,
-        }),
-      ]),
-      h('div', { class: 'autodown-callout-content' }, [
-        h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx))),
-      ]),
-    ])
-  }
-  if (node.kind === BlockType.Details) {
-    const open = attrGetBool(node.attrs, 'open', false)
-    return h('div', { class: 'autodown-details', 'data-open': String(open) }, [
-      h('div', { class: 'autodown-details-summary' }, [
-        h(
-          'span',
-          {
-            class: 'autodown-details-marker',
-            'aria-hidden': 'true',
-            title: '点击展开详细内容',
-            onClick: (ev: MouseEvent) => {
-              ev.stopPropagation()
-              setBlockAttrs(engine, node.id, [{ key: 'open', value: Value.Bool(!open) }])
-            },
-          },
-          [h('span', open ? '▼' : '▶')]
-        ),
-        h(AttrHost, {
-          blockId: node.id,
-          attrKey: 'summary',
-          engine,
-          placeholder: 'Details',
-          hostClass: 'autodown-details-summary-text',
-          version: repaintVersion.value,
-          readonly: props.streaming === true,
-        }),
-      ]),
-      h(
-        'div',
-        { class: 'autodown-details-content', style: open ? undefined : 'display: none' },
-        [h('div', { class: 'markdown-renderer' }, node.children.map((ch) => childSlot(ch, ctx)))]
-      ),
-    ])
-  }
-  const ordered = attrGetBool(node.attrs, 'ordered', false)
-  return h(
-    ordered ? 'ol' : 'ul',
-    {
-      class: ordered ? 'list-node list-decimal' : 'list-node list-disc',
-      ...(ordered ? { start: attrGetInt(node.attrs, 'start', 1) } : {}),
-    },
-    node.children.map((item) => {
-      // task items (plan 030): LIVE checkbox in the editing assembly — a
-      // click flips the attr through the command channel (one undo step);
-      // the inert view/stream copy stays in renderListPanel
-      const isTask = attrGet(item.attrs, 'checked') != null
-      return h(
-        'li',
-        { class: 'list-item' + (isTask ? ' task-item' : ''), dir: 'auto' },
-        [
-          ...(isTask
-            ? [
-                h('input', {
-                  type: 'checkbox',
-                  class: 'task-checkbox',
-                  checked: attrGetBool(item.attrs, 'checked', false),
-                  'aria-label': 'toggle task',
-                  onClick: (ev: MouseEvent) => {
-                    ev.stopPropagation()
-                    toggleTaskChecked(item.id)
-                  },
-                }),
-              ]
-            : []),
-          h('div', { class: 'markdown-renderer' }, item.children.map((ch) => childSlot(ch, ctx))),
-        ]
-      )
-    })
-  )
+  if (node.kind === BlockType.Callout) return h(CalloutBlockWidget, { ...base, children: childrenOf })
+  if (node.kind === BlockType.Details) return h(DetailsBlockWidget, { ...base, children: childrenOf })
+  if (node.kind === BlockType.Blockquote) return h(BlockquoteBlockWidget, { ...base, children: childrenOf })
+  return h(ListBlockWidget, { ...base, items: listEditItems(node, ctx) })
 }
 
-/** Flip one task item's checked attr (single undo step — the 023 command
- *  protocol; stopPropagation on the click keeps the selection untouched). */
-function toggleTaskChecked(itemId: string): void {
-  const item = findBlock(engine.doc, itemId)
-  if (!item) return
-  const cur = attrGetBool(item.attrs, 'checked', false)
-  setBlockAttrs(engine, itemId, [{ key: 'checked', value: Value.Bool(!cur) }])
+/** List items flattened to the widget's chrome data ({id, task, checked,
+ *  cls, children_slot}) — the TableEditorBlock flat-data boundary; the task
+ *  checkbox verb (toggleTaskChecked, ONE undo step) lives in the widget's
+ *  ext bridge now. */
+function listEditItems(node: BlockNode, ctx: AssemblyCtx) {
+  return node.children.map((item) => {
+    const task = attrGet(item.attrs, 'checked') != null
+    return {
+      id: item.id,
+      task,
+      checked: attrGetBool(item.attrs, 'checked', false),
+      cls: 'list-item' + (task ? ' task-item' : ''),
+      children_slot: () => item.children.map((ch) => childSlot(ch, ctx)),
+    }
+  })
 }
 
 /** A child of an expanded container: on the focus path → recursive assembly
@@ -553,7 +501,7 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
     return {
       id: node.id,
       view: AssemblyView,
-      props: { render: () => slotChrome(node, expandedElement(node, ctx), topLevel, ctx.counter) },
+      props: { render: () => slotChrome(node, containerEditSlot(node, ctx), topLevel, ctx.counter) },
     }
   }
   return {

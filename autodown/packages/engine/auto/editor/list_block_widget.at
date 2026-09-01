@@ -1,0 +1,83 @@
+// list_block_widget.at — ListBlockWidget (plan 035 T5): the list family's
+// widget — ONE chrome source for view / stream / edit (the 033 family
+// mechanism). Absorbs:
+// - the builtin renderListPanel (view/stream): ol/ul.list-node with the
+//   list-decimal / list-disc chain over li.list-item[.task-item][dir=auto],
+//   task checkboxes INERT (disabled, aria-label "task checkbox") — the view
+//   face carries no start attr;
+// - EngineEditor's expandedElement list branch (edit): the LIVE checkbox
+//   (click → toggleTaskChecked through the command channel, ONE undo step,
+//   aria-label "toggle task"), the ordered list's start attr, and the item
+//   bodies behind a .markdown-renderer wrapper.
+//
+// Props are flat chrome data (the TableEditorBlock boundary): items is the
+// adapter-built per-item list — {id, task, checked, cls, children_slot} —
+// so the recursion (childSlot / renderEmbedded) stays at the single
+// assembly point while the template owns the li chrome. The task verb
+// (toggleTaskChecked) lives in the ext bridge; stopPropagation rides the
+// DSL modifier (expandedElement semantics).
+
+widget ListBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool, items: Array<str>, version: int) {
+    use {
+        fn: nodeAttrBool, nodeAttrInt, editOrderedStart, toggleTaskChecked, ctxEngine from "ext/container_ext.ts"
+        component: BlockChildren from "ext/container_ext.ts"
+    }
+
+    msg Msg { TaskClick }
+
+    computed {
+        is_edit => .mode == "edit"
+        engine_ref => ctxEngine(.ctx)
+        ordered => nodeAttrBool(.node, "ordered")
+        tag => .ordered ? "ol" : "ul"
+        list_class => .ordered ? "list-node list-decimal" : "list-node list-disc"
+        ordered_start => editOrderedStart(.mode, .ordered, nodeAttrInt(.node, "start"))
+        // view checkbox is inert (renderListPanel); the edit one is live
+        task_disabled => !.is_edit
+        task_label => .is_edit ? "toggle task" : "task checkbox"
+    }
+
+    view {
+        dyn (.tag) {
+            class: .list_class,
+            start: .ordered_start,
+
+            for i_i, item in .items {
+                li {
+                    key: item.id,
+                    class: item.cls,
+                    dir: "auto",
+
+                    if item.task {
+                        input (type: "checkbox") {
+                            class: "task-checkbox",
+                            checked: item.checked,
+                            disabled: .task_disabled,
+                            aria-label: .task_label,
+                            onclick.stop: .TaskClick(item)
+                        }
+                    },
+                    if .is_edit {
+                        div {
+                            class: "markdown-renderer",
+                            BlockChildren {
+                                children_slot: item.children_slot
+                            }
+                        }
+                    },
+                    if !.is_edit {
+                        BlockChildren {
+                            children_slot: item.children_slot
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .TaskClick(item) -> {
+            toggleTaskChecked(.engine_ref, item.id)
+        }
+    }
+}

@@ -10,12 +10,20 @@ import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from '../../parser/markdown-parser'
 import { renderNodes } from '../../render/render-node'
-import { decorateWikilinks } from '../wikilink'
+import { withPanelDecorator } from '../../render/panel-registry'
+import { decorateWikilinks, type OpenWikiLink } from '../wikilink'
 
-/** The editor's preview assembly path: renderNodes output, exactly what
- *  EngineEditor hands to decorateWikilinks for non-focused blocks. */
-function previewVNodes(md: string): VNode[] {
-  return renderNodes(parseDocument(md, true), true)
+/** The editor's preview assembly path (plan 035 T6 shape): renderNodes
+ *  under the panel body decorator window, then the top-level pass —
+ *  exactly what EngineEditor.previewVNodeOf does for non-focused blocks
+ *  (container widget bodies ride closures only the window reaches). */
+function previewVNodes(md: string, open: OpenWikiLink = () => {}): VNode[] {
+  const nodes = withPanelDecorator(
+    (vnodes) => decorateWikilinks(vnodes, open),
+    () => renderNodes(parseDocument(md, true), true),
+  )
+  decorateWikilinks(nodes, open)
+  return nodes
 }
 
 function collectLabels(nodes: VNode[]): VNode[] {
@@ -41,16 +49,14 @@ async function renderHtml(nodes: VNode[]): Promise<string> {
 describe('editor wikilink decoration', () => {
   it('splits [[title]] into a clickable label between plain text', async () => {
     const nodes = previewVNodes('前缀 [[Hello World]] 后缀')
-    decorateWikilinks(nodes, () => {})
     const html = await renderHtml(nodes)
     expect(html).toContain('autodown-wikilink-label')
     expect(html).toContain('Hello World')
   })
 
   it('emits (title, blockId) and stops propagation on click', () => {
-    const nodes = previewVNodes('链接 [[Page Two#block-two]] 处')
     const opened: Array<[string, string | undefined]> = []
-    decorateWikilinks(nodes, (title, blockId) => opened.push([title, blockId]))
+    const nodes = previewVNodes('链接 [[Page Two#block-two]] 处', (title, blockId) => opened.push([title, blockId]))
     const label = collectLabels(nodes)
     expect(label).toHaveLength(1)
     let stopped = false
@@ -65,16 +71,13 @@ describe('editor wikilink decoration', () => {
 
   it('labels [[title#block]] with the #block suffix, bare titles without', async () => {
     const withBlock = previewVNodes('[[A#b]]')
-    decorateWikilinks(withBlock, () => {})
     expect(await renderHtml(withBlock)).toContain('>A#b</span>')
     const bare = previewVNodes('[[A]]')
-    decorateWikilinks(bare, () => {})
     expect(await renderHtml(bare)).toContain('>A</span>')
   })
 
   it('decorates wikilinks inside list items', async () => {
     const nodes = previewVNodes('- 列表甲\n- [[Hello World]] — 基础语法示例')
-    decorateWikilinks(nodes, () => {})
     expect(await renderHtml(nodes)).toContain('autodown-wikilink-label')
   })
 
@@ -92,7 +95,6 @@ describe('editor wikilink decoration', () => {
     const md = '# 标题\n\n普通文本 **加粗** 与 `code`。'
     const before = await renderHtml(previewVNodes(md))
     const nodes = previewVNodes(md)
-    decorateWikilinks(nodes, () => {})
     expect(await renderHtml(nodes)).toBe(before)
   })
 })

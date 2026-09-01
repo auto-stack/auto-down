@@ -1,0 +1,109 @@
+// callout_block_widget.at — CalloutBlockWidget (plan 035 T3): the callout
+// family's three-mode widget — ONE chrome source for view / stream / edit
+// (the 033 family mechanism; registerBlockWidget mounts it on the edit
+// slots, panelOf on the panel-registry custom slot, T6).
+//
+// Absorbs, byte-identically:
+// - the builtin renderCalloutPanel (view/stream): the .callout-node card
+//   chain (class triple + data-callout-type, the known-type icon span, the
+//   .autodown-callout-title static text with the type-label fallback, the
+//   content slot over renderEmbedded);
+// - EngineEditor's expandedElement Callout branch (edit): the SAME card
+//   chain with the title swapped for the AttrHost in-place editor (plan
+//   030's keep-card-while-focused ruling), the children behind a
+//   .markdown-renderer wrapper, and the readonly stream banner
+//   (.autodown-stream-banner) while the stream→edit gate holds.
+//
+// The view title text goes through html: (v-html) with ext-escaped strings
+// — `text` emits a <span>{{}}</span> wrapper and the builtin panel pins a
+// bare text child (code_block_widget title idiom). The children hole is
+// BlockChildren with the assembly-built closure (view: renderEmbedded
+// vnodes via panelOf; edit: EngineEditor's childSlot recursion — the
+// markdown-renderer wrapper is edit-only, mirroring the two absorbed
+// sources).
+
+widget CalloutBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool, children: Array<str>, version: int) {
+    use {
+        fn: nodeAttrStr, calloutTypeKnown, ctxReadonly, ctxBlockId, ctxEngine, htmlText from "ext/container_ext.ts"
+        component: AttrHost, BlockChildren from "ext/container_ext.ts"
+    }
+
+    computed {
+        is_edit => .mode == "edit"
+        readonly => ctxReadonly(.ctx)
+        block_id => ctxBlockId(.ctx)
+        engine_ref => ctxEngine(.ctx)
+        type => nodeAttrStr(.node, "type")
+        known => calloutTypeKnown(.type)
+        title => nodeAttrStr(.node, "title")
+        // builtin fallback: empty title renders the type label
+        title_fallback => .title != "" ? .title : .type
+        title_html => htmlText(.title_fallback)
+        // AttrHost placeholder mirrors expandedElement: type || "标题"
+        placeholder => .type != "" ? .type : "标题"
+        root_class => "callout-node autodown-callout autodown-callout-" + .type
+        icon_class => "autodown-callout-icon autodown-callout-icon-" + .type
+    }
+
+    view {
+        div {
+            class: .root_class,
+            data-callout-type: .type,
+
+            if .is_edit {
+                if .readonly {
+                    div {
+                        class: "autodown-stream-banner",
+                        text "流式生成中"
+                    }
+                }
+            },
+            div {
+                class: "autodown-callout-header",
+
+                if .known {
+                    span {
+                        class: .icon_class,
+                        aria-hidden: "true"
+                    }
+                },
+                if .is_edit {
+                    AttrHost {
+                        controller: .engine_ref,
+                        blockId: .block_id,
+                        attr_key: "title",
+                        value: .title,
+                        placeholder: .placeholder,
+                        host_class: "autodown-callout-title",
+                        readonly: .readonly,
+                        version: .version
+                    }
+                },
+                if !.is_edit {
+                    div {
+                        class: "autodown-callout-title",
+                        dir: "auto",
+                        html: .title_html
+                    }
+                }
+            },
+            div {
+                class: "autodown-callout-content",
+
+                if .is_edit {
+                    div {
+                        class: "markdown-renderer",
+                        BlockChildren {
+                            children_slot: .children
+                        }
+                    }
+                },
+                if !.is_edit {
+                    BlockChildren {
+                        children_slot: .children
+                    }
+                }
+            }
+        }
+    }
+}

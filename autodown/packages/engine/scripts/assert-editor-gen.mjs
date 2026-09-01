@@ -69,7 +69,16 @@ const EXPECTED = [
   // plan 034 T3/T5 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; deployed set 14 → 15).
   'components/RichTextHost.vue',
-  'node-views/DetailsNodeView.vue',
+  // plan 035 T2 — the single-line attr host (replaces the hand-written
+  // AttrHost.vue; deployed set 15 → 16. The Callout/Details container
+  // widgets embed it from T3/T4).
+  'components/AttrHost.vue',
+  // plan 035 T3 — the callout family widget (absorbs renderCalloutPanel +
+  // expandedElement's Callout branch at the T6 assembly switch).
+  'components/CalloutBlockWidget.vue',
+  'components/DetailsBlockWidget.vue',
+  'components/BlockquoteBlockWidget.vue',
+  'components/ListBlockWidget.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',
   'node-views/BlockEmbedNodeView.vue',

@@ -226,17 +226,33 @@ onBeforeUnmount(() => {
   if (currentWikilinkOpener() === wikilinkOpener) registerWikilinkOpener(null)
 })
 
-// Data-loader channel (plan 038 T2): the nodeViewProps fabricator sits at
-// the bottom of the render pipeline with no component-tree context, so the
-// loaders register on the module-level slot and this watch keeps them
-// current (the wikilink-opener seam's last-mounted-wins shape — including
-// the identity-guarded unmount cleanup).
+// Data-loader channel (plan 038 T2, refined in T7): the nodeViewProps
+// fabricator sits at the bottom of the render pipeline with no
+// component-tree context, so the loaders register on the module-level slot
+// and this watch keeps them current (the wikilink-opener seam's shape).
+// An editor that DECLARES at least one loader owns the slot; an editor
+// with neither prop leaves any existing registration intact — the demo
+// registers mock loaders at entry and mounts a prop-less editor, and
+// clobbering them with undefined would sink every load to the
+// "No … configured" placeholder (T7 e2e catch).
+let ownsLoaders = false
 watch(
   () => [props.runQuery, props.loadBlock],
-  () => setDataLoaders({ runQuery: props.runQuery, loadBlock: props.loadBlock }),
+  () => {
+    if (props.runQuery != null || props.loadBlock != null) {
+      setDataLoaders({ runQuery: props.runQuery, loadBlock: props.loadBlock })
+      ownsLoaders = true
+    } else if (ownsLoaders) {
+      // this editor owned the slot and just dropped both props — restore
+      // the un-owned state (placeholder fallback)
+      setDataLoaders({})
+      ownsLoaders = false
+    }
+  },
   { immediate: true }
 )
 onBeforeUnmount(() => {
+  if (!ownsLoaders) return
   const cur = getDataLoaders()
   if (cur.runQuery === props.runQuery && cur.loadBlock === props.loadBlock) setDataLoaders({})
 })

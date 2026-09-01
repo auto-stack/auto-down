@@ -138,6 +138,16 @@ describe('EngineEditor props watch → setDataLoaders (plan 038 T2)', () => {
     host.unmount()
   })
 
+  it('a prop-less editor never clobbers an existing registration (T7: demo mock loaders + prop-less editor)', async () => {
+    const external = async (): Promise<QueryResultEnvelope> => ({ results: [] })
+    setDataLoaders({ runQuery: external })
+    const host = mountEditor({ modelValue: '$query(a)' })
+    expect(getDataLoaders().runQuery).toBe(external)
+    host.unmount()
+    // the prop-less editor did not own the slot — the registration survives
+    expect(getDataLoaders().runQuery).toBe(external)
+  })
+
   it('a prop change re-registers through the watch', async () => {
     const runA = async (): Promise<QueryResultEnvelope> => ({ results: [] })
     const runB = async (): Promise<QueryResultEnvelope> => ({ results: [] })

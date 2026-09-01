@@ -15,6 +15,12 @@ import { StreamingRenderer } from '@autodown/engine'
 import '@autodown/engine/editor'
 import '@autodown/engine/style.css'
 import 'katex/dist/katex.min.css'
+// Query/Embed mock loaders (plan 038 T7): the harness registers them too —
+// the loader-timing e2e feeds $query progressively and asserts zero loader
+// calls while the construct is still streaming (window.__mockLoaderCalls).
+import { registerDemoLoaders } from './mockLoaders'
+
+registerDemoLoaders()
 
 const source = ref('')
 

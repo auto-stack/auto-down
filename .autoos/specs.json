@@ -102,6 +102,17 @@
           "PLAN-030"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P031-2",
+        "section": "goals",
+        "title": "Math/Mermaid 源码+实时预览同屏编辑面 + SVG 工件契约（hash 单源、宿主注入存储） + 流式态测试钉死 — 目标",
+        "content": "1. **编辑面**：聚焦 MathBlock/Mermaid 块时显示\"源码 + 实时预览\"同屏编辑面\n   （.at 生成 chrome）；blur 整段提交（一步 undo，复用\n   CodeEditorController 提交协议）；源码非法时显示错误横幅且预览区降级；\n   流式进行中 readonly + \"流式生成中\"横幅（与 Fence/Table 编辑面同型）。\n2. **工件契约**：web 端 view 渲染成功后产出可持久化工件（mermaid→SVG、\n   math→HTML v1）；工件键 hash 在 TS/rust 双端字节一致（金标对拍）；\n   存储经注入接口，engine 零落盘、序列化零变化（roundtrip 金标不动）。\n3. **stream 钉死**：流式渐进三态（未闭合字面 / 加载态 codeNode / 闭合成块）\n   有自动化测试在册；final 成块渲染成功 → 工件 put 恰好一次（键形状断言）。\n4. **契约文档**：EDITOR-CONTRACT 选择器表 +2（两编辑面）；ARCHITECTURE\n   §6 chrome 部署清单 14→16（guard 同步）；DEBTS 三行销号/改写。",
+        "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
+        "related": [
+          "PLAN-031"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -210,6 +221,17 @@
         "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
         "related": [
           "PLAN-030"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P031-3",
+        "section": "architecture",
+        "title": "Math/Mermaid 源码+实时预览同屏编辑面 + SVG 工件契约（hash 单源、宿主注入存储） + 流式态测试钉死 — 架构方案",
+        "content": "```\nP1（chrome 层 .at 单源 + 平台层适配）\nauto/editor/math_edit_block.at      新 widget：textarea + 同步 katex 预览\nauto/editor/mermaid_edit_block.at   新 widget：textarea + debounce 异步预览\nauto/editor/ext/math_edit_ext.ts    桥：renderKatexPreview 转发 + focus/resize\nauto/editor/ext/mermaid_edit_ext.ts 桥：renderMermaidPreview 转发 + debounce + focus/resize\n  └─ 部署：pnpm gen:editor → src/editor/components/{Math,Mermaid}EditBlock.vue\n     + src/editor/ext/ 逐字节桥；scripts/assert-editor-gen.mjs 清单 14→16\nsrc/editor/components/EngineEditor.vue\n  ├─ registerBlockComponent('MathBlock', { edit: mathEditSlot })    （替换 BlockHost 兜底）\n  ├─ registerBlockComponent('Mermaid', { edit: mermaidEditSlot })   （替换 fenceEditSlot 复用）\n  └─ 两 slot 适配器：new CodeEditorController(ctx.engine, ctx.blockId)\n     + source=blockText(node)（030 起 math/mermaid 源码即 inlines）\n\nP2（工件契约，render 层单源 + 注入）\nauto/render/artifact_hash.at        FNV-1a 32 + len 混合键；gen:render 双发射\n  └─ 部署：src/render/artifact-hash.generated.ts + rust 侧 artifact_hash.a2r.rs\n     （auto.exe trans + cp，palette_map.at 同通道）\nsrc/render/preview.ts               增 RenderedArtifact 类型 + artifactFor(kind, source)\nsrc/render/optional-capabilities.ts 增 enableArtifactStore({ get, put })\n  └─ final 渲染成功 → store.put(artifactHash(kind, source), artifact)\n```\n\n**为何 controller 复用而非新写**：math/mermaid 的编辑语义 = 整段文本 blur\n提交（单步 undo），与 Fence 完全同构——CodeEditorController 本就 kind 无关\n（engine + blockId + commit(text)），复制它只会制造第二份提交协议。\n\n**为何 hash 放 .at 单源**：VM 端将来按同一键查磁盘缓存，TS/rust 两端必须\n对同一 source 算出同一键；32 位 FNV-1a + len 在两端都是平凡循环（TS number\n位运算 / rust u32 wrapping），无 BigInt、无外部依赖。",
+        "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
+        "related": [
+          "PLAN-031"
         ],
         "status": "stable"
       }
@@ -321,6 +343,17 @@
           "PLAN-030"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P031-4",
+        "section": "designs",
+        "title": "Math/Mermaid 源码+实时预览同屏编辑面 + SVG 工件契约（hash 单源、宿主注入存储） + 流式态测试钉死 — 详细设计",
+        "content": "### D1 MathEditBlock widget（auto/editor/math_edit_block.at）\n\nprops 扁平 chrome：`controller: Array<str>, blockId: str, source: str,\nreadonly: bool`。结构 = CodeEditorBlock 骨架变体：\n\n```\ndiv.autodown-math-editor[data-block-id][data-node-type=\"MathBlock\"]\n├─ if readonly → div.autodown-stream-banner \"流式生成中\"\n├─ div.math-editor-stack（预览上、源码下，与 node-view 预览版式区分）\n│   ├─ if !error → div.autodown-math-preview[html=.preview_html]\n│   ├─ if error → div.autodown-math-error[title=\"Math preview error\"] .error_text\n│   └─ textarea.math-editor-textarea[value=.draft][oninput/.AreaInput]\n│        [onblur=.Blur][disabled=.readonly][spellcheck=\"false\"]\n└─ 预览 = computed：renderKatexPreview(.draft, true)（经 ext 桥转发，\n   同步、无 promise 舞蹈——同 math_block_node_view.at 先例）\n```\n\n- `on .Blur -> controller.commit(e.target.value)`（单步 undo）。\n- `on .AreaInput ->` 无需 resize（textarea 固定 min-height + CSS\n  field-sizing 容高不可用则 rows 由源码行数近似——v1 用\n  `attr rows: str(...)` 经 ext 桥小helper计算，或 CSS max-height+overflow）。\n- 挂载 `.Init -> focusCodeArea(.area, .readonly)`（复用\n  code_editor_block_ext 导出，ext 桥 re-export，不在 DSL 写元素转型）。\n\n### D2 MermaidEditBlock widget（auto/editor/mermaid_edit_block.at）\n\nprops 同 D1。预览三态（异步）：\n\n```\nmodel { draft str, svg str = \"\", error_text str = \"\", loading bool = false }\ncomputed { show_preview => .loading == false && .error_text == \"\" && .svg != \"\" }\non .AreaInput(e) -> { .draft = …; debouncedRender(.draft) }   // ext 桥\n  debouncedRender：300ms debounce → loading=true → renderMermaidPreview\n  → { svg, error_text, loading=false } 回填（回调经 msg）\n```\n\n- mermaid.render 是异步全库初始化，首渲染 ~百毫秒级：loading 态显示\n  `div.mermaid-editor-loading \"渲染中…\"`；错误横幅 idiom 同 node view。\n- DSL 无定时器原语 → debounce 住 ext 桥（`scheduleMermaidRender`，\n  内部 setTimeout + 版本号防陈旧回填）。\n\n### D3 ext 桥与部署\n\n- `auto/editor/ext/math_edit_ext.ts`：re-export `renderKatexPreview`\n  （from `../../render/preview`）+ re-export `focusCodeArea`（from\n  `./code_editor_block_ext.ts`）。\n- `auto/editor/ext/mermaid_edit_ext.ts`：`scheduleMermaidRender(source,\n  cb)`（debounce + 陈旧版本丢弃）+ re-export renderMermaidPreview /\n  focusCodeArea。\n- `pnpm gen:editor` 再生 → `src/editor/components/{Math,Mermaid}EditBlock.vue`\n  部署 + ext 桥逐字节部署至 `src/editor/ext/`；\n  `scripts/assert-editor-gen.mjs` 部署清单 += 2 SFC + 2 ext（三项断言：\n  生成头注 ↔ .at 存在性、清单精确性、ext 桥同步）。\n\n### D4 编辑槽位注册（EngineEditor.vue plain script）\n\n```\nfunction mathEditSlot(node, ctx) {\n  return h(MathEditBlock, { controller: new CodeEditorController(ctx.engine,\n    ctx.blockId), blockId: ctx.blockId, source: blockText(node),\n    readonly: ctx.readonly })\n}\nregisterBlockComponent('MathBlock', { edit: mathEditSlot })\n// mermaidEditSlot 同型；删除 030 的 Mermaid→fenceEditSlot 复用注册\n```\n\n`blockText` 对 math/mermaid 已走 inlines（030 静态回退模型同源）。\n\n### D5 工件 hash 单源（auto/render/artifact_hash.at）\n\n```\nfn artifactHash(kind str, source str) str {\n    // FNV-1a 32 over kind+'\\u0000'+source code units；h ^= u; h *= 16777619 (wrapping)\n    // 键 = kind + \":\" + len(source) + \":\" + hex(h)   （len 混入缩小碰撞伤害）\n}\n```\n\n- 双发射：`pnpm gen:render` → `src/render/artifact-hash.generated.ts`\n  （number `Math.imul`/`>>>0` 保无符号语义）；rust 侧 `auto.exe trans\n  --path` + cp → `packages/core/rust/.../artifact_hash.a2r.rs`（u32\n  wrapping_mul，palette_map.a2r.rs 同通道同 README 命令）。\n- 对拍：金标 fixtures（kind × source 语料 ≥8 组，含中文/emoji/多行）\n  双侧 hex 输出逐字符一致——进既有 rust-parse-parity-gen 断言口径。\n\n### D6 工件契约与存储注入（src/render/preview.ts + optional-capabilities.ts）\n\n```\nexport interface RenderedArtifact { kind: 'html' | 'svg'; body: str; error: str }\n// renderKatexPreview / renderMermaidPreview 保持不动（在册消费者零扰动）\nexport function artifactFor(blockKind: 'MathBlock' | 'Mermaid',\n  source: str): RenderedArtifact        // math→html(katex) mermaid→svg\n// optional-capabilities.ts:\nexport function enableArtifactStore(store:\n  { get(key: str): str | undefined; put(key: str, artifact: RenderedArtifact): void }): void\n```\n\n- 写入点：**final 渲染成功后**（`error == \"\"`）`put(artifactHash(kind,\n  source), artifact)`——挂在两处：编辑面 blur 提交后的预览重渲染、\n  StreamingRenderer/panel 面板 final 渲染路径（node view 的 render 成功\n  分支）。恰一次语义由\"final 才写 + 源码键幂等\"保证（重复 put 同键无害）。\n- `get` 仅供测试与 VM 消费演示；web 端自身渲染不依赖缓存（live 渲染\n  不变）。engine 默认无 store = 行为与今日完全一致（零注册零写入）。\n\n### D7 stream 钉死（不建新机器）\n\n- 渐进三态 fixture：`%{` 未闭合 → 段落字面（030 行为）；```mermaid 开放\n  → codeNode loading；闭合 → Mermaid/MathBlock kind。断言不抛错、不渲染\n  mermaid（开放态）。\n- final 断言：闭合成块 + final 渲染成功 → artifactStore.put 恰被调用且\n  键形状 `Mermaid:<len>:<hex>`。\n- 编辑面 readonly：streaming 中聚焦两块 → `.autodown-stream-banner`\n  可见 + textarea disabled（e2e）。",
+        "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
+        "related": [
+          "PLAN-031"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -409,6 +442,17 @@
         "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
         "related": [
           "PLAN-030"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P031-5",
+        "section": "tests",
+        "title": "Math/Mermaid 源码+实时预览同屏编辑面 + SVG 工件契约（hash 单源、宿主注入存储） + 流式态测试钉死 — 测试设计",
+        "content": "- **单测（vitest）**：\n  - artifact-hash：TS 实现对金标语料输出固定 hex（语料与 rust fixture\n    同源）；kind/len 混入有效性（同 source 异 kind 异键）。\n  - artifactFor：math→kind html、mermaid→kind svg；error 透传。\n  - enableArtifactStore：注册后 final 渲染触发 put（键形状、恰一次/\n    幂等）；未注册零副作用；clearOptionalCapabilities 清 store。\n  - edit 槽位：editSlotFor('MathBlock'/'Mermaid') 非 undefined 且\n    render VNode 带 data-block-id/data-node-type。\n  - mermaid edit 桥：debounce 调度与陈旧版本丢弃（fake timers）。\n- **对拍**：artifact_hash 双发射金标（rust 侧 cargo test 同语料 hex）。\n- **e2e（demo/e2e/extension-blocks.spec.ts 增节）**：math 块聚焦出编辑面\n  （textarea + 预览区选择器）；改源码 → 预览更新/错误横幅；blur → 模型\n  更新（保存后 roundtrip）；mermaid 编辑面三态（loading→svg、错误源 →\n  横幅）；streaming readonly 横幅（stream demo 或 canEdit 流式用例）。\n- **回归**：serializer-roundtrip / parse_parity 全量（文档零变化的\n  守卫）；demo e2e 既有 12 spec 全绿。",
+        "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
+        "related": [
+          "PLAN-031"
         ],
         "status": "verified"
       }
@@ -512,6 +556,17 @@
           "PLAN-030"
         ],
         "status": "published"
+      },
+      {
+        "id": "P031-6",
+        "section": "reviews",
+        "title": "Math/Mermaid 源码+实时预览同屏编辑面 + SVG 工件契约（hash 单源、宿主注入存储） + 流式态测试钉死 — 验收标准与复审",
+        "content": "1. 聚焦 `%{ }%` 块与闭合 mermaid 块 → 专用编辑面（源码+预览同屏），\n   blur 一步 undo 提交；非法源码 → 错误横幅且不崩。\n2. 流式中两编辑面 readonly + 横幅；流式渐进三态测试在册全绿。\n3. `artifactFor` 产 `svg`（mermaid）/`html`（math）；final 成功渲染触发\n   `put`，键 = 双端一致的 `artifactHash`；未注册 store 时全部行为与\n   今日一致（既有测试零改动通过）。\n4. gen:editor 两连跑逐字节确定；assert-editor-gen 清单 16 SFC +\n   9+2 ext 全绿；gen:render 与 rust trans 后对拍金标绿。\n5. `.ad` 序列化格式零变化（roundtrip 金标零改动）；EDITOR-CONTRACT /\n   ARCHITECTURE / DEBTS 更新在案。\n\n复审记录：\n\n**复审人**：/auto-plan:review（zhaopuming 会话）· 2026-09-01 · 于 .worktrees/plan-031-dev 复验（11 提交，39 文件 +2337/−46，工作树净）\n\n**逐条验收（独立复跑，非采信勾选）**\n\n1. **编辑面** PASS — extension-blocks e2e 4 新用例全绿（聚焦挂载/实时预览刷新/\n   非法源错误横幅不崩/blur 提交 Save roundtrip 含新源）；单测 11 用例含 undo\n   单步与 serialize roundtrip 断言。\n2. **流式钉死** PASS — 渐进三态 fixture 4/4（未闭合字面/开放 fence 不渲染\n   mermaid/闭合成块两 kind）；readonly 横幅+disabled SSR 双面钉死。注：readonly\n   未做 e2e（demo 无 streaming 通道，改动生成 App.vue 超计划清单；SSR 钉死 =\n   023 CodeEditorBlock 先例）——执行期在案偏差，等效覆盖。\n3. **工件契约** PASS — artifactFor kind/error 断言 4/4；put 恰一次/键形状/\n   幂等同键/未注册零副作用/clear 分离 9/9；TS↔rust 金标 10 语料逐字符一致\n   （vitest 6/6 + cargo 2/2）；未注册时既有 505 用例零改动通过（全量 528）。\n4. **生成门** PASS — 复审独立重跑 gen:editor 两连跑 diff -r 零差异；\n   assert-editor-gen \"16 chrome products, 11 ext bridges\"；gen:render 后\n   cargo 对拍绿；全部 regen+全测后工作树 git status 零改动（发射逐字节稳定）。\n5. **零变化+文档** PASS — roundtrip/parse-parity 金标零改动（diff 无此类文件）；\n   DEBTS（4 处）/ARCHITECTURE（§5/§6+契约段）/EDITOR-CONTRACT（表+2+清单）\n   更新在案并经 diff 复核。\n\n**全量门（本技能唯一一次）**：engine build（vue-tsc -b --force 干净；一次\nTS2307 MarkdownRender.vue 瞬态，后续三次全 build 零复现——增量态竞态，非\n031 所致）+ engine test 528/528 + demo playwright 38/40 + cargo 10/10。\n\n**遗漏/延后/workaround 排查**\n\n- 延后（在案·计划明文边界）：math SVG 选型（DEBTS 031 行四候选）、MathInline\n  （DEBTS 026③）、VM 磁盘缓存消费、Query/Embed 装载（DEBTS 026①）——均经\n  计划审定，非擅自缩水。\n- 偏差（在案·执行期记录）：readonly e2e→SSR 钉死；渐进三态→engine fixture\n  （e2e 黑盒无法驱动渐进源）；\"编辑面 blur 后预览重渲染\" put 位由 panel final\n  路径覆盖（同一咽喉点、键幂等）。\n- workaround（在案）：.at 编译器四约束适配（头注+ARCHITECTURE §6+T6 证据）；\n  e2e fill()（Windows 键盘布局）；030 旧断言 .katex count=1→first()（样例\n  增补后不再钉样例数）。\n- **新发现 debt 候选（先于本计划）**：demo scroll-sync 底部两用例环境性\n  flake——master 内容 A/B 同败（同值 3539/3575，master 两轮 2/6、3/6 败漂移），\n  根因疑为自定义滚动条底部点击几何近似（track.height−10 不足全滚）随环境\n  放大；非 031 回归（031 内容 2/6 败不多于 master）。建议单列小计划修滚动\n  到底语义（SetScrollTop(1) 类绝对定位）或 DEBTS 登记。\n\n**裁定**：五条验收全 PASS，无阻断性欠账 → status: archived，移交\n/auto-plan:merge。",
+        "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
+        "related": [
+          "PLAN-031"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -611,6 +666,17 @@
         "file": "docs/plans/archived/030-ext-block-parse-and-wysiwyg.md",
         "related": [
           "PLAN-030"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P031-1",
+        "section": "reports",
+        "title": "Math/Mermaid 源码+实时预览同屏编辑面 + SVG 工件契约（hash 单源、宿主注入存储） + 流式态测试钉死 — 变更摘要",
+        "content": "三个互相咬合的部分，共同销掉 DEBTS 三行欠账，并为 VM/iced 端铺好 view 模式\n的工件通道：\n\n**P1 编辑态深化**（销 DEBTS 020 余量\"math/mermaid 编辑态深化\"、DEBTS 026②\n\"NodeView 编辑态深度\"）：MathBlock 与 Mermaid 各得一个专用编辑面——\n源码 textarea + 实时预览同屏（.at 单源 chrome，沿用 CodeEditorBlock 的\ncontroller-prop 协议与 ext 桥模式）。math 预览走同步 katex；\nmermaid 预览走 debounce 异步 + loading/error 三态。Mermaid 编辑面**替换**\nplan 030 的 fenceEditSlot 复用；MathBlock 编辑面**替换**当前的 BlockHost\n文本兜底。\n\n**P2 渲染工件契约**（升级 DEBTS 020 绿行\"rust/VM katex/mermaid v1 降级\"）：\npreview.ts 的字符串契约升级为 `RenderedArtifact { kind: 'html'|'svg', body,\nerror }`；mermaid 立即产 SVG（天然 VM/iced 可显示物），math v1 产 HTML\n（SVG 生成器选型后置，见待澄清①）。工件键 = **单源 hash**（新增\n`auto/render/artifact_hash.at`，FNV-1a 32 + len 混合，gen:render 双发射 +\nrust trans 对拍），存储经 `enableArtifactStore({ get, put })` 注入\n（optional-capabilities 既有模式）——engine 不落盘、`.ad` 文档零污染，\ndemo/jade 接内存实现，VM 端将来接磁盘缓存 + resvg 显示。\n\n**P3 stream 钉死**：030 已把流式安全做完（未闭合 `%{` → 段落字面、开放\nmermaid fence → codeNode loading、闭合才成块 = 源码必完整），本计划不建\n新 stream 机器，只做三件收口：渐进态 fixture 钉死、final 后工件 put 断言、\n新编辑面 readonly（\"流式生成中\"横幅）与既有 `BlockEditCtx.readonly` 对齐。\n\n**不做的**：MathInline（行内层，DEBTS 026③，独立计划）；math SVG 生成器\n选型与引入（待澄清①，DEBTS 跟踪）；VM/iced 端实现本身（auto-lang 侧\n413 natives 线，本计划只交付契约与键的单源）；Query/Embed 数据装载\n（DEBTS 026①）。",
+        "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
+        "related": [
+          "PLAN-031"
         ],
         "status": "published"
       }

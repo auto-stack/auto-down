@@ -25,6 +25,7 @@ import { blockNodesToWNodes, blockOfWNode } from '../../render/block-wnode'
 import { EditorEngine } from '../engine/editor-engine'
 import { setBlockAttrs } from '../engine/commands'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
+import { queryNode } from '../../parser/markdown-parser'
 import DetailsBlockWidget from '../components/DetailsBlockWidget.vue'
 import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
 // importing the assembly performs the module-scope panel registrations
@@ -131,6 +132,32 @@ describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3; math/mermaid a
 })
 
 // keep Details describe anchored after the new suite
+
+describe('query text through the model→WNode bridge (plan 038 T3)', () => {
+  it('the bridge carries attrs.query into the WNode content slot (mirrors parser queryNode)', () => {
+    const q = block('q1', BlockType.QueryBlock)
+    q.attrs = attrSet(q.attrs, 'query', Value.Str('table tasks where done'))
+    const [w] = blockNodesToWNodes([q])
+    expect(w!.type).toBe('query')
+    expect(w!.content).toBe('table tasks where done')
+  })
+
+  it('a missing query attr bridges as the empty string (parser default shape)', () => {
+    const [w] = blockNodesToWNodes([block('q1', BlockType.QueryBlock)])
+    expect(w!.content).toBe('')
+  })
+
+  it('parse-side WNodes (static render, no back-link) reach the widget with the same value', async () => {
+    // the parser-produced WNode — MarkdownRender / streaming path shape
+    const w = queryNode('list open tabs')
+    const vnode = renderNodes([w], true)[0]!
+    const app = createSSRApp({ render: () => h('div', [vnode]) })
+    const html = (await renderToString(app)).replace(/<!--.*?-->/g, '')
+    expect(html).toContain('autodown-query-block')
+    expect(html).toContain('list open tabs')
+    expect(html).not.toContain('unknown-node')
+  })
+})
 
 describe('Details preview mount (plan 026 P1T2)', () => {
   it('renders the Details family widget with attrs and body (plan 035: the node-view markers retired with DetailsNodeView)', async () => {

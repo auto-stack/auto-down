@@ -134,8 +134,11 @@ function convertBlockNode(node: BlockNode): WNode {
         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
       )
     case BlockType.QueryBlock:
+      // plan 038 T3: attrs.query rides the content slot — the parser's
+      // queryNode shape, so parse-side WNodes and bridged WNodes carry the
+      // query text identically (the static fallback reads w.content)
       return new WNode(
-        'query', null, null, null, null, null,
+        'query', attrGetStr(node.attrs, 'query', ''), null, null, null, null,
         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
       )
     case BlockType.BlockEmbed:

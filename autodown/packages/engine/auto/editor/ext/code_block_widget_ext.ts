@@ -146,3 +146,17 @@ export function codeController(ctx: unknown): CodeEditorController | null {
   const c = ctx as { engine: EditorEngine; blockId: string }
   return new CodeEditorController(c.engine, c.blockId)
 }
+
+// -- family root-attr helpers (shared by the math/mermaid widget bridges) --------
+
+/** An attribute only the edit face carries (undefined drops the attr —
+ *  view/stream roots must not grow stray empty markers). */
+export function editOnlyAttr(mode: string, v: string): string | undefined {
+  return mode === 'edit' ? v : undefined
+}
+
+/** A bare marker attribute only the view/stream faces carry (the node-view
+ *  contract's data-*-block="" shape). */
+export function viewMarker(mode: string): string | undefined {
+  return mode === 'edit' ? undefined : ''
+}

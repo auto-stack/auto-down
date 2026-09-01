@@ -1,0 +1,255 @@
+// math_block_widget.at — MathBlockWidget (plan 033 T3): the math block
+// family's three-mode widget. ONE chrome source for view / stream / edit —
+// merges the two 031-era faces into one component:
+//
+// - view/stream: the MathBlockNodeView contract (autodown-math-block +
+//   data-math-block marker, katex preview / error banner, source
+//   pre > code slot) with the artifact final-put riding the render bridge
+//   (renderMathBlockPreview — successful finals record into the host store);
+// - edit: the MathEditBlock contract (autodown-math-editor chrome, source
+//   textarea + synchronous katex live preview, blur commits the whole
+//   source through the CodeEditorController — one undo step).
+//
+// KaTeX is SYNCHRONOUS — the edit preview is a pair of computeds over
+// .draft (renderKatexPreview runs twice per keystroke: once for the html,
+// once for the error; katex renderToString is cheap and this keeps the DSL
+// free of statement-level result juggling — 031 idiom). The view face
+// renders on mount + source watch (the DSL watch has no immediate option;
+// the body is DUPLICATED in .Init — a msg handler no view event references
+// is not emitted).
+//
+// Codegen idioms (see code_block_widget.at for the shared list):
+// - SINGLE ROOT with root_class computed (edit folds is-readonly in); the
+//   per-mode attributes ride the undefined-omission trick (editOnlyAttr /
+//   viewMarker): view carries data-math-block="", edit carries
+//   data-block-id + data-node-type, and neither face grows the other's
+//   markers.
+// - stream renders the view body (031 tri-state ruling: %{ math reaches
+//   the panel only when closed — final=false never reaches a math face
+//   through the real pipes; the branch keeps the chrome single-sourced).
+// - `text` (span-wrapped) matches both absorbed faces' generated output —
+//   the error banner and source slot are byte-stable as-is; <code> is not
+//   in the DSL element table, rendered via dyn.
+
+widget MathBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool) {
+    use {
+        fn: renderMathBlockPreview, renderKatexPreview, focusCodeArea, textareaRows, nodeText, ctxReadonly, ctxBlockId, codeController, editOnlyAttr, viewMarker from "ext/math_block_widget_ext.ts"
+    }
+
+    msg Msg { Init, AreaInput, Blur }
+
+    model {
+        // view face state ("" sentinel — the node-view idiom; SSR renders
+        // the empty preview branch, the render lands on mount via .Init)
+        var view_html str = ""
+        var view_error str = ""
+        // edit face draft + controller (code_block_widget.at idiom: built
+        // once per instance, null in view/stream)
+        var draft str = nodeText(.node)
+        var controller Array<str> = codeController(.ctx)
+    }
+
+    computed {
+        is_edit => .mode == "edit"
+        source => nodeText(.node)
+        readonly => ctxReadonly(.ctx)
+        root_class => .is_edit ? (.readonly ? "autodown-math-editor is-readonly" : "autodown-math-editor") : "autodown-math-block"
+        root_math_marker => viewMarker(.mode)
+        root_block_id => editOnlyAttr(.mode, ctxBlockId(.ctx))
+        root_node_type => editOnlyAttr(.mode, "MathBlock")
+        // edit face (031 MathEditBlock contract)
+        edit_preview_html => renderKatexPreview(.draft, true).html
+        edit_error_text => renderKatexPreview(.draft, true).error
+        show_edit_preview => .edit_error_text == ""
+        show_edit_error => .edit_error_text != ""
+        rows_value => textareaRows(.draft)
+        // view face (node-view contract: !error renders the preview even on
+        // the empty source — the initial SSR branch)
+        show_view_preview => .view_error == ""
+        show_view_error => .view_error != ""
+        code_tag => "code"
+    }
+
+    view {
+        div {
+            class: .root_class,
+            data-math-block: .root_math_marker,
+            data-block-id: .root_block_id,
+            data-node-type: .root_node_type,
+
+            if .is_edit {
+                if .readonly {
+                    div {
+                        class: "autodown-stream-banner",
+                        text "流式生成中"
+                    }
+                }
+                div {
+                    class: "math-editor-stack",
+                    if .show_edit_preview {
+                        div {
+                            class: "autodown-math-preview",
+                            html: .edit_preview_html
+                        }
+                    }
+                    if .show_edit_error {
+                        div {
+                            class: "autodown-math-error",
+                            title: "Math preview error",
+                            text .edit_error_text
+                        }
+                    }
+                    textarea (spellcheck: "false") {
+                        ref: "area",
+                        class: "math-editor-textarea",
+                        value: .draft,
+                        rows: .rows_value,
+                        oninput: .AreaInput($event),
+                        disabled: .readonly,
+                        onblur: .Blur($event)
+                    }
+                }
+            }
+            if !.is_edit {
+                if .show_view_preview {
+                    div {
+                        class: "autodown-math-preview",
+                        html: .view_html
+                    }
+                }
+                if .show_view_error {
+                    div {
+                        class: "autodown-math-error",
+                        title: "Math preview error",
+                        text .view_error
+                    }
+                }
+                pre {
+                    class: "math-block-source",
+                    dyn (.code_tag) {}
+                }
+            }
+        }
+    }
+
+    watch {
+        // The node view's watch(source) — view-face re-render on external
+        // model changes; .Init duplicates the body (no immediate option).
+        .source -> {
+            if !.is_edit {
+                let result = renderMathBlockPreview(.source)
+                .view_html = result.html
+                .view_error = result.error
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            if .is_edit {
+                focusCodeArea(.area, .readonly)
+            }
+            if !.is_edit {
+                // render() — duplicated in the watch above.
+                let result = renderMathBlockPreview(.source)
+                .view_html = result.html
+                .view_error = result.error
+            }
+        }
+
+        .AreaInput(e) -> {
+            .draft = e.target.value
+        }
+
+        .Blur(e) -> {
+            if !.readonly {
+                let c = .controller
+                c.commit(e.target.value)
+            }
+        }
+    }
+
+    style {
+        .autodown-math-block {
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--card, 0 0% 100%));
+          overflow: hidden;
+        }
+        .autodown-math-preview {
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+        }
+        .autodown-math-preview :deep(.katex-display) {
+          margin: 0;
+        }
+        .autodown-math-error {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          color: hsl(var(--destructive, 0 72% 51%));
+          background: hsl(var(--destructive/10, 0 72% 51% / 0.1));
+        }
+        .math-block-source {
+          margin: 0;
+          border-top: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0;
+          background: hsl(var(--muted, 210 20% 96%));
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+          white-space: pre-wrap;
+        }
+        .autodown-math-editor {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #f8f9fa;
+          overflow: hidden;
+        }
+        .autodown-math-editor.is-readonly {
+          opacity: 0.75;
+        }
+        .autodown-stream-banner {
+          padding: 0.3rem 0.75rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          border-bottom: 1px solid #fcd34d;
+          user-select: none;
+        }
+        .math-editor-stack {
+          display: flex;
+          flex-direction: column;
+        }
+        .math-editor-stack .autodown-math-preview {
+          border-bottom: 1px solid #e5e7eb;
+          background: #ffffff;
+        }
+        .math-editor-stack .autodown-math-error {
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .math-editor-textarea {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 3rem;
+          max-height: 24rem;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          outline: none;
+          resize: none;
+          overflow: auto;
+          background: transparent;
+          color: #111827;
+          caret-color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .math-editor-textarea:disabled {
+          cursor: not-allowed;
+        }
+    }
+}

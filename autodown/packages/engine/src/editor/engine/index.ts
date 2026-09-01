@@ -3,6 +3,18 @@
 // host controller, and the command layer (insertTemplate / table ops /
 // moveBlock / setBlockAttrs).
 export { EditorEngine, type EngineChange, type EngineListener } from './editor-engine'
+// plan 038 T1 — the Query/Embed data-loader channel (module slot + types).
+export {
+  setDataLoaders,
+  getDataLoaders,
+  withDataLoaders,
+  type DataLoaders,
+  type RunQueryFn,
+  type LoadBlockFn,
+  type QueryResultItem,
+  type QueryResultEnvelope,
+  type EmbeddedBlock,
+} from './data-loaders'
 export { INPUT_RULES, matchInputRule, inputRuleOps, applyRuleAttrs, fireRuleOn, type InputRule, type InputRuleResult } from './input-rules'
 export { CompositionSession } from './composition'
 export { diffToOp } from './text-diff'

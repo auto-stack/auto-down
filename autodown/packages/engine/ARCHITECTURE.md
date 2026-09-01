@@ -92,8 +92,8 @@
   替换 030 的 fence 复用与 BlockHost 文本兜底）；**036 落行内层跨平台**
   （SelectionAdapter 契约 + dom-marks 迁入退役、行内 wikilink/math_inline
   模型 span 双发射、MathInline node view 退役——EDITOR-CONTRACT §9）；
-  余量（Query/Embed
-  数据装载）见 DEBTS.md 020/021/026 行。
+  **038 接通 Query/Embed 数据装载**（props → data-loaders 模块槽 →
+  家族 widget，EDITOR-CONTRACT §10）——node view 面全部收官。
 - **解析子集（plan 030 扩集；行内方言 plan 036）**：blocks = heading(ATX+setext)/paragraph/
   fence/`%{ }%` math 块/```` ```mermaid ```` closed fence→Mermaid/
   blockquote/list(ul+ol+任务项 `- [ ]`/`- [x]`)/thematic_break/table/
@@ -140,28 +140,34 @@
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 17 个部署物（plan 037 块级家族化收官：19 → 17，19 widget 源）：
-  `menus/{SlashMenu,BubbleMenu,CodeBlockMenu}.vue`、`components/{
-  CodeLanguageIcon,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget,
+- 16 个部署物（plan 037 块级家族化收官 19 → 17、plan 038 家族闭环 17 → 16，
+  18 widget 源）：`menus/{SlashMenu,BubbleMenu,CodeBlockMenu}.vue`、
+  `components/{CodeLanguageIcon,CodeBlockWidget,MathBlockWidget,
+  MermaidBlockWidget,QueryBlockWidget,EmbedBlockWidget,TableBlockWidget,
   RichTextHost,AttrHost,CalloutBlockWidget,DetailsBlockWidget,
-  BlockquoteBlockWidget,ListBlockWidget,TableBlockWidget}.vue`、
-  `node-views/*.vue`（3：WikiLink/Query/BlockEmbed——DetailsNodeView
-  随 plan 035 并入 DetailsBlockWidget 退役，MathInlineNodeView 随
-  plan 036 T7 退役——行内 math 走 render-node span 直渲；TableMenu/
-  TableEditorBlock 随 plan 037 T5 退役——Table 族归一进
-  TableBlockWidget，dormant 菜单源一并销账）——gen 管线（暂存工程
-  `auto build --gen-only --lenient` → 收割 → E1 import 后修 → 部署），
-  两连跑逐字节确定。块级家族化至此全员单 widget：Fence（033）/
-  Math/Mermaid（033）/容器四族（035）/Table（037）。
-- 13 个 ext 桥（plan 037：table_menu_ext/table_editor_block_ext 退役，
+  BlockquoteBlockWidget,ListBlockWidget}.vue`——gen 管线（暂存工程 `auto
+  build --gen-only --lenient` → 收割 → E1 import 后修 → 部署），
+  两连跑逐字节确定。`node-views/` 部署区已消失：DetailsNodeView 随
+  plan 035 并入 DetailsBlockWidget，MathInlineNodeView 随 plan 036 T7
+  退役（行内 math 走 render-node span 直渲），TableMenu/TableEditorBlock
+  随 plan 037 T5 退役（Table 族归一进 TableBlockWidget），Query/BlockEmbed
+  node view 随 plan 038 T6 并入两件家族 widget 退役，dormant 的
+  WikiLinkNodeView 源同批物理退役（036 wikilink 模型 span 化后无双轨，
+  挂账销账）。**块级家族化全员单 widget 闭环**：Fence/Math/Mermaid
+  （033）/容器四族（035）/Table（037）/Query/Embed（038 收官）。
+- 15 个 ext 桥（plan 037：table_menu_ext/table_editor_block_ext 退役，
   table_block_widget_ext 接棒——commitTableCell 迁入 + 三根 chrome 读数
-  + streaming_table.at 规范化归并）：`src/editor/ext/*.ts` 是
+  + streaming_table.at 规范化归并；plan 038：query_block_widget_ext /
+  embed_block_widget_ext 接棒装载）：`src/editor/ext/*.ts` 是
   `auto/editor/ext/*.ts` 的逐字节
   部署（引擎接口，零 Tiptap；plan 033 起三族桥 code_block_widget_ext /
   math_block_widget_ext / mermaid_block_widget_ext 替换 code_editor_
   block_ext / math_edit_ext / mermaid_edit_ext——家族读取器
   nodeText/ctxReadonly/codeController 等以 code_block_widget_ext 为正典家，
-  其余桥 re-export；plan 034 增 rich_text_host_ext——文本叶子宿主的全部
+  其余桥 re-export；plan 038 增 query_block_widget_ext / embed_block_
+  widget_ext（装载槽读取 + parseEmbedSrc 三形派生 + normalizeQueryResults/
+  errorMessage 自 node_view_ext 归一——node_view_ext 收缩至挂载协议对
+  NodeViewWrapper/NodeViewContent/KEY）；plan 034 增 rich_text_host_ext——文本叶子宿主的全部
   平台接线，含 liveHosts 重挂载存活守卫；plan 035 增 attr_host_ext（单行
   attr 宿主：挂载/blur 提交/version 同步）与 container_ext（容器四族共享：
   BlockChildren 孔与 AttrHost 件再输出 + 容器 flat 读取 + open/checked 翻
@@ -210,9 +216,10 @@
   037 Table 族——table-node 单链/cell chrome 共享/stream loading 族/
   readonly 门；edit 白名单——textarea/caret/横幅/stack 分隔/toolbar/
   contenteditable——冻结在文件头注与各 describe 注记）。
-- 推广边界（待后续计划）：Table 合流依赖 032 归一终态；Query/Embed 依赖
-  数据装载（DEBTS 026①）；~~Callout/Details/Blockquote/List 容器族~~——
-  **plan 035 已落地**：`BlockChildren` 孔（`components/BlockChildren.ts`，
+- 推广边界（待后续计划）：~~Table 合流依赖 032 归一终态~~（037 已落地）；
+  ~~Query/Embed 依赖数据装载（DEBTS 026①）~~——**plan 038 已接通**
+  （QueryBlockWidget/EmbedBlockWidget 家族收官，装载通道
+  EDITOR-CONTRACT §10）；~~Callout/Details/Blockquote/List 容器族~~——  **plan 035 已落地**：`BlockChildren` 孔（`components/BlockChildren.ts`，
   子块递归挂载孔——children_slot 闭包持有 AssemblyCtx，epoch 重挂/宿主注册
   表/焦点路径机制不动；.at 经 container_ext 内嵌，契约面
   EDITOR-CONTRACT §8）+ 四族 widget（Callout/Details/Blockquote/
@@ -246,13 +253,13 @@
   NodeView 经 panel registry custom 槽挂预览（node-view-host.ts 桥：
   nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔）；
   plan 033 起 MathBlock/Mermaid 预览改挂各自家族 widget（panelOf 面），
-  NodeView 在挂 3 件（Details/Query/Embed）；
+  plan 038 后 NodeView 在挂 0 件（Query/Embed 转 panelOf 家族 widget，
+  Details 035 已转——node-views/ 部署区消失，挂载协议桥留存平台层）；
   MathInlineNodeView 已随 plan 036 T7 物理退役（行内 math 走 render-node
   span 直渲——行内无块级挂载位的需求随模型化消失，见 DEBTS.md 026③ 销
-  号）；WikiLinkNodeView 在册不激活（036 起 span 直渲已拥有该交互，无
-  双轨）。
-  余量：Query/Embed 数据装载（runQuery/loadBlock 注入面）与 NodeView
-  编辑态深度，见 DEBTS.md 020/021/026 行。
+  号）；WikiLinkNodeView dormant 源随 plan 038 T6 物理退役（036 起 span
+  直渲已拥有该交互，无双轨）。
+  余量：NodeView 编辑态深度（Table 族富编辑），见 DEBTS.md 020/026 行。
 
 **渲染工件契约（plan 031，view 模式的持久化通道）**
 

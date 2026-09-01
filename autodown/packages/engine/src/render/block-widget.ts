@@ -66,9 +66,11 @@ export function panelOf(widget: Component): PanelRenderer {
   }
 }
 
-/** Static-render fallback model for the widget kinds (fence/math/mermaid):
- *  WNode slot data re-shaped into the model the edit slots read — source in
- *  inlines, fence language + the 032 open-fence loading flag in attrs. */
+/** Static-render fallback model for the widget kinds (fence/math/mermaid +
+ *  query/embed, plan 038 T6): WNode slot data re-shaped into the model the
+ *  widget faces read — source in inlines, fence language + the 032
+ *  open-fence loading flag in attrs, the query text (content slot, T3
+ *  bridge) and embed src (src slot) in attrs. */
 function wnodeFallbackModel(w: WNode): BlockNode {
   const attrs: Attr[] = []
   const src = typeof w?.code === 'string' ? w.code : ''
@@ -76,6 +78,8 @@ function wnodeFallbackModel(w: WNode): BlockNode {
     attrs.push({ key: 'language', value: Value.Str(String(w.language ?? '')) })
     if (w?.loading === true) attrs.push({ key: 'loading', value: Value.Bool(true) })
   }
+  if (w?.type === 'query') attrs.push({ key: 'query', value: Value.Str(String(w.content ?? '')) })
+  if (w?.type === 'embed') attrs.push({ key: 'src', value: Value.Str(String(w.src ?? '')) })
   return {
     id: 'nv',
     kind: kindOfWNode(w?.type ?? ''),
@@ -89,6 +93,8 @@ function wnodeFallbackModel(w: WNode): BlockNode {
 function kindOfWNode(type: string): BlockType {
   if (type === 'code_block') return BlockType.Fence
   if (type === 'mermaid') return BlockType.Mermaid
+  if (type === 'query') return BlockType.QueryBlock
+  if (type === 'embed') return BlockType.BlockEmbed
   return BlockType.MathBlock
 }
 

@@ -79,9 +79,11 @@ const EXPECTED = [
   'components/DetailsBlockWidget.vue',
   'components/BlockquoteBlockWidget.vue',
   'components/ListBlockWidget.vue',
-  'node-views/WikiLinkNodeView.vue',
-  'node-views/QueryBlockNodeView.vue',
-  'node-views/BlockEmbedNodeView.vue',
+  // plan 038 T4/T5 — the query/embed family widgets (absorbed the two
+  // node views at the T6 assembly switch — deployed set 17 → 16 on the
+  // post-037 base; the dormant WikiLinkNodeView retired with them).
+  'components/QueryBlockWidget.vue',
+  'components/EmbedBlockWidget.vue',
 ]
 
 const relOf = (p) => p.slice(editorSrc.length + 1).split('\\').join('/')

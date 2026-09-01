@@ -24,6 +24,7 @@ import {
 import { defineComponent, h, provide } from 'vue'
 import { NODE_VIEW_CONTENT_KEY } from '../ext/node_view_ext'
 import { setBlockAttrs } from './commands'
+import { getDataLoaders } from './data-loaders'
 import type { EditorEngine } from './editor-engine'
 import type { EditorAdapter } from './tiptap-adapter'
 
@@ -123,8 +124,9 @@ export function nodeViewProps(node: BlockNode, engine?: EditorEngine, selected =
     selected,
     editor: adapter ?? null,
     // Query/Embed widgets read extension.options.runQuery / .loadBlock —
-    // the data-loading surface is out of plan 026 scope (待澄清 #2)
-    extension: { options: {} },
+    // the module-level data-loader slot the EngineEditor props watch feeds
+    // (plan 038 T2; the plan 026 constant-empty gap closed)
+    extension: { options: { ...getDataLoaders() } },
     decorations: [],
   }
 }

@@ -46,8 +46,11 @@ describe('nodeViewProps', () => {
     expect(typeof props.deleteNode).toBe('function')
     expect(typeof props.getPos).toBe('function')
     expect(Array.isArray(props.decorations)).toBe(true)
-    // the query/embed widgets read extension.options before every run
+    // the query/embed widgets read extension.options before every run — the
+    // data-loader slot (plan 038 T2); unregistered reads as the empty shape
     expect(props.extension).toEqual({ options: {} })
+    expect(props.extension.options.runQuery).toBeUndefined()
+    expect(props.extension.options.loadBlock).toBeUndefined()
   })
 
   it('carries textContent for leaf source blocks (math/mermaid read it)', () => {

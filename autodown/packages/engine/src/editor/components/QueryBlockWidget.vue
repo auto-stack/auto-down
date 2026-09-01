@@ -1,70 +1,53 @@
-<!-- QueryBlockNodeView component - Auto-generated from Auto language -->
+<!-- QueryBlockWidget component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { NodeViewWrapper } from '../ext/node_view_ext'
-import { normalizeQueryResults, errorMessage } from '../ext/node_view_ext'
+import { queryText, queryRunner, normalizeQueryResults, errorMessage } from '../ext/query_block_widget_ext'
 
 
 const props = defineProps<{
+  mode: string
   node: any
-  editor: any
-  updateAttributes: any
-  selected: boolean
-  extension: any
-  getPos: any
-  deleteNode: any
-  decorations: any[]
+  ctx: any
+  final: boolean
 }>()
 
 const results = ref<any[]>([])
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
 
-const query_text = computed<any>(() => props.node.attrs.query || '')
+const query_text = computed<any>(() => queryText(props.node))
 const code_tag = computed<string>(() => 'code')
 const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
-const show_loading = computed<boolean>(() => loading.value)
-const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
-const show_results = computed<boolean>(() => !loading.value && !(error_text.value) && results.value.length > 0)
-const show_empty = computed<boolean>(() => !loading.value && !(error_text.value) && results.value.length === 0)
+const show_loading = computed<boolean>(() => loading.value || !props.final)
+const show_error = computed<boolean>(() => props.final && !loading.value && !!(error_text.value))
+const show_results = computed<boolean>(() => props.final && !loading.value && !(error_text.value) && results.value.length > 0)
+const show_empty = computed<boolean>(() => props.final && !loading.value && !(error_text.value) && results.value.length === 0)
 
 const emit = defineEmits<{
   Init: []
 }>()
 
 watch(query_text, async () => {
-  let run = null;
-  let opts = props.extension.options;
-  if (opts != null) {run = opts.runQuery;
-  }
-
-
+  if (props.final) {let run = queryRunner();
   if (run == null || query_text.value == '') {error_text.value = 'No query runner configured';
-  }
-  if (run != null && query_text.value != '') {loading.value = true;
+  }if (run != null && query_text.value != '') {loading.value = true;
   error_text.value = '';
-
-
   try {let res = (await run(query_text.value));
   results.value = normalizeQueryResults(res);
   } catch (e) {error_text.value = errorMessage(e);
   results.value = [];
   } finally {loading.value = false;
   }
-  }
+  }}
 })
 
 onMounted(async () => {
 
 
-  let run = null;
-  let opts = props.extension.options;
-  if (opts != null) {run = opts.runQuery;
-  }
+  if (props.final) {let run = queryRunner();
   if (run == null || query_text.value == '') {error_text.value = 'No query runner configured';
-  }
-  if (run != null && query_text.value != '') {loading.value = true;
+  }if (run != null && query_text.value != '') {loading.value = true;
   error_text.value = '';
   try {let res = (await run(query_text.value));
   results.value = normalizeQueryResults(res);
@@ -72,14 +55,14 @@ onMounted(async () => {
   results.value = [];
   } finally {loading.value = false;
   }
-  }
+  }}
 })
 
 
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :class="'autodown-query-block'" :data-query-block="''" :key="'NodeViewWrapper-1'">
+    <div class="autodown-query-block" :data-query-block="''">
       <div class="query-header">
         <span class="query-label">
           <span>Query</span>
@@ -123,7 +106,7 @@ onMounted(async () => {
           <span>No results</span>
         </div>
       </template>
-    </NodeViewWrapper>
+    </div>
 
 </template>
 

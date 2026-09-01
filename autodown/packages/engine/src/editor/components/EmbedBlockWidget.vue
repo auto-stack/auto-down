@@ -1,92 +1,71 @@
-<!-- BlockEmbedNodeView component - Auto-generated from Auto language -->
+<!-- EmbedBlockWidget component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { NodeViewWrapper } from '../ext/node_view_ext'
-import { errorMessage } from '../ext/node_view_ext'
+import { embedTitle, embedBlockId, blockLoader, errorMessage } from '../ext/embed_block_widget_ext'
 
 
 const props = defineProps<{
+  mode: string
   node: any
-  editor: any
-  updateAttributes: any
-  selected: boolean
-  extension: any
-  getPos: any
-  deleteNode: any
-  decorations: any[]
+  ctx: any
+  final: boolean
 }>()
 
 const block = ref<any>(null)
 const loading = ref<boolean>(false)
 const error_text = ref<string>('')
 
-const attr_raw = computed<any>(() => props.node.attrs.raw || '![[Untitled]]')
-const attr_title = computed<any>(() => props.node.attrs.title || 'Untitled')
-const attr_block_id = computed<any>(() => props.node.attrs.blockId || null)
-const display_label = computed<any>(() => (attr_block_id.value ? attr_title.value + '#' + attr_block_id.value : attr_title.value))
+const title_value = computed<any>(() => embedTitle(props.node))
+const block_id = computed<any>(() => embedBlockId(props.node))
+const display_label = computed<any>(() => (block_id.value != null ? (!!(title_value.value) ? title_value.value + '#' + block_id.value : block_id.value) : title_value.value))
 const loading_text = computed<string>(() => 'Loading ' + display_label.value + '…' || 'Loading…')
 const block_content = computed<any>(() => block.value && block.value.content || '')
-const show_loading = computed<boolean>(() => loading.value)
-const show_error = computed<boolean>(() => !loading.value && !!(error_text.value))
-const show_block = computed<any>(() => !loading.value && !(error_text.value) && block.value)
+const show_loading = computed<boolean>(() => loading.value || !props.final)
+const show_error = computed<boolean>(() => props.final && !loading.value && !!(error_text.value))
+const show_block = computed<any>(() => props.final && !loading.value && !(error_text.value) && block.value)
+const show_header = computed<boolean>(() => props.final && !loading.value && !(error_text.value))
 
 const emit = defineEmits<{
   Init: []
 }>()
 
-watch(attr_block_id, async () => {
-  let id = attr_block_id.value;
-
-  if (id != null) {let loader = null;
-  let opts = props.extension.options;
-  if (opts != null) {loader = opts.loadBlock;
-  }if (loader == null) {error_text.value = 'No block loader configured';
+watch(block_id, async () => {
+  if (props.final) {if (block_id.value != null) {let loader = blockLoader();
+  if (loader == null) {error_text.value = 'No block loader configured';
   }if (loader != null) {loading.value = true;
   error_text.value = '';
-
-  let clean_id = id;
-  if (id.startsWith('^')) {clean_id = id.substring(1);
-  }
-
-  try {let result = (await loader(clean_id));
+  try {let result = (await loader(block_id.value));
   block.value = result;
   if (!result) {error_text.value = 'Block not found';
   }} catch (e) {error_text.value = errorMessage(e);
   block.value = null;
   } finally {loading.value = false;
   }
-  }}
+  }}}
 })
 
 onMounted(async () => {
 
 
-  let id = attr_block_id.value;
-  if (id != null) {let loader = null;
-  let opts = props.extension.options;
-  if (opts != null) {loader = opts.loadBlock;
-  }if (loader == null) {error_text.value = 'No block loader configured';
+  if (props.final) {if (block_id.value != null) {let loader = blockLoader();
+  if (loader == null) {error_text.value = 'No block loader configured';
   }if (loader != null) {loading.value = true;
   error_text.value = '';
-  let clean_id = id;
-  if (id.startsWith('^')) {clean_id = id.substring(1);
-  }
-
-  try {let result = (await loader(clean_id));
+  try {let result = (await loader(block_id.value));
   block.value = result;
   if (!result) {error_text.value = 'Block not found';
   }} catch (e) {error_text.value = errorMessage(e);
   block.value = null;
   } finally {loading.value = false;
   }
-  }}
+  }}}
 })
 
 
 </script>
 
 <template>
-    <NodeViewWrapper :as="'div'" :class="'autodown-block-embed'" :data-block-id="attr_block_id" :data-title="attr_title" :key="'NodeViewWrapper-1'">
+    <div class="autodown-block-embed" :data-title="title_value">
       <template v-if="show_loading">
         <div class="embed-state">
           <span>{{ loading_text }}</span>
@@ -97,7 +76,7 @@ onMounted(async () => {
           <span>{{ error_text }}</span>
         </div>
       </template>
-      <template v-if="show_block">
+      <template v-if="show_header">
         <div class="embed-header">
           <span class="embed-title">
             <span>{{ display_label }}</span>
@@ -109,7 +88,7 @@ onMounted(async () => {
           <span>{{ block_content }}</span>
         </div>
       </template>
-    </NodeViewWrapper>
+    </div>
 
 </template>
 

@@ -24,4 +24,14 @@ export {
   moveBlock,
   setBlockAttrs,
   createEditorAdapter,
+  // plan 038 T1 — the data-loader channel types (props surface of
+  // EngineEditor's runQuery/loadBlock).
+  setDataLoaders,
+  getDataLoaders,
+  type DataLoaders,
+  type RunQueryFn,
+  type LoadBlockFn,
+  type QueryResultItem,
+  type QueryResultEnvelope,
+  type EmbeddedBlock,
 } from './engine'

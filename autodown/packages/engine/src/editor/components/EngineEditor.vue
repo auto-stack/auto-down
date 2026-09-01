@@ -34,21 +34,21 @@
 // in a PLAIN script block because <script setup> statements compile into
 // setup() — they would only run at component creation, not at import.
 // Keys are BlockType enum names ('Fence' IS the code block kind).
-import { Value, attrGetStr, blockText, span } from '../../parser/block-model'
+import { Value, attrGetStr, blockText } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
 import { registerBlockWidget, panelOf } from '../../render/block-widget'
 import { registerPanel } from '../../render/panel-registry'
 import { blockOfWNode } from '../../render/block-wnode'
 import { TableEditorController } from '../engine/table-editor-controller'
-import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/node-view-host'
+import { currentNodeViewHost } from '../engine/node-view-host'
 import TableBlockWidget from './TableBlockWidget.vue'
 import CodeBlockWidget from './CodeBlockWidget.vue'
 import MathBlockWidget from './MathBlockWidget.vue'
 import MermaidBlockWidget from './MermaidBlockWidget.vue'
 import DetailsBlockWidget from './DetailsBlockWidget.vue'
-import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
-import BlockEmbedNodeView from '../node-views/BlockEmbedNodeView.vue'
+import QueryBlockWidget from './QueryBlockWidget.vue'
+import EmbedBlockWidget from './EmbedBlockWidget.vue'
 
 // the three pilot families (plan 033): one widget, three modes — the
 // BlockComponent slots mount the widget with the right mode, and the panel
@@ -95,47 +95,27 @@ registerBlockComponent('Table', { edit: tableEditSlot })
 
 // Node-view preview panels: the pilot kinds mount their family widgets'
 // view face through the 017 panel registry's custom slot (plan 033 — same
-// registration surface as the edit slots above, module scope);
-// Details/Query/Embed keep the generated NodeView widgets + the
-// tiptap-shaped props bridge. renderNodes/BlockType come from the setup
-// script's imports (dual-script hoisting — the `h` rule).
+// registration surface as the edit slots above, module scope). Plan 038
+// T6 closes the family conversion: Query/Embed join panelOf too (their
+// node views retired — 17 kinds, one widget each). renderNodes comes from
+// the setup script's imports (dual-script hoisting — the `h` rule).
 import type { PanelRenderCtx } from '../../render/panel-registry'
 
-/** Wrap a generated NodeView widget as a PanelRenderer: the WNode's model
- *  back-link + the current host window fabricate the tiptap-shaped props;
- *  mountNodeView feeds the NodeViewContent hole with the embedded body. */
-function nodeViewPanel(view: unknown, kindValue: BlockType, childrenOf: (node: PanelRenderCtx['node']) => any[]) {
-  return (ctx: PanelRenderCtx) => {
-    const host = currentNodeViewHost()
-    const model =
-      blockOfWNode(ctx.node) ??
-      // static render (right panes, no host): parse-side WNodes carry no
-      // back-link — fabricate the model from the WNode slots so query/embed
-      // attrs reach the widget (plan 030)
-      wnodeFallbackModel(kindValue, ctx.node)
-    const props = nodeViewProps(model, host?.engine, false, host?.adapter)
-    return mountNodeView(view, props, () => childrenOf(ctx.node))
-  }
-}
-
-/** Static-render fallback model: kind + the WNode slot data the widget reads
- *  (blockText ← inlines for math/mermaid source; attrs for details/query/
- *  embed). Callout renders through its builtin panel, not a node view. */
+/** Static-render fallback model (Details panel only — query/embed went
+ *  through panelOf's own fallback in plan 038 T6): kind + the WNode slot
+ *  data the widget reads (attrs for the details summary/open). */
 function wnodeFallbackModel(kindValue: BlockType, w: any): BlockNode {
   const attrs: { key: string; value: Value }[] = []
-  if (w?.type === 'query') attrs.push({ key: 'query', value: Value.Str(String(w.content ?? '')) })
-  if (w?.type === 'embed') attrs.push({ key: 'src', value: Value.Str(String(w.src ?? '')) })
   if (w?.type === 'details') {
     attrs.push({ key: 'summary', value: Value.Str(String(w.text ?? '')) })
     if (w?.loading === true) attrs.push({ key: 'open', value: Value.Bool(true) })
   }
-  const src = typeof w?.code === 'string' ? w.code : ''
   return {
     id: 'nv',
     kind: kindValue,
     attrs,
     children: [],
-    inlines: src.length > 0 ? [span(src)] : [],
+    inlines: [],
     source: { start: 0, end: 0 },
   } as unknown as BlockNode
 }
@@ -162,13 +142,14 @@ registerPanel(
   },
 )
 
-// the two render-type pilot families: the widget's view face IS the panel
-// (panelOf resolves the model back-link / fabricates one — the same shape
-// nodeViewPanel's fallback built)
+// the render-type families: the widget's view face IS the panel (panelOf
+// resolves the model back-link / fabricates one from the WNode slots).
+// Plan 038 T6: Query/Embed join — the two node views retired, 17 kinds
+// now one family widget each.
 registerPanel('MathBlock', panelOf(MathBlockWidget))
 registerPanel('Mermaid', panelOf(MermaidBlockWidget))
-registerPanel('Query', nodeViewPanel(QueryBlockNodeView, BlockType.QueryBlock, () => []))
-registerPanel('Embed', nodeViewPanel(BlockEmbedNodeView, BlockType.BlockEmbed, () => []))
+registerPanel('Query', panelOf(QueryBlockWidget))
+registerPanel('Embed', panelOf(EmbedBlockWidget))
 
 // frozen expose contract (EDITOR-CONTRACT.md) — declared in the plain
 // script block: with dual scripts, type exports must live here, and the
@@ -221,6 +202,7 @@ import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
 import { currentPanelDecorator } from '../../render/panel-registry'
 import { decorateBody } from '../../render/block-widget'
 import { registerWikilinkOpener, currentWikilinkOpener, type WikilinkOpener } from '../../render/wikilink-opener'
+import { setDataLoaders, getDataLoaders, type RunQueryFn, type LoadBlockFn } from '../engine/data-loaders'
 
 const props = defineProps<{
   content?: string
@@ -231,6 +213,11 @@ const props = defineProps<{
    *  faces render read-only (banner + disabled) via BlockEditCtx.readonly;
    *  the stream landing flips it back and the faces unlock. */
   streaming?: boolean
+  /** Query/Embed data loaders (plan 038 T1): jade passes both straight
+   *  through EditorShell — unpassed props keep the "No query runner
+   *  configured" placeholder states. */
+  runQuery?: RunQueryFn
+  loadBlock?: LoadBlockFn
 }>()
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
@@ -244,6 +231,37 @@ const wikilinkOpener: WikilinkOpener = (title, blockId) => emit('open-wiki-link'
 registerWikilinkOpener(wikilinkOpener)
 onBeforeUnmount(() => {
   if (currentWikilinkOpener() === wikilinkOpener) registerWikilinkOpener(null)
+})
+
+// Data-loader channel (plan 038 T2, refined in T7): the nodeViewProps
+// fabricator sits at the bottom of the render pipeline with no
+// component-tree context, so the loaders register on the module-level slot
+// and this watch keeps them current (the wikilink-opener seam's shape).
+// An editor that DECLARES at least one loader owns the slot; an editor
+// with neither prop leaves any existing registration intact — the demo
+// registers mock loaders at entry and mounts a prop-less editor, and
+// clobbering them with undefined would sink every load to the
+// "No … configured" placeholder (T7 e2e catch).
+let ownsLoaders = false
+watch(
+  () => [props.runQuery, props.loadBlock],
+  () => {
+    if (props.runQuery != null || props.loadBlock != null) {
+      setDataLoaders({ runQuery: props.runQuery, loadBlock: props.loadBlock })
+      ownsLoaders = true
+    } else if (ownsLoaders) {
+      // this editor owned the slot and just dropped both props — restore
+      // the un-owned state (placeholder fallback)
+      setDataLoaders({})
+      ownsLoaders = false
+    }
+  },
+  { immediate: true }
+)
+onBeforeUnmount(() => {
+  if (!ownsLoaders) return
+  const cur = getDataLoaders()
+  if (cur.runQuery === props.runQuery && cur.loadBlock === props.loadBlock) setDataLoaders({})
 })
 
 const root = ref<HTMLElement | null>(null)

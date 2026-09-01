@@ -1,0 +1,219 @@
+// query_block_widget.at — QueryBlockWidget (plan 038 T4): the query
+// family's view/stream widget, absorbing the retired QueryBlockNodeView
+// (plan 013 port) whole — the four-state async load (loading / error /
+// results / empty, real async/await + try/catch/finally) migrates verbatim
+// with ONE semantic change: the loader fires only on final (032 ruling A
+// extended — an unclosed query stays a paragraph through the real pipes,
+// so the widget mounts with final=true when the block closes; a
+// final=false mount renders the loading skeleton without loader work).
+//
+// The DOM contract is byte-aligned with the retired node view (the
+// .query-results chain and class surface; the NodeViewWrapper root becomes
+// the plain family root div — the data-node-view-wrapper marker retired
+// with the math/mermaid/details families, plans 033/035).
+//
+// Prop/loading notes:
+// - family props (mode/node/ctx/final) per the 033 contract; edit is v1
+//   EMPTY by ruling (query is a non-editable leaf, isEditableLeaf) — the
+//   edit slot never registers, the face never mounts.
+// - the loader read moved off extension.options (node-view props) into the
+//   ext bridge's queryRunner() — the module-level data-loader slot the
+//   EngineEditor runQuery prop feeds (plan 038 T1/T2).
+// - the query attr watch keeps the reload semantics (updateAttributes from
+//   elsewhere re-queries); the load body is DUPLICATED in watch and .Init
+//   (a msg handler no view event references is not emitted — the plan 013
+//   constraint, same as the retired node view).
+// - SSR renders the empty branch (Init is onMounted-only) — the tri-state
+//   closed assertion pins the chrome + query text without loader work.
+
+widget QueryBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool) {
+    use {
+        fn: queryText, queryRunner, normalizeQueryResults, errorMessage from "ext/query_block_widget_ext.ts"
+    }
+
+    msg Msg { Init }
+
+    model {
+        var results []str = []
+        var loading bool = false
+        var error_text str = ""
+    }
+
+    computed {
+        query_text => queryText(.node)
+        // Native tags the DSL maps to div (code/ul/li are not in its
+        // element table) are rendered via dyn with a string tag —
+        // <component :is="'code'"> renders a real <code> element.
+        code_tag => "code"
+        ul_tag => "ul"
+        li_tag => "li"
+        // The four mutually exclusive view states (the retired node view's
+        // v-if / v-else-if / v-else chain), gated on final: the pre-final
+        // stream face shows the loading skeleton without loader work.
+        show_loading => .loading || !.final
+        show_error => .final && !.loading && .error_text != ""
+        show_results => .final && !.loading && .error_text == "" && .results.length > 0
+        show_empty => .final && !.loading && .error_text == "" && .results.length == 0
+    }
+
+    view {
+        div {
+            class: "autodown-query-block",
+            data-query-block: "",
+
+            div {
+                class: "query-header",
+                span { class: "query-label", text "Query" }
+                dyn (.code_tag) { class: "query-code", text .query_text }
+            }
+            if .show_loading {
+                div { class: "query-state", text "Loading query…" }
+            }
+            if .show_error {
+                div { class: "query-state query-error", text .error_text }
+            }
+            if .show_results {
+                dyn (.ul_tag) {
+                    class: "query-results",
+                    for idx, result in .results {
+                        dyn (.li_tag) {
+                            class: "query-result",
+                            key: idx,
+                            span { class: "result-marker", text result.marker }
+                            if result.priority {
+                                span { class: "result-priority", text result.priority_label }
+                            }
+                            span { class: "result-content", text result.content }
+                            span { class: "result-source", text result.source }
+                        }
+                    }
+                }
+            }
+            if .show_empty {
+                div { class: "query-state", text "No results" }
+            }
+        }
+    }
+
+    watch {
+        // The retired node view's watch(() => query.value, load) — the
+        // reload channel for external attr writes. Final-gated (032 A).
+        // The load body is DUPLICATED here and in .Init: a msg handler
+        // that no view event references is not emitted (`.Load()` would
+        // call an undefined function).
+        .query_text -> {
+            if .final {
+                let run = queryRunner()
+                if run == null || .query_text == "" {
+                    .error_text = "No query runner configured"
+                }
+                if run != null && .query_text != "" {
+                    .loading = true
+                    .error_text = ""
+                    try {
+                        let res = run(.query_text).await
+                        .results = normalizeQueryResults(res)
+                    } catch (e) {
+                        .error_text = errorMessage(e)
+                        .results = []
+                    } finally {
+                        .loading = false
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            // load() — duplicated in the watch above (see the comment
+            // there). Loader fires only on final (plan 038: 032 A).
+            if .final {
+                let run = queryRunner()
+                if run == null || .query_text == "" {
+                    .error_text = "No query runner configured"
+                }
+                if run != null && .query_text != "" {
+                    .loading = true
+                    .error_text = ""
+                    try {
+                        let res = run(.query_text).await
+                        .results = normalizeQueryResults(res)
+                    } catch (e) {
+                        .error_text = errorMessage(e)
+                        .results = []
+                    } finally {
+                        .loading = false
+                    }
+                }
+            }
+        }
+    }
+
+    style {
+        .autodown-query-block {
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--card, 0 0% 100%));
+          padding: 0.75rem;
+          margin: 0.5rem 0;
+        }
+        .query-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .query-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: hsl(var(--primary, 238 55% 58%));
+        }
+        .query-code {
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+          background: hsl(var(--muted, 210 20% 96%));
+          padding: 0.125rem 0.375rem;
+          border-radius: 0.25rem;
+        }
+        .query-state {
+          font-size: 0.75rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+        }
+        .query-error {
+          color: hsl(var(--destructive, 0 72% 51%));
+        }
+        .query-results {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .query-result {
+          font-size: 0.8rem;
+          display: flex;
+          align-items: baseline;
+          gap: 0.35rem;
+        }
+        .result-marker {
+          font-weight: 600;
+          color: hsl(var(--primary, 238 55% 58%));
+        }
+        .result-priority {
+          font-weight: 600;
+          color: hsl(var(--amber-600, 45 93% 47%));
+        }
+        .result-content {
+          flex: 1;
+          color: hsl(var(--foreground, 224 64% 33%));
+        }
+        .result-source {
+          font-size: 0.7rem;
+          color: hsl(var(--muted-foreground, 220 9% 46%));
+        }
+    }
+}

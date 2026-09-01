@@ -112,5 +112,31 @@ flowchart LR
 ![A placeholder image](https://placehold.co/400x100/f3f4f6/9ca3af?text=Image)
 
 Inline faces (plan 036): a [[Hello World]] wiki link, inline math $a^2+b^2=c^2$, and plain \`code\` after them.
+
+## Query and embed loading (plan 038)
+
+Fixed-result route:
+
+$query(TAG #project)
+
+Empty route:
+
+$query(demo empty route)
+
+Error route:
+
+$query(trigger demo fail)
+
+Block-load route:
+
+$embed(src: "docs/guide.md#^anchor-1")
+
+Not-found route:
+
+$embed(src: "^missing-anchor")
+
+Page-level reference (label face, no load):
+
+$embed(src: "../other.ad")
 `
 }

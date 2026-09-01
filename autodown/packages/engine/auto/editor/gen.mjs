@@ -1,12 +1,15 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (19 widget sources: 10 plan-013-era views/menus
-//                            + the three family widgets of plan 033 +
-//                            rich_text_host of plan 034 + table_block_widget
-//                            of plan 037 — see README.md; MathInline node
-//                            view retired in 036 T7, TableEditorBlock +
-//                            the dormant TableMenu in 037 T5)
+//   auto/editor/*.at        (18 widget sources: 10 plan-013-era views/menus
+//                            + the four render-family widgets of plans
+//                            033/038 + table_block_widget of plan 037 +
+//                            the four container widgets of plan 035 +
+//                            rich_text_host of plan 034 + attr_host — see
+//                            README.md; TableEditorBlock + dormant TableMenu
+//                            retired in 037 T5, the MathInline node view in
+//                            036 T7, the Query/Embed node views and the
+//                            dormant WikiLink node view in 038 T6)
 //   auto/editor/ext/*.ts    (11 hand-written TS extension bridges)
 //
 // Usage:  pnpm gen:editor        (from packages/engine)
@@ -102,10 +105,12 @@ const widgets = readdirSync(here)
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
 // hand-written AttrHost.vue (plan 030 T7); table_block_widget.at (plan 037
 // T2) replaced table_editor_block.at as the table family's three-mode
-// widget — the T5 retirement also dropped the dormant table_menu.at
-// (026 #1 absorption made it dead) and the two ext bridges: 21 -> 19.
-if (widgets.length !== 19) {
-  console.error(`expected 19 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// widget — the T5 retirement also dropped the dormant table_menu.at and
+// its ext bridge: 21 -> 19; query_block_widget.at / embed_block_widget.at
+// (plan 038 T4/T5) absorbed the Query/Embed node views and retired the
+// dormant WikiLink node view source with them: 19 -> 18.
+if (widgets.length !== 18) {
+  console.error(`expected 18 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -193,6 +198,12 @@ const EXT_DEPLOY = [
   'code_block_widget_ext.ts',
   'math_block_widget_ext.ts',
   'mermaid_block_widget_ext.ts',
+  // plan 038 T4 — the query family's widget bridge (loader slot read +
+  // normalizeQueryResults/errorMessage absorbed from node_view_ext).
+  'query_block_widget_ext.ts',
+  // plan 038 T5 — the embed family's widget bridge (parseEmbedSrc readers
+  // + loader slot read + errorMessage absorbed from node_view_ext).
+  'embed_block_widget_ext.ts',
   // plan 034 T3 — the rich text host's platform wiring (all of the retired
   // BlockHost.vue's event/mount/caret logic; the widget owns only chrome).
   'rich_text_host_ext.ts',
@@ -224,9 +235,6 @@ const DEPLOY_COMPONENTS = {
   'BubbleMenu.vue': 'menus/BubbleMenu.vue',
   'CodeBlockMenu.vue': 'menus/CodeBlockMenu.vue',
   'CodeLanguageIcon.vue': 'components/CodeLanguageIcon.vue',
-  'WikiLinkNodeView.vue': 'node-views/WikiLinkNodeView.vue',
-  'QueryBlockNodeView.vue': 'node-views/QueryBlockNodeView.vue',
-  'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',
   // plan 037 — the table family's three-mode widget (replaced
   // TableEditorBlock: view absorbs tablePanel, stream absorbs the
   // StreamingTable SFC, edit absorbs the TableEditorBlock toolbar).
@@ -237,6 +245,12 @@ const DEPLOY_COMPONENTS = {
   'CodeBlockWidget.vue': 'components/CodeBlockWidget.vue',
   'MathBlockWidget.vue': 'components/MathBlockWidget.vue',
   'MermaidBlockWidget.vue': 'components/MermaidBlockWidget.vue',
+  // plan 038 T4 — the query family's view/stream widget (absorbs the
+  // QueryBlockNodeView; the T6 assembly switch mounts it).
+  'QueryBlockWidget.vue': 'components/QueryBlockWidget.vue',
+  // plan 038 T5 — the embed family's view/stream widget (absorbs the
+  // BlockEmbedNodeView at the T6 assembly switch).
+  'EmbedBlockWidget.vue': 'components/EmbedBlockWidget.vue',
   // plan 034 T3 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; mounted by EngineEditor's assembleNode from T5).
   'RichTextHost.vue': 'components/RichTextHost.vue',

@@ -65,12 +65,13 @@ export function panelOf(widget: Component): PanelRenderer {
 
 /** Static-render fallback model for the widget kinds (fence/math/mermaid):
  *  WNode slot data re-shaped into the model the edit slots read — source in
- *  inlines, fence language in attrs. */
+ *  inlines, fence language + the 032 open-fence loading flag in attrs. */
 function wnodeFallbackModel(w: WNode): BlockNode {
   const attrs: Attr[] = []
   const src = typeof w?.code === 'string' ? w.code : ''
   if (w?.type === 'code_block') {
     attrs.push({ key: 'language', value: Value.Str(String(w.language ?? '')) })
+    if (w?.loading === true) attrs.push({ key: 'loading', value: Value.Bool(true) })
   }
   return {
     id: 'nv',

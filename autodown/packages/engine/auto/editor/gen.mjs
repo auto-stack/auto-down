@@ -92,9 +92,9 @@ const widgets = readdirSync(here)
   .sort()
 // 14 plan-013-era widgets + code_editor_block.at (P1T7) and
 // table_editor_block.at (P1T8), both plan 023; math_edit_block.at and
-// mermaid_edit_block.at (plan 031 T1/T2).
-if (widgets.length !== 18) {
-  console.error(`expected 18 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// mermaid_edit_block.at (plan 031 T1/T2); code_block_widget.at (plan 033 T2).
+if (widgets.length !== 19) {
+  console.error(`expected 19 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -179,6 +179,9 @@ const EXT_DEPLOY = [
   // the debounce scheduler, textarea rows/focus helpers).
   'math_edit_ext.ts',
   'mermaid_edit_ext.ts',
+  // plan 033 T2 — the fence family widget's bridge (view highlight parity
+  // + the absorbed code_editor_block helpers + family prop readers).
+  'code_block_widget_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -219,6 +222,9 @@ const DEPLOY_COMPONENTS = {
   // preview in one chrome; mounted by EngineEditor's edit slots).
   'MathEditBlock.vue': 'components/MathEditBlock.vue',
   'MermaidEditBlock.vue': 'components/MermaidEditBlock.vue',
+  // plan 033 T2 — the fence family widget (view/stream/edit one chrome;
+  // registered via registerBlockWidget + panelOf by EngineEditor).
+  'CodeBlockWidget.vue': 'components/CodeBlockWidget.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

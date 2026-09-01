@@ -1,0 +1,261 @@
+// code_block_widget.at — CodeBlockWidget (plan 033 T2): the fence family's
+// three-mode widget. ONE chrome source for view / stream / edit — the
+// family mechanism (src/render/block-widget.ts) mounts this same component
+// on the BlockComponent slots (registerBlockWidget) and the panel-registry
+// custom slot (panelOf), so cross-mode style drift is structurally
+// impossible.
+//
+// Absorbs, byte-identically:
+// - the builtin renderCodeblockPanel (view/stream): the
+//   .code-block-container chrome, header chain, pre[data-language] > code
+//   pair, highlight degradation, and the 032 open-fence skeleton family
+//   (.autodown-block-placeholder.is-loading + aria-busy) keyed on the
+//   node's loading attr;
+// - CodeEditorBlock (edit): the CodeBlockMenu host contract
+//   (.autodown-codeblock-node[data-language] wrapper + language badge —
+//   moved here from EngineEditor's fenceEditSlot so the family owns the
+//   whole edit face) over the textarea + highlight overlay + blur commit.
+//
+// Props are the family shape: mode ('view'|'stream'|'edit') + the wide
+// node/ctx + final. The flat chrome reads (language/code/readonly/blockId)
+// are computeds over node/ctx via the ext bridge (031's wide-prop idiom).
+//
+// Codegen-forced idioms (probe-verified this widget):
+// - SINGLE ROOT: a multi-root view makes the vue backend wrap everything
+//   in a <div class="flex flex-col gap-4"> app container. The root div is
+//   shared by both faces: root_class carries the whole chain (view skeleton
+//   classes included — the conditional-class map is folded into the string
+//   so the class attribute stays single), and root_data_language returns
+//   undefined in view modes (Vue omits the attr — the builtin view root
+//   carries no data-language).
+// - view-face TEXT goes through html: (v-html) with ext-escaped strings:
+//   `text` emits a <span>{{}}</span> wrapper, but the builtin panel (and
+//   render.test's pre>code regex) pins bare text children.
+// - the pre's <code> child markup is built whole in the ext bridge
+//   (viewCodeInner): <code> is not in the DSL element table, and html: on
+//   a dyn element does not compile to v-html — a hand-built string on the
+//   known <pre> is the only byte-exact route.
+// - the edit face keeps `text` (span-wrapped): that is what the generated
+//   CodeEditorBlock emitted today — byte-stable absorption.
+// - the controller is constructed ONCE per instance (model init) and is
+//   null in view/stream (codeController guards the missing ctx).
+
+widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool) {
+    use {
+        fn: renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, htmlText, viewCodeInner, rootDataLanguage from "ext/code_block_widget_ext.ts"
+    }
+
+    msg Msg { Init, AreaInput, AreaScroll, Blur }
+
+    model {
+        // prop-initialized (TDZ-safe since b4b74fd09, code_editor_block idiom):
+        // SSR renders the committed code; the controller builds once per
+        // instance (null without a ctx — view/stream).
+        var code_draft str = nodeText(.node)
+        var controller Array<str> = codeController(.ctx)
+    }
+
+    computed {
+        is_edit => .mode == "edit"
+        language => nodeLanguage(.node)
+        code => nodeText(.node)
+        readonly => ctxReadonly(.ctx)
+        block_id => ctxBlockId(.ctx)
+        loading => nodeLoading(.node)
+        // root chrome: edit = the CodeBlockMenu host wrapper; view/stream =
+        // the builtin panel container, loading family included (032), as one
+        // class string so the attribute stays single and byte-exact.
+        root_class => .is_edit ? "autodown-codeblock-node" : (.loading ? "code-block-container rounded-lg border autodown-block-placeholder is-loading" : "code-block-container rounded-lg border")
+        root_data_language => rootDataLanguage(.mode, .language)
+        // CodeBlockMenu host labels (plan 026 P2T2 contract)
+        badge_label => .language == "" ? "text" : .language
+        badge_html => htmlText(.badge_label)
+        // builtin renderCodeblockPanel byte contract
+        title_html => htmlText(.language)
+        pre_class => "language-" + .badge_label + " code-pre-fallback is-wrap"
+        aria_busy => .loading ? "true" : "false"
+        view_inner_html => viewCodeInner(.code, .language)
+        // edit overlay (code_editor_block.at contract)
+        highlight_html => renderCodeHighlight(.code_draft, .language)
+    }
+
+    view {
+        div {
+            class: .root_class,
+            data-language: .root_data_language,
+
+            if .is_edit {
+                button (type: "button") {
+                    class: "autodown-codeblock-language-badge",
+                    data-codeblock-language-badge: "",
+                    title: "切换语言",
+                    html: .badge_html
+                }
+                div {
+                    class: "autodown-code-editor",
+                    style: { "is-readonly": .readonly },
+                    data-block-id: .block_id,
+                    data-node-type: "Fence",
+
+                    if .readonly {
+                        div {
+                            class: "autodown-stream-banner",
+                            text "流式生成中"
+                        }
+                    }
+                    div {
+                        class: "code-block-header flex justify-between items-center",
+                        div {
+                            class: "code-header-main",
+                            div {
+                                class: "code-header-copy",
+                                div {
+                                    class: "code-header-title",
+                                    text .language
+                                }
+                            }
+                        },
+                        div {
+                            class: "flex items-center gap-0.5"
+                        }
+                    }
+                    div {
+                        class: "code-editor-stack",
+                        pre {
+                            ref: "hl",
+                            class: "code-editor-highlight",
+                            aria-hidden: "true",
+                            html: .highlight_html
+                        },
+                        textarea (spellcheck: "false") {
+                            ref: "area",
+                            class: "code-editor-textarea",
+                            // v-model fold: value + oninput → v-model
+                            // (code_editor_block.at idiom).
+                            value: .code_draft,
+                            oninput: .AreaInput($event),
+                            onscroll: .AreaScroll($event),
+                            disabled: .readonly,
+                            onblur: .Blur($event)
+                        }
+                    }
+                }
+            }
+            if !.is_edit {
+                div {
+                    class: "code-block-header flex justify-between items-center",
+                    div {
+                        class: "code-header-main",
+                        div {
+                            class: "code-header-copy",
+                            div {
+                                class: "code-header-title",
+                                html: .title_html
+                            }
+                        }
+                    },
+                    div {
+                        class: "flex items-center gap-0.5"
+                    }
+                },
+                pre {
+                    class: .pre_class,
+                    data-language: .language,
+                    aria-busy: .aria_busy,
+                    tabindex: "0",
+                    html: .view_inner_html
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            if .is_edit {
+                focusCodeArea(.area, .readonly)
+                syncCodeHighlight(.area, .hl)
+            }
+        }
+
+        .AreaInput(e) -> {
+            resizeCodeArea(e.target)
+            syncCodeHighlight(e.target, .hl)
+        }
+
+        .AreaScroll(e) -> {
+            syncCodeHighlight(e.target, .hl)
+        }
+
+        .Blur(e) -> {
+            if !.readonly {
+                let c = .controller
+                c.commit(e.target.value)
+            }
+        }
+    }
+
+    style {
+        .autodown-code-editor {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #f8f9fa;
+          overflow: hidden;
+        }
+        .autodown-code-editor.is-readonly {
+          opacity: 0.75;
+        }
+        .autodown-stream-banner {
+          padding: 0.3rem 0.75rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          border-bottom: 1px solid #fcd34d;
+          user-select: none;
+        }
+        .code-editor-stack {
+          position: relative;
+        }
+        .code-editor-highlight {
+          position: absolute;
+          inset: 0;
+          margin: 0;
+          box-sizing: border-box;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          overflow: hidden;
+          pointer-events: none;
+          background: transparent;
+          color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .code-editor-textarea {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 3rem;
+          padding: 0.6rem 0.75rem;
+          border: none;
+          outline: none;
+          resize: none;
+          overflow: hidden;
+          background: transparent;
+          /* overlay plan 024 P4T1: the highlight pre below shows the text;
+             the caret stays visible via caret-color */
+          color: transparent;
+          caret-color: #111827;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .code-editor-textarea:disabled {
+          cursor: not-allowed;
+        }
+    }
+}

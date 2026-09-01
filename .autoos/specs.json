@@ -113,6 +113,17 @@
           "PLAN-031"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P032-2",
+        "section": "goals",
+        "title": "全块类型流式渐进三态（未闭合/开放/闭合）审计裁定 + StreamingTable↔renderTablePanel 归一 + stream 槽机制与样式 parity 测试钉死 — 目标",
+        "content": "1. **裁定表在册**：17 kind × 三态每格有裁定（A/B/C）与对应自动化断言；\n   裁定为 A 的块**不注册** stream 槽（默认路径即正确行为，注册反而是债）。\n2. **表格单通道**：终态与流式渐进同一实现，DOM 契约（table-node /\n   thead+th / tbody+td / data-node-index）逐字节不变，render.test.ts 与\n   demo scroll-sync e2e 零改动通过。\n3. **开放态契约**：扩展块开放/未闭合态统一骨架 class，闭合翻转不产生\n   布局跳变（等高或占位），class 契约进 EDITOR-CONTRACT。\n4. **机制钉死**：stream 槽注册 → 覆盖 markdown 段路径（含 props/final\n   传参形状）；clearBlockComponents teardown 干净；三态 e2e 与\n   computed-style parity 在册全绿。",
+        "file": "docs/plans/archived/032-stream-mode-formalization.md",
+        "related": [
+          "PLAN-032"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -232,6 +243,17 @@
         "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
         "related": [
           "PLAN-031"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P032-3",
+        "section": "architecture",
+        "title": "全块类型流式渐进三态（未闭合/开放/闭合）审计裁定 + StreamingTable↔renderTablePanel 归一 + stream 槽机制与样式 parity 测试钉死 — 架构方案",
+        "content": "```\nP1 审计（测试先行，无产品代码）\nsrc/render/__tests__/stream-tri-state.test.ts（新）\n├─ fixture 语料：17 kind 各\"未闭合/开放/闭合\"三段式 markdown 片段\n├─ mount MarkdownRender(content, final=false/true) → DOM 形态断言\n│   （kind 识别、降级 kind、骨架/loading class、无异常）\n└─ 产出物：裁定表落本计划 §详细设计 D2 + 断言同源钉死\n\nP2 表格归一（建议方向 a，待澄清②）\nsrc/render/StreamingTable.vue\n├─ 增 final 模式（props.final=true 走终态渲染路径，对齐现\n│   renderTablePanel 的 DOM 字节契约）\n├─ builtin-panels.ts：renderTablePanel 退役，Table 面板改经\n│   panel-registry custom 槽挂 StreamingTable（026 nodeViewPanel 同模式）\n└─ streaming_table.at：终态路径若需 props 规范化差异，同源补齐\nP3 开放态骨架\nsrc/render/builtin-panels.ts（codeNode loading 态）+ 031 编辑面横幅段\n└─ class 契约：.autodown-block-placeholder 复用/扩展（is-loading 修饰）\nP4 机制\nsrc/render/__tests__/block-component-stream.test.ts（新）\n└─ 注册 mock stream 槽 → StreamingRenderer 分派断言（slotNodeOf/\n   slotFinalOf 传参形状）；teardown\ndemo/e2e/stream-tri-state.spec.ts（新）\n└─ 三态渐进语料喂入（demo 已有 stream 面板或 stream-demo 复用）+\n   流式中 vs final computed-style parity（Heading/Paragraph/Fence/Table）\n```\n\n**为何预期绝大多数裁定为 A**：闭合成块后源码必完整（030 fence 式状态机\n保证），面板路径与 view 同型即所需；注册 stream 槽只在\"面板路径不适配\n渐进\"时才有价值（表格是历史反例——渐进表格渲染需列先知）。裁定 B/C\n的预期候选：仅 Table（已由 P2 单通道吸收）。",
+        "file": "docs/plans/archived/032-stream-mode-formalization.md",
+        "related": [
+          "PLAN-032"
         ],
         "status": "stable"
       }
@@ -354,6 +376,17 @@
           "PLAN-031"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P032-4",
+        "section": "designs",
+        "title": "全块类型流式渐进三态（未闭合/开放/闭合）审计裁定 + StreamingTable↔renderTablePanel 归一 + stream 槽机制与样式 parity 测试钉死 — 详细设计",
+        "content": "### D1 三态 fixture 语料（P1）\n\n17 kind × 三态的最小语料，集中放\n`src/render/__tests__/fixtures/tri-state.ts`（kind → {unclosed, open,\nclosed} 三段 markdown 字符串）。开放态仅对 fence 族有意义（```mermaid\n开 fence → codeNode loading；普通 ``` fence → codeNode）；math `%{`\n未闭合 → 段落字面；`$callout(` 未闭合 → 段落字面（030 规则）。闭合态\n直接复用 demo content.ts 方言语料。rust 对拍不涉及（本计划纯装配层）。\n\n### D2 裁定表（P1 产出；2026-09-01 执行期实测冻结，stream-tri-state.test.ts 同源钉死）\n\n| kind | 未闭合 | 开放 | 闭合 | 裁定 |\n|---|---|---|---|---|\n| Heading/Paragraph/Quote/List 族/ThematicBreak | — | — | 即刻完整 | A（零注册） |\n| Fence | — | codeNode（loading class） | Codeblock 面板 | A |\n| Table | 段落字面 | 列头先行 | Table 面板 | 归一后 A（P2） |\n| MathBlock | 段落字面 | — | katex 面板 | A（031 已钉） |\n| Mermaid | — | codeNode loading | mermaid 面板 | A（031 已钉） |\n| Callout/Details | 段落字面 | — | 卡片面板 | A |\n| Query/Embed | 段落字面 | — | 占位面板 | A |\n| WikilinkBlock/TableRow/TableCell | 随容器 | 随容器 | 随容器 | A（容器成员） |\n\n**冻结记录（T2 实测）**：17 kind 全 A，零 B/C——与\"闭合 fence 式状态机保证源码\n完整后面板路径与 view 同型\"的预期一致；无任何 stream 槽注册需求。实测细节：\n① Mermaid 未闭合（语言尚在流式，如 `` ```m ``）本身就是泛化 loading code\nblock，kind 不可辨识即正确行为；② Table 开放（列头先行）走 markdown 面板\n路径，DOM 即 render.test.ts 契约，P2 归一前后必须同形（断言已同源钉死）；\n③ 闭合构造在流式中（final=false）与终态（final=true）DOM 逐标记一致——\n\"闭合翻转无 DOM 跳变\"的机制根据。断言咬合经反向检查验证（临时破坏期望\n2 红→恢复 44 绿）。\n\n### D3 表格归一（P2，方向 a 为建议）\n\n- StreamingTable 增 `final` 终态模式：渲染分支对齐 renderTablePanel\n  现行 DOM（含 `table-node` class、align class、`.node-slot`/\n  `.node-content` 包裹层）；流式行为（列头先行、行渐进）不动。\n- builtin-panels 的 Table 项退役 → panel-registry custom 槽挂\n  StreamingTable（`registerPanel('Table', ...)`，nodeViewPanel 同模式）；\n  render.test.ts 的 Table 用例**零改动**必须通过（DOM 契约守卫）。\n- streaming_table.at 若需终态规范化差异（如空表头兜底）同源补齐，\n  `pnpm gen:render` 再生。\n\n### D4 开放态骨架契约（P3）\n\n- codeNode 开放态的 loading 呈现统一 class：`.autodown-block-placeholder`\n  加 `is-loading` 修饰（既有占位家族，scroll-sync 契约面已含\n  placeholder）；mermaid 开放 fence 与普通 fence 同形态。\n- 翻转连续性 v1 只做\"等高占位\"（CSS min-height 对齐闭合面板首屏高），\n  不做过渡动画；class 契约进 EDITOR-CONTRACT 表。\n\n### D5 stream 槽机制测试（P4）\n\n- 注册 mock stream 槽（vitest）→ 断言：该 kind 的段不再走\n  MarkdownRender 分支、槽收到 `(node, final)` 形状、final 随\n  streaming flag 翻转；\n- `clearBlockComponents()` 后回落默认路径。",
+        "file": "docs/plans/archived/032-stream-mode-formalization.md",
+        "related": [
+          "PLAN-032"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -453,6 +486,17 @@
         "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
         "related": [
           "PLAN-031"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P032-5",
+        "section": "tests",
+        "title": "全块类型流式渐进三态（未闭合/开放/闭合）审计裁定 + StreamingTable↔renderTablePanel 归一 + stream 槽机制与样式 parity 测试钉死 — 测试设计",
+        "content": "- 单测：tri-state 三态断言（D1 语料 × D2 表）；表格归一后 render.test.ts\n  零改动通过；stream 槽机制测试。\n- e2e（demo）：`stream-tri-state.spec.ts`——渐进语料分帧喂入（复用\n  demo 流式通道），断言三态序列 DOM + 最终面板；computed-style parity\n  抽查四类（流式中 vs final 的 font-size/margin/border 等关键属性）。\n- 回归：engine vitest 全量 + demo e2e 既有 12+ spec（scroll-sync 重点）。",
+        "file": "docs/plans/archived/032-stream-mode-formalization.md",
+        "related": [
+          "PLAN-032"
         ],
         "status": "verified"
       }
@@ -567,6 +611,17 @@
           "PLAN-031"
         ],
         "status": "published"
+      },
+      {
+        "id": "P032-6",
+        "section": "reviews",
+        "title": "全块类型流式渐进三态（未闭合/开放/闭合）审计裁定 + StreamingTable↔renderTablePanel 归一 + stream 槽机制与样式 parity 测试钉死 — 验收标准与复审",
+        "content": "1. 裁定表 17 kind 全格有测试背书；A 类零 stream 槽注册（grep 佐证：\n   registerBlockComponent 无 stream 键新增，表格除外如走注册）。\n2. renderTablePanel 退役后 Table 渲染单通道；render.test.ts 与 demo\n   scroll-sync e2e 零改动通过。\n3. 开放态/未闭合态骨架 class 契约在 EDITOR-CONTRACT 在册；三态 e2e 绿。\n4. stream 槽机制测试（覆盖优先级/传参/teardown）在册。\n5. computed-style parity 抽查四类绿；无既有测试改动（除 builtin-panels\n   Table 退役的显式删改）。\n\n**复审**：/auto-plan:review，2026-09-01，复审人 zhaopuming（会话内独立重验，非采信执行期勾选）。\n\n**全量门（本计划唯一全量套件跑点）**：engine vitest 576/576 绿（031 基线\n528 + 032 新 48）；demo playwright 45/46——唯一失败为 scroll-sync\nbottom-scroll 族环境性抖动，**master 新鲜 A/B 同败**（master 5/6 挂 1 例、\nworktree 全量挂同族另 1 例，两次运行挂例不同=典型 flake），非本计划引入。\n\n**逐条验收**：\n\n1. ✅ 裁定表全格背书 + 零注册——stream-tri-state.test.ts 44 用例（13 kind\n   fixture 断言 + 4 容器成员 ridesContainer 显式断言）绿；grep 佐证：产品码\n   registerBlockComponent 仅 EngineEditor 4 处 edit-only，零 stream 键\n   （block-component.ts:85 为解析管道非注册）。\n2. ✅（附存量记录）Table 单通道——builtin-panels Table 项已删（diff 证据），\n   tablePanel 经 custom 槽挂载，T3 双跑对拍逐字节相等（临时测试按计划随退役\n   删）；render.test.ts **git diff 零改动** + 14/14 绿；scroll-sync.spec.ts\n   零改动，套件存量 flake 见全量门记录。\n3. ✅ 骨架契约在册——EDITOR-CONTRACT §1 is-loading 选择器行 + §6 stream 面\n   契约段；三态 e2e 6/6 绿（全量套件内复跑）。\n4. ✅ 机制测试在册——block-component-stream.test.ts 4 用例（优先级/传参\n   形状/final 翻转/teardown 回落）绿。\n5. ✅ parity 四类绿 + 零既有测试改动——parity e2e（6 选择器组 computed-style\n   流式 vs final）绿；git diff：仅 3 个新增测试文件，既有测试零修改\n   （builtin-panels Table 删除为产品码显式删改，计划许可）。\n\n**遗漏/延后/workaround 猎查**：\n\n- 遗漏：无——T5\"如需\"为零改动负结果在案（终态直消费 WNode，gen 两连零\n  diff）；临时对拍测试删除属计划行为；9 任务均有 diff 或负结果记录。\n  架构草图 P3 行\"+ 031 编辑面横幅段\"歧义裁定：D4 规范文本（class 契约 +\n  等高占位 + 契约入册）无横幅改动任务，T6 步骤文本一致，判不缺项。\n- 延后：扩展块 parity → 033（计划文本自带边界，待澄清②）；scroll-sync\n  flake → 待澄清⑤（存量非本计划范围）。两者均明示在册，无执行者私裁缩水。\n- Workaround：无强凑——render-node 副作用 import（环规避）为带注释的显式\n  设计决策；clearPlaceholders 作用域收窄与既有 :scope > 守卫对齐（真修复，\n  e2e 抓出后根治）；stream-harness.html 为 dev-only 测试基建（不入构建\n  inputs，注释在案）。\n\n**债务候选（登记不阻塞）**：\n\n1. scroll-sync bottom-scroll 两例环境性 flake（存量，master 同败）——待澄清\n   ⑤在案，建议单列排查（viewport 高度/滚动时序敏感）。\n2. （轻微，非 032 引入）StreamingRenderer 向 MarkdownRender 传\n   code-block-props，后者未声明该 prop，落为根元素 fallthrough 属性\n   `code-block-props=\"[object Object]\"`（harness 探针中观察到）——不影响\n   功能，顺手可清。\n\n**裁定**：五条验收全过（第 2 条附存量 flake 记录与 master A/B 证据），无\n阻塞债务 → `status: reviewed`，可入 `/auto-plan:merge`。",
+        "file": "docs/plans/archived/032-stream-mode-formalization.md",
+        "related": [
+          "PLAN-032"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -677,6 +732,17 @@
         "file": "docs/plans/archived/031-math-mermaid-edit-artifact.md",
         "related": [
           "PLAN-031"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P032-1",
+        "section": "reports",
+        "title": "全块类型流式渐进三态（未闭合/开放/闭合）审计裁定 + StreamingTable↔renderTablePanel 归一 + stream 槽机制与样式 parity 测试钉死 — 变更摘要",
+        "content": "\"完美态\"路线图 M1 第一步。现状：流式期间 markdown 段走的**就是**全量 parser\n+ panel 管线（`MarkdownRender` → `parseDocument(text, final)` →\n`renderNodes`，030/031 已保证未闭合降级安全），唯 Table 有独立渐进通道\n（streaming.at 特判 → StreamingTable）；`BlockComponent.stream` 槽自设立\n（P023）以来**零注册**。本计划不盲目给 17 类块全挂 stream 槽，而是：\n\n**P1 三态审计与裁定**：程序化收集 17 kind × {未闭合 / 开放 / 闭合成块}\n的渲染形态，产出逐块裁定表——**A=默认面板路径（零注册，预期绝大多数）**\n/ B=注册同型槽 / C=注册渐进骨架槽——裁定连同断言钉进测试。\n\n**P2 表格双实现归一**：view 终态 `builtin-panels.renderTablePanel`（TS）\n与 stream 渐进 `StreamingTable.vue`（+ streaming_table.at 规范化）是两套\n实现，样式一致性靠人盯。归一为单通道（建议方向：StreamingTable 吸收终态\n模式，renderTablePanel 退役；见待澄清②），thead/th + tbody/td 契约由\nrender.test.ts 钉死不动。\n\n**P3 开放态骨架契约**：mermaid 开放 fence（codeNode loading）与 math\n未闭合（段落字面）的\"翻转瞬间\"视觉连续——开放态骨架 class 契约统一\n（`.autodown-block-placeholder` 家族扩展），v1 只钉 class 契约不做动画。\n\n**P4 机制与测试钉死**：stream 槽注册优先级（注册即覆盖 markdown 段路径）\n的机制测试；三态 fixture 全量进 e2e；流式中 vs final 的 computed-style\nparity 抽查（Heading/Paragraph/Fence/Table 四类）。\n\n**不做的**：三模式共享 chrome 的结构重构（PLAN-033）；扩展块流式中的\n实时预览节流（闭合成块后源码必完整，无重渲染风暴——031 已论证）；\n容器块 chrome .at 化（后续计划）；VM 侧。",
+        "file": "docs/plans/archived/032-stream-mode-formalization.md",
+        "related": [
+          "PLAN-032"
         ],
         "status": "published"
       }

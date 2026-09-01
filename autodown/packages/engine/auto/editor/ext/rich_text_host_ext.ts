@@ -128,7 +128,9 @@ export function hostInput(el: HTMLElement, controller: BlockHostController): voi
 
 export function hostKeydown(e: KeyboardEvent, controller: BlockHostController): void {
   if (controller.composition.composing) return
-  const el = e.currentTarget as HTMLElement
+  // currentTarget is the listener's element during real dispatch; direct
+  // unit invocations only carry target — both are the host root here.
+  const el = (e.currentTarget ?? e.target) as HTMLElement
   if (e.ctrlKey || e.metaKey) {
     const k = e.key.toLowerCase()
     // inline mark shortcuts (plan 024 P3T3): wrap the live DOM in place —

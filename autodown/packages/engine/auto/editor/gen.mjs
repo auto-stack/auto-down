@@ -99,9 +99,11 @@ const widgets = readdirSync(here)
 // math/mermaid node views (plan 013 era) — one widget per pilot kind,
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
-// hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 20) {
-  console.error(`expected 20 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// hand-written AttrHost.vue (plan 030 T7); table_block_widget.at (plan 037
+// T2) replaces table_editor_block.at as the table family's three-mode
+// widget (the T5 retirement drops that + table_menu.at: 21 -> 19).
+if (widgets.length !== 21) {
+  console.error(`expected 21 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -181,6 +183,9 @@ const EXT_DEPLOY = [
   'node_view_ext.ts',
   // plan 023 P1T8 — the table editing face's DOM helpers.
   'table_editor_block_ext.ts',
+  // plan 037 T2 — the table family widget's bridge (commitTableCell from
+  // table_editor_block_ext + the three-mode dyn-root chrome reads).
+  'table_block_widget_ext.ts',
   // plan 033 T2-T4 — the pilot families' widget bridges (view-highlight
   // parity + absorbed edit helpers + node-view render bridges with the
   // artifact final-put; replaced code_editor_block_ext / math_edit_ext /
@@ -225,6 +230,9 @@ const DEPLOY_COMPONENTS = {
   'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',
   // plan 023 P1T8 — the table's typed editing face.
   'TableEditorBlock.vue': 'components/TableEditorBlock.vue',
+  // plan 037 T2 — the table family's three-mode widget (replaces
+  // TableEditorBlock at the T5 retirement).
+  'TableBlockWidget.vue': 'components/TableBlockWidget.vue',
   // plan 033 T2-T4 — the pilot families' three-mode widgets (view/stream/
   // edit one chrome; replaced CodeEditorBlock + Math/MermaidEditBlock +
   // the block Math/Mermaid node views).

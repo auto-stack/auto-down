@@ -100,8 +100,14 @@ const EXPECT: Record<string, Partial<Record<'unclosed' | 'open' | 'closed', Cell
   Fence: {
     // mid-opener: two backticks are a paragraph literal, no code panel yet
     unclosed: { contains: ['paragraph-node'], not: ['code-block-container', 'data-language'] },
-    open: { contains: ['code-block-container', 'data-language="rust"', 'fn streaming_example'], not: [] },
-    closed: { contains: ['code-block-container', 'data-language="rust"', 'x * 2'], not: [] },
+    open: {
+      contains: ['code-block-container', 'data-language="rust"', 'fn streaming_example', 'autodown-block-placeholder is-loading', 'aria-busy="true"'],
+      not: [],
+    },
+    closed: {
+      contains: ['code-block-container', 'data-language="rust"', 'x * 2'],
+      not: ['is-loading', 'aria-busy="true"'],
+    },
   },
   Blockquote: {
     unclosed: { contains: ['blockquote', '引用行还在流式'], not: [] },
@@ -145,10 +151,11 @@ const EXPECT: Record<string, Partial<Record<'unclosed' | 'open' | 'closed', Cell
   },
   Mermaid: {
     // language still streaming: a generic loading code block, kind not yet
-    // identifiable — never the mermaid panel (031 pinned)
-    unclosed: { contains: ['code-block-container', 'data-language="m"'], not: ['autodown-mermaid-block', '<svg'] },
-    open: { contains: ['code-block-container', 'data-language="mermaid"', 'graph TD;'], not: ['autodown-mermaid-block', '<svg'] },
-    closed: { contains: ['autodown-mermaid-block', 'mermaid-source'], not: [] },
+    // identifiable — never the mermaid panel (031 pinned); same skeleton
+    // family as any open fence (032 P3: 同形态)
+    unclosed: { contains: ['code-block-container', 'data-language="m"', 'autodown-block-placeholder is-loading'], not: ['autodown-mermaid-block', '<svg'] },
+    open: { contains: ['code-block-container', 'data-language="mermaid"', 'graph TD;', 'autodown-block-placeholder is-loading', 'aria-busy="true"'], not: ['autodown-mermaid-block', '<svg'] },
+    closed: { contains: ['autodown-mermaid-block', 'mermaid-source'], not: ['is-loading'] },
   },
   MathBlock: {
     // %{ without }% = paragraph literal (031 pinned)

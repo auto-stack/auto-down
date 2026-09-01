@@ -1179,3 +1179,14 @@
 .autodown-editor-content .autodown-block-host {
   outline: none;
 }
+
+/* ─── Open-state skeleton family (plan 032 P3) ───
+   The fence-open (loading) code block carries .autodown-block-placeholder
+   .is-loading on its .code-block-container — the same family the scroll-sync
+   editing placeholder uses. v1 contract is equal-height reservation only:
+   a min-height snapshot ≈ a closed panel's first screen, so the open→closed
+   flip never collapses layout; no transition animation by design (待澄清③
+   ruling: CSS constant over JS measurement). */
+.autodown-block-placeholder.is-loading {
+  min-height: 5.5rem;
+}

@@ -123,6 +123,12 @@ function renderCalloutPanel({ node, final, budget, renderEmbedded }: PanelRender
  * Codeblock chrome: header (language label + actions area) over a
  * pre[data-language] > code pair. The pre attributes (data-language) are the
  * contract for downstream highlighters and header injection.
+ * Open-state skeleton (plan 032 P3): while the fence is open the parser marks
+ * the node loading (codeNode(language, code, !final)) — the container then
+ * carries the .autodown-block-placeholder.is-loading family (same family as
+ * the scroll-sync editing placeholder; mermaid open fences ride the same
+ * shape) and aria-busy flips true. Closed fences render byte-identical to
+ * the pre-032 contract (class string and aria-busy both unchanged).
  * Optional capability degradation (plan 008 goal 3): with the `highlight`
  * capability off (or an unknown language) the code renders as plain text
  * inside the same structure.
@@ -130,9 +136,14 @@ function renderCalloutPanel({ node, final, budget, renderEmbedded }: PanelRender
 function renderCodeblockPanel({ node }: PanelRenderCtx): VNode {
   const language = node.language ? String(node.language) : ''
   const code = node.code ?? ''
+  const loading = node.loading === true
   const highlighter = resolveHighlighter()
   const highlightedHtml = highlighter?.(code, language)
-  return h('div', { class: 'code-block-container rounded-lg border' }, [
+  return h('div', {
+    class: loading
+      ? 'code-block-container rounded-lg border autodown-block-placeholder is-loading'
+      : 'code-block-container rounded-lg border',
+  }, [
     h('div', { class: 'code-block-header flex justify-between items-center' }, [
       h('div', { class: 'code-header-main' }, [
         h('div', { class: 'code-header-copy' }, [
@@ -146,7 +157,7 @@ function renderCodeblockPanel({ node }: PanelRenderCtx): VNode {
       {
         class: `language-${language || 'text'} code-pre-fallback is-wrap`,
         'data-language': language,
-        'aria-busy': 'false',
+        'aria-busy': loading ? 'true' : 'false',
         tabindex: '0',
       },
       [

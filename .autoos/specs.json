@@ -168,6 +168,17 @@
           "PLAN-036"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P037-2",
+        "section": "goals",
+        "title": "Table 家族化收官（table_block_widget.at 三模式（view=StreamingTable 终态 / stream=渐进行为 / edit=TableEditorBlock 吸收）+ 双实现退役） — 目标",
+        "content": "1. Table 单 widget 三模式：view/stream/edit 同 chrome（033 parity\n   套件扩 Table）；两套旧面物理退役，gen 清单同步冻结。\n2. 零漂移：render.test.ts Table 段、demo scroll-sync / extension-blocks\n   e2e、032 stream-tri-state 表格三态、container-editing（若有表格\n   用例）**零改动**通过。\n3. 渐进行为保形：列头先行/行渐进/props 规范化语义对拍（归一前后\n   DOM 字节相等，含空表头兜底）。\n4. dormant 挂账清理：table_menu.at 退役记录在案（DEBTS 026④ 姊妹项\n   ——TableMenu 已销号但源文件尚在）。",
+        "file": "docs/plans/archived/037-table-block-family.md",
+        "related": [
+          "PLAN-037"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -302,7 +313,10 @@
         "related": [
           "PLAN-032"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P037-3"
+        ]
       },
       {
         "id": "P033-3",
@@ -313,7 +327,10 @@
         "related": [
           "PLAN-033"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P037-3"
+        ]
       },
       {
         "id": "P034-2",
@@ -345,6 +362,17 @@
         "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
         "related": [
           "PLAN-036"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P037-3",
+        "section": "architecture",
+        "title": "Table 家族化收官（table_block_widget.at 三模式（view=StreamingTable 终态 / stream=渐进行为 / edit=TableEditorBlock 吸收）+ 双实现退役） — 架构方案",
+        "content": "```\nauto/editor/table_block_widget.at（新，三模式）\n├─ props 扁平：mode/controller/blockId/readonly/final +\n│  header_cells/body_rows（033 CodeBlockWidget 适配 idiom）\n│  + stream 渐进参数（columns/rows 规范化形状——streaming_table.at\n│   现语义）\n├─ chrome 单份：.autodown-table-editor 容器 + te-toolbar（edit）+\n│  table.table-node（thead/th + tbody/td，cell cls/data-cell-id）\n├─ mode 分支：\n│   view  → 终态表（StreamingTable final 分支 DOM 契约）\n│   stream → 渐进（列头先行/行渐进/final 翻转）\n│   edit  → toolbar + contenteditable 单元格 + blur 提交\n└─ 动词：七按钮 msg → controller（TableEditorController 不动）\n\nauto/editor/ext/table_block_widget_ext.ts（新桥）\n├─ commitTableCell（现 table_editor_block_ext 语义迁入）\n├─ normalizeTableProps（streaming_table.at 规范化迁入——.at 纯函数\n│   可留 .at 进 widget computed，或随桥走 TS；执行期按 gen 表达力\n│   定，倾向 .at computed 保单源）\n└─ focus/语言徽章无涉（Table 无 badge 面）\n\n装配与退役\nsrc/render/StreamingTable.vue 删 → StreamingRenderer component 段路径\n  与 palette custom 槽改挂 widget（registerBlockWidget('Table', …) +\n  panelOf——033 双面同源）\nauto/editor/table_editor_block.at + ext 删；gen 部署物清单重冻结\nauto/editor/table_menu.at 删（dormant 处置，guard 豁免清单同步）\nauto/render/streaming_table.at + src/render/streaming-table.generated.ts\n  删（规范化并入 widget；gen:render 清单同步）\n```\n\n**为何现在能做而 033 时裁后**：033 时 Table 依赖 032 归一终态（行为\n基线）与渐进对拍通道；两件均已就绪，且 034/035 的事件面 idiom\n（contenteditable DSL 直发/键序/动词桥）齐备。",
+        "file": "docs/plans/archived/037-table-block-family.md",
+        "related": [
+          "PLAN-037"
         ],
         "status": "stable"
       }
@@ -480,7 +508,10 @@
         "related": [
           "PLAN-032"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P037-4"
+        ]
       },
       {
         "id": "P033-4",
@@ -491,7 +522,10 @@
         "related": [
           "PLAN-033"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P037-4"
+        ]
       },
       {
         "id": "P034-3",
@@ -523,6 +557,17 @@
         "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
         "related": [
           "PLAN-036"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P037-4",
+        "section": "designs",
+        "title": "Table 家族化收官（table_block_widget.at 三模式（view=StreamingTable 终态 / stream=渐进行为 / edit=TableEditorBlock 吸收）+ 双实现退役） — 详细设计",
+        "content": "### D1 widget props 与三态数据面\n\n```\nwidget TableBlockWidget(mode str, controller Array<str>, blockId str,\n  readonly bool, final bool, header_cells Array<str>,\n  body_rows Array<str>, columns Array<str>, rows Array<str>) {\n  // view/edit：header_cells/body_rows（033 适配器扁平化——现\n  // tableEditSlot cellData 形状）\n  // stream：columns/rows（streaming.at 段路径 props——规范化后形状）\n}\n```\n\n- 适配器两形合流：EngineEditor edit 槽适配器与 StreamingRenderer\n  component 段适配器各自扁平化（模式不同、props 形状同源对齐——\n  cellData {id,text,cls} 与 streaming 规范化 {columns,rows} 的映射\n  在装配层完成）。\n\n### D2 渐进语义保形（对拍通道）\n\n- 归一前录制 StreamingTable 三态 DOM 快照（空/列头先行/全量 final）\n  作为金标；widget stream 分支逐字节对齐（含 `.table-node` 与\n  aria-busy 等属性面）。\n- streaming.at 的 COMPONENT_TYPES 特判保留（component 段路径仍是最\n  优渐进入口），仅消费组件换 widget。\n\n### D3 动词与单元格\n\n- 七动词 msg → controller（TableEditorController：addRow/DeleteRow/\n  addColumn/DeleteColumn/deleteTable 链——现 table_editor_block.at\n  on 分支全量迁）。\n- 单元格 contenteditable + onblur → commitTableCell（ext 桥，\n  diffToOp 语义不动）；readonly 横幅 idiom 同 033。\n\n### D4 退役与清单\n\n- 删四源三产物：table_editor_block.at/ext、StreamingTable.vue、\n  streaming_table.at（+ streaming-table.generated.ts）、table_menu.at；\n  gen:editor 清单（034 后 17 → 035 后基线上 -2 +1 = 净 -1 widget；\n  执行期以 035 冻结数为基）；gen:render 清单 -1。\n- assert-editor-gen/assert 相关清单同步；ARCHITECTURE §6 数同步。",
+        "file": "docs/plans/archived/037-table-block-family.md",
+        "related": [
+          "PLAN-037"
         ],
         "status": "stable"
       }
@@ -636,7 +681,10 @@
         "related": [
           "PLAN-032"
         ],
-        "status": "verified"
+        "status": "verified",
+        "superseded_by": [
+          "P037-5"
+        ]
       },
       {
         "id": "P033-5",
@@ -647,7 +695,10 @@
         "related": [
           "PLAN-033"
         ],
-        "status": "verified"
+        "status": "verified",
+        "superseded_by": [
+          "P037-5"
+        ]
       },
       {
         "id": "P034-4",
@@ -679,6 +730,17 @@
         "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
         "related": [
           "PLAN-036"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P037-5",
+        "section": "tests",
+        "title": "Table 家族化收官（table_block_widget.at 三模式（view=StreamingTable 终态 / stream=渐进行为 / edit=TableEditorBlock 吸收）+ 双实现退役） — 测试设计",
+        "content": "- **零改动回归（硬验收）**：render.test.ts Table 段；demo scroll-sync\n  / extension-blocks / stream-tri-state / undo 四 e2e；\n  semantics.test.ts 表格动词段。\n- **新增**：三态 DOM 对拍金标（D2）；parity 矩阵扩 Table（033 套件）；\n  gen 两连跑字节确定。\n- **手验**：表格编辑三例（工具栏动词/单元格 blur 提交/undo 单步）\n  截图留档（029 T10 口径）。",
+        "file": "docs/plans/archived/037-table-block-family.md",
+        "related": [
+          "PLAN-037"
         ],
         "status": "verified"
       }
@@ -848,6 +910,17 @@
           "PLAN-036"
         ],
         "status": "published"
+      },
+      {
+        "id": "P037-6",
+        "section": "reviews",
+        "title": "Table 家族化收官（table_block_widget.at 三模式（view=StreamingTable 终态 / stream=渐进行为 / edit=TableEditorBlock 吸收）+ 双实现退役） — 验收标准 + 复审",
+        "content": "1. Table 三模式单 widget；四源三产物物理删除；gen:editor/:render\n   清单与 guard 同步冻结。\n2. 零改动回归清单全绿；三态对拍金标绿；parity 矩阵含 Table。\n3. 渐进语义保形（列头先行/行渐进/空表头兜底）有对拍佐证。\n4. 文档三件（EDITOR-CONTRACT Table 段 mode 注记 / ARCHITECTURE §6\n   清单收官注记 / DEBTS 020 Table 族销号 + table_menu dormant 清理）\n   更新完。\n\n## 复审结论（2026-09-01 reviewed）\n\n**reviewer**: zhaopuming（/auto-plan:review，2026-09-01）\n**对象**: worktree `.worktrees/plan-037-dev`（branch plan-037-dev，7 提交，\nmaster..HEAD 40 文件 +1577/−1328）\n\n**逐项验收（全部复跑取证）**\n\n1. **Table 三模式单 widget；四源三产物物理删除；gen 清单/guard 同步冻结\n   —— PASS**。`auto/editor/table_block_widget.at`（400 行，dyn 根三态）；\n   12 个退役文件 `ls` 实证不存在；复审门复跑 gen:editor + gen:render 各\n   两连跑后 `git status` 零 diff（字节确定）；assert-editor-gen 绿\n   （17 部署物/13 桥）。\n2. **零改动回归全绿；金标绿；parity 含 Table —— PASS**。全仓\n   `pnpm -r test`：engine 742/742（core/vue/editor 无测试面）；\n   render.test.ts 与 semantics.test.ts（表格动词段 15 例）`git diff\n   master..HEAD` 零行（零改动实证）；四 e2e spec（scroll-sync/\n   extension-blocks/stream-tri-state/undo）diff 零触碰；demo 全量\n   51/51；金标 5/5；parity 23 含 Table 四断言组。engine build（vue-tsc/\n   vite/三 assert/dist stamp）绿。\n3. **渐进语义保形有对拍佐证 —— PASS**。五态金标（空/nullish 兜底、列头\n   先行、全量 final、终态 open/closed 经真实管线）换 subject 后机器\n   diff 逐字节相等（T3 执行记录），快照已入册。\n4. **文档三件 —— PASS**。EDITOR-CONTRACT §6 Table 单通道 037 化；\n   ARCHITECTURE §5 表格通道段 + §6 清单收官注记（17/19/13）；DEBTS\n   020 Table 族销号 + 026④ 处置（含已删路径出处修正）。diff 复核通过。\n\n**遗漏 / 延后 / workaround 猎查**\n\n- 遗漏：无——8 步全有提交+证据；diff 范围与计划吻合（40 文件全数对账）。\n- 延后：嵌套块单元格（待澄清 #3，计划内明文裁定维持 v1 边界，非私自\n  缩面）；IME blur-期间提交（待澄清 #4，执行期新发现，在案待用户裁定）。\n- Workaround：未引入（diff 中 TODO/FIXME/HACK 零新增）；\"填充 props 满足\n  生成物必填检查\"为 033 ctx:null 既有 idiom，代码注释在案。\n\n**债务候选（均为既有问题，非本计划引入——不改判验收）**\n\n1. **AddColumnBefore 死动词（既有）**：工具栏\"列←\"按钮存在、controller\n   有 addColumnBefore，但 widget 不派发（on 块无 handler，仅 emit）——\n   037 前的 TableEditorBlock 完全相同，按\"吸收全行为\"原样保留。修法\n   一行（补 on handler），待用户裁定是否独立小项。\n2. **IME blur-在-preedit-期间提交组合文本（既有，待澄清 #4）**：Chrome\n   在组合活跃时 blur 把 preedit 提交进 DOM，blur 协议随之落模型——两面\n   （表格格/RichTextHost）共享语义，034 原验证口径（不-blur）未触此\n   路径。需裁定：composition-active 守卫 vs 接受为平台语义。\n3. **scroll-sync e2e 异步沉降抖动窗（既有）**：scroll-sync 断言仅等\n   200ms，而右/左栏 katex/mermaid 异步渲染三级沉降（3174/2895→3603→\n   3686/3703，worktree 与 master 曲线实测一致）；复审全量曾单红一次\n   （line 109），隔离复跑 11 次全绿 + master 6 次全绿 + 037 未触滚动/\n   工件路径 + 静态几何逐字节同——判定为既有环境抖动，非回归。候选\n   修法：断言前等待工件 settle。\n\n**执行偏差（非债务）**：T4 名义上的\"commitTableCell 迁入\"实际随 T2\n落地（gen 需 ext 文件存在），T4 marker 已注明，语义完整无缺。\n\n**结论**：四项验收全 PASS，无阻断债务 → `status: reviewed`，可接\n`/auto-plan:merge`。",
+        "file": "docs/plans/archived/037-table-block-family.md",
+        "related": [
+          "PLAN-037"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1013,6 +1086,17 @@
         "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
         "related": [
           "PLAN-036"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P037-1",
+        "section": "reports",
+        "title": "Table 家族化收官（table_block_widget.at 三模式（view=StreamingTable 终态 / stream=渐进行为 / edit=TableEditorBlock 吸收）+ 双实现退役） — 变更摘要",
+        "content": "033 家族化的最后一块块级拼图（035 容器族之后）。现状 Table 仍有两套\n面：stream/view = `StreamingTable.vue`（手写模板 + `streaming_table.at`\nprops 规范化，032 归一后单通道服务终态+渐进）；edit =\n`TableEditorBlock`（.at，工具栏七动词 + 单元格 contenteditable +\nblur→controller.commitCell）。本计划按 033 模式归一为\n`table_block_widget.at` 一件三模式 widget：\n\n- **view/stream**：吸收 StreamingTable 全部（终态字节契约 + 渐进列头\n  先行/行渐进行为；streaming_table.at 的规范化逻辑并入 widget 的\n  model/computed 或其 ext 桥）；\n- **edit**：吸收 TableEditorBlock 全部（七动词经 controller、单元格\n  contenteditable + blur 提交、readonly 横幅）；\n- **退役**：TableEditorBlock.vue/.at、StreamingTable.vue、\n  streaming_table.at（及 streaming-table.generated.ts）——gen 清单与\n  assert-editor-gen 同步；`table_menu.at`（026 裁定合并回工具栏后\n  dormant）顺手处置（退役源文件，销 dormant 挂账）；\n- **边界维持**：单元格 v1 文本（嵌套块后置）；TableEditorController\n  内核一行不改（semantics 表格动词零改动回归）。",
+        "file": "docs/plans/archived/037-table-block-family.md",
+        "related": [
+          "PLAN-037"
         ],
         "status": "published"
       }

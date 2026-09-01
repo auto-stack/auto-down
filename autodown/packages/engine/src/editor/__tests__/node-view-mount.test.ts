@@ -27,7 +27,6 @@ import { setBlockAttrs } from '../engine/commands'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
 import { queryNode } from '../../parser/markdown-parser'
 import DetailsBlockWidget from '../components/DetailsBlockWidget.vue'
-import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
 // importing the assembly performs the module-scope panel registrations
 import '../components/EngineEditor.vue'
 
@@ -79,7 +78,7 @@ function findComponentVNode(vnode: any, type: unknown): VNode | null {
   return null
 }
 
-describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3; math/mermaid are the family widgets since plan 033)', () => {
+describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3; family widgets since plans 033/038)', () => {
   it('math block mounts the MathBlockWidget view face (no unknown-node degrade)', async () => {
     const html = await ssrPreview(leafBlock('m1', BlockType.MathBlock, 'E = mc^2'))
     expect(html).toContain('autodown-math-block')
@@ -94,41 +93,27 @@ describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3; math/mermaid a
     expect(html).not.toContain('unknown-node')
   })
 
-  it('query block mounts the QueryBlockNodeView with its query text', async () => {
+  it('query block mounts the QueryBlockWidget family view face with its query text (plan 038 T6)', async () => {
     const q = block('q1', BlockType.QueryBlock)
     q.attrs = attrSet(q.attrs, 'query', Value.Str('table tasks where done'))
     const html = await ssrPreview(q)
     expect(html).toContain('autodown-query-block')
-    expect(html).toContain('data-query-block')
+    expect(html).toMatch(/data-query-block(?:="")?/)
     expect(html).toContain('table tasks where done')
     expect(html).not.toContain('unknown-node')
   })
 
-  it('block embed mounts the BlockEmbedNodeView', async () => {
+  it('block embed mounts the EmbedBlockWidget family view face (plan 038 T6)', async () => {
     const emb = block('e1', BlockType.BlockEmbed)
     emb.attrs = attrSet(emb.attrs, 'src', Value.Str('../other.ad'))
-    emb.attrs = attrSet(emb.attrs, 'title', Value.Str('Other'))
     const html = await ssrPreview(emb)
     expect(html).toContain('autodown-block-embed')
     expect(html).not.toContain('unknown-node')
   })
-
-  it('updateAttributes writes back for the mounted panels (query attrs channel)', async () => {
-    const q = block('q1', BlockType.QueryBlock)
-    q.attrs = attrSet(q.attrs, 'query', Value.Str('a'))
-    const e = new EditorEngine(doc(q), collapsedSel('q1', 0))
-    pushNodeViewHost({ engine: e })
-    let vnode: VNode
-    try {
-      vnode = renderNodes(blockNodesToWNodes([findBlock(e.doc, 'q1')!]), true)[0]!
-    } finally {
-      popNodeViewHost()
-    }
-    const w = findComponentVNode(vnode, QueryBlockNodeView)
-    expect(w).toBeTruthy()
-    ;(w!.props as any).updateAttributes({ query: 'b' })
-    expect(serialize(e.doc, false)).toContain('$query(b)')
-  })
+  // The retired query attrs writeback test (updateAttributes through the
+  // node-view props bridge) went with the QueryBlockNodeView in plan 038
+  // T6 — query/embed are non-editable leaves v1 (no writeback face); the
+  // Details toggle test below still pins the model writeback channel.
 })
 
 // keep Details describe anchored after the new suite

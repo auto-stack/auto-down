@@ -66,12 +66,6 @@ const EXPECTED = [
   'components/CodeBlockWidget.vue',
   'components/MathBlockWidget.vue',
   'components/MermaidBlockWidget.vue',
-  // plan 038 T4 — the query family's view/stream widget (absorbs the
-  // QueryBlockNodeView at the T6 assembly switch).
-  'components/QueryBlockWidget.vue',
-  // plan 038 T5 — the embed family's view/stream widget (absorbs the
-  // BlockEmbedNodeView at the T6 assembly switch).
-  'components/EmbedBlockWidget.vue',
   // plan 034 T3/T5 — the text-leaf editing host (replaces the hand-written
   // BlockHost.vue; deployed set 14 → 15).
   'components/RichTextHost.vue',
@@ -85,9 +79,11 @@ const EXPECTED = [
   'components/DetailsBlockWidget.vue',
   'components/BlockquoteBlockWidget.vue',
   'components/ListBlockWidget.vue',
-  'node-views/WikiLinkNodeView.vue',
-  'node-views/QueryBlockNodeView.vue',
-  'node-views/BlockEmbedNodeView.vue',
+  // plan 038 T4/T5 — the query/embed family widgets (absorbed the two
+  // node views at the T6 assembly switch — deployed set 20 → 19; the
+  // dormant WikiLinkNodeView retired with them).
+  'components/QueryBlockWidget.vue',
+  'components/EmbedBlockWidget.vue',
 ]
 
 const relOf = (p) => p.slice(editorSrc.length + 1).split('\\').join('/')

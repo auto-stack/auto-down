@@ -1,8 +1,12 @@
 // Builtin panel renderers (plan 017 Phase 2). One entry per builtin panel
 // kind from auto/palette_map.at (Text, H1..H6, Separator, Codeblock, Quote,
-// List, Table). The DOM shape is byte-identical to the pre-registry
-// render-node switch — the render.test.ts DOM contract and the downstream
-// chrome (scroll sync, code-header injection, CSS) pin it.
+// List) — plus, since plan 030, Callout. The DOM shape is byte-identical to
+// the pre-registry render-node switch — the render.test.ts DOM contract and
+// the downstream chrome (scroll sync, code-header injection, CSS) pin it.
+//
+// Table is NOT here anymore (plan 032 P2): the single table implementation
+// (progressive + terminal faces) lives in StreamingTable.vue and mounts on
+// the registry's custom slot — see render-node's side-effect import.
 //
 // Extension panel kinds (Details/MathBlock/Mermaid/Query/Embed) deliberately
 // have no entry here: consumers register them (see panel-registry.ts and
@@ -115,45 +119,6 @@ function renderCalloutPanel({ node, final, budget, renderEmbedded }: PanelRender
   ])
 }
 
-function alignClass(cell: any): string {
-  if (cell.align === 'center') return 'text-center'
-  if (cell.align === 'right') return 'text-right'
-  return 'text-left'
-}
-
-function renderTablePanel({ node, final, budget, renderEmbedded }: PanelRenderCtx): VNode {
-  return h('table', { class: 'table-node', 'aria-busy': 'false' }, [
-    h('thead', {}, [
-      h(
-        'tr',
-        {},
-        // plan 019: WNode carries the table header as a 0-or-1 array
-        ((node.header ?? [])[0]?.cells ?? []).map((cell: any) =>
-          h('th', { dir: 'auto', class: alignClass(cell) }, [
-            renderEmbedded(cell.children ?? [], final, budget),
-            h('button', { type: 'button', class: 'table-node__resize-handle' }),
-          ])
-        )
-      ),
-    ]),
-    h(
-      'tbody',
-      {},
-      (node.rows ?? []).map((row: any) =>
-        h(
-          'tr',
-          {},
-          (row.cells ?? []).map((cell: any) =>
-            h('td', { dir: 'auto', class: alignClass(cell) }, [
-              renderEmbedded(cell.children ?? [], final, budget),
-            ])
-          )
-        )
-      )
-    ),
-  ])
-}
-
 /**
  * Codeblock chrome: header (language label + actions area) over a
  * pre[data-language] > code pair. The pre attributes (data-language) are the
@@ -207,6 +172,5 @@ export const builtinPanelRenderers: Record<string, PanelRenderer> = {
   Codeblock: renderCodeblockPanel,
   Quote: renderQuotePanel,
   List: renderListPanel,
-  Table: renderTablePanel,
   Callout: renderCalloutPanel,
 }

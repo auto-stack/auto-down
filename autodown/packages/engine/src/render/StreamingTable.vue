@@ -33,7 +33,7 @@
 // template branch, because it needs the ctx's renderEmbedded for cell
 // content (mounting this SFC per panel render would add nothing).
 import { h, type VNode } from 'vue'
-import type { PanelRenderCtx, PanelRenderer } from './panel-registry'
+import { registerPanel, type PanelRenderCtx, type PanelRenderer } from './panel-registry'
 
 function alignClass(cell: any): string {
   if (cell.align === 'center') return 'text-center'
@@ -73,6 +73,15 @@ export const tablePanel: PanelRenderer = ({ node, final, budget, renderEmbedded 
     ),
   ])
 }
+
+// The panel-registry custom slot this module registers on (plan 032 D3,
+// nodeViewPanel pattern). Table has no builtin entry anymore — this
+// registration IS the default; the render pipeline pulls it in through
+// render-node's side-effect import (NOT from builtin-panels/panel-registry:
+// that would close a runtime cycle whose TDZ fires before customRenderers
+// initializes). unregisterPanel('Table') therefore degrades tables to the
+// unknown-node div — same semantics as any extension panel.
+registerPanel('Table', tablePanel)
 </script>
 
 <script setup lang="ts">

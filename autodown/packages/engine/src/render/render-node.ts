@@ -14,6 +14,11 @@
 
 import { h, type VNode } from 'vue'
 import { resolvePanelRenderer, specForNode, type RevealBudget } from './panel-registry'
+// side effect only: StreamingTable registers its terminal panel on the
+// registry custom slot (plan 032 P2 — single table channel). It must be
+// pulled in OUTSIDE the panel-registry ↔ builtin-panels import cycle, and
+// render-node is the dispatch point every rendering consumer loads anyway.
+import './StreamingTable.vue'
 
 export type { RevealBudget } from './panel-registry'
 

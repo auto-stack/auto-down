@@ -20,6 +20,61 @@
   </div>
 </template>
 
+<script lang="ts">
+// Single table channel (plan 032 P2): this module owns BOTH table faces —
+//   · progressive face = the template below (```json {"type":"table"} stream
+//     component segments: header-first columns, rows streaming in, loading row)
+//   · terminal face = `tablePanel` (view + stream markdown segments through
+//     the panel registry's custom slot, plan 026 nodeViewPanel pattern)
+// `tablePanel` is the DOM byte contract of the retired builtin-panels
+// renderTablePanel — table-node / thead+th(+resize handle) / tbody+td /
+// .node-slot-embedded cells — pinned by render.test.ts (zero-change guard)
+// and stream-tri-state.test.ts. It is a plain render function, not a
+// template branch, because it needs the ctx's renderEmbedded for cell
+// content (mounting this SFC per panel render would add nothing).
+import { h, type VNode } from 'vue'
+import type { PanelRenderCtx, PanelRenderer } from './panel-registry'
+
+function alignClass(cell: any): string {
+  if (cell.align === 'center') return 'text-center'
+  if (cell.align === 'right') return 'text-right'
+  return 'text-left'
+}
+
+export const tablePanel: PanelRenderer = ({ node, final, budget, renderEmbedded }: PanelRenderCtx): VNode => {
+  return h('table', { class: 'table-node', 'aria-busy': 'false' }, [
+    h('thead', {}, [
+      h(
+        'tr',
+        {},
+        // plan 019: WNode carries the table header as a 0-or-1 array
+        ((node.header ?? [])[0]?.cells ?? []).map((cell: any) =>
+          h('th', { dir: 'auto', class: alignClass(cell) }, [
+            renderEmbedded(cell.children ?? [], final, budget),
+            h('button', { type: 'button', class: 'table-node__resize-handle' }),
+          ])
+        )
+      ),
+    ]),
+    h(
+      'tbody',
+      {},
+      (node.rows ?? []).map((row: any) =>
+        h(
+          'tr',
+          {},
+          (row.cells ?? []).map((cell: any) =>
+            h('td', { dir: 'auto', class: alignClass(cell) }, [
+              renderEmbedded(cell.children ?? [], final, budget),
+            ])
+          )
+        )
+      )
+    ),
+  ])
+}
+</script>
+
 <script setup lang="ts">
 import { computed } from 'vue'
 import { normalizeTableProps } from './streaming-table.generated'

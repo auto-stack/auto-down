@@ -73,6 +73,9 @@ const EXPECTED = [
   // AttrHost.vue; deployed set 15 → 16. The Callout/Details container
   // widgets embed it from T3/T4).
   'components/AttrHost.vue',
+  // plan 035 T3 — the callout family widget (absorbs renderCalloutPanel +
+  // expandedElement's Callout branch at the T6 assembly switch).
+  'components/CalloutBlockWidget.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',

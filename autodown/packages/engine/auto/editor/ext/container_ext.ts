@@ -1,0 +1,42 @@
+// container_ext.ts — Hand-written TS extension shared by the container
+// family widgets (../callout_block_widget.at, ../details_block_widget.at,
+// ../blockquote_block_widget.at, ../list_block_widget.at — plan 035). The
+// gen pipeline copies this file into the transient gen project (never
+// type-checked there) and deploys it verbatim to
+// src/editor/ext/container_ext.ts; the generated SFCs import it from
+// ../ext/container_ext (gen.mjs E1 rewrite).
+//
+// What lives here:
+// 1. BlockChildren — the recursive child-mount hole (the plan 035 T1
+//    platform component). The widgets embed it via `use { component }` and
+//    pass the assembly-built children_slot closure: the recursion and ALL
+//    its runtime state (epoch remounts 029, host registry, focus path)
+//    stay at the single assembly point (EngineEditor's childrenOf adapter).
+// 2. AttrHost — the generated single-line attr host widget (plan 035 T2),
+//    embedded by the Callout title / Details summary faces.
+// 3. The container flat chrome reads — attr strings off the model node
+//    (attrGetStr), the CALLOUT_TYPES known-type check, and the wide ctx
+//    accessors (engine/blockId/readonly) reused from the 033 family idiom.
+
+import { attrGetStr, type BlockNode } from '../../parser/block-model'
+import { CALLOUT_TYPES } from '../../render/builtin-panels'
+
+export { BlockChildren } from '../components/BlockChildren'
+export { default as AttrHost } from '../components/AttrHost.vue'
+export { ctxReadonly, ctxBlockId, htmlText } from './code_block_widget_ext'
+
+/** The ctx's engine — the controller-prop idiom (engine passed wide-typed,
+ *  the 033 CodeBlockWidget fenceEditSlot ruling: controller = engine). */
+export function ctxEngine(ctx: unknown): unknown {
+  return (ctx as { engine?: unknown } | null | undefined)?.engine ?? null
+}
+
+/** One string attr off the model node ('' when absent). */
+export function nodeAttrStr(node: BlockNode | undefined, key: string): string {
+  return node ? attrGetStr(node.attrs, key, '') : ''
+}
+
+/** The builtin renderCalloutPanel known-type check (shared list). */
+export function calloutTypeKnown(type: string): boolean {
+  return CALLOUT_TYPES.includes(type)
+}

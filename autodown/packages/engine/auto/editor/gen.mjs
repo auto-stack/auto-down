@@ -1,7 +1,7 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (18 widget sources: 12 plan-013-era views/menus
+//   auto/editor/*.at        (19 widget sources: 12 plan-013-era views/menus
 //                            + table_editor_block + the three family
 //                            widgets of plan 033 + rich_text_host of plan
 //                            034 — see README.md)
@@ -99,8 +99,8 @@ const widgets = readdirSync(here)
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
 // hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 18) {
-  console.error(`expected 18 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+if (widgets.length !== 19) {
+  console.error(`expected 19 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -194,6 +194,9 @@ const EXT_DEPLOY = [
   // semantics: mount/sync/commit; shared by the Callout-title and
   // Details-summary container widgets).
   'attr_host_ext.ts',
+  // plan 035 T3+ — the container family's shared bridge (BlockChildren hole
+  // + AttrHost widget product + the callout flat chrome reads).
+  'container_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -237,6 +240,10 @@ const DEPLOY_COMPONENTS = {
   // EngineEditor's two expandedElement call sites moved to the generated
   // prop face). The Callout/Details container widgets embed it from T3/T4.
   'AttrHost.vue': 'components/AttrHost.vue',
+  // plan 035 T3-T5 — the container family widgets (view/stream/edit one
+  // chrome; deployed as generated sources until the T6 assembly switch —
+  // the 021 Phase 3 dormant-deploy idiom).
+  'CalloutBlockWidget.vue': 'components/CalloutBlockWidget.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

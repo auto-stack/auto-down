@@ -70,7 +70,7 @@ describe('data-loaders module slot (plan 038 T1)', () => {
   it('withDataLoaders scopes a registration and restores the previous one', async () => {
     const outer = async () => ({ results: [] })
     setDataLoaders({ runQuery: outer })
-    const inner = async () => ({ results: [{ marker: '§', content: 'x' }] })
+    const inner = async (id: string): Promise<EmbeddedBlock | null> => ({ content: id })
     const out = withDataLoaders({ loadBlock: inner }, () => {
       const slot = getDataLoaders()
       // the scoped object REPLACES the slot wholesale (props-watch shape),

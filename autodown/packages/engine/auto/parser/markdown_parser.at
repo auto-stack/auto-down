@@ -167,6 +167,12 @@ fn wikilinkNode(title str) WNode {
     return WNode("wikilink", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Some(title), None, None, None, None)
 }
 
+// inline math (plan 036 T6): `$src$` rides the code slot (inline_code
+// family); the slot holds the raw source so parse→serialize is lossless.
+fn mathInlineNode(code str) WNode {
+    return WNode("math_inline", None, None, None, Some(code), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+}
+
 // $ component blocks (plan 030): args ride existing field slots so WNode
 // stays a flat 21-field struct (rust emission shape unchanged):
 //   callout: language = callout type, title = title
@@ -1835,8 +1841,11 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 }
                 var close = findStrFrom(line, "]]", i + 2)
                 if close != -1 {
-                    var inner = line.slice(i + 2, close)
-                    if findStr(inner, "|") == -1 && !hasChar(inner, 10) && inner.trim() != "" {
+                    // the label works on the trimmed inner (the attr/text
+                    // pair is canonical-trimmed; padding literalizes the
+                    // whole form only when the trim empties it)
+                    var inner = line.slice(i + 2, close).trim()
+                    if findStr(inner, "|") == -1 && !hasChar(inner, 10) && inner != "" {
                         if buf != "" {
                             nodes.push(textNode(buf))
                             buf = ""
@@ -1868,6 +1877,41 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
                 }
                 i = lk.next
                 continue
+            }
+            buf += cs
+            i += 1
+            continue
+        }
+
+        // inline math $..$ (plan 036 T6, 待澄清① siyuan-family rules): the
+        // opener needs a non-space char right after it, the closer a
+        // non-space char right before it and NO digit right after it
+        // (currency text like "$100$5" stays literal); no newline inside;
+        // anything unmet degrades to a literal dollar. `\$` literalizes in
+        // the backslash branch below ($ is ASCII 36, already punctuation).
+        if cs == "$" {
+            var mclose = findStrFrom(line, "$", i + 1)
+            if mclose != -1 {
+                var minner = line.slice(i + 1, mclose)
+                var innerLen = minner.length.to(int)
+                var afterCode = 0
+                if mclose + 1 < lineLen {
+                    afterCode = line.char_at(mclose + 1)
+                }
+                // digit check hoisted to a local: the a2ts emitter drops
+                // inner parens, so `!(a && b)` inline would miscompile
+                var digitAfter = afterCode >= 48 && afterCode <= 57
+                var openOk = innerLen > 0 && minner.char_at(0) != 32 && !hasChar(minner, 10)
+                var closeOk = innerLen > 0 && minner.char_at(innerLen - 1) != 32 && !digitAfter
+                if openOk && closeOk {
+                    if buf != "" {
+                        nodes.push(textNode(buf))
+                        buf = ""
+                    }
+                    nodes.push(mathInlineNode(minner))
+                    i = mclose + 1
+                    continue
+                }
             }
             buf += cs
             i += 1
@@ -2618,6 +2662,14 @@ fn convertInlines(wnodes List<WNode>, marks List<Mark>) List<InlineSpan> {
             var wattrs List<Attr> = []
             wattrs = attrSet(wattrs, "wikilink", Value.Str(w.title ?? ""))
             out.push(spanWith(w.title ?? "", marks, wattrs))
+        }
+        if t == "math_inline" {
+            // plan 036 T6: same attr-discriminator channel — text carries
+            // the source literal (the edit face shows it verbatim, D4 v1),
+            // the view side renders katex from the attr
+            var mattrs List<Attr> = []
+            mattrs = attrSet(mattrs, "math_inline", Value.Str(w.code ?? ""))
+            out.push(spanWith(w.code ?? "", marks, mattrs))
         }
     }
     return out

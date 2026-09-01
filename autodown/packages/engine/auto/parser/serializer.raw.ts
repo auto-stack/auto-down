@@ -42,6 +42,12 @@ export function spanMd(s: InlineSpan): string {
     if (Number(wiki.length) > 0) {
         t = "[[" + wiki + "]]";
     }
+    
+
+    const math = attrGetStr(s.attrs, "math_inline", "");
+    if (Number(math.length) > 0) {
+        t = "$" + math + "$";
+    }
     if (hasMark(s.marks, Mark.Code)) {
         t = "`" + t + "`";
     }

@@ -347,6 +347,10 @@ describe('dialect roundtrip conservation table (plan 030 T5)', () => {
     ['wikilink anchor', '见 [[页#块]] 引用\n'],
     ['wikilink escape', "字面 [[[不是]]]\n"],
     ['wikilink unclosed', '看 [[首页 无闭合\n'],
+    // plan 036 T6: inline math joins the table (valid span + a literal
+    // degradation form).
+    ['math inline', '数学 $e=mc^2$ 记号\n'],
+    ['math literal', '规则 $ x$ 字面\n'],
   ]
 
   it.each(cases)('%s: parse→serialize is byte-canonical and idempotent', (_name, src) => {

@@ -141,6 +141,10 @@ export function wikilinkNode(title: string): WNode {
     return new WNode("wikilink", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
 }
 
+export function mathInlineNode(code: string): WNode {
+    return new WNode("math_inline", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+}
+
 export function calloutNode(ctype: string, title: string, children: WNode[]): WNode {
     return new WNode("callout", null, null, ctype, null, null, children, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
 }
@@ -2077,8 +2081,12 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 }
                 let close = findStrFrom(line, "]]", i + 2);
                 if (close != -1) {
-                    let inner = line.slice(i + 2, close);
-                    if (findStr(inner, "|") == -1 && !hasChar(inner, 10) && inner.trim() != "") {
+                    
+
+
+
+                    let inner = line.slice(i + 2, close).trim();
+                    if (findStr(inner, "|") == -1 && !hasChar(inner, 10) && inner != "") {
                         if (buf != "") {
                             nodes.push(textNode(buf));
                             buf = "";
@@ -2111,6 +2119,43 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
                 }
                 i = lk.next;
                 continue;
+            }
+            buf += cs;
+            i += 1;
+            continue;
+        }
+        
+
+
+
+
+
+
+
+        if (cs == "$") {
+            let mclose = findStrFrom(line, "$", i + 1);
+            if (mclose != -1) {
+                let minner = line.slice(i + 1, mclose);
+                let innerLen: number = Number(minner.length);
+                let afterCode: number = 0;
+                if (mclose + 1 < lineLen) {
+                    afterCode = line.charCodeAt(mclose + 1);
+                }
+                
+
+
+                let digitAfter = afterCode >= 48 && afterCode <= 57;
+                let openOk = innerLen > 0 && minner.charCodeAt(0) != 32 && !hasChar(minner, 10);
+                let closeOk = innerLen > 0 && minner.charCodeAt(innerLen - 1) != 32 && !digitAfter;
+                if (openOk && closeOk) {
+                    if (buf != "") {
+                        nodes.push(textNode(buf));
+                        buf = "";
+                    }
+                    nodes.push(mathInlineNode(minner));
+                    i = mclose + 1;
+                    continue;
+                }
             }
             buf += cs;
             i += 1;
@@ -3014,6 +3059,15 @@ export function convertInlines(wnodes: WNode[], marks: Mark[]): InlineSpan[] {
             let wattrs: Attr[] = [];
             wattrs = attrSet(wattrs, "wikilink", Value.Str(w.title ?? ""));
             out.push(spanWith(w.title ?? "", marks, wattrs));
+        }
+        if (t == "math_inline") {
+            
+
+
+
+            let mattrs: Attr[] = [];
+            mattrs = attrSet(mattrs, "math_inline", Value.Str(w.code ?? ""));
+            out.push(spanWith(w.code ?? "", marks, mattrs));
         }
     }
     return out;

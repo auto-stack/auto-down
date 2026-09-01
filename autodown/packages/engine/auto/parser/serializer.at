@@ -91,6 +91,9 @@ pub fn spanMd(s InlineSpan) str {
     // it (e.g. Strong on `**[[x]]**`).
     let wiki = attrGetStr(s.attrs, "wikilink", "")
     if wiki.length.to(int) > 0 { t = "[[" + wiki + "]]" }
+    // inline math (plan 036 T6): same channel, `$src$` symmetric emission.
+    let math = attrGetStr(s.attrs, "math_inline", "")
+    if math.length.to(int) > 0 { t = "$" + math + "$" }
     if hasMark(s.marks, Mark.Code) { t = "`" + t + "`" }
     if hasMark(s.marks, Mark.Strong) { t = "**" + t + "**" }
     if hasMark(s.marks, Mark.Em) { t = "*" + t + "*" }

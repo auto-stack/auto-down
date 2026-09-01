@@ -41,6 +41,11 @@ pub fn spanMd(mut s: InlineSpan) -> String {
     if (wiki.chars().count() as i64) > 0 {
         t = format!("{}{}", format!("{}{}", "[[", wiki), "]]");
     }
+
+    let math = attrGetStr(s.attrs.clone(), "math_inline", "");
+    if (math.chars().count() as i64) > 0 {
+        t = format!("{}{}", format!("{}{}", "$", math), "$");
+    }
     if hasMark(s.marks.clone(), Mark::Code.clone()) {
         t = format!("{}{}", format!("{}{}", "`", t), "`");
     }

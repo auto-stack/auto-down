@@ -108,6 +108,10 @@ fn wikilinkNode(title: &str) -> WNode {
     return WNode { r#type: "wikilink".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: Some(title.to_string()), text: None, src: None, alt: None, checked: None };
 }
 
+fn mathInlineNode(code: &str) -> WNode {
+    return WNode { r#type: "math_inline".to_string(), content: None, level: None, language: None, code: Some(code.to_string()), loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: None, text: None, src: None, alt: None, checked: None };
+}
+
 fn calloutNode(ctype: &str, title: &str, children: Vec<WNode>) -> WNode {
     return WNode { r#type: "callout".to_string(), content: None, level: None, language: Some(ctype.to_string()), code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: Some(title.to_string()), text: None, src: None, alt: None, checked: None };
 }
@@ -1946,8 +1950,12 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                     continue;
                 }                let mut close = findStrFrom(line, "]]", i + 2);
                 if close != -1 {
-                    let mut inner = line.chars().take((close) as usize).skip((i + 2) as usize).collect::<String>();
-                    if findStr(inner.as_str(), "|") == -1 && !(hasChar(inner.as_str(), 10)) && inner.trim().to_string() != "" {
+                    
+
+
+
+                    let mut inner = line.chars().take((close) as usize).skip((i + 2) as usize).collect::<String>().trim().to_string();
+                    if findStr(inner.as_str(), "|") == -1 && !(hasChar(inner.as_str(), 10)) && inner != "" {
                         if buf != "" {
                             nodes.push(textNode(buf.as_str()));
                             buf = "".to_string();
@@ -1975,6 +1983,38 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
                 i = lk.next;
                 continue;
             }            buf += &cs;
+            i += 1;
+            continue;
+        }
+        
+
+
+
+
+
+
+        if cs == "$" {
+            let mut mclose = findStrFrom(line, "$", i + 1);
+            if mclose != -1 {
+                let mut minner = line.chars().take((mclose) as usize).skip((i + 1) as usize).collect::<String>();
+                let mut innerLen: i64 = (minner.chars().count() as i64);
+                let mut afterCode: i64 = 0;
+                if mclose + 1 < lineLen {
+                    afterCode = line.chars().nth((mclose + 1) as usize).unwrap_or('\0') as i64;
+                }                
+
+
+                let mut digitAfter = afterCode >= 48 && afterCode <= 57;
+                let mut openOk = innerLen > 0 && minner.chars().nth((0) as usize).unwrap_or('\0') as i64 != 32 && !(hasChar(minner.as_str(), 10));
+                let mut closeOk = innerLen > 0 && minner.chars().nth((innerLen - 1) as usize).unwrap_or('\0') as i64 != 32 && !(digitAfter);
+                if openOk && closeOk {
+                    if buf != "" {
+                        nodes.push(textNode(buf.as_str()));
+                        buf = "".to_string();
+                    }                    nodes.push(mathInlineNode(minner.as_str()));
+                    i = mclose + 1;
+                    continue;
+                }            }            buf += &cs;
             i += 1;
             continue;
         }
@@ -2814,6 +2854,15 @@ fn convertInlines(wnodes: Vec<WNode>, mut marks: Vec<Mark>) -> Vec<InlineSpan> {
             let mut wattrs: Vec<Attr> = vec![];
             wattrs = attrSet(wattrs.clone(), "wikilink", Value::Str(w.title.clone().unwrap_or("".to_string())));
             out.push(spanWith(w.title.clone().unwrap_or("".to_string()).as_str(), marks.clone(), wattrs.clone()));
+        }
+        if t == "math_inline" {
+            
+
+
+
+            let mut mattrs: Vec<Attr> = vec![];
+            mattrs = attrSet(mattrs.clone(), "math_inline", Value::Str(w.code.clone().unwrap_or("".to_string())));
+            out.push(spanWith(w.code.clone().unwrap_or("".to_string()).as_str(), marks.clone(), mattrs.clone()));
         }
     }
     return out;

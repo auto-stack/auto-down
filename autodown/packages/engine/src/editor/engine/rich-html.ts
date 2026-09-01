@@ -26,6 +26,22 @@ export function spansToHtml(spans: InlineSpan[]): string {
   let out = ''
   for (const s of spans) {
     let inner = escapeHtml(s.text)
+    // inline wikilink/math (plan 036 T6): the attr-carrying spans mount as
+    // atomic non-editable labels at the TEXT level (marks still wrap around
+    // them — the spansToHtml mirror of spanMd's text-level emission). The
+    // wikilink label is byte-aligned with the retired 020 decorator's DOM
+    // contract; math shows the source literal (D4 v1) carried by
+    // data-math-src for the blur walk.
+    const wiki = attrGetStr(s.attrs, 'wikilink', '')
+    if (wiki !== '') {
+      const hash = wiki.indexOf('#')
+      const title = (hash >= 0 ? wiki.slice(0, hash) : wiki).trim()
+      inner = `<span class="autodown-wikilink-label" data-wikilink-title="${escapeAttr(title)}" contenteditable="false">${escapeHtml(wiki)}</span>`
+    }
+    const math = attrGetStr(s.attrs, 'math_inline', '')
+    if (math !== '') {
+      inner = `<span class="autodown-math-inline" data-math-src="${escapeAttr(math)}" contenteditable="false">${escapeHtml(math)}</span>`
+    }
     if (hasMark(s.marks, Mark.Code)) inner = `<code>${inner}</code>`
     if (hasMark(s.marks, Mark.Strong)) inner = `<strong>${inner}</strong>`
     if (hasMark(s.marks, Mark.Em)) inner = `<em>${inner}</em>`
@@ -62,6 +78,16 @@ function markForTag(tag: string): Mark | null {
   return null
 }
 
+/** Flattened text of a rich-node subtree (nbsp-normalized like text runs). */
+function richTextOf(nodes: RichNode[] | undefined): string {
+  let out = ''
+  for (const n of nodes ?? []) {
+    if (n.text !== undefined) out += n.text.replace(/\u00A0/g, ' ')
+    else out += richTextOf(n.children)
+  }
+  return out
+}
+
 /** Walk a rich-node tree collecting (text, marks, attrs) runs; adjacent
  *  same-format runs merge (normalizeSpans). Structure-only elements (br)
  *  contribute nothing. */
@@ -74,6 +100,21 @@ export function richTreeToSpans(root: RichNode): InlineSpan[] {
       // that the parser later drops (plan 025 P2T1)
       const text = n.text.replace(/\u00A0/g, ' ')
       if (text !== '') out.push(new InlineSpan(text, marks, attrs))
+      return
+    }
+    // blur recycle of the atomic inline spans (plan 036 T6): the wikilink
+    // label and the math literal recover whole — the subtree text becomes
+    // the span text and the discriminator attr rides along; marks that
+    // wrapped the element (e.g. Strong) survive on the span.
+    const cls = n.attrs?.class ?? ''
+    if (cls.includes('autodown-wikilink-label')) {
+      const text = richTextOf(n.children)
+      if (text !== '') out.push(new InlineSpan(text, marks, [new Attr('wikilink', Value.Str(text))]))
+      return
+    }
+    if (cls.includes('autodown-math-inline')) {
+      const text = n.attrs?.['data-math-src'] ?? richTextOf(n.children)
+      if (text !== '') out.push(new InlineSpan(text, marks, [new Attr('math_inline', Value.Str(text))]))
       return
     }
     let m = marks
@@ -101,6 +142,12 @@ export function domRootToSpans(root: HTMLElement): InlineSpan[] {
     if (href != null) attrs.href = href
     const title = el.getAttribute?.('title')
     if (title != null) attrs.title = title
+    const cls = el.getAttribute?.('class')
+    if (cls != null) attrs.class = cls
+    const wikiTitle = el.getAttribute?.('data-wikilink-title')
+    if (wikiTitle != null) attrs['data-wikilink-title'] = wikiTitle
+    const mathSrc = el.getAttribute?.('data-math-src')
+    if (mathSrc != null) attrs['data-math-src'] = mathSrc
     return { tag: el.tagName ?? '', children: Array.from(n.childNodes).map(conv), attrs }
   }
   return richTreeToSpans(conv(root))

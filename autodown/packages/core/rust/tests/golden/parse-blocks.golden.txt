@@ -358,6 +358,16 @@ block block-0 Paragraph
   span  还有 [ []
   span 字面 [] {wikilink=Str(字面)}
   span ] 以及 [[未闭合 []
+=== math-inline final=false ===
+block block-0 Paragraph
+  span 行内  []
+  span a+b=c [] {math_inline=Str(a+b=c)}
+  span  与 $ bad $ 以及 $100$5 字面 []
+=== math-inline final=true ===
+block block-0 Paragraph
+  span 行内  []
+  span a+b=c [] {math_inline=Str(a+b=c)}
+  span  与 $ bad $ 以及 $100$5 字面 []
 === streaming-heading final=false ===
 block block-0 Heading
   attr level Int(2)

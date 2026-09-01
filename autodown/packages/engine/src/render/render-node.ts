@@ -15,6 +15,7 @@
 import { h, type VNode } from 'vue'
 import { resolvePanelRenderer, specForNode, type RevealBudget } from './panel-registry'
 import { openWikilink } from './wikilink-opener'
+import { renderKatexPreview } from './preview'
 // side effect only: StreamingTable registers its terminal panel on the
 // registry custom slot (plan 032 P2 — single table channel). It must be
 // pulled in OUTSIDE the panel-registry ↔ builtin-panels import cycle, and
@@ -110,6 +111,29 @@ function renderInlineNode(node: any, final: boolean | undefined, budget?: Reveal
       ])
     case 'hardbreak':
       return h('br')
+    case 'math_inline': {
+      // plan 036 T6: the 031 artifact contract's inline variant —
+      // renderKatexPreview at displayMode=false; success injects the katex
+      // html into the carrier span, failure degrades to the source literal
+      // with the error as the hover hint (math block panel idiom). Atomic
+      // under the streaming budget (the image precedent).
+      const src = node.code ?? ''
+      const res = renderKatexPreview(src, false)
+      if (res.error === '') {
+        return h('span', { class: 'autodown-math-inline', 'data-math-src': src }, [
+          h('span', { class: 'math-inline-render', innerHTML: res.html }),
+        ])
+      }
+      return h(
+        'span',
+        {
+          class: 'autodown-math-inline autodown-math-error',
+          'data-math-src': src,
+          title: res.error,
+        },
+        [src],
+      )
+    }
     case 'wikilink': {
       // plan 036 T5: the parser lifts `[[inner]]` into a wikilink node and
       // the renderer emits the frozen DOM contract the retired 020 decorator

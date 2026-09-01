@@ -22,10 +22,10 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.streaming-document` | 渲染根 | demo scroll-sync |
 | `.node-slot` / `.node-content` | 渲染块包裹 | 渲染契约（render.test.ts 在册） |
 | `[contenteditable]` | 编辑宿主（聚焦宿主为语义化标签——Heading→h1-h6、Paragraph→p、其余 div；class 与 data 面不变，plan 029） | jade e2e 02 |
-| `.callout-node[data-callout-type]` + `.autodown-callout*` 类链 | Callout 卡片（builtin 面板与编辑装配共用同一链，CSS 单通道，plan 030） | demo extension-blocks e2e |
-| `.autodown-details[data-open]` + `.autodown-details-*` | Details 卡片（node-view 预览与编辑装配同链，plan 030） | demo extension-blocks e2e |
-| `.autodown-attr-host` | 容器块 attr 就地无框编辑宿主（Callout title / Details summary；blur→setBlockAttrs 一步 undo，Enter/Esc=blur 提交，plan 030） | demo extension-blocks e2e |
-| `.task-item` > `.task-checkbox` | GFM 任务项（view/stream 态 disabled 只读；编辑装配态可点，点击翻转 checked attr，plan 030） | demo extension-blocks e2e |
+| `.callout-node[data-callout-type]` + `.autodown-callout*` 类链 | Callout 卡片（builtin 面板与编辑装配共用同一链，CSS 单通道，plan 030）；**plan 035 起为 CalloutBlockWidget 的 view/stream/edit 三模式**（面板走 block-widget-panels custom 槽，edit 模式标题换 `.autodown-attr-host` 宿主 + readonly 横幅；"edit==view CSS 单通道"从人盯约定变同源事实） | demo extension-blocks e2e |
+| `.autodown-details[data-open]` + `.autodown-details-*` | Details 卡片（node-view 预览与编辑装配同链，plan 030）；**plan 035 起为 DetailsBlockWidget 的三模式**（DetailsNodeView 退役，marker 翻转动词两 mode 均活——经 setBlockAttrs 单步 undo） | demo extension-blocks e2e |
+| `.autodown-attr-host` | 容器块 attr 就地无框编辑宿主（Callout title / Details summary；blur→setBlockAttrs 一步 undo，Enter/Esc=blur 提交，plan 030）；**plan 035 起 `.at` 单源**（`auto/editor/attr_host.at`，挂载模型值快照/value prop、version 非聚焦同步，语义逐条不变；由两容器 widget 内嵌） | demo extension-blocks e2e |
+| `.task-item` > `.task-checkbox` | GFM 任务项（view/stream 态 disabled 只读、aria-label "task checkbox"；编辑装配态可点 aria-label "toggle task"，点击翻转 checked attr 单步 undo，plan 030）；**plan 035 起为 ListBlockWidget 的 mode 区分**（view 面板走 custom 槽，无 start 属性；edit 面有序列表带 start） | demo extension-blocks e2e |
 | `.autodown-math-editor` + `.autodown-math-preview` / `.autodown-math-error` / `.math-editor-textarea` | MathBlock 专用编辑面：源码 textarea + 同步 katex 实时预览同屏（blur 整段一步 undo 提交，非法源错误横幅，plan 031）；**plan 033 起为 MathBlockWidget 的 edit 模式**（view/stream 模式走 `.autodown-math-block` + `.math-block-source` 节点视图链——一 widget 三态同 chrome） | demo extension-blocks e2e |
 | `.autodown-mermaid-editor` + `.autodown-mermaid-preview` / `.autodown-mermaid-error` / `.mermaid-editor-loading` / `.mermaid-editor-textarea` | Mermaid 专用编辑面：300ms debounce 异步预览三态 loading/svg/error（plan 031，替换 030 的 fenceEditSlot 复用）；**plan 033 起为 MermaidBlockWidget 的 edit 模式**（view/stream 走 `.autodown-mermaid-block` + `.mermaid-source` 链） | demo extension-blocks e2e |
 
@@ -130,6 +130,32 @@ text_editor 后端照此实现 RichTextHost + 控制器协议）。
   Ctrl+B/I/K mark 快捷键（DOM Selection 依赖留桥，跨平台选区模型 =
   路线图行内层）；粘贴纯文本/markdown 双通道；blur 先 flush 纯文本 diff
   再 onRichBlur 富回写。单测面：`rich-text-host-ext.test.ts` 28 例。
+
+## 8. BlockChildren 平台面（plan 035 定型——VM 后端实现基准）
+
+容器组合原语：子块递归挂载孔（`src/editor/components/BlockChildren.ts`
+手写平台件，.at 经 `ext/container_ext.ts` 内嵌——`use { component }`
+idiom，NodeViewWrapper 同型第二例）。
+
+- **props**：`children_slot`（`() => VNode[]` 闭包，controller-prop 宽
+  类型 idiom——装配层构造，widget 模板只持 chrome）。
+- **闭包形状**：编辑装配 = `childrenOf(node, ctx) = () => node.children
+  .map(ch => childSlot(ch, ctx))`（childSlot/assembleNode 递归不动）；面
+  板/view = `renderEmbedded(children, final, budget)` 的求值闭包（经
+  panelOfContainer/items 扁平化构造）。
+- **epoch 语义**：闭包捕获 AssemblyCtx（焦点路径/宿主注册表/计数器），
+  epoch/version 驱动的重挂经闭包产物 vnode 的 key 天然贯通（029 机制零
+  改动；`src/render/__tests__/block-children.test.ts` 五例钉死：闭包逐渲
+  染求值/裸 fragment/epoch 键重挂/teardown 一次性卸载）。
+- **渲染语义**：裸 fragment（无自有包裹元素）——子块列表直接落在容器
+  chrome 内；widget 端 edit 面包一层 `.markdown-renderer`（沿
+  expandedElement 旧形），view 面不包。
+- **VM 映射**：children 孔 = **原生递归装配入口**——VM 后端的容器渲染
+  直接递归装配子块，无需等价闭包机制（闭包是 Vue 装配层的实现细节，
+  孔契约只有"子块列表挂到 chrome 内这一点"）。
+- **配套：面板体装饰器窗**（`panel-registry.ts` §plan 035）：闭包孔体对
+  外层 decorateWikilinks 不透明——装饰器在 renderNodes 窗口内注册、容器
+  面板适配器构造期捕获/求值期应用（renderEmbedded 单 vnode 归一为数组）。
 
 ## 核验责任
 

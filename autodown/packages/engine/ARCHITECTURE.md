@@ -124,19 +124,24 @@
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 15 个部署物（plan 034 起：14 → 15，17 widget 源）：`menus/{SlashMenu,
+- 19 个部署物（plan 035 起：15 → 19，21 widget 源）：`menus/{SlashMenu,
   BubbleMenu,TableMenu,CodeBlockMenu}.vue`、`components/{CodeLanguageIcon,
   TableEditorBlock,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget,
-  RichTextHost}.vue`、`node-views/*.vue`（5：Details/WikiLink/Query/
-  BlockEmbed/MathInline）——gen 管线（暂存工程 `auto build --gen-only
+  RichTextHost,AttrHost,CalloutBlockWidget,DetailsBlockWidget,
+  BlockquoteBlockWidget,ListBlockWidget}.vue`、`node-views/*.vue`（4：
+  WikiLink/Query/BlockEmbed/MathInline——DetailsNodeView 随 plan 035 并入
+  DetailsBlockWidget 退役）——gen 管线（暂存工程 `auto build --gen-only
   --lenient` → 收割 → E1 import 后修 → 部署），两连跑逐字节确定。
-- 12 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
+- 14 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
   部署（引擎接口，零 Tiptap；plan 033 起三族桥 code_block_widget_ext /
   math_block_widget_ext / mermaid_block_widget_ext 替换 code_editor_
   block_ext / math_edit_ext / mermaid_edit_ext——家族读取器
   nodeText/ctxReadonly/codeController 等以 code_block_widget_ext 为正典家，
   其余桥 re-export；plan 034 增 rich_text_host_ext——文本叶子宿主的全部
-  平台接线，含 liveHosts 重挂载存活守卫）。
+  平台接线，含 liveHosts 重挂载存活守卫；plan 035 增 attr_host_ext（单行
+  attr 宿主：挂载/blur 提交/version 同步）与 container_ext（容器四族共享：
+  BlockChildren 孔与 AttrHost 件再输出 + 容器 flat 读取 + open/checked 翻
+  转动词））。
 - build guard：`scripts/assert-editor-gen.mjs`——生成头注 ↔ .at 源存在性、
   部署清单精确性（增删均须显式改 guard 清单）、ext 桥同步，三项断言。
 
@@ -176,8 +181,17 @@
   （happy-dom computed-style，三 kind × 三 mode 容器盒模型/共享件类链/
   view≡stream 全链逐项相等；edit 白名单——textarea/caret/横幅/stack
   分隔——冻结在文件头注）。
-- 推广边界（待后续计划）：Table 合流依赖 032 归一终态；Callout/Details/
-  Query/Embed 依赖递归组合原语；~~文本叶子走 RichTextHost 计划~~——
+- 推广边界（待后续计划）：Table 合流依赖 032 归一终态；Query/Embed 依赖
+  数据装载（DEBTS 026①）；~~Callout/Details/Blockquote/List 容器族~~——
+  **plan 035 已落地**：`BlockChildren` 孔（`components/BlockChildren.ts`，
+  子块递归挂载孔——children_slot 闭包持有 AssemblyCtx，epoch 重挂/宿主注册
+  表/焦点路径机制不动；.at 经 container_ext 内嵌，契约面
+  EDITOR-CONTRACT §8）+ 四族 widget（Callout/Details/Blockquote/
+  ListBlock 各一件三模式 .at，吸收 renderCalloutPanel/renderListPanel/
+  DetailsNodeView/expandedElement 四分支/AttrHost.vue；Callout/List 面板走
+  block-widget-panels custom 槽 panelOfContainer，Details 面板留
+  EngineEditor（marker 动词需 host 窗 engine）；容器闭包体的 wikilink 装饰
+  经 panel-registry §面板体装饰器窗）；~~文本叶子走 RichTextHost 计划~~——
   **plan 034 已落地**：`RichTextHost` = 文本叶子编辑宿主的 .at 单源
   （dyn tag h1-h6/p/div + 契约属性 + 九事件面直发，装配层扁平 props；
   接线/Selection/caret 数学归 ext 桥；EDITOR-CONTRACT §7 冻结 VM 面），

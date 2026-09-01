@@ -92,10 +92,10 @@ const widgets = readdirSync(here)
   .sort()
 // 14 plan-013-era widgets + code_editor_block.at (P1T7) and
 // table_editor_block.at (P1T8), both plan 023; math_edit_block.at and
-// mermaid_edit_block.at (plan 031 T1/T2); code_block_widget.at (plan 033 T2)
-// and math_block_widget.at (plan 033 T3).
-if (widgets.length !== 20) {
-  console.error(`expected 20 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// mermaid_edit_block.at (plan 031 T1/T2); code_block_widget.at (plan 033 T2),
+// math_block_widget.at (T3) and mermaid_block_widget.at (T4).
+if (widgets.length !== 21) {
+  console.error(`expected 21 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -186,6 +186,9 @@ const EXT_DEPLOY = [
   // plan 033 T3 — the math family widget's bridge (merges math_edit_ext +
   // the node-view artifact-recording render).
   'math_block_widget_ext.ts',
+  // plan 033 T4 — the mermaid family widget's bridge (merges
+  // mermaid_edit_ext + the node-view artifact-recording render).
+  'mermaid_block_widget_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
   'auto_down_editor_ext.ts',
@@ -232,6 +235,8 @@ const DEPLOY_COMPONENTS = {
   // plan 033 T3 — the math family widget (node view + 031 edit face in one
   // chrome).
   'MathBlockWidget.vue': 'components/MathBlockWidget.vue',
+  // plan 033 T4 — the mermaid family widget (same shape as math).
+  'MermaidBlockWidget.vue': 'components/MermaidBlockWidget.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).
 }

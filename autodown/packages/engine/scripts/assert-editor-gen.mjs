@@ -10,7 +10,7 @@
 //   2. the deployed chrome set is EXACTLY the expected list below (drift in
 //      either direction — a hand-deleted menu, a newly generated product —
 //      fails loudly and forces a conscious list update);
-//   3. each auto/editor/ext/*.ts that deploys (all seven bridges) exists at
+//   3. each auto/editor/ext/*.ts that deploys (all twelve bridges) exists at
 //      src/editor/ext/<name>.ts and is byte-identical (the bridges are
 //      verbatim deploys — regenerate with `pnpm gen:editor` on drift).
 //
@@ -66,6 +66,9 @@ const EXPECTED = [
   'components/CodeBlockWidget.vue',
   'components/MathBlockWidget.vue',
   'components/MermaidBlockWidget.vue',
+  // plan 034 T3/T5 — the text-leaf editing host (replaces the hand-written
+  // BlockHost.vue; deployed set 14 → 15).
+  'components/RichTextHost.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',

@@ -108,31 +108,35 @@
 - 引擎内核 `src/editor/engine/`：editor-engine / commands / composition /
   host-controller / input-rules / text-diff / tiptap-adapter /
   node-view-host（plan 026 挂载宿主协议桥）。
-- 装配壳 `components/EngineEditor.vue` + `components/BlockHost.vue`：
-  IME/composition 平台逻辑密集（BlockHost 的 `contenteditable` +
-  compositionstart/update/end 接线、光标偏移读取、CompositionSession 协议）
-  ——widget DSL 无 contenteditable 属性与 composition 事件面（plan 013
-  widget 集从未有 contenteditable widget，旧 EditorContent 恒为 Tiptap
-  re-export）；EngineEditor 另承担 expose 契约（getBlockMap/handleSave）、
-  宿主注册表、重绘版本号与预览 wikilink 装饰接线（plan 020）。
+- 装配壳 `components/EngineEditor.vue`（021 裁定维持手写）：expose 契约
+  （getBlockMap/handleSave）、宿主注册表、重绘版本号与预览 wikilink
+  装饰接线（plan 020）。~~+ BlockHost.vue~~——**plan 034 部分推翻 021
+  裁定**：文本叶子宿主 BlockHost 的 chrome 已 .at 化（见下
+  RichTextHost），原"widget DSL 无 contenteditable 属性与 composition
+  事件面"两项事实依据均被证伪（contenteditable 布尔属性先证于
+  table_editor_block.at 单元格；composition 三事件直发证于 034 T1 探针
+  ——build + vue-tsc 双过）；平台接线（挂载聚焦/nbsp 归一/键路由/粘贴/
+  composition 三委托/blur 回写/caret 数学）归 ext 桥
+  `rich_text_host_ext.ts`，Selection API 与跨平台选区模型的 DSL 化仍
+  留桥（行内层计划）。
 - `wikilink.ts`（预览装饰器）、`block-map.ts`、`slash-manifest.ts`、
   `menus/slashItem.ts`。
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 14 个部署物（plan 033 起：16 → 14——三族 widget 替换 CodeEditorBlock
-  + Math/MermaidEditBlock + 两 NodeView）：`menus/{SlashMenu,BubbleMenu,
-  TableMenu,CodeBlockMenu}.vue`、
-  `components/{CodeLanguageIcon,TableEditorBlock,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget}.vue`、
-  `node-views/*.vue`（5：Details/WikiLink/Query/BlockEmbed/MathInline）——
-  gen 管线（暂存工程 `auto build --gen-only --lenient` → 收割 → E1 import
-  后修 → 部署），两连跑逐字节确定。
-- 11 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
+- 15 个部署物（plan 034 起：14 → 15，17 widget 源）：`menus/{SlashMenu,
+  BubbleMenu,TableMenu,CodeBlockMenu}.vue`、`components/{CodeLanguageIcon,
+  TableEditorBlock,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget,
+  RichTextHost}.vue`、`node-views/*.vue`（5：Details/WikiLink/Query/
+  BlockEmbed/MathInline）——gen 管线（暂存工程 `auto build --gen-only
+  --lenient` → 收割 → E1 import 后修 → 部署），两连跑逐字节确定。
+- 12 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
   部署（引擎接口，零 Tiptap；plan 033 起三族桥 code_block_widget_ext /
   math_block_widget_ext / mermaid_block_widget_ext 替换 code_editor_
   block_ext / math_edit_ext / mermaid_edit_ext——家族读取器
   nodeText/ctxReadonly/codeController 等以 code_block_widget_ext 为正典家，
-  其余桥 re-export）。
+  其余桥 re-export；plan 034 增 rich_text_host_ext——文本叶子宿主的全部
+  平台接线，含 liveHosts 重挂载存活守卫）。
 - build guard：`scripts/assert-editor-gen.mjs`——生成头注 ↔ .at 源存在性、
   部署清单精确性（增删均须显式改 guard 清单）、ext 桥同步，三项断言。
 
@@ -173,7 +177,11 @@
   view≡stream 全链逐项相等；edit 白名单——textarea/caret/横幅/stack
   分隔——冻结在文件头注）。
 - 推广边界（待后续计划）：Table 合流依赖 032 归一终态；Callout/Details/
-  Query/Embed 依赖递归组合原语；文本叶子走 RichTextHost 计划。
+  Query/Embed 依赖递归组合原语；~~文本叶子走 RichTextHost 计划~~——
+  **plan 034 已落地**：`RichTextHost` = 文本叶子编辑宿主的 .at 单源
+  （dyn tag h1-h6/p/div + 契约属性 + 九事件面直发，装配层扁平 props；
+  接线/Selection/caret 数学归 ext 桥；EDITOR-CONTRACT §7 冻结 VM 面），
+  BlockHost.vue 退役删除。
 
 **在册不部署的源（dormant，guard 豁免）**
 

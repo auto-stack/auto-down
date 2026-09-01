@@ -1,9 +1,16 @@
 // Focus-path assembly (plan 025 P1T2) — deep selection primitives + the
 // recursive views assembly. Clicking into a list item / quote paragraph must
-// mount a BlockHost on the nested leaf while sibling subtrees keep their
+// mount a rich text host on the nested leaf while sibling subtrees keep their
 // preview rendering (clickable node-slots carrying data-block-id).
+//
+// plan 034: the host is the generated RichTextHost; its content injects on
+// MOUNT (mountHost writes $el.innerHTML), so the two tests that assert the
+// focused host's TEXT render client-side (happy-dom) — SSR output still
+// carries the full chrome contract, pinned by the remaining SSR tests.
 
-import { createSSRApp, h } from 'vue'
+// @vitest-environment happy-dom
+
+import { createApp, createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { parse_blocks } from '../../parser/markdown-parser'
@@ -20,6 +27,18 @@ function firstLeafOf(node: BlockNode): BlockNode {
 async function renderEditor(md: string): Promise<string> {
   const app = createSSRApp({ render: () => h(EngineEditor as any, { modelValue: md }) })
   return (await renderToString(app)).replace(/<!--.*?-->/g, '')
+}
+
+/** Client-side mount — the RichTextHost content lands via onMounted. */
+async function renderEditorClient(md: string): Promise<string> {
+  const wrap = document.createElement('div')
+  document.body.appendChild(wrap)
+  const app = createApp({ render: () => h(EngineEditor as any, { modelValue: md }) })
+  app.mount(wrap)
+  const html = wrap.innerHTML
+  app.unmount()
+  wrap.remove()
+  return html.replace(/<!--.*?-->/g, '')
 }
 
 describe('focus-path primitives', () => {
@@ -93,7 +112,7 @@ describe('focus-path SSR assembly', () => {
     const list = doc.children[0]
     const p1 = firstLeafOf(list.children[0])
     const p2 = firstLeafOf(list.children[1])
-    const html = await renderEditor(md)
+    const html = await renderEditorClient(md)
     // expanded container chrome: node-slot carrying the LIST id, then ul/li
     expect(html).toContain(`data-block-id="${list.id}"`)
     expect(html).toContain('list-node list-disc')
@@ -113,7 +132,7 @@ describe('focus-path SSR assembly', () => {
     const doc = parse_blocks(md, true)
     const quote = doc.children[0]
     const p1 = firstLeafOf(quote)
-    const html = await renderEditor(md)
+    const html = await renderEditorClient(md)
     expect(html).toContain(`data-block-id="${quote.id}"`)
     expect(html).toContain('blockquote')
     expect(html).toContain('autodown-block-host')

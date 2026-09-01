@@ -1,12 +1,19 @@
 // Builtin panel renderers (plan 017 Phase 2). One entry per builtin panel
-// kind from auto/palette_map.at (Text, H1..H6, Separator, Codeblock, Quote,
-// List) — plus, since plan 030, Callout. The DOM shape is byte-identical to
-// the pre-registry render-node switch — the render.test.ts DOM contract and
+// kind from auto/palette_map.at (Text, H1..H6, Separator, Quote, List) —
+// plus, since plan 030, Callout. The DOM shape is byte-identical to the
+// pre-registry render-node switch — the render.test.ts DOM contract and
 // the downstream chrome (scroll sync, code-header injection, CSS) pin it.
 //
 // Table is NOT here anymore (plan 032 P2): the single table implementation
 // (progressive + terminal faces) lives in StreamingTable.vue and mounts on
 // the registry's custom slot — see render-node's side-effect import.
+//
+// Codeblock is NOT here anymore either (plan 033 T5): the fence family
+// widget (auto/editor/code_block_widget.at — view/stream/edit one chrome)
+// owns the panel face now, registered on the custom slot by
+// block-widget-panels.ts, same channel Table pioneered. The retired
+// renderCodeblockPanel's DOM contract is absorbed byte-for-byte (the
+// widget's ext bridge viewCodeInner + the 032 loading family).
 //
 // Extension panel kinds (Details/MathBlock/Mermaid/Query/Embed) deliberately
 // have no entry here: consumers register them (see panel-registry.ts and
@@ -17,23 +24,6 @@
 
 import { h, type VNode } from 'vue'
 import type { PanelRenderCtx, PanelRenderer } from './panel-registry'
-import { isCapabilityEnabled } from './optional-capabilities'
-import { getHighlightImpl } from './highlight'
-import { lowlightHighlighter } from './highlight-lowlight'
-
-// VNode-level syntax highlighting for the codeblock panel, through the
-// platform highlight bridge (highlight.ts): the bound implementation wins
-// (a VM backend's bridge), the lowlight default resolves on the Vue layer,
-// and `undefined` degrades to plain text inside the same structure. Doing
-// this at the VNode level (as an innerHTML prop Vue owns) — instead of a DOM
-// post-process — is what makes it survive streaming re-renders: a
-// post-process's spans get wiped by every Vue patch while its
-// data-highlighted guard survives, permanently disabling re-highlighting
-// (the stream-demo "plain code" bug).
-function resolveHighlighter() {
-  if (!isCapabilityEnabled('highlight')) return null
-  return getHighlightImpl() ?? lowlightHighlighter
-}
 
 function renderTextPanel({ node, final, budget, renderInlineChildren }: PanelRenderCtx): VNode {
   if (node.type === 'text') {
@@ -119,56 +109,6 @@ function renderCalloutPanel({ node, final, budget, renderEmbedded }: PanelRender
   ])
 }
 
-/**
- * Codeblock chrome: header (language label + actions area) over a
- * pre[data-language] > code pair. The pre attributes (data-language) are the
- * contract for downstream highlighters and header injection.
- * Open-state skeleton (plan 032 P3): while the fence is open the parser marks
- * the node loading (codeNode(language, code, !final)) — the container then
- * carries the .autodown-block-placeholder.is-loading family (same family as
- * the scroll-sync editing placeholder; mermaid open fences ride the same
- * shape) and aria-busy flips true. Closed fences render byte-identical to
- * the pre-032 contract (class string and aria-busy both unchanged).
- * Optional capability degradation (plan 008 goal 3): with the `highlight`
- * capability off (or an unknown language) the code renders as plain text
- * inside the same structure.
- */
-function renderCodeblockPanel({ node }: PanelRenderCtx): VNode {
-  const language = node.language ? String(node.language) : ''
-  const code = node.code ?? ''
-  const loading = node.loading === true
-  const highlighter = resolveHighlighter()
-  const highlightedHtml = highlighter?.(code, language)
-  return h('div', {
-    class: loading
-      ? 'code-block-container rounded-lg border autodown-block-placeholder is-loading'
-      : 'code-block-container rounded-lg border',
-  }, [
-    h('div', { class: 'code-block-header flex justify-between items-center' }, [
-      h('div', { class: 'code-header-main' }, [
-        h('div', { class: 'code-header-copy' }, [
-          h('div', { class: 'code-header-title' }, language),
-        ]),
-      ]),
-      h('div', { class: 'flex items-center gap-0.5' }),
-    ]),
-    h(
-      'pre',
-      {
-        class: `language-${language || 'text'} code-pre-fallback is-wrap`,
-        'data-language': language,
-        'aria-busy': loading ? 'true' : 'false',
-        tabindex: '0',
-      },
-      [
-        highlightedHtml
-          ? h('code', { translate: 'no', innerHTML: highlightedHtml, 'data-highlighted': language })
-          : h('code', { translate: 'no' }, code),
-      ]
-    ),
-  ])
-}
-
 const headingRenderer: PanelRenderer = renderHeadingPanel
 
 export const builtinPanelRenderers: Record<string, PanelRenderer> = {
@@ -180,7 +120,6 @@ export const builtinPanelRenderers: Record<string, PanelRenderer> = {
   H5: headingRenderer,
   H6: headingRenderer,
   Separator: renderSeparatorPanel,
-  Codeblock: renderCodeblockPanel,
   Quote: renderQuotePanel,
   List: renderListPanel,
   Callout: renderCalloutPanel,

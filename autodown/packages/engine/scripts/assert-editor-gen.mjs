@@ -58,21 +58,18 @@ const EXPECTED = [
   'menus/TableMenu.vue',
   'menus/CodeBlockMenu.vue',
   'components/CodeLanguageIcon.vue',
-  // plan 023 P1T7 — the code block's typed editing face (live: mounted by
-  // EngineEditor's BlockComponent edit-slot registration).
-  'components/CodeEditorBlock.vue',
   // plan 023 P1T8 — the table's typed editing face.
   'components/TableEditorBlock.vue',
-  // plan 031 T4 — the math/mermaid typed editing faces (source + live
-  // preview; the ext bridges land via the section-3 scan below).
-  'components/MathEditBlock.vue',
-  'components/MermaidEditBlock.vue',
+  // plan 033 T2-T4 — the pilot families' three-mode widgets (view/stream/
+  // edit one chrome; replaced CodeEditorBlock + Math/MermaidEditBlock +
+  // the block Math/Mermaid node views — deployed set 16 → 14).
+  'components/CodeBlockWidget.vue',
+  'components/MathBlockWidget.vue',
+  'components/MermaidBlockWidget.vue',
   'node-views/DetailsNodeView.vue',
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',
   'node-views/BlockEmbedNodeView.vue',
-  'node-views/MermaidNodeView.vue',
-  'node-views/MathBlockNodeView.vue',
   'node-views/MathInlineNodeView.vue',
 ]
 

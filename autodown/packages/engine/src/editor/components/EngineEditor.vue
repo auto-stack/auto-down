@@ -23,97 +23,47 @@
 </template>
 
 <script lang="ts">
-// plan 023 P1T5/P1T7: the typed editing faces, registered at the assembly so
-// every EngineEditor consumer gets them. This lives in a PLAIN script block
-// because <script setup> statements compile into setup() — they would only
-// run at component creation, not at import. Keys are BlockType enum names
-// ('Fence' IS the code block kind); the slots carry no view, so final-state
-// previews stay on the builtin panel pipeline. `h` comes from the setup
-// script's vue import — dual-script imports share one module scope.
+// plan 033 T6: the pilot kinds' three-mode faces are the family widgets —
+// ONE .at widget per kind serves view/stream (panel custom slot, panelOf)
+// and edit (BlockComponent slots, registerBlockWidget), so the chrome has
+// a single source and cross-mode style drift is structurally impossible.
+// The edit-slot wrappers the widgets absorbed (fenceEditSlot's
+// .autodown-codeblock-node + badge host chrome, math/mermaid's
+// controller-construction shims) live INSIDE the widgets now. This lives
+// in a PLAIN script block because <script setup> statements compile into
+// setup() — they would only run at component creation, not at import.
+// Keys are BlockType enum names ('Fence' IS the code block kind).
 import { Value, attrGetStr, blockText, span } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
 import { registerBlockComponent } from '../../render/block-component'
-import type { BlockEditCtx } from '../../render/block-component'
+import { registerBlockWidget, panelOf } from '../../render/block-widget'
 import { registerPanel } from '../../render/panel-registry'
 import { CALLOUT_TYPES } from '../../render/builtin-panels'
 import { blockOfWNode } from '../../render/block-wnode'
-import { CodeEditorController } from '../engine/code-editor-controller'
 import { TableEditorController } from '../engine/table-editor-controller'
 import { currentNodeViewHost, nodeViewProps, mountNodeView } from '../engine/node-view-host'
-import CodeEditorBlock from './CodeEditorBlock.vue'
 import TableEditorBlock from './TableEditorBlock.vue'
-import MathEditBlock from './MathEditBlock.vue'
-import MermaidEditBlock from './MermaidEditBlock.vue'
+import CodeBlockWidget from './CodeBlockWidget.vue'
+import MathBlockWidget from './MathBlockWidget.vue'
+import MermaidBlockWidget from './MermaidBlockWidget.vue'
 import DetailsNodeView from '../node-views/DetailsNodeView.vue'
-import MathBlockNodeView from '../node-views/MathBlockNodeView.vue'
-import MermaidNodeView from '../node-views/MermaidNodeView.vue'
 import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
 import BlockEmbedNodeView from '../node-views/BlockEmbedNodeView.vue'
 
-// CodeEditorBlock is the generated widget (.at source): flat chrome props —
-// the headless controller + language/code are read out of the node/ctx here.
-// The .autodown-codeblock-node wrapper + language badge are the HOST side of
-// the CodeBlockMenu click contract (plan 026 P2T2): the generated menu looks
-// for [data-codeblock-language-badge] inside .autodown-codeblock-node /
-// pre[data-language]; the wrapper carries data-language so the menu reads the
-// current language off the DOM it lands on.
-function fenceEditSlot(node: BlockNode, ctx: BlockEditCtx) {
-  const language = attrGetStr(node.attrs, 'language', '')
-  return h('div', { class: 'autodown-codeblock-node', 'data-language': language }, [
-    h(
-      'button',
-      {
-        type: 'button',
-        class: 'autodown-codeblock-language-badge',
-        'data-codeblock-language-badge': '',
-        title: '切换语言',
-      },
-      language || 'text'
-    ),
-    h(CodeEditorBlock, {
-      controller: new CodeEditorController(ctx.engine, ctx.blockId),
-      blockId: ctx.blockId,
-      language,
-      code: blockText(node),
-      readonly: ctx.readonly,
-    }),
-  ])
-}
+// the three pilot families (plan 033): one widget, three modes — the
+// BlockComponent slots mount the widget with the right mode, and the panel
+// registrations below mount the SAME widget's view face for the preview
+// column / static render (CodeBlockMenu's host contract — badge +
+// data-language wrapper — rides the widget's edit mode).
+registerBlockWidget('Fence', CodeBlockWidget)
+registerBlockWidget('MathBlock', MathBlockWidget)
+registerBlockWidget('Mermaid', MermaidBlockWidget)
 
-registerBlockComponent('Fence', { edit: fenceEditSlot })
-
-// plan 031: the math/mermaid typed editing faces — source + live preview in
-// one chrome (the generated Math/MermaidEditBlock widgets). Math replaces
-// the generic BlockHost text fallback; mermaid replaces plan 030's
-// transitional fenceEditSlot reuse (D4 ruling: a preview state machine, not
-// a highlight overlay). Both commit through the shared CodeEditorController
-// — whole-text blur commit, one undo step; math/mermaid source lives in
-// inlines since plan 030, exactly the shape the controller writes.
-function mathEditSlot(node: BlockNode, ctx: BlockEditCtx) {
-  return h(MathEditBlock, {
-    controller: new CodeEditorController(ctx.engine, ctx.blockId),
-    blockId: ctx.blockId,
-    source: blockText(node),
-    readonly: ctx.readonly,
-  })
-}
-
-function mermaidEditSlot(node: BlockNode, ctx: BlockEditCtx) {
-  return h(MermaidEditBlock, {
-    controller: new CodeEditorController(ctx.engine, ctx.blockId),
-    blockId: ctx.blockId,
-    source: blockText(node),
-    readonly: ctx.readonly,
-  })
-}
-
-registerBlockComponent('MathBlock', { edit: mathEditSlot })
-registerBlockComponent('Mermaid', { edit: mermaidEditSlot })
 // TableEditorBlock is the generated widget (.at source, P1T8): flat chrome
 // data — the adapter flattens the table's BlockNode into plain cell objects
 // ({id, text, cls}) on every render; commands/cell-commit semantics stay on
 // the TableEditorController.
-function tableEditSlot(node: BlockNode, ctx: BlockEditCtx) {
+function tableEditSlot(node: BlockNode, ctx: any) {
   const cellData = (c: BlockNode) => ({
     id: c.id,
     text: blockText(c),
@@ -137,10 +87,12 @@ function alignClass(align: string): string {
 
 registerBlockComponent('Table', { edit: tableEditSlot })
 
-// Node-view preview panels (plan 026 P1T2): the generated NodeView widgets
-// mount through the 017 panel registry's custom slot — same registration
-// surface as the edit slots above, module scope. renderNodes/BlockType come
-// from the setup script's imports (dual-script hoisting — the `h` rule).
+// Node-view preview panels: the pilot kinds mount their family widgets'
+// view face through the 017 panel registry's custom slot (plan 033 — same
+// registration surface as the edit slots above, module scope);
+// Details/Query/Embed keep the generated NodeView widgets + the
+// tiptap-shaped props bridge. renderNodes/BlockType come from the setup
+// script's imports (dual-script hoisting — the `h` rule).
 import type { PanelRenderCtx } from '../../render/panel-registry'
 
 /** Wrap a generated NodeView widget as a PanelRenderer: the WNode's model
@@ -152,8 +104,8 @@ function nodeViewPanel(view: unknown, kindValue: BlockType, childrenOf: (node: P
     const model =
       blockOfWNode(ctx.node) ??
       // static render (right panes, no host): parse-side WNodes carry no
-      // back-link — fabricate the model from the WNode slots so math/mermaid
-      // source and query/embed attrs reach the widget (plan 030)
+      // back-link — fabricate the model from the WNode slots so query/embed
+      // attrs reach the widget (plan 030)
       wnodeFallbackModel(kindValue, ctx.node)
     const props = nodeViewProps(model, host?.engine, false, host?.adapter)
     return mountNodeView(view, props, () => childrenOf(ctx.node))
@@ -187,11 +139,11 @@ registerPanel(
   nodeViewPanel(DetailsNodeView, BlockType.Details, (node) => renderNodes((node as any).children ?? [], true)),
 )
 
-// the four render-type widgets (plan 026 P1T3): leaf source/attr blocks, no
-// embedded body — the NodeViewContent hole (math/mermaid source pre) stays
-// empty; attrs (query/src) drive the chrome through the same props bridge
-registerPanel('MathBlock', nodeViewPanel(MathBlockNodeView, BlockType.MathBlock, () => []))
-registerPanel('Mermaid', nodeViewPanel(MermaidNodeView, BlockType.Mermaid, () => []))
+// the two render-type pilot families: the widget's view face IS the panel
+// (panelOf resolves the model back-link / fabricates one — the same shape
+// nodeViewPanel's fallback built)
+registerPanel('MathBlock', panelOf(MathBlockWidget))
+registerPanel('Mermaid', panelOf(MermaidBlockWidget))
 registerPanel('Query', nodeViewPanel(QueryBlockNodeView, BlockType.QueryBlock, () => []))
 registerPanel('Embed', nodeViewPanel(BlockEmbedNodeView, BlockType.BlockEmbed, () => []))
 

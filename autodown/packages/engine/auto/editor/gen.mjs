@@ -1,9 +1,10 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (14 widget sources, plan 013 era, restored from
-//                            git history c7364cd^ — see README.md)
-//   auto/editor/ext/*.ts    (7 hand-written TS extension bridges)
+//   auto/editor/*.at        (16 widget sources: 12 plan-013-era views/menus
+//                            + table_editor_block + the three family
+//                            widgets of plan 033 — see README.md)
+//   auto/editor/ext/*.ts    (11 hand-written TS extension bridges)
 //
 // Usage:  pnpm gen:editor        (from packages/engine)
 //         node auto/editor/gen.mjs
@@ -90,12 +91,13 @@ if (!autoExe) {
 const widgets = readdirSync(here)
   .filter((f) => f.endsWith('.at') && f !== 'pac.at')
   .sort()
-// 14 plan-013-era widgets + code_editor_block.at (P1T7) and
-// table_editor_block.at (P1T8), both plan 023; math_edit_block.at and
-// mermaid_edit_block.at (plan 031 T1/T2); code_block_widget.at (plan 033 T2),
-// math_block_widget.at (T3) and mermaid_block_widget.at (T4).
-if (widgets.length !== 21) {
-  console.error(`expected 21 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+// 13 plan-013-era widgets + table_editor_block.at (plan 023 P1T8); the
+// three family widgets (plan 033 T2-T4) replaced code_editor_block.at,
+// math_edit_block.at / mermaid_edit_block.at (plan 031) and the block
+// math/mermaid node views (plan 013 era) — one widget per pilot kind,
+// three modes each.
+if (widgets.length !== 16) {
+  console.error(`expected 16 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -173,21 +175,14 @@ const EXT_DEPLOY = [
   'code_block_menu_ext.ts',
   'bubble_menu_ext.ts',
   'node_view_ext.ts',
-  // plan 023 P1T7/P1T8 — the editing faces' DOM helpers.
-  'code_editor_block_ext.ts',
+  // plan 023 P1T8 — the table editing face's DOM helpers.
   'table_editor_block_ext.ts',
-  // plan 031 T3 — the math/mermaid edit faces' bridges (preview re-exports,
-  // the debounce scheduler, textarea rows/focus helpers).
-  'math_edit_ext.ts',
-  'mermaid_edit_ext.ts',
-  // plan 033 T2 — the fence family widget's bridge (view highlight parity
-  // + the absorbed code_editor_block helpers + family prop readers).
+  // plan 033 T2-T4 — the pilot families' widget bridges (view-highlight
+  // parity + absorbed edit helpers + node-view render bridges with the
+  // artifact final-put; replaced code_editor_block_ext / math_edit_ext /
+  // mermaid_edit_ext).
   'code_block_widget_ext.ts',
-  // plan 033 T3 — the math family widget's bridge (merges math_edit_ext +
-  // the node-view artifact-recording render).
   'math_block_widget_ext.ts',
-  // plan 033 T4 — the mermaid family widget's bridge (merges
-  // mermaid_edit_ext + the node-view artifact-recording render).
   'mermaid_block_widget_ext.ts',
   // Phase 3: its ../menus/*.vue re-exports resolve now that the menu SFCs
   // below deploy alongside it.
@@ -215,27 +210,14 @@ const DEPLOY_COMPONENTS = {
   'WikiLinkNodeView.vue': 'node-views/WikiLinkNodeView.vue',
   'QueryBlockNodeView.vue': 'node-views/QueryBlockNodeView.vue',
   'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',
-  'MermaidNodeView.vue': 'node-views/MermaidNodeView.vue',
-  'MathBlockNodeView.vue': 'node-views/MathBlockNodeView.vue',
   'MathInlineNodeView.vue': 'node-views/MathInlineNodeView.vue',
-  // plan 023 P1T7 — the code block's typed editing face (replaces the
-  // hand-written prototype at the same path; tests point at the generated
-  // product). Deployed LIVE: EngineEditor's plain-script registration mounts
-  // it through the BlockComponent edit slot.
-  'CodeEditorBlock.vue': 'components/CodeEditorBlock.vue',
-  // plan 023 P1T8 — the table's typed editing face (same path as P1T7).
+  // plan 023 P1T8 — the table's typed editing face.
   'TableEditorBlock.vue': 'components/TableEditorBlock.vue',
-  // plan 031 T4 — the math/mermaid typed editing faces (source + live
-  // preview in one chrome; mounted by EngineEditor's edit slots).
-  'MathEditBlock.vue': 'components/MathEditBlock.vue',
-  'MermaidEditBlock.vue': 'components/MermaidEditBlock.vue',
-  // plan 033 T2 — the fence family widget (view/stream/edit one chrome;
-  // registered via registerBlockWidget + panelOf by EngineEditor).
+  // plan 033 T2-T4 — the pilot families' three-mode widgets (view/stream/
+  // edit one chrome; replaced CodeEditorBlock + Math/MermaidEditBlock +
+  // the block Math/Mermaid node views).
   'CodeBlockWidget.vue': 'components/CodeBlockWidget.vue',
-  // plan 033 T3 — the math family widget (node view + 031 edit face in one
-  // chrome).
   'MathBlockWidget.vue': 'components/MathBlockWidget.vue',
-  // plan 033 T4 — the mermaid family widget (same shape as math).
   'MermaidBlockWidget.vue': 'components/MermaidBlockWidget.vue',
   // Phase 4 — 'AutoDownEditor.vue': 'core/AutoDownEditor.vue' (assembly
   // evaluation decides).

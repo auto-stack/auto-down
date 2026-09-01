@@ -15,8 +15,9 @@ import {
   type ArtifactStore,
 } from '../optional-capabilities'
 import { artifactHash } from '../artifact-key'
-// the deployed node-view bridge (editor side of the final-render put)
-import { renderMathBlockPreview } from '../../editor/ext/node_view_ext'
+// the deployed family-widget bridge (editor side of the final-render put —
+// the math render bridge moved from node_view_ext in plan 033 T3)
+import { renderMathBlockPreview } from '../../editor/ext/math_block_widget_ext'
 
 function spyStore(): ArtifactStore & { puts: Array<[string, RenderedArtifact]> } {
   const puts: Array<[string, RenderedArtifact]> = []

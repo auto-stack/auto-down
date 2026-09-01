@@ -1,8 +1,8 @@
-// node_view_ext.ts — Hand-written TS extension shared by the seven Auto
+// node_view_ext.ts — Hand-written TS extension shared by the Auto
 // node-view widgets (../details_node_view.at, ../wiki_link_node_view.at,
 // ../query_block_node_view.at, ../block_embed_node_view.at,
-// ../mermaid_node_view.at, ../math_block_node_view.at,
-// ../math_inline_node_view.at). The gen pipeline copies this file into the
+// ../math_inline_node_view.at — the block math/mermaid views joined the
+// family widgets in plan 033). The gen pipeline copies this file into the
 // transient gen project (never type-checked there) and deploys it verbatim
 // to src/editor/ext/node_view_ext.ts; the generated SFCs import it from
 // ../ext/node_view_ext (gen.mjs E1 rewrite).
@@ -38,16 +38,16 @@
 //    are typed `ref<HTMLElement | null>` and the language has no casts, so
 //    `.select()` (HTMLInputElement-only) fails vue-tsc on the generated
 //    SFC.
-// 6. renderKatexPreview / renderMermaidPreview / renderMathBlockPreview —
-//    the render-type node views' render bridges (single implementation in
-//    the render layer, src/render/preview.ts). The npm library calls +
-//    try/catch error paths genuinely cannot live in the DSL (no npm
-//    imports, no exceptions). v-html IS expressible (the `html:` prop),
-//    so no setInnerHTML shim is needed. Since plan 031 T8 the BLOCK
-//    bridges (renderMathBlockPreview, renderMermaidPreview) additionally
-//    record successful final renders into the host artifact store via
-//    recordArtifact; the plain renderKatexPreview re-export stays
-//    put-free for MathInline (inline math is not a block artifact).
+// 6. renderKatexPreview — the render-type node views' render bridge
+//    (single implementation in the render layer, src/render/preview.ts).
+//    The npm library calls + try/catch error paths genuinely cannot live
+//    in the DSL (no npm imports, no exceptions). v-html IS expressible (the
+//    `html:` prop), so no setInnerHTML shim is needed. Since plan 033 T3/T4
+//    the BLOCK bridges (renderMathBlockPreview / renderMermaidPreview with
+//    the artifact final-put) live in the family widget bridges
+//    (math_block_widget_ext.ts / mermaid_block_widget_ext.ts); this bridge
+//    keeps the plain MathInline re-export — inline math is not a block
+//    artifact (plan 031 不做 MathInline).
 //
 // 7. errorMessage — the catch-branch `err.message || String(err)`
 //    extraction; TS types the catch param `unknown` and the DSL has no
@@ -55,33 +55,9 @@
 
 import { defineComponent, h, inject, type VNode } from 'vue'
 import { Pencil } from 'lucide-vue-next'
-import { recordArtifact, renderKatexPreview, renderMermaidPreview as renderMermaidPreviewImpl } from '../../render/preview'
+import { renderKatexPreview } from '../../render/preview'
 
 export { renderKatexPreview }
-
-// MathBlock/Mermaid FINAL render (plan 031 T8): the node-view render
-// success branches land their artifacts in the host-injected store (the
-// put choke point is recordArtifact in src/render/preview.ts — a no-op
-// without a store, so unregistered hosts keep the exact pre-031 behavior).
-// MathInline keeps the plain renderKatexPreview re-export above — inline
-// math is not a block artifact (plan 031 不做 MathInline).
-export function renderMathBlockPreview(source: string): { html: string; error: string } {
-  const res = renderKatexPreview(source, true)
-  if (res.error === '') {
-    recordArtifact('MathBlock', source, { kind: 'html', body: res.html, error: '' })
-  }
-  return res
-}
-
-// Same call shape as the render-layer bridge (mermaid_node_view.at is
-// unchanged); a successful svg is additionally recorded as an artifact.
-export async function renderMermaidPreview(source: string): Promise<{ svg: string; error: string }> {
-  const res = await renderMermaidPreviewImpl(source)
-  if (res.error === '') {
-    recordArtifact('Mermaid', source, { kind: 'svg', body: res.svg, error: '' })
-  }
-  return res
-}
 
 /** Injection key for the NodeViewContent hole's body (plan 026 P1T2): the
  *  mounting bridge provides the block's embedded VNodes; the widget templates

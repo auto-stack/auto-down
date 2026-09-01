@@ -18,7 +18,10 @@ import { resolvePanelRenderer, specForNode, type RevealBudget } from './panel-re
 // registry custom slot (plan 032 P2 — single table channel). It must be
 // pulled in OUTSIDE the panel-registry ↔ builtin-panels import cycle, and
 // render-node is the dispatch point every rendering consumer loads anyway.
+// The fence family widget's panel face registers the same way (plan 033
+// T5 — renderCodeblockPanel's replacement).
 import './StreamingTable.vue'
+import './block-widget-panels'
 
 export type { RevealBudget } from './panel-registry'
 

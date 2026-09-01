@@ -14,9 +14,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { EditorEngine } from '../engine/editor-engine'
 import { panelOf } from '../../render/block-widget'
 import { blockNodeToWNode } from '../../render/block-wnode'
-import { resolveBlockComponent } from '../../render/block-component'
 import { clearOptionalCapabilities, enableArtifactStore } from '../../render/optional-capabilities'
-import EngineEditor from '../components/EngineEditor.vue'
 import MathBlockWidget from '../components/MathBlockWidget.vue'
 import { renderMathBlockPreview } from '../ext/math_block_widget_ext'
 
@@ -58,7 +56,7 @@ afterEach(() => {
 describe('view/stream face: the node-view contract (MathBlockNodeView absorbed)', () => {
   it('root chrome: autodown-math-block + data-math-block marker, no edit markers', async () => {
     const node = leafBlock('m1', BlockType.MathBlock, 'e = mc^2')
-    const html = await ssr(h(MathBlockWidget as any, { mode: 'view', node, final: true }))
+    const html = await ssr(h(MathBlockWidget as any, { mode: 'view', node, final: true, ctx: null }))
     expect(html).toContain('class="autodown-math-block"')
     // Vue SSR renders empty-string attrs valueless — same DOM as the
     // node-view's bare marker.
@@ -69,7 +67,7 @@ describe('view/stream face: the node-view contract (MathBlockNodeView absorbed)'
 
   it('preview div renders on the empty SSR state (Init-less first paint), source slot pre>code', async () => {
     const node = leafBlock('m1', BlockType.MathBlock, 'e = mc^2')
-    const html = await ssr(h(MathBlockWidget as any, { mode: 'view', node, final: true }))
+    const html = await ssr(h(MathBlockWidget as any, { mode: 'view', node, final: true, ctx: null }))
     expect(html).toContain('class="autodown-math-preview"')
     expect(html).not.toContain('autodown-math-error')
     expect(html).toMatch(/<pre class="math-block-source"[^>]*>\s*<code[^>]*><\/code>/)
@@ -84,21 +82,13 @@ describe('view/stream face: the node-view contract (MathBlockNodeView absorbed)'
 
   it('stream face renders byte-identical chrome to view (final only differs)', async () => {
     const node = leafBlock('m1', BlockType.MathBlock, 'e = mc^2')
-    const view = await ssr(h(MathBlockWidget as any, { mode: 'view', node, final: true }))
-    const stream = await ssr(h(MathBlockWidget as any, { mode: 'stream', node, final: false }))
+    const view = await ssr(h(MathBlockWidget as any, { mode: 'view', node, final: true, ctx: null }))
+    const stream = await ssr(h(MathBlockWidget as any, { mode: 'stream', node, final: false, ctx: null }))
     expect(norm(stream)).toBe(norm(view))
   })
 })
 
-describe('edit face: absorbs the 031 MathEditBlock', () => {
-  it('byte parity (attr-order normalized) with the live mathEditSlot output', async () => {
-    void EngineEditor // module-scope edit registration (the old face)
-    const { engine, node, blockId } = docOf(MATH_MD)
-    const old = await ssr(resolveBlockComponent('MathBlock').edit!(node, { engine, blockId, readonly: false }))
-    const widget = await ssr(h(MathBlockWidget as any, { mode: 'edit', node, ctx: { engine, blockId, readonly: false } }))
-    expect(norm(widget)).toBe(norm(old))
-  })
-
+describe('edit face: the 031 MathEditBlock contract, absorbed', () => {
   it('carries the EDITOR-CONTRACT edit-face selectors + SSR draft + markers', async () => {
     const { engine, node, blockId } = docOf(MATH_MD)
     const html = await ssr(h(MathBlockWidget as any, { mode: 'edit', node, ctx: { engine, blockId, readonly: false } }))

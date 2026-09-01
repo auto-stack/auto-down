@@ -37,11 +37,13 @@ export interface BlockWidgetProps {
 /** Register one widget as a kind's whole family: the three BlockComponent
  *  slots become thin wrappers that mount the widget with the right mode.
  *  A family registration owns all three slots (it replaces earlier
- *  per-slot registrations for the kind). */
+ *  per-slot registrations for the kind). Family widgets declare the four
+ *  family props (mode/node/final/ctx); the non-edit wrappers pass ctx: null
+ *  so the generated required-prop checks stay quiet. */
 export function registerBlockWidget(kind: string, widget: Component): void {
   registerBlockComponent(kind, {
-    view: (node, final) => h(widget, { mode: 'view', node, final }),
-    stream: (node, final) => h(widget, { mode: 'stream', node, final }),
+    view: (node, final) => h(widget, { mode: 'view', node, final, ctx: null }),
+    stream: (node, final) => h(widget, { mode: 'stream', node, final, ctx: null }),
     edit: (node, ctx) => h(widget, { mode: 'edit', node, ctx }),
   })
 }
@@ -59,7 +61,7 @@ export function unregisterBlockWidget(kind: string): void {
 export function panelOf(widget: Component): PanelRenderer {
   return (ctx: PanelRenderCtx): VNode => {
     const node = blockOfWNode(ctx.node) ?? wnodeFallbackModel(ctx.node)
-    return h(widget, { mode: 'view', node, final: ctx.final ?? true })
+    return h(widget, { mode: 'view', node, final: ctx.final ?? true, ctx: null })
   }
 }
 

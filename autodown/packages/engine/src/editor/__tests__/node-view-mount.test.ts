@@ -77,16 +77,15 @@ function findComponentVNode(vnode: any, type: unknown): VNode | null {
   return null
 }
 
-describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3)', () => {
-  it('math block mounts the MathBlockNodeView (no unknown-node degrade)', async () => {
+describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3; math/mermaid are the family widgets since plan 033)', () => {
+  it('math block mounts the MathBlockWidget view face (no unknown-node degrade)', async () => {
     const html = await ssrPreview(leafBlock('m1', BlockType.MathBlock, 'E = mc^2'))
-    expect(html).toContain('data-node-view-wrapper')
     expect(html).toContain('autodown-math-block')
     expect(html).toContain('data-math-block')
     expect(html).not.toContain('unknown-node')
   })
 
-  it('mermaid block mounts the MermaidNodeView', async () => {
+  it('mermaid block mounts the MermaidBlockWidget view face', async () => {
     const html = await ssrPreview(leafBlock('mm1', BlockType.Mermaid, 'graph TD\nA-->B'))
     expect(html).toContain('autodown-mermaid-block')
     expect(html).toContain('data-mermaid-block')

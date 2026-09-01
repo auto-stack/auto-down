@@ -1,17 +1,18 @@
-// MathEditBlock / MermaidEditBlock (plan 031 T5): the math/mermaid typed
-// editing faces — source + live preview in one chrome. Registration goes
-// through EngineEditor's plain script (module scope); the faces mount via
-// the BlockComponent edit slot with the CodeEditorController commit
-// protocol (whole-text blur commit, one undo step — math/mermaid source
-// lives in inlines since plan 030, exactly the shape the controller
-// writes). Mermaid's debounced async preview does not run under SSR (Init
+// Math/Mermaid edit faces (plan 031; retargeted to the family widgets in
+// plan 033 T6): source + live preview in one chrome. Registration goes
+// through EngineEditor's plain script (module scope) onto the BlockComponent
+// edit slots — the family widgets (MathBlockWidget / MermaidBlockWidget)
+// carry the 031 contracts; the CodeEditorController commit protocol
+// (whole-text blur commit, one undo step — math/mermaid source lives in
+// inlines since plan 030, exactly the shape the controller writes) is
+// unchanged. Mermaid's debounced async preview does not run under SSR (Init
 // is onMounted-only), so its SSR contract pins the chrome; the state
 // machine is pinned by the demo e2e and the ext-bridge unit tests.
 
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
-import { BlockType, blockText, findBlock } from '../../parser/block-model'
+import { blockText, findBlock } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { EditorEngine } from '../engine/editor-engine'
@@ -19,8 +20,6 @@ import { CodeEditorController } from '../engine/code-editor-controller'
 import { resolveBlockComponent } from '../../render/block-component'
 import type { BlockEditCtx } from '../../render/block-component'
 import EngineEditor from '../components/EngineEditor.vue'
-import MathEditBlock from '../components/MathEditBlock.vue'
-import MermaidEditBlock from '../components/MermaidEditBlock.vue'
 
 const MATH_MD = '%{\ne = mc^2\n}%\n'
 const MERMAID_MD = '```mermaid\ngraph TD; A-->B;\n```\n'
@@ -41,25 +40,26 @@ async function ssr(vnode: unknown): Promise<string> {
   return (await renderToString(app)).replace(/<!--.*?-->/g, '')
 }
 
-describe('edit-slot registration (plan 031 T5)', () => {
+describe('edit-slot registration (family widgets, plan 033 T6)', () => {
   it('EngineEditor registers dedicated edit faces for MathBlock and Mermaid', () => {
     void EngineEditor // module-scope registration
     expect(typeof resolveBlockComponent('MathBlock').edit).toBe('function')
     expect(typeof resolveBlockComponent('MathBlock').view).toBe('function')
+    expect(typeof resolveBlockComponent('MathBlock').stream).toBe('function')
     expect(typeof resolveBlockComponent('Mermaid').edit).toBe('function')
     expect(typeof resolveBlockComponent('Mermaid').view).toBe('function')
   })
 
-  it('the mermaid edit slot no longer reuses the fence face (030 transitional gone)', async () => {
+  it('the math edit slot renders the family widget face (not the fence face)', async () => {
     void EngineEditor
-    const { engine, node, blockId } = docOf(MERMAID_MD)
-    const html = await ssr(resolveBlockComponent('Mermaid').edit!(node!, editCtx(engine, blockId)))
-    expect(html).toContain('autodown-mermaid-editor')
+    const { engine, node, blockId } = docOf(MATH_MD)
+    const html = await ssr(resolveBlockComponent('MathBlock').edit!(node!, editCtx(engine, blockId)))
+    expect(html).toContain('autodown-math-editor')
     expect(html).not.toContain('autodown-code-editor')
     expect(html).not.toContain('autodown-codeblock-node')
   })
 
-  it('the math edit slot replaces the BlockHost text fallback', async () => {
+  it('the math edit face replaces the BlockHost text fallback', async () => {
     void EngineEditor
     const { engine, node, blockId } = docOf(MATH_MD)
     const html = await ssr(resolveBlockComponent('MathBlock').edit!(node!, editCtx(engine, blockId)))
@@ -73,22 +73,18 @@ describe('edit-slot registration (plan 031 T5)', () => {
     void EngineEditor
     const { engine, node, blockId } = docOf(MERMAID_MD)
     const html = await ssr(resolveBlockComponent('Mermaid').edit!(node!, editCtx(engine, blockId)))
+    expect(html).toContain('autodown-mermaid-editor')
     expect(html).toContain('data-block-id')
     expect(html).toContain('data-node-type="Mermaid"')
     expect(html).toContain('<textarea')
   })
 })
 
-describe('MathEditBlock.vue SSR contract (generated product, T1)', () => {
+describe('math edit-face SSR contract (031 T1 carried over)', () => {
   async function ssrFace(source: string, readonly: boolean): Promise<string> {
-    return ssr(
-      h(MathEditBlock as any, {
-        controller: { commit: () => false },
-        blockId: 'm-gen',
-        source,
-        readonly,
-      })
-    )
+    const { engine, node, blockId } = docOf(MATH_MD)
+    const withSource = { ...node!, inlines: [{ text: source, marks: [], attrs: [] }] }
+    return ssr(resolveBlockComponent('MathBlock').edit!(withSource, editCtx(engine, blockId, readonly)))
   }
 
   it('renders the live katex preview over the source textarea', async () => {
@@ -116,16 +112,11 @@ describe('MathEditBlock.vue SSR contract (generated product, T1)', () => {
   })
 })
 
-describe('MermaidEditBlock.vue SSR contract (generated product, T2)', () => {
+describe('mermaid edit-face SSR contract (031 T2 carried over)', () => {
   async function ssrFace(source: string, readonly: boolean): Promise<string> {
-    return ssr(
-      h(MermaidEditBlock as any, {
-        controller: { commit: () => false },
-        blockId: 'd-gen',
-        source,
-        readonly,
-      })
-    )
+    const { engine, node, blockId } = docOf(MERMAID_MD)
+    const withSource = { ...node!, inlines: [{ text: source, marks: [], attrs: [] }] }
+    return ssr(resolveBlockComponent('Mermaid').edit!(withSource, editCtx(engine, blockId, readonly)))
   }
 
   it('renders the source textarea (async preview starts on mount, not SSR)', async () => {

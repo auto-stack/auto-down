@@ -13,9 +13,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { EditorEngine } from '../engine/editor-engine'
 import { panelOf } from '../../render/block-widget'
 import { blockNodeToWNode } from '../../render/block-wnode'
-import { resolveBlockComponent } from '../../render/block-component'
 import { clearOptionalCapabilities, enableArtifactStore } from '../../render/optional-capabilities'
-import EngineEditor from '../components/EngineEditor.vue'
 import MermaidBlockWidget from '../components/MermaidBlockWidget.vue'
 import { renderMermaidPreview } from '../ext/mermaid_block_widget_ext'
 
@@ -57,7 +55,7 @@ afterEach(() => {
 describe('view/stream face: the node-view contract (MermaidNodeView absorbed)', () => {
   it('root chrome: autodown-mermaid-block + data-mermaid-block marker, no edit markers', async () => {
     const node = leafBlock('g1', BlockType.Mermaid, 'graph TD; A-->B;')
-    const html = await ssr(h(MermaidBlockWidget as any, { mode: 'view', node, final: true }))
+    const html = await ssr(h(MermaidBlockWidget as any, { mode: 'view', node, final: true, ctx: null }))
     expect(html).toContain('class="autodown-mermaid-block"')
     expect(html).toMatch(/<div class="autodown-mermaid-block" data-mermaid-block(?:="")?/)
     expect(html).not.toContain('data-block-id')
@@ -66,7 +64,7 @@ describe('view/stream face: the node-view contract (MermaidNodeView absorbed)', 
 
   it('SSR first paint: neither preview nor error (Init-less, empty svg sentinel)', async () => {
     const node = leafBlock('g1', BlockType.Mermaid, 'graph TD; A-->B;')
-    const html = await ssr(h(MermaidBlockWidget as any, { mode: 'view', node, final: true }))
+    const html = await ssr(h(MermaidBlockWidget as any, { mode: 'view', node, final: true, ctx: null }))
     expect(html).not.toContain('autodown-mermaid-preview')
     expect(html).not.toContain('autodown-mermaid-error')
     expect(html).toMatch(/<pre class="mermaid-source"[^>]*>\s*<code[^>]*><\/code>/)
@@ -81,21 +79,13 @@ describe('view/stream face: the node-view contract (MermaidNodeView absorbed)', 
 
   it('stream face renders byte-identical chrome to view (final only differs)', async () => {
     const node = leafBlock('g1', BlockType.Mermaid, 'graph TD; A-->B;')
-    const view = await ssr(h(MermaidBlockWidget as any, { mode: 'view', node, final: true }))
-    const stream = await ssr(h(MermaidBlockWidget as any, { mode: 'stream', node, final: false }))
+    const view = await ssr(h(MermaidBlockWidget as any, { mode: 'view', node, final: true, ctx: null }))
+    const stream = await ssr(h(MermaidBlockWidget as any, { mode: 'stream', node, final: false, ctx: null }))
     expect(norm(stream)).toBe(norm(view))
   })
 })
 
-describe('edit face: absorbs the 031 MermaidEditBlock', () => {
-  it('byte parity (attr-order normalized) with the live mermaidEditSlot output', async () => {
-    void EngineEditor // module-scope edit registration (the old face)
-    const { engine, node, blockId } = docOf(MERMAID_MD)
-    const old = await ssr(resolveBlockComponent('Mermaid').edit!(node, { engine, blockId, readonly: false }))
-    const widget = await ssr(h(MermaidBlockWidget as any, { mode: 'edit', node, ctx: { engine, blockId, readonly: false } }))
-    expect(norm(widget)).toBe(norm(old))
-  })
-
+describe('edit face: the 031 MermaidEditBlock contract, absorbed', () => {
   it('carries the EDITOR-CONTRACT edit-face selectors + SSR draft + markers', async () => {
     const { engine, node, blockId } = docOf(MERMAID_MD)
     const html = await ssr(h(MermaidBlockWidget as any, { mode: 'edit', node, ctx: { engine, blockId, readonly: false } }))

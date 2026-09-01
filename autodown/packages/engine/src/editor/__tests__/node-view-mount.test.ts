@@ -23,8 +23,9 @@ import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
 import { blockNodesToWNodes, blockOfWNode } from '../../render/block-wnode'
 import { EditorEngine } from '../engine/editor-engine'
+import { setBlockAttrs } from '../engine/commands'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
-import DetailsNodeView from '../node-views/DetailsNodeView.vue'
+import DetailsBlockWidget from '../components/DetailsBlockWidget.vue'
 import QueryBlockNodeView from '../node-views/QueryBlockNodeView.vue'
 // importing the assembly performs the module-scope panel registrations
 import '../components/EngineEditor.vue'
@@ -132,15 +133,15 @@ describe('Math/Mermaid/Query/Embed preview mounts (plan 026 P1T3; math/mermaid a
 // keep Details describe anchored after the new suite
 
 describe('Details preview mount (plan 026 P1T2)', () => {
-  it('renders the DetailsNodeView with data-node-view markers and attrs', async () => {
+  it('renders the Details family widget with attrs and body (plan 035: the node-view markers retired with DetailsNodeView)', async () => {
     const html = await ssrPreview(detailsNode(false))
-    expect(html).toContain('data-node-view-wrapper')
     expect(html).toContain('autodown-details')
     expect(html).toContain('data-open="false"')
     expect(html).toContain('Hint')
-    // NodeViewContent hole renders the body
-    expect(html).toContain('data-node-view-content')
+    // the BlockChildren hole renders the body
     expect(html).toContain('hidden body')
+    expect(html).not.toContain('data-node-view-wrapper')
+    expect(html).not.toContain('data-node-view-content')
   })
 
   it('open=true renders expanded (data-open="true")', async () => {
@@ -148,7 +149,7 @@ describe('Details preview mount (plan 026 P1T2)', () => {
     expect(html).toContain('data-open="true"')
   })
 
-  it('the mounted widget toggle writes back through the model and serializes', async () => {
+  it('the mounted widget toggle writes back through the model and serializes (plan 035: the ctx.engine channel)', async () => {
     const e = new EditorEngine(doc(detailsNode(false)), collapsedSel('d1-p', 0))
     let vnode: VNode
     pushNodeViewHost({ engine: e })
@@ -157,13 +158,12 @@ describe('Details preview mount (plan 026 P1T2)', () => {
     } finally {
       popNodeViewHost()
     }
-    // mountNodeView wraps the widget in NodeViewContentProvider — the walker
-    // descends the provider's default slot to the widget vnode
-    const widget = findComponentVNode(vnode, DetailsNodeView)
+    const widget = findComponentVNode(vnode, DetailsBlockWidget)
     expect(widget).toBeTruthy()
-    // the widget's ToggleOpen channel: updateAttributes({ open: !is_open })
-    const update = (widget!.props as any).updateAttributes as (patch: Record<string, unknown>) => void
-    update({ open: true })
+    // the widget's ToggleOpen channel: toggleDetailsOpen(ctx.engine, ...) —
+    // one setBlockAttrs step, the same writeback the node view did
+    const engine = (widget!.props as any).ctx.engine
+    setBlockAttrs(engine, 'd1', [{ key: 'open', value: Value.Bool(true) }])
     expect(serialize(e.doc, false)).toContain('$details(summary: "Hint", open: true)')
   })
 

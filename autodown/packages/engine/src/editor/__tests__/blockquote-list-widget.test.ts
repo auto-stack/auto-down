@@ -11,7 +11,30 @@ import { createApp, createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { BlockType, Value, attrGetBool, attrSet, block, findBlock, withChildren } from '../../parser/block-model'
+// The retired builtin renderQuotePanel is still live (Quote keeps its
+// builtin entry, plan 035 scope); renderListPanel left builtin-panels.ts at
+// the T6 panel switch — frozen verbatim below as the byte-parity reference.
 import { builtinPanelRenderers } from '../../render/builtin-panels'
+
+function builtinListPanel({ node }: PanelRenderCtx) {
+  const tag = node.ordered ? 'ol' : 'ul'
+  return h(
+    tag as string,
+    { class: node.ordered ? 'list-node list-decimal' : 'list-node list-disc' },
+    (node.items ?? []).map((item: any) =>
+      h(
+        'li',
+        { class: 'list-item' + (item.checked != null ? ' task-item' : ''), dir: 'auto' },
+        [
+          ...(item.checked != null
+            ? [h('input', { type: 'checkbox', class: 'task-checkbox', checked: item.checked === true, disabled: true, 'aria-label': 'task checkbox' })]
+            : []),
+          PARA('v')[0],
+        ],
+      ),
+    ),
+  )
+}
 import { blockNodeToWNode } from '../../render/block-wnode'
 import type { PanelRenderCtx } from '../../render/panel-registry'
 import { EditorEngine } from '../engine/editor-engine'
@@ -102,7 +125,7 @@ describe('ListBlockWidget', () => {
   it('view face (unordered + task item): byte-identical to the builtin renderListPanel — inert checkbox, no start attr', async () => {
     const node = listNode(false, true)
     const w = blockNodeToWNode(node)
-    const builtin = await ssr(builtinPanelRenderers.List!(panelCtx(w, 'List', () => PARA('v'))))
+    const builtin = await ssr(builtinListPanel(panelCtx(w, 'List')))
     const widget = await ssr(h(ListBlockWidget as any, {
       mode: 'view', node, ctx: null, final: true, items: viewItems(w), version: 0,
     }))

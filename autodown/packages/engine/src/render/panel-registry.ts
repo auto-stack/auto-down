@@ -60,3 +60,37 @@ export function resolvePanelRenderer(spec: PanelSpec): PanelRenderer | undefined
 }
 
 export type { PanelSpec }
+
+// -- panel body decorator (plan 035 T6) ------------------------------------------
+//
+// Container family widgets mount their bodies through the BlockChildren
+// hole — closures the outer decorateWikilinks pass CANNOT descend into
+// (component props are opaque to the walker). The editor's preview path
+// therefore registers its decorator HERE for the duration of a renderNodes
+// call; the container panel adapters capture the current decorator at
+// closure-construction time (inside the window) and apply it to the body
+// vnodes at evaluation time (component mount, long after the window
+// closed). Non-container panels keep the plain tree the top-level pass
+// decorates, so the two channels never overlap.
+
+export type PanelBodyDecorator = (vnodes: VNode[]) => void
+
+let activePanelDecorator: PanelBodyDecorator | null = null
+
+/** Run fn with the panel body decorator active (window semantics — same
+ *  shape as the editor's node-view host window). */
+export function withPanelDecorator<T>(dec: PanelBodyDecorator, fn: () => T): T {
+  const prev = activePanelDecorator
+  activePanelDecorator = dec
+  try {
+    return fn()
+  } finally {
+    activePanelDecorator = prev
+  }
+}
+
+/** The decorator active at closure-construction time (null outside a
+ *  window — static render stays undecorated). */
+export function currentPanelDecorator(): PanelBodyDecorator | null {
+  return activePanelDecorator
+}

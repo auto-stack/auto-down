@@ -1,6 +1,8 @@
 // Builtin panel renderers (plan 017 Phase 2). One entry per builtin panel
-// kind from auto/palette_map.at (Text, H1..H6, Separator, Quote, List) —
-// plus, since plan 030, Callout. The DOM shape is byte-identical to the
+// kind from auto/palette_map.at (Text, H1..H6, Separator, Quote) — Callout
+// joined in plan 030 and left again in plan 035 T6 with List (the container
+// families' widgets own both panel faces now, custom slot via
+// block-widget-panels.ts). The DOM shape is byte-identical to the
 // pre-registry render-node switch — the render.test.ts DOM contract and
 // the downstream chrome (scroll sync, code-header injection, CSS) pin it.
 //
@@ -17,10 +19,9 @@
 //
 // Extension panel kinds (Details/MathBlock/Mermaid/Query/Embed) deliberately
 // have no entry here: consumers register them (see panel-registry.ts and
-// PANEL-ALIGNMENT.md). Callout is the exception (plan 030): the card chrome
-// ships as a builtin so view/stream render it without any registration —
-// EngineEditor's expanded container mirrors this class chain verbatim (CSS
-// single-channel).
+// PANEL-ALIGNMENT.md). Callout and List are the same shape since plan 035
+// T6: the container family widgets register on the custom slot
+// (block-widget-panels.ts) — Callout's 030-era builtin residency retired.
 
 import { h, type VNode } from 'vue'
 import type { PanelRenderCtx, PanelRenderer } from './panel-registry'
@@ -50,64 +51,14 @@ function renderQuotePanel({ node, final, budget, renderEmbedded }: PanelRenderCt
   ])
 }
 
-function renderListPanel({ node, final, budget, renderEmbedded }: PanelRenderCtx): VNode {
-  const tag = node.ordered ? 'ol' : 'ul'
-  return h(
-    tag,
-    { class: node.ordered ? 'list-node list-decimal' : 'list-node list-disc' },
-    (node.items ?? []).map((item: any) =>
-      h(
-        'li',
-        {
-          class: 'list-item' + (item.checked != null ? ' task-item' : ''),
-          dir: 'auto',
-        },
-        [
-          // GFM task checkbox (plan 030): present only on task items; the
-          // view/stream copy is inert (disabled) — the editing assembly
-          // renders its own clickable checkbox through the command channel
-          ...(item.checked != null
-            ? [
-                h('input', {
-                  type: 'checkbox',
-                  class: 'task-checkbox',
-                  checked: item.checked === true,
-                  disabled: true,
-                  'aria-label': 'task checkbox',
-                }),
-              ]
-            : []),
-          renderEmbedded(item.children ?? [], final, budget),
-        ]
-      )
-    )
-  )
-}
-
 // Callout card chrome (plan 030). Class chain is the single CSS channel:
 // .autodown-callout* styles live in autodown-editor.css; the palette spec
 // adds the .callout-node tag; data-callout-type carries the type for
-// downstream consumers (EngineEditor's expanded container must stay in
-// verbatim lockstep with this shape).
+// downstream consumers. Since plan 035 T6 the card chrome itself lives in
+// the family widget (auto/editor/callout_block_widget.at — the widget's
+// ext bridge reads this list for the known-type icon); this list stays the
+// shared vocabulary.
 export const CALLOUT_TYPES = ['note', 'info', 'tip', 'warning', 'caution', 'danger', 'error']
-
-function renderCalloutPanel({ node, final, budget, renderEmbedded }: PanelRenderCtx): VNode {
-  const type = String(node.language ?? '')
-  const title = String(node.title ?? '')
-  const known = CALLOUT_TYPES.includes(type)
-  return h('div', {
-    class: ['callout-node', 'autodown-callout', `autodown-callout-${type}`],
-    'data-callout-type': type,
-  }, [
-    h('div', { class: 'autodown-callout-header' }, [
-      ...(known
-        ? [h('span', { class: ['autodown-callout-icon', `autodown-callout-icon-${type}`], 'aria-hidden': 'true' })]
-        : []),
-      h('div', { class: 'autodown-callout-title', dir: 'auto' }, title.length > 0 ? title : type),
-    ]),
-    h('div', { class: 'autodown-callout-content' }, [renderEmbedded(node.children ?? [], final, budget)]),
-  ])
-}
 
 const headingRenderer: PanelRenderer = renderHeadingPanel
 
@@ -121,6 +72,7 @@ export const builtinPanelRenderers: Record<string, PanelRenderer> = {
   H6: headingRenderer,
   Separator: renderSeparatorPanel,
   Quote: renderQuotePanel,
-  List: renderListPanel,
-  Callout: renderCalloutPanel,
+  // List and Callout are NOT here anymore (plan 035 T6): the container
+  // families' widgets own those panel faces, registered on the custom slot
+  // by block-widget-panels.ts (same channel Codeblock took in 033).
 }

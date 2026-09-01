@@ -9,7 +9,29 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import { BlockType, Value, attrSet, block, withChildren } from '../../parser/block-model'
-import { builtinPanelRenderers } from '../../render/builtin-panels'
+import { CALLOUT_TYPES } from '../../render/builtin-panels'
+import type { PanelRenderCtx } from '../../render/panel-registry'
+
+// The retired builtin renderCalloutPanel, frozen verbatim as the byte-parity
+// reference (the function left builtin-panels.ts at the T6 panel switch —
+// the widget owns the face, this copy keeps the contract pinned).
+function builtinCalloutPanel({ node }: PanelRenderCtx) {
+  const type = String(node.language ?? '')
+  const title = String(node.title ?? '')
+  const known = CALLOUT_TYPES.includes(type)
+  return h('div', {
+    class: ['callout-node', 'autodown-callout', `autodown-callout-${type}`],
+    'data-callout-type': type,
+  }, [
+    h('div', { class: 'autodown-callout-header' }, [
+      ...(known
+        ? [h('span', { class: ['autodown-callout-icon', `autodown-callout-icon-${type}`], 'aria-hidden': 'true' })]
+        : []),
+      h('div', { class: 'autodown-callout-title', dir: 'auto' }, title.length > 0 ? title : type),
+    ]),
+    h('div', { class: 'autodown-callout-content' }, BODY()),
+  ])
+}
 import { blockNodeToWNode } from '../../render/block-wnode'
 import type { PanelRenderCtx } from '../../render/panel-registry'
 import CalloutBlockWidget from '../components/CalloutBlockWidget.vue'
@@ -52,7 +74,7 @@ const BODY = () => [h('p', { key: 'p' }, '正文段落')]
 describe('view/stream face: the builtin renderCalloutPanel contract, byte-for-byte', () => {
   it('known type: full card chain identical to the builtin panel', async () => {
     const node = calloutNode('warning', '注意')
-    const builtin = await ssr(builtinPanelRenderers.Callout!(panelCtx(node, true, BODY)))
+    const builtin = await ssr(builtinCalloutPanel(panelCtx(node, true)))
     const widget = await ssr(h(CalloutBlockWidget as any, {
       mode: 'view', node, ctx: null, final: true, children: BODY, version: 0,
     }))

@@ -13,7 +13,8 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.autodown-editor-content-wrapper` | 滚动容器（`useSyncedScroll` 契约） | demo e2e（6 处） |
 | `.autodown-editor-actions` | 底部动作条（toolbar 遮挡测试） | demo scroll-sync |
 | `.autodown-slash-menu` | 斜杠菜单 | demo + jade e2e |
-| `.autodown-wikilink-label` | wikilink 节点视图 | jade e2e 04 |
+| `.autodown-wikilink-label` | wikilink 标签（**plan 036 起模型 span 直渲**——parser `[[inner]]` 升格 attr 携带 span，renderInlineNode 直接出 label；020 渲染后 DOM 装饰器 `editor/wikilink.ts` 退役；`data-wikilink-title` + 点击 open-wiki-link 载荷 (title, blockId) 不变；edit 宿主挂载同链 + `contenteditable="false"` 原子化，blur 富回写走查回收） | jade e2e 04 + demo inline-spans e2e |
+| `.autodown-math-inline` + `data-math-src`（/`.autodown-math-error`） | 行内数学（**plan 036 新增**）——view/stream 态 katex inline 渲染（031 工件契约 displayMode=false，错误降级源码字面 + title 提示）；edit 宿主常显源码字面（D4 v1），blur 走查按 `data-math-src` 回收模型 span | demo inline-spans e2e |
 | `.autodown-block-placeholder` | 块编辑占位（滚动同步空挡；**仅 `.node-slot` 直接子级**会被 clearPlaceholders 清除——同 class 家族的开放态骨架在更深层，plan 032） | demo scroll-sync |
 | `.code-block-container.autodown-block-placeholder.is-loading` + `pre[aria-busy="true"]` | 开放 fence 骨架（含 ```` ```mermaid ```` 开 fence；等高占位 min-height 5.5rem；闭合翻转即摘除，plan 032）；**plan 033 起该面板为 CodeBlockWidget 的 view/stream 模式**（edit 模式走 `.autodown-codeblock-node` 宿主链 + badge + `.autodown-code-editor` 编辑面，CodeBlockMenu 点击契约不变） | demo stream-tri-state e2e |
 | `.autodown-block-boundary` | 块边界插入把手 | demo scroll-sync |
@@ -154,8 +155,57 @@ idiom，NodeViewWrapper 同型第二例）。
   直接递归装配子块，无需等价闭包机制（闭包是 Vue 装配层的实现细节，
   孔契约只有"子块列表挂到 chrome 内这一点"）。
 - **配套：面板体装饰器窗**（`panel-registry.ts` §plan 035）：闭包孔体对
-  外层 decorateWikilinks 不透明——装饰器在 renderNodes 窗口内注册、容器
-  面板适配器构造期捕获/求值期应用（renderEmbedded 单 vnode 归一为数组）。
+  外层后处理不透明——装饰器在 renderNodes 窗口内注册、容器面板适配器
+  构造期捕获/求值期应用（renderEmbedded 单 vnode 归一为数组）。
+  **plan 036 注记**：窗的建库动机 decorateWikilinks 已随 wikilink 模型化
+  退役（span 直渲经 renderInlineChildren 天然贯通容器闭包体）；窗机制本
+  身保留给未来面板体后处理。
+
+## 9. 行内层平台面（plan 036 定型——VM 后端实现基准）
+
+### 9.1 SelectionAdapter（选区/行内动词契约）
+
+- **接口**（`src/editor/engine/selection-adapter.ts`，D1 冻结四方法）：
+  `getSelection(): TextRange | null`、`isActive(mark): boolean`、
+  `applyMark(mark, href?): boolean`、`removeMark(mark): boolean`。
+  `TextRange { blockId, start, end }` = 模型 spans 的平文本 offset
+  （domRootToSpans 同坐标系，nbsp 归一）。
+- **DOM 适配**：`domSelectionAdapter` 单例（dom-marks.ts 全量迁入，行为
+  逐字节对齐）；宿主登记槽 `setFocusedRichHost`/`getFocusedRichHost`
+  （原名原签名，034 ext 桥 mount/focus/blur/unmount 消费）。
+  `toggleMark(adapter, mark)` 模块辅助 = 旧 domToggleMark 决策
+  （isActive ? remove : apply），**在冻结面之外**。
+- **Link 真值表**：`applyMark(Link, href)` 已连→改 href / 未连→wrap；
+  falsy href 投影到 removeMark（unwrap-if-inside-else-false）。
+- **交互策略不进契约**：window.prompt 留调用侧（ext 桥 Ctrl+K / bubble
+  runBubbleLink），adapter 只收结果。
+- **调用面**：ext 桥 Ctrl+B/I/K 键路由 + tiptap-adapter chain
+  toggle×5/setLink/unsetLink 委托 adapter；bubble 按钮调用面不变（动词
+  链底层已换）。`EditorAdapter.isActive`（bubble 旗标）维持模型读
+  （commands.marksInRange）——与 SelectionAdapter.isActive（选区包裹
+  真值）语义不同位不合并。
+- **VM 映射**：iced 端实现同一接口（选区读取 + mark 动词），live-DOM
+  包裹语义由各平台自选（架构裁定 ②：adapter 只抽象动词面，模型驱动
+  即时应用不在本契约）。
+
+### 9.2 行内 wikilink / math_inline 模型 span
+
+- **模型表示**：InlineSpan 无新 Mark——判别 attr 携带：`wikilink`
+  （attr = text = `[[..]]` 内部 canonical-trimmed）/ `math_inline`
+  （attr = text = `$..$` 源码）。marks 组合保序（`**[[x]]**` 的 Strong
+  在 label 外层）。
+- **解析方言**（未命中即字面，008 哲学）：`[[inner]]` 禁换行/`|`、空
+  title 字面、`[[[` 前置转义字面化；`$src$` 启用规则 = 开启符右非空白 +
+  闭合符左非空白 + 闭合符右非数字（siyuan 系，货币文本不误吞）+ 禁
+  换行；`\$` 走反斜杠标点转义。serializer 对称发射 `[[attr]]` / `$attr$`
+  （spanMd 文本级包装，其余 mark 仍外包）——守恒表 byte-canonical。
+- **三模式渲染**：view/stream = renderInlineNode（wikilink label 契约 /
+  math katex inline）；edit = spansToHtml 挂载（原子 `contenteditable=
+  "false"` label，math 常显源码字面）+ blur 富回写 richTreeToSpans 按
+  class/data-attr 两类回收（模型无损往返）。
+- **载荷**：label 点击 stopPropagation + open-wiki-link(title, blockId)
+  ——应用回调经 `render/wikilink-opener.ts` seam 注册（EngineEditor
+  open-wiki-link 事件面不变；静态渲染无注册=惰性）。
 
 ## 核验责任
 

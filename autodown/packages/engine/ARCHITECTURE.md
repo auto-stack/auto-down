@@ -12,7 +12,7 @@
 |----|------|------|------|
 | parser | `src/parser/`（单源 `auto/parser/*.at`） | `./parser` | `.ad` ↔ 统一块模型：markdown 解析、IAL/锚点深剥离、序列化；vue-free（构建期 `assert-parser-pure` 断言） |
 | render | `src/render/`（单源 `auto/render/*.at`） | `./render` | 块模型 → VNode：面板注册表（palette map 单源）、流式调度、表格、可选能力（katex/mermaid/highlight） |
-| editor | `src/editor/`（Auto 生成 + 手写内核） | `./editor` | 自研编辑内核（plan 018 退役 Tiptap）：块粒度 contenteditable 宿主 + 预览翻转、命令层 API、slash 菜单、预览 wikilink 装饰（plan 020）；chrome 层 .at 单源再生（plan 021，见 §6） |
+| editor | `src/editor/`（Auto 生成 + 手写内核） | `./editor` | 自研编辑内核（plan 018 退役 Tiptap）：块粒度 contenteditable 宿主 + 预览翻转、命令层 API、slash 菜单、行内 wikilink/math span 直渲（plan 036，020 装饰器退役）；chrome 层 .at 单源再生（plan 021，见 §6） |
 
 根出口 `.` 是三层的策展组合（`AutoDownEditor` / `StreamingRenderer` /
 `getBlockMap` / `insertTemplate` 等命令层 + `BlockInfo` 等类型）；
@@ -85,13 +85,20 @@
   WYSIWYG 装配（Callout/Details 聚焦保卡片 chrome，title/summary 走
   AttrHost 就地无框编辑）；031 落 math/mermaid 专用编辑面（源码+实时
   预览同屏，MathEditBlock 同步 katex / MermaidEditBlock debounce 三态，
-  替换 030 的 fence 复用与 BlockHost 文本兜底）；余量（Query/Embed
+  替换 030 的 fence 复用与 BlockHost 文本兜底）；**036 落行内层跨平台**
+  （SelectionAdapter 契约 + dom-marks 迁入退役、行内 wikilink/math_inline
+  模型 span 双发射、MathInline node view 退役——EDITOR-CONTRACT §9）；
+  余量（Query/Embed
   数据装载）见 DEBTS.md 020/021/026 行。
-- **解析子集（plan 030 扩集）**：blocks = heading(ATX+setext)/paragraph/
+- **解析子集（plan 030 扩集；行内方言 plan 036）**：blocks = heading(ATX+setext)/paragraph/
   fence/`%{ }%` math 块/```` ```mermaid ```` closed fence→Mermaid/
   blockquote/list(ul+ol+任务项 `- [ ]`/`- [x]`)/thematic_break/table/
   `$callout/$details/$query/$embed` 引擎方言组件块（roundtrip-first，
   语法=serializer 自家写出形状；未闭合/未知 `$name` 降级段落字面）。
+  行内（plan 036）：wikilink `[[title]]`/`[[title#block]]`（`[[[` 转义、
+  未闭合/空 title/含 `|` 降级字面）与 math_inline `$src$`（开启符右非
+  空白/闭合符左非空白/闭合符右非数字/禁换行，未命中即字面；`\$` 反斜杠
+  转义）——attr 携带 span 模型化，双端 parity + 守恒表在册。
   siyuan 系 `:::`/`$$` 旧方言 alias 不做（DEBTS.md 030 行）；footnote/
   mark/sub/sup/insert/html 块/linkify 仍在白名单外。
 - engine parser 不产出 source 行号（`SourceRange` 为占位）、`:::` 容器/
@@ -107,30 +114,37 @@
 
 - 引擎内核 `src/editor/engine/`：editor-engine / commands / composition /
   host-controller / input-rules / text-diff / tiptap-adapter /
-  node-view-host（plan 026 挂载宿主协议桥）。
+  node-view-host（plan 026 挂载宿主协议桥）/ selection-adapter（plan 036
+  行内选区/动词契约 + domSelectionAdapter——dom-marks.ts 迁入退役，
+  EDITOR-CONTRACT §9 VM 面）。
 - 装配壳 `components/EngineEditor.vue`（021 裁定维持手写）：expose 契约
-  （getBlockMap/handleSave）、宿主注册表、重绘版本号与预览 wikilink
-  装饰接线（plan 020）。~~+ BlockHost.vue~~——**plan 034 部分推翻 021
+  （getBlockMap/handleSave）、宿主注册表、重绘版本号与 wikilink-opener
+  注册 seam（plan 036——open-wiki-link 事件面不变，020 装饰器接线退役）。
+  ~~+ BlockHost.vue~~——**plan 034 部分推翻 021
   裁定**：文本叶子宿主 BlockHost 的 chrome 已 .at 化（见下
   RichTextHost），原"widget DSL 无 contenteditable 属性与 composition
   事件面"两项事实依据均被证伪（contenteditable 布尔属性先证于
   table_editor_block.at 单元格；composition 三事件直发证于 034 T1 探针
   ——build + vue-tsc 双过）；平台接线（挂载聚焦/nbsp 归一/键路由/粘贴/
   composition 三委托/blur 回写/caret 数学）归 ext 桥
-  `rich_text_host_ext.ts`，Selection API 与跨平台选区模型的 DSL 化仍
-  留桥（行内层计划）。
-- `wikilink.ts`（预览装饰器）、`block-map.ts`、`slash-manifest.ts`、
-  `menus/slashItem.ts`。
+  `rich_text_host_ext.ts`，Selection API 的动词面已契约化为
+  SelectionAdapter（**plan 036 落地**——EDITOR-CONTRACT §9；模型驱动
+  即时应用仍后置，架构裁定 ② live-DOM + blur 回收维持）。
+- `block-map.ts`、`slash-manifest.ts`、`menus/slashItem.ts`。
+  ~~`wikilink.ts`（预览装饰器）~~——**plan 036 退役**：wikilink 模型
+  span 化后 render-node 直渲 label（020"无双轨"注记销账）。
 
 **.at 生成 chrome 层（`auto/editor/` 单源，`pnpm gen:editor` 再生）**
 
-- 19 个部署物（plan 035 起：15 → 19，21 widget 源）：`menus/{SlashMenu,
+- 18 个部署物（plan 036 起：19 → 18，20 widget 源）：`menus/{SlashMenu,
   BubbleMenu,TableMenu,CodeBlockMenu}.vue`、`components/{CodeLanguageIcon,
   TableEditorBlock,CodeBlockWidget,MathBlockWidget,MermaidBlockWidget,
   RichTextHost,AttrHost,CalloutBlockWidget,DetailsBlockWidget,
-  BlockquoteBlockWidget,ListBlockWidget}.vue`、`node-views/*.vue`（4：
-  WikiLink/Query/BlockEmbed/MathInline——DetailsNodeView 随 plan 035 并入
-  DetailsBlockWidget 退役）——gen 管线（暂存工程 `auto build --gen-only
+  BlockquoteBlockWidget,ListBlockWidget}.vue`、`node-views/*.vue`（3：
+  WikiLink/Query/BlockEmbed——DetailsNodeView 随 plan 035 并入
+  DetailsBlockWidget 退役，MathInlineNodeView 随 plan 036 T7 退役——
+  行内 math 走 render-node span 直渲）——gen 管线（暂存工程 `auto
+  build --gen-only
   --lenient` → 收割 → E1 import 后修 → 部署），两连跑逐字节确定。
 - 14 个 ext 桥：`src/editor/ext/*.ts` 是 `auto/editor/ext/*.ts` 的逐字节
   部署（引擎接口，零 Tiptap；plan 033 起三族桥 code_block_widget_ext /
@@ -160,8 +174,11 @@
 - **stream→edit v1 裁定**：`BlockEditCtx.readonly = streaming`——流式进行
   中编辑面只读（横幅"流式生成中"+disabled），流结束自动解锁；备选
   "流式中编辑转 final 截断流"交互更激进、改动面大，不取。
-- 在册缺口：行内 WYSIWYG（段落内 mark 就地编辑、选区映射）不在 plan 023
-  范围，单列后续计划；表格嵌套块单元格 v1 仅文本单元格可编辑。
+- 在册缺口：行内 WYSIWYG 的**动词面**已由 plan 036 契约化
+  （SelectionAdapter + domSelectionAdapter，EDITOR-CONTRACT §9；行内
+  wikilink/math 已模型化）；模型驱动即时 mark 应用（选区映射改模型重渲）
+  仍后置（架构裁定 ② live-DOM + blur 回收维持）；表格嵌套块单元格 v1
+  仅文本单元格可编辑。
 
 **BlockWidget 家族机制（plan 033，三模式同 chrome 的结构解）**
 
@@ -190,8 +207,10 @@
   ListBlock 各一件三模式 .at，吸收 renderCalloutPanel/renderListPanel/
   DetailsNodeView/expandedElement 四分支/AttrHost.vue；Callout/List 面板走
   block-widget-panels custom 槽 panelOfContainer，Details 面板留
-  EngineEditor（marker 动词需 host 窗 engine）；容器闭包体的 wikilink 装饰
-  经 panel-registry §面板体装饰器窗）；~~文本叶子走 RichTextHost 计划~~——
+  EngineEditor（marker 动词需 host 窗 engine）；容器闭包体的 wikilink
+  渲染原经 panel-registry §面板体装饰器窗——**plan 036 起 span 直渲经
+  renderInlineChildren 天然贯通闭包体，wikilink 装饰用法退、窗机制保
+  留**）；~~文本叶子走 RichTextHost 计划~~——
   **plan 034 已落地**：`RichTextHost` = 文本叶子编辑宿主的 .at 单源
   （dyn tag h1-h6/p/div + 契约属性 + 九事件面直发，装配层扁平 props；
   接线/Selection/caret 数学归 ext 桥；EDITOR-CONTRACT §7 冻结 VM 面），
@@ -216,10 +235,12 @@
   nodeViewProps fabricator + 渲染窗口 host 栈 + NodeViewContent 注入孔）；
   plan 033 起 MathBlock/Mermaid 预览改挂各自家族 widget（panelOf 面），
   NodeView 在挂 3 件（Details/Query/Embed）；
-  MathInlineNodeView 未挂（行内 math 无块级承载，仍 dormant——见 DEBTS.md
-  026 行）；WikiLinkNodeView 在册不激活（020 装饰器已拥有该交互，无双轨）。
+  MathInlineNodeView 已随 plan 036 T7 物理退役（行内 math 走 render-node
+  span 直渲——行内无块级挂载位的需求随模型化消失，见 DEBTS.md 026③ 销
+  号）；WikiLinkNodeView 在册不激活（036 起 span 直渲已拥有该交互，无
+  双轨）。
   余量：Query/Embed 数据装载（runQuery/loadBlock 注入面）与 NodeView
-  编辑态深度、MathInline 挂载位，见 DEBTS.md 020/021/026 行。
+  编辑态深度，见 DEBTS.md 020/021/026 行。
 
 **渲染工件契约（plan 031，view 模式的持久化通道）**
 

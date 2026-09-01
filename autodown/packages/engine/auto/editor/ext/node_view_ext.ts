@@ -38,16 +38,10 @@
 //    are typed `ref<HTMLElement | null>` and the language has no casts, so
 //    `.select()` (HTMLInputElement-only) fails vue-tsc on the generated
 //    SFC.
-// 6. renderKatexPreview — the render-type node views' render bridge
-//    (single implementation in the render layer, src/render/preview.ts).
-//    The npm library calls + try/catch error paths genuinely cannot live
-//    in the DSL (no npm imports, no exceptions). v-html IS expressible (the
-//    `html:` prop), so no setInnerHTML shim is needed. Since plan 033 T3/T4
-//    the BLOCK bridges (renderMathBlockPreview / renderMermaidPreview with
-//    the artifact final-put) live in the family widget bridges
-//    (math_block_widget_ext.ts / mermaid_block_widget_ext.ts); this bridge
-//    keeps the plain MathInline re-export — inline math is not a block
-//    artifact (plan 031 不做 MathInline).
+// 6. renderKatexPreview — RETIRED with the MathInline node view (plan 036
+//    T7): inline math renders as a render-node span (031 artifact contract
+//    inline variant), so the plain re-export lost its last consumer; the
+//    block bridges live in the family widget bridges (plan 033 T3/T4).
 //
 // 7. errorMessage — the catch-branch `err.message || String(err)`
 //    extraction; TS types the catch param `unknown` and the DSL has no
@@ -55,9 +49,6 @@
 
 import { defineComponent, h, inject, type VNode } from 'vue'
 import { Pencil } from 'lucide-vue-next'
-import { renderKatexPreview } from '../../render/preview'
-
-export { renderKatexPreview }
 
 /** Injection key for the NodeViewContent hole's body (plan 026 P1T2): the
  *  mounting bridge provides the block's embedded VNodes; the widget templates

@@ -82,7 +82,6 @@ const EXPECTED = [
   'node-views/WikiLinkNodeView.vue',
   'node-views/QueryBlockNodeView.vue',
   'node-views/BlockEmbedNodeView.vue',
-  'node-views/MathInlineNodeView.vue',
 ]
 
 const relOf = (p) => p.slice(editorSrc.length + 1).split('\\').join('/')

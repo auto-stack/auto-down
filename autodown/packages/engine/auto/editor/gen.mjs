@@ -1,10 +1,11 @@
 // Regenerate the editor chrome-layer Vue SFCs from the Auto language widget
 // sources in this directory (plan 021 Phase 1 — source recovery & pipeline).
 //
-//   auto/editor/*.at        (21 widget sources: 11 plan-013-era views/menus
+//   auto/editor/*.at        (20 widget sources: 11 plan-013-era views/menus
 //                            + table_editor_block + the three family
 //                            widgets of plan 033 + rich_text_host of plan
-//                            034 — see README.md)
+//                            034 — see README.md; the MathInline node view
+//                            retired in plan 036 T7)
 //   auto/editor/ext/*.ts    (11 hand-written TS extension bridges)
 //
 // Usage:  pnpm gen:editor        (from packages/engine)
@@ -99,8 +100,8 @@ const widgets = readdirSync(here)
 // three modes each; rich_text_host.at (plan 034 T2) replaces the
 // hand-written BlockHost.vue; attr_host.at (plan 035 T2) replaces the
 // hand-written AttrHost.vue (plan 030 T7).
-if (widgets.length !== 21) {
-  console.error(`expected 21 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
+if (widgets.length !== 20) {
+  console.error(`expected 20 widget sources in auto/editor/, found ${widgets.length}: ${widgets}`)
   process.exit(1)
 }
 
@@ -222,7 +223,6 @@ const DEPLOY_COMPONENTS = {
   'WikiLinkNodeView.vue': 'node-views/WikiLinkNodeView.vue',
   'QueryBlockNodeView.vue': 'node-views/QueryBlockNodeView.vue',
   'BlockEmbedNodeView.vue': 'node-views/BlockEmbedNodeView.vue',
-  'MathInlineNodeView.vue': 'node-views/MathInlineNodeView.vue',
   // plan 023 P1T8 — the table's typed editing face.
   'TableEditorBlock.vue': 'components/TableEditorBlock.vue',
   // plan 033 T2-T4 — the pilot families' three-mode widgets (view/stream/

@@ -45,6 +45,7 @@ import CalloutBlockWidget from '../../editor/components/CalloutBlockWidget.vue'
 import DetailsBlockWidget from '../../editor/components/DetailsBlockWidget.vue'
 import BlockquoteBlockWidget from '../../editor/components/BlockquoteBlockWidget.vue'
 import ListBlockWidget from '../../editor/components/ListBlockWidget.vue'
+import TableBlockWidget from '../../editor/components/TableBlockWidget.vue'
 
 interface Mounted {
   root: HTMLElement
@@ -393,5 +394,109 @@ describe('List family (ListBlockWidget) — three-mode parity', () => {
     expect((f.edit.root.querySelector('.task-checkbox') as HTMLInputElement).disabled).toBe(false)
     expect(f.edit.root.querySelector('.task-checkbox')!.getAttribute('aria-label')).toBe('toggle task')
     expect(f.view.root.querySelector('.task-checkbox')!.getAttribute('aria-label')).toBe('task checkbox')
+  })
+})
+
+// -- table family (plan 037 T6) ----------------------------------------------------
+//
+// The table widget's three faces absorbed TWO retired implementations whose
+// byte contracts are deliberately different roots (view = tablePanel's bare
+// table.table-node, stream = the StreamingTable SFC's .streaming-table
+// wrapper) — the drift-proof claim here is not view ≡ stream roots but the
+// SHARED chrome: one table-node inner chain across view/edit, one align/
+// dir cell chrome, the stream loading family keyed on final, and the
+// edit-only whitelist (toolbar / contenteditable / banner). The view
+// container's own box model is consumer-CSS territory (the fence view
+// precedent — the widget deliberately styles no .table-node chrome).
+
+describe('Table family (TableBlockWidget) — three-mode parity', () => {
+  const FILLER = { controller: null, blockId: '', columns: [], rows: [] }
+
+  /** view cells: the panel adapter's shape ({id, cls, children_slot}). */
+  const vCell = (id: string, text: string) => ({
+    id,
+    cls: 'text-left',
+    children_slot: () => [h('div', { class: 'markdown-renderer' }, [h('span', text)])],
+  })
+  /** edit cells: the edit adapter's shape ({id, text, cls}). */
+  const eCell = (id: string, text: string) => ({ id, text, cls: 'text-left' })
+
+  function faces() {
+    const ctl = { addRow() {}, deleteRow() {}, addColumn() {}, deleteColumn() {} }
+    return {
+      view: mountFace(TableBlockWidget, {
+        ...FILLER, mode: 'view', final: true, readonly: true,
+        header_cells: [vCell('h0', '名称'), vCell('h1', '值')],
+        body_rows: [{ id: 'r0', cells: [vCell('r0c0', '甲'), vCell('r0c1', '1')] }],
+      }),
+      stream: mountFace(TableBlockWidget, {
+        ...FILLER, mode: 'stream', final: false, readonly: true,
+        header_cells: [], body_rows: [],
+        columns: ['名称', '值'], rows: [{ 名称: '甲', 值: '1' }],
+      }),
+      edit: mountFace(TableBlockWidget, {
+        ...FILLER, mode: 'edit', final: true, readonly: false,
+        controller: ctl, blockId: 't1',
+        header_cells: [eCell('h0', '名称'), eCell('h1', '值')],
+        body_rows: [{ id: 'r0', cells: [eCell('r0c0', '甲'), eCell('r0c1', '1')] }],
+      }),
+    }
+  }
+
+  it('view ≡ edit inner table: ONE table-node chrome chain (class + aria-busy)', () => {
+    const f = faces()
+    const vTable = f.view.root as HTMLElement // the view root IS the table
+    expect(vTable.tagName).toBe('TABLE')
+    expect(vTable.className).toBe('table-node')
+    expect(vTable.getAttribute('aria-busy')).toBe('false')
+    const eTable = f.edit.root.querySelector('table')
+    expect(eTable!.className).toBe('table-node')
+    expect(eTable!.getAttribute('aria-busy')).toBe('false')
+  })
+
+  it('the cell chrome (dir + align class) is shared; each face adds only its whitelist pieces', () => {
+    const f = faces()
+    const vTh = f.view.root.querySelector('th')!
+    const eTh = f.edit.root.querySelector('th')!
+    for (const th of [vTh, eTh]) {
+      expect(th.getAttribute('dir')).toBe('auto')
+      expect(th.className).toBe('text-left')
+    }
+    // edit-only (behavioral): the contenteditable + cell-id carrier
+    expect(eTh.getAttribute('contenteditable')).toBe('true')
+    expect(eTh.getAttribute('data-cell-id')).toBe('h0')
+    expect(vTh.getAttribute('contenteditable')).toBeNull()
+    // view-only (render-embedded): the resize handle — absent in edit
+    expect(vTh.querySelector('.table-node__resize-handle')).not.toBeNull()
+    expect(eTh.querySelector('.table-node__resize-handle')).toBeNull()
+  })
+
+  it('stream face: the .streaming-table wrapper + loading row keyed on final', () => {
+    const f = faces()
+    expect(f.stream.root.className).toBe('streaming-table')
+    expect(f.stream.root.querySelector('tr.loading-row')).not.toBeNull()
+    const done = mountFace(TableBlockWidget, {
+      ...FILLER, mode: 'stream', final: true, readonly: true,
+      header_cells: [], body_rows: [],
+      columns: ['a'], rows: [{ a: '1' }],
+    })
+    expect(done.root.className).toBe('streaming-table final')
+    expect(done.root.querySelector('tr.loading-row')).toBeNull()
+  })
+
+  it('edit-face whitelist: toolbar + contenteditable cells are edit-only; readonly gates with the banner', () => {
+    const f = faces()
+    expect(f.edit.root.className).toBe('autodown-table-editor')
+    expect(f.edit.root.querySelector('.te-toolbar')).not.toBeNull()
+    expect(f.view.root.querySelector('.te-toolbar')).toBeNull()
+    expect(f.stream.root.querySelector('.te-toolbar')).toBeNull()
+    const ro = mountFace(TableBlockWidget, {
+      ...FILLER, mode: 'edit', final: true, readonly: true,
+      controller: { addRow() {} }, blockId: 't1',
+      header_cells: [eCell('h0', '名称')], body_rows: [],
+    })
+    expect(ro.root.className).toBe('autodown-table-editor is-readonly')
+    expect(ro.root.querySelector('.autodown-stream-banner')).not.toBeNull()
+    expect(ro.root.querySelector('th')!.getAttribute('contenteditable')).toBe('false')
   })
 })

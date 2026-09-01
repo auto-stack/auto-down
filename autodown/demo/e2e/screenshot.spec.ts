@@ -174,3 +174,57 @@ test('capture container edit faces (plan 035)', async ({ page }) => {
   await page.waitForTimeout(200)
   await page.screenshot({ path: 'e2e/screenshots/container-edit-faces.png', fullPage: true })
 })
+
+// plan 037 T6 — the table edit face's three manual-verification cases,
+// archived (029/031/033/035 T10 口径): toolbar verb (add-row lands),
+// cell blur commit (typed text lands in the markdown), undo single step
+// (the commit reverts as ONE undo step, the added row survives it). One
+// composite image; purely additive.
+test('capture table edit faces (plan 037)', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 10000 })
+  test.setTimeout(120000)
+  const shots: Record<string, Buffer> = {}
+  const face = page.locator('.left .autodown-table-editor')
+
+  // focus the table through the preview face (host-protocol idiom)
+  const cell = page.locator('.left').getByText('Alpha', { exact: true })
+  await cell.scrollIntoViewIfNeeded()
+  await cell.click()
+  await expect.soft(face.locator('.te-toolbar')).toBeVisible()
+
+  // 1. toolbar verb: add-row appends a fourth body row (ONE undo step)
+  await expect.soft(face.locator('tbody tr')).toHaveCount(3)
+  await face.locator('[data-te-action="add-row"]').click()
+  await expect.soft(face.locator('tbody tr')).toHaveCount(4)
+  shots.toolbar = await face.screenshot()
+
+  // 2. cell blur commit: type into the new row's first cell, blur commits
+  //    through the ext bridge (dataset.cellId → commitCell)
+  const newCell = face.locator('tbody tr').last().locator('td').first()
+  await newCell.click()
+  await page.keyboard.type('Qux')
+  await page.locator('.autodown-editor-save').click()
+  await page.waitForTimeout(300)
+  await expect.soft(face.locator('tbody tr').last().locator('td').first()).toContainText('Qux')
+  shots.blur = await face.screenshot()
+
+  // 3. undo single step: refocus the table, Ctrl+Z reverts ONLY the cell
+  //    commit (the row survives; the typed text is gone)
+  await cell.click()
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Control+z')
+  await expect.soft(face.locator('tbody tr')).toHaveCount(4)
+  await expect.soft(face.locator('tbody tr').last().locator('td').first()).not.toContainText('Qux')
+  shots.undo = await face.screenshot()
+
+  const figures = Object.entries(shots).map(([name, buf]) => {
+    const b64 = buf.toString('base64')
+    return `<figure style="margin:0"><figcaption style="font-size:12px;font-weight:600;color:#374151;padding:4px 0">table &middot; ${name}</figcaption><img src="data:image/png;base64,${b64}" style="display:block;border:1px solid #d1d5db;background:#fff"/></figure>`
+  }).join('')
+  await page.setContent(
+    `<body style="margin:0;font-family:system-ui;background:#f3f4f6"><div style="display:flex;gap:12px;align-items:flex-start;padding:12px">${figures}</div></body>`,
+  )
+  await page.waitForTimeout(200)
+  await page.screenshot({ path: 'e2e/screenshots/table-edit-faces.png', fullPage: true })
+})

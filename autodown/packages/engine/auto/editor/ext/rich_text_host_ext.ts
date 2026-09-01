@@ -33,13 +33,13 @@ import { setFocusedRichHost, getFocusedRichHost, domToggleMark, domSetLink } fro
 // wysiwyg-typography e2e computed-style assertions. Every other editable
 // kind keeps the bare div of old.
 
-export function hostTag(kind: string, level: number): string {
+export function hostTag(kind: string, level?: number): string {
   return hostFaceFor(kind, level).tag
 }
 
 /** Full class chain incl. the base autodown-block-host (BlockHost rendered
  *  ['autodown-block-host', face.cls] — same computed DOM as one string). */
-export function hostCls(kind: string, level: number): string {
+export function hostCls(kind: string, level?: number): string {
   const face = hostFaceFor(kind, level)
   return face.cls ? `autodown-block-host ${face.cls}` : 'autodown-block-host'
 }

@@ -42,7 +42,11 @@ import {
   hostBlur,
 } from '../ext/rich_text_host_ext'
 
-type FakeController = BlockHostController & Record<string, ReturnType<typeof vi.fn>>
+/* Deliberately `any`: the fake must satisfy the BlockHostController
+   parameter type while keeping vi.fn() mock APIs callable; the real method
+   signatures are pinned in host-controller.test.ts. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FakeController = any
 
 function fakeController(overrides: Record<string, unknown> = {}): FakeController {
   return {
@@ -131,7 +135,7 @@ describe('hostTag / hostCls (semantic host face)', () => {
     expect(hostTag('Heading', 0)).toBe('h1')
     expect(hostTag('Heading', -3)).toBe('h1')
     expect(hostTag('Heading', 9)).toBe('h6')
-    expect(hostTag('Heading', 0.5 === 0 ? 0 : 0)).toBe('h1') // 0 clamps up
+    expect(hostTag('Heading', undefined)).toBe('h1') // missing level clamps up
   })
 
   it('Paragraph renders p + paragraph-node; other kinds the bare div', () => {
@@ -215,8 +219,7 @@ describe('hostInput (diff + input-rule resync + slash dispatch)', () => {
   it('resyncs the host DOM to the model when an input rule consumed the marker', () => {
     // model says the marker is gone (kind flip), DOM still shows it
     const el = hostEl('# ')
-    const c = fakeController({ text: '' })
-    c.inlines = [span('')]
+    const c = fakeController({ text: '', inlines: [span('')] })
     hostInput(el, c)
     expect(el.innerHTML).toBe(spansToHtml([span('')]))
     // caret moved to the end after the resync
@@ -228,9 +231,9 @@ describe('hostInput (diff + input-rule resync + slash dispatch)', () => {
     const before = el.innerHTML
     const c = fakeController({
       text: '',
+      inlines: [span('')],
       composition: { composing: true },
     })
-    c.inlines = [span('')]
     hostInput(el, c)
     expect(el.innerHTML).toBe(before)
   })

@@ -1,5 +1,6 @@
-// Rich BlockHost tests (plan 024 Phase 2): focused text leaf blocks render
-// their InlineSpan marks as inline elements (mount-time v-html from
+// Rich host tests (plan 024 Phase 2; host swapped to the generated
+// RichTextHost in plan 034): focused text leaf blocks render their
+// InlineSpan marks as inline elements (mount-time html injection from
 // spansToHtml); the blur walk is pinned in host-controller tests.
 
 import { createSSRApp, h } from 'vue'
@@ -10,7 +11,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController } from '../engine/host-controller'
 import { spansToHtml } from '../engine/rich-html'
-import BlockHost from '../components/BlockHost.vue'
+import RichTextHost from '../components/RichTextHost.vue'
 
 describe('spansToHtml (pure)', () => {
   it('maps the five inline marks to elements, nested marks nest', async () => {
@@ -44,7 +45,7 @@ describe('spansToHtml (pure)', () => {
   })
 })
 
-describe('BlockHost.vue rich SSR', () => {
+describe('RichTextHost rich SSR', () => {
   it('renders strong/em/a elements for a focused marked-up paragraph', async () => {
     const md = '**bold** plain *em* and [link](https://example.com)'
     const doc = parse_blocks(md, true)
@@ -52,13 +53,24 @@ describe('BlockHost.vue rich SSR', () => {
     const first = doc.children[0]
     const controller = new BlockHostController(engine, first.id)
     const app = createSSRApp({
-      render: () => h(BlockHost as any, { controller, blockKind: BlockType[first.kind] }),
+      render: () =>
+        h(RichTextHost as any, {
+          controller,
+          blockId: controller.id,
+          blockKind: BlockType[first.kind],
+          level: 0,
+          initial_html: spansToHtml(controller.inlines),
+        }),
     })
     const html = (await renderToString(app)).replace(/<!--.*?-->/g, '')
-    expect(html).toContain('<strong>bold</strong>')
-    expect(html).toContain('<em>em</em>')
-    expect(html).toContain('<a href="https://example.com"')
-    expect(html).toContain('contenteditable="false"')
+    // plan 034: the rich markup itself injects on MOUNT (mountHost's $el
+    // innerHTML write), not in SSR — the old BlockHost bound :innerHTML in
+    // the template. The inline-element rendering itself is pinned by the
+    // spansToHtml describe above + the RichTextHost mount suite; SSR here
+    // pins the semantic chrome face.
+    expect(html).toContain('<p')
+    expect(html).toContain('autodown-block-host paragraph-node')
+    expect(html).toContain('contenteditable="true"')
     expect(html).toContain('data-block-id')
   })
 })

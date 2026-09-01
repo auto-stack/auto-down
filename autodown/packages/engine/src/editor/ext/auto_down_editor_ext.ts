@@ -46,12 +46,13 @@ import { getSlashItems } from '../slash-manifest'
 import { EditorEngine } from '../engine/editor-engine'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
-import BlockHost from '../components/BlockHost.vue'
+import RichTextHost from '../components/RichTextHost.vue'
 import { getBlockMap } from '../block-map'
 import { BlockNode, BlockType } from '../../parser/block-model'
 import { parse_blocks, parseDocument } from '../../parser/markdown-parser'
 import { serialize } from '../../parser/serializer'
 import { renderNodes } from '../../render/render-node'
+import { spansToHtml } from '../engine/rich-html'
 
 // -- menu / content component re-exports (the widget's `component:` use) ----
 // SlashMenu is the Phase 2 revival; the other three menus are the Phase 3
@@ -98,7 +99,7 @@ export function blockMapOf(editor: any): ReturnType<typeof getBlockMap> {
 // -- the engine content host (EditorContent replacement) ---------------------
 //
 // Renders the engine document: the focused editable leaf block through
-// BlockHost, every other block through the render preview pipeline
+// RichTextHost (plan 034), every other block through the render preview pipeline
 // (EngineEditor.vue's live-preview compromise, compact bridge-native
 // port). The class attr falls through from the widget
 // (autodown-editor-content-wrapper).
@@ -147,8 +148,18 @@ const EngineContentHost = defineComponent({
         let previewIdx = 0
         e.doc.children.forEach((node) => {
           if (node.id === focusedId && isEditableLeaf(node)) {
+            const host = hostFor(node.id)
             kids.push(
-              h(BlockHost, { controller: hostFor(node.id), blockKind: BlockType[node.kind], key: node.id })
+              // plan 034: RichTextHost flat props (blockId/level/initial_html
+              // derived here — same adapter shape as EngineEditor's assembly).
+              h(RichTextHost, {
+                controller: host,
+                blockId: host.id,
+                blockKind: BlockType[node.kind],
+                level: 0,
+                initial_html: spansToHtml(host.inlines),
+                key: node.id,
+              })
             )
             return
           }

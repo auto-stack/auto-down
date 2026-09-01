@@ -124,6 +124,17 @@
           "PLAN-032"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P033-2",
+        "section": "goals",
+        "title": "BlockWidget 家族机制（一 kind 一个三模式 .at widget：view/stream/edit 同 chrome）+ Fence/MathBlock/Mermaid 三类试点合流 + builtin 双面退役 — 目标",
+        "content": "1. **家族机制**：`registerBlockWidget(kind, widget)` 一次注册自动填三槽\n   （view/stream/edit 包装成槽位工厂）；既有按槽注册 API 零破坏（P023\n   契约不回写）。\n2. **三试点单 widget**：Fence/MathBlock/Mermaid 各一件 .at widget 三态\n   服务；对应 builtin 面板与旧 widget 退役；gen:editor 部署清单与\n   assert-editor-gen 同步。\n3. **契约保形**：render.test.ts（含 extension block panels 段）零改动\n   通过；demo e2e 12+ spec 零改动通过；EDITOR-CONTRACT 选择器逐项在册\n   （新 widget 沿用既有 class 面，不新增选择器）。\n4. **三模式 parity 在册**：三试点 kind 的 view/stream/edit computed-style\n   parity 测试（chrome 层属性：容器 class 链/边框/排版盒），模式间只允许\n   行为差异（编辑态 textarea/横幅），不允许样式差异。",
+        "file": "docs/plans/archived/033-block-widget-family-chrome.md",
+        "related": [
+          "PLAN-033"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -244,7 +255,10 @@
         "related": [
           "PLAN-031"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P033-3"
+        ]
       },
       {
         "id": "P032-3",
@@ -254,6 +268,17 @@
         "file": "docs/plans/archived/032-stream-mode-formalization.md",
         "related": [
           "PLAN-032"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P033-3",
+        "section": "architecture",
+        "title": "BlockWidget 家族机制（一 kind 一个三模式 .at widget：view/stream/edit 同 chrome）+ Fence/MathBlock/Mermaid 三类试点合流 + builtin 双面退役 — 架构方案",
+        "content": "```\n机制层（手写平台层，同 block-component.ts 模式）\nsrc/render/block-widget.ts（新）\n├─ BlockWidgetProps { mode: 'view'|'stream'|'edit', node/ctx/readonly/final }\n├─ registerBlockWidget(kind, widget)：\n│     view  → (node, final)   => h(widget, { mode: final?'view':'stream', node, final })\n│     edit  → (node, ctx)     => h(widget, { mode: 'edit', node, ctx })\n│  并经 registerBlockComponent 落槽（既有机制复用，非旁路）\n└─ 既有 registerBlockComponent 三槽注册不动（家族是糖，不是替代）\n\n试点层（chrome 层 .at 单源）\nauto/editor/code_block_widget.at      三模式：view=pre+高亮（吸收 renderCodeblockPanel\n                                      DOM 契约）/ stream=开放 loading+闭合 view\n                                      / edit=吸收 CodeEditorBlock（textarea+overlay+blur 提交）\nauto/editor/math_block_widget.at      view=node-view 预览（katex html 注入+错误横幅）\n                                      / stream=final 前骨架 / edit=031 编辑面（同步预览+textarea）\nauto/editor/mermaid_block_widget.at   同型（debounce 异步预览三态）\nauto/editor/ext/*_widget_ext.ts       合并各自旧 ext 桥（code_editor_block_ext +\n                                      node_view_ext 相关导出归一）\n\n装配层\nsrc/editor/components/EngineEditor.vue\n├─ fenceEditSlot/mathEditSlot/mermaidEditSlot → registerBlockWidget 三注册替换\n├─ registerPanel('MathBlock'/'Mermaid', nodeViewPanel(...)) → 家族 widget 挂载\n│   （panel-registry custom 槽，026 同模式；renderCodeblockPanel 退役同通道）\n└─ CodeBlockMenu 宿主契约：fenceEditSlot 现有包裹层（badge+data-language）\n   保持——edit 槽包装不动，widget 只换内芯\n\n退役清单\nbuiltin-panels.ts：renderCodeblockPanel 删（Codeblock 项经 custom 槽）\nnode-views/{Math,Mermaid}NodeView.vue + components/{CodeEditorBlock,MathEditBlock,\nMermaidEditBlock}.vue 删（gen 部署物清单 16 → 15：-4 旧 +3 新 widget +机制无部署物）\n```\n\n**为何 view 模式也进 widget（而不留 builtin TS）**：样式一致的保证物是\n\"同一份 chrome 源\"——view 留在 TS 就仍是两份源两份样式；.at widget 的\nview 模式经 panel-registry custom 槽挂载有 026 nodeViewPanel 先例，通路\n已验证。\n\n**mode 切换 vs 三 widget**：一 widget 三 mode（推荐）——chrome 状态机\n（readonly/loading/error）跨 mode 复用，样式段天然单份；代价是 widget\n稍大（约 250-350 行 .at），可接受（现 TableEditorBlock 同量级）。",
+        "file": "docs/plans/archived/033-block-widget-family-chrome.md",
+        "related": [
+          "PLAN-033"
         ],
         "status": "stable"
       }
@@ -375,7 +400,10 @@
         "related": [
           "PLAN-031"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P033-4"
+        ]
       },
       {
         "id": "P032-4",
@@ -385,6 +413,17 @@
         "file": "docs/plans/archived/032-stream-mode-formalization.md",
         "related": [
           "PLAN-032"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P033-4",
+        "section": "designs",
+        "title": "BlockWidget 家族机制（一 kind 一个三模式 .at widget：view/stream/edit 同 chrome）+ Fence/MathBlock/Mermaid 三类试点合流 + builtin 双面退役 — 详细设计",
+        "content": "### D1 家族机制（src/render/block-widget.ts）\n\n```ts\nexport type BlockWidgetMode = 'view' | 'stream' | 'edit'\nexport interface BlockWidgetProps {\n  mode: BlockWidgetMode\n  node: BlockNode                 // view/stream：BlockNode；edit：同\n  final?: boolean                 // stream 消费\n  ctx?: BlockEditCtx              // edit 消费（engine/blockId/readonly）\n}\nexport function registerBlockWidget(kind: string, widget: Component): void {\n  registerBlockComponent(kind, {\n    view: (node, final) => h(widget, { mode: 'view', node, final }),\n    stream: (node, final) => h(widget, { mode: 'stream', node, final }),\n    edit: (node, ctx) => h(widget, { mode: 'edit', node, ctx }),\n  })\n}\n```\n\n- 面板侧（StreamingRenderer 右栏/纯渲染消费者）不经 BlockComponent——\n  经 panel-registry custom 槽挂同一 widget（`registerPanel(kind,\n  panelOf(widget))`，`panelOf` 内部 `h(widget, { mode:'view', node,\n  final })`），确保**view 的两个消费面（编辑器预览/纯渲染）也同源**。\n- `unregisterBlockWidget` / 测试 teardown 对齐 clearBlockComponents。\n\n### D2 CodeBlockWidget（auto/editor/code_block_widget.at）\n\n- props：`mode str, node Array<str>, ctx Array<str>, final bool,\n  blockId str, language str, code str, readonly bool`（扁平 chrome，\n  node/ctx 走 Array<str> 宽类型——031 同 idiom）。\n- chrome 单份：`.autodown-codeblock-node[data-language]` 容器 +\n  `code-block-header`（title=language）+ 主体区。\n- view/stream 主体：`pre[data-language]` + 高亮 HTML（经 ext 桥\n  renderCodeHighlight，吸收现 renderCodeblockPanel 的 DOM 字节契约，\n  含 `.node-slot/.node-content` 包裹层对齐）。\n- edit 主体：吸收 CodeEditorBlock 全部（textarea 透明文本 + 高亮\n  overlay + blur→controller.commit + .Init focus + readonly 横幅）。\n- stream 开放态：loading 骨架（032 契约 class），闭合后走 view 主体。\n- CodeBlockMenu 契约：edit 槽的 badge 包裹层留在装配层（fenceEditSlot\n  现状不动），widget 内芯替换。\n\n### D3 MathBlockWidget / MermaidBlockWidget\n\n- 同 D2 骨架；主体三态：\n  - view：预览区（katex html / mermaid svg 注入）+ 错误横幅 +\n    源码 `<pre><code>` 折叠槽（node view 现契约）；工件 final-put 挂接\n    （031 enableArtifactStore 通路随迁）。\n  - edit：031 编辑面行为原样（math 同步预览 / mermaid debounce 三态 +\n    textarea + blur 提交）。\n  - stream：final 前骨架，final 后走 view（031 三态钉死的延续）。\n- ext 桥归一：`math_block_widget_ext.ts` / `mermaid_block_widget_ext.ts`\n  合并 031 的 `*_edit_ext.ts` 与 node_view 相关导出（renderKatexPreview /\n  renderMermaidPreview / debounce / focus）。\n\n### D4 退役与部署清单\n\n- 删：`src/render/builtin-panels.ts` renderCodeblockPanel（Codeblock 项\n  改 custom 槽）；gen 部署物 CodeEditorBlock.vue / MathEditBlock.vue /\n  MermaidEditBlock.vue / MathBlockNodeView.vue / MermaidNodeView.vue\n  （+对应 .at 源与 ext 桥）。\n- 增：三 widget .at 源 + 三 ext 桥 + 部署物 3。\n- `scripts/assert-editor-gen.mjs` 清单 16 → 15（-5 +3：净 -2 SFC；\n  ext 9 → 8：-4 旧桥中 code_editor_block_ext 保留改导出名或合并后\n  重计——执行期按实际归并数冻结）。\n- EngineEditor：三 registerBlockWidget 替换三 edit 槽注册；\n  MathBlock/Mermaid 的 registerPanel(nodeViewPanel) 改 panelOf(widget)。\n\n### D5 parity 套件\n\n- `src/render/__tests__/block-widget-parity.test.ts`：三 kind × 三 mode\n  mount，computed-style 断言 chrome 层属性（class 链、容器盒模型、\n  header 排版）逐项相等（edit 允许的差异白名单：textarea/caret/横幅）。\n- demo e2e：既有 12+ spec 零改动回归（契约保形的最终裁判）+ 031 的\n  math/mermaid 编辑面 e2e 零改动通过（行为回归）。",
+        "file": "docs/plans/archived/033-block-widget-family-chrome.md",
+        "related": [
+          "PLAN-033"
         ],
         "status": "stable"
       }
@@ -497,6 +536,17 @@
         "file": "docs/plans/archived/032-stream-mode-formalization.md",
         "related": [
           "PLAN-032"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P033-5",
+        "section": "tests",
+        "title": "BlockWidget 家族机制（一 kind 一个三模式 .at widget：view/stream/edit 同 chrome）+ Fence/MathBlock/Mermaid 三类试点合流 + builtin 双面退役 — 测试设计",
+        "content": "- 单测：家族机制（三槽自动填充/unregister 回落）；三 widget 三 mode\n  DOM 契约（对齐 render.test.ts 既有断言形状，**该文件本身零改动**）；\n  parity 套件；gen 两连跑字节确定。\n- e2e：demo 全量零改动回归；031 extension-blocks.spec.ts（math/mermaid\n  编辑行为）零改动通过。\n- 对拍：不涉 rust（纯装配层；.at 单源性由 gen 管线保证）。",
+        "file": "docs/plans/archived/033-block-widget-family-chrome.md",
+        "related": [
+          "PLAN-033"
         ],
         "status": "verified"
       }
@@ -622,6 +672,17 @@
           "PLAN-032"
         ],
         "status": "published"
+      },
+      {
+        "id": "P033-6",
+        "section": "reviews",
+        "title": "BlockWidget 家族机制（一 kind 一个三模式 .at widget：view/stream/edit 同 chrome）+ Fence/MathBlock/Mermaid 三类试点合流 + builtin 双面退役 — 验收标准与复审",
+        "content": "1. Fence/MathBlock/Mermaid 三 kind 各仅一件 .at widget 服务三模式；\n   旧双面（renderCodeblockPanel/两 NodeView/三 EditBlock）物理删除，\n   assert-editor-gen 清单精确同步。\n2. render.test.ts、demo e2e 全量、031 行为 e2e **零改动**通过。\n3. parity 套件在册：三 kind 三 mode chrome 属性相等（差异白名单外零\n   失败）。\n4. 家族机制 API 在册（registerBlockWidget/panelOf），既有\n   registerBlockComponent/registerPanel 调用零破坏。\n5. EDITOR-CONTRACT（试点三 kind 的三模式选择器段——沿用既有 class 面，\n   补 mode 语义注记）、ARCHITECTURE §6（chrome 清单/家族机制段）、\n   DEBTS（020 编辑态深化行改写为家族化在册）更新完。\n\n**复审人**：zhaopuming（/auto-plan:review，2026-09-01）；复审对象 = 工作树\n`.worktrees/plan-033-dev`（7 提交，58 文件 +3293/−2290），代码优先于计划文本。\n\n**逐条验收裁决**（全部复现，不信任勾选框）：\n\n1. **PASS** 三 kind 各一件 .at widget（code/math/mermaid_block_widget.at，\n   261/263/301 行<待澄清① 400 界）；旧双面物理删除（git rm 5 .at + 3 ext 桥\n   ×auto/src 两副本 + 5 SFC + renderCodeblockPanel）；源码零死引用（7 处\n   旧名命中均为历史注释，vue-tsc 过）；assert-editor-gen\n   \"14 products, 11 bridges\" 零退出。\n2. **PASS** 零改动门：render.test.ts 对 master **零 diff** 通过（612/612 内）；\n   demo e2e 12 spec 零 diff、全量 47/47（本复审窗口三跑：47/47、46/47、\n   复跑过）；031 行为 e2e（extension-blocks）零改动绿；screenshot.spec\n   +90 行**纯追加**留档用例（031 同款先例，既有用例零改动）。scroll-sync\n   109/141 为 031 在案环境性 flake 对——本次当场 A/B：分支重跑 109 过、\n   master 同刻跑 109 败，非本计划回归。\n3. **PASS** parity 套件 11 用例在册绿（全量+定向双跑）；edit 差异白名单\n   冻结于测试文件头注。\n4. **PASS** 家族 API 在册（registerBlockWidget/unregisterBlockWidget/panelOf\n   出口+13 单测）；block-component.ts/panel-registry.ts/两契约测试文件\n   **零 diff**；registerBlockComponent('Table')/nodeViewPanel×3 原样在位。\n5. **PASS** 文档三件：EDITOR-CONTRACT 三行 mode 注记、ARCHITECTURE §6\n   家族机制段+清单 14/ext 11、DEBTS 020 家族化改写。\n\n**遗漏/延后/workaround 猜查**：\n\n- 遗漏：无——8 任务各有对应 diff；D1 的 unregisterBlockWidget 落地有测。\n- 延后：Table/容器族/RichTextHost/VM 为计划内显式边界（待澄清③），非静默。\n- 债项候选（记录不阻塞）：\n  ① viewCodeInner 手拼 HTML 字符串——编译器双缺口所迫（dyn 上 html: 非\n  v-html；text 产 span），迁移期已与 builtin 归一化对拍验证字节等价，DSL\n  补原生文本发射后可简化；② 源码槽 white-space:normal——根因修复（模板\n  缩进空白×pre-wrap 致每面 +40px 滚动漂移），master 块高逐块一致取证；\n  ③ 7 处历史注释仍提名退役组件（block-component.ts:9 等纯文案），候选随\n  后续计划顺手清；④ happy-dom 新 devDep（parity computed-style 所需）。\n- 计划稿偏差（已记录在案）：D2 扁平 props 简化为家族四 props+ext 读取器；\n  部署物计数 14（稿 15 系算术笔误，按待澄清④执行期冻结）；badge 包裹层\n  按语义内化进 widget edit 面（DOM 保形，CodeBlockMenu 契约 e2e 过）。\n\n**裁决：全部验收 PASS，无阻塞债项 → status: reviewed。**",
+        "file": "docs/plans/archived/033-block-widget-family-chrome.md",
+        "related": [
+          "PLAN-033"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -743,6 +804,17 @@
         "file": "docs/plans/archived/032-stream-mode-formalization.md",
         "related": [
           "PLAN-032"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P033-1",
+        "section": "reports",
+        "title": "BlockWidget 家族机制（一 kind 一个三模式 .at widget：view/stream/edit 同 chrome）+ Fence/MathBlock/Mermaid 三类试点合流 + builtin 双面退役 — 变更摘要",
+        "content": "\"完美态\"路线图 M1 第二步，也是\"三模式样式一致\"的**结构解**。现状每 kind\n有 2-3 套并行的面实现（样式一致性靠同 class 链 + 人盯）：\n\n| kind | view | stream | edit |\n|---|---|---|---|\n| Fence | builtin renderCodeblockPanel（TS） | 同 view（final flag） | CodeEditorBlock（.at） |\n| MathBlock | MathBlockNodeView（.at） | 同 view | MathEditBlock（.at，031） |\n| Mermaid | MermaidNodeView（.at） | 同 view | MermaidEditBlock（.at，031） |\n| Table | builtin renderTablePanel（TS） | StreamingTable | TableEditorBlock（.at） |\n| Callout/Details | builtin/node view | 同 view | EngineEditor expandedElement（TS）+ AttrHost |\n\n本计划立**家族机制**并试点三类：每 kind 一个 `.at` widget，内部按\n`mode: view | stream | edit` 切行为，**chrome（DOM 骨架/class/样式）三态\n同一份**——模式间样式漂移从根上不可能。试点范围 Fence/MathBlock/Mermaid\n（不依赖 RichTextHost 与递归组合原语，可即行）；Table/容器族推广列待澄清③。\n\n**试点合流**：\n- Fence：`CodeBlockWidget`（.at 三模式）吸收 renderCodeblockPanel（退役）\n  + CodeEditorBlock（退役）；\n- MathBlock：`MathBlockWidget` 吸收 MathBlockNodeView + MathEditBlock\n  （两件 031/026 产物合一件，工件契约挂接随迁）；\n- Mermaid：同型 `MermaidWidget`。\n\n**兼容面**：render.test.ts 的 DOM 字节契约、EDITOR-CONTRACT 选择器清单、\nCodeBlockMenu 的宿主 DOM 契约（`.autodown-codeblock-node[data-language]`\n+ language badge）、gen:editor 部署清单（16 → 15：净 -4 +3）——全部逐项\n保形，契约测试零改动通过是硬验收。\n\n**不做的**：Table/Callout/Details/Query/Embed 合流（待澄清③，依赖 032\n表格归一与递归原语计划）；文本叶子（RichTextHost 计划）；VM 侧。",
+        "file": "docs/plans/archived/033-block-widget-family-chrome.md",
+        "related": [
+          "PLAN-033"
         ],
         "status": "published"
       }

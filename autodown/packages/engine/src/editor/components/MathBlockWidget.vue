@@ -147,10 +147,14 @@ onMounted(() => {
           color: hsl(var(--muted-foreground, 220 9% 46%));
           white-space: pre-wrap;
         }
+        // family container chrome (plan 033 T7): ONE set of values for the
+        // container in every mode — the view face's document-card chrome is
+        // the family canon (the 031 edit face's gray #f8f9fa card is
+        // retired; parity suite pins border/radius/background equality).
         .autodown-math-editor {
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          background: #f8f9fa;
+          border: 1px solid hsl(var(--border, 220 13% 91%));
+          border-radius: 0.375rem;
+          background: hsl(var(--card, 0 0% 100%));
           overflow: hidden;
         }
         .autodown-math-editor.is-readonly {

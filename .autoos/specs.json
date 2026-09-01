@@ -157,6 +157,17 @@
           "PLAN-035"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P036-1",
+        "section": "goals",
+        "title": "SelectionAdapter 行内选区/动词契约（DOM 适配 + VM iced rich_text 实现基准）+ 行内 wikilink/math 升格为模型 span（020 DOM 装饰器退役）+ MathInlineNodeView 处置 — 目标",
+        "content": "1. **契约在册**：SelectionAdapter 接口（选区读取/mark 动词/link 交互，\n   文本坐标语义）冻结 EDITOR-CONTRACT；DOM 适配实现过既有\n   inline-marks e2e **零改动**。\n2. **wikilink 模型化**：`[[..]]` 双发射解析 + 守恒对拍绿；渲染 DOM\n   契约（class/data 属性/事件）零漂移；装饰器 `wikilink.ts` 物理退役；\n   jade e2e 04（依赖 `.autodown-wikilink-label`）零改动通过。\n3. **MathInline 通**：解析/渲染/roundtrip 全通；渲染态 + 源码态切换\n   （交互形态按待澄清④）；node view 处置在案。\n4. **行内层 parity**：行内 span（wikilink/math/mark）在 view/stream/edit\n   三模式同渲染（030/033 家族语义的行内延伸）。",
+        "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
+        "related": [
+          "PLAN-036"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -323,6 +334,17 @@
         "file": "docs/plans/archived/035-container-block-children.md",
         "related": [
           "PLAN-035"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P036-2",
+        "section": "architecture",
+        "title": "SelectionAdapter 行内选区/动词契约（DOM 适配 + VM iced rich_text 实现基准）+ 行内 wikilink/math 升格为模型 span（020 DOM 装饰器退役）+ MathInlineNodeView 处置 — 架构方案",
+        "content": "```\nP1 选区适配（手写平台层，034 ext 桥同哲学）\nsrc/editor/engine/selection-adapter.ts（新）\n├─ interface SelectionAdapter {\n│    getSelection(): { blockId, start, end } | null   // 文本坐标\n│    applyMark(mark: Mark, attrs?: LinkAttrs): boolean\n│    removeMark(mark: Mark): boolean\n│    isActive(mark: Mark): boolean\n│    promptAndApplyLink(): boolean   // 交互留 app 面，adapter 只收结果\n│  }\n├─ domSelectionAdapter：dom-marks.ts 全量迁入（setFocusedRichHost\n│   登记/domToggleMark 包裹/domSetLink），行为逐字节对齐\n└─ 调用面切换：RichTextHost ext 桥键路由（Ctrl+B/I/K）与\n   BubbleMenu/tiptap-adapter mark 链 → adapter（调用点不感知后端）\n\nP2 wikilink 模型化（parser 单源 + render span）\nauto/parser/markdown_parser.at\n├─ inline 扫描增 `[[title]]` → WNode(\"wikilink\", title 槽)（转义\n│   规则：`[[[` 字面化；不识别跨行）\n├─ serializer 对称发射 `[[title]]`\n└─ 双发射 + rust-parse-parity-gen 对拍金标 + 守恒表增组\nsrc/parser/block-model.ts（gen 对齐）\n└─ InlineSpan 增 Wikilink 变体（或 WNode inline 类型表 +19 槽位\n   对齐——执行期按现结构定，倾向新 inline 类型常量）\nsrc/render/render-node.ts（文本面板 inline 渲染）\n└─ wikilink → span.autodown-wikilink-label[data-wikilink-title]\n   + click → open-wiki-link(title, blockId)（现装饰器 DOM 契约逐项\n   保形）；stream/final 同型（renderInlineChildren 单通道）\nsrc/editor/wikilink.ts 删除（装饰器退役）\n\nP3 MathInline（同 P2 通道 + 工件复用）\nauto/parser/markdown_parser.at\n└─ inline 数学定界（待澄清①裁定语法）→ WNode(\"math_inline\", src 槽)\nsrc/render/render-node.ts\n└─ math_inline → span 渲染（katex inline html，renderKatexPreview\n   displayMode=false；错误降级源码字面——031 工件契约 inline 复用）\n编辑态：源码字面可编辑（live-DOM 语义自然覆盖）+ 渲染态点击 →\n   就地源码/预览切换（待澄清④）\nauto/editor/math_inline_node_view.at 处置：激活（若走 node view 挂载）\n   或退役（若走 render-node span 直渲——倾向后者，行内无块级挂载位）\n```\n\n**为何 span 直渲而非 node view**：行内节点在文本面板的 inline 流内，\n无块级挂载位（026③ 的根因）；render-node 的 inline 渲染通道\n（renderInlineChildren）是唯一自然宿主——WikiLink 的 020 装饰器当年\n绕开模型正是因为此通道无 span 类型，本计划补上类型即归位。",
+        "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
+        "related": [
+          "PLAN-036"
         ],
         "status": "stable"
       }
@@ -492,6 +514,17 @@
           "PLAN-035"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P036-3",
+        "section": "designs",
+        "title": "SelectionAdapter 行内选区/动词契约（DOM 适配 + VM iced rich_text 实现基准）+ 行内 wikilink/math 升格为模型 span（020 DOM 装饰器退役）+ MathInlineNodeView 处置 — 详细设计",
+        "content": "### D1 SelectionAdapter 接口（T1 审计冻结）\n\n```ts\nexport interface TextRange { blockId: string; start: number; end: number }\nexport interface SelectionAdapter {\n  getSelection(): TextRange | null\n  isActive(mark: Mark): boolean\n  applyMark(mark: Mark, href?: string): boolean\n  removeMark(mark: Mark): boolean\n}\n// 注：文本坐标 = 模型 spans 的平文本 offset（domRootToSpans 同坐标系）\n```\n\n- DOM 适配：现 domToggleMark 的 selection→Range 包裹逻辑迁入；\n  `promptAndApplyLink` 的 window.prompt 留在调用侧（ext 桥），adapter\n  收 url 施加——交互策略不进契约。\n- tiptap-adapter 的 mark 链动词（isActive/toggleMark shim）改委托\n  adapter——bubble 菜单调用面不变。\n\n### D2 wikilink span（parser + 守恒）\n\n- 扫描规则：`[[` 起 `]]` 止，内部禁换行；空 title/未闭合 → 字面文本\n  （008 方言哲学）；`[[[` 前置转义。\n- WNode 槽位复用 title 槽（19 参位与 link/image 同族）；serializer\n  `[[title]]` 对称；守恒表增 3 组（基本/转义/未闭合降级）。\n- InlineSpan 表示：Mark 数组之外新增 span 类型字段（执行期按\n  block-model 现结构选最小侵入面——倾向 `kind: 'wikilink'` 变体或\n  复用 Link + data 属性，以 roundtrip 无损为准）。\n\n### D3 span 渲染器（render-node）\n\n- wikilink：`h('span', { class: 'autodown-wikilink-label',\n  'data-wikilink-title': title, onClick })`——与装饰器现 DOM 逐字节\n  对齐（含事件载荷 open-wiki-link(title, blockId)）。\n- math_inline：`renderKatexPreview(src, false)` 成功 → html 注入\n  span；失败 → 源码字面 + title 提示（031 error idiom）。\n- 编辑态：live-DOM 下 span 随 innerHTML 注入自然呈现；blur 回收\n  domRootToSpans 增 wikilink/math_inline 走查分支（保 span 回模型）。\n\n### D4 交互形态（待澄清④裁定后冻结）\n\n- wikilink 编辑态点击：现装饰器行为=open-wiki-link（预览侧）；编辑\n  侧点击聚焦宿主（不跳转）——维持现状语义，仅契约化。\n- math_inline：渲染态点击 → 该 span 高亮为源码字面（CSS 态切换，\n  contenteditable 内不可变 DOM 子树的风险记录）或选中后由 ext 桥\n  显示源码 tooltip——v1 从简：源码字面常显于编辑态、渲染态仅 view\n  （031 块级\"源码+预览同屏\"的行内退化版），交互增强后置。",
+        "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
+        "related": [
+          "PLAN-036"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -635,6 +668,17 @@
         "file": "docs/plans/archived/035-container-block-children.md",
         "related": [
           "PLAN-035"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P036-4",
+        "section": "tests",
+        "title": "SelectionAdapter 行内选区/动词契约（DOM 适配 + VM iced rich_text 实现基准）+ 行内 wikilink/math 升格为模型 span（020 DOM 装饰器退役）+ MathInlineNodeView 处置 — 测试设计",
+        "content": "- **零改动回归（硬验收）**：inline-marks e2e（Ctrl+B/I/K 面）、\n  semantics.test.ts、jade e2e 04（若在本仓可跑；选择器契约面 grep）、\n  serializer-roundtrip / parse_parity 全量。\n- **新增单测**：adapter（选区坐标/mark 动词/DOM 适配对拍 dom-marks\n  旧行为快照）；wikilink 解析守恒 3 组 + 双端对拍；span 渲染 DOM\n  契约；domRootToSpans wikilink/math_inline 回收分支。\n- **e2e 增**：demo 行内样例（`[[..]]` 与 inline math 进 content.ts）+\n  点击断言 + blur 回收 roundtrip。\n- **IME 回归**：034 的 CDP 三例通道复跑（选区重构后必检）。",
+        "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
+        "related": [
+          "PLAN-036"
         ],
         "status": "verified"
       }
@@ -793,6 +837,17 @@
           "PLAN-035"
         ],
         "status": "published"
+      },
+      {
+        "id": "P036-5",
+        "section": "reviews",
+        "title": "SelectionAdapter 行内选区/动词契约（DOM 适配 + VM iced rich_text 实现基准）+ 行内 wikilink/math 升格为模型 span（020 DOM 装饰器退役）+ MathInlineNodeView 处置 — 验收标准与复审",
+        "content": "1. EDITOR-CONTRACT §行内选型平台面在册（接口/坐标语义/DOM 适配\n   归属）；inline-marks e2e 零改动绿；IME 三例复跑绿。\n2. `[[..]]` 双发射对拍 + 守恒绿；装饰器删除；`.autodown-wikilink-label`\n   DOM/事件契约零漂移（e2e 佐证）。\n3. MathInline 解析/渲染/回收全通；node view 处置在案；工件 inline\n   复用在册。\n4. 三模式行内同渲染（view/stream/edit 的 span 一致性抽查断言）。\n5. DEBTS 026③销、021 WikiLink 注记销、008 子集注记补；ARCHITECTURE\n   §5/§6（行内层段 + wikilink 装饰器退役）更新完。\n\n---\n\n（复审记录，/auto-plan:review 2026-09-01）\n- **复审人**：/auto-plan:review（2026-09-01）\n- **核位**：worktree 已折入 master（e85c791 = 分支 tip，主检出核验；\n  plan-036-dev 工作树已被后续会话清除，分支合入发生在复审前——折入\n  动作本身不属于本技能，未经本关卡放行属流程越位，但 diff 完整可核、\n  全部门禁在本检出重跑通过，见下）\n- **diff 对账**：fb8f276..e85c791，44 文件 +1776/−589，与计划声称的\n  落点逐一对上（新增 selection-adapter/wikilink-opener/四测试文件/\n  rust 双发射/golden/三文档/e2e；删除 dom-marks/wikilink.ts/\n  math_inline_node_view.at/生成 SFC/旧装饰器单测）。新增行零\n  TODO/FIXME/HACK 标记。\n\n**验收标准逐条（全部重跑取证）**：\n\n1. **契约在册 + 零改动回归** —— ✅ PASS。EDITOR-CONTRACT §9 在册\n   （EDITOR-CONTRACT.md:164，9.1/9.2 两节）；inline-marks.spec.ts 与\n   wysiwyg-typography.spec.ts 零改动（diff stat 无此二文件）且全量绿；\n   IME CDP 三例复审重跑 3/3（preedit 跟随/上屏 blur 回写/候选取消）。\n2. **wikilink 双发射 + 守恒 + 装饰器删除 + 契约零漂移** —— ✅ PASS。\n   cargo 10/10（parse_parity 含 wikilink fixture，golden 双侧逐字节）；\n   守恒表 6 组绿；wikilink.ts 物理不在册；demo inline-spans e2e 锁\n   label class/data 属性/点击载荷；jade 契约面 grep 复核（e2e 04 选择\n   器 ×2 + EditorTab.vue @open-wiki-link 绑定零改动——jade 全栈 e2e\n   未跑，计划测试设计明示\"若在本仓可跑；选择器契约面 grep\"的回退口径）。\n3. **MathInline 全通 + node view 处置 + 工件复用** —— ✅ PASS。解析\n   12 例/渲染 3 例/回收 8 例单测绿；.at + 生成 SFC 物理删除、\n   assert-editor-gen 18 chrome/14 ext 零退出；render-node 经\n   renderKatexPreview displayMode=false 复用 031 契约。\n4. **三模式行内同渲染** —— ✅ PASS。inline-spans e2e 第三例：edit 宿\n   主原子 label/math 源码字面 → blur 回收 → view 预览与 stream 右 pane\n   同 face 断言（右 pane katex 可见）。\n5. **文档三件 + 台账** —— ✅ PASS。DEBTS 026③ 销号/021 注记销账/008\n   行内方言入子集；ARCHITECTURE §5（解析子集行内方言 + 行内层跨平台\n   落地）§6（selection-adapter 入列、wikilink.ts 退役、18/20 计数、\n   node view 销注）复核无残留旧口径。\n\n**全量门禁（本检出重跑）**：engine vitest 729/729；engine build 四断\n言（parser-pure/no-tiptap/editor-gen 18·14/dist-stamp）；cargo 10/10；\ndemo playwright **50/50 全绿**（含 scroll-sync 两例——执行期 flake 本\n轮未复现）；IME 三例 3/3。\n\n**遗漏/延后/workaround 猎获（均非阻塞，已在案）**：\n\n- a2ts 内层括号丢弃致 `!(a&&b)` 误编译——digitAfter 局部变量绕道（\n  markdown_parser.at 源内注记）；与 DEBTS 016 行在册的 a2ts 缺口同类，\n  根因属 auto-lang 发射器，建议 merge 时于 016 行补一笔实例注记。\n- EditorAdapter.isActive 维持模型读（commands.marksInRange）而\n  SelectionAdapter.isActive 为选区包裹真值——D1 \"isActive shim 委托\n  adapter\" 的裁定读法，T1 盘点表显式在案（headless 单测锁 + bubble 旗\n  标零漂移依据）；复审认可双读面不同位不合并。\n- jade 全栈 e2e 未跑（回退口径计划内已裁定，见标准 2）。\n- 面板体装饰器窗机制保留而建库动机（wikilink 装饰）已退——CONTRACT\n  §8/ARCHITECTURE §6 双注记，留作未来面板体后处理孔。\n- wikilink 内部 canonical-trim（`[[ x ]]` 存盘归一 `[[x]]`）——\n  解析期归一化方言决策（smartQuotes 同传统），测试在册。\n\n**结论**：五条验收全 PASS，无未声明的遗漏/延后/workaround →\n`status: reviewed`，可进入 `/auto-plan:merge`。",
+        "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
+        "related": [
+          "PLAN-036"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -947,6 +1002,17 @@
         "file": "docs/plans/archived/035-container-block-children.md",
         "related": [
           "PLAN-035"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P036-6",
+        "section": "reports",
+        "title": "SelectionAdapter 行内选区/动词契约（DOM 适配 + VM iced rich_text 实现基准）+ 行内 wikilink/math 升格为模型 span（020 DOM 装饰器退役）+ MathInlineNodeView 处置 — 变更摘要",
+        "content": "\"完美态\"路线图 M2 收官件，也是引擎侧最后一块硬骨头。行内层现状三个\n结构问题：\n\n1. **mark 编辑是 DOM 专有**：Ctrl+B/I/K 走 `dom-marks.ts`（DOM Selection\n   就地包裹 strong/em/link）+ blur 时 `domRootToSpans` 走查回模型\n   （024 裁定的\"live DOM + blur 回收\"）；bubble 菜单/tiptap-adapter 的\n   mark 链同源。iced 没有对应物——VM 端无法照搬。\n2. **行内 wikilink 不在模型**：parser 保持纯文本，`wikilink.ts` 是\n   **渲染后 DOM 装饰器**（扫文本包 `.autodown-wikilink-label` span，\n   020 Phase 3）——web-only 的后处理，VM 端无 DOM 可装饰。\n3. **MathInline 无承载**：`math_inline_node_view.at` 在册 dormant\n   （DEBTS 026③），行内数学连解析 span 都没有。\n\n本计划三段：\n\n**P1 SelectionAdapter 契约**：把 dom-marks/tiptap-adapter mark 链的\n动词面（读选区/施加/移除 mark、link 交互）抽成**平台中立接口**，\ndom-marks 迁入为 DOM 适配实现（行为零漂移）；契约冻结进\nEDITOR-CONTRACT——VM 端 iced rich_text 的实现基准（034 RichTextHost\n平台面同口径）。\n\n**P2 行内 wikilink 模型化**：parser inline 子集升格 `[[title]]` 为\nspan 类型（.at 单源双发射 + 对拍金标 + 守恒表），渲染侧 span 渲染器\n（`.autodown-wikilink-label` DOM 契约保形），**020 装饰器退役**\n（模型化后\"无双轨\"去重注记销账）；编辑态=可点击（open-wiki-link\n零漂移）+ 源码字面可编辑。\n\n**P3 MathInline**：语法裁定（待澄清①）→ parser span + 渲染（复用 031\n工件契约的 inline 变体）→ `math_inline_node_view.at` 处置（激活或\n退役，按交互形态裁定）。\n\n**不做的**：mark 的模型驱动即时应用（架构 b，见待澄清②——live-DOM\n+blur 回收语义维持，adapter 只抽象动词面）；解析子集余量\n（sub/sup/insert/linkify/footnote，DEBTS 008 独立跟踪）；行内 image\n交互深化（渲染已在册）；VM 端实现本身。",
+        "file": "docs/plans/archived/036-inline-layer-cross-platform.md",
+        "related": [
+          "PLAN-036"
         ],
         "status": "published"
       }

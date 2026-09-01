@@ -121,3 +121,56 @@ test('capture three-mode comparison screenshots (plan 033)', async ({ page }) =>
     await page.screenshot({ path: `e2e/screenshots/${c.name}-three-modes.png`, fullPage: true })
   }
 })
+
+// plan 035 T8 — the container families' focused edit faces, archived for
+// the manual-verification record (029/031/033 T10 口径): three cases the
+// plan names — Callout title in place (AttrHost), Details summary + open
+// flip, task checkbox flip. One composite image; purely additive.
+test('capture container edit faces (plan 035)', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 10000 })
+  test.setTimeout(120000)
+  const shots: Record<string, Buffer> = {}
+
+  // 1. Callout: focus the body — the card keeps its chrome, the title
+  //    becomes the AttrHost in-place host
+  const callout = page.locator('.left .callout-node[data-callout-type="warning"]').first()
+  await callout.scrollIntoViewIfNeeded()
+  await callout.getByText('warning callout').first().click()
+  await page.waitForTimeout(400)
+  await expect.soft(callout.locator('.autodown-attr-host.autodown-callout-title')).toBeVisible()
+  shots.callout = await callout.screenshot()
+  await page.locator('.autodown-editor-save').click()
+  await page.waitForTimeout(200)
+
+  // 2. Details: focus the body — the summary becomes the AttrHost; flip
+  //    open through the marker
+  const details = page.locator('.left .autodown-details').filter({ hasText: 'Click to expand' }).first()
+  await details.scrollIntoViewIfNeeded()
+  await details.locator('.autodown-details-marker').click()
+  await expect.soft(details).toHaveAttribute('data-open', 'true')
+  await details.getByText('Details block', { exact: false }).first().click()
+  await page.waitForTimeout(400)
+  await expect.soft(details.locator('.autodown-attr-host.autodown-details-summary-text')).toBeVisible()
+  shots.details = await details.screenshot()
+  await page.locator('.autodown-editor-save').click()
+  await page.waitForTimeout(200)
+
+  // 3. Task list: focus an item — the checkbox is LIVE (command channel)
+  const task = page.locator('.left li.task-item .task-checkbox').first()
+  const taskList = task.locator('xpath=ancestor::ul').first()
+  await taskList.scrollIntoViewIfNeeded()
+  await taskList.click()
+  await page.waitForTimeout(400)
+  shots.task = await taskList.screenshot()
+
+  const figures = Object.entries(shots).map(([name, buf]) => {
+    const b64 = buf.toString('base64')
+    return `<figure style="margin:0"><figcaption style="font-size:12px;font-weight:600;color:#374151;padding:4px 0">${name}</figcaption><img src="data:image/png;base64,${b64}" style="display:block;border:1px solid #d1d5db;background:#fff"/></figure>`
+  }).join('')
+  await page.setContent(
+    `<body style="margin:0;font-family:system-ui;background:#f3f4f6"><div style="display:flex;gap:12px;align-items:flex-start;padding:12px">${figures}</div></body>`,
+  )
+  await page.waitForTimeout(200)
+  await page.screenshot({ path: 'e2e/screenshots/container-edit-faces.png', fullPage: true })
+})

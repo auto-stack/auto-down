@@ -34,13 +34,17 @@
 
 import { createApp, h } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BlockType, Value, attrSet, leafBlock } from '../../parser/block-model'
+import { BlockType, Value, attrSet, block, leafBlock, withChildren } from '../../parser/block-model'
 import { parse_blocks } from '../../parser/markdown-parser'
 import { EditorEngine } from '../../editor/engine/editor-engine'
 import { clearOptionalCapabilities } from '../optional-capabilities'
 import CodeBlockWidget from '../../editor/components/CodeBlockWidget.vue'
 import MathBlockWidget from '../../editor/components/MathBlockWidget.vue'
 import MermaidBlockWidget from '../../editor/components/MermaidBlockWidget.vue'
+import CalloutBlockWidget from '../../editor/components/CalloutBlockWidget.vue'
+import DetailsBlockWidget from '../../editor/components/DetailsBlockWidget.vue'
+import BlockquoteBlockWidget from '../../editor/components/BlockquoteBlockWidget.vue'
+import ListBlockWidget from '../../editor/components/ListBlockWidget.vue'
 
 interface Mounted {
   root: HTMLElement
@@ -237,5 +241,157 @@ describe('Mermaid family (MermaidBlockWidget) — three-mode parity', () => {
     expect(f.edit.root.querySelector('.mermaid-editor-textarea')).not.toBeNull()
     expect(f.view.root.querySelector('.mermaid-editor-textarea')).toBeNull()
     expect(f.view.root.querySelector('.mermaid-source')).not.toBeNull()
+  })
+})
+
+
+// -- container families (plan 035 T8) ---------------------------------------------
+//
+// The container widgets own no injected styles (their style blocks are
+// empty — the chrome classes resolve in autodown-editor.css), so the parity
+// pin is the CLASS CHAIN + structural markers: view ≡ stream root chains,
+// edit shares the container chrome with only the declared whitelist
+// diverging (AttrHost title/summary hosts, the live task checkbox, the
+// markdown-renderer children wrapper, the stream banner).
+
+describe('Callout family (CalloutBlockWidget) — three-mode parity', () => {
+  function faces() {
+    let node = withChildren(block('c1', BlockType.Callout), [block('c1-p', BlockType.Paragraph)])
+    node.attrs = attrSet(node.attrs, 'type', Value.Str('warning'))
+    node.attrs = attrSet(node.attrs, 'title', Value.Str('注意'))
+    const children = () => [h('p', { key: 'k' }, '正文')]
+    return {
+      view: mountFace(CalloutBlockWidget, { mode: 'view', node, ctx: null, final: true, children, version: 0 }),
+      stream: mountFace(CalloutBlockWidget, { mode: 'stream', node, ctx: null, final: false, children, version: 0 }),
+      edit: mountFace(CalloutBlockWidget, {
+        mode: 'edit', node, ctx: { engine: { doc: null }, blockId: 'c1', readonly: false },
+        final: true, children, version: 1,
+      }),
+    }
+  }
+
+  it('view ≡ stream: identical root class chain and icon/title chrome', () => {
+    const f = faces()
+    expect(f.stream.root.className).toBe('callout-node autodown-callout autodown-callout-warning')
+    expect(f.stream.root.className).toBe(f.view.root.className)
+    expect(f.stream.root.querySelector('.autodown-callout-icon')!.className).toBe(
+      f.view.root.querySelector('.autodown-callout-icon')!.className,
+    )
+  })
+
+  it('edit shares the container chrome; the title host is the only divergence', () => {
+    const f = faces()
+    expect(f.edit.root.className).toBe(f.view.root.className)
+    expect(f.edit.root.querySelector('.autodown-callout-content')!.className).toBe(
+      f.view.root.querySelector('.autodown-callout-content')!.className,
+    )
+    // whitelist: AttrHost replaces the static title div; no banner unless streaming
+    expect(f.edit.root.querySelector('.autodown-attr-host.autodown-callout-title')).not.toBeNull()
+    expect(f.view.root.querySelector('.autodown-attr-host')).toBeNull()
+    expect(f.edit.root.querySelector('.autodown-stream-banner')).toBeNull()
+  })
+
+  it('readonly edit (stream gate): banner mounts, chrome unchanged', () => {
+    let node = withChildren(block('c1', BlockType.Callout), [])
+    node.attrs = attrSet(node.attrs, 'type', Value.Str('tip'))
+    const m = mountFace(CalloutBlockWidget, {
+      mode: 'edit', node, ctx: { engine: { doc: null }, blockId: 'c1', readonly: true },
+      final: true, children: () => [], version: 0,
+    })
+    expect(m.root.className).toBe('callout-node autodown-callout autodown-callout-tip')
+    expect(m.root.querySelector('.autodown-stream-banner')).not.toBeNull()
+  })
+})
+
+describe('Details family (DetailsBlockWidget) — three-mode parity', () => {
+  function faces() {
+    let node = withChildren(block('d1', BlockType.Details), [block('d1-p', BlockType.Paragraph)])
+    node.attrs = attrSet(node.attrs, 'open', Value.Bool(true))
+    node.attrs = attrSet(node.attrs, 'summary', Value.Str('摘要'))
+    const children = () => [h('p', { key: 'k' }, '正文')]
+    return {
+      view: mountFace(DetailsBlockWidget, { mode: 'view', node, ctx: null, final: true, children, version: 0 }),
+      stream: mountFace(DetailsBlockWidget, { mode: 'stream', node, ctx: null, final: false, children, version: 0 }),
+      edit: mountFace(DetailsBlockWidget, {
+        mode: 'edit', node, ctx: { engine: { doc: null }, blockId: 'd1', readonly: false },
+        final: true, children, version: 1,
+      }),
+    }
+  }
+
+  it('view ≡ stream ≡ edit: identical root class, data-open, marker/content chrome', () => {
+    const f = faces()
+    for (const m of [f.view, f.stream, f.edit]) {
+      expect(m.root.className).toBe('autodown-details')
+      expect(m.root.getAttribute('data-open')).toBe('true')
+      expect(m.root.querySelector('.autodown-details-marker')!.className).toBe('autodown-details-marker')
+      expect(m.root.querySelector('.autodown-details-content')!.className).toBe('autodown-details-content')
+    }
+  })
+
+  it('edit-face whitelist: the AttrHost summary is the only divergence', () => {
+    const f = faces()
+    expect(f.edit.root.querySelector('.autodown-attr-host.autodown-details-summary-text')).not.toBeNull()
+    expect(f.view.root.querySelector('.autodown-attr-host')).toBeNull()
+    expect(f.view.root.querySelector('.autodown-details-summary-text')).not.toBeNull()
+  })
+})
+
+describe('Blockquote family (BlockquoteBlockWidget) — three-mode parity', () => {
+  it('view ≡ stream ≡ edit: the thin shell is one chrome', () => {
+    const node = withChildren(block('q1', BlockType.Blockquote), [block('q1-p', BlockType.Paragraph)])
+    const children = () => [h('p', { key: 'k' }, '正文')]
+    const view = mountFace(BlockquoteBlockWidget, { mode: 'view', node, ctx: null, final: true, children, version: 0 })
+    const stream = mountFace(BlockquoteBlockWidget, { mode: 'stream', node, ctx: null, final: false, children, version: 0 })
+    const edit = mountFace(BlockquoteBlockWidget, {
+      mode: 'edit', node, ctx: { engine: { doc: null }, blockId: 'q1', readonly: false },
+      final: true, children, version: 0,
+    })
+    for (const m of [view, stream, edit]) {
+      expect(m.root.tagName).toBe('BLOCKQUOTE')
+      expect(m.root.className).toBe('blockquote')
+      expect(m.root.getAttribute('dir')).toBe('auto')
+    }
+  })
+})
+
+describe('List family (ListBlockWidget) — three-mode parity', () => {
+  function faces() {
+    let node = withChildren(block('l1', BlockType.ListBlock), [withChildren(block('l1-i1', BlockType.ListItem), [block('l1-i1-p', BlockType.Paragraph)])])
+    node.attrs = attrSet(node.attrs, 'ordered', Value.Bool(false))
+    const item = node.children[0]!
+    item.attrs = attrSet(item.attrs, 'checked', Value.Bool(true))
+    const items = [
+      { id: 'l1-i1', task: true, checked: true, cls: 'list-item task-item', children_slot: () => [h('p', { key: 'k' }, '正文')] },
+    ]
+    return {
+      view: mountFace(ListBlockWidget, { mode: 'view', node, ctx: null, final: true, items, version: 0 }),
+      stream: mountFace(ListBlockWidget, { mode: 'stream', node, ctx: null, final: false, items, version: 0 }),
+      edit: mountFace(ListBlockWidget, {
+        mode: 'edit', node, ctx: { engine: { doc: null }, blockId: 'l1', readonly: false },
+        final: true, items, version: 0,
+      }),
+    }
+  }
+
+  it('view ≡ stream ≡ edit: identical list/li chrome chains', () => {
+    const f = faces()
+    for (const m of [f.view, f.stream, f.edit]) {
+      expect(m.root.tagName).toBe('UL')
+      expect(m.root.className).toBe('list-node list-disc')
+      const li = m.root.querySelector('li')!
+      expect(li.className).toBe('list-item task-item')
+      expect(li.getAttribute('dir')).toBe('auto')
+      expect(m.root.querySelector('.task-checkbox')!.className).toBe('task-checkbox')
+    }
+  })
+
+  it('checkbox mode split: view/stream inert (disabled), edit live', () => {
+    const f = faces()
+    expect((f.view.root.querySelector('.task-checkbox') as HTMLInputElement).disabled).toBe(true)
+    expect((f.stream.root.querySelector('.task-checkbox') as HTMLInputElement).disabled).toBe(true)
+    expect((f.edit.root.querySelector('.task-checkbox') as HTMLInputElement).disabled).toBe(false)
+    expect(f.edit.root.querySelector('.task-checkbox')!.getAttribute('aria-label')).toBe('toggle task')
+    expect(f.view.root.querySelector('.task-checkbox')!.getAttribute('aria-label')).toBe('task checkbox')
   })
 })

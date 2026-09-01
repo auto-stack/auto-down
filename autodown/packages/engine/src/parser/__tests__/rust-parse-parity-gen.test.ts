@@ -47,6 +47,9 @@ const FIXTURES: Array<[string, string]> = [
   ['mermaid-open', '```mermaid\ngraph TD;\n'],
   ['comp-nested', '$details(summary: "s") {\n$callout(type: "warn") {\n内层\n}\n外层尾段\n}\n'],
   ['task-list', '- [ ] 待办甲\n- [x] 已办乙\n- 普通丙\n'],
+  // plan 036 T4: inline wikilink dialect — basic + #anchor + `[[[` escape +
+  // unclosed literal degradation, one fixture both final and streaming.
+  ['wikilink', '正文 [[首页]] 与 [[页#块]] 还有 [[[字面]]] 以及 [[未闭合\n'],
   ['streaming-heading', '## 编辑中的标题\n\n- 列表项\n- '],
   ['streaming-link', '半截链接 [文本](https://example.\n'],
   ['streaming-pretable', '| a | b |\n| --- |\n'],

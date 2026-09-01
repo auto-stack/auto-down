@@ -160,6 +160,13 @@ fn linkNode(href str, title str?, textContent str, children List<WNode>, loading
     return WNode("link", None, None, None, None, Some(loading), Some(children), None, None, None, None, None, None, None, None, Some(href), title, Some(textContent), None, None, None)
 }
 
+// inline wikilink (plan 036 T4): `[[title]]` / `[[title#block]]` rides the
+// title slot (link/image family, 21-field struct unchanged); the slot holds
+// the RAW inner so parse→serialize stays byte-lossless.
+fn wikilinkNode(title str) WNode {
+    return WNode("wikilink", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Some(title), None, None, None, None)
+}
+
 // $ component blocks (plan 030): args ride existing field slots so WNode
 // stays a flat 21-field struct (rust emission shape unchanged):
 //   callout: language = callout type, title = title
@@ -1814,8 +1821,35 @@ fn parseInlineLine(line str, isFinal bool) List<WNode> {
             continue
         }
 
-        // link [text](href)
+        // link [text](href) — with the `[[` wikilink dialect in front of it
+        // (plan 036 T4): `[[[` literalizes the first bracket (escape), a
+        // closed `[[inner]]` with a non-empty inner free of newline/| lifts
+        // into a wikilink node; anything else degrades to literal text.
+        // The `#` separator and surrounding spaces stay in the raw inner.
         if cs == "[" {
+            if startsWithAt(line, "[[", i) {
+                if startsWithAt(line, "[[[", i) {
+                    buf += "["
+                    i += 1
+                    continue
+                }
+                var close = findStrFrom(line, "]]", i + 2)
+                if close != -1 {
+                    var inner = line.slice(i + 2, close)
+                    if findStr(inner, "|") == -1 && !hasChar(inner, 10) && inner.trim() != "" {
+                        if buf != "" {
+                            nodes.push(textNode(buf))
+                            buf = ""
+                        }
+                        nodes.push(wikilinkNode(inner))
+                        i = close + 2
+                        continue
+                    }
+                }
+                buf += "["
+                i += 1
+                continue
+            }
             var after = scanLink(line, i, isFinal, seenCode)
             if after != None {
                 let lk = after ?? LinkScan(0, "", "", false, None, "")
@@ -2575,6 +2609,15 @@ fn convertInlines(wnodes List<WNode>, marks List<Mark>) List<InlineSpan> {
                 iattrs = attrSet(iattrs, "title", Value.Str(ititle ?? ""))
             }
             out.push(spanWith(w.alt ?? "", addMark(marks, Mark.Image), iattrs))
+        }
+        if t == "wikilink" {
+            // plan 036 T4: the `wikilink` attr is the span discriminator
+            // (no new Mark — the label text rides `text`, the raw inner
+            // rides the attr, roundtrip lossless; marks compose so
+            // `**[[x]]**` keeps Strong under the label)
+            var wattrs List<Attr> = []
+            wattrs = attrSet(wattrs, "wikilink", Value.Str(w.title ?? ""))
+            out.push(spanWith(w.title ?? "", marks, wattrs))
         }
     }
     return out

@@ -14,6 +14,7 @@
 
 import { h, type VNode } from 'vue'
 import { resolvePanelRenderer, specForNode, type RevealBudget } from './panel-registry'
+import { openWikilink } from './wikilink-opener'
 // side effect only: StreamingTable registers its terminal panel on the
 // registry custom slot (plan 032 P2 — single table channel). It must be
 // pulled in OUTSIDE the panel-registry ↔ builtin-panels import cycle, and
@@ -109,6 +110,31 @@ function renderInlineNode(node: any, final: boolean | undefined, budget?: Reveal
       ])
     case 'hardbreak':
       return h('br')
+    case 'wikilink': {
+      // plan 036 T5: the parser lifts `[[inner]]` into a wikilink node and
+      // the renderer emits the frozen DOM contract the retired 020 decorator
+      // produced (span.autodown-wikilink-label[data-wikilink-title], label =
+      // title or title#block, click stops propagation and hands the split
+      // payload to the app-facing opener). Raw inner keeps `#` out of the
+      // title slot; whitespace trims like the old regex did.
+      const raw = node.title ?? ''
+      const hash = raw.indexOf('#')
+      const title = (hash >= 0 ? raw.slice(0, hash) : raw).trim()
+      const blockId = hash >= 0 ? raw.slice(hash + 1).trim() : undefined
+      const label = blockId ? `${title}#${blockId}` : title
+      return h(
+        'span',
+        {
+          class: 'autodown-wikilink-label',
+          'data-wikilink-title': title,
+          onClick: (ev: MouseEvent) => {
+            ev.stopPropagation()
+            openWikilink(title, blockId)
+          },
+        },
+        label,
+      )
+    }
     default:
       return h('span', { class: 'whitespace-pre-wrap break-words text-node' }, [
         h('span', inlineFallbackText(node)),

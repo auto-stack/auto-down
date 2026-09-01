@@ -86,6 +86,11 @@ pub fn spanMd(s InlineSpan) str {
     // marks on a bare newline are meaningless, so no wrappers.
     if s.text == "\n" { return "  \n" }
     var t str = s.text
+    // inline wikilink (plan 036 T4): the attr carries the raw inner — emit
+    // it symmetrically at the text level so other marks still wrap around
+    // it (e.g. Strong on `**[[x]]**`).
+    let wiki = attrGetStr(s.attrs, "wikilink", "")
+    if wiki.length.to(int) > 0 { t = "[[" + wiki + "]]" }
     if hasMark(s.marks, Mark.Code) { t = "`" + t + "`" }
     if hasMark(s.marks, Mark.Strong) { t = "**" + t + "**" }
     if hasMark(s.marks, Mark.Em) { t = "*" + t + "*" }

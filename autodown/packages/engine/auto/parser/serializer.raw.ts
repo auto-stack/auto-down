@@ -34,6 +34,14 @@ export function spanMd(s: InlineSpan): string {
         return "  \n";
     }
     let t: string = s.text;
+    
+
+
+
+    const wiki = attrGetStr(s.attrs, "wikilink", "");
+    if (Number(wiki.length) > 0) {
+        t = "[[" + wiki + "]]";
+    }
     if (hasMark(s.marks, Mark.Code)) {
         t = "`" + t + "`";
     }

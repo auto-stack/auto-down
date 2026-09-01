@@ -340,6 +340,13 @@ describe('dialect roundtrip conservation table (plan 030 T5)', () => {
     ['math', '%{\ne = mc^2\n}%\n'],
     ['mermaid', '```mermaid\ngraph TD;\nA-->B;\n```\n'],
     ['task list', '- [ ] a\n- [x] b\n'],
+    // plan 036 T4: inline wikilink joins the dialect table (three ruling
+    // groups: basic / `[[[` escape / unclosed degrades to literal) plus the
+    // #anchor form the DOM contract carries.
+    ['wikilink basic', '链接 [[首页]] 文档\n'],
+    ['wikilink anchor', '见 [[页#块]] 引用\n'],
+    ['wikilink escape', "字面 [[[不是]]]\n"],
+    ['wikilink unclosed', '看 [[首页 无闭合\n'],
   ]
 
   it.each(cases)('%s: parse→serialize is byte-canonical and idempotent', (_name, src) => {

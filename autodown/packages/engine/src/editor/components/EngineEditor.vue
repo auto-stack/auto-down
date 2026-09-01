@@ -211,9 +211,9 @@ import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
 import { createEditorAdapter } from '../engine/tiptap-adapter'
 import { pushNodeViewHost, popNodeViewHost } from '../engine/node-view-host'
-import { withPanelDecorator, currentPanelDecorator, type PanelBodyDecorator } from '../../render/panel-registry'
+import { currentPanelDecorator } from '../../render/panel-registry'
 import { decorateBody } from '../../render/block-widget'
-import { decorateWikilinks } from '../wikilink'
+import { registerWikilinkOpener, currentWikilinkOpener, type WikilinkOpener } from '../../render/wikilink-opener'
 
 const props = defineProps<{
   content?: string
@@ -227,6 +227,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
+
+// Wikilink clicks (plan 036 T5): the label span is rendered deep inside the
+// pure render pipeline, so the app-facing callback registers on the
+// render-side seam instead of threading through every render call. Single
+// global slot with the same last-mounted-wins semantics as the
+// focused-rich-host registration (plan 034).
+const wikilinkOpener: WikilinkOpener = (title, blockId) => emit('open-wiki-link', title, blockId)
+registerWikilinkOpener(wikilinkOpener)
+onBeforeUnmount(() => {
+  if (currentWikilinkOpener() === wikilinkOpener) registerWikilinkOpener(null)
+})
 
 const root = ref<HTMLElement | null>(null)
 const wrapper = ref<HTMLElement | null>(null)
@@ -350,23 +361,17 @@ const views = computed<BlockView[]>(() => {
 
 /** Preview render of an off-path subtree: BlockNode → WNode → renderNodes —
  *  no serialize->parseDocument round trip (plan 023 P0T0, one pipeline for
- *  editor preview / MarkdownRender / StreamingRenderer). [[wikilinks]] stay
- *  plain text in the model; decorateWikilinks turns them into clickable
- *  labels on the returned VNodes (plan 020 Phase 3, click emits open-wiki-link).
+ *  editor preview / MarkdownRender / StreamingRenderer). [[wikilinks]] are
+ *  model spans since plan 036: renderInlineNode emits the label span
+ *  directly and the click reaches this component's open-wiki-link event
+ *  through the registered opener (the 020 post-render decorator retired).
  *  The host window (plan 026 P1T2) scopes the mounted node-view panels to
  *  THIS editor's engine — panel renderers execute synchronously inside
  *  renderNodes, so push/pop brackets the whole conversion+render leg. */
 function previewVNodeOf(node: BlockNode): VNode {
-  const open = (title: string, blockId?: string) => emit('open-wiki-link', title, blockId)
-  // plan 035 T6: container widget bodies ride closures the outer pass
-  // cannot descend into — the decorator registers here for the window and
-  // the container panel adapters apply it inside their closures; the plain
-  // tree below keeps the ordinary top-level pass (channels never overlap).
-  const dec: PanelBodyDecorator = (vnodes) => decorateWikilinks(vnodes, open)
   pushNodeViewHost({ engine, adapter })
   try {
-    const vnode = withPanelDecorator(dec, () => renderNodes(blockNodesToWNodes([node]), true))[0]
-    if (vnode) decorateWikilinks([vnode], open)
+    const vnode = renderNodes(blockNodesToWNodes([node]), true)[0]
     return vnode ?? h('div', { class: 'unknown-node' }, '')
   } finally {
     popNodeViewHost()

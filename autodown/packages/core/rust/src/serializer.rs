@@ -34,6 +34,13 @@ pub fn spanMd(mut s: InlineSpan) -> String {
         return "  \n".to_string();
     }
     let mut t: String = s.text.clone();
+
+
+
+    let wiki = attrGetStr(s.attrs.clone(), "wikilink", "");
+    if (wiki.chars().count() as i64) > 0 {
+        t = format!("{}{}", format!("{}{}", "[[", wiki), "]]");
+    }
     if hasMark(s.marks.clone(), Mark::Code.clone()) {
         t = format!("{}{}", format!("{}{}", "`", t), "`");
     }

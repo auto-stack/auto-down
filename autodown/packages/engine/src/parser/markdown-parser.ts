@@ -137,6 +137,10 @@ export function linkNode(href: string, title: string | null, textContent: string
     return new WNode("link", null, null, null, null, loading, children, null, null, null, null, null, null, null, null, href, title, textContent, null, null, null);
 }
 
+export function wikilinkNode(title: string): WNode {
+    return new WNode("wikilink", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
+}
+
 export function calloutNode(ctype: string, title: string, children: WNode[]): WNode {
     return new WNode("callout", null, null, ctype, null, null, children, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
 }
@@ -2060,7 +2064,34 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
         
 
 
+
+
+
+
         if (cs == "[") {
+            if (startsWithAt(line, "[[", i)) {
+                if (startsWithAt(line, "[[[", i)) {
+                    buf += "[";
+                    i += 1;
+                    continue;
+                }
+                let close = findStrFrom(line, "]]", i + 2);
+                if (close != -1) {
+                    let inner = line.slice(i + 2, close);
+                    if (findStr(inner, "|") == -1 && !hasChar(inner, 10) && inner.trim() != "") {
+                        if (buf != "") {
+                            nodes.push(textNode(buf));
+                            buf = "";
+                        }
+                        nodes.push(wikilinkNode(inner));
+                        i = close + 2;
+                        continue;
+                    }
+                }
+                buf += "[";
+                i += 1;
+                continue;
+            }
             let after = scanLink(line, i, isFinal, seenCode);
             if (after != null) {
                 const lk = after ?? new LinkScan(0, "", "", false, null, "");
@@ -2973,6 +3004,16 @@ export function convertInlines(wnodes: WNode[], marks: Mark[]): InlineSpan[] {
                 iattrs = attrSet(iattrs, "title", Value.Str(ititle ?? ""));
             }
             out.push(spanWith(w.alt ?? "", addMark(marks, Mark.Image), iattrs));
+        }
+        if (t == "wikilink") {
+            
+
+
+
+
+            let wattrs: Attr[] = [];
+            wattrs = attrSet(wattrs, "wikilink", Value.Str(w.title ?? ""));
+            out.push(spanWith(w.title ?? "", marks, wattrs));
         }
     }
     return out;

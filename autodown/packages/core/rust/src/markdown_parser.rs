@@ -104,6 +104,10 @@ fn linkNode(href: &str, title: Option<String>, textContent: &str, children: Vec<
     return WNode { r#type: "link".to_string(), content: None, level: None, language: None, code: None, loading: Some(loading), children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: Some(href.to_string()), title: title, text: Some(textContent.to_string()), src: None, alt: None, checked: None };
 }
 
+fn wikilinkNode(title: &str) -> WNode {
+    return WNode { r#type: "wikilink".to_string(), content: None, level: None, language: None, code: None, loading: None, children: None, ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: Some(title.to_string()), text: None, src: None, alt: None, checked: None };
+}
+
 fn calloutNode(ctype: &str, title: &str, children: Vec<WNode>) -> WNode {
     return WNode { r#type: "callout".to_string(), content: None, level: None, language: Some(ctype.to_string()), code: None, loading: None, children: Some(children), ordered: None, start: None, items: None, cells: None, header: None, rows: None, isHeader: None, align: None, href: None, title: Some(title.to_string()), text: None, src: None, alt: None, checked: None };
 }
@@ -1930,8 +1934,30 @@ fn parseInlineLine(line: &str, isFinal: bool) -> Vec<WNode> {
         }
         
 
+
+
+
+
         if cs == "[" {
-            let mut after = scanLink(line, i, isFinal, seenCode);
+            if startsWithAt(line, "[[", i) {
+                if startsWithAt(line, "[[[", i) {
+                    buf += &"[";
+                    i += 1;
+                    continue;
+                }                let mut close = findStrFrom(line, "]]", i + 2);
+                if close != -1 {
+                    let mut inner = line.chars().take((close) as usize).skip((i + 2) as usize).collect::<String>();
+                    if findStr(inner.as_str(), "|") == -1 && !(hasChar(inner.as_str(), 10)) && inner.trim().to_string() != "" {
+                        if buf != "" {
+                            nodes.push(textNode(buf.as_str()));
+                            buf = "".to_string();
+                        }                        nodes.push(wikilinkNode(inner.as_str()));
+                        i = close + 2;
+                        continue;
+                    }                }                buf += &"[";
+                i += 1;
+                continue;
+            }            let mut after = scanLink(line, i, isFinal, seenCode);
             if after != None {
                 let lk = after.unwrap_or(LinkScan { next: 0, text: "".to_string(), href: "".to_string(), loading: false, title: None, tail: "".to_string() });
                 if buf != "" {
@@ -2778,6 +2804,16 @@ fn convertInlines(wnodes: Vec<WNode>, mut marks: Vec<Mark>) -> Vec<InlineSpan> {
             if ititle != None {
                 iattrs = attrSet(iattrs.clone(), "title", Value::Str(ititle.unwrap_or("".to_string())));
             }            out.push(spanWith(w.alt.clone().unwrap_or("".to_string()).as_str(), addMark(marks.clone(), Mark::Image.clone()), iattrs.clone()));
+        }
+        if t == "wikilink" {
+            
+
+
+
+
+            let mut wattrs: Vec<Attr> = vec![];
+            wattrs = attrSet(wattrs.clone(), "wikilink", Value::Str(w.title.clone().unwrap_or("".to_string())));
+            out.push(spanWith(w.title.clone().unwrap_or("".to_string()).as_str(), marks.clone(), wattrs.clone()));
         }
     }
     return out;

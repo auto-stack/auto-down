@@ -340,6 +340,24 @@ block block-0 ListBlock
   block block-0-2 ListItem
     block block-0-2-0 Paragraph
       span 普通丙 []
+=== wikilink final=false ===
+block block-0 Paragraph
+  span 正文  []
+  span 首页 [] {wikilink=Str(首页)}
+  span  与  []
+  span 页#块 [] {wikilink=Str(页#块)}
+  span  还有 [ []
+  span 字面 [] {wikilink=Str(字面)}
+  span ] 以及 [[未闭合 []
+=== wikilink final=true ===
+block block-0 Paragraph
+  span 正文  []
+  span 首页 [] {wikilink=Str(首页)}
+  span  与  []
+  span 页#块 [] {wikilink=Str(页#块)}
+  span  还有 [ []
+  span 字面 [] {wikilink=Str(字面)}
+  span ] 以及 [[未闭合 []
 === streaming-heading final=false ===
 block block-0 Heading
   attr level Int(2)

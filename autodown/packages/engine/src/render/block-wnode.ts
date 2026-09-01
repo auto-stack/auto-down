@@ -47,6 +47,7 @@ import {
   tableNode,
   thematicNode,
   underlineNode,
+  wikilinkNode,
 } from '../parser/markdown-parser'
 
 // Model back-link (plan 026 P1T2): the node-view panels registered on the
@@ -218,6 +219,13 @@ function leaves(spans: InlineSpan[]): WNode[] {
   for (const s of spans) {
     if (s.text === '\n') {
       out.push(hardbreakNode())
+      continue
+    }
+    // inline wikilink (plan 036 T5): the attr-carrying span converts back
+    // into the wikilink WNode (raw inner rides the title slot) so the
+    // preview renders the label contract instead of bare text
+    if (attrGetStr(s.attrs, 'wikilink', '') !== '') {
+      out.push(wikilinkNode(s.text))
       continue
     }
     if (hasMark(s.marks, Mark.Image)) {

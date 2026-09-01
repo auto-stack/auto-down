@@ -24,7 +24,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController } from '../engine/host-controller'
 import { spansToHtml } from '../engine/rich-html'
-import { getFocusedRichHost } from '../engine/dom-marks'
+import { getFocusedRichHost } from '../engine/selection-adapter'
 import RichTextHost from '../components/RichTextHost.vue'
 import {
   hostTag,

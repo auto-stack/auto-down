@@ -1,9 +1,9 @@
 // selection-adapter tests (plan 036 T2): the SelectionAdapter contract
 // (D1) plus the DOM implementation the retired dom-marks.ts migrated into.
-// Golden expectations = the OLD dom-marks behavior (frozen literals where
-// deterministic; the "dual-run" describe at the bottom byte-compares old
-// vs new on mirrored hosts while dom-marks.ts still exists — deleted with
-// it in T3).
+// Golden expectations = the OLD dom-marks behavior frozen as literals; the
+// dual-run describe that byte-compared old vs new while dom-marks.ts still
+// existed (11 scenarios, happy-dom) passed and was deleted with the module
+// in T3 — these goldens carry the parity forward.
 
 // @vitest-environment happy-dom
 
@@ -17,7 +17,6 @@ import {
   type SelectionAdapter,
   type TextRange,
 } from '../engine/selection-adapter'
-import { domSetLink, domToggleMark, setFocusedRichHost as oldSetFocused } from '../engine/dom-marks'
 
 function hostEl(html: string, blockId = 'b1'): HTMLElement {
   const el = document.createElement('div')
@@ -73,7 +72,6 @@ function selectRange(host: HTMLElement, from: number, to: number): void {
 
 function keyReset(): void {
   setFocusedRichHost(null)
-  oldSetFocused(null)
   window.getSelection()?.removeAllRanges()
   document.body.innerHTML = ''
 }
@@ -270,58 +268,5 @@ describe('contract shape', () => {
     expect(typeof a.isActive).toBe('function')
     expect(typeof a.applyMark).toBe('function')
     expect(typeof a.removeMark).toBe('function')
-  })
-})
-
-// -- dual-run byte parity vs the retired dom-marks (DELETED with it in T3) --
-
-describe('dual-run: old dom-marks vs domSelectionAdapter (byte parity)', () => {
-  it('toggle/wrap/unwrap/link scenarios produce identical host HTML', () => {
-    const scenario = (
-      html: string,
-      from: number,
-      to: number,
-      act: 'toggle-strong' | 'toggle-em' | 'set-link' | 'unset-link' | 'toggle-code'
-    ): { oldHtml: string; newHtml: string } => {
-      const oldHost = hostEl(html, 'old')
-      const newHost = hostEl(html, 'new')
-      oldSetFocused(oldHost)
-      setFocusedRichHost(newHost)
-      selectRange(oldHost, from, to)
-      if (act === 'toggle-strong') domToggleMark('strong')
-      if (act === 'toggle-em') domToggleMark('em')
-      if (act === 'toggle-code') domToggleMark('code')
-      if (act === 'set-link') domSetLink('http://x')
-      if (act === 'unset-link') domSetLink(null)
-      const oldHtml = oldHost.innerHTML
-      oldSetFocused(null)
-      selectRange(newHost, from, to)
-      if (act === 'toggle-strong') toggleMark(domSelectionAdapter, Mark.Strong)
-      if (act === 'toggle-em') toggleMark(domSelectionAdapter, Mark.Em)
-      if (act === 'toggle-code') toggleMark(domSelectionAdapter, Mark.Code)
-      if (act === 'set-link') domSelectionAdapter.applyMark(Mark.Link, 'http://x')
-      if (act === 'unset-link') domSelectionAdapter.applyMark(Mark.Link, '')
-      const newHtml = newHost.innerHTML
-      setFocusedRichHost(null)
-      return { oldHtml, newHtml }
-    }
-
-    const cases: Array<[string, number, number, Parameters<typeof scenario>[3]]> = [
-      ['hello world', 6, 11, 'toggle-strong'],
-      ['<strong>bo</strong>ld', 0, 4, 'toggle-strong'],
-      ['a <strong>b</strong> c', 2, 3, 'toggle-strong'],
-      ['<strong>whole</strong>', 0, 5, 'toggle-strong'],
-      ['say hi', 4, 6, 'toggle-em'],
-      ['say <em>hi</em>', 4, 6, 'toggle-em'],
-      ['go here now', 3, 7, 'set-link'],
-      ['<a href="http://old">go</a>', 0, 2, 'set-link'],
-      ['a <a href="http://x">b</a> c', 2, 3, 'unset-link'],
-      ['plain text', 0, 5, 'unset-link'],
-      ['some code', 5, 9, 'toggle-code'],
-    ]
-    for (const [html, from, to, act] of cases) {
-      const { oldHtml, newHtml } = scenario(html, from, to, act)
-      expect({ act, html: newHtml }).toEqual({ act, html: oldHtml })
-    }
   })
 })

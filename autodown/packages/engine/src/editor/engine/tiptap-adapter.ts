@@ -37,7 +37,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
 import { marksInRange, tableAddRowTree, tableAddColumnAtTree, tableDeleteColumnAtTree } from './commands'
-import { domSetLink, domToggleMark, getFocusedRichHost } from './dom-marks'
+import { domSelectionAdapter, getFocusedRichHost, toggleMark } from './selection-adapter'
 import { blockRangeToDomRange } from './selection-map'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
@@ -524,36 +524,39 @@ function createChain(engine: EditorEngine): ChainLike {
       })
       return chain
     },
-    // inline mark toggles (plan 024 P3T1): wrap the FOCUSED host's live DOM —
-    // the model catches up on the blur writeback. No focused host → no-op.
+    // inline mark toggles (plan 024 P3T1; adapter-routed plan 036 T3): wrap
+    // the FOCUSED host's live DOM through the SelectionAdapter — the model
+    // catches up on the blur writeback. No focused host → no-op.
     toggleBold: () => {
-      domToggleMark('strong')
+      toggleMark(domSelectionAdapter, Mark.Strong)
       return chain
     },
     toggleItalic: () => {
-      domToggleMark('em')
+      toggleMark(domSelectionAdapter, Mark.Em)
       return chain
     },
     toggleStrike: () => {
-      domToggleMark('del')
+      toggleMark(domSelectionAdapter, Mark.Del)
       return chain
     },
     toggleCode: () => {
-      domToggleMark('code')
+      toggleMark(domSelectionAdapter, Mark.Code)
       return chain
     },
     // underline (plan 028 P2T2): same DOM-wrap protocol as the others —
     // the model catches up on the blur writeback (u → Mark.Underline)
     toggleUnderline: () => {
-      domToggleMark('u')
+      toggleMark(domSelectionAdapter, Mark.Underline)
       return chain
     },
     setLink: (opts: { href: string }) => {
-      domSetLink(String(opts?.href ?? ''))
+      const href = String(opts?.href ?? '')
+      if (href) domSelectionAdapter.applyMark(Mark.Link, href)
+      else domSelectionAdapter.removeMark(Mark.Link)
       return chain
     },
     unsetLink: () => {
-      domSetLink(null)
+      domSelectionAdapter.removeMark(Mark.Link)
       return chain
     },
   }

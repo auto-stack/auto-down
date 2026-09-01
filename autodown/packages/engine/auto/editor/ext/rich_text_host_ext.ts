@@ -23,7 +23,8 @@ import { getCurrentInstance, onBeforeUnmount } from 'vue'
 import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 import { spansToHtml } from '../engine/rich-html'
-import { setFocusedRichHost, getFocusedRichHost, domToggleMark, domSetLink } from '../engine/dom-marks'
+import { setFocusedRichHost, getFocusedRichHost, domSelectionAdapter, toggleMark } from '../engine/selection-adapter'
+import { Mark } from '../../parser/block-model'
 
 // -- semantic host face (absorbed from engine/host-face.ts, plan 029) ------------
 //
@@ -147,23 +148,24 @@ export function hostKeydown(e: KeyboardEvent, controller: BlockHostController): 
   const el = (e.currentTarget ?? e.target) as HTMLElement
   if (e.ctrlKey || e.metaKey) {
     const k = e.key.toLowerCase()
-    // inline mark shortcuts (plan 024 P3T3): wrap the live DOM in place —
-    // the model catches up on blur. Overriding the browser's native <b>
-    // keeps the DOM canonical (<strong>) for the blur walk.
+    // inline mark shortcuts (plan 024 P3T3; adapter-routed plan 036 T3):
+    // wrap the live DOM in place through the SelectionAdapter — the model
+    // catches up on blur. Overriding the browser's native <b> keeps the
+    // DOM canonical (<strong>) for the blur walk.
     if (k === 'b') {
       e.preventDefault()
-      domToggleMark('strong')
+      toggleMark(domSelectionAdapter, Mark.Strong)
       return
     }
     if (k === 'i') {
       e.preventDefault()
-      domToggleMark('em')
+      toggleMark(domSelectionAdapter, Mark.Em)
       return
     }
     if (k === 'k') {
       e.preventDefault()
       const url = window.prompt('Enter URL')
-      if (url) domSetLink(url)
+      if (url) domSelectionAdapter.applyMark(Mark.Link, url)
       return
     }
   }

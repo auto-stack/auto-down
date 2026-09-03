@@ -25,17 +25,23 @@ auto CLI **default** set — any fresh `cargo build -p auto` (run in
 the vm track, both panels degrade to plain textareas (D-GAP-3) — rebuild to
 fix.
 
-What works on the VM track (v1): dual panels with true rendering
-(heading / paragraph with inline marks / lists / blockquote / code fence —
-the 6-block subset), the left block-editor shell (block-granularity editing,
-`oninput: .Edit` linkage via the INPUT_TEXT payload channel), and the
-AutoUI MCP channel on `http://127.0.0.1:9247` (`autoui_snapshot` /
-`autoui_type` into the editor / `autoui_screenshot`) for scripted
-verification. First-light evidence: `vm-first-light.png` (plan 040 T11,
-captured via the MCP internal screenshot channel).
+What works on the VM track (v1): dual equal-width panels with true
+rendering (heading / paragraph with inline marks / lists / blockquote /
+code fence — the 6-block subset), the left block-editor shell
+(block-granularity editing, `oninput: .Edit` linkage via the INPUT_TEXT
+payload channel), and the AutoUI MCP channel on `http://127.0.0.1:9247`
+(`autoui_snapshot` / `autoui_type` into the editor / `autoui_screenshot`)
+for scripted verification. First-light evidence: `vm-first-light.png`
+(plan 040 T11, captured via the MCP internal screenshot channel); the
+two-column acceptance shot is `vm-two-columns.png` (PLAN-046 T2).
 
-VM track status (see DEBTS.md 040/043 rows):
+VM track status (see DEBTS.md 040/043 rows and `PARITY.md`):
 
+- **Two-column layout — CONSUMED since PLAN-046**: the panels are a
+  core-layout `row` of two `col`s (`flex-1` equal width) — VM consumes
+  row/col natively and `flex-1` → Flex1 → width=Fill; the pre-046
+  vertical-stack degradation (README「Layout note」v1 divergence) is
+  retired. Evidence: `vm-two-columns.png`.
 - **Scroll sync — CONSUMED since PLAN-043**: `scroll_sync: true` wraps the
   pane in a View::Scrollable — `scroll_top` binding is the write arm and
   the `onscroll` event the read arm (args = scrollHeight, clientHeight,
@@ -49,19 +55,32 @@ VM track status (see DEBTS.md 040/043 rows):
   `ghost_id`/`ghost_height` state; vue rides `@focusblock` → bridge).
   vm-smoke group 5 asserts it (MCP `click` → state + snapshot wrap).
   `streaming` stays always-final (exemption retained — see DEBTS 040).
-- **Table column-width dragging** → PLAN-045.
+- **Table column-width dragging** → PLAN-045 (PARITY #4).
 - **CustomScrollbar data — resolved since PLAN-043**: the csb_* computeds
   dispatch by track — vue reads the ext bridge (unchanged), VM reads the
-  scroll state fed by onscroll messages.
+  scroll state fed by onscroll messages. Thumb visuals trail the vue look
+  → theme wave (PARITY #8).
+- **Theme look — divergence (PARITY #5)**: vue is light (toolbar #fff /
+  text #111827 from the app.at style block), VM renders the dark default
+  theme; renderer-pane padding/border cosmetics are in the same family.
+  Home: wave W2, gated on auto-lang PLAN-527 T8 (dark/theme).
+- **Initial document seed — divergence (PARITY #6)**: vue loads
+  `src/content.ts` through the ext `initial_content()`; the VM ext stub
+  returns "" (empty start — type to see live rendering). Home: wave W3,
+  gated on an auto-lang ext-asset mechanism or DSL multi-line literals.
 - **Ext stub warnings** — `initial_content` / `is_vue` / `logSave` /
   `logCancel` / `useDemoAppBridge` have no VM-target implementation and
-  degrade to no-op platform stubs (runtime warns once each; expected).
-  Net effect: the VM track starts with an empty document — type in the
-  editor to see live rendering (vue track loads `src/content.ts`).
+  degrade to no-op platform stubs (runtime warns once each; expected;
+  PARITY #11).
 
-Layout note: the scoped `style {}` block compiles to vue `<style scoped>`
-only; on the VM track the two panels stack vertically instead of the vue
-flex row (cosmetic v1 divergence, not in the exemption ledger).
+Layout note: the scoped `style {}` block still compiles to vue
+`<style scoped>` — since PLAN-046 it carries (a) scoped definitions of
+exactly the Tailwind utilities the view tree uses (the demo build has no
+Tailwind runtime, so these are the vue-side fallback; the VM track
+consumes the same classes natively through auto-lang's tailwind parser)
+and (b) the `:deep` vue-only enhancements. The two panels themselves are
+a core-layout `row` + two `col`s (equal width on both tracks — see the
+「Two-column layout」 status bullet above).
 
 ## Layout
 

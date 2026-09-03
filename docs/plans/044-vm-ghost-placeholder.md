@@ -1,17 +1,30 @@
 ---
 plan_id: PLAN-044
-status: drafting
+status: reviewed
 feature_name: VM ghost 占位块（编辑壳聚焦跟踪 + DocLayout 尺寸暴露 + 只读臂 ghost 渲染）+ vue 侧发射者点亮
 author: [zhaopuming]
 created_at: 2026-09-03
 updated_at: 2026-09-03
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P040-4（demo 单源化+双轨契约扩展·详细设计）: 修改——placeholder_block_id/placeholder_height 双 prop 的 VM 臂叙事从「读取后忽略（豁免归 PLAN-044 补）」改为「PLAN-044 起真消费」（只读臂绑定求值进 render：block-N 顶层索引命中块前置 View::Container 定高灰盒；编辑臂 onfocusblock 事件进 on_focus 消息读出臂）；streaming 恒 final 豁免保留不动；DEBTS 040 ghost 行随之销号"
+  - "P043-4（EDITOR-CONTRACT scroll 双轨契约/宿主消息通道·详细设计）: 修改——043 建立的宿主消息通道（View 扩字段 newtype 回调 + update 层 rust 直写快道 + MCP 合成事件面）复用扩至 ghost 面：onfocusblock 事件（FocusCallback/FocusMetrics 载荷）+ OnEditorFocus write_ghost_state 直写 + MCP click action（__mcp_click 合成点击，__mcp_scroll/__mcp_drag 同族）"
+new_spec_components:
+  - "P044-1: reports——变更摘要（VM 三件套：block_rects 尺寸暴露/on_focus 消息通道/只读臂 ghost 盒；vue 发射者 @focusblock 点亮 editingBlock；双轨 placeholder 真消费；待澄清①-③执行期落定：vue 尾沿 gate/push-emit+onfocusblock 定名/缓存存裸块）"
+  - "P044-2: goals——五目标（点击→定高灰盒+vm-smoke 钉死/双 prop 双轨真消费/契约注记在册/DEBTS 040 销号/streaming 语义不变）全达成；「聚焦即灰盒」vue 臂结构性不可行（useSyncedScroll 补偿 margin 打断 zero-jump）经待澄清①预授权 gate 落定"
+  - "P044-3: architecture——FocusMetrics{block:Option<usize>,height:f32}+FocusCallback<M> newtype（ScrollCallback 同款跨消息换型）；DocEditor.publish 焦点现场打包（block_rects 取高，宿主零查询）；render_document_with/_streamed_with 第 4 参 placeholder（streamed 缓存存裸块、包装每帧重建）；aura_view_builder autodown_placeholder/autodown_on_focus_binding；renderer OnEditorFocus 拦截 + write_ghost_state（ghost_id 'block-N' 字符串/ghost_height +1e-3 分数化）+ __mcp_click"
+  - "P044-4: designs——EDITOR-CONTRACT §1 ghost 双轨 VM 面（消息通道/state 单源/行为对齐非像素）+§3 @focusblock 行（push-emit 裁定/载荷/250ms 尾沿 gate/VM 臂无 gate 分置）；MCP click action 契约（element_id=autodown_editor vnode、value='x,y' 内容坐标、__noop 回发重绘）；vue gate 裁定（连续 dirty>250ms 才发射、纯选区发 null、replaceDoc seed 抑制）"
+  - "P044-5: tests——block_rects 快照测/焦点消息可达测（sync_external 须闭包外防 RwLock 重入死锁坑）/renders_placeholder 两态+二帧复用/发射测试 ignored→consumed 翻转/编辑臂 onfocus 消息通道测/playwright 真链路用例（gating 语义：纯点击不亮、聚焦+输入→ghost、点走→清空）/vm-smoke 第四断言组（state 主断言+快照 col[空container,block] 包装形全树搜）/双态实拍 vm-ghost-at-block0|block2.png"
+  - "P044-6: reviews——复审记录（tf 3397/3399 两红均 fork+master 双同红预存/schema_drift 'vb_not_in_render pre'=PLAN-055 pre/code 臂遗留、kitchen_sink 同；tv 3559 全绿；playwright 73/73 两复跑；净窗 smoke 两复跑 exit 0；core_reference core.md 再生成复审修复在档）"
+touched_goals:
+  - "目标1（VM 点击→定高灰盒、焦点移走消失、vm-smoke 钉死）: 达成——净窗 smoke 两复跑 exit 0 + 双态实拍（muted 带 86 行随焦点移位 199px）；失焦变体（block=None→(-1,0.0)）消息级实现+单测，VM v1 无窗口失焦清块焦点的输入路径（预存编辑器语义）以焦点迁移清除旧位代证"
+  - "目标2（placeholder 双 prop 双轨真消费）: 达成——VM 发射测试 ignored→consumed 钉死 + vue demo 自然态 ghost（typing gate 语义，待澄清①落定）+ e2e 真链路绿"
+  - "目标3（rust 全绿+demo e2e 全套绿）: 达成——tf 3397/3399（2 红=fork+master 双同红预存，A/B 证据在复审记录）+ tv 3559 全绿 + playwright 73/73 两复跑（含新旧 ghost 用例）"
+  - "目标4（契约/DEBTS/注记收口）: 达成——EDITOR-CONTRACT §1/§3 在册、DEBTS 040 ghost 行销号、双短语 grep 零命中（aura.at 编辑壳 placeholder 空态文案 prop 为不同 prop 计划明示豁免保留）"
+  - "目标5（streaming 语义不变）: 达成——两臂 let _ = streaming 保留、恒 final 注记在册、无行为改动（复审 grep 复核）"
 
-current_step: 0
+current_step: 8
 total_steps: 8
 ---
 
@@ -259,28 +272,165 @@ auto-down-dev @ 058aa7df5；spec 台账 goals 沉淀至 P040。）
 
 - T1 core.rs 加 pub block_rects() + 单测。验证：`cargo test -p
   auto-lang --features autodown,code-editor autodown_editor`。
+  [✅ 已完成] auto-lang@120235e69：block_rects 快照读出 + 快照测试
+  （长度/y 严格单调/块高>0/末块底≈帧高），模块 34 测全绿。
 - T2 view.rs View::AutodownEditor 扩 on_focus + widget 焦点消息 +
   renderer 消费 + 消息可达单测。验证：`cargo test -p auto-lang
   --features autodown,code-editor autodown_editor view`。
+  [✅ 已完成] auto-lang@b787ac645：FocusMetrics/FocusCallback newtype +
+  widget publish 焦点现场打包（高取 block_rects）+ renderer 三消费点；
+  单测×2（回调读出含失焦变体；点击→shell 消息可达）。验证：autodown_editor
+  36 过 + on_focus 2 过（含 view 测试）。测试坑：sync_external 内部自调
+  with_font_system，须闭包外调用防同线程 RwLock 写锁重入死锁。
 - T3 autodown_render.rs ghost 盒插入（两臂）+ render_document_with
   扩参 + renders_placeholder 两态测试。验证：`cargo test -p
   auto-lang --features autodown,code-editor autodown_render`。
+  [✅ 已完成] auto-lang@a47e654ec：_with/_streamed_with 扩第 4 参
+  placeholder（未收敛 RenderExtras，4 参仍直读——复审记录）；ghost =
+  Column[Container{height, bg-muted rounded-lg w-full, Empty}, block]
+  spacing=0；streamed 缓存存裸块（待澄清③落定：包装每帧重建，复用
+  键/代数不抖）；18 测全绿。
 - T4 aura_view_builder 两臂消费 + 发射测试 + 三处注记摘行。
   验证：`cargo test -p auto-lang --features autodown,code-editor
   aura`（发射断言红→绿）。
+  [✅ 已完成] auto-lang@6ffb12c6e：autodown_placeholder 绑定求值
+  （Str "block-N"/Int 双口径）+ autodown_on_focus_binding（onfocus→
+  FocusCallback，args=[Int block, Float height]，失焦 (-1,0.0)）+
+  发射测试翻转为 consumed + 新增编辑臂 onfocus 消息通道测试；三处注记
+  收口（文件头/render_support/schema-aura.at）。aura 138 过（唯一 fail=
+  strips_tags_and_decodes_entities 预存 flake，主检出 master 同红证
+  与本计划无关）；schema 20 过。
 - T5 EngineEditor focus-block 通道 + app.at state 化 + regen +
   EDITOR-CONTRACT expose 行 + e2e 真链路用例。验证：`cd
   autodown/demo && npx playwright test scroll-sync`（新旧用例双绿）。
+  [✅ 已完成] auto-down@2773f74 + auto-lang@dfa43e8（T5 半提交）：
+  EngineEditor @focusblock emit（onChange 钩挂+lastFocusedId 去重+
+  nextTick 量高，push-emit 裁定记 §3）+ app.at ghost_id/ghost_height
+  state（名字与 computed 错开防生成层 TS2451）+ 双臂 computed（csb_*
+  同模式）+ regen OK（vue-tsc 零错）+ e2e 真链路用例；auto-lang 侧
+  OnEditorFocus rust 直写快道（043 T6 同款拦截）。scroll-sync 7/7
+  双绿（手工注入旧用例保留）。待澄清②落定：emit 形态、事件名
+  onfocusblock（codegen onX→@X 直映）。
 - T6 vm-smoke.mjs 第四断言组。验证：净窗 `auto run -r vm` + `node
   demo/auto/vm-smoke.mjs` 退出码 0。
+  [✅ 已完成] auto-down@d172518（vm-smoke 第四组）+ auto-lang@6944d2b4c
+  （click 前分支 + __mcp_click + write_ghost_state 公用）：MCP click 块内坐标 → state
+  主断言（ghost_id="block-0"+ghost_height>0）+ 快照灰盒包装形次断言
+  （col[空 container, block] 全树搜——快照格式不发 container height
+  prop，实施时核落定）。净窗 9 断言组全过，退出码 0（首拍冷窗滚动
+  竞态按既定 jade bar 重试一次过）。
 - T7 DEBTS/README/EDITOR-CONTRACT/注记收口。验证：grep
   「placeholder.*ignored」「PLAN-043 补齐（ghost」零命中。
+  [✅ 已完成] auto-down@f568ac8：DEBTS 040 ghost 行销号（043 销账同款
+  转完成注记）+ README ghost 行更新为 CONSUMED since PLAN-044
+  （EDITOR-CONTRACT §1 VM 面已在 T5 落）；auto-lang DEBTS 无 ghost 登记
+  核对无差；验证 grep 双短语双仓零命中（aura.at 编辑壳 placeholder
+  空态文案 prop 为不同 prop 维持豁免，范围外）。
 - T8 全量回归三连（rust 双 feature / demo playwright 全套 /
   vm-smoke 净窗）。验证：退出码全 0，结果记复审记录。
+  [✅ 已完成] 三连结果：① rust 全量 4362 过 / 174-181 失败——A/B
+  判定 fork 点（eb0ff8a7b，零 044 改动）同跑 177 失败同族（plan-446
+  C1-3 Temp canary 共享夹具级联 + plan370 dark_mode/plan055 strips_tags
+  隔离亦红=预存/环境，并行会话活跃干扰：主检出工作树半编辑态
+  scrollbar_thumb E0425、ui_desktop.exe 文件锁）；本计划增量 scoped
+  全绿（autodown_editor 37 / autodown_render 18 / on_focus 3 /
+  placeholder 12 / aura 138+1 预存 flake / schema 20）+ cargo check
+  0 error。② demo playwright 全套 **73/73 绿**（含新增真链路用例 +
+  手工注入旧用例保留；期间发现并修复 vue gate 回归 c278db5——
+  待澄清①落定）。③ vm-smoke 净窗两跑（含 __noop 重绘链重编后再验）
+  全断言组过退出码 0。④ vm 手验双态截图留档 vm-ghost-at-block0/
+  block2.png（物理像素抓取，muted 带 86 行随焦点移位 199px）。
+  终提交：auto-down@53ffbe8 / auto-lang@c3d54857c。
 
 ## 复审记录
 
-（待执行后填写；/auto-plan:review 补 spec-impact。）
+（执行侧摘记 2026-09-03；/auto-plan:review 补 spec-impact。）
+
+- **落地链**：T1 block_rects（120235e69）→ T2 on_focus 消息通道
+  （b787ac645）→ T3 ghost 盒两臂（a47e654ec）→ T4 消费臂接线+注记
+  （6ffb12c6e）→ T5 vue 发射者+regen+e2e（2773f74/dfa43e8）→ T6
+  __mcp_click+vm-smoke 第四组（d172518/6944d2b4c）→ T7 文档销号
+  （f568ac8）→ T8 vue gate 回归修复（c278db5）+ __noop 重绘
+  （c3d54857c）+ 双态截图（53ffbe8）。
+- **执行期裁定**：①vue 臂发射端尾沿 gate（250ms 持续 dirty 才亮、
+  纯选区/程序化 seed 不亮——useSyncedScroll 补偿 margin 使聚焦即
+  灰盒打断 zero-jump，详见待澄清①）；②push-emit + 事件名
+  onfocusblock；③streamed 缓存存裸块。
+- **复审需知**：(a) rust 全量失败为 fork 点预存/环境（A/B 证据在
+  T8 条目；并行会话同机活跃——主检出半编辑+auto.exe 多实例是干扰
+  源，复审全量跑建议净机）；(b) PrintWindow 抓帧对重编后窗口失灵
+  （双态像素全同），改 SetProcessDPIAware 物理抓取成档——043 的
+  PrintWindow 口径在新窗口上有复验必要（复审可关注）；(c) VM 灰盒
+  暗色主题下对比度低（bg-muted rgb(30,41,59) vs 底 rgb(20,26,41)），
+  布局占位真实（高度断言+带移位在案），视觉增强（如边框）属后续
+  打磨非本计划验收项。
+- **regen 顺带**：gen 镜像（content.ts/useSyncedScroll.ts 等 master
+  滞留差）随 regen 刷新入库——镜像漂移非本计划引入。
+
+### 复审（2026-09-03，reviewer=zhaopuming/@auto-plan:review）
+
+**五验收逐条复验（代码/命令为准，非勾选框）**：
+
+1. **VM 点击→定高灰盒** — PASS。净窗 vm-smoke 两复跑全断言组 exit 0
+   （click→ghost_id="block-0"+height 43.5 主断言 + 快照
+   col[空container,block] 包装形）；双态实拍复核（物理像素扫描 muted
+   带 86 行、随焦点移位 199px）。注：失焦变体消息级实现+单测在册；
+   VM v1 无「窗口失焦→清块焦点」输入路径（预存编辑器语义，非本计划
+   面），以焦点迁移旧位清除代证。
+2. **placeholder 双 prop 双轨真消费** — PASS。rust 发射测试
+   ignored→consumed 翻转复跑绿；vue 自然态 ghost（typing-gated，
+   待澄清①预授权落定）；e2e 真链路用例绿（聚焦+输入→出现、点走→清空）。
+3. **rust 全绿 + demo e2e 全套绿** — PASS（2 预存例外在案）。
+   `cargo tf` 3399 跑 3397 过 2 红：schema_drift_fence
+   （vb_not_in_render `pre`，fork 点同红+master 34 提交未触及=
+   PLAN-055 pre/code 臂遗留）与 docs_gen kitchen_sink（fork 同红）；
+   `cargo tv` **3559/3559 全绿**；playwright **73/73 两复跑**。
+   复审新抓并修复：docs_gen core_reference_in_sync——aura.at 描述改
+   后 core.md 未再生成（DOCS_GEN_UPDATE 重写 2 行恰为描述同步，
+   auto-lang@复审修复提交）。执行期 cargo test（非 nextest）~177
+   红为跨测试进程共享 Temp 夹具污染（fork 同量级），tf 为本仓复审
+   门命令（AGENTS.md/Plan 466 口径）。
+4. **契约/销号/注记** — PASS。EDITOR-CONTRACT §1 ghost 双轨 VM 面+
+   §3 @focusblock 行（含 gate 裁定）在册；DEBTS 040 ghost 行销号
+   （043 销账同款注记）；「placeholder.*ignored」「PLAN-043 补齐
+   （ghost」双仓 grep 零命中（残留 2 处「读取后忽略」=编辑壳
+   placeholder 空态文案 prop，计划明示豁免范围外）。
+5. **streaming 语义不变** — PASS。两臂 `let _ = props.get("streaming")`
+   保留、恒 final 注记（文件头/aura.at/render_support）在册、零行为
+   改动（grep 复核）。
+
+**遗漏/延后/workaround 猎查**：
+
+- 遗漏：core.md 再生成（复审门抓红→已修复入档，见验收 3）。
+  计划技术栈 9 文件（auto-lang）+9 文件（auto-down）与 merge-base
+  diff 一一对应，无丢件；T1-T8 子项逐条对得上。
+- 延后：无未经签认的延期。RenderExtras 收敛为计划内二选一（选 4 参
+  直读，T3 记录）；vue gate 为待澄清①预授权路径（已记）。
+- Workaround（均登记）：①__noop 回发重绘（view_dirty 不驱动 iced
+  重绘，Plan 482 通道借用——可提炼为通用「MCP 写态→重绘」机制，
+  债候选）；②OnEditorFocus rust 直写快道（043 T6 既有模式复用）；
+  ③__mcp_click 合成点击（__mcp_scroll/__mcp_drag 同族测试面）；
+  ④PrintWindow 抓帧对重编窗口失灵→SetProcessDPIAware 物理抓取
+  （043 双截图口径需复验，债候选）。
+
+**债候选（不阻塞本计划，供 merge/后续立项）**：
+
+- D1 schema_drift `vb_not_in_render pre` + 三条已消除漂移待裁剪 +
+  docs_gen kitchen_sink——fork+master 双同红存量（PLAN-055 pre/code
+  臂遗留：vb 表收录 pre 而 render_support 表未同步/baseline 未记/
+  kitchen-sink.at 未再生成），建议归 PLAN-055 收尾或独立小计划。
+- D2 cargo test（非 nextest）跨测试共享 Temp 夹具污染致全量假红
+  （plan-446 C1-3 已登记竞态，实测波及 ~177 用例）——tf 已是门命令，
+  建议测试夹具改进程隔离临时目录，独立立项。
+- D3 VM 暗色主题下 ghost 灰盒对比度低（bg-muted rgb(30,41,59) vs
+  底 rgb(20,26,41)）——布局/高度/移位全部真实（断言+实拍在案），
+  视觉增强（边框/hover 描边）属打磨项。
+- D4 e2e 证据截图（e2e/screenshots/*.png 三张）随 playwright 复跑
+  刷新、经 c278db5 git add -A 携带入库——与本仓 042「复审截图重跑」
+  惯例一致，但属静默携带，特此显式记录。
+
+**裁定：reviewed（PASS）**——五验收全过（例外均 fork/master 双同红
+预存且 A/B 证据在案），复审修复 1 项已入档，无未签认延期。
 
 ## 待澄清事项
 
@@ -288,11 +438,33 @@ auto-down-dev @ 058aa7df5；spec 台账 goals 沉淀至 P040。）
   同构）；实机手验若认为过于激进（任何点击都出灰盒），允许加
   会话级 gate（如仅块内容变更未回显期间显示），实施时在本节记录
   所选案——gate 属加法不动契约。
+  **[执行期落定 2026-09-03]**：实勘证实「聚焦即灰盒」在 vue demo
+  结构性不可行——ghost 经 useSyncedScroll 高差补偿 margin 机制
+  （demo/src/composables/useSyncedScroll.ts:205 给编辑栏块注入
+  margin-bottom）使每次聚焦/迁移即刻位移两栏布局：wysiwyg-typography
+  zero-jump 三用例 +52px 跳变红、playwright 坐标点击竞态
+  （inline-marks 用例）。所选案 = **发射端尾沿 gate（vue 臂）**：
+  EngineEditor `@focusblock` 仅在持续文本编辑（连续 dirty >250ms）
+  发射聚焦块；纯选区变化发 null、程序化 replaceDoc seed 不发射——
+  瞬态闪现同样禁止（每次闪现=两栏 ±px 抖动）。gate 属发射端策略，
+  StreamingRenderer 契约（props 非 null 即显）不动；**VM 臂维持
+  聚焦即显无 gate**（目标 1 原文「点击→灰盒」，VM 无 zero-jump
+  约束）——双轨发射策略分置已记 EDITOR-CONTRACT §3。gate 后 demo
+  e2e 全套 73/73 绿（含新增真链路用例：聚焦+输入→ghost 出现、
+  点走→消失）。
 - ② vue 侧 EngineEditor 聚焦块的发射形态（emit 事件 vs expose
   回调注册）按 engine 既有模式（getBlockMap 拉取 vs update emit）
   实施时定夺，EDITO-CONTRACT §3 whichever 记录；节流口径（每块切换
   至多一发）写入实现注释。
+  **[执行期落定 2026-09-03]**：push-emit（update/save 同族）；事件名
+  `focusblock`（.at `onfocusblock` → vue codegen onX→@X 直映 + VM
+  events 表同键，双轨单源）；节流 = 载荷去重 + 250ms 尾沿 debounce
+  （见①）；已记 EDITOR-CONTRACT §3 与实现注释。
 - ③ ghost 盒在 streamed 路径与 block_key 复用的交互：ghost 插入是
   包装层（Column 包裹），不影响 block_key 内容哈希——若实测复用
   键因包装抖动，允许 ghost 层独立于缓存（每帧重建包装），验收不
   受影响。
+  **[执行期落定 2026-09-03]**：实施取「缓存存裸块」案——streamed 臂
+  raw_blocks 先 clone 入缓存、包装仅进 children（无逆解包模式匹配、
+  无误判面）；二帧复用代数不增有测（renders_placeholder 二帧
+  gens=[1,1] 断言）。

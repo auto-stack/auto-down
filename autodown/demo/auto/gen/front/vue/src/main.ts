@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import './assets/index.css'
-import '@autodown/editor/style.css'
+import '@autodown/engine/style.css'
 import 'prismjs/themes/prism-tomorrow.css'
 import Prism from 'prismjs'
 

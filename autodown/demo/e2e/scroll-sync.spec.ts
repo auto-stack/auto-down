@@ -111,6 +111,36 @@ test.describe('scroll sync', () => {
     expect(height).toBe(200)
   })
 
+  test('focused block shows a ghost placeholder via the real focus-block channel', async ({ page }) => {
+    // PLAN-044 T5 真链路 + 待澄清① gate：EngineEditor 仅在文本变更（未回显
+    // 窗口）发射聚焦块（@focusblock → demoAppBridge.editingBlock →
+    // StreamingRenderer placeholder props → 右栏命中块 slot 前置
+    // .autodown-block-placeholder，高度 = 左栏焦点块实测高）；纯选区变化
+    // 发射 null（清空——聚焦即灰盒会经 useSyncedScroll 补偿 margin 打断
+    // zero-jump 语义，见计划 044 待澄清①裁定）。
+    const ghost = page.locator('.right .autodown-block-placeholder')
+
+    // 纯点击（选区变化）不点亮 ghost——首点换块（种子期 replaceDoc 算
+    // 文本变更会给 block-0 带 ghost，点同块不触发清空；点 block-5 走
+    // 真实选区变化 → null 清空）。
+    await page.click('.left [data-node-index="5"][data-block-id]')
+    await expect(ghost).toHaveCount(0)
+
+    // 聚焦 block-2 并输入一个字符（文本变更）→ ghost 落到右栏 block-2 slot。
+    await page.click('.left [data-node-index="2"][data-block-id]')
+    await page.waitForSelector('.left .autodown-block-host[data-block-id="block-2"]')
+    await page.keyboard.type('x')
+    const ghostAt2 = page.locator('.right [data-node-index="2"] > .autodown-block-placeholder')
+    await expect(ghostAt2).toHaveCount(1)
+    await expect(ghost).toHaveCount(1)
+    const height = await ghostAt2.evaluate((el) => el.offsetHeight)
+    expect(height).toBeGreaterThan(10)
+
+    // 点走焦点（纯选区变化）→ ghost 清空。
+    await page.click('.left [data-node-index="5"][data-block-id]')
+    await expect(ghost).toHaveCount(0)
+  })
+
   test('bottom toolbar does not cover the last block when scrolled to bottom', async ({ page }) => {
     const workspace = page.locator('.workspace')
     const leftWrapper = page.locator('.left .autodown-editor-content-wrapper')

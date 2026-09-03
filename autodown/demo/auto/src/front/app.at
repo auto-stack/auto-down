@@ -16,8 +16,10 @@
 //   streaming-family props, `scroll_sync` is CONSUMED on VM since PLAN-043
 //   (pane gets a View::Scrollable wrapper: `scroll_top` binding = write arm,
 //   `onscroll` event = read arm — top/height/client ride the message back to
-//   the handler); streaming/placeholder_* remain contract-only (→PLAN-044,
-//   see demo/auto/README.md「VM 桌面跑法」).
+//   the handler); `placeholder_block_id`/`placeholder_height` (ghost) are
+//   CONSUMED on VM since PLAN-044 (focused-block ghost box before the hit
+//   block); `streaming` remains contract-only (VM stays final — see
+//   demo/auto/README.md「VM 桌面跑法」).
 //
 // What stays hand-written (vue-only enhancements; VM degrades to ext stubs,
 // stub warnings are expected and registered):
@@ -42,8 +44,9 @@
 //   for both panels; the bridge bag keeps only refs + scroll measurements).
 // - `hovering_splitter` still drives `visible` (CustomScrollbar tracks its
 //   own hover internally).
-// - `editingBlock` (reserved, always null) stayed in the bridge; the
-//   placeholder-block-id/-height bindings use ternary computeds.
+// - `editingBlock` stayed in the bridge — PLAN-044 T5 activates it (the
+//   editor's @focusblock emit writes the focused {id,height}|null through
+//   .OnEditorFocus; VM reads the placeholder state instead, csb_* style).
 // - Handlers emit noise events on the root component (nobody listens).
 
 // PLAN-043 T10: 顶层 use 装载兄弟件 CustomScrollbar——VM 轨经 PR-3b
@@ -60,7 +63,13 @@ widget App {
     }
 
     msg Msg { Init, handleSave(str), handleCancel, Edit(str), SetScrollTop(f64), SplitterHover(int),
-              OnLeftScroll(f64, f64, f64), OnRightScroll(f64, f64, f64), ToggleDetails(str) }
+              OnLeftScroll(f64, f64, f64), OnRightScroll(f64, f64, f64), ToggleDetails(str),
+              // PLAN-044 T5：编辑壳块聚焦（ghost 占位单源）。VM 轨消息
+              // args=[Int block, Float height]（rust 直写快道消费，本
+              // handler 不触发）；vue 轨 $event 对象 {id,height}|null 绑
+              // 首参（写 bridge，computed vue 臂读取）——单参形态
+              //（@focusblock="OnEditorFocus($event)" 一一对应）。
+              OnEditorFocus(int) }
 
     model {
         // The document body — single source for editor input and renderer
@@ -68,6 +77,12 @@ widget App {
         // (vue = content.ts; VM stub = "").
         var content str = ""
         var hovering_splitter int = 0
+        // PLAN-044 T5: ghost 占位 VM 单源（rust 直写快道：OnEditorFocus 拦截
+        // 写入/清空；空串 = 无 ghost）。vue 轨数据走 demoAppBridge.editingBlock
+        //（@focusblock handler 写入），与 043 scroll state 同模式。名字取
+        // ghost_* 与 computed placeholder_* 错开（生成层同名冲突）。
+        var ghost_id str = ""
+        var ghost_height f64 = 0
         // PLAN-043 T3: VM 轨滚动三测量（左右栏各一份；vue 轨数据仍走
         // demoAppBridge——CustomScrollbar 绑定经 is_vue 分派，见 computed）。
         var left_top f64 = 0
@@ -79,10 +94,11 @@ widget App {
     }
 
     computed {
-        // The original's editingBlock?.id / editingBlock?.height (the state is
-        // reserved and always null today).
-        placeholder_id => .demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.id : null
-        placeholder_height => .demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.height : null
+        // PLAN-044 T5: ghost 占位按轨分派（csb_* 同模式）——vue 轨 bridge ref
+        //（@focusblock → OnEditorFocus 写 editingBlock，044 起真点亮）；VM 轨
+        // placeholder state（rust 直写快道；空串 → null 不出 ghost）。
+        placeholder_id => is_vue() != None ? (.demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.id : null) : (.ghost_id != "" ? .ghost_id : null)
+        placeholder_height => is_vue() != None ? (.demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.height : null) : (.ghost_id != "" ? .ghost_height : null)
         // PLAN-043 T3: CustomScrollbar 数据按轨分派——vue 轨 bridge ref
         //（useSyncedScroll 写，零变化）；VM 轨 scroll state（OnScroll
         // handler 写；is_vue 在 VM 为 None 走 state 臂）。
@@ -115,6 +131,10 @@ widget App {
                             scroll_sync: true,
                             scroll_top: .left_top,
                             onscroll: .OnLeftScroll,
+                            // PLAN-044 T5: 块聚焦读出——vue @focusblock（EngineEditor
+                            // emit，载荷 {id,height}|null）；VM onfocus 消息
+                            //（FocusMetrics → rust 直写快道）。
+                            onfocusblock: .OnEditorFocus($event),
                             oninput: .Edit,
                             onsave: .handleSave($event),
                             oncancel: .handleCancel
@@ -200,6 +220,16 @@ widget App {
             .right_top = sy
             .right_height = h
             .right_client = c
+        }
+        // PLAN-044 T5: 块聚焦 → ghost 占位。vue 轨：$event = {id,height}|null
+        // 写 bridge（computed vue 臂读取，editingBlock 自本计划真点亮）；
+        // VM 轨：本 handler 不触发——update 层 rust 直写快道拦截
+        // OnEditorFocus 消息写 placeholder state（引擎 float 实参腐坏
+        // 规避，043 T6 同信任路径），handler 保留为 vue 契约面。
+        .OnEditorFocus(blk) -> {
+            if is_vue() != None {
+                .demoAppBridge.editingBlock = blk
+            }
         }
         // PLAN-043 T4: Details 折叠翻转——VM render 是 content 的纯函数，
         // open 状态以 content 内 open attr 为单源：展开 = 在 $details 的

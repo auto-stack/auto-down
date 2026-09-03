@@ -276,6 +276,34 @@ jade `vm_server` 走 `/api/query`/`/api/blocks` 同模式的先例（plan 022
 Phase 3：axum shell 与 vm_dispatch 共享 impl core）。VM 侧实现本身不在
 本计划（消费面就绪即插）。
 
+## 11. scroll_sync 双轨契约（plan 043 定型——VM 后端实现基准）
+
+vue 面（040 起在案，不变）：`scroll_sync` prop 由 StreamingRenderer 消费
+（块级映射 + spacer 注入，`useSyncedScroll` 547 行金标）。
+
+VM 面（043 新增，行为对齐非像素对齐口径）：
+
+- `scroll_sync: true` 时 autodown / autodown_editor 元素为渲染输出外包
+  `View::Scrollable`（稳定 id 由 render 路径的 vnode_* 派生）。
+- **写入臂**：`scroll_top` prop（数值绑定）求值为绝对像素偏移，经
+  renderer pending 队列（>0.5px 去抖）落 `iced scroll_to`。
+- **读出臂**：`onscroll` 事件回宿主 handler，实参序
+  **（scrollHeight, clientHeight, scrollTop）**——注意 top 在末位
+  （VM 引擎整值 float 实参绑定 bug 的历史绕道形态，见 DEBTS 043
+  nanbox 行；正修后可回 (top, height, client) 语序）。
+- **比例同步口径**：peer.top = self.top / (self.height - self.client) *
+  (peer.height - peer.client)，除零不联动；块级映射留 vue 侧先例，
+  VM 需要时再升（041 会话裁定）。
+- **像素级不保证**：两臂文档高度同构（同一 cosmic-text Buffer），比例
+  失真远小于 vue 场景，但非像素对齐。
+- **VM 轨执行层**：级联与三测量记录由 auto-lang renderer.rs update 层
+  rust 直写快道执行（write_state 信任路径 + 数值 +1e-3 分数化绕
+  nanbox 整值 float bug）；app.at 的 OnScroll handler 为 vue 生成侧
+  契约面。
+- **Details 折叠回路**（同通道搭车）：`ondetailsclick` 事件回宿主
+  （args = ["d<块结构键>" block_key 内容哈希]），open 状态以 content 内
+  open attr 为单源（v1 单 details 块场景；多块 map 化留余量）。
+
 ## 核验责任
 
 Phase 2/3 每次桥接换向后跑 demo e2e（9 用例含以上选择器）；Phase 4 逐项

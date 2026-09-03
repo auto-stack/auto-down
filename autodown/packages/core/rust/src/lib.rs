@@ -16,9 +16,16 @@
 //
 // Regenerate with the commands in rust/README.md (requires a locally built
 // auto.exe from the auto-lang checkout). Do not edit the modules by hand.
+//
+// Exception — hand-written module (no .at source, rust IS the single source;
+// regeneration does not touch it):
+//   hljs_scope_map — syntect scope → .hljs-* class table + palette mirror
+//                  (PLAN-041 T4 跨轨高亮 token 映射; consumed by the
+//                  auto-lang VM renderer's hljs theme baking)
 
 pub mod artifact_hash;
 pub mod block_model;
+pub mod hljs_scope_map;
 pub mod ial;
 pub mod markdown_parser;
 pub mod palette_map;

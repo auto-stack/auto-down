@@ -279,3 +279,42 @@
   `recordArtifact`（成功 final 才写、键幂等），node-view 桥
   （renderMathBlockPreview / renderMermaidPreview 包装）挂接；未注册 =
   行为与 031 前逐字节一致。VM 端将来接磁盘缓存 + resvg 显示。
+
+## 7. 编辑器架构决策记录（ADR，plan 042 T6 归档）
+
+> 来源：2026-09-02 会话架构裁定（推理过程全文见 PLAN-041 的「会话架构
+> 裁定（防止复议）」节——docs/plans/041-vm-block-family-unification.md，
+> 按其流程归档后位于 docs/plans/archived/）；延期项在册
+> [DEBTS.md](../../../DEBTS.md) 039 行。本节为终局口径，防止复议。
+
+### 7.1 候选流派与取舍
+
+| 流派 | 代表 | 取舍 |
+| --- | --- | --- |
+| 原生输入即引擎 | 浏览器 contenteditable 直接当文档模型 | 弃。语义清洗与模型回写成本高，非受控 DOM 与 ops 模型无法对拍 |
+| contenteditable + 受控模型 | ProseMirror / Tiptap | 弃（plan 018 退役，`assert-no-tiptap.mjs` 门禁在册）。受控层自建后中间件只剩成本 |
+| 编辑器框架接管 | 全文档 CodeMirror 6 / Monaco | 否决（见 7.3）。CM6 仅作 fence 逃生门（DEBTS 039）；Monaco 关门 |
+| **自研引擎（现行）** | per-leaf contenteditable 宿主 + 自有 ops 模型（plan 016/018）+ 块家族 chrome 单源（plan 033/042） | **采纳**。文档模型单源、chrome 单源，叶子编辑宿主按模式特化 |
+
+### 7.2 租 / 自有分层（成本框架）
+
+| 层 | 归属 | 依据 |
+| --- | --- | --- |
+| caret / IME / 文本输入事件 | **租**（浏览器原生，per-leaf 宿主） | 自研 caret/IME 组合是 Google Docs 级投入，收益为负 |
+| 文档模型 / ops / undo / 序列化 | **自有**（`src/parser` + `src/editor/engine`） | 与 016 ops ↔ VM spine 直连，切框架即切断（负贡献） |
+| 块 chrome（DOM 骨架/类链/样式） | **自有**（.at 家族 widget，`registerBlockWidget` 三态单源，plan 033/042） | 三态跨面漂移结构性不可可能；parity e2e（family-parity.spec.ts）钉死 |
+| 流式渲染管线 | **自有**（renderNodes/StreamingRenderer，视口窗口化为既有管线的演进） | 换引擎 = SSR/静态渲染出局 + 块树压平 + IME 高发区三重代价 |
+
+### 7.3 否决裁定（四条，2026-09-02）
+
+1. **全文档 CM6 化（含 view 模式）否决**——stream 性能本可行（增量事务 +
+   虚拟化甚至更强），但代价四处：SSR/静态渲染出局、块树压平成装饰体操
+   （Obsidian Live Preview 多年 glitch 区）、IME 高发区、切断 016 ops ↔
+   VM spine。Obsidian Reading View 独立于 CM 是先例反证。
+2. **Monaco 关门**（铁板不可抽件）；CM6 底层可抽件（state/lezer 无 DOM）
+   但对位层已有单源实现，换入 = 倒退。
+3. **fence 嵌 CM6 逃生门在册**：DEBTS.md 039 行（T10 降级交付；前置两条
+   待裁定：npm Vue 组件桥、engine 引 @codemirror 依赖族）。
+4. **cosmic-text WASM canvas 路线（web 与桌面逐像素同实现）= 远期选项**，
+   不进现行 roadmap；触发条件 = 产品硬性要求逐像素同实现。vue 侧超长
+   文档流式若成瓶颈：自有管线加视口窗口化（041 T8 的 vue 镜像），不换引擎。

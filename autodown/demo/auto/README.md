@@ -68,20 +68,28 @@ VM track status (see DEBTS.md 040/043 rows and `PARITY.md`):
   (PARITY #4).
 - **CustomScrollbar data — resolved since PLAN-043**: the csb_* computeds
   dispatch by track — vue reads the ext bridge (unchanged), VM reads the
-  scroll state fed by onscroll messages. Thumb visuals trail the vue look
-  → theme wave (PARITY #8).
-- **Theme look — divergence (PARITY #5)**: vue is light (toolbar #fff /
-  text #111827 from the app.at style block), VM renders the dark default
-  theme; renderer-pane padding/border cosmetics are in the same family.
-  Home: wave W2, gated on auto-lang PLAN-527 T8 (dark/theme).
-- **Initial document seed — divergence (PARITY #6)**: vue loads
-  `src/content.ts` through the ext `initial_content()`; the VM ext stub
-  returns "" (empty start — type to see live rendering). Home: wave W3,
-  gated on an auto-lang ext-asset mechanism or DSL multi-line literals.
-- **Ext stub warnings** — `initial_content` / `is_vue` / `logSave` /
-  `logCancel` / `useDemoAppBridge` have no VM-target implementation and
-  degrade to no-op platform stubs (runtime warns once each; expected;
-  PARITY #11).
+  scroll state fed by onscroll messages. Thumb visuals remain a PARITY #8
+  residual (auto-lang side; not covered by the PLAN-047 theme work).
+- **Theme look — CONSUMED since PLAN-047** (PARITY #5): the app model
+  declares `var dark_mode bool = false` — the renderer-recognized name that
+  auto-lang's Plan 370 D-GAP sync pushes into `iced_adapter::set_dark_mode`
+  every view update, so the VM window runs the light palette from frame one
+  (evidence: `vm-light-theme.png`). Renderer-pane padding/border cosmetics
+  stay open (the `autodown` component arm still doesn't consume the class
+  string — PARITY residual, auto-lang side).
+- **Initial document seed — CONSUMED since PLAN-047** (PARITY #6): both
+  tracks start from `src/content.ts` — the single source. vue reads it
+  through app_ext.ts; the VM resolves the top-level `use.web.fn
+  initial_content from "src/front/utils/app_ext.at"` through the Plan 442
+  A3 adapter chain (`app_ext.at` → `app_ext.vm.at`), and `app_ext.vm.at` is
+  GENERATED from content.ts by `scripts/gen-vm-content.mjs` (regenerate:
+  `node scripts/gen-vm-content.mjs` from this directory). Evidence:
+  `vm-seeded-start.png` (Heading One doc on light two-column startup);
+  `AUTO_VM_EXT_STUBS=0` keeps linking (real symbol, not a stub).
+- **Ext stub warnings** — `is_vue` / `logSave` / `logCancel` /
+  `useDemoAppBridge` have no VM-target implementation and degrade to no-op
+  platform stubs (runtime warns once each; expected; PARITY #11).
+  `initial_content` left this list in PLAN-047 (adapter-resolved, above).
 
 Layout note: the scoped `style {}` block still compiles to vue
 `<style scoped>` — since PLAN-046 it carries (a) scoped definitions of
@@ -111,6 +119,13 @@ a core-layout `row` + two `col`s (equal width on both tracks — see the
   component re-exports are RETIRED (plan 040) — the dual-track tags
   `autodown_editor` / `autodown` resolve the engine components via the
   widget registry (`pac.at` `npm_deps` still links `@autodown/engine`).
+- `src/front/utils/app_ext.at` + `src/front/utils/app_ext.vm.at` — the ext
+  port anchor and its VM adapter (PLAN-047): the anchor resolves the
+  top-level `use.web.fn` to the adapter on the VM track; `app_ext.vm.at`
+  is GENERATED (DO NOT EDIT) from `demo/src/content.ts` by
+  `scripts/gen-vm-content.mjs`.
+- `scripts/gen-vm-content.mjs` — the seed generator (single-source loop:
+  content.ts → escaped Auto literal in app_ext.vm.at).
 - `gen/` — transient generator output (gitignored, safe to delete);
   `gen/regen.sh` is the regen+gate+deploy script (also gitignored).
 

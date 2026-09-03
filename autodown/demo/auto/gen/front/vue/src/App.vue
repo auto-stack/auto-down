@@ -3,7 +3,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { AutoDownEditor, StreamingRenderer } from '@autodown/engine'
 
-import { logSave, logCancel, initial_content, is_vue } from '@/ext/src/front/utils/app_ext'
+import { initial_content } from '@/ext/src/front/utils/app_ext'
+import { logSave, logCancel, is_vue } from '@/ext/src/front/utils/app_ext'
 import { useDemoAppBridge } from '@/ext/src/front/utils/app_ext'
 
 const demoAppBridge = useDemoAppBridge()
@@ -22,6 +23,9 @@ const right_top = ref<number>(0)
 const right_height = ref<number>(0)
 const right_client = ref<number>(0)
 const table_widths = ref<any>({})
+const dark_mode = ref<boolean>(false)
+// Plan 458: seed theme default from index.html bootstrap.
+if ((window as any).__AUTO_UI_THEME__ === 'light' || (window as any).__AUTO_UI_THEME__ === 'dark') dark_mode.value = (window as any).__AUTO_UI_THEME__ === 'dark'
 
 const workspaceRef = ref<HTMLElement | null>(null)
 const editorRef = ref<any>(null)
@@ -135,7 +139,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="app">
+    <div :class="{ dark: dark_mode }" class="app">
       <header class="toolbar">
         <span>AutoDown v0.1</span>
       </header>

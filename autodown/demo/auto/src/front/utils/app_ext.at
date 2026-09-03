@@ -1,0 +1,9 @@
+// app_ext.at — the demo ext PORT anchor (PLAN-047 T2). The stable name that
+// callers reference: on the VM target the Plan 442 A3 adapter chain resolves
+// this file to its sibling app_ext.vm.at (GENERATED from content.ts by
+// scripts/gen-vm-content.mjs — see the chain in auto-lang ext_stubs.rs:
+// X.at → X.vm.at → X.web.at). On the vue target this file is never loaded:
+// the SFC keeps importing the hand-written app_ext.ts (the bridge + log
+// helpers + the content.ts-reading initial_content), and auto-man's ext copy
+// is fed by the widget use block only. Deliberately code-free — the port has
+// exactly one implementation per track and neither is written here.

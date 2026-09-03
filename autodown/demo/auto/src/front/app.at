@@ -39,8 +39,11 @@
 //
 // - demo/src/content.ts — the initial markdown document (the DSL has no
 //   multi-line template literals); reaches the widget through the ext fn
-//   `initial_content()` (VM stub returns "" — the VM track starts empty and
-//   exercises linkage by typing).
+//   `initial_content()`. Both tracks start from this same document since
+//   PLAN-047: vue reads it from app_ext.ts; the VM resolves the top-level
+//   `use.web.fn` through the adapter chain to app_ext.vm.at — GENERATED
+//   from content.ts by scripts/gen-vm-content.mjs (single source, no
+//   drift).
 // - demo/src/app.css — the global html/body/#app styles (the DSL only emits
 //   <style scoped>); imported by main.ts.
 // - utils/app_ext.ts — the useDemoAppBridge composable (owns the three
@@ -69,9 +72,26 @@
 // 模块 use，SFC 输出不变。
 use custom_scrollbar
 
+// PLAN-047 T2: VM seed — top-level `use.web.fn` feeds the Plan 442 A3 ext
+// adapter chain on the VM target: app_ext.at resolves to its sibling
+// app_ext.vm.at (GENERATED from content.ts by scripts/gen-vm-content.mjs —
+// the document's single source), so initial_content() links to a real symbol
+// instead of the platform stub and the VM starts with the same document as
+// the vue track. AUTO_VM_EXT_STUBS=0 keeps working (real symbol, not a
+// stub). vue face: the SFC emits this as a second import from the SAME
+// extension-stripped specifier the widget block uses (symbols disjoint, no
+// duplicate), so the deployed app still calls the real app_ext.ts
+// initial_content — behaviorally identical.
+use.web.fn initial_content from "src/front/utils/app_ext.at"
+
 widget App {
     use {
-        fn: logSave, logCancel, initial_content, is_vue from "src/front/utils/app_ext.ts"
+        // PLAN-047 T2: initial_content moved OUT of this block — it is now
+        // imported by the top-level `use.web.fn` above (VM: resolves through
+        // the app_ext.at → app_ext.vm.at adapter chain to the generated seed;
+        // vue: same-module import of the real app_ext.ts, symbols disjoint so
+        // no duplicate identifier).
+        fn: logSave, logCancel, is_vue from "src/front/utils/app_ext.ts"
         composable: useDemoAppBridge from "src/front/utils/app_ext.ts"
     }
 
@@ -116,6 +136,15 @@ widget App {
         // table_col_widths 绑定回传消费。vue 轨列宽走 bridge
         // useTableColumnResize（重渲染即丢），本 state 不参与。
         var table_widths Map<str, List<f64>> = {}
+        // PLAN-047 T1 (PARITY #5): VM track theme. `dark_mode` is the
+        // renderer-recognized name — a declared var is read every view
+        // update and pushed into iced_adapter::set_dark_mode (auto-lang
+        // Plan 370 D-GAP sync, renderer.rs read_state("dark_mode") arm), so
+        // the `false` initial value runs the VM window on the light
+        // palette from frame one. vue track never consumes it (inert ref —
+        // e2e 73 is the zero-regression gate). Runtime switching entry
+        // (settings surface) is out of scope — registered as wontfix.
+        var dark_mode bool = false
     }
 
     computed {

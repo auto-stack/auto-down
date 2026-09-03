@@ -17,6 +17,11 @@
 //      (left_top/height/client) update + the CustomScrollbar data is
 //      non-zero (height > client ⇒ thumb has range); scrolling the RIGHT
 //      pane drives the left pane back (bidirectional proportional sync)
+//   5. (plan 044 T6) ghost placeholder: MCP click at block coordinates in
+//      the editor (synthetic __mcp_click → core hit_test focus →
+//      block_rects height → ghost state direct write) → ghost_id/
+//      ghost_height state pair asserted + the renderer pane snapshot
+//      grows a fixed-height container node
 //
 // Protocol (same channel the jade desktop flows ride, see
 // jade-garden/front/desktop/README.md:114-132): AutoUI MCP over Streamable
@@ -356,6 +361,69 @@ async function runOnce() {
       await new Promise((r) => setTimeout(r, 100))
     }
     checks.push('drag CustomScrollbar → left_top/right_top jump + both offset_y follow (emission surface)')
+  }
+
+  // 5. (plan 044 T6) ghost placeholder — MCP click at block coordinates inside
+  //    the editor (synthetic __mcp_click: core hit_test writes focus →
+  //    block_rects measures the height → ghost state direct write, same
+  //    write_ghost_state as the OnEditorFocus fast-path). Asserts: the state
+  //    pair (primary) + the renderer pane snapshot grows a fixed-height
+  //    container node (the ghost box — height rides as a prop child in the
+  //    AURA text, cf. offset_y in group 4).
+  {
+    // re-find the editor textarea (ids may rotate across rebuilds)
+    const snapE = parseAura(await callTool('autoui_snapshot', {}))
+    const taNow = findFirst(snapE, (n) => n.head.startsWith('textarea '))
+    if (!taNow) throw new Error('no textarea before click — editor face missing')
+    const editorIdNow = elementIdOf(taNow)
+
+    // content-space coordinates: (40, 12) lands inside block 0 (heading)
+    const click = await callTool('autoui_action', {
+      element_id: editorIdNow,
+      action: 'click',
+      value: '40,12',
+    })
+    if (!/status: ok/.test(click)) throw new Error(`click action not ok: ${click}`)
+
+    let ghostState = ''
+    for (const deadline = Date.now() + 3000; ; ) {
+      ghostState = await callTool('autoui_state', { fields: ['ghost_id', 'ghost_height'] })
+      const gid = ghostState.match(/ghost_id:\s*"([^"]*)"/)?.[1] ?? ''
+      const gh = Number(ghostState.match(/ghost_height:\s*([\d.]+)/)?.[1] ?? NaN)
+      if (gid === 'block-0' && gh > 0) break
+      if (Date.now() > deadline) throw new Error(`ghost state did not take the click focus: ${ghostState.trim()}`)
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    checks.push('ghost: click block coords → ghost_id="block-0" + ghost_height>0 (focus → state fast-path)')
+
+    // snapshot: the renderer pane's hit block grows the ghost wrap — a col
+    // whose FIRST child is an EMPTY container (the ghost box; this snapshot
+    // format does not emit the container height prop — shape match, state
+    // assertions above stay primary per the plan's T6 note). The doc at this
+    // point is the group-4 LONG_DOC (rendererOf keys on the group-2 smoke
+    // text), and the ghost wrap only ever appears in the renderer pane —
+    // search the WHOLE tree.
+    let ghostNodeSeen = false
+    for (const deadline = Date.now() + 3000; ; ) {
+      const snapG = parseAura(await callTool('autoui_snapshot', {}))
+      const ghostNode = findFirst(
+        snapG,
+        (n) =>
+          n.head.startsWith('col ') &&
+          n.children.length === 2 &&
+          n.children[0].head.startsWith('container ') &&
+          n.children[0].children.length === 0 &&
+          n.children[1].head.startsWith('text '),
+      )
+      if (ghostNode) {
+        ghostNodeSeen = true
+        break
+      }
+      if (Date.now() > deadline) break
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    if (!ghostNodeSeen) throw new Error('renderer pane lacks the ghost wrap (col[empty container, block]) in the snapshot')
+    checks.push('ghost: renderer pane snapshot shows the ghost wrap (col[empty container, block])')
   }
 
   return checks

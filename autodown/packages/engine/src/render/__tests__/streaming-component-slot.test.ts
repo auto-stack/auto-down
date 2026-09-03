@@ -1,6 +1,9 @@
 // StreamingRenderer ↔ BlockComponent stream-slot routing (plan 023 P2T1):
-// a registered stream slot takes over its kind's streaming part; the
-// unregistered fallbacks (native <details>, StreamingTable) stay untouched.
+// a registered stream slot takes over its kind's streaming part. Plan 042
+// T3 revision: the ```json table segment's face is now a REGISTRATION (the
+// render-side tableStreamFace family slot in block-widget-panels), not a
+// StreamingRenderer builtin — cleared, the segment renders nothing; the
+// native <details> branch remains a true builtin.
 
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
@@ -57,9 +60,23 @@ describe('stream slot routing', () => {
     expect(html).toContain('<h1')
   })
 
-  it('without registrations the builtin paths render unchanged', async () => {
+  it('the table path is a registration (no builtin fallback); details keeps its native builtin', async () => {
     const src = '```json\n{"type":"table","columns":["A"],"rows":[{"A":"1"}]}\n```'
-    const html = await render(src, true)
-    expect(html).toContain('streaming-table')
+    registerBlockComponent('table', {
+      stream: () => h('div', { class: 'mock-stream-slot' }, 't'),
+    })
+    const withSlot = await render(src, true)
+    expect(withSlot).toContain('mock-stream-slot')
+    clearBlockComponents()
+    // plan 042 T3: no builtin table path remains — the retired local
+    // StreamingTableFace WAS the builtin; the face is a registration now
+    // (StreamingRenderer module scope, wiped here), so a cleared registry
+    // renders the segment as nothing
+    const afterTeardown = await render(src, true)
+    expect(afterTeardown).not.toContain('mock-stream-slot')
+    expect(afterTeardown).not.toContain('streaming-table')
+    // the native <details> branch remains a true builtin
+    const details = await render(':::details 摘要\n正文\n:::', false)
+    expect(details).toContain('<details')
   })
 })

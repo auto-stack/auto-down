@@ -48,6 +48,22 @@
   </div>
 </template>
 
+<script lang="ts">
+// plan 042 T3: the ```json table segment's stream face is the family
+// widget's stream slot now (the retired local StreamingTableFace, hoisted
+// to block-widget-panels as the shared closure). Registered HERE — the only
+// consumer of stream slots, and the old face's home — so pure-render
+// consumers keep the path without the editor layer; EngineEditor's table
+// family registration supersedes it with the same closure wherever the
+// editor loads. PLAIN script block: module scope, so it runs ONCE at
+// import (a <script setup> body would re-register on every mount and
+// clobber consumer registrations — the dual-script idiom EngineEditor uses).
+import { registerBlockComponent } from './block-component'
+import { tableStreamFace } from './block-widget-panels'
+
+registerBlockComponent('Table', { stream: tableStreamFace })
+</script>
+
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, h } from 'vue'
 import MarkdownRender from './MarkdownRender.vue'
@@ -55,7 +71,6 @@ import { enableKatex, enableMermaid, enableHighlight, isCapabilityEnabled } from
 import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
 import { useStreamingDocument } from './useStreamingDocument'
-import TableBlockWidget from '../editor/components/TableBlockWidget.vue'
 import { resolveBlockComponent } from './block-component'
 import type { VNode } from 'vue'
 
@@ -143,27 +158,14 @@ const codeBlockProps = {
   showExpandButton: true,
 }
 
-// plan 037 T3: the ```json table component segments render through the
-// table family widget's STREAM face — the retired StreamingTable SFC's
+// plan 042 T3: the ```json table component segments render through the
+// Table family widget's STREAM slot — the registered BlockComponent stream
+// slot (streamSlotOf below) now carries the retired StreamingTableFace's
 // progressive contract (header-first columns, streaming rows, loading row,
-// final flip), absorbed with byte parity pinned by
-// streaming-table-gold.test.ts. The filler props keep the generated
-// required-prop checks quiet (the 033 ctx:null idiom).
-const StreamingTableFace = (p: { columns?: string[]; rows?: Record<string, any>[]; final?: boolean }) =>
-  h(TableBlockWidget as any, {
-    mode: 'stream',
-    controller: null,
-    blockId: '',
-    readonly: true,
-    final: p.final ?? false,
-    header_cells: [],
-    body_rows: [],
-    columns: p.columns,
-    rows: p.rows,
-  })
-
+// final flip), registered with the family in EngineEditor and byte-pinned
+// by streaming-table-gold.test.ts. The local registry stays for FUTURE
+// component segments (chart/form/...) — table no longer needs an entry.
 const registry: Record<string, any> = {
-  table: StreamingTableFace,
   // Future: chart: StreamingChart, form: StreamingForm, ...
 }
 
@@ -201,8 +203,6 @@ function clearPlaceholders(container: HTMLElement) {
   container.querySelectorAll('.node-slot > .autodown-block-placeholder').forEach((el) => el.remove())
 }
 
-const COPY_ICON = '<span class="codeblock-copy-icon"></span>'
-
 // created lazily on mount — MutationObserver is browser-only and must not
 // be touched during SSR setup
 let mutationObserver: MutationObserver | null = null
@@ -211,7 +211,6 @@ function createMutationObserver(): MutationObserver {
     if (containerRef.value) {
       applyBlockIdsAndPlaceholder(containerRef.value)
       highlightCodeBlocks(containerRef.value)
-      addCodeBlockHeaders(containerRef.value)
       wrapDetailsContent(containerRef.value)
     }
   })
@@ -321,41 +320,10 @@ async function refresh() {
   clearPlaceholders(containerRef.value)
   applyBlockIdsAndPlaceholder(containerRef.value)
   highlightCodeBlocks(containerRef.value)
-  addCodeBlockHeaders(containerRef.value)
+  // plan 039 T14: addCodeBlockHeaders (injected in-pre badge + copy button)
+  // retired — the code block widget's header now carries the language
+  // trigger and the copy/collapse actions as first-class content.
   wrapDetailsContent(containerRef.value)
-}
-
-/**
- * Inject a real header bar (language label + copy button) into code blocks.
- * This mirrors the editor's DOM structure so both sides share the same layout
- * and hover effects.
- */
-function addCodeBlockHeaders(container: HTMLElement) {
-  const blocks = Array.from(
-    container.querySelectorAll('pre[data-language]:not([data-header-added])')
-  )
-  blocks.forEach((pre) => {
-    const language = pre.getAttribute('data-language') || ''
-    const badge = document.createElement('div')
-    badge.className = 'codeblock-language-badge'
-    badge.setAttribute('data-codeblock-language-badge', language)
-
-    const label = document.createElement('span')
-    label.className = 'codeblock-language-label'
-    label.textContent = language
-
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.className = 'codeblock-copy-btn'
-    btn.setAttribute('data-codeblock-copy-btn', '')
-    btn.setAttribute('title', '复制')
-    btn.innerHTML = COPY_ICON
-
-    badge.appendChild(label)
-    badge.appendChild(btn)
-    pre.appendChild(badge)
-    pre.setAttribute('data-header-added', '')
-  })
 }
 
 /**
@@ -384,9 +352,20 @@ function wrapDetailsContent(container: HTMLElement) {
 
 function handleContainerClick(event: MouseEvent) {
   const target = event.target as HTMLElement
+  // plan 039 T14: the actions live in the widget header, a SIBLING of the
+  // pre — resolve the pre through the container.
+  const resolvePre = (btn: HTMLElement) =>
+    btn.closest('pre') ?? btn.closest('.code-block-container')?.querySelector('pre[data-language]') ?? null
+  const expandBtn = target.closest?.('[data-codeblock-expand-btn]') as HTMLElement | null
+  if (expandBtn && containerRef.value) {
+    event.preventDefault()
+    event.stopPropagation()
+    resolvePre(expandBtn)?.classList.toggle('is-collapsed')
+    return
+  }
   const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
   if (!copyBtn || !containerRef.value) return
-  const pre = copyBtn.closest('pre')
+  const pre = resolvePre(copyBtn)
   const code = pre?.querySelector('code')?.textContent ?? ''
   event.preventDefault()
   event.stopPropagation()
@@ -507,32 +486,10 @@ defineExpose({
   margin: 0.5rem 0;
 }
 
-/* Lists */
-.streaming-document :deep(ul),
-.streaming-document :deep(ol) {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
-}
-
-.streaming-document :deep(ul) {
-  list-style-type: disc;
-}
-
-.streaming-document :deep(ol) {
-  list-style-type: decimal;
-}
-
-.streaming-document :deep(li) {
-  margin: 0.25rem 0;
-}
-
-/* Blockquote */
-.streaming-document :deep(blockquote) {
-  margin: 0.75rem 0;
-  padding-left: 1rem;
-  border-left: 3px solid #e5e7eb;
-  color: #6b7280;
-}
+/* Lists / blockquote chrome: retired with the container-family
+   single-sourcing (plan 042 T2) — the widget-class rules in
+   autodown-editor.css (loaded by every engine consumer, pane-agnostic)
+   own .list-node/.list-item/.blockquote everywhere. */
 
 /* Admonition / Callout — override markstream-vue defaults to match editor */
 .streaming-document :deep(.admonition) {
@@ -1174,13 +1131,6 @@ defineExpose({
   content: '🖼️ ';
 }
 
-/* Override markstream-vue list spacing to match editor */
-.streaming-document :deep(.list-node) {
-  margin-top: 0.5rem !important;
-  margin-bottom: 0.5rem !important;
-  padding-left: 1.25rem !important;
-}
-
 /* Horizontal rule */
 .streaming-document :deep(hr) {
   margin: 1rem 0;
@@ -1188,31 +1138,12 @@ defineExpose({
   border-top: 1px solid #e5e7eb;
 }
 
-/* ---------- Tables (markstream-vue rendered) ---------- */
-.streaming-document :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.75rem 0;
-}
-
-.streaming-document :deep(th),
-.streaming-document :deep(td) {
-  border: 1px solid #e5e7eb;
-  padding: 0.9rem 0.6rem;
-  text-align: left;
-  box-sizing: border-box;
-  font-size: 0.95rem;
-}
-
-.streaming-document :deep(th) {
-  background: var(--ad-accent-soft);
-  font-weight: 600;
-}
-
-.streaming-document :deep(tr:nth-child(even)) {
-  background: #f9fafb;
-}
-
+/* ---------- Tables ----------
+   Table chrome retired with the table-family single-sourcing (plan 042 T3):
+   the widget-class .table-node rules in autodown-editor.css (loaded by
+   every engine consumer, pane-agnostic) own both faces' cells everywhere.
+   The resize-handle hide below stays — it is a streaming-pane presentation
+   choice for the view face's handles, not cell chrome. */
 /* ---------- Task list ---------- */
 .streaming-document :deep(ul):has(.checkbox-node) {
   list-style: none;

@@ -89,6 +89,20 @@ export function renderCodeHighlight(code: string, language: string): string {
   return escapeHtml(code)
 }
 
+/** The edit overlay pre's complete inner markup (plan 039 T9): the
+ *  highlighted spans wrapped in a <code> element, mirroring viewCodeInner.
+ *  The token color rules chain through `pre code .hljs-*` — bare spans
+ *  under the pre (the old renderCodeHighlight contract) never matched and
+ *  the edit face read as unhighlighted. Wrapped like the view face, the
+ *  same selectors color both. */
+export function editCodeInner(code: string, language: string): string {
+  const html = renderCodeHighlight(code, language)
+  if (html !== escapeHtml(code)) {
+    return `<code translate="no" data-highlighted="${escapeAttr(language)}">${html}</code>`
+  }
+  return `<code translate="no">${escapeHtml(code)}</code>`
+}
+
 export function focusCodeArea(el: HTMLElement | null, readonly: boolean): void {
   if (!el || readonly) return
   const area = el as HTMLTextAreaElement

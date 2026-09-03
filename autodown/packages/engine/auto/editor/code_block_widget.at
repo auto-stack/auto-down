@@ -42,7 +42,7 @@
 
 widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool) {
     use {
-        fn: renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, htmlText, viewCodeInner, rootDataLanguage from "ext/code_block_widget_ext.ts"
+        fn: renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, viewCodeInner, editCodeInner, rootDataLanguage from "ext/code_block_widget_ext.ts"
     }
 
     msg Msg { Init, AreaInput, AreaScroll, Blur }
@@ -62,21 +62,24 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
         readonly => ctxReadonly(.ctx)
         block_id => ctxBlockId(.ctx)
         loading => nodeLoading(.node)
-        // root chrome: edit = the CodeBlockMenu host wrapper; view/stream =
-        // the builtin panel container, loading family included (032), as one
-        // class string so the attribute stays single and byte-exact.
-        root_class => .is_edit ? "autodown-codeblock-node" : (.loading ? "code-block-container rounded-lg border autodown-block-placeholder is-loading" : "code-block-container rounded-lg border")
+        // root chrome: edit = the CodeBlockMenu host wrapper MERGED with the
+        // builtin panel container (plan 039 T7 — one chrome, three modes:
+        // the edit face keeps the view container's border and title bar,
+        // and the menu anchor class + data-language ride the same root);
+        // view/stream = the builtin panel container, loading family
+        // included (032), as one class string so the attribute stays single
+        // and byte-exact.
+        root_class => .is_edit ? "code-block-container rounded-lg border autodown-codeblock-node" : (.loading ? "code-block-container rounded-lg border autodown-block-placeholder is-loading" : "code-block-container rounded-lg border")
         root_data_language => rootDataLanguage(.mode, .language)
         // CodeBlockMenu host labels (plan 026 P2T2 contract)
         badge_label => .language == "" ? "text" : .language
-        badge_html => htmlText(.badge_label)
-        // builtin renderCodeblockPanel byte contract
-        title_html => htmlText(.language)
         pre_class => "language-" + .badge_label + " code-pre-fallback is-wrap"
         aria_busy => .loading ? "true" : "false"
         view_inner_html => viewCodeInner(.code, .language)
-        // edit overlay (code_editor_block.at contract)
-        highlight_html => renderCodeHighlight(.code_draft, .language)
+        // edit overlay (plan 039 T9: editCodeInner wraps the highlighted
+        // spans in <code> so the pre code .hljs-* token chain colors them —
+        // the bare-span contract rendered base-fg and read unhighlighted)
+        edit_code_inner => editCodeInner(.code_draft, .language)
     }
 
     view {
@@ -85,12 +88,6 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
             data-language: .root_data_language,
 
             if .is_edit {
-                button (type: "button") {
-                    class: "autodown-codeblock-language-badge",
-                    data-codeblock-language-badge: "",
-                    title: "切换语言",
-                    html: .badge_html
-                }
                 div {
                     class: "autodown-code-editor",
                     style: { "is-readonly": .readonly },
@@ -103,20 +100,44 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
                             text "流式生成中"
                         }
                     }
+                    // plan 039 T7: the language entry lives IN the title bar
+                    // (one chrome with the view face) — the header trigger
+                    // carries the CodeBlockMenu badge marker so the menu's
+                    // anchoring/click contract is unchanged; the caret glyph
+                    // affords selection. The old outside badge is gone.
                     div {
                         class: "code-block-header flex justify-between items-center",
-                        div {
-                            class: "code-header-main",
-                            div {
-                                class: "code-header-copy",
-                                div {
-                                    class: "code-header-title",
-                                    text .language
-                                }
+                        button (type: "button") {
+                            class: "code-header-trigger",
+                            data-codeblock-language-badge: "",
+                            title: "切换语言",
+                            span {
+                                class: "code-header-title",
+                                text .language
+                            },
+                            span {
+                                class: "code-header-caret",
+                                text "▾"
                             }
                         },
+                        // plan 039 T14: the header actions are first-class
+                        // widget content again (copy + collapse) — handlers
+                        // live in CodeBlockMenu (editor pane) and
+                        // StreamingRenderer's container click (read pane).
                         div {
-                            class: "flex items-center gap-0.5"
+                            class: "flex items-center gap-0.5",
+                            button (type: "button") {
+                                class: "code-action-btn",
+                                data-codeblock-copy-btn: "",
+                                title: "复制",
+                                span { class: "codeblock-copy-icon" }
+                            },
+                            button (type: "button") {
+                                class: "code-action-btn",
+                                data-codeblock-expand-btn: "",
+                                title: "折叠",
+                                span { class: "codeblock-expand-icon" }
+                            }
                         }
                     }
                     div {
@@ -125,7 +146,7 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
                             ref: "hl",
                             class: "code-editor-highlight",
                             aria-hidden: "true",
-                            html: .highlight_html
+                            html: .edit_code_inner
                         },
                         textarea (spellcheck: "false") {
                             ref: "area",
@@ -144,18 +165,40 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
             if !.is_edit {
                 div {
                     class: "code-block-header flex justify-between items-center",
-                    div {
-                        class: "code-header-main",
-                        div {
-                            class: "code-header-copy",
-                            div {
-                                class: "code-header-title",
-                                html: .title_html
-                            }
+                    // plan 039 T13: the language item is a hover-reveal
+                    // trigger in the view/stream faces too — un-hovered the
+                    // caret is transparent, so the header is pixel-identical
+                    // to the plain title bar; hovering shows the affordance
+                    // and clicking opens the language menu (CodeBlockMenu
+                    // listens for the badge marker; in the streaming pane no
+                    // menu is mounted so the click is a no-op).
+                    button (type: "button") {
+                        class: "code-header-trigger",
+                        data-codeblock-language-badge: "",
+                        title: "切换语言",
+                        span {
+                            class: "code-header-title",
+                            text .language
+                        },
+                        span {
+                            class: "code-header-caret",
+                            text "▾"
                         }
                     },
                     div {
-                        class: "flex items-center gap-0.5"
+                        class: "flex items-center gap-0.5",
+                        button (type: "button") {
+                            class: "code-action-btn",
+                            data-codeblock-copy-btn: "",
+                            title: "复制",
+                            span { class: "codeblock-copy-icon" }
+                        },
+                        button (type: "button") {
+                            class: "code-action-btn",
+                            data-codeblock-expand-btn: "",
+                            title: "折叠",
+                            span { class: "codeblock-expand-icon" }
+                        }
                     }
                 },
                 pre {
@@ -195,14 +238,46 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
     }
 
     style {
+        /* plan 039 T7: the container chrome (border/radius/background) lives
+           on the shared root (code-block-container) — this wrapper only
+           positions the readonly banner. */
         .autodown-code-editor {
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          background: #f8f9fa;
-          overflow: hidden;
+          position: relative;
         }
         .autodown-code-editor.is-readonly {
           opacity: 0.75;
+        }
+        /* the in-header language trigger (CodeBlockMenu badge contract) */
+        .code-header-trigger {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          padding: 0.1rem 0.4rem;
+          margin-left: -0.4rem;
+          border: 1px solid transparent;
+          border-radius: 4px;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+        }
+        .code-header-trigger:hover {
+          border-color: #9ca3af;
+        }
+        .code-header-caret {
+          font-size: 0.6rem;
+          line-height: 1;
+          opacity: 0.7;
+        }
+        /* plan 039 T13: the view/stream faces keep the header pixel-identical
+           to the plain title bar until hover — the caret affordance is
+           transparent (and the trigger border hidden) until the user points
+           at the language item. The edit face keeps the always-on caret. */
+        .code-block-container:not(.autodown-codeblock-node) .code-header-caret {
+          opacity: 0;
+        }
+        .code-block-container:not(.autodown-codeblock-node) .code-header-trigger:hover .code-header-caret {
+          opacity: 0.7;
         }
         .autodown-stream-banner {
           padding: 0.3rem 0.75rem;

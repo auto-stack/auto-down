@@ -114,14 +114,20 @@ describe('edit face: the CodeEditorBlock + badge host contract, absorbed', () =>
     return { engine, node, blockId: node.id }
   }
 
-  it('carries the CodeBlockMenu host contract: wrapper + badge + textarea + blur wiring', async () => {
+  it('carries the CodeBlockMenu host contract: container root + in-header trigger + textarea + blur wiring', async () => {
     const { engine, node, blockId } = docOf('```rust\nfn a() {}\n```')
     const html = await ssr(h(CodeBlockWidget as any, { mode: 'edit', node, ctx: { engine, blockId, readonly: false } }))
-    expect(html).toContain('class="autodown-codeblock-node"')
+    // plan 039 T7: the edit face merges the view container chrome with the
+    // menu host anchor class — one chrome, three modes
+    expect(html).toContain('class="code-block-container rounded-lg border autodown-codeblock-node"')
     expect(html).toContain('data-language="rust"')
+    // the language affordance lives IN the title bar; the outside badge is
+    // gone (only the header trigger carries the menu marker)
     expect(html).toContain('data-codeblock-language-badge')
     expect(html).toContain('title="切换语言"')
-    expect(html).toContain('>rust</button>')
+    expect(html).toContain('code-header-trigger')
+    expect(html).toContain('code-header-caret')
+    expect(html).not.toContain('autodown-codeblock-language-badge')
     expect(html).toContain('class="autodown-code-editor"')
     expect(html).toContain('data-node-type="Fence"')
     expect(html).toContain('code-editor-highlight')

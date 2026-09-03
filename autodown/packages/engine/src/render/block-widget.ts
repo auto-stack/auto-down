@@ -17,7 +17,7 @@ import { h, type Component, type VNode } from 'vue'
 import type { Attr, BlockNode } from '../parser/block-model'
 import { BlockType, Value, span } from '../parser/block-model'
 import type { WNode } from '../parser/markdown-parser'
-import type { BlockEditCtx } from './block-component'
+import type { BlockComponent, BlockEditCtx } from './block-component'
 import { registerBlockComponent, unregisterBlockComponent } from './block-component'
 import { blockOfWNode } from './block-wnode'
 import type { PanelRenderCtx, PanelRenderer, PanelBodyDecorator } from './panel-registry'
@@ -40,12 +40,23 @@ export interface BlockWidgetProps {
  *  A family registration owns all three slots (it replaces earlier
  *  per-slot registrations for the kind). Family widgets declare the four
  *  family props (mode/node/final/ctx); the non-edit wrappers pass ctx: null
- *  so the generated required-prop checks stay quiet. */
-export function registerBlockWidget(kind: string, widget: Component): void {
+ *  so the generated required-prop checks stay quiet.
+ *
+ *  `slots` (plan 042 T2) overrides individual slot factories for kinds whose
+ *  faces need more than the generic four props: the container families'
+ *  edit faces take the assembly-injected children/items closures (see
+ *  BlockEditCtx), Table's faces take flat chrome data. The override still
+ *  participates in the family semantics — ONE registration call owns all
+ *  three slots for the kind. */
+export function registerBlockWidget(
+  kind: string,
+  widget: Component,
+  slots: Partial<Pick<BlockComponent, 'view' | 'stream' | 'edit'>> = {},
+): void {
   registerBlockComponent(kind, {
-    view: (node, final) => h(widget, { mode: 'view', node, final, ctx: null }),
-    stream: (node, final) => h(widget, { mode: 'stream', node, final, ctx: null }),
-    edit: (node, ctx) => h(widget, { mode: 'edit', node, ctx }),
+    view: slots.view ?? ((node, final) => h(widget, { mode: 'view', node, final, ctx: null })),
+    stream: slots.stream ?? ((node, final) => h(widget, { mode: 'stream', node, final, ctx: null })),
+    edit: slots.edit ?? ((node, ctx) => h(widget, { mode: 'edit', node, ctx })),
   })
 }
 

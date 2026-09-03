@@ -23,7 +23,7 @@
 // adapter's sibling). StreamingTable.vue no longer registers anything; the
 // module goes fully dead until the T5 retirement deletes it.
 
-import { h } from 'vue'
+import { h, type VNode } from 'vue'
 import CodeBlockWidget from '../editor/components/CodeBlockWidget.vue'
 import CalloutBlockWidget from '../editor/components/CalloutBlockWidget.vue'
 import ListBlockWidget from '../editor/components/ListBlockWidget.vue'
@@ -37,6 +37,28 @@ import {
   tableRowsOfPanel,
 } from './block-widget'
 import { registerPanel } from './panel-registry'
+
+/** The ```json table segment's stream face (plan 042 T3): the retired
+ *  StreamingRenderer-local StreamingTableFace, hoisted to a shared export
+ *  so both registration layers use ONE implementation — StreamingRenderer
+ *  registers it for pure-render consumers (its module scope is the old
+ *  face's home, and the only consumer of stream slots), EngineEditor's
+ *  table family registration reuses it (superseding with the same closure).
+ *  NOTE: this module must not CALL registerBlockComponent at top level —
+ *  the render-node side-effect cycle would hit block-component's TDZ. */
+export function tableStreamFace(node: any, final: boolean): VNode {
+  return h(TableBlockWidget as any, {
+    mode: 'stream',
+    controller: null,
+    blockId: '',
+    readonly: true,
+    final,
+    header_cells: [],
+    body_rows: [],
+    columns: node?.columns ?? [],
+    rows: node?.rows ?? [],
+  })
+}
 
 registerPanel('Codeblock', panelOf(CodeBlockWidget))
 registerPanel('Callout', panelOfContainer(CalloutBlockWidget))

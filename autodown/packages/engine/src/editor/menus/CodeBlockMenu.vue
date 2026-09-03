@@ -263,22 +263,46 @@ onMounted(() => {
   }if (copy != null) {e.preventDefault();
   e.stopPropagation();
   let pre = copy.closest('pre');
-  let code: string = '';
+  if (pre == null) {
+
+  let container_el = copy.closest('.code-block-container');
+  if (container_el != null) {pre = container_el.querySelector('pre[data-language]');
+  }}let code: string = '';
   if (pre != null) {let codeEl = pre.querySelector('code');
   if (codeEl != null) {code = (codeEl.textContent ?? '');
   }}navigator.clipboard.writeText(code);
   }if (copy == null && expand != null) {e.preventDefault();
   e.stopPropagation();
   let pre2 = expand.closest('pre');
-  if (pre2 != null) {pre2.classList.toggle('is-collapsed');
+  if (pre2 == null) {let container_el2 = expand.closest('.code-block-container');
+  if (container_el2 != null) {pre2 = container_el2.querySelector('pre[data-language]');
+  }}if (pre2 != null) {pre2.classList.toggle('is-collapsed');
   }}if (copy == null && expand == null) {let trigger = badge;
   if (trigger == null) {trigger = more;
-  }if (trigger != null) {e.preventDefault();
-  e.stopPropagation();
+  }if (trigger != null) {
+
+
+
+
 
 
   let block = trigger.closest('pre');
   if (block == null) {block = trigger.closest('.autodown-codeblock-node');
+  }let container_face: boolean = false;
+  if (block == null) {
+
+
+
+  block = trigger.closest('.code-block-container');
+  if (block != null) {container_face = true;
+  }}e.preventDefault();
+  if (container_face == false) {e.stopPropagation();
+  }if (block == null) {
+
+
+
+
+  block = trigger.closest('.code-block-container');
   }if (block == null) {
 
   let ed_view = props.editor['view'];
@@ -292,9 +316,13 @@ onMounted(() => {
 
 
 
+
+
   current_language.value = '';
   if (active_code_block.value != null) {current_language.value = (active_code_block.value.getAttribute('data-language') ?? '');
-  }if (current_language.value == '') {current_language.value = (props.editor.getAttributes('codeBlock').language ?? '');
+  if (current_language.value == '') {let pre_el = active_code_block.value.querySelector('pre[data-language]');
+  if (pre_el != null) {current_language.value = (pre_el.getAttribute('data-language') ?? '');
+  }}}if (current_language.value == '') {current_language.value = (props.editor.getAttributes('codeBlock').language ?? '');
   }visible.value = true;
   search.value = '';
   let idx = codeBlockLanguages().findIndex((l: any) => l.id == current_language.value);

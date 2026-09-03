@@ -1,5 +1,11 @@
 /* ─── Editor Chrome ─── */
+/* Accent tokens (plan 039 T2): the same indigo hue the streaming theme
+   defines on .streaming-document — headings must read identically in the
+   editor pane and the preview pane. */
 .autodown-editor {
+  --ad-accent: #4f46e5;
+  --ad-accent-strong: #4338ca;
+  --ad-accent-soft: #eef2ff;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -110,7 +116,8 @@
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
   line-height: 1.3;
-  color: var(--ad-fg, #111827);
+  /* plan 039 T2: accent-strong (the streaming pane's heading hue), not fg */
+  color: var(--ad-accent-strong, #4338ca);
 }
 
 .autodown-editor-content h1 {
@@ -129,33 +136,62 @@
   margin: 0.5rem 0;
 }
 
-.autodown-editor-content ul,
-.autodown-editor-content ol {
+
+/* ─── Container family widget chrome (plan 042 T2) — pane-agnostic ───
+   The family widgets render these class names in EVERY face (edit/stream/
+   view) and EVERY pane (editor column, streaming panes), so the chrome
+   rides the widget classes, not the pane — one source serves both columns
+   of the parity pin (demo/e2e/family-parity.spec.ts). Where the retired
+   per-pane rulesets had drifted (editor 1.5rem/0.5rem vs streaming
+   1.25rem/0.25rem list gutters), the streaming pane's established look
+   wins — the fence family's mirror-the-streaming-truth ruling (plan 039
+   T5) applied to the container families. */
+.list-node {
   margin: 0.5rem 0;
-  padding-left: 1.5rem;
+  padding-left: 1.25rem;
 }
 
-.autodown-editor-content ul {
+ul.list-node {
   list-style-type: disc;
 }
 
-.autodown-editor-content ol {
+ol.list-node {
   list-style-type: decimal;
 }
 
-.autodown-editor-content li {
-  margin: 0.5rem 0;
+.list-item {
+  margin: 0.25rem 0;
 }
 
-.autodown-editor-content li > p {
-  margin: 0;
-}
-
-.autodown-editor-content blockquote {
+.blockquote {
   margin: 0.75rem 0;
   padding-left: 1rem;
   border-left: 3px solid var(--ad-border, #e5e7eb);
   color: var(--ad-muted, #6b7280);
+}
+
+.table-node {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.table-node th,
+.table-node td {
+  border: 1px solid var(--ad-border, #e5e7eb);
+  padding: 0.9rem 0.6rem;
+  text-align: left;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+}
+
+.table-node th {
+  background: var(--ad-accent-soft, #eef2ff);
+  font-weight: 600;
+}
+
+.table-node tr:nth-child(even) {
+  background: #f9fafb;
 }
 
 .autodown-editor-content pre {
@@ -274,48 +310,6 @@
   align-items: center;
 }
 
-/* ─── Table ─── */
-.autodown-editor-content .tableWrapper,
-.autodown-editor-content .autodown-table,
-.autodown-editor-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.75rem 0;
-}
-
-.autodown-editor-content .tableWrapper > table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.autodown-editor-content .tableWrapper th,
-.autodown-editor-content .tableWrapper td,
-.autodown-editor-content .autodown-table th,
-.autodown-editor-content .autodown-table td,
-.autodown-editor-content table th,
-.autodown-editor-content table td {
-  border: 1px solid var(--ad-border, #e5e7eb);
-  padding: 0.4rem 0.6rem;
-  text-align: left;
-  font-size: 0.95rem;
-}
-
-.autodown-editor-content .tableWrapper th,
-.autodown-editor-content .autodown-table th,
-.autodown-editor-content table th {
-  background: hsl(var(--ad-muted, 220 9% 46%) / 0.06);
-  font-weight: 600;
-}
-
-/* Editor tables don't wrap header rows in <thead>, so all <tr> are siblings.
-   Use :not(:first-child) to skip the header row, making the pattern match
-   the preview (tbody row 1 = white, row 2 = dark, row 3 = white). */
-.autodown-editor-content .tableWrapper tr:nth-child(odd):not(:first-child),
-.autodown-editor-content .autodown-table tr:nth-child(odd):not(:first-child),
-.autodown-editor-content table tr:nth-child(odd):not(:first-child) {
-  background: #f9fafb;
-}
-
 /* ─── Slash Menu ─── */
 .autodown-slash-menu {
   position: absolute;
@@ -428,32 +422,12 @@
 /* ── Codeblock node host (plan 026 P2; menu anchor retired with TableMenu —
    adjudication #1) ─── */
 /* Host-side DOM contract of CodeBlockMenu: the focused fence edit face sits
-   in a positioned wrapper carrying data-language; the badge is the click
-   affordance the generated menu listens for. */
+   in a positioned wrapper carrying data-language. plan 039 T7 merged the
+   wrapper with the view container chrome (code-block-container) and moved
+   the badge affordance INTO the title bar (.code-header-trigger, widget
+   scoped style) — the old absolutely-positioned outside badge is gone. */
 .autodown-codeblock-node {
   position: relative;
-}
-
-.autodown-codeblock-language-badge {
-  position: absolute;
-  top: 0.3rem;
-  right: 0.45rem;
-  z-index: 5;
-  padding: 0.08rem 0.45rem;
-  font-size: 0.68rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--ad-muted, #6b7280);
-  background: var(--ad-surface, #ffffff);
-  border: 1px solid var(--ad-border, #e5e7eb);
-  border-radius: 4px;
-  cursor: pointer;
-  opacity: 0.75;
-}
-
-.autodown-codeblock-language-badge:hover {
-  color: var(--ad-primary, #2563eb);
-  border-color: var(--ad-primary, #2563eb);
-  opacity: 1;
 }
 
 /* ─── Table Menu ─── */
@@ -509,7 +483,7 @@
 }
 
 /* ─── Callout / Admonition ─── */
-.autodown-editor-content .autodown-callout {
+.autodown-callout {
   position: relative;
   margin: 1rem 0;
   border: 1px solid var(--ad-border, #e5e7eb);
@@ -519,7 +493,7 @@
   padding: 1.1rem 1rem 1rem;
 }
 
-.autodown-editor-content .autodown-callout-header {
+.autodown-callout-header {
   position: absolute;
   top: 0;
   left: 0.75rem;
@@ -536,7 +510,7 @@
   border-radius: 4px;
 }
 
-.autodown-editor-content .autodown-callout-icon {
+.autodown-callout-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -552,30 +526,30 @@
   mask-size: contain;
 }
 
-.autodown-editor-content .autodown-callout-icon-note {
+.autodown-callout-icon-note {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cline x1='16' y1='13' x2='8' y2='13'/%3E%3Cline x1='16' y1='17' x2='8' y2='17'/%3E%3Cline x1='10' y1='9' x2='8' y2='9'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cline x1='16' y1='13' x2='8' y2='13'/%3E%3Cline x1='16' y1='17' x2='8' y2='17'/%3E%3Cline x1='10' y1='9' x2='8' y2='9'/%3E%3C/svg%3E");
 }
-.autodown-editor-content .autodown-callout-icon-info {
+.autodown-callout-icon-info {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
 }
-.autodown-editor-content .autodown-callout-icon-tip {
+.autodown-callout-icon-tip {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E");
 }
-.autodown-editor-content .autodown-callout-icon-warning,
-.autodown-editor-content .autodown-callout-icon-caution {
+.autodown-callout-icon-warning,
+.autodown-callout-icon-caution {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
 }
-.autodown-editor-content .autodown-callout-icon-danger,
-.autodown-editor-content .autodown-callout-icon-error {
+.autodown-callout-icon-danger,
+.autodown-callout-icon-error {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
 }
 
-.autodown-editor-content .autodown-callout-title {
+.autodown-callout-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -583,53 +557,53 @@
   white-space: nowrap;
 }
 
-.autodown-editor-content .autodown-callout-content {
+.autodown-callout-content {
   padding: 0;
   color: var(--ad-fg, #111827);
 }
 
 /* Type accents */
-.autodown-editor-content .autodown-callout-note {
+.autodown-callout-note {
   background: #eff6ff;
   border-color: #bfdbfe;
 }
-.autodown-editor-content .autodown-callout-note .autodown-callout-header {
+.autodown-callout-note .autodown-callout-header {
   color: #2563eb;
 }
-.autodown-editor-content .autodown-callout-info {
+.autodown-callout-info {
   background: #f0f9ff;
   border-color: #7dd3fc;
 }
-.autodown-editor-content .autodown-callout-info .autodown-callout-header {
+.autodown-callout-info .autodown-callout-header {
   color: #0284c7;
 }
-.autodown-editor-content .autodown-callout-tip {
+.autodown-callout-tip {
   background: #f0fdf4;
   border-color: #86efac;
 }
-.autodown-editor-content .autodown-callout-tip .autodown-callout-header {
+.autodown-callout-tip .autodown-callout-header {
   color: #16a34a;
 }
-.autodown-editor-content .autodown-callout-warning,
-.autodown-editor-content .autodown-callout-caution {
+.autodown-callout-warning,
+.autodown-callout-caution {
   background: #fffbeb;
   border-color: #fcd34d;
 }
-.autodown-editor-content .autodown-callout-warning .autodown-callout-header,
-.autodown-editor-content .autodown-callout-caution .autodown-callout-header {
+.autodown-callout-warning .autodown-callout-header,
+.autodown-callout-caution .autodown-callout-header {
   color: #d97706;
 }
-.autodown-editor-content .autodown-callout-danger,
-.autodown-editor-content .autodown-callout-error {
+.autodown-callout-danger,
+.autodown-callout-error {
   background: #fef2f2;
   border-color: #fca5a5;
 }
-.autodown-editor-content .autodown-callout-danger .autodown-callout-header,
-.autodown-editor-content .autodown-callout-error .autodown-callout-header {
+.autodown-callout-danger .autodown-callout-header,
+.autodown-callout-error .autodown-callout-header {
   color: #dc2626;
 }
 
-.autodown-editor-content .autodown-details {
+.autodown-details {
   margin: 0.75rem 0;
   border: 1px solid var(--ad-border, #e5e7eb);
   border-radius: 8px;
@@ -637,7 +611,7 @@
   overflow: hidden;
 }
 
-.autodown-editor-content .autodown-details-summary {
+.autodown-details-summary {
   position: relative;
   display: flex;
   align-items: center;
@@ -653,15 +627,15 @@
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.autodown-editor-content .autodown-details[data-open='true'] .autodown-details-summary {
+.autodown-details[data-open='true'] .autodown-details-summary {
   border-bottom-color: var(--ad-border, #e5e7eb);
 }
 
-.autodown-editor-content .autodown-details-summary:hover {
+.autodown-details-summary:hover {
   background: hsl(var(--ad-muted, 220 9% 46%) / 0.1);
 }
 
-.autodown-editor-content .autodown-details-marker {
+.autodown-details-marker {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -673,12 +647,12 @@
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
-.autodown-editor-content .autodown-details-marker:hover {
+.autodown-details-marker:hover {
   background: hsl(var(--ad-muted, 220 9% 46%) / 0.18);
   color: var(--ad-fg, #111827);
 }
 
-.autodown-editor-content .autodown-details-summary-text {
+.autodown-details-summary-text {
   flex: 1;
   min-width: 0;
   padding-right: 1.5rem;
@@ -686,9 +660,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+  /* reserve the edit face's AttrHost affordance pixel (its 1px transparent
+     dashed bottom border) so both faces' summary rows box identically —
+     the fence family's same-box-metrics-minus-affordances rule (plan 042) */
+  border-bottom: 1px solid transparent;
 }
 
-.autodown-editor-content .autodown-details-summary-input {
+.autodown-details-summary-input {
   flex: 1;
   min-width: 0;
   padding: 0.15rem 0.35rem;
@@ -728,7 +706,7 @@
 }
 
 /* the callout title host keeps the palette title's single-line ellipsis */
-.autodown-editor-content .autodown-callout .autodown-attr-host.autodown-callout-title {
+.autodown-callout .autodown-attr-host.autodown-callout-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -736,7 +714,7 @@
   white-space: nowrap;
 }
 
-.autodown-editor-content .autodown-details .autodown-attr-host.autodown-details-summary-text {
+.autodown-details .autodown-attr-host.autodown-details-summary-text {
   flex: 1;
   min-width: 0;
   padding-right: 1.5rem;
@@ -772,7 +750,7 @@
 }
 
 
-.autodown-editor-content .autodown-details-edit-btn {
+.autodown-details-edit-btn {
   position: absolute;
   right: 0.4rem;
   top: 50%;
@@ -792,17 +770,17 @@
   transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
-.autodown-editor-content .autodown-details-summary:hover .autodown-details-edit-btn,
-.autodown-editor-content .autodown-details-edit-btn:focus-visible {
+.autodown-details-summary:hover .autodown-details-edit-btn,
+.autodown-details-edit-btn:focus-visible {
   opacity: 1;
 }
 
-.autodown-editor-content .autodown-details-edit-btn:hover {
+.autodown-details-edit-btn:hover {
   background: hsl(var(--ad-muted, 220 9% 46%) / 0.14);
   color: var(--ad-fg, #111827);
 }
 
-.autodown-editor-content .autodown-details-content {
+.autodown-details-content {
   padding: 0.75rem 0.75rem 0.75rem 2rem;
   background: hsl(var(--ad-muted, 220 9% 46%) / 0.02);
 }
@@ -919,22 +897,22 @@
   font-size: 0.83rem;
 }
 
-/* ─── Code Block — window style with header (editor) ─── */
+/* ─── Code Block — family widget chrome (editor pane; plan 039 T5) ───
+   The retired builtin panel hung its chrome off pre[data-language] (the
+   header lived INSIDE the pre). The 033 family widget renders
+   .code-block-container > header + pre[data-language], so the pane's
+   chrome is scoped to the container — values mirror StreamingRenderer's
+   :deep rules so the editor pane matches the streaming pane visually
+   (pinned by code-block-parity.spec.ts). */
 
-.autodown-editor-content pre[data-language] {
-  position: relative;
-  padding-top: 36px;
-  border: 1px solid var(--ad-border, #e5e7eb);
+.autodown-editor-content .code-block-container {
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #f9fafb;
   overflow: hidden;
+  background: #f9fafb;
 }
 
-.autodown-editor-content pre[data-language] .code-block-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+.autodown-editor-content .code-block-container .code-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -946,49 +924,42 @@
   color: #374151;
   font-size: 0.85rem;
   user-select: none;
-  box-sizing: border-box;
 }
 
-.autodown-editor-content pre[data-language] .code-header-main {
+.autodown-editor-content .code-block-container .code-header-main {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  cursor: pointer;
 }
 
-.autodown-editor-content pre[data-language] .icon-slot {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.autodown-editor-content pre[data-language] .code-header-copy {
+.autodown-editor-content .code-block-container .code-header-copy {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
 }
 
-.autodown-editor-content pre[data-language] .code-header-title {
+.autodown-editor-content .code-block-container .code-header-title {
   line-height: 1;
 }
 
-.autodown-editor-content pre[data-language] .code-header-edit-icon {
-  opacity: 0;
-  transition: opacity 0.15s ease;
+.autodown-editor-content .code-block-container pre[data-language] {
+  margin: 0;
+  padding: 0.85em 1em;
+  background: #f9fafb;
+  border: none;
 }
 
-.autodown-editor-content pre[data-language] .code-header-main:hover .code-header-edit-icon {
-  opacity: 1;
-}
+/* plan 039 T13: NO display:block on the code element — the streaming pane
+   renders it inline, where the line boxes take the PRE's line-height
+   (24.32px); a block code forced its own 1.5 (21.12px) and the two panes
+   drifted ~3px per line. Same inline box, same pitch, pixel-equal panels. */
 
-.autodown-editor-content pre[data-language] .code-block-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.autodown-editor-content pre[data-language] .code-action-btn {
+/* ─── Code block header actions (plan 039 T14) ───
+   Copy + collapse live in the family widget's header (both panes render the
+   same widget, so one rule set here covers the editor and the streaming
+   pane). Handlers: CodeBlockMenu (editor) / StreamingRenderer
+   handleContainerClick (read pane). */
+.code-block-container .code-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -999,30 +970,46 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: inherit;
+  color: #4b5563;
   cursor: pointer;
   line-height: 1;
 }
 
-.autodown-editor-content pre[data-language] .code-action-btn:hover {
+.code-block-container .code-action-btn:hover {
   background: hsl(220 9% 46% / 0.14);
   color: #111827;
 }
 
-.autodown-editor-content pre[data-language] .code-action-expand img {
+.code-block-container .codeblock-copy-icon,
+.code-block-container .codeblock-expand-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: currentColor;
   transition: transform 0.15s ease;
 }
 
-.autodown-editor-content pre[data-language].is-collapsed .code-action-expand img {
+.code-block-container .codeblock-copy-icon {
+  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iOSIgeT0iOSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEzIiByeD0iMiIgcnk9IjIiLz48cGF0aCBkPSJNNSAxNUg0YTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDlhMiAyIDAgMCAxIDIgMnYxIi8+PC9zdmc+");
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iOSIgeT0iOSIgd2lkdGg9IjEzIiBoZWlnaHQ9IjEzIiByeD0iMiIgcnk9IjIiLz48cGF0aCBkPSJNNSAxNUg0YTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDlhMiAyIDAgMCAxIDIgMnYxIi8+PC9zdmc+");
+}
+
+.code-block-container .codeblock-expand-icon {
+  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iNiA5IDEyIDE1IDE4IDkiLz48L3N2Zz4=");
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iNiA5IDEyIDE1IDE4IDkiLz48L3N2Zz4=");
+}
+
+.code-block-container:has(pre.is-collapsed) .codeblock-expand-icon {
   transform: rotate(180deg);
 }
 
-.autodown-editor-content pre[data-language] code {
-  display: block;
-  background: #f9fafb;
-}
-
-.autodown-editor-content pre[data-language].is-collapsed code {
+.code-block-container pre.is-collapsed code {
   max-height: 320px;
   overflow-y: auto;
 }

@@ -108,3 +108,53 @@ body {
   padding: 28px 32px;
   min-height: 320px;
 }
+
+/* ── PLAN-041 T12 对拍台：左右等宽分栏（grid 1fr×2，等 padding 保证
+   换行点一致）+ 差异高亮 + 对比按钮/报告。 ── */
+
+.stream-demo__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.stream-demo__pane {
+  padding: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stream-demo__pane + .stream-demo__pane {
+  border-left: 1px solid #e5e7eb;
+}
+
+.stream-demo__pane-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.stream-demo__compare {
+  font-weight: 600;
+}
+
+.stream-demo__diff-report {
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
+.stream-demo__diff-report.is-clean {
+  color: #15803d;
+}
+
+.pane-diff {
+  outline: 2px solid #ef4444;
+  outline-offset: 1px;
+  background: rgba(239, 68, 68, 0.08);
+}

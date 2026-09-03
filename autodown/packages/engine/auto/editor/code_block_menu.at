@@ -308,6 +308,14 @@ widget CodeBlockMenu(editor: Array<str>) {
                     e.preventDefault()
                     e.stopPropagation()
                     let pre = copy.closest("pre")
+                    if pre == null {
+                        // plan 039 T14: the actions live in the header, a
+                        // SIBLING of the pre — resolve via the container.
+                        let container_el = copy.closest(".code-block-container")
+                        if container_el != null {
+                            pre = container_el.querySelector("pre[data-language]")
+                        }
+                    }
                     let code = ""
                     if pre != null {
                         let codeEl = pre.querySelector("code")
@@ -321,6 +329,12 @@ widget CodeBlockMenu(editor: Array<str>) {
                     e.preventDefault()
                     e.stopPropagation()
                     let pre2 = expand.closest("pre")
+                    if pre2 == null {
+                        let container_el2 = expand.closest(".code-block-container")
+                        if container_el2 != null {
+                            pre2 = container_el2.querySelector("pre[data-language]")
+                        }
+                    }
                     if pre2 != null {
                         pre2.classList.toggle("is-collapsed")
                     }
@@ -331,13 +345,39 @@ widget CodeBlockMenu(editor: Array<str>) {
                         trigger = more
                     }
                     if trigger != null {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        // open(trigger.closest("pre") ??
-                        // trigger.closest(".autodown-codeblock-node")):
+                        // plan 039 T13: resolve the trigger element FIRST —
+                        // the view face's container path must NOT stop
+                        // propagation: the bubbling click reaches the slot's
+                        // selectBlock and moves the engine selection to this
+                        // block (the language writeback rides the selection;
+                        // the pre/host paths already own their selection and
+                        // keep the original stopPropagation).
                         let block = trigger.closest("pre")
                         if block == null {
                             block = trigger.closest(".autodown-codeblock-node")
+                        }
+                        let container_face = false
+                        if block == null {
+                            // the view face's trigger sits in the shared
+                            // container's title bar (no pre ancestor, no
+                            // host class) — the container is the trigger
+                            // element; its pre carries the language.
+                            block = trigger.closest(".code-block-container")
+                            if block != null {
+                                container_face = true
+                            }
+                        }
+                        e.preventDefault()
+                        if container_face == false {
+                            e.stopPropagation()
+                        }
+                        if block == null {
+                            // plan 039 T13: the view face's trigger sits in
+                            // the shared container's title bar (no pre
+                            // ancestor, no host class) — the container is
+                            // the trigger element; its pre carries the
+                            // language.
+                            block = trigger.closest(".code-block-container")
                         }
                         if block == null {
                             // findActiveCodeBlock fallback (original's
@@ -357,10 +397,18 @@ widget CodeBlockMenu(editor: Array<str>) {
                         // re-evaluated when forcedLanguage changed — tiptap
                         // attrs are not Vue-reactive). Empty attribute falls
                         // through to the selection's codeBlock attrs, like
-                        // the original's truthiness check.
+                        // the original's truthiness check. The view face's
+                        // container carries no data-language (view-root
+                        // contract) — read the pre's instead.
                         .current_language = ""
                         if .active_code_block != null {
                             .current_language = .active_code_block.getAttribute("data-language") ?? ""
+                            if .current_language == "" {
+                                let pre_el = .active_code_block.querySelector("pre[data-language]")
+                                if pre_el != null {
+                                    .current_language = pre_el.getAttribute("data-language") ?? ""
+                                }
+                            }
                         }
                         if .current_language == "" {
                             .current_language = .editor.getAttributes("codeBlock").language ?? ""

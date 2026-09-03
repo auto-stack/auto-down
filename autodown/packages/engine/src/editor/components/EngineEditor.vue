@@ -36,8 +36,9 @@
 // Keys are BlockType enum names ('Fence' IS the code block kind).
 import { Value, attrGetStr, blockText } from '../../parser/block-model'
 import type { BlockNode } from '../../parser/block-model'
-import { registerBlockComponent } from '../../render/block-component'
+import type { BlockEditCtx } from '../../render/block-component'
 import { registerBlockWidget, panelOf } from '../../render/block-widget'
+import { tableStreamFace } from '../../render/block-widget-panels'
 import { registerPanel } from '../../render/panel-registry'
 import { blockOfWNode } from '../../render/block-wnode'
 import { TableEditorController } from '../engine/table-editor-controller'
@@ -49,6 +50,9 @@ import MermaidBlockWidget from './MermaidBlockWidget.vue'
 import DetailsBlockWidget from './DetailsBlockWidget.vue'
 import QueryBlockWidget from './QueryBlockWidget.vue'
 import EmbedBlockWidget from './EmbedBlockWidget.vue'
+import CalloutBlockWidget from './CalloutBlockWidget.vue'
+import BlockquoteBlockWidget from './BlockquoteBlockWidget.vue'
+import ListBlockWidget from './ListBlockWidget.vue'
 
 // the three pilot families (plan 033): one widget, three modes — the
 // BlockComponent slots mount the widget with the right mode, and the panel
@@ -59,39 +63,142 @@ registerBlockWidget('Fence', CodeBlockWidget)
 registerBlockWidget('MathBlock', MathBlockWidget)
 registerBlockWidget('Mermaid', MermaidBlockWidget)
 
-// Table's edit face is the family widget's edit mode (plan 037 T3 — the
-// TableEditorBlock boundary unchanged): flat chrome data — the adapter
-// flattens the table's BlockNode into plain cell objects ({id, text, cls})
-// on every render; commands/cell-commit semantics stay on the
-// TableEditorController. columns/rows/final are filler for the generated
-// required-prop checks (the 033 ctx:null idiom) — the edit face reads none.
-function tableEditSlot(node: BlockNode, ctx: any) {
-  const cellData = (c: BlockNode) => ({
-    id: c.id,
-    text: blockText(c),
-    cls: alignClass(attrGetStr(c.attrs, 'align', 'left')),
-  })
-  const rows = node.children
-  return h(TableBlockWidget, {
-    mode: 'edit',
-    controller: new TableEditorController(ctx.engine, ctx.blockId),
-    blockId: ctx.blockId,
-    readonly: ctx.readonly,
-    final: true,
-    header_cells: (rows[0]?.children ?? []).map(cellData),
-    body_rows: rows.slice(1).map((row) => ({ id: row.id, cells: row.children.map(cellData) })),
-    columns: [],
-    rows: [],
+// the container families (plan 042 T2): the same family contract for the
+// composite kinds — the registered edit slot mounts the widget, and the
+// assembly injects the focus-path recursion (children/items closures +
+// repaint version) through BlockEditCtx; the retired hand-rolled
+// containerEditSlot dispatch lived in the setup script's assembly. A
+// directly-selected container (engine.select on the kind, never via click —
+// focus-path.ts keeps descending for composite kinds) takes the preview-
+// pipeline fallback below: its children are off-path by definition.
+// This retires the node-view fallback arm for these kinds: the widget comes
+// from the registry (one chrome source, three slots), the recursion stays
+// at the single assembly point (the BlockChildren hole's contract).
+function previewChildrenOf(node: BlockNode): () => VNode[] {
+  return () => renderNodes(blockNodesToWNodes(node.children), true)
+}
+
+/** List items flattened to the widget's chrome data with preview bodies —
+ *  listEditItems' module-scope sibling (the assembly's injected closure
+ *  carries the focus-path recursion; this is the fallback face). */
+function previewItemsOf(node: BlockNode): unknown[] {
+  return node.children.map((item) => {
+    const task = attrGet(item.attrs, 'checked') != null
+    return {
+      id: item.id,
+      task,
+      checked: attrGetBool(item.attrs, 'checked', false),
+      cls: 'list-item' + (task ? ' task-item' : ''),
+      children_slot: () => renderNodes(blockNodesToWNodes(item.children), true),
+    }
   })
 }
 
-function alignClass(align: string): string {
+/** The container families' edit slot: the widget mount plus the kind's
+ *  chrome-data prop (children closure / list items), from the assembly
+ *  injection when present, the preview fallback otherwise. */
+function containerEditFace(
+  widget: unknown,
+  extra: (node: BlockNode, ctx: BlockEditCtx) => Record<string, unknown>,
+) {
+  return (node: BlockNode, ctx: BlockEditCtx) =>
+    h(widget as any, {
+      mode: 'edit',
+      node,
+      ctx: { engine: ctx.engine, blockId: ctx.blockId, readonly: ctx.readonly },
+      final: true,
+      version: ctx.version ?? 0,
+      ...extra(node, ctx),
+    })
+}
+
+registerBlockWidget('Callout', CalloutBlockWidget, {
+  edit: containerEditFace(CalloutBlockWidget, (node, ctx) => ({ children: ctx.children ?? previewChildrenOf(node) })),
+})
+registerBlockWidget('Blockquote', BlockquoteBlockWidget, {
+  edit: containerEditFace(BlockquoteBlockWidget, (node, ctx) => ({ children: ctx.children ?? previewChildrenOf(node) })),
+})
+registerBlockWidget('ListBlock', ListBlockWidget, {
+  // items is FLAT DATA (the widget v-fors the array itself), unlike the
+  // children closure — call the injection at slot-call time (the assembly's
+  // render closure re-runs per repaint, so the timing matches the retired
+  // hand-rolled dispatch)
+  edit: containerEditFace(ListBlockWidget, (node, ctx) => ({ items: ctx.items ? ctx.items() : previewItemsOf(node) })),
+})
+// Details joins the family registration (its T1 parity diff was real — the
+// streaming pane's summary row rendered unstyled); the editor-side PANEL
+// registration below stays (its marker verb needs the live host window's
+// engine), the assembly's hand-rolled edit dispatch retires with the rest.
+registerBlockWidget('Details', DetailsBlockWidget, {
+  edit: containerEditFace(DetailsBlockWidget, (node, ctx) => ({ children: ctx.children ?? previewChildrenOf(node) })),
+})
+
+// The table family (plan 042 T3): registerBlockWidget replaces the 037
+// edit-only registration — TableEditorController semantics unchanged (the
+// edit slot constructs it internally, verbatim from the retired
+// tableEditSlot); the STREAM slot reuses the render-side tableStreamFace
+// (block-widget-panels registers it for pure-render consumers too — the
+// ```json table segments hand the slot a render-model payload {columns,
+// rows}, which the generic family wrapper's node prop would not deliver to
+// the widget's columns/rows props), and the view slot mounts the view face
+// from a model node (flat cells with preview bodies — the panel adapter's
+// sibling; the panel registry keeps serving the renderNodes pipeline).
+function tableAlignClass(align: string): string {
   if (align === 'center') return 'text-center'
   if (align === 'right') return 'text-right'
   return 'text-left'
 }
 
-registerBlockComponent('Table', { edit: tableEditSlot })
+/** Edit-cell chrome data: flat {id, text, cls} over the model — the 037
+ *  TableEditorBlock boundary (commands/cell-commit semantics stay on the
+ *  controller). */
+function tableEditCell(c: BlockNode) {
+  return { id: c.id, text: blockText(c), cls: tableAlignClass(attrGetStr(c.attrs, 'align', 'left')) }
+}
+
+/** View-cell chrome data: the same flat boundary with a preview body slot
+ *  (the panel adapter's children_slot shape). */
+function tableViewCell(c: BlockNode) {
+  return {
+    id: c.id,
+    cls: tableAlignClass(attrGetStr(c.attrs, 'align', 'left')),
+    children_slot: () => renderNodes(blockNodesToWNodes(c.children), true),
+  }
+}
+
+registerBlockWidget('Table', TableBlockWidget, {
+  edit: (node: BlockNode, ctx: BlockEditCtx) => {
+    const rows = node.children
+    return h(TableBlockWidget, {
+      mode: 'edit',
+      controller: new TableEditorController(ctx.engine, ctx.blockId),
+      blockId: ctx.blockId,
+      readonly: ctx.readonly,
+      final: true,
+      header_cells: (rows[0]?.children ?? []).map(tableEditCell),
+      body_rows: rows.slice(1).map((row) => ({ id: row.id, cells: row.children.map(tableEditCell) })),
+      // filler for the generated required-prop checks (the 033 ctx:null
+      // idiom) — the edit face reads none
+      columns: [],
+      rows: [],
+    })
+  },
+  stream: tableStreamFace,
+  view: (node: BlockNode, final: boolean) => {
+    const rows = node.children
+    return h(TableBlockWidget, {
+      mode: 'view',
+      controller: null,
+      blockId: '',
+      readonly: false,
+      final,
+      header_cells: (rows[0]?.children ?? []).map(tableViewCell),
+      body_rows: rows.slice(1).map((row) => ({ id: row.id, cells: row.children.map(tableViewCell) })),
+      columns: [],
+      rows: [],
+    })
+  },
+})
 
 // Node-view preview panels: the pilot kinds mount their family widgets'
 // view face through the 017 panel registry's custom slot (plan 033 — same
@@ -191,9 +298,6 @@ import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-p
 import { domRangeToBlockRange } from '../engine/selection-map'
 import { spansToHtml } from '../engine/rich-html'
 import RichTextHost from './RichTextHost.vue'
-import CalloutBlockWidget from './CalloutBlockWidget.vue'
-import BlockquoteBlockWidget from './BlockquoteBlockWidget.vue'
-import ListBlockWidget from './ListBlockWidget.vue'
 import BubbleMenu from '../menus/BubbleMenu.vue'
 import CodeBlockMenu from '../menus/CodeBlockMenu.vue'
 import { SlashMenu, getSlashItems } from '../slash-manifest'
@@ -405,8 +509,17 @@ function previewVNodeOf(node: BlockNode): VNode {
 
 /** The node-slot chrome around every assembled node: data-block-id makes the
  *  block deep-addressable (getBlockMap + click-to-focus); the boundary
- *  marker stays top-level only (preview DOM parity with renderEmbedded). */
-function slotChrome(node: BlockNode, inner: VNode, topLevel: boolean, counter: { n: number }): VNode {
+ *  marker stays top-level only (preview DOM parity with renderEmbedded).
+ *  `withBoundary: false` serves the FOCUSED face (plan 039 T4b): the insert
+ *  affordance is meaningless for the block being edited, and its hit zone
+ *  would swallow caret clicks on the focused block's own tail. */
+function slotChrome(
+  node: BlockNode,
+  inner: VNode,
+  topLevel: boolean,
+  counter: { n: number },
+  withBoundary = true,
+): VNode {
   return h(
     'div',
     {
@@ -424,33 +537,20 @@ function slotChrome(node: BlockNode, inner: VNode, topLevel: boolean, counter: {
     },
     [
       h('div', { class: 'node-content' }, [inner]),
-      ...(topLevel ? [h('div', { class: 'autodown-block-boundary', 'data-boundary-for': node.id })] : []),
+      ...(topLevel && withBoundary ? [h('div', { class: 'autodown-block-boundary', 'data-boundary-for': node.id })] : []),
     ]
   )
 }
 
-/** The focus-path container face (plan 035): the family widget in edit mode
- *  with the assembly-built children closure — chrome is .at-sourced
- *  (callout/details/blockquote/list_block_widget.at), the recursion stays
- *  HERE at the single assembly point (the BlockChildren hole's closure:
- *  epoch remounts / host registry / focus path all ride the captured ctx).
- *  Plan 030's keep-card-while-focused ruling carries over unchanged: the
- *  widgets render the same card chains the retired expandedElement hand-
- *  built (byte-pinned by the widget suites). */
-function containerEditSlot(node: BlockNode, ctx: AssemblyCtx): VNode {
-  const childrenOf = () => node.children.map((ch) => childSlot(ch, ctx))
-  const base = {
-    mode: 'edit',
-    node,
-    ctx: { engine, blockId: node.id, readonly: props.streaming === true },
-    final: true,
-    version: repaintVersion.value,
-  }
-  if (node.kind === BlockType.Callout) return h(CalloutBlockWidget, { ...base, children: childrenOf })
-  if (node.kind === BlockType.Details) return h(DetailsBlockWidget, { ...base, children: childrenOf })
-  if (node.kind === BlockType.Blockquote) return h(BlockquoteBlockWidget, { ...base, children: childrenOf })
-  return h(ListBlockWidget, { ...base, items: listEditItems(node, ctx) })
-}
+/** The focus-path container face (plan 035, family-registered in plan 042
+ *  T2): the kind's REGISTERED family edit slot, invoked with the
+ *  assembly-built closures injected through BlockEditCtx — chrome is
+ *  .at-sourced (callout/details/blockquote/list_block_widget.at), the
+ *  recursion stays HERE at the single assembly point (the BlockChildren
+ *  hole's closure: epoch remounts / host registry / focus path all ride the
+ *  captured ctx). Plan 030's keep-card-while-focused ruling carries over
+ *  unchanged: the widgets render the same card chains the retired
+ *  expandedElement hand-built (byte-pinned by the widget suites). */
 
 /** List items flattened to the widget's chrome data ({id, task, checked,
  *  cls, children_slot}) — the TableEditorBlock flat-data boundary; the task
@@ -484,16 +584,28 @@ function viewVNode(v: BlockView): VNode {
 /** One assembled node: focused leaf → edit face / BlockHost (plan 023 P1T3
  *  contract, bare — no node-slot); focus-path container → expanded chrome;
  *  everything else → preview slot. VNode-producing views go through the
- *  stable AssemblyView shell (see its comment). */
+ *  stable AssemblyView shell (see its comment). plan 039 T4b: the focused
+ *  face rides the SAME slotChrome as preview (structural parity — see the
+ *  comment inside; revises plan 029's bare-host mounting). */
 function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): BlockView {
   if (node.id === ctx.focusedId) {
+    // plan 039 T4b (engine-layer focus parity — revises plan 029's
+    // bare-host ruling): the focused face mounts INSIDE the same slotChrome
+    // as its preview twin. The two faces of one block are structurally
+    // identical now, so structure-sensitive host logic (the demo's
+    // scroll-sync margin injections, any future VM layout keyed on the
+    // slot) sees ONE shape, not two — the 1-4px focus-toggle jump dies at
+    // the root instead of being patched per consumer. The semantic host
+    // keeps its own data-block-id (adapter host lookup); getBlockMap
+    // dedupes to the slot.
     const edit = editSlotFor(BlockType[node.kind])
     if (edit) {
       return {
         id: node.id,
         view: AssemblyView,
         props: {
-          render: () => edit(node, { engine, blockId: node.id, readonly: props.streaming === true }),
+          render: () =>
+            slotChrome(node, edit(node, { engine, blockId: node.id, readonly: props.streaming === true }), topLevel, ctx.counter, false),
           key: `edit:${node.id}:${historyEpoch.value}`,
         },
       }
@@ -503,24 +615,33 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
       const level = node.kind === BlockType.Heading ? attrGetInt(node.attrs, 'level', 1) : undefined
       return {
         id: node.id,
-        view: RichTextHost,
+        view: AssemblyView,
         props: {
-          controller,
-          // flat chrome data (plan 034 D4): the widget derives tag/cls from
-          // blockKind/level itself (the host-face computation is absorbed);
-          // initial_html is the mount-once rich snapshot, evaluated here —
-          // the engine is not Vue-reactive, the snapshot never invalidates.
-          blockId: controller.id,
-          blockKind: BlockType[node.kind],
-          level: level ?? 0,
-          initial_html: spansToHtml(controller.inlines),
-          // The face lives in the key: a kind/level flip mid-typing (input
-          // rules) must REMOUNT the host. <component :is> would swap the
-          // DOM element under the caret without re-running onMounted —
-          // focus lands nowhere and every post-flip keystroke is lost.
-          // The remount re-focuses at end (plan 029; rules match only a
-          // whole-block marker, so the caret IS at end on every flip).
-          key: `host:${node.id}:${BlockType[node.kind]}:${level ?? ''}:${historyEpoch.value}`,
+          render: () =>
+            slotChrome(
+              node,
+              h(RichTextHost, {
+                controller,
+                // flat chrome data (plan 034 D4): the widget derives tag/cls from
+                // blockKind/level itself (the host-face computation is absorbed);
+                // initial_html is the mount-once rich snapshot, evaluated here —
+                // the engine is not Vue-reactive, the snapshot never invalidates.
+                blockId: controller.id,
+                blockKind: BlockType[node.kind],
+                level: level ?? 0,
+                initial_html: spansToHtml(controller.inlines),
+                // The face lives in the key: a kind/level flip mid-typing (input
+                // rules) must REMOUNT the host. <component :is> would swap the
+                // DOM element under the caret without re-running onMounted —
+                // focus lands nowhere and every post-flip keystroke is lost.
+                // The remount re-focuses at end (plan 029; rules match only a
+                // whole-block marker, so the caret IS at end on every flip).
+                key: `host:${node.id}:${BlockType[node.kind]}:${level ?? ''}:${historyEpoch.value}`,
+              }),
+              topLevel,
+              ctx.counter,
+              false,
+            ),
         },
       }
     }
@@ -528,10 +649,27 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
     // to preview — selection resolution normally never lands here
   }
   if (ctx.path.has(node.id) && isExpandableContainer(node)) {
-    return {
-      id: node.id,
-      view: AssemblyView,
-      props: { render: () => slotChrome(node, containerEditSlot(node, ctx), topLevel, ctx.counter) },
+    // plan 042 T2: the family edit slot from the registry (the retired
+    // hand-rolled dispatch), fed with the assembly's recursion closures —
+    // children for Callout/Details/Blockquote, items for ListBlock (the
+    // edit face reads whichever prop its widget takes).
+    const edit = editSlotFor(BlockType[node.kind])
+    if (edit) {
+      return {
+        id: node.id,
+        view: AssemblyView,
+        props: {
+          render: () =>
+            slotChrome(node, edit(node, {
+              engine,
+              blockId: node.id,
+              readonly: props.streaming === true,
+              children: () => node.children.map((ch) => childSlot(ch, ctx)),
+              items: () => listEditItems(node, ctx),
+              version: repaintVersion.value,
+            }), topLevel, ctx.counter),
+        },
+      }
     }
   }
   return {

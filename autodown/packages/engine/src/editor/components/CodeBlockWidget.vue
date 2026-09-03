@@ -1,7 +1,7 @@
 <!-- CodeBlockWidget component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, htmlText, viewCodeInner, rootDataLanguage } from '../ext/code_block_widget_ext'
+import { renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, viewCodeInner, editCodeInner, rootDataLanguage } from '../ext/code_block_widget_ext'
 
 
 const props = defineProps<{
@@ -23,15 +23,13 @@ const code = computed<any>(() => nodeText(props.node))
 const readonly = computed<any>(() => ctxReadonly(props.ctx))
 const block_id = computed<any>(() => ctxBlockId(props.ctx))
 const loading = computed<any>(() => nodeLoading(props.node))
-const root_class = computed<any>(() => (is_edit.value ? 'autodown-codeblock-node' : (loading.value ? 'code-block-container rounded-lg border autodown-block-placeholder is-loading' : 'code-block-container rounded-lg border')))
+const root_class = computed<any>(() => (is_edit.value ? 'code-block-container rounded-lg border autodown-codeblock-node' : (loading.value ? 'code-block-container rounded-lg border autodown-block-placeholder is-loading' : 'code-block-container rounded-lg border')))
 const root_data_language = computed<any>(() => rootDataLanguage(props.mode, language.value))
 const badge_label = computed<any>(() => (!(language.value) ? 'text' : language.value))
-const badge_html = computed<any>(() => htmlText(badge_label.value))
-const title_html = computed<any>(() => htmlText(language.value))
 const pre_class = computed<string>(() => 'language-' + badge_label.value + ' code-pre-fallback is-wrap')
 const aria_busy = computed<any>(() => (loading.value ? 'true' : 'false'))
 const view_inner_html = computed<any>(() => viewCodeInner(code.value, language.value))
-const highlight_html = computed<any>(() => renderCodeHighlight(code_draft.value, language.value))
+const edit_code_inner = computed<any>(() => editCodeInner(code_draft.value, language.value))
 
 const emit = defineEmits<{
   Init: []
@@ -73,7 +71,6 @@ onMounted(() => {
 <template>
     <div :class="root_class" :data-language="root_data_language">
       <template v-if="is_edit">
-        <button class="autodown-codeblock-language-badge" :data-codeblock-language-badge="''" v-html="badge_html" :title="'切换语言'" :type="'button'" />
         <div class="autodown-code-editor" :class="{ 'is-readonly': readonly }" :data-block-id="block_id" :data-node-type="'Fence'">
           <template v-if="readonly">
             <div class="autodown-stream-banner">
@@ -81,29 +78,47 @@ onMounted(() => {
             </div>
           </template>
           <div class="code-block-header flex justify-between items-center">
-            <div class="code-header-main">
-              <div class="code-header-copy">
-                <div class="code-header-title">
-                  <span>{{ language }}</span>
-                </div>
-              </div>
+            <button class="code-header-trigger" :data-codeblock-language-badge="''" :title="'切换语言'" :type="'button'">
+              <span class="code-header-title">
+                <span>{{ language }}</span>
+              </span>
+              <span class="code-header-caret">
+                <span>▾</span>
+              </span>
+            </button>
+            <div class="flex items-center gap-0.5">
+              <button class="code-action-btn" :data-codeblock-copy-btn="''" :title="'复制'" :type="'button'">
+                <span class="codeblock-copy-icon" />
+              </button>
+              <button class="code-action-btn" :data-codeblock-expand-btn="''" :title="'折叠'" :type="'button'">
+                <span class="codeblock-expand-icon" />
+              </button>
             </div>
-            <div class="flex items-center gap-0.5" />
           </div>
           <div class="code-editor-stack">
-            <pre class="code-editor-highlight" :aria-hidden="'true'" v-html="highlight_html" ref="hl" />
+            <pre class="code-editor-highlight" :aria-hidden="'true'" v-html="edit_code_inner" ref="hl" />
             <textarea class="code-editor-textarea" :disabled="readonly" ref="area" :spellcheck="'false'" v-model="code_draft" @blur="Blur($event)" @input="AreaInput($event)" @scroll="AreaScroll($event)" />
           </div>
         </div>
       </template>
       <template v-if="! is_edit">
         <div class="code-block-header flex justify-between items-center">
-          <div class="code-header-main">
-            <div class="code-header-copy">
-              <div class="code-header-title" v-html="title_html" />
-            </div>
+          <button class="code-header-trigger" :data-codeblock-language-badge="''" :title="'切换语言'" :type="'button'">
+            <span class="code-header-title">
+              <span>{{ language }}</span>
+            </span>
+            <span class="code-header-caret">
+              <span>▾</span>
+            </span>
+          </button>
+          <div class="flex items-center gap-0.5">
+            <button class="code-action-btn" :data-codeblock-copy-btn="''" :title="'复制'" :type="'button'">
+              <span class="codeblock-copy-icon" />
+            </button>
+            <button class="code-action-btn" :data-codeblock-expand-btn="''" :title="'折叠'" :type="'button'">
+              <span class="codeblock-expand-icon" />
+            </button>
           </div>
-          <div class="flex items-center gap-0.5" />
         </div>
         <pre :class="pre_class" :aria-busy="aria_busy" :data-language="language" v-html="view_inner_html" :tabindex="'0'" />
       </template>
@@ -118,14 +133,46 @@ onMounted(() => {
 
 <style scoped>
 
+        /* plan 039 T7: the container chrome (border/radius/background) lives
+           on the shared root (code-block-container) — this wrapper only
+           positions the readonly banner. */
         .autodown-code-editor {
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          background: #f8f9fa;
-          overflow: hidden;
+          position: relative;
         }
         .autodown-code-editor.is-readonly {
           opacity: 0.75;
+        }
+        /* the in-header language trigger (CodeBlockMenu badge contract) */
+        .code-header-trigger {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          padding: 0.1rem 0.4rem;
+          margin-left: -0.4rem;
+          border: 1px solid transparent;
+          border-radius: 4px;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+        }
+        .code-header-trigger:hover {
+          border-color: #9ca3af;
+        }
+        .code-header-caret {
+          font-size: 0.6rem;
+          line-height: 1;
+          opacity: 0.7;
+        }
+        /* plan 039 T13: the view/stream faces keep the header pixel-identical
+           to the plain title bar until hover — the caret affordance is
+           transparent (and the trigger border hidden) until the user points
+           at the language item. The edit face keeps the always-on caret. */
+        .code-block-container:not(.autodown-codeblock-node) .code-header-caret {
+          opacity: 0;
+        }
+        .code-block-container:not(.autodown-codeblock-node) .code-header-trigger:hover .code-header-caret {
+          opacity: 0.7;
         }
         .autodown-stream-banner {
           padding: 0.3rem 0.75rem;

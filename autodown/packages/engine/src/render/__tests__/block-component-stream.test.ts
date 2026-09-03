@@ -5,7 +5,8 @@
 // (component props with "type" stripped, or the details part itself) plus the
 // final flag, final flips with the streaming flag (segment closure for
 // component parts, !streaming for details parts), and clearBlockComponents()
-// tears down cleanly — the builtin paths resume.
+// tears down cleanly — the details builtin resumes; the table segment has
+// no builtin since plan 042 T3 (the family slot is registered, not built in).
 
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
@@ -76,7 +77,7 @@ describe('stream slot mechanism (plan 032 D5)', () => {
     expect(finals).toEqual([false, true])
   })
 
-  it('clearBlockComponents() tears down: builtin paths resume', async () => {
+  it('clearBlockComponents() tears down: details builtin resumes, table has none', async () => {
     registerBlockComponent('table', {
       stream: () => h('div', { class: 'mock-stream-slot' }, 't'),
     })
@@ -90,9 +91,11 @@ describe('stream slot mechanism (plan 032 D5)', () => {
 
     const afterTeardown = await render(`${TABLE_JSON}\n\n:::details 摘要\n正文\n:::`, true)
     expect(afterTeardown).not.toContain('mock-stream-slot')
-    // builtin defaults are back: StreamingTable for the json table segment,
-    // the native <details> element for details parts
-    expect(afterTeardown).toContain('streaming-table')
+    // plan 042 T3: the json table segment has NO builtin anymore — the
+    // retired StreamingTableFace was it (the face is the family stream
+    // registration, wiped here), so the segment renders nothing; the
+    // native <details> element stays a builtin
+    expect(afterTeardown).not.toContain('streaming-table')
     expect(afterTeardown).toContain('<details')
   })
 })

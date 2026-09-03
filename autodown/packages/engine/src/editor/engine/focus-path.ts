@@ -24,10 +24,27 @@ export function focusPathOf(tree: BlockNode, focusedId: string): Set<string> {
   return path
 }
 
+/** Composite container kinds (plan 042): their family edit face is a CARD
+ *  whose children stay individually addressable — focus keeps descending to
+ *  the deepest editable leaf, so one click lands the caret in the text (the
+ *  atomic-face rule below applies to kinds like Fence/Table whose edit face
+ *  is the whole block). Without this exemption the registered container edit
+ *  slots would capture focus on the card itself and deep editing would need
+ *  a second click. */
+const COMPOSITE_CONTAINER_KINDS = new Set<number>([
+  BlockType.Callout,
+  BlockType.Details,
+  BlockType.Blockquote,
+  BlockType.ListBlock,
+])
+
 /** Can this node take direct focus (host an editing face)? Registered edit
  *  faces (Fence/Table) stop the descent — focusing a table means the table
- *  face, not its first cell. */
+ *  face, not its first cell. Composite containers never host directly (the
+ *  descent rule above); an empty container resolves to null today, same as
+ *  before its family registration. */
 function isFocusTarget(node: BlockNode): boolean {
+  if (COMPOSITE_CONTAINER_KINDS.has(node.kind)) return false
   return editSlotFor(BlockType[node.kind]) != null || isEditableLeaf(node)
 }
 

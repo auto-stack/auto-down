@@ -32,6 +32,16 @@ export const SAMPLE_DOCUMENT = `# AutoDown 流式渲染演示
 }
 \`\`\`
 
+$callout(type:"info") {
+对拍台注：本块为组件指令容器（callout），与下方 details 同族——
+面板类块在左右两栏的落定一致性由「对比」按钮验证。
+}
+
+$details(summary:"指令容器的折叠形态") {
+details 指令块在两栏均为 final 态渲染（无 loading 展开），折叠/展开
+状态一致是对拍不变式的一部分。
+}
+
 ## 代码高亮同样支持
 
 \`\`\`ts

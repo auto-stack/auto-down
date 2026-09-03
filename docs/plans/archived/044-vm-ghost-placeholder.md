@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-044
-status: reviewed
+status: archived
 feature_name: VM ghost 占位块（编辑壳聚焦跟踪 + DocLayout 尺寸暴露 + 只读臂 ghost 渲染）+ vue 侧发射者点亮
 author: [zhaopuming]
 created_at: 2026-09-03

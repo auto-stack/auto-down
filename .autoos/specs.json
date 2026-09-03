@@ -210,6 +210,17 @@
           "PLAN-044"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P045-2",
+        "section": "goals",
+        "title": "VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路） — 目标",
+        "content": "1. VM demo：预览栏表格表头列边界 hover 可命中（10px 带），拖拽\n   实时改宽、松手落定；重渲染（打字/流式）后列宽保持；vm-smoke\n   可重复断言。\n2. `View::Table` col_widths/on_col_resize 进 View 契约；autodown\n   element `table_col_widths` prop 进 schema（vue 臂忽略注记）。\n3. vue 轨零回归（engine 表格渲染面零改动；app.at 仅加 VM 消费的\n   prop 与 handler）。\n4. DEBTS 040 表格行销号；README/头注收口；EDITOR-CONTRACT 增\n   VM 表格列宽面。",
+        "file": "docs/plans/archived/045-vm-table-column-resize.md",
+        "related": [
+          "PLAN-045"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -426,6 +437,17 @@
         "file": "docs/plans/archived/044-vm-ghost-placeholder.md",
         "related": [
           "PLAN-044"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P045-3",
+        "section": "architecture",
+        "title": "VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路） — 架构方案",
+        "content": "```\nView::Table（view.rs:506-513 扩字段）\n  { headers, rows, spacing, col_spacing, style,\n    col_widths: Option<Vec<f32>>,        ← 新：应用（Some=固定列宽）\n    on_col_resize: Option<M> }           ← 新：(表键, col, width) 落定消息\n        │\nrenderer.rs 表格 lowering（实施时核 build_table 现状）\n  布局：col_widths Some → 列按固定宽；None → 自然宽（现状）\n  交互：表头行 PointerArea（bounds 现场先例）→ 列边界命中\n  （x 累积 vs 边界±5px）→ Drag 态（临时宽实时绘制，code_editor\n  Drag enum 模式）→ 松手发 on_col_resize 消息\n        │\nautodown_render.rs Table 臂（:431-453）\n  render 入参携 table_widths: Map<表键, Vec<f32>>\n  （沿 044 定稿的参数形态：_with 加参或 RenderExtras struct）\n  表键 = block_key(表块)  →  View::Table { col_widths: map[键],\n    on_col_resize: closure 捕获键 }\n        │\naura_view_builder.rs 两臂（:1454-1461 / :2557-2562 邻区）\n  autodown element 新 prop table_col_widths 绑定求值 → render 入参\n        │\ndemo app.at（DSL 状态回路）\n  state: table_widths = Map<str, List<f32>>\n  handler_OnColResize($event): table_widths[$event.table] =\n    set($event.col, $event.width)      ← 消息 payload 写 map\n  autodown element: table_col_widths: .table_widths   ← 绑定回传\n```\n\n**vue 轨不回归保证**：engine 的 tableStreamFace/TableBlockWidget/\nuseTableColumnResize 零改动；app.at 新增 prop 在 vue 生成臂无消费方\n（StreamingRenderer props 无此项，schema 描述注记 vue arm ignores）；\ndemo e2e 全套过即证明。",
+        "file": "docs/plans/archived/045-vm-table-column-resize.md",
+        "related": [
+          "PLAN-045"
         ],
         "status": "stable"
       }
@@ -645,6 +667,17 @@
           "PLAN-044"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P045-4",
+        "section": "designs",
+        "title": "VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路） — 详细设计",
+        "content": "1. **T1 View::Table 扩字段**：`col_widths: Option<Vec<f32>>` +\n   `on_col_resize: Option<M>`，构造点与 builder（view.rs:1253/:2218）\n   补默认；命中几何纯函数 `col_boundary_hit(x, widths, band) ->\n   Option<col_index>` 同文件或 render 侧工具位。单测：构造/默认/\n   命中函数（带内/带外/末列）。\n2. **T2 renderer 列宽应用**：表格 lowering 的列布局改分派——\n   col_widths Some 按固定 px 分列（长度不齐截断/不足补自然宽），\n   None 走现状自然宽；表头与体列同源。单测：两态 lowering 结构\n   断言（沿 renderer 既有表格测试模式）。\n3. **T3 命中 + Drag 态 + 消息**：表头行包 PointerArea（或等价\n   bounds 现场）→ col_boundary_hit（10px 带）→ Drag 态存\n   {col, start_x, start_w}（code_editor Drag 模式）→ 拖拽中临时宽\n   直接进绘制（不进 state）→ 松手 clamp（min 40）发\n   on_col_resize(closure 捕获表键 payload (表键, col, width))。\n   单测：命中→Drag→松手消息可达（headless 模拟坐标序列）。\n4. **T4 render 入参 + Table 臂发射**：render_document_with 沿 044\n   定稿形态增 table_widths 入参（044 收敛 RenderExtras 则挂 extras，\n   否则加参——以 044 复审记录为准）；Table 臂 :431-453 发射\n   col_widths=map 取值 + on_col_resize closure 捕获 block_key。\n   结构测试：renders_table_with_widths（有/无 map 两态 + 消息\n   closure 发射断言）。\n5. **T5 契约 prop + 消费臂**：schema/aura.at autodown element 增\n   `table_col_widths`（类型 Map<str,List<f32>>，描述注记 vue arm\n   ignores — VM v1）；aura_view_builder 两臂绑定求值传 render；\n   render_support.rs props 认知清单同步；发射测试（含 vue 臂忽略\n   断言）。\n6. **T6 DSL 状态回路**：app.at state `table_widths: Map` +\n   OnColResize handler（payload 写 map：`table_widths[$event.table]\n   = set($event.col, $event.width)`）+ autodown element\n   `table_col_widths: .table_widths` 绑定；regen。验证：demo e2e\n   全套零回归（vue 臂无消费方）。\n7. **T7 snapshot/mcp + vm-smoke**：snapshot_builder.rs Table 节点\n   props 增 col_widths（Some 时）；mcp action 增 `drag`（press→\n   move 序列→release，或专用 `resize_col`，沿 043 scroll 动作\n   模式——实施时按 PointerArea 事件面定形态）；vm-smoke.mjs 增\n   断言组：拖表头边界 → state.table_widths 非空 + snapshot\n   col_widths 变化。\n8. **T8 文档收口 + 全量回归**：DEBTS.md:41 表格行销号、README:42\n   豁免行更新、EDITOR-CONTRACT 增 VM 表格列宽面（常量口径 10px/\n   min40/px 单位/松手落定语义/编辑态不含）；`cargo test -p\n   auto-lang --features autodown,code-editor` 全绿 + demo e2e\n   全套 + vm-smoke 净窗三连。",
+        "file": "docs/plans/archived/045-vm-table-column-resize.md",
+        "related": [
+          "PLAN-045"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -838,6 +871,17 @@
         "file": "docs/plans/archived/044-vm-ghost-placeholder.md",
         "related": [
           "PLAN-044"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P045-5",
+        "section": "tests",
+        "title": "VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路） — 测试设计",
+        "content": "- rust 单测：命中纯函数（带内/外/末列/clamp）、col_widths 两态\n  lowering、Drag 全链消息可达（headless 坐标模拟）、Table 臂发射\n  两态、消费臂发射断言（新 prop consumed + vue 臂忽略注记一致）。\n- demo e2e：全套回归（vue 轨零改动证明）；不新增 vue 用例（功能\n  VM-only）。\n- vm-smoke：新断言组（拖→state→snapshot 三点）。\n- 手验：拖拽实时反馈 + 重渲染保持截图留档。",
+        "file": "docs/plans/archived/045-vm-table-column-resize.md",
+        "related": [
+          "PLAN-045"
         ],
         "status": "verified"
       }
@@ -1040,6 +1084,17 @@
           "PLAN-044"
         ],
         "status": "published"
+      },
+      {
+        "id": "P045-6",
+        "section": "reviews",
+        "title": "VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路） — 验收/复审",
+        "content": "1. VM demo 表头列边界 10px 带可命中，拖拽实时改宽（min 40px），\n   松手落定，打字/流式重渲染后列宽保持；vm-smoke 断言过。\n2. View::Table col_widths/on_col_resize 与 autodown element\n   table_col_widths prop 在 schema/契约文档在册（vue 臂忽略注记）。\n3. vue 轨 engine 零改动、demo e2e 全套绿。\n4. `cargo test -p auto-lang --features autodown,code-editor` 全绿。\n5. DEBTS 040 表格行销号；README/头注无「表格列宽 ignored」残留。\n6. 验收口径 = 行为对齐非像素对齐（三常量 10px/40px/px + 交互\n   语义对齐；列宽具体像素值与浏览器 auto 布局不要求一致）。\n\n（待执行后填写；/auto-plan:review 补 spec-impact。）\n\n**执行记录（2026-09-03，/auto-plan:work 收口）**：\n\n- **提交链**：auto-lang `auto-down-045-dev`（基座 129d767fb=044 复审尖，044 未折入 master——计划头「执行前记」在档）T1 08bb16f96 → T2 cd25d9806 → T3 c2656c5af → T4 599fad911 → T5 b80ca93a2 → T7 dab7cca31（T6/T8 在 auto-down 侧）；auto-down `plan-045-dev`（基座 45bf1ae=044 已 merge）T6 c83557d → T7 d0d4774 → T8 ad3bd03。**未做相位折入**（单相位一口气完成，折入留 /auto-plan:merge；折入 auto-lang master 时将同带 044 的 7 个 commit——两者届时均已过复审门）。\n- **验收对照**：①命中/拖拽/保持——TableResize widget（iced_test headless 全链 4 测 + vm-smoke 第六组两检两复跑 PASS + 双截图目验 ~510→~760px）✓；②契约在册——schema/aura.at table_col_widths（vue arm ignores 注记，schema 测试锁定）+ EDITOR-CONTRACT §12 ✓；③vue 零回归——engine 表格渲染面零改动（packages/engine 无 diff），demo e2e 73/73 ✓；④cargo test——scoped 全绿（view 48/renderer 净增/table_resize/autodown_render 20/mcp 11/layout_tests 22 含 iced-layout-tests 档），**全量 4377 过/177 败 = 基线（129d767fb detach 同机同跑）177 败/176 名单同款**——本机全量并行 flake 预存（唯一差异 1↔1 名单漂移：我的新发射测试在并行下偶翻、基线侧另一测试同位偶翻，隔离/过滤跑均稳定绿），无新增回归面；⑤DEBTS 040 表格行销号 + README/头注零残留（grep 验证）✓；⑥三常量 10px/40px/px + 松手落定语义 + 行为对齐非像素对齐口径全程贯彻 ✓。\n- **执行期新发现（真缺陷修复）**：T7 vm-smoke 首跑抓到 StreamCache 冻结 col_widths（内容键不变即复用旧 Table View，state 驱动的列宽进不了下一帧）→ `cached_table_widths_stale` 陈旧即重建修复 + 回归测 `streaming_table_widths_change_invalidates_cache`（变则 gens 增、不变则复用）。\n- **预存红登记（同机实测，非本计划面）**：strips_tags flake、cap_chart_curve_type_mapping_table、desktop_mcp/settings_dock/shell 族（过滤跑 8 失败）、全量并行 flake 群（177 基线同数）、auto-cosmic-demo `View::Text` 缺 selectable 陈旧编译错（--bin auto 规避）。\n\n**复审记录（2026-09-03/04，/auto-plan:review）**：\n\n- **复审人**：zhaopuming（同会话）；**工作区**：`.wt/auto-045/auto-lang` @ 092051143（T1-T7+复审修复×2）/ `.wt/auto-045/auto-down` @ ad3bd03（T6-T8）。\n- **复审修复×2（本门核获）**：① core.md 再生成——schema 增 prop 后 docs_gen core_reference_in_sync 抓红，DOCS_GEN_UPDATE 重写恰一行（044 同款流程）；② TableColResizeFn 上移 view.rs——`cargo t`（ui-iced 无 autodown 档）编译红：T5 助手签名无条件引用门控模块类型（执行期全带 autodown 未暴露，正是复审全量门价值所在）；autodown_render 原路径再导出保持引用稳定。\n- **验收逐条裁决**：\n  1. **PASS**——命中/拖拽/保持：iced_test headless 全链 4 测（拖中 BBB 224→274 实时布局断言/松手消息 (0,250)/负向 clamp 40/带外与体行惰性，`layout_tests.rs` iced-layout-tests 档 22/22）+ vm-smoke 第六组（state+snapshot 双断言）执行期两跑+复审终态一跑全 PASS exit 0 + 双截图目验（vm-table-natural/resized.png，表格宽 ~510→~760px）。\n  2. **PASS**——契约在册：schema/aura.at table_col_widths（vue arm ignores 注记，schema_loader 测试锁定）+ EDITOR-CONTRACT §12（双轨八条）+ render_support 045 版 + core.md 再生同步。\n  3. **PASS**——vue 零回归：packages/engine 代码零改动（目录内唯一变更为 EDITOR-CONTRACT.md 契约文档 +34 行，044 同位先例）；生成侧 @colresize 永不触发、:table_col_widths 未发射；demo e2e 73/73 终态复跑（首跑 72/73 之 scroll-sync bottom-toolbar 经主检出 044 基线三连复现 1/3 红证预存时序 flake）；e2e 金截图两枚 ±5~21 字节副产物更新随仓（038/044「复审重跑副产物」既有惯例）。\n  4. **PASS（按仓库复审口径）**——`cargo tf` 3397/3399 两红（kitchen_sink fork 预存 044 在案 + schema_drift_fence baseline 待裁三条，后者 detach 129d767fb 复现同款「漂移已消除请裁剪」消息）与 044 复审读数同形态；日常档 ui-iced 4490 跑 5 红**逐一基线复现**（d8_toggle_dark_mode、c2_param_msg_declaration 单测隔离 detach 同红；strips_tags 044 在案 flake；kitchen_sink/schema_drift_fence 同上）；scoped 档（autodown,code-editor）view/autodown_render/table_resize/mcp 70+1+11 全绿；libtest 全量并行 flake 群（177）基线同数同名单——nextest 门为其正确替代。\n  5. **PASS**——DEBTS 040 表格行销号（翻绿+全链摘要）+ README 豁免行翻 CONSUMED + grep 旧注记零命中。\n  6. **PASS**——三常量 10px/40px/px + 松手落定语义 + 会话裁定三条（拖拽临时宽不进 state/表键内容哈希/只做 view 面）全程贯彻；列宽具体像素不与浏览器 auto 布局对齐（口径明示）。\n- **遗漏/延后/workaround 清查**：无遗漏（T1-T8 每步有 diff+测试对位；计划点名文件 21 枚全在 diff）；无未批准延后；workaround 两处均为在册先例（OnColResize rust 直写快道——引擎 float/map 写入腐坏的 043/044 既有绕道族，EDITOR-CONTRACT §12 + DEBTS 043 nanbox 行在册；空体契约 handler——vue 生成侧签名对齐设计）。\n- **债候选**：D1 真指针拖拽实机手验未执行（合成事件通道代证，043 D2 同口径）；D2 snapshot_builder（View 驱动 UiNode 面）col_widths/table_key props 无专属单测（MCP 可见的 AURA vtree 面由 vm-smoke 端到端覆盖，UiNode 面为次要表面）；D3 render 系列函数 M:'static 约束收紧（当前全仓调用方满足，泛型第三方消费面潜在影响）。\n- **裁决：PASS → reviewed**（六验收全过、无阻断债；D1-D3 登记不阻断）。",
+        "file": "docs/plans/archived/045-vm-table-column-resize.md",
+        "related": [
+          "PLAN-045"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1238,6 +1293,17 @@
         "file": "docs/plans/archived/044-vm-ghost-placeholder.md",
         "related": [
           "PLAN-044"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P045-1",
+        "section": "reports",
+        "title": "VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路） — 变更摘要",
+        "content": "DEBTS 040 三大平台豁免之末：vue 轨表格列宽拖拽经 ext 桥\nuseTableColumnResize（renderer 容器测量，app_ext.ts:54-55 接线）；\nVM 轨无测量通道、表格固定布局、`View::Table` 无列宽字段无交互回调\n（view.rs:506-513）。本计划在 VM 侧落地列宽拖拽，验收口径按路线图\n原文：**行为对齐非像素对齐**。\n\n1. **View::Table 契约扩展**（沿 043/044 扩字段模式，不新增变体）：\n   `col_widths: Option<Vec<f32>>`（列宽应用）+ `on_col_resize:\n   Option<M>`（拖拽落定消息，closure 捕获表键——details_onclick\n   同款通道）。\n2. **renderer 侧命中 + 拖拽**：列边界命中（表头行 x 累积 vs 边界）\n   + Drag 态（code_editor 滚动条 Drag enum 模式，core/mod.rs:227-234\n   先例）+ PointerArea「事件现场持 layout bounds」先例\n   （pointer_area.rs:155-186）。\n3. **DSL 状态回路**：autodown element 增 prop `table_col_widths`\n   （Map<表键, 列宽数组>，vue 臂忽略注记）；app.at state +\n   OnColResize handler 写回——重渲染不丢（会话内保持，比 vue 的\n   重渲染即丢更强，口径差异登记不改）。\n4. **编号漂移尾单**：DEBTS.md:41 与 demo README:42 表格行旧指向\n   PLAN-044 修准为本计划并销号；ext 桥 VM no-op 桩注记核对\n   （useTableColumnResize 桩保留给 vue 轨）。\n\n**时序硬前置**：043 折入 master（View 扩字段 + 消息通道 + mcp\naction 扩展三个先例）；建议 044 之后串行（aura_view_builder 消费臂/\nautodown_render/render_document_with 参数面与 044 重叠）。行号基准：\nauto-lang 侧为 worktree auto-down-dev @ 058aa7df5 行号，折入后允许\n平移。\n\n**会话裁定（2026-09-03，防止复议）**：\n- **拖拽反馈时机 = 拖拽中 widget 内部临时宽实时绘制，松手才发消息\n  落 state**——避免 mousemove 级消息洪泛 DSL 层；行为口径与 vue\n  （实时写 th.style）观感对齐，状态语义更干净。\n- **列宽单位 px、最小宽 40、命中带 10px**——对齐 vue 金标常量\n  （useTableColumnResize.ts L69-72 边缘带 right-6~right+4、L134\n  `max(40, …)`），行为对齐的锚点即这三常量。\n- **表键 = block_key 内容哈希**（autodown_render.rs:80-93，041\n  流式复用同键）——列宽状态跨重渲染稳定，表内容变更视为新表\n  （宽度重置，与 vue 重渲染即丢同向，不另做迁移）。\n- **只做 view/stream 面**：vue 金标只接 StreamingRenderer 容器\n  （EngineEditor 不接，app_ext.ts:54-55）；VM 编辑壳表格是只读容器\n  块（core.rs:6 头注、:1365 table_to_markdown 序列化）——双轨\n  对齐，编辑态列宽不在本计划范围。",
+        "file": "docs/plans/archived/045-vm-table-column-resize.md",
+        "related": [
+          "PLAN-045"
         ],
         "status": "published"
       }

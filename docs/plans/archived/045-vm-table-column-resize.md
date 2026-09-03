@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-045
-status: reviewed
+status: archived
 feature_name: VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路）
 author: [zhaopuming]
 created_at: 2026-09-03

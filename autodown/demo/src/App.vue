@@ -133,13 +133,13 @@ onMounted(() => {
         <span>AutoDown v0.1</span>
       </header>
       <main class="workspace" ref="workspaceRef">
-        <div class="panels">
-          <section class="panel left">
-            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" class="fill" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
-          </section>
-          <section class="panel right">
-            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" class="fill" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />
-          </section>
+        <div class="flex flex-row h-full w-full">
+          <div class="flex flex-col flex-1 min-w-0 overflow-hidden border-r left">
+            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" class="flex-1 min-h-0 overflow-hidden" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
+          </div>
+          <div class="flex flex-col flex-1 min-w-0 overflow-hidden right">
+            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" class="flex-1 min-h-0 overflow-hidden py-4 px-5" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />
+          </div>
         </div>
         <div class="splitter-hover-zone" @mouseenter="SplitterHover(1)" @mouseleave="SplitterHover(0)" />
         <CustomScrollbar :clientHeight="csb_client" :is_vm="is_vue() == null" :scrollHeight="csb_height" :scrollTop="csb_top" :visible="hovering_splitter == 1" :key="'CustomScrollbar-3'" @update:scrollTop="SetScrollTop($event)" />
@@ -182,51 +182,73 @@ onMounted(() => {
             overflow: hidden;
         }
 
-        .panels {
+        .flex {
             display: flex;
-            height: 100%;
-            width: 100%;
         }
 
-        .panel {
-            flex: 1;
-            min-width: 0;
-            height: 100%;
-            overflow: hidden;
-            display: flex;
+        .flex-row {
+            flex-direction: row;
+        }
+
+        .flex-col {
             flex-direction: column;
         }
 
-        .panel::-webkit-scrollbar {
-            display: none;
+        .flex-1 {
+            flex: 1 1 0%;
         }
 
-        .panel {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+        .h-full {
+            height: 100%;
         }
 
-        .left {
+        .w-full {
+            width: 100%;
+        }
+
+        .min-w-0 {
+            min-width: 0;
+        }
+
+        .min-h-0 {
+            min-height: 0;
+        }
+
+        .overflow-hidden {
+            overflow: hidden;
+        }
+
+        .border-r {
             border-right: 1px solid #e5e7eb;
         }
 
-        .left :deep(.autodown-editor) {
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .px-5 {
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+        }
+
+        :deep(.autodown-editor) {
             border: none;
             border-radius: 0;
         }
 
-        .left :deep(.autodown-editor-content-wrapper) {
+        :deep(.autodown-editor-content-wrapper) {
             height: 100%;
             overflow-y: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
 
-        .left :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
+        :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
             display: none;
         }
 
-        .right :deep(.streaming-document) {
+        :deep(.streaming-document) {
             height: 100%;
             overflow-y: auto;
             scrollbar-width: none;
@@ -236,18 +258,8 @@ onMounted(() => {
             display: flow-root;
         }
 
-        .right :deep(.streaming-document)::-webkit-scrollbar {
+        :deep(.streaming-document)::-webkit-scrollbar {
             display: none;
-        }
-
-        .right .fill {
-            padding: 1rem 1.25rem;
-        }
-
-        .fill {
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
         }
 
         .splitter-hover-zone {

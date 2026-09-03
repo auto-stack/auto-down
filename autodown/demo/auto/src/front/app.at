@@ -4,6 +4,16 @@
 // `auto run -r vm` (iced native desktop — cosmic-text editor shell +
 // autodown-core parse_blocks renderer).
 //
+// PLAN-046: the two panels are a core-layout `row` of two `col`s (each
+// flex-1 equal width) — replacing the web-semantic div.panels/section.panel
+// pair whose flex layout only existed in the vue-only style block (the VM
+// track stacked vertically, the README "Layout note" v1 divergence). The
+// structural classes are Tailwind-native and consumed on the VM track
+// through auto-lang's tailwind parser; the demo build has no Tailwind
+// runtime, so the style block keeps scoped definitions of exactly those
+// utilities as the vue-side fallback (plus the :deep enhancements).
+// Platform divergences live in demo/auto/PARITY.md.
+//
 // AutoUI dual-track tags carry both panels (ext component imports retired):
 //
 // - `autodown_editor` — vue: @autodown/engine AutoDownEditor; VM: block
@@ -117,15 +127,26 @@ widget App {
             main {
                 ref: "workspaceRef",
                 class: "workspace",
-                div {
-                    class: "panels",
-                    section {
-                        class: "panel left",
+                // PLAN-046 T1: 两栏收编——web 语义标签（div.panels +
+                // section.panel.left/right）换核心布局标签 row/col（各
+                // flex-1 等宽）。VM 轨：row→convert_row、col→convert_column、
+                // flex-1→Flex1→width=Fill 两 col 天然平分；vue 轨：tag→
+                // tailwind（flex flex-row / flex flex-col）+ class 直传，
+                // 工具类真 CSS 由本文件 style 块的 scoped 兜底定义提供
+                // （demo 构建无 Tailwind 运行时）。
+                row {
+                    class: "h-full w-full",
+                    col {
+                        // left/right：e2e 选择器钩（15 个 spec 文件 300+ 处
+                        // .left/.right 定位）——计划「只被 vue-only style 块
+                        // 消费」前提对 e2e 面不成立，故保留为锚（VM 轨未知
+                        // token 零效果），登记 plan 待澄清④。
+                        class: "flex-1 min-w-0 overflow-hidden border-r left",
                         autodown_editor {
                             ref: "editorRef",
                             content: .content,
                             placeholder: "Start typing...",
-                            class: "fill",
+                            class: "flex-1 min-h-0 overflow-hidden",
                             // PLAN-043 T3: VM 轨滚动同步双臂（编辑壳全内容
                             // 高、外滚；vue 轨这些 props 不达组件根，惰性）。
                             scroll_sync: true,
@@ -140,8 +161,8 @@ widget App {
                             oncancel: .handleCancel
                         }
                     }
-                    section {
-                        class: "panel right",
+                    col {
+                        class: "flex-1 min-w-0 overflow-hidden right",
                         autodown {
                             ref: "rendererRef",
                             content: .content,
@@ -156,7 +177,7 @@ widget App {
                             // 内 open attr → 重渲染（vue 轨 @detailsclick 不
                             // 触发，惰性）。
                             ondetailsclick: .ToggleDetails,
-                            class: "fill"
+                            class: "flex-1 min-h-0 overflow-hidden py-4 px-5"
                         }
                     }
                 }
@@ -292,51 +313,73 @@ widget App {
             overflow: hidden;
         }
 
-        .panels {
+        .flex {
             display: flex;
-            height: 100%;
-            width: 100%;
         }
 
-        .panel {
-            flex: 1;
-            min-width: 0;
-            height: 100%;
-            overflow: hidden;
-            display: flex;
+        .flex-row {
+            flex-direction: row;
+        }
+
+        .flex-col {
             flex-direction: column;
         }
 
-        .panel::-webkit-scrollbar {
-            display: none;
+        .flex-1 {
+            flex: 1 1 0%;
         }
 
-        .panel {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+        .h-full {
+            height: 100%;
         }
 
-        .left {
+        .w-full {
+            width: 100%;
+        }
+
+        .min-w-0 {
+            min-width: 0;
+        }
+
+        .min-h-0 {
+            min-height: 0;
+        }
+
+        .overflow-hidden {
+            overflow: hidden;
+        }
+
+        .border-r {
             border-right: 1px solid #e5e7eb;
         }
 
-        .left :deep(.autodown-editor) {
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .px-5 {
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+        }
+
+        :deep(.autodown-editor) {
             border: none;
             border-radius: 0;
         }
 
-        .left :deep(.autodown-editor-content-wrapper) {
+        :deep(.autodown-editor-content-wrapper) {
             height: 100%;
             overflow-y: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
 
-        .left :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
+        :deep(.autodown-editor-content-wrapper)::-webkit-scrollbar {
             display: none;
         }
 
-        .right :deep(.streaming-document) {
+        :deep(.streaming-document) {
             height: 100%;
             overflow-y: auto;
             scrollbar-width: none;
@@ -346,18 +389,8 @@ widget App {
             display: flow-root;
         }
 
-        .right :deep(.streaming-document)::-webkit-scrollbar {
+        :deep(.streaming-document)::-webkit-scrollbar {
             display: none;
-        }
-
-        .right .fill {
-            padding: 1rem 1.25rem;
-        }
-
-        .fill {
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
         }
 
         .splitter-hover-zone {

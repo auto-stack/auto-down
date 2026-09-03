@@ -22,6 +22,12 @@
 //      block_rects height → ghost state direct write) → ghost_id/
 //      ghost_height state pair asserted + the renderer pane snapshot
 //      grows a fixed-height container node
+//   6. (plan 045 T7) table column resize: type a table doc → the Table
+//      vnode carries table_key (snapshot prop) → MCP resize_col on it
+//      (synthetic __mcp_resize_col → write_table_width_state, the SAME
+//      fast-path the OnColResize intercept uses; coordinate hit layer is
+//      covered by the rust headless suite) → state.table_widths gains the
+//      table key + the snapshot col_widths reflects the new width
 //
 // Protocol (same channel the jade desktop flows ride, see
 // jade-garden/front/desktop/README.md:114-132): AutoUI MCP over Streamable
@@ -424,6 +430,86 @@ async function runOnce() {
     }
     if (!ghostNodeSeen) throw new Error('renderer pane lacks the ghost wrap (col[empty container, block]) in the snapshot')
     checks.push('ghost: renderer pane snapshot shows the ghost wrap (col[empty container, block])')
+  }
+
+  // 6. (plan 045 T7) table column resize — type a table doc, locate the
+  //    Table vnode (its table_key prop line rides the AURA snapshot), then
+  //    MCP resize_col directly on the node (synthetic __mcp_resize_col →
+  //    the OnColResize intercept's write_table_width_state; the drag's
+  //    coordinate hit layer is rust-unit-covered, node-direct per 待澄清②).
+  //    Asserts: state.table_widths gains the table key (primary) + the
+  //    snapshot's col_widths reflects the new width (state → binding →
+  //    re-render round trip — column widths persist across renders).
+  {
+    const nonce3 = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+    const TBL_DOC = `# tbl probe ${nonce3}
+
+| A | B | C |
+| --- | --- | --- |
+| 1 | 2 | 3 |`
+    const snapE2 = parseAura(await callTool('autoui_snapshot', {}))
+    const taTbl = findFirst(snapE2, (n) => n.head.startsWith('textarea '))
+    if (!taTbl) throw new Error('no textarea before table typing — editor face missing')
+    const typeTbl = await callTool('autoui_action', {
+      element_id: elementIdOf(taTbl),
+      action: 'type_text',
+      value: TBL_DOC,
+    })
+    if (!/status: ok/.test(typeTbl)) throw new Error(`table-doc type_text not ok: ${typeTbl}`)
+
+    // the Table vnode (with its table_key prop line as a child node)
+    let tableNode = null
+    for (const deadline = Date.now() + 3000; ; ) {
+      const snapT = parseAura(await callTool('autoui_snapshot', {}))
+      tableNode = findFirst(
+        snapT,
+        (n) => n.head.startsWith('table ') && n.children.some((c) => c.head.startsWith('table_key:')),
+      )
+      if (tableNode) break
+      if (Date.now() > deadline) throw new Error('no Table node with a table_key in the snapshot — render lag?')
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    const tableId = elementIdOf(tableNode)
+    const tableKey = tableNode.children
+      .find((c) => c.head.startsWith('table_key:'))
+      .head.match(/table_key:\s*"([^"]+)"/)?.[1]
+    if (!tableId || !tableKey) throw new Error(`table node without id/key: ${tableNode.head}`)
+
+    const resize = await callTool('autoui_action', {
+      element_id: tableId,
+      action: 'resize_col',
+      value: '0,180',
+    })
+    if (!/status: ok/.test(resize)) throw new Error(`resize_col not ok: ${resize}`)
+
+    // primary: the state map gains this run's table key
+    for (const deadline = Date.now() + 3000; ; ) {
+      const st = await callTool('autoui_state', { fields: ['table_widths'] })
+      if (st.includes(tableKey)) break
+      if (Date.now() > deadline) throw new Error(`state.table_widths did not gain the table key: ${st.trim()}`)
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    checks.push('table resize: resize_col → state.table_widths gains the table key (fast-path write)')
+
+    // round trip: the re-rendered table carries the new width (binding re-applies)
+    let widthSeen = false
+    for (const deadline = Date.now() + 3000; ; ) {
+      const snapW = parseAura(await callTool('autoui_snapshot', {}))
+      const tn = findFirst(
+        snapW,
+        (n) => n.head.startsWith('table ') && n.children.some((c) => c.head.startsWith('col_widths:')),
+      )
+      const propLine = tn?.children.find((c) => c.head.startsWith('col_widths:'))?.head ?? ''
+      const first = Number(propLine.match(/col_widths:\s*\[([\d.,\s]*)\]/)?.[1]?.split(',')[0] ?? NaN)
+      if (first >= 179.5 && first <= 180.5) {
+        widthSeen = true
+        break
+      }
+      if (Date.now() > deadline) break
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    if (!widthSeen) throw new Error('snapshot col_widths did not reflect the resized width (state → binding round trip broken?)')
+    checks.push('table resize: snapshot col_widths reflects the new width (state → binding round trip)')
   }
 
   return checks

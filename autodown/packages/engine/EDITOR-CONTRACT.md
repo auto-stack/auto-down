@@ -318,6 +318,40 @@ VM 面（043 新增，行为对齐非像素对齐口径）：
   （args = ["d<块结构键>" block_key 内容哈希]），open 状态以 content 内
   open attr 为单源（v1 单 details 块场景；多块 map 化留余量）。
 
+## 12. 表格列宽双轨契约（plan 045 定型——VM 后端实现基准）
+
+vue 面（040 起在案，不变）：列宽拖拽经 ext 桥 `useTableColumnResize`
+（StreamingRenderer 容器测量，`app_ext.ts` 接线）——实时写
+`th.style.width/minWidth`，不持久化（重渲染即丢）。
+
+VM 面（045 新增，行为对齐非像素对齐口径）：
+
+- **prop/事件**：autodown 元素 `table_col_widths`（Map<表键, 列宽 px
+  列表> state 绑定，键形 `"t{block_key}"` 内容哈希）+ `oncolresize`
+  （落定事件，实参 (表键, col, width)）。vue 臂忽略（StreamingRenderer
+  无对应 prop/emit，schema 描述注记在案）。
+- **交互常量**（vue 金标对齐锚点三常量）：命中带 10px（对称 ±5，
+  金标 right-6~right+4 的对称化）、最小宽 40（`max(40, …)` 同值）、
+  宽度单位 px。命中区域限定表头行。
+- **反馈时机**（045 会话裁定）：拖拽中临时宽 widget 内部实时绘制
+  （tree State + `Shell::invalidate_layout` 重排，**不进 DSL state**，
+  避免 mousemove 级消息洪泛）；松手才发落定消息。悬浮/拖拽出 2px
+  竖线指示（金标 body 挂 fixed div 同形）。
+- **表键语义**：`block_key` 内容哈希（041 流式复用同键）——列宽状态
+  跨重渲染稳定；表内容变更视为新表（宽度重置，与 vue 重渲染即丢同向
+  不另做迁移）。
+- **VM 轨执行层**：`oncolresize` 的 Typed 消息由 auto-lang renderer.rs
+  update 层 rust 直写快道拦截（`write_table_width_state` 读改写保留他
+  键 + +1e-3 分数化绕 nanbox，043/044 同信任路径）；app.at 的
+  OnColResize handler 为 vue 生成侧契约面（两轨都不触发）。
+- **缓存语义**：StreamCache 复用判定加列宽态陈旧检查（内容键不变而
+  宽度 state 变 → Table 块重建），列宽变化必进下一帧。
+- **MCP 面**：`resize_col` action 对 Table 节点直发（value = "col,width"，
+  经 `__mcp_resize_col` 同一写路径；坐标命中层由 rust headless 单测
+  覆盖——待澄清②裁定）。
+- **编辑态不含**：VM 编辑壳表格为只读容器块（core.rs 序列化面），
+  列宽交互只在只读渲染面（vue 金标同口径——EngineEditor 不接 resize）。
+
 ## 核验责任
 
 Phase 2/3 每次桥接换向后跑 demo e2e（9 用例含以上选择器）；Phase 4 逐项

@@ -1,14 +1,22 @@
 ---
 plan_id: PLAN-045
-status: execution_done
+status: reviewed
 feature_name: VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路）
 author: [zhaopuming]
 created_at: 2026-09-03
 updated_at: 2026-09-03
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
+supersedes_spec_components:
+  - "P040-4（demo 单源化+双轨契约扩展·详细设计）: 修改——DEBTS 040 表格列宽豁免行销号：VM 臂表格交互从「无测量通道、固定布局（豁免归 PLAN-045 补）」翻为「PLAN-045 起真消费」——table_col_widths/oncolresize 双面绑定求值进 render（View::Table col_widths 固定宽分列 + ColResizeCallback 落定消息）；streaming 恒 final 豁免保留不动"
+  - "P043-4（EDITOR-CONTRACT scroll 双轨契约/宿主消息通道·详细设计）: 修改——043/044 建立的宿主消息通道族（View 扩字段 newtype 回调 + update 层 rust 直写快道 + MCP 合成事件面）再扩一员：oncolresize 事件（ColResizeMetrics{col,width} 载荷 + Arc 通道捕获表键）+ write_table_width_state 直写（读改写保留他键）+ MCP resize_col action（__mcp_resize_col，__mcp_click/__mcp_scroll/__mcp_drag 同族）"
+new_spec_components:
+  - "P045-1: reports——变更摘要（VM 表格列宽拖拽四件：View::Table 契约扩展/TableResize 交互 widget/DSL 状态回路/编号漂移尾单；执行期新发现 StreamCache 冻结列宽真缺陷修复；两处复审修复：core.md 再生 + TableColResizeFn 上移 view.rs）"
+  - "P045-2: goals——六验收达成（命中拖拽保持/契约在册/vue 零回归代码面/cargo 门按复审口径绿/DEBTS 销号零残留/行为对齐非像素对齐三常量）；真指针实机手验以合成通道代证（043 D2 同口径，D1 债候选）"
+  - "P045-3: architecture——col_widths:Option<Vec<f32>>+on_col_resize:Option<ColResizeCallback<M>>（Scroll/Focus newtype 同款）+table_key 观测口（T7 寻址最小扩展）；TableResize widget（自持网格布局+Drag tree State+invalidate_layout 实时重排+松手 publish）；render_document_with/_streamed_with 第 5/6 参（table_widths map + TableColResizeFn）；cached_table_widths_stale 陈旧即重建；write_table_width_state 共享写路径"
+  - "P045-4: designs——EDITOR-CONTRACT §12 表格列宽双轨契约（vue 面 useTableColumnResize 不变+VM 面八条：prop/事件/三常量 10px·40·px/反馈时机松手落定/表键 block_key 语义/执行层直写快道/缓存语义/MCP resize_col/编辑态不含）+ schema/aura.at table_col_widths（state_ref，vue arm ignores 注记）+ core.md 再生行"
+  - "P045-5: tests——命中纯函数（带内/外/末列/clamp）+col_fixed_width 两态+iced_test headless 拖拽全链×4（拖中 BBB 224→274 实时断言/松手消息 (0,250)/clamp 40/带外与体行惰性）+layout_tests 结构×2+Table 臂两态+发射三态+schema 注记锁定+缓存失效回归测+demo e2e 73/73 两跑+vm-smoke 第六组（state+snapshot 双断言）三跑+双态截图（~510→~760px）"
+  - "P045-6: reviews——复审记录（tf 3397/3399 两红基线 detach 复现同款/日常档 ui-iced 4485/4490 五红逐一基线复现/scoped 70+1/复审核获并修复 ui-iced 档编译红与 core.md 失同步两处/D1-D3 债候选）"
 touched_goals: []
 
 current_step: 8
@@ -281,6 +289,21 @@ auto-down-dev @ 058aa7df5；spec 台账 goals 沉淀至 P040。）
 - **验收对照**：①命中/拖拽/保持——TableResize widget（iced_test headless 全链 4 测 + vm-smoke 第六组两检两复跑 PASS + 双截图目验 ~510→~760px）✓；②契约在册——schema/aura.at table_col_widths（vue arm ignores 注记，schema 测试锁定）+ EDITOR-CONTRACT §12 ✓；③vue 零回归——engine 表格渲染面零改动（packages/engine 无 diff），demo e2e 73/73 ✓；④cargo test——scoped 全绿（view 48/renderer 净增/table_resize/autodown_render 20/mcp 11/layout_tests 22 含 iced-layout-tests 档），**全量 4377 过/177 败 = 基线（129d767fb detach 同机同跑）177 败/176 名单同款**——本机全量并行 flake 预存（唯一差异 1↔1 名单漂移：我的新发射测试在并行下偶翻、基线侧另一测试同位偶翻，隔离/过滤跑均稳定绿），无新增回归面；⑤DEBTS 040 表格行销号 + README/头注零残留（grep 验证）✓；⑥三常量 10px/40px/px + 松手落定语义 + 行为对齐非像素对齐口径全程贯彻 ✓。
 - **执行期新发现（真缺陷修复）**：T7 vm-smoke 首跑抓到 StreamCache 冻结 col_widths（内容键不变即复用旧 Table View，state 驱动的列宽进不了下一帧）→ `cached_table_widths_stale` 陈旧即重建修复 + 回归测 `streaming_table_widths_change_invalidates_cache`（变则 gens 增、不变则复用）。
 - **预存红登记（同机实测，非本计划面）**：strips_tags flake、cap_chart_curve_type_mapping_table、desktop_mcp/settings_dock/shell 族（过滤跑 8 失败）、全量并行 flake 群（177 基线同数）、auto-cosmic-demo `View::Text` 缺 selectable 陈旧编译错（--bin auto 规避）。
+
+**复审记录（2026-09-03/04，/auto-plan:review）**：
+
+- **复审人**：zhaopuming（同会话）；**工作区**：`.wt/auto-045/auto-lang` @ 092051143（T1-T7+复审修复×2）/ `.wt/auto-045/auto-down` @ ad3bd03（T6-T8）。
+- **复审修复×2（本门核获）**：① core.md 再生成——schema 增 prop 后 docs_gen core_reference_in_sync 抓红，DOCS_GEN_UPDATE 重写恰一行（044 同款流程）；② TableColResizeFn 上移 view.rs——`cargo t`（ui-iced 无 autodown 档）编译红：T5 助手签名无条件引用门控模块类型（执行期全带 autodown 未暴露，正是复审全量门价值所在）；autodown_render 原路径再导出保持引用稳定。
+- **验收逐条裁决**：
+  1. **PASS**——命中/拖拽/保持：iced_test headless 全链 4 测（拖中 BBB 224→274 实时布局断言/松手消息 (0,250)/负向 clamp 40/带外与体行惰性，`layout_tests.rs` iced-layout-tests 档 22/22）+ vm-smoke 第六组（state+snapshot 双断言）执行期两跑+复审终态一跑全 PASS exit 0 + 双截图目验（vm-table-natural/resized.png，表格宽 ~510→~760px）。
+  2. **PASS**——契约在册：schema/aura.at table_col_widths（vue arm ignores 注记，schema_loader 测试锁定）+ EDITOR-CONTRACT §12（双轨八条）+ render_support 045 版 + core.md 再生同步。
+  3. **PASS**——vue 零回归：packages/engine 代码零改动（目录内唯一变更为 EDITOR-CONTRACT.md 契约文档 +34 行，044 同位先例）；生成侧 @colresize 永不触发、:table_col_widths 未发射；demo e2e 73/73 终态复跑（首跑 72/73 之 scroll-sync bottom-toolbar 经主检出 044 基线三连复现 1/3 红证预存时序 flake）；e2e 金截图两枚 ±5~21 字节副产物更新随仓（038/044「复审重跑副产物」既有惯例）。
+  4. **PASS（按仓库复审口径）**——`cargo tf` 3397/3399 两红（kitchen_sink fork 预存 044 在案 + schema_drift_fence baseline 待裁三条，后者 detach 129d767fb 复现同款「漂移已消除请裁剪」消息）与 044 复审读数同形态；日常档 ui-iced 4490 跑 5 红**逐一基线复现**（d8_toggle_dark_mode、c2_param_msg_declaration 单测隔离 detach 同红；strips_tags 044 在案 flake；kitchen_sink/schema_drift_fence 同上）；scoped 档（autodown,code-editor）view/autodown_render/table_resize/mcp 70+1+11 全绿；libtest 全量并行 flake 群（177）基线同数同名单——nextest 门为其正确替代。
+  5. **PASS**——DEBTS 040 表格行销号（翻绿+全链摘要）+ README 豁免行翻 CONSUMED + grep 旧注记零命中。
+  6. **PASS**——三常量 10px/40px/px + 松手落定语义 + 会话裁定三条（拖拽临时宽不进 state/表键内容哈希/只做 view 面）全程贯彻；列宽具体像素不与浏览器 auto 布局对齐（口径明示）。
+- **遗漏/延后/workaround 清查**：无遗漏（T1-T8 每步有 diff+测试对位；计划点名文件 21 枚全在 diff）；无未批准延后；workaround 两处均为在册先例（OnColResize rust 直写快道——引擎 float/map 写入腐坏的 043/044 既有绕道族，EDITOR-CONTRACT §12 + DEBTS 043 nanbox 行在册；空体契约 handler——vue 生成侧签名对齐设计）。
+- **债候选**：D1 真指针拖拽实机手验未执行（合成事件通道代证，043 D2 同口径）；D2 snapshot_builder（View 驱动 UiNode 面）col_widths/table_key props 无专属单测（MCP 可见的 AURA vtree 面由 vm-smoke 端到端覆盖，UiNode 面为次要表面）；D3 render 系列函数 M:'static 约束收紧（当前全仓调用方满足，泛型第三方消费面潜在影响）。
+- **裁决：PASS → reviewed**（六验收全过、无阻断债；D1-D3 登记不阻断）。
 
 ## 待澄清事项
 

@@ -41,8 +41,14 @@ VM track status (see DEBTS.md 040/043 rows):
   the `onscroll` event the read arm (args = scrollHeight, clientHeight,
   scrollTop); the two panes sync proportionally in both directions
   (vm-smoke group 4 asserts it).
-- **Ghost placeholder blocks** (`placeholder_block_id`/`placeholder_height`
-  parsed, ignored; `streaming` always treated as final) → PLAN-044.
+- **Ghost placeholder — CONSUMED since PLAN-044**:
+  `placeholder_block_id`/`placeholder_height` bind into the read-only arm —
+  the `block-N`-hit block grows a fixed-height `View::Container{bg-muted}`
+  ghost box; the emission chain is the editor's `onfocusblock` message
+  (block index + DocLayout-measured height → rust fast-path writes the
+  `ghost_id`/`ghost_height` state; vue rides `@focusblock` → bridge).
+  vm-smoke group 5 asserts it (MCP `click` → state + snapshot wrap).
+  `streaming` stays always-final (exemption retained — see DEBTS 040).
 - **Table column-width dragging** → PLAN-045.
 - **CustomScrollbar data — resolved since PLAN-043**: the csb_* computeds
   dispatch by track — vue reads the ext bridge (unchanged), VM reads the

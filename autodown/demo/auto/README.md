@@ -49,7 +49,16 @@ VM track status (see DEBTS.md 040/043 rows):
   `ghost_id`/`ghost_height` state; vue rides `@focusblock` → bridge).
   vm-smoke group 5 asserts it (MCP `click` → state + snapshot wrap).
   `streaming` stays always-final (exemption retained — see DEBTS 040).
-- **Table column-width dragging** → PLAN-045.
+- **Table column-width dragging — CONSUMED since PLAN-045**:
+  `table_col_widths` (Map<tableKey, widths> state binding) +
+  `oncolresize` bind into the read-only arm — header-column edges are
+  10px hit bands; dragging resizes live (widget-local temp widths +
+  relayout, no message flood), release lands the message → rust
+  fast-path writes `table_widths` state (same trust path as scroll/ghost)
+  → widths persist across re-renders (typed/streamed). vm-smoke group 6
+  asserts it (MCP `resize_col` on the Table node → state + snapshot
+  `col_widths`). vue arm ignores the props (bridge-owned resizing,
+  re-render-discard semantics — the ledger keeps the divergence note).
 - **CustomScrollbar data — resolved since PLAN-043**: the csb_* computeds
   dispatch by track — vue reads the ext bridge (unchanged), VM reads the
   scroll state fed by onscroll messages.

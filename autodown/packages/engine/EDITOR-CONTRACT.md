@@ -46,11 +46,18 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
   其中 `runQuery`/`loadBlock` 自 plan 038 起实际声明并驱动装载（§10
   数据通道平台面）；`assetUpload` 仍在册未接（粘贴图片链路，另行立项）。
   `@focusblock`（plan 044 T5）：块聚焦读出——载荷
-  `{ id: string; height: number } | null`（null = 失焦；height 经
+  `{ id: string; height: number } | null`（null = 清空；height 经
   getBlockMap 实测，nextTick 后量取）。**发射形态裁定**：push-emit（与
-  update/save 同族，非 expose 回调注册）；**节流口径**：每块切换至多一发
-  （连续同 id 去重）。demo 消费链：App.vue `@focusblock` → bridge
-  `.editingBlock` → StreamingRenderer placeholder props（ghost 真链路）。
+  update/save 同族，非 expose 回调注册）；**节流口径**：去重键 = 当前
+  载荷（同载荷不重发）+ 尾沿 debounce（`FOCUS_GHOST_DELAY_MS`=250ms）；
+  **vue 臂 gate（plan 044 待澄清①裁定）**：仅持续文本编辑（连续 dirty
+  超 250ms）发射聚焦块；纯选区变化/程序化 value 替换（replaceDoc seed）
+  发射 null 或不发射——「聚焦即灰盒」经 useSyncedScroll 补偿 margin
+  实测打断 zero-jump 语义与点击坐标稳定性，瞬态闪现同样禁止。VM 臂
+  维持聚焦即显（无 gate——goal 1 原文，VM 无 zero-jump 约束）。gate
+  属发射端策略，StreamingRenderer 契约（props 非 null 即显）不变。
+  demo 消费链：App.vue `@focusblock` → bridge `.editingBlock` →
+  StreamingRenderer placeholder props（ghost 真链路）。
 - `StreamingRenderer` expose：`containerRef`（demo 滚动同步消费）。
 - `getBlockMap()` 返回 `BlockInfo { id, index, pos, el, top, height }`。
 

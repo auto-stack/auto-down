@@ -327,23 +327,50 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'focusblock', block: { id: string; height: number } | null): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
 
 // PLAN-044 T5: focus-block channel — emits the anchor block (id +
-// getBlockMap-measured height, null on blur). Push-emit form per the engine's
-// existing update/save family (choice recorded in EDITOR-CONTRACT §3);
-// exactly one emit per distinct block switch (consecutive equal ids dedup'd
-// via lastFocusedId — watch-equivalent throttle). Rides the onChange seam:
-// selection-only changes fire it too (the md emission is dedup'd separately).
-let lastFocusedId: string | null = null
-function emitFocusBlock(): void {
-  const id = engine.selection.anchor.blockId || null
-  if (id === lastFocusedId) return
-  lastFocusedId = id
-  // Measure after the repaint tick — the mount-time focusFirstBlock fires
-  // before the wrapper element exists, and focus switches ride block-view
-  // re-assembly.
+// getBlockMap-measured height, null = clear). Push-emit form per the engine's
+// existing update/save family (choice recorded in EDITOR-CONTRACT §3); at
+// most one emit per distinct switch (lastEmitted dedup — watch-equivalent
+// throttle). PLAN-044 待澄清① gate: `dirty` = this onChange carried a text
+// change — the block emits only in the un-echoed window (typing); pure
+// selection changes clear. Rides the onChange seam; height measured after
+// the repaint tick (mount-time select fires before the wrapper exists).
+let lastEmittedFocus: string | null = null
+let focusEmitTimer: ReturnType<typeof setTimeout> | null = null
+const FOCUS_GHOST_DELAY_MS = 250
+function emitFocusBlockNow(id: string | null): void {
+  const key = id ?? '\0null'
+  if (key === lastEmittedFocus) return
+  lastEmittedFocus = key
   nextTick(() => {
     const info = id ? getBlockMap().find((b) => b.id === id) : undefined
     emit('focusblock', id && info ? { id, height: info.height } : null)
   })
+}
+function emitFocusBlock(dirty: boolean): void {
+  if (suppressNextFocusEmit) {
+    suppressNextFocusEmit = false
+    lastEmittedFocus = null // 程序化替换：不发射，也归零去重键
+    return
+  }
+  // 尾沿 gate：文本变更后 FOCUS_GHOST_DELAY_MS 仍在同块（持续编辑）才
+  // 亮 ghost；选区变化/程序化替换/新变更节拍都取消或推迟挂起发射。
+  // 瞬态编辑（单键/一次 mark 切换后立刻点走）不闪现——ghost 经
+  // useSyncedScroll 注入补偿 margin，闪现会造成两栏 ±px 级布局抖动
+  //（wysiwyg zero-jump 套件实测）；持续编辑的真实占位不受影响。
+  if (focusEmitTimer != null) {
+    clearTimeout(focusEmitTimer)
+    focusEmitTimer = null
+  }
+  if (!dirty) {
+    emitFocusBlockNow(null)
+    return
+  }
+  const id = engine.selection.anchor.blockId || null
+  if (!id) return
+  focusEmitTimer = setTimeout(() => {
+    focusEmitTimer = null
+    emitFocusBlockNow(id)
+  }, FOCUS_GHOST_DELAY_MS)
 }
 
 // Wikilink clicks (plan 036 T5): the label span is rendered deep inside the
@@ -412,25 +439,40 @@ let lastEmittedMd: string | null = serialize(engine.doc, true)
 
 engine.onChange(() => {
   repaintVersion.value++ // async content loads / every change repaints
-  emitUpdate()
-  emitFocusBlock() // PLAN-044 T5: focus-block channel (dedup'd separately)
+  // PLAN-044 T5/待澄清①: focus-block channel — vue 臂 gate：仅文本变更
+  //（未回显窗口）发射聚焦块，纯选区变化发射 null（清空 ghost）。聚焦即
+  // 灰盒实测打断 zero-jump 语义（useSyncedScroll 按 ghost 高差给编辑栏
+  // 注入补偿 margin，wysiwyg 套件 3 用例 +52px 跳变）——gate 属发射端
+  // 策略，renderer 契约（props 非 null 即显）不动；VM 臂维持聚焦即显
+  //（goal 1 原文，无 zero-jump 约束）。裁定记录计划 044 待澄清①。
+  const textChanged = emitUpdate()
+  emitFocusBlock(textChanged)
 })
 
-function emitUpdate(): void {
+function emitUpdate(): boolean {
   // emitIds=true: re-emit persistent ^anchors from the `anchor` attr so the
   // store/save round trip never loses them (the text itself stays clean —
   // applyAnchorsDeep stripped them at parse time).
   const md = serialize(engine.doc, true)
-  if (md === lastEmittedMd) return
+  if (md === lastEmittedMd) return false
   lastEmittedMd = md
   emit('update', md)
   emit('update:modelValue', md)
+  return true
 }
+
+// PLAN-044 待澄清①：程序化内容替换（外部 value 差分 seed）不算「未回显
+// 窗口」——抑制其触发的 focus 发射，ghost 只跟用户编辑走（否则载入即
+// ghost，wysiwyg zero-jump 基线被种子期注入的补偿 margin 毒化）。
+let suppressNextFocusEmit = false
 
 watch(
   () => props.modelValue ?? props.content,
   (md) => {
-    if (md != null && md !== serialize(engine.doc, true)) engine.replaceDoc(docFromMarkdown(md))
+    if (md != null && md !== serialize(engine.doc, true)) {
+      suppressNextFocusEmit = true
+      engine.replaceDoc(docFromMarkdown(md))
+    }
   }
 )
 
@@ -459,6 +501,10 @@ function onDocSelectionChange(): void {
 
 onMounted(() => document.addEventListener('selectionchange', onDocSelectionChange))
 onBeforeUnmount(() => document.removeEventListener('selectionchange', onDocSelectionChange))
+// PLAN-044 待澄清①：尾沿 gate 挂起发射随卸载清理。
+onBeforeUnmount(() => {
+  if (focusEmitTimer != null) clearTimeout(focusEmitTimer)
+})
 
 // -- live preview assembly ----------------------------------------------------------
 

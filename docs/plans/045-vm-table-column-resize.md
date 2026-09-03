@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-045
-status: executing
+status: execution_done
 feature_name: VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路）
 author: [zhaopuming]
 created_at: 2026-09-03
@@ -11,7 +11,7 @@ supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 0
+current_step: 8
 total_steps: 8
 ---
 
@@ -243,29 +243,44 @@ auto-down-dev @ 058aa7df5；spec 台账 goals 沉淀至 P040。）
 - T1 view.rs View::Table 扩两字段 + builder 补默认 + 命中纯函数
   + 单测。验证：`cargo test -p auto-lang --features
   autodown,code-editor view`。
+  [✅ 已完成] 08bb16f96：ColResizeCallback<M> newtype（沿 Scroll/Focus 先例，非裸 Option<M>——payload (col,width) 动态，计划内自洽读法）+ col_boundary_hit 带 spacing 参（几何精确，带宽 ±5 对称化）+ 单测×5 全绿（view 模块 48 过）；验证命令命中两预存红（strips_tags flake、cap_chart_curve_type_mapping_table）均 stash 基线同红在档。
 - T2 renderer.rs 表格 lowering col_widths 两态分派 + 结构单测。
   验证：`cargo test -p auto-lang --features autodown,code-editor
   renderer`（新测 + 既有表格测全绿）。
+  [✅ 已完成] cd25d9806：col_fixed_width 纯分派 + table_cell_container 定宽化 + layout_tests iced_test 全管线结构测×2（固定态 x=16/224 锚点+体列同源；自然态回归）18/18 过；renderer 过滤 109 过（基线 108，净增 1）+8 失败均 stash 基线同红预存（desktop_mcp/settings_dock/shell 族）。
 - T3 表头 PointerArea 命中 + Drag 态 + 松手消息 + headless 全链
   单测。验证：`cargo test -p auto-lang --features autodown,
   code-editor table_resize`（命名过滤新套件）。
+  [✅ 已完成] c2656c5af：TableResize 自定义 widget（自持网格布局——cell 定宽在 view 构建期固化，PointerArea 包装改不了内层布局，故 widget 持布局；Drag 临时宽走 tree State + invalidate_layout 实时重排不进 DSL state）+ headless 全链测×4（iced_test simulate 原始事件序列 + into_messages；拖拽中 BBB 起点 224→274 实时断言）——layout_tests 22/22；计划验证命令（table_resize 过滤）1+5 过。
 - T4 autodown_render.rs 入参扩展 + Table 臂发射两态 + 结构测试。
   验证：`cargo test -p auto-lang --features autodown,code-editor
   autodown_render`。
+  [✅ 已完成] 599fad911：044 复审记录确认「未收敛 RenderExtras、_with 直加参」→ 045 加第 5/6 参（table_widths map + TableColResizeFn Arc 延迟通道）+ M:'static（闭包捕获）+ Table 臂两态发射（命中取值/键变更重置）+ 结构测×2——autodown_render 20/20 过（含 044 既有 18）。
 - T5 schema/aura.at 新 prop + aura_view_builder 两臂消费 +
   render_support 清单 + 发射测试。验证：`cargo test -p auto-lang
   --features autodown,code-editor aura`。
+  [✅ 已完成] b80ca93a2：prop（state_ref 型，vue arm ignores 注记）+ autodown_table_widths/autodown_on_col_resize_binding 双助手 + 只读两臂接线 + render_support 045 版 + **OnColResize rust 直写快道预置**（043/044 同信任路径：拦截直写 table_widths state 读改写保留他键 + frac +1e-3 + __noop 回发重绘；.at handler 留 vue 契约面）+ 发射测试三态 + schema 测试锁 vue 臂忽略注记；aura 139 过（唯一 fail=strips_tags 044 在案预存 flake）。
 - T6 app.at 状态回路 + regen。验证：`cd autodown/demo && npx
   playwright test`（全套零回归）。
+  [✅ 已完成] c83557d：state table_widths + OnColResize 契约面 handler（VM 走 rust 直写快道不触发；.at 直写方案因引擎 float/map 写入腐坏被 043/044 先例预否）+ 两臂接线 + regen REGEN OK（vue 臂惰性：@colresize 永不触发、:table_col_widths codegen 未发射——无未知 prop vue-tsc 风险）+ **e2e 73/73 全绿**（首跑 72/73 的 scroll-sync bottom-toolbar 失败经主检出基线三连复跑证为预存时序 flake，复跑全绿）。
 - T7 snapshot col_widths + mcp action 扩展 + vm-smoke 断言组。
   验证：净窗 `auto run -r vm` + `node demo/auto/vm-smoke.mjs`
   退出码 0。
+  [✅ 已完成] auto-lang dab7cca31 + auto-down d0d4774：mcp action 裁定 = 专用 resize_col 直发 Table 节点（待澄清②授权；坐标命中层由 T3 headless 覆盖）——View::Table 增 table_key 观测口（第三字段最小扩展，待澄清②范围内）+ VNodeProps/snapshot/AURA 快照发射 + __mcp_resize_col 走 write_table_width_state 共享写路径；**vm-smoke 首跑抓到 StreamCache 冻结 col_widths 真缺陷→列宽态陈旧即重建修复+回归测**；净窗两复跑 11 检全 PASS exit 0（9247 被占改 9455）。
 - T8 文档收口（DEBTS:41/README:42/EDITOR-CONTRACT）+ 三连全量
   回归。验证：grep 旧注记零命中 + 三命令退出码 0，记复审记录。
+  [✅ 已完成] auto-down ad3bd03：DEBTS 040 表格行销号 + README 豁免行翻 CONSUMED + EDITOR-CONTRACT 新 §12（vue/VM 双轨八条）+ 手验双截图（vm-table-natural/resized.png，表格宽 ~510→~760px 目验确认）；grep 旧注记零命中；三连读数见复审记录；scoped 终验 70+2+11 过 + cargo check 0 error。
 
 ## 复审记录
 
 （待执行后填写；/auto-plan:review 补 spec-impact。）
+
+**执行记录（2026-09-03，/auto-plan:work 收口）**：
+
+- **提交链**：auto-lang `auto-down-045-dev`（基座 129d767fb=044 复审尖，044 未折入 master——计划头「执行前记」在档）T1 08bb16f96 → T2 cd25d9806 → T3 c2656c5af → T4 599fad911 → T5 b80ca93a2 → T7 dab7cca31（T6/T8 在 auto-down 侧）；auto-down `plan-045-dev`（基座 45bf1ae=044 已 merge）T6 c83557d → T7 d0d4774 → T8 ad3bd03。**未做相位折入**（单相位一口气完成，折入留 /auto-plan:merge；折入 auto-lang master 时将同带 044 的 7 个 commit——两者届时均已过复审门）。
+- **验收对照**：①命中/拖拽/保持——TableResize widget（iced_test headless 全链 4 测 + vm-smoke 第六组两检两复跑 PASS + 双截图目验 ~510→~760px）✓；②契约在册——schema/aura.at table_col_widths（vue arm ignores 注记，schema 测试锁定）+ EDITOR-CONTRACT §12 ✓；③vue 零回归——engine 表格渲染面零改动（packages/engine 无 diff），demo e2e 73/73 ✓；④cargo test——scoped 全绿（view 48/renderer 净增/table_resize/autodown_render 20/mcp 11/layout_tests 22 含 iced-layout-tests 档），**全量 4377 过/177 败 = 基线（129d767fb detach 同机同跑）177 败/176 名单同款**——本机全量并行 flake 预存（唯一差异 1↔1 名单漂移：我的新发射测试在并行下偶翻、基线侧另一测试同位偶翻，隔离/过滤跑均稳定绿），无新增回归面；⑤DEBTS 040 表格行销号 + README/头注零残留（grep 验证）✓；⑥三常量 10px/40px/px + 松手落定语义 + 行为对齐非像素对齐口径全程贯彻 ✓。
+- **执行期新发现（真缺陷修复）**：T7 vm-smoke 首跑抓到 StreamCache 冻结 col_widths（内容键不变即复用旧 Table View，state 驱动的列宽进不了下一帧）→ `cached_table_widths_stale` 陈旧即重建修复 + 回归测 `streaming_table_widths_change_invalidates_cache`（变则 gens 增、不变则复用）。
+- **预存红登记（同机实测，非本计划面）**：strips_tags flake、cap_chart_curve_type_mapping_table、desktop_mcp/settings_dock/shell 族（过滤跑 8 失败）、全量并行 flake 群（177 基线同数）、auto-cosmic-demo `View::Text` 缺 selectable 陈旧编译错（--bin auto 规避）。
 
 ## 待澄清事项
 
@@ -274,10 +289,21 @@ auto-down-dev @ 058aa7df5；spec 台账 goals 沉淀至 P040。）
   renderer.rs 的具体 build 函数与列组织方式）实勘未及——T2 实施
   时先读该函数再定分派点；若表格以逐行 Row 拼装，col_widths 需
   在行级统一消费（列宽表贯穿每行），不影响契约面。
+  **[已落定 T2]**：实勘 = column[header_row, rule, body_rows...] 每行
+  row().spacing + table_cell_container 逐 cell、无列宽概念 → cell 容器
+  定宽化分派（col_fixed_width 纯函数，表头体列同源）。
 - ② mcp 动作形态（通用 drag 序列 vs 专用 resize_col）按 PointerArea
   事件面实施时定夺，以 vm-smoke 可重复断言为准；若 PointerArea
   不在 snapshot 暴露 target，允许对 Table 节点直发 resize_col
   （跳过坐标命中层，命中层由 rust 单测覆盖）。
+  **[已落定 T7]**：裁定 = 专用 resize_col 直发 Table 节点（value =
+  "col,width"，__mcp_resize_col 走 OnColResize 拦截同一
+  write_table_width_state；坐标命中/拖拽全链由 T3 iced_test headless
+  4 测覆盖）；寻址需要表键 → View::Table 增 table_key 观测口（第三
+  字段最小扩展，本条授权范围内）经 VNodeProps/snapshot 透出。
 - ③ 列宽 map 键用 block_key 内容哈希在表内容微变（如改一个字）时
   重置列宽——若实机体验认为应保持，允许降级为「表位置索引键」
   （重排才重置），两案都不动契约，实施时在本节记录所选案。
+  **[已落定 T4]**：选 = block_key 内容哈希（原案）——表内容变更视为
+  新表（宽度重置），与 vue 重渲染即丢同向；vm-smoke 每轮 nonce 文档
+  天然新键可重复断言；位置索引键案未启用。

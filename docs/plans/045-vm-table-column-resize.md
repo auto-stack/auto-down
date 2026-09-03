@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-045
-status: drafting
+status: executing
 feature_name: VM 表格列宽拖拽（View::Table 列宽状态 + 列边界命中/拖拽 + DSL 状态回路）
 author: [zhaopuming]
 created_at: 2026-09-03
@@ -269,6 +269,7 @@ auto-down-dev @ 058aa7df5；spec 台账 goals 沉淀至 P040。）
 
 ## 待澄清事项
 
+- **[2026-09-03 执行前记] auto-lang 依赖基座裁定**：044 reviewed 未 merge，其 auto-lang 侧 7 commit 仍在 `auto-down-dev`（@129d767fb）未折入 master；`auto-down-dev` 分支名被 044 存活 worktree 占用（git 禁双检出）。045 的 auto-lang worktree 基于该分支尖建新分支 `auto-down-045-dev`（组目录 `.wt/auto-045/auto-lang`），后续折入时 044+045 commit 一同入 auto-lang master（两者届时均已过复审门）。044 定稿形态确认：`render_document_with` 未收敛 RenderExtras、直加参 → 045 T4 加第 5 参 `table_widths`。
 - ① renderer 表格 lowering 的现状内部结构（View::Table 在
   renderer.rs 的具体 build 函数与列组织方式）实勘未及——T2 实施
   时先读该函数再定分派点；若表格以逐行 Row 拼装，col_widths 需

@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-046
-status: execution_done
+status: reviewed
 feature_name: VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册）
 author: [zhaopuming]
 created_at: 2026-09-03
@@ -8,7 +8,13 @@ updated_at: 2026-09-04
 
 # Leave these EMPTY here — /auto-plan:review fills them:
 supersedes_spec_components: []
-new_spec_components: []
+new_spec_components:
+  - "P046-1: reports——变更摘要（两栏收编 row/col/flex-1 + PARITY 清册入库 + Layout note 销号；执行期新发现：e2e 定位钩类依赖、auto.exe 旧二进制缺 MCP click、vm-smoke warm-up 滚动收敛 flake、全 suite math 截图 flake——均登记非阻塞）"
+  - "P046-2: goals——五验收全达成（VM 两栏等宽截图留档+smoke 0/playwright 73 全过/PARITY 十二项有归宿有证据/Layout note 销号+DEBTS 新行编号无漂移/零 rust 改动双仓核实）；vue 轨零回归证明口径=app.at 唯一消费面 regen 后全量 e2e 绿"
+  - "P046-3: architecture——双轨两栏布局机制：row→convert_row/col→convert_column/flex-1→StyleClass::Flex1→width=Fill（iced Row 两 Fill 子元素平分）；vue 轨工具类真 CSS 由 app.at style 块 scoped 兜底定义（demo 无 Tailwind 运行时：package.json/engine style.css/CustomScrollbar 串三证）；autodown 组件臂 class 整串不读（渲染面板 py-4 px-5 缺席→观感族 W2）；left/right 未知 token VM 静默跳过"
+  - "P046-4: designs——类映射表契约（div.panels→row{h-full w-full}/section.panel→col{flex-1 min-w-0 overflow-hidden}/.left→border-r/.fill→flex-1 min-h-0 overflow-hidden/.right .fill→+py-4 px-5）；PARITY.md 差异清册格式（项/vue 现状/VM 现状/归宿/证据指针 + 实测类消费清单 + 波次索引 W2-W5）；e2e 定位钩类保留裁定（待澄清④：15 spec 300+ 选择器，Tailwind 类外双轨共存）"
+  - "P046-5: tests——vm-two-columns.png 截图口径（单分辨率，待澄清③）；类消费实测方法（class.rs parse_single/iced_adapter 消费臂/组件臂读码 + T2 截图双证）；vue 回归门=regen+playwright 73 全量（复审三跑：两绿+一试合并干扰红作废重跑）；VM 验收门=vm-smoke 9 组退出码 0（复审净窗复跑同绿）；容器编辑面基线 2px 子像素滑移刷新（PIL bbox 实证视觉同帧）"
+  - "P046-6: reviews——复审记录（五验收全过逐条证据；试合并冲突面 4 文件全机械=归并语义双取；复审核获 PARITY #4 过时表述修复一处；D1-D3 债候选）"
 touched_goals: []
 
 current_step: T5
@@ -233,7 +239,19 @@ worktree 未提交 vm-smoke.mjs（T6 滚动探针）跑完的残留态。）
 
 ## 复审记录
 
-（待执行后填写；/auto-plan:review 补 spec-impact。）
+- **复审人/时间**：ZCode /auto-plan:review，2026-09-04。
+- **基址核实**：worktree `plan-046-dev` 五提交 35016cb/72f3d98/89cd92e/e942638/9bb23ea（末笔=复审修复）；worktree clean。零 rust 改动复核：`git diff master..plan-046-dev --name-only` 零 `.rs`/`crates/`；auto-lang 源零改动（仅 `cargo build -p auto` 重编二进制至 master，T2 工具链前置在案）。
+- **验收逐条**：
+  1. ✅ VM 两栏等宽截图 + vm-smoke 退出码 0——复审净窗复跑 9/9 组全过退出码 0（warm-up 滚动收敛 flake 第三回合同款读数：首 attempt `left_client 779.2/height 2591/top 0.001` 不收敛→内建重试全过；三回合同模式，预存 flake 特征钉死非本计划回归）；vm-two-columns.png 在册（T2 人工比对：两栏等分+中缝可见）。
+  2. ✅ regen 后 playwright 全过——复审全量复跑 73/73 退出码 0（1.1m）。注：复审首跑 4 红系复审自身试合并（`--no-commit` 后 abort）在套件运行期改写服务中文件所致，时序强相关、干净重跑全绿，作废不计。
+  3. ✅ PARITY.md 在册——十二项逐项归宿+证据指针抽核通过（vm-block-coverage*.png/vm-drag-*.png/DEBTS 行均在册；PLAN-527 实存 auto-lang `docs/plans/archive/527-vm-tailwind-parity.md`）；T1/T2 实测类消费清单在册（flex-1/min-w-0/overflow-hidden/border-r 等逐 token 到消费臂）。
+  4. ✅ README Layout note 销号 + DEBTS 新行——grep「stack vertically」零残留（仅计划文件自引与 PARITY 历史引用）；DEBTS 046 两行在册，编号 046/527/044/045 全实存无漂移（044/045 本仓 archive、527 auto-lang archive）。
+  5. ✅ 零 rust 改动（见基址核实）。
+- **遗漏/延后/workaround 清查**：遗漏零发现（T1-T5 与 diff 一一对应）；延后仅计划文本预授权的 W2-W5 预留波次（非 silent deferral）；workaround 一处=left/right 定位钩类保留（待澄清④登记+PARITY 实测清单+复审元数据三层在案，非隐藏）。
+- **master 漂移与冲突面**：复审窗口期 PLAN-045 折入 master（0a4f584，merge 会话已声明「046 并行会话改动未触碰」）。试合并（--no-commit 后 abort）冲突 4 文件全机械：①app.at=045 的 `table_col_widths`/`oncolresize` props+注释 vs 本计划的 class 行——双取；②README=045 的 Table bullet CONSUMED 段 vs 本计划的 `(PARITY #4)` 指针——双取；③④gen/部署两份 App.vue=同源再生冲突——折后重跑 regen 即平。**归并后必须**：regen 重放 + playwright + vm-smoke（master smoke 已扩第六组表格断言）复跑双门。
+- **复审修复**：PARITY #4 归宿「PLAN-045 execution_done 待 review」→「✅已折入+归档」（9bb23ea）。
+- **债候选**：D1 vm-smoke warm-up 滚动收敛 flake（净窗首 attempt 三回合必现，重试 bar 内——auto-lang 侧滚动测量首帧 settling 排查候选）；D2 全 suite 并发活动下 screenshot.spec 误捕获 flake（soft-assert+固定 timeout 构造时序敏感，隔离复跑 0 像素差——spec 岔路等待改确定性 wait 候选）；D3 PARITY 证据行号为 auto-lang master 快照值（并行会话活跃漂移，已用函数锚点双标缓解）。
+- **裁定**：五验收全过、无阻塞债 → `status: reviewed`，交 /auto-plan:merge（附上方归并语义与折后复跑要求）。
 
 ## 待澄清事项
 

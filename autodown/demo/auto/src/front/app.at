@@ -1,47 +1,81 @@
-// app.at — the demo root widget: Auto widget DSL port of the original
-// hand-written demo/src/App.vue. The generated SFC IS the demo app — regen
-// (gen/regen.sh) deploys it straight to demo/src/App.vue.
+// app.at — the demo root widget, single-sourced for BOTH render targets
+// (plan 040): the same file drives `auto run` (vue — the generated SFC IS the
+// demo app, regen via gen/regen.sh deploys it to demo/src/App.vue) and
+// `auto run -r vm` (iced native desktop — cosmic-text editor shell +
+// autodown-core parse_blocks renderer).
 //
-// What lives here in the DSL: the whole layout (toolbar / editor+renderer
-// panels / splitter hover zone / CustomScrollbar), the component prop and
-// event wiring, and the splitter hover state. What stays hand-written:
+// AutoUI dual-track tags carry both panels (ext component imports retired):
+//
+// - `autodown_editor` — vue: @autodown/engine AutoDownEditor; VM: block
+//   editor shell (View::AutodownEditor). content lives in the widget model;
+//   edits flow back via `oninput: .Edit` (vue: @update:modelValue carries the
+//   md payload; VM: edit signal, text auto-bound through the INPUT_TEXT
+//   channel — same convention as code_editor).
+// - `autodown` — vue: @autodown/engine StreamingRenderer (superset composing
+//   MarkdownRender); VM: autodown-core parse_blocks → View tree. Of the
+//   streaming-family props, `scroll_sync` is CONSUMED on VM since PLAN-043
+//   (pane gets a View::Scrollable wrapper: `scroll_top` binding = write arm,
+//   `onscroll` event = read arm — top/height/client ride the message back to
+//   the handler); streaming/placeholder_* remain contract-only (→PLAN-044,
+//   see demo/auto/README.md「VM 桌面跑法」).
+//
+// What stays hand-written (vue-only enhancements; VM degrades to ext stubs,
+// stub warnings are expected and registered):
 //
 // - demo/src/content.ts — the initial markdown document (the DSL has no
-//   multi-line template literals).
+//   multi-line template literals); reaches the widget through the ext fn
+//   `initial_content()` (VM stub returns "" — the VM track starts empty and
+//   exercises linkage by typing).
 // - demo/src/app.css — the global html/body/#app styles (the DSL only emits
 //   <style scoped>); imported by main.ts.
-// - utils/app_ext.ts — the useDemoAppBridge composable (owns the initial
-//   content, the three template refs, useSyncedScroll and
-//   useTableColumnResize; the DSL's composable imports are called with zero
-//   arguments at setup top level, before template refs exist, so the refs
-//   live in the bridge and .Init assigns the mounted values into the bag)
-//   plus the AutoDownEditor / StreamingRenderer re-exports (workspace
-//   packages, resolved in the gen project via pac.at npm_deps link:) and the
-//   console log handlers.
+// - utils/app_ext.ts — the useDemoAppBridge composable (owns the three
+//   template refs, useSyncedScroll and useTableColumnResize; the DSL's
+//   composable imports are called with zero arguments at setup top level,
+//   before template refs exist, so the refs live in the bridge and .Init
+//   assigns the mounted values into the bag) and the console log handlers.
 // - CustomScrollbar is a sibling widget of this project (custom_scrollbar.at)
 //   and is referenced as a sub-widget directly.
 //
-// Interface notes vs the hand-written App.vue (behaviorally identical):
+// Interface notes vs the pre-040 App.vue (behaviorally identical on vue):
 //
-// - `hoveringScrollbar` is gone: it was dead state (CustomScrollbar tracks
-//   its own hover internally; the handwritten App.vue even had a type error
-//   on the assignment). Only `hoveringSplitter` drives `visible`.
-// - `editingBlock` (reserved, always null) moved into the bridge; the
-//   placeholder-block-id/-height bindings use ternary computeds instead of
-//   optional chaining.
+// - content moved from the bridge bag into the widget model (single source
+//   for both panels; the bridge bag keeps only refs + scroll measurements).
+// - `hovering_splitter` still drives `visible` (CustomScrollbar tracks its
+//   own hover internally).
+// - `editingBlock` (reserved, always null) stayed in the bridge; the
+//   placeholder-block-id/-height bindings use ternary computeds.
 // - Handlers emit noise events on the root component (nobody listens).
+
+// PLAN-043 T10: 顶层 use 装载兄弟件 CustomScrollbar——VM 轨经 PR-3b
+// （child WidgetDecl 收编 → handler 编入单一 VM flash）获得拖拽发射面
+// 的真实 handler；缺此前 widget 视图/handler 均不入 flash（D2 复审
+// "renders empty container" 的加载面根因）。vue 轨 codegen 忽略顶层
+// 模块 use，SFC 输出不变。
+use custom_scrollbar
 
 widget App {
     use {
-        fn: logSave, logCancel from "src/front/utils/app_ext.ts"
-        component: AutoDownEditor, StreamingRenderer from "src/front/utils/app_ext.ts"
+        fn: logSave, logCancel, initial_content, is_vue from "src/front/utils/app_ext.ts"
         composable: useDemoAppBridge from "src/front/utils/app_ext.ts"
     }
 
-    msg Msg { Init, handleSave(str), handleCancel, handleUpdate(str), SetScrollTop(f64), SplitterHover(int) }
+    msg Msg { Init, handleSave(str), handleCancel, Edit(str), SetScrollTop(f64), SplitterHover(int),
+              OnLeftScroll(f64, f64, f64), OnRightScroll(f64, f64, f64), ToggleDetails(str) }
 
     model {
+        // The document body — single source for editor input and renderer
+        // output on both tracks. Seeded in .Init via the ext fn
+        // (vue = content.ts; VM stub = "").
+        var content str = ""
         var hovering_splitter int = 0
+        // PLAN-043 T3: VM 轨滚动三测量（左右栏各一份；vue 轨数据仍走
+        // demoAppBridge——CustomScrollbar 绑定经 is_vue 分派，见 computed）。
+        var left_top f64 = 0
+        var left_height f64 = 0
+        var left_client f64 = 0
+        var right_top f64 = 0
+        var right_height f64 = 0
+        var right_client f64 = 0
     }
 
     computed {
@@ -49,6 +83,12 @@ widget App {
         // reserved and always null today).
         placeholder_id => .demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.id : null
         placeholder_height => .demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.height : null
+        // PLAN-043 T3: CustomScrollbar 数据按轨分派——vue 轨 bridge ref
+        //（useSyncedScroll 写，零变化）；VM 轨 scroll state（OnScroll
+        // handler 写；is_vue 在 VM 为 None 走 state 臂）。
+        csb_top => is_vue() != None ? .demoAppBridge.scrollTop : .left_top
+        csb_height => is_vue() != None ? .demoAppBridge.scrollHeight : .left_height
+        csb_client => is_vue() != None ? .demoAppBridge.clientHeight : .left_client
     }
 
     view {
@@ -65,24 +105,37 @@ widget App {
                     class: "panels",
                     section {
                         class: "panel left",
-                        AutoDownEditor {
+                        autodown_editor {
                             ref: "editorRef",
-                            content: .demoAppBridge.content,
+                            content: .content,
                             placeholder: "Start typing...",
                             class: "fill",
-                            on"save": .handleSave($event),
-                            on"cancel": .handleCancel,
-                            on"update": .handleUpdate($event)
+                            // PLAN-043 T3: VM 轨滚动同步双臂（编辑壳全内容
+                            // 高、外滚；vue 轨这些 props 不达组件根，惰性）。
+                            scroll_sync: true,
+                            scroll_top: .left_top,
+                            onscroll: .OnLeftScroll,
+                            oninput: .Edit,
+                            onsave: .handleSave($event),
+                            oncancel: .handleCancel
                         }
                     }
                     section {
                         class: "panel right",
-                        StreamingRenderer {
+                        autodown {
                             ref: "rendererRef",
-                            source: .demoAppBridge.content,
+                            content: .content,
                             streaming: false,
-                            placeholderBlockId: .placeholder_id,
-                            placeholderHeight: .placeholder_height,
+                            placeholder_block_id: .placeholder_id,
+                            placeholder_height: .placeholder_height,
+                            scroll_sync: true,
+                            scroll_top: .right_top,
+                            onscroll: .OnRightScroll,
+                            // PLAN-043 T4: Details 折叠回路——summary 点击
+                            // → 消息（键 = 块结构键）→ handler 翻转 content
+                            // 内 open attr → 重渲染（vue 轨 @detailsclick 不
+                            // 触发，惰性）。
+                            ondetailsclick: .ToggleDetails,
                             class: "fill"
                         }
                     }
@@ -93,10 +146,11 @@ widget App {
                     onmouseleave: .SplitterHover(0)
                 }
                 CustomScrollbar {
-                    scrollTop: .demoAppBridge.scrollTop,
-                    scrollHeight: .demoAppBridge.scrollHeight,
-                    clientHeight: .demoAppBridge.clientHeight,
+                    scrollTop: .csb_top,
+                    scrollHeight: .csb_height,
+                    clientHeight: .csb_client,
                     visible: .hovering_splitter == 1,
+                    is_vm: is_vue() == None,
                     on "update:scrollTop": .SetScrollTop($event)
                 }
             }
@@ -104,28 +158,79 @@ widget App {
     }
 
     on {
-        // Feed the mounted elements/component instances into the bridge bag
-        // (template refs are populated before mounted hooks; useSyncedScroll
-        // picks the workspace up lazily via its watch).
+        // Seed the document first (vue: the real initial markdown; VM: "").
+        // The bridge feeding is vue-only and guarded by the track probe —
+        // the VM state has no template-ref fields, so an unguarded write is
+        // the handler_App_Init crash form documented in plan 040's analysis
+        // (is_vue(): vue = true; VM ext stub = None).
         .Init -> {
-            .demoAppBridge.workspaceRef = .workspaceRef
-            .demoAppBridge.editorRef = .editorRef
-            .demoAppBridge.rendererRef = .rendererRef
+            .content = initial_content()
+            if is_vue() != None {
+                .demoAppBridge.workspaceRef = .workspaceRef
+                .demoAppBridge.editorRef = .editorRef
+                .demoAppBridge.rendererRef = .rendererRef
+            }
         }
         .SplitterHover(v) -> {
             .hovering_splitter = v
         }
         .SetScrollTop(v) -> {
-            .demoAppBridge.setScrollTop(v)
+            if is_vue() != None {
+                .demoAppBridge.setScrollTop(v)
+            } else {
+                // PLAN-043 T3: VM 轨直写左栏 state——offset 绑定拉动编辑栏，
+                // 滚动事件回灌三测量并对右栏比例级联。
+                .left_top = v
+            }
+        }
+        // PLAN-043 T3/T6: VM 轨两栏比例联动。参数序 (h, c, sy) =
+        // (scrollHeight, clientHeight, scrollTop)——VM 三参 handler 首参
+        // 绑定损坏（首参读到垃圾、二三参正常，DEBTS 登记），scrollTop
+        // 放第三位绕道。级联回授环由 rust 侧 pending 队列 0.5px 去抖
+        // 几何收敛终结。vue 轨 @scroll 不达组件根（滚动发生在内层
+        // wrapper），两 handler 永不触发，bridge 路径零变化。
+        .OnLeftScroll(h, c, sy) -> {
+            // 契约面（vue 生成侧）——VM 轨由 update 层 rust 直写快道
+            // 执行（引擎 handler 浮点写入腐坏，见 renderer.rs T6 注）。
+            .left_top = sy
+            .left_height = h
+            .left_client = c
+        }
+        .OnRightScroll(h, c, sy) -> {
+            .right_top = sy
+            .right_height = h
+            .right_client = c
+        }
+        // PLAN-043 T4: Details 折叠翻转——VM render 是 content 的纯函数，
+        // open 状态以 content 内 open attr 为单源：展开 = 在 $details 的
+        // IAL 尾（") {" 前）追加 ", open:true"；收起 = 移除之。双 attr
+        // 形态（summary 在前 + open 在后）parser 顺序无关已测
+        //（renders_details_summary_then_open_order）。v1 单 details 块场景
+        //（VM indexOf 单参无 from 形态——首处 ") {" 以 > d 序守卫）；多块
+        // map 化留 EDITOR-CONTRACT scroll 节注记。
+        .ToggleDetails(key) -> {
+            let d = .content.indexOf("$details(")
+            if d >= 0 {
+                let close = .content.indexOf(") {")
+                if close >= 0 && close > d {
+                    if .content.contains("open:true") {
+                        .content = .content.replace(", open:true", "")
+                    } else {
+                        let head = .content.substring(0, close)
+                        let tail = .content.substring(close)
+                        .content = head + ", open:true" + tail
+                    }
+                }
+            }
+        }
+        .Edit(md) -> {
+            .content = md
         }
         .handleSave(md) -> {
             logSave(md)
         }
         .handleCancel -> {
             logCancel()
-        }
-        .handleUpdate(md) -> {
-            .demoAppBridge.content = md
         }
     }
 

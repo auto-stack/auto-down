@@ -6,6 +6,57 @@ Auto language widget DSL sources in this directory by the Auto compiler
 The original hand-written scrollbar is kept at
 `src/components/CustomScrollbar.vue.bak`.
 
+## VM desktop track（VM 桌面跑法，plan 040 双轨）
+
+The same `src/front/app.at` drives BOTH render targets:
+
+```sh
+# vue track (regenerates + deploys demo/src/App.vue, see Regenerate below)
+bash gen/regen.sh
+
+# iced native desktop track — from autodown/demo/auto:
+D:/autostack/auto-lang/target/debug/auto.exe run -r vm
+```
+
+Feature prerequisite: since plan 040 the `autodown` feature is part of the
+auto CLI **default** set — any fresh `cargo build -p auto` (run in
+`D:/autostack/auto-lang`) produces a binary with true rendering; no manual
+`--features autodown` is needed. If a stale binary without the feature runs
+the vm track, both panels degrade to plain textareas (D-GAP-3) — rebuild to
+fix.
+
+What works on the VM track (v1): dual panels with true rendering
+(heading / paragraph with inline marks / lists / blockquote / code fence —
+the 6-block subset), the left block-editor shell (block-granularity editing,
+`oninput: .Edit` linkage via the INPUT_TEXT payload channel), and the
+AutoUI MCP channel on `http://127.0.0.1:9247` (`autoui_snapshot` /
+`autoui_type` into the editor / `autoui_screenshot`) for scripted
+verification. First-light evidence: `vm-first-light.png` (plan 040 T11,
+captured via the MCP internal screenshot channel).
+
+VM track status (see DEBTS.md 040/043 rows):
+
+- **Scroll sync — CONSUMED since PLAN-043**: `scroll_sync: true` wraps the
+  pane in a View::Scrollable — `scroll_top` binding is the write arm and
+  the `onscroll` event the read arm (args = scrollHeight, clientHeight,
+  scrollTop); the two panes sync proportionally in both directions
+  (vm-smoke group 4 asserts it).
+- **Ghost placeholder blocks** (`placeholder_block_id`/`placeholder_height`
+  parsed, ignored; `streaming` always treated as final) → PLAN-044.
+- **Table column-width dragging** → PLAN-045.
+- **CustomScrollbar data — resolved since PLAN-043**: the csb_* computeds
+  dispatch by track — vue reads the ext bridge (unchanged), VM reads the
+  scroll state fed by onscroll messages.
+- **Ext stub warnings** — `initial_content` / `is_vue` / `logSave` /
+  `logCancel` / `useDemoAppBridge` have no VM-target implementation and
+  degrade to no-op platform stubs (runtime warns once each; expected).
+  Net effect: the VM track starts with an empty document — type in the
+  editor to see live rendering (vue track loads `src/content.ts`).
+
+Layout note: the scoped `style {}` block compiles to vue `<style scoped>`
+only; on the VM track the two panels stack vertically instead of the vue
+flex row (cosmetic v1 divergence, not in the exemption ledger).
+
 ## Layout
 
 - `pac.at` — Auto project manifest (`scene: "ui"`, `render: "vue"`).
@@ -18,10 +69,13 @@ The original hand-written scrollbar is kept at
 - `src/front/custom_scrollbar.at` — the `CustomScrollbar` widget, emitted
   as `gen/front/vue/src/components/CustomScrollbar.vue`.
 - `src/front/utils/app_ext.ts` — ext module: `useDemoAppBridge()` (zero-arg
-  composable holding initial content, workspace/editor/renderer refs,
-  `useSyncedScroll`, `useTableColumnResize` in a `reactive` bag), re-exports
-  of `@autodown/editor` / `@autodown/vue` components, save/cancel log
-  helpers.
+  composable holding the workspace/editor/renderer refs,
+  `useSyncedScroll`, `useTableColumnResize` in a `reactive` bag), the
+  `initial_content()` document seed + `is_vue()` track probe (plan 040),
+  and the save/cancel log helpers. The AutoDownEditor/StreamingRenderer
+  component re-exports are RETIRED (plan 040) — the dual-track tags
+  `autodown_editor` / `autodown` resolve the engine components via the
+  widget registry (`pac.at` `npm_deps` still links `@autodown/engine`).
 - `gen/` — transient generator output (gitignored, safe to delete);
   `gen/regen.sh` is the regen+gate+deploy script (also gitignored).
 
@@ -158,3 +212,24 @@ JS division. Locked by `cap_div_mod_trunc_only_for_proven_int` in
 `crates/auto-lang/tests/vue_capabilities.rs`. Merged to auto-lang master as
 327462e4; the stock master binary (`target/debug/auto.exe`) is again the
 default for regen.
+
+## VM smoke（plan 042 T8：`vm-smoke.mjs`）
+
+Scripted smoke over the same AutoUI MCP channel (replaces 040 T11's pure
+manual check). Two terminals:
+
+```sh
+# 1) the window (from autodown/demo/auto):
+D:/autostack/auto-lang/target/debug/auto.exe run -r vm
+
+# 2) the smoke (asserts: editor input face focusable+typable, .Edit ->
+#    state.content linkage, right panel renders the typed doc with the
+#    `# ` marker consumed):
+node vm-smoke.mjs            # exit 0 = pass; --port <n> for a non-default
+                              # AUTOUI_MCP_PORT window
+```
+
+Notes: the script types a per-attempt nonce doc, so it is repeatable
+against a live window (no restart between runs); on failure it retries the
+whole run once (the jade README:127 silent-exit bar — physical-click probes
+flake; this script stays on the MCP logical channel).

@@ -14,22 +14,52 @@
 // eliminated). Emits restored to the original literal names via quoted msg
 // variants ("update:scrollTop" / "hover-change"); `visible` is optional
 // again (withDefaults).
+//
+// PLAN-043 T9: dual-track drag emission surface. The interaction layer is a
+// mouse-area coordinate contract (single source, both render targets):
+// - `onmousedown → .TrackDown(e)` — vue: the event object carries DOM
+//   geometry (e.target/clientY/rect) for the precise track-click jump; VM:
+//   the arg is unbound and the `e.target == e.currentTarget` guard reads
+//   false, so the jump is skipped there (grab-offset is reconstructed from
+//   the first onmousemove instead). Both tracks set dragging=1.
+// - `onmousemove → .Move(x, y)` — coordinates as trailing handler args on
+//   BOTH tracks (vue: e.offsetX/e.offsetY inline arrow; VM: iced
+//   PointerArea raw px). First move after a press records the grab offset
+//   (y - thumb_t), later moves map to scrollTop.
+// - `onmouseup → .ThumbUp` — iced mouse_area on_release / vue @mouseup.
+// In-bounds drag model (symmetric both tracks): tracking ends when the
+// pointer leaves the 10px strip (mouseleave clears dragging). The old vue
+// .window capture allowed out-of-strip drags — narrowing accepted for the
+// single-source contract (vertical drags from the thumb center stay in
+// bounds; e2e drags are in-strip).
 
-widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool = false) {
+widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool = false, is_vm: bool = false) {
     msg Msg {
         "update:scrollTop"(f64),
         "hover-change"(int),
         TrackDown,
-        StartDrag,
-        DragMove,
-        EndDrag
+        ThumbDown,
+        ThumbUp,
+        Move(f64, f64)
     }
 
     model {
         var dragging int = 0
         var hovering int = 0
-        var drag_start f64 = 0
-        var scroll_start f64 = 0
+        // PLAN-043 T9: 抓取偏移重建——按下后的首个 Move 记录（VM 无按下
+        // 坐标原语，偏移从首帧坐标对 thumb_t 反推）。
+        var grab_armed int = 0
+        var grab_offset f64 = 0
+        // PLAN-043 T10: 双声明（Plan 320 模式——子件 handler 经改写器只认
+        // 本件 state_fields；声明后 .left_* 重写为 __state 访问，运行期按
+        // 名落根态与父件共享，渲染期由父侧 ensure 同步回灌）。VM 直写臂
+        // 用；vue 轨不触（走 emit）。
+        var left_top f64 = 0
+        var left_height f64 = 0
+        var left_client f64 = 0
+        var right_top f64 = 0
+        var right_height f64 = 0
+        var right_client f64 = 0
     }
 
     computed {
@@ -42,25 +72,18 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
     }
 
     view {
-        div {
-            ref: "trackEl",
-            class: "custom-scrollbar",
-            style: { visible: props.visible || .hovering == 1 || .dragging == 1, dragging: .dragging == 1 },
-            onmousedown: .TrackDown($event),
-            onmouseenter: ."hover-change"(1),
-            onmouseleave: ."hover-change"(0),
-            onmousemove.window: .DragMove($event),
-            onmouseup.window: .EndDrag,
-            // Inert binding: the track never scrolls, so this never fires.
-            // It registers "update:scrollTop" as a used handler so the
-            // generator emits the function + defineEmits declaration
-            // (unreferenced-handler filter, plan 015 P1#4).
-            onscroll: ."update:scrollTop"
-
+        // PLAN-043 T9: 双轨 utility 注入——vue 由 scoped CSS 承担定位/尺寸
+        //（utility 重复无害）；VM 无 scoped CSS，utility 类是唯一尺寸/定位
+        // 来源（absolute→Overlay 浮层、w-[10px]/h-full 命中区、thumb
+        // bg/rounded 可视）。VM 面常显（vue 的 opacity 门控是 scoped CSS）。
+        mouse-area (ref: "trackEl", class: "custom-scrollbar absolute top-0 right-0 bottom-0 w-[10px] h-full", style: { visible: props.visible || .hovering == 1 || .dragging == 1, dragging: .dragging == 1 }, onmousedown: .TrackDown($event), onmouseenter: ."hover-change"(1), onmouseleave: ."hover-change"(0), onmousemove: .Move, onmouseup: .ThumbUp, onscroll: ."update:scrollTop") {
+            // onscroll: 惰性绑定（track 永不滚动）——登记 "update:scrollTop"
+            // 为已用 handler 使生成器发射函数+defineEmits 声明（未引用
+            // handler 过滤器，plan 015 P1#4）。
             div {
-                class: "custom-scrollbar-thumb",
+                class: "custom-scrollbar-thumb w-[8px] rounded bg-black/30",
                 style_obj: { height: f"${.thumb_h}px", transform: f"translateY(${.thumb_t}px)" },
-                onmousedown.stop: .StartDrag($event)
+                onmousedown.stop: .ThumbDown($event)
             }
         }
     }
@@ -71,13 +94,28 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
         ."update:scrollTop"(v) -> {}
         ."hover-change"(v) -> {
             .hovering = v
+            // In-bounds drag model: pointer exit ends the drag (both tracks;
+            // the old vue .window capture is traded for the dual-track
+            // coordinate contract — see header note).
+            if v == 0 {
+                .dragging = 0
+            }
             // Original emit contract is boolean; the DSL can't pass bool
             // literals as view event args (plan 015 P1#5), so call sites
             // pass int 1/0 and we reassign before the trailing emit.
             v = v == 1
         }
 
+        // PLAN-043 T9: 轨道按压（双轨）。vue：e=DOM 事件——轨道点击
+        //（target==currentTarget）精确跳转（原 TrackDown 几何；rect 经
+        // trackEl ref 取——生成的 vue 里 e.currentTarget 是 EventTarget|
+        // null，getBoundingClientRect 不在类型上，vue-tsc 拒绝）。VM：e
+        // 未绑定 → target 比较恒假 → 跳转跳过。两轨都置 dragging/
+        // grab_armed（VM 的抓取偏移由首个 Move 反推——真实拖拽按压与
+        // 拖动间必有微移；vue 的 thumb 按压走 .ThumbDown 按压期锚）。
         .TrackDown(e) -> {
+            .dragging = 1
+            .grab_armed = 1
             if e.target == e.currentTarget {
                 if .scrollHeight > .clientHeight {
                     let track_avail = .clientHeight - .thumb_h
@@ -98,32 +136,59 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
             }
         }
 
-        .StartDrag(e) -> {
+        // PLAN-043 T9: thumb 按压（vue-only 精确路径；VM div 级事件不
+        // 触发——偏移由 Move 首帧反推）。按压期记抓取偏移——单步合成
+        // 拖动的首 Move 即全位移，按压期锚是唯一可靠参照。
+        .ThumbDown(e) -> {
             .dragging = 1
-            .drag_start = e.clientY
-            .scroll_start = .scrollTop
+            .grab_armed = 0
+            .grab_offset = e.clientY - .trackEl.getBoundingClientRect().top - .thumb_t
         }
 
-        .DragMove(e) -> {
+        // PLAN-043 T9: 坐标拖拽（双轨）。首帧记抓取偏移（y - thumb_t），
+        // 后续帧按 (y - grab_offset) / track_avail 映射 scrollTop。
+        // PLAN-043 T10: thumb 几何内联——computed（thumb_h/thumb_t）在 use
+        // 导入子件的 handler 体内不解析（改写器只认 state_fields，Nil 传播
+        // 守卫静默假）；表达式与 computed 同源，双轨语义不变。
+        .Move(x, y) -> {
             if .dragging == 1 {
-                let track_avail = .clientHeight - .thumb_h
-                if track_avail > 0 {
-                    let max_scroll = .scrollHeight - .clientHeight
-                    let delta = e.clientY - .drag_start
-                    let ratio = delta / track_avail
-                    var v = .scroll_start + ratio * max_scroll
-                    if v < 0 {
-                        v = 0
+                if .scrollHeight > .clientHeight {
+                    let thumb_h2 = .clientHeight / .scrollHeight * .clientHeight < 32 ? 32 : .clientHeight / .scrollHeight * .clientHeight
+                    let track_avail = .clientHeight - thumb_h2
+                    if track_avail > 0 {
+                        if .grab_armed == 1 {
+                            .grab_armed = 0
+                            .grab_offset = y - .scrollTop / (.scrollHeight - .clientHeight) * track_avail
+                        }
+                        var v = (y - .grab_offset) / track_avail * (.scrollHeight - .clientHeight)
+                        if v < 0 {
+                            v = 0
+                        }
+                        let max_scroll2 = .scrollHeight - .clientHeight
+                        if v > max_scroll2 {
+                            v = max_scroll2
+                        }
+                        // PLAN-043 T10: 双轨分派。vue：emit(update:scrollTop)
+                        // → 父绑定 .SetScrollTop（原语义）。VM：体内引号 emit
+                        // 编译为对子件自身空 handler 的内联直调，不经派发器，
+                        // PLAN-051 C2① 的 on<name> 路由回送不触发（引擎缺口，
+                        // DEBTS 在案——带计算实参的子件 emit 平台性不通）；
+                        // 改直写根态（Plan 320 统一态：子 handler 写根态即
+                        // 父态）+ 镜像 fast-path 的对栏比例同步。
+                        if .is_vm {
+                            .left_top = v
+                            if .left_height > .left_client && .right_height > .right_client {
+                                .right_top = v / (.left_height - .left_client) * (.right_height - .right_client)
+                            }
+                        } else {
+                            let _ = ."update:scrollTop"(v)
+                        }
                     }
-                    if v > max_scroll {
-                        v = max_scroll
-                    }
-                    let _ = ."update:scrollTop"(v)
                 }
             }
         }
 
-        .EndDrag -> {
+        .ThumbUp -> {
             .dragging = 0
         }
     }

@@ -6,6 +6,11 @@ test.describe('scroll sync', () => {
     // Wait for both panels to render blocks with data-block-id.
     await page.waitForSelector('.left [data-block-id="block-0"]', { timeout: 5000 })
     await page.waitForSelector('.right [data-block-id="block-0"]', { timeout: 5000 })
+    // plan 039: the geometry assertions below are pixel-tight; a web font
+    // swapping in after first paint re-flows every block (observed ~130px of
+    // total-content drift under full-suite load) and the scroll targets go
+    // stale. Block measurement on the settled font metrics.
+    await page.evaluate(() => document.fonts.ready)
   })
 
   test('uses a single custom scrollbar and hides native scrollbars', async ({ page }) => {
@@ -206,7 +211,12 @@ test.describe('scroll sync', () => {
       const blocks = document.querySelectorAll('.left [data-block-id]')
       const last = blocks[blocks.length - 1] as HTMLElement | undefined
       if (!last) throw new Error('editor blocks not found')
-      const endPos = last.textContent?.length ?? 0
+      // plan 039: a fence preview's container carries the header title bar
+      // (language label) — raw textContent over-counts the document position
+      // by the chrome text and the past-end range anchors the menu off-view.
+      // Measure the code content when the block is a fence, else the block.
+      const content = last.querySelector('pre') ?? last
+      const endPos = content.textContent?.length ?? 0
       const range = { from: endPos, to: endPos }
       document.dispatchEvent(
         new CustomEvent('autodown:slash-open', { detail: { query: '', range, items: [] } })

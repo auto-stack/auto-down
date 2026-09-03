@@ -210,6 +210,14 @@ function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlo
     if (leftNext) {
       rules.push(
         `.autodown-editor-content [data-block-id="${left.id}"] + [data-block-id] { margin-top: 0 !important; }`
+        // plan 039 T4b: the zeroing above lands on the SAME element in both
+        // states now — the engine mounts the focused face inside the slot
+        // chrome (EngineEditor assembleView parity, revising plan 029's
+        // bare host), so the slot is the sibling-adjacent data-block-id
+        // carrier whether the block is preview or being edited, and the
+        // inner leaf's margin collapses through identically in both. The
+        // interim inner-leaf zeroing rules this file carried (T4 demo-side
+        // patch) are retired with that engine change.
       )
     }
     if (rightNext) {

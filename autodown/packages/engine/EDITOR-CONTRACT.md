@@ -15,7 +15,7 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 | `.autodown-slash-menu` | 斜杠菜单 | demo + jade e2e |
 | `.autodown-wikilink-label` | wikilink 标签（**plan 036 起模型 span 直渲**——parser `[[inner]]` 升格 attr 携带 span，renderInlineNode 直接出 label；020 渲染后 DOM 装饰器 `editor/wikilink.ts` 退役；`data-wikilink-title` + 点击 open-wiki-link 载荷 (title, blockId) 不变；edit 宿主挂载同链 + `contenteditable="false"` 原子化，blur 富回写走查回收） | jade e2e 04 + demo inline-spans e2e |
 | `.autodown-math-inline` + `data-math-src`（/`.autodown-math-error`） | 行内数学（**plan 036 新增**）——view/stream 态 katex inline 渲染（031 工件契约 displayMode=false，错误降级源码字面 + title 提示）；edit 宿主常显源码字面（D4 v1），blur 走查按 `data-math-src` 回收模型 span | demo inline-spans e2e |
-| `.autodown-block-placeholder` | 块编辑占位（滚动同步空挡；**仅 `.node-slot` 直接子级**会被 clearPlaceholders 清除——同 class 家族的开放态骨架在更深层，plan 032） | demo scroll-sync |
+| `.autodown-block-placeholder` | 块编辑占位（滚动同步空挡；**仅 `.node-slot` 直接子级**会被 clearPlaceholders 清除——同 class 家族的开放态骨架在更深层，plan 032）。**plan 044 起 ghost 双轨点亮**：vue 轨真链路（`@focusblock` → bridge.editingBlock → placeholder props 自然态可见）；VM 轨同构消费（`placeholder_block_id`/`placeholder_height` 绑定求值 → 命中块前置 `View::Container{height, bg-muted}` 灰盒；`onfocusblock` 事件沿 043 宿主消息通道 → update 层 rust 直写 `ghost_id`/`ghost_height` state——消息通道/state 单源/行为对齐非像素，demo e2e scroll-sync 真链路用例在册） | demo scroll-sync |
 | `.code-block-container.autodown-block-placeholder.is-loading` + `pre[aria-busy="true"]` | 开放 fence 骨架（含 ```` ```mermaid ```` 开 fence；等高占位 min-height 5.5rem；闭合翻转即摘除，plan 032）；**plan 033 起该面板为 CodeBlockWidget 的 view/stream 模式**（edit 模式走 `.autodown-codeblock-node` 宿主链 + badge + `.autodown-code-editor` 编辑面，CodeBlockMenu 点击契约不变） | demo stream-tri-state e2e |
 | `.autodown-block-boundary` | 块边界插入把手 | demo scroll-sync |
 | `[data-block-id]` | 块定位（`getBlockMap` 消费） | demo + jade e2e（11 处） |
@@ -41,9 +41,16 @@ editor 源码 CustomEvent 盘点（2026-08-25）。核验时以本清单逐项�
 - `AutoDownEditor` expose：`getBlockMap()`（demo `useSyncedScroll` 528 行
   的三重依赖）、`handleSave`；props/emits：
   `modelValue`/`content`/`canEdit`/`placeholder`/`@update`/`@save`/
-  `@open-wiki-link`/`loadBlock`/`assetUpload`/`runQuery`/`extraSlashItems`。
+  `@focusblock`/`@open-wiki-link`/`loadBlock`/`assetUpload`/`runQuery`/
+  `extraSlashItems`。
   其中 `runQuery`/`loadBlock` 自 plan 038 起实际声明并驱动装载（§10
   数据通道平台面）；`assetUpload` 仍在册未接（粘贴图片链路，另行立项）。
+  `@focusblock`（plan 044 T5）：块聚焦读出——载荷
+  `{ id: string; height: number } | null`（null = 失焦；height 经
+  getBlockMap 实测，nextTick 后量取）。**发射形态裁定**：push-emit（与
+  update/save 同族，非 expose 回调注册）；**节流口径**：每块切换至多一发
+  （连续同 id 去重）。demo 消费链：App.vue `@focusblock` → bridge
+  `.editingBlock` → StreamingRenderer placeholder props（ghost 真链路）。
 - `StreamingRenderer` expose：`containerRef`（demo 滚动同步消费）。
 - `getBlockMap()` 返回 `BlockInfo { id, index, pos, el, top, height }`。
 

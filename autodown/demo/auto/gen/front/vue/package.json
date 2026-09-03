@@ -14,8 +14,7 @@
     "tailwind-merge": "^2.2.0",
     "lucide-vue-next": "^0.312.0",
     "prismjs": "^1.29.0",
-    "@autodown/editor": "link:../../../../../../packages/editor",
-    "@autodown/vue": "link:../../../../../../packages/vue"
+    "@autodown/engine": "link:../../../../../../packages/engine"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

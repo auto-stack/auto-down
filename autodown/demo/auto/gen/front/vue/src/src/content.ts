@@ -67,25 +67,25 @@ with no language specified
 | Bar  | 2     | Beta  |
 | Baz  | 3     | Gamma |
 
-:::warning Warning
+$callout(type: "warning", title: "Warning") {
 This is a **warning** callout. It uses a light yellow background and an amber title/icon.
-:::
+}
 
-:::info Info
+$callout(type: "info", title: "Info") {
 This is an **info** callout. It uses a light blue background and a sky-blue title/icon.
-:::
+}
 
-:::error Error
+$callout(type: "error", title: "Error") {
 This is an **error** callout. It uses a light red background and a red title/icon.
-:::
+}
 
-:::details Click to expand
+$details(summary: "Click to expand") {
 This is a **Details** block. The content is collapsed by default and expanded when the summary is clicked.
-:::
+}
 
-$$
+%{
 E = mc^2
-$$
+}%
 
 \`\`\`mermaid
 graph TD
@@ -94,8 +94,49 @@ graph TD
   B -->|No| D[End]
 \`\`\`
 
+%{
+\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}
+}%
+
+\`\`\`mermaid
+flowchart LR
+  Start[Start] --> Input[Source textarea]
+  Input --> Preview[Live preview]
+  Preview --> Save{Looks good?}
+  Save -->|yes| Done[Blur commits]
+  Save -->|no| Input
+\`\`\`
+
 ---
 
 ![A placeholder image](https://placehold.co/400x100/f3f4f6/9ca3af?text=Image)
+
+Inline faces (plan 036): a [[Hello World]] wiki link, inline math $a^2+b^2=c^2$, and plain \`code\` after them.
+
+## Query and embed loading (plan 038)
+
+Fixed-result route:
+
+$query(TAG #project)
+
+Empty route:
+
+$query(demo empty route)
+
+Error route:
+
+$query(trigger demo fail)
+
+Block-load route:
+
+$embed(src: "docs/guide.md#^anchor-1")
+
+Not-found route:
+
+$embed(src: "^missing-anchor")
+
+Page-level reference (label face, no load):
+
+$embed(src: "../other.ad")
 `
 }

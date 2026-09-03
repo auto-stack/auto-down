@@ -281,7 +281,7 @@ export interface BlockInfo {
 // AutoDownEditor switches to this assembly in Phase 4. The frozen external
 // contract (EDITOR-CONTRACT.md) — root classes, data-block-id, getBlockMap —
 // is preserved from day one.
-import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 // Value comes from the plain script block's import (dual scripts share
 // one module scope)
 import { BlockPos, BlockType, Selection, attrGet, attrGetBool, attrGetInt, findBlock } from '../../parser/block-model'
@@ -324,7 +324,27 @@ const props = defineProps<{
   loadBlock?: LoadBlockFn
 }>()
 
-const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
+const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'focusblock', block: { id: string; height: number } | null): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
+
+// PLAN-044 T5: focus-block channel — emits the anchor block (id +
+// getBlockMap-measured height, null on blur). Push-emit form per the engine's
+// existing update/save family (choice recorded in EDITOR-CONTRACT §3);
+// exactly one emit per distinct block switch (consecutive equal ids dedup'd
+// via lastFocusedId — watch-equivalent throttle). Rides the onChange seam:
+// selection-only changes fire it too (the md emission is dedup'd separately).
+let lastFocusedId: string | null = null
+function emitFocusBlock(): void {
+  const id = engine.selection.anchor.blockId || null
+  if (id === lastFocusedId) return
+  lastFocusedId = id
+  // Measure after the repaint tick — the mount-time focusFirstBlock fires
+  // before the wrapper element exists, and focus switches ride block-view
+  // re-assembly.
+  nextTick(() => {
+    const info = id ? getBlockMap().find((b) => b.id === id) : undefined
+    emit('focusblock', id && info ? { id, height: info.height } : null)
+  })
+}
 
 // Wikilink clicks (plan 036 T5): the label span is rendered deep inside the
 // pure render pipeline, so the app-facing callback registers on the
@@ -393,6 +413,7 @@ let lastEmittedMd: string | null = serialize(engine.doc, true)
 engine.onChange(() => {
   repaintVersion.value++ // async content loads / every change repaints
   emitUpdate()
+  emitFocusBlock() // PLAN-044 T5: focus-block channel (dedup'd separately)
 })
 
 function emitUpdate(): void {

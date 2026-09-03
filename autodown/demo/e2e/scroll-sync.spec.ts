@@ -111,6 +111,39 @@ test.describe('scroll sync', () => {
     expect(height).toBe(200)
   })
 
+  test('focused block shows a ghost placeholder via the real focus-block channel', async ({ page }) => {
+    // PLAN-044 T5 真链路（mount-time focus 即点亮，无需手工注入）：
+    // EngineEditor @focusblock → demoAppBridge.editingBlock → StreamingRenderer
+    // placeholder props → 右栏命中块 slot 前置 .autodown-block-placeholder
+    //（高度 = 左栏焦点块实测高）。聚焦切换 → ghost 随迁（旧 slot 清除）。
+    const ghost = page.locator('.right .autodown-block-placeholder')
+
+    // mount-time focusFirstBlock → block-0 ghost 自然态可见。
+    await expect(ghost).toHaveCount(1)
+    let height = await ghost.evaluate((el) => el.offsetHeight)
+    expect(height).toBeGreaterThan(10)
+    // 左栏块高取 slot（外层测量盒——slot 与语义 host 同携 data-block-id，
+    // plan 039 口径，故用 slot 专属的 data-node-index 选择）。
+    const leftBlock0 = page.locator('.left [data-node-index="0"][data-block-id]')
+    const leftH = await leftBlock0.evaluate((el) => el.offsetHeight)
+    expect(Math.abs(height - leftH)).toBeLessThanOrEqual(2)
+
+    // 点击左栏 block-2 顶层 slot → 聚焦迁移 → ghost 落到右栏 block-2 slot。
+    //（预览态块仅顶层 slot 携 data-block-id——聚焦块才有 contenteditable
+    // host 同携，见 plan 039/029 口径；故统一用 slot 作点击/测量盒。）
+    await page.click('.left [data-node-index="2"][data-block-id]')
+    const ghostAt2 = page.locator('.right [data-node-index="2"] > .autodown-block-placeholder')
+    await expect(ghostAt2).toHaveCount(1)
+    await expect(ghost).toHaveCount(1) // 全文档仍恰一个（旧位清除）
+    height = await ghostAt2.evaluate((el) => el.offsetHeight)
+    expect(height).toBeGreaterThan(10)
+    const leftBlock2 = page.locator('.left [data-node-index="2"][data-block-id]')
+    const leftH2 = await leftBlock2.evaluate((el) => el.offsetHeight)
+    // ghost 高取发射时刻的编辑栏块高（点击后 block-2 转编辑态，实测高
+    // 随渲染微变——容差放宽到 8px）。
+    expect(Math.abs(height - leftH2)).toBeLessThanOrEqual(8)
+  })
+
   test('bottom toolbar does not cover the last block when scrolled to bottom', async ({ page }) => {
     const workspace = page.locator('.workspace')
     const leftWrapper = page.locator('.left .autodown-editor-content-wrapper')

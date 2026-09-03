@@ -13,6 +13,8 @@ import CustomScrollbar from './components/CustomScrollbar.vue'
 
 const content = ref<string>('')
 const hovering_splitter = ref<number>(0)
+const ghost_id = ref<string>('')
+const ghost_height = ref<number>(0)
 const left_top = ref<number>(0)
 const left_height = ref<number>(0)
 const left_client = ref<number>(0)
@@ -24,8 +26,8 @@ const workspaceRef = ref<HTMLElement | null>(null)
 const editorRef = ref<any>(null)
 const rendererRef = ref<any>(null)
 
-const placeholder_id = computed<any>(() => (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.id : null))
-const placeholder_height = computed<any>(() => (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.height : null))
+const placeholder_id = computed<any>(() => (is_vue() != null ? (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.id : null) : (!!(ghost_id.value) ? ghost_id.value : null)))
+const placeholder_height = computed<any>(() => (is_vue() != null ? (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.height : null) : (!!(ghost_id.value) ? ghost_height.value : null)))
 const csb_top = computed<any>(() => (is_vue() != null ? demoAppBridge.scrollTop : left_top.value))
 const csb_height = computed<any>(() => (is_vue() != null ? demoAppBridge.scrollHeight : left_height.value))
 const csb_client = computed<any>(() => (is_vue() != null ? demoAppBridge.clientHeight : left_client.value))
@@ -40,12 +42,20 @@ const emit = defineEmits<{
   OnLeftScroll: [number, number, number]
   OnRightScroll: [number, number, number]
   ToggleDetails: [string]
+  OnEditorFocus: [number]
 }>()
 
 function Edit(md: any): void {
   content.value = md;
 
   emit('Edit', md)
+}
+
+function OnEditorFocus(blk: any): void {
+  if (is_vue() != null) {demoAppBridge.editingBlock = blk;
+  }
+
+  emit('OnEditorFocus', blk)
 }
 
 function OnLeftScroll(h: any, c: any, sy: any): void {
@@ -125,7 +135,7 @@ onMounted(() => {
       <main class="workspace" ref="workspaceRef">
         <div class="panels">
           <section class="panel left">
-            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" class="fill" @cancel="handleCancel" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
+            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" class="fill" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
           </section>
           <section class="panel right">
             <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" class="fill" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />

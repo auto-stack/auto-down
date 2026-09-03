@@ -1,9 +1,9 @@
 <!-- App component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { AutoDownEditor } from '@/ext/src/front/utils/app_ext'
-import { StreamingRenderer } from '@/ext/src/front/utils/app_ext'
-import { logSave, logCancel } from '@/ext/src/front/utils/app_ext'
+import { AutoDownEditor, StreamingRenderer } from '@autodown/engine'
+
+import { logSave, logCancel, initial_content, is_vue } from '@/ext/src/front/utils/app_ext'
 import { useDemoAppBridge } from '@/ext/src/front/utils/app_ext'
 
 const demoAppBridge = useDemoAppBridge()
@@ -11,26 +11,77 @@ const demoAppBridge = useDemoAppBridge()
 import CustomScrollbar from '@/components/CustomScrollbar.vue'
 
 
+const content = ref<string>('')
 const hovering_splitter = ref<number>(0)
+const ghost_id = ref<string>('')
+const ghost_height = ref<number>(0)
+const left_top = ref<number>(0)
+const left_height = ref<number>(0)
+const left_client = ref<number>(0)
+const right_top = ref<number>(0)
+const right_height = ref<number>(0)
+const right_client = ref<number>(0)
 
 const workspaceRef = ref<HTMLElement | null>(null)
 const editorRef = ref<any>(null)
 const rendererRef = ref<any>(null)
 
-const placeholder_id = computed<any>(() => (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.id : null))
-const placeholder_height = computed<any>(() => (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.height : null))
+const placeholder_id = computed<any>(() => (is_vue() != null ? (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.id : null) : (!!(ghost_id.value) ? ghost_id.value : null)))
+const placeholder_height = computed<any>(() => (is_vue() != null ? (demoAppBridge.editingBlock != null ? demoAppBridge.editingBlock.height : null) : (!!(ghost_id.value) ? ghost_height.value : null)))
+const csb_top = computed<any>(() => (is_vue() != null ? demoAppBridge.scrollTop : left_top.value))
+const csb_height = computed<any>(() => (is_vue() != null ? demoAppBridge.scrollHeight : left_height.value))
+const csb_client = computed<any>(() => (is_vue() != null ? demoAppBridge.clientHeight : left_client.value))
 
 const emit = defineEmits<{
   Init: []
   handleSave: [string]
   handleCancel: []
-  handleUpdate: [string]
+  Edit: [string]
   SetScrollTop: [number]
   SplitterHover: [number]
+  OnLeftScroll: [number, number, number]
+  OnRightScroll: [number, number, number]
+  ToggleDetails: [string]
+  OnEditorFocus: [number]
 }>()
 
+function Edit(md: any): void {
+  content.value = md;
+
+  emit('Edit', md)
+}
+
+function OnEditorFocus(blk: any): void {
+  if (is_vue() != null) {demoAppBridge.editingBlock = blk;
+  }
+
+  emit('OnEditorFocus', blk)
+}
+
+function OnLeftScroll(h: any, c: any, sy: any): void {
+
+
+  left_top.value = sy;
+  left_height.value = h;
+  left_client.value = c;
+
+  emit('OnLeftScroll', h, c, sy)
+}
+
+function OnRightScroll(h: any, c: any, sy: any): void {
+  right_top.value = sy;
+  right_height.value = h;
+  right_client.value = c;
+
+  emit('OnRightScroll', h, c, sy)
+}
+
 function SetScrollTop(v: any): void {
-  demoAppBridge.setScrollTop(v);
+  if (is_vue() != null) {demoAppBridge.setScrollTop(v);
+  } else {
+
+  left_top.value = v;
+  }
 
   emit('SetScrollTop', v)
 }
@@ -39,6 +90,18 @@ function SplitterHover(v: any): void {
   hovering_splitter.value = v;
 
   emit('SplitterHover', v)
+}
+
+function ToggleDetails(key: any): void {
+  let d = content.value.indexOf('$details(');
+  if (d >= 0) {let close = content.value.indexOf(') {');
+  if (close >= 0 && close > d) {if (content.value.includes('open:true')) {content.value = content.value.replaceAll(', open:true', '');
+  } else {let head = content.value.substring(0, close);
+  let tail = content.value.substring(close);
+  content.value = head + ', open:true' + tail;
+  }}}
+
+  emit('ToggleDetails', key)
 }
 
 function handleCancel(): void {
@@ -53,16 +116,12 @@ function handleSave(md: any): void {
   emit('handleSave', md)
 }
 
-function handleUpdate(md: any): void {
-  demoAppBridge.content = md;
-
-  emit('handleUpdate', md)
-}
-
 onMounted(() => {
-  demoAppBridge.workspaceRef = workspaceRef.value!;
+  content.value = initial_content();
+  if (is_vue() != null) {demoAppBridge.workspaceRef = workspaceRef.value!;
   demoAppBridge.editorRef = editorRef.value!;
   demoAppBridge.rendererRef = rendererRef.value!;
+  }
 })
 
 
@@ -76,14 +135,14 @@ onMounted(() => {
       <main class="workspace" ref="workspaceRef">
         <div class="panels">
           <section class="panel left">
-            <AutoDownEditor :class="'fill'" :content="demoAppBridge.content" :placeholder="'Start typing...'" ref="editorRef" :key="'AutoDownEditor-1'" @cancel="handleCancel" @save="handleSave($event)" @update="handleUpdate($event)" />
+            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" class="fill" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
           </section>
           <section class="panel right">
-            <StreamingRenderer :class="'fill'" :placeholderBlockId="placeholder_id" :placeholderHeight="placeholder_height" ref="rendererRef" :source="demoAppBridge.content" :streaming="false" :key="'StreamingRenderer-2'" />
+            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" class="fill" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />
           </section>
         </div>
         <div class="splitter-hover-zone" @mouseenter="SplitterHover(1)" @mouseleave="SplitterHover(0)" />
-        <CustomScrollbar :clientHeight="demoAppBridge.clientHeight" :scrollHeight="demoAppBridge.scrollHeight" :scrollTop="demoAppBridge.scrollTop" :visible="hovering_splitter == 1" :key="'CustomScrollbar-3'" @update:scrollTop="SetScrollTop($event)" />
+        <CustomScrollbar :clientHeight="csb_client" :is_vm="is_vue() == null" :scrollHeight="csb_height" :scrollTop="csb_top" :visible="hovering_splitter == 1" :key="'CustomScrollbar-3'" @update:scrollTop="SetScrollTop($event)" />
       </main>
     </div>
 

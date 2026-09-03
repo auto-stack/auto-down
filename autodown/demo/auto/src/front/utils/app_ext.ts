@@ -17,9 +17,10 @@
 //    state, no shim); the gen project resolves it through pac.at `npm_deps`
 //    link: entries.
 // 3. logSave / logCancel — console handlers.
-// 4. editingBlock — reserved state for the future block-level inline editing
-//    box (always null today), kept here so the widget can bind
-//    placeholder-block-id/-height via ternary computeds.
+// 4. editingBlock — the focused block ({id, height} | null) for the ghost
+//    placeholder. PLAN-044 T5 activates it: the editor's @focusblock emit
+//    rides the generated App.vue's .OnEditorFocus handler into this ref
+//    (was "reserved, always null" through plan 043).
 // 5. initial_content — plan 040 单源化：widget model 的 content 初值改由 ext
 //    fn 提供（vue = content.ts 真文档；VM 轨 ext 桩为 no-op，返回 ""，
 //    桩告警属预期——见 demo/auto/README.md「VM 桌面跑法」豁免清单）。
@@ -42,7 +43,8 @@ export function useDemoAppBridge() {
   const editorRef = ref<{ getBlockMap: () => BlockInfo[] } | null>(null)
   const rendererRef = ref<{ containerRef: HTMLElement | null } | null>(null)
   const content = ref(initialContent())
-  // Reserved state for future block-level inline editing box (always null).
+  // Focused block info ({id, height} | null) — written by the generated
+  // App.vue's OnEditorFocus handler (@focusblock emit, PLAN-044 T5).
   const editingBlock = ref<{ id: string; height: number } | null>(null)
 
   const { scrollTop, scrollHeight, clientHeight, setScrollTop } = useSyncedScroll({

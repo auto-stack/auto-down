@@ -21,6 +21,7 @@ const left_client = ref<number>(0)
 const right_top = ref<number>(0)
 const right_height = ref<number>(0)
 const right_client = ref<number>(0)
+const table_widths = ref<any>({})
 
 const workspaceRef = ref<HTMLElement | null>(null)
 const editorRef = ref<any>(null)
@@ -43,12 +44,18 @@ const emit = defineEmits<{
   OnRightScroll: [number, number, number]
   ToggleDetails: [string]
   OnEditorFocus: [number]
+  OnColResize: [string, number, number]
 }>()
 
 function Edit(md: any): void {
   content.value = md;
 
   emit('Edit', md)
+}
+
+function OnColResize(tbl: any, col: any, w: any): void {
+
+  emit('OnColResize', tbl, col, w)
 }
 
 function OnEditorFocus(blk: any): void {
@@ -138,7 +145,7 @@ onMounted(() => {
             <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" class="fill" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
           </section>
           <section class="panel right">
-            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" class="fill" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />
+            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" class="fill" @colresize="OnColResize" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />
           </section>
         </div>
         <div class="splitter-hover-zone" @mouseenter="SplitterHover(1)" @mouseleave="SplitterHover(0)" />

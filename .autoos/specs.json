@@ -221,6 +221,17 @@
           "PLAN-045"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P046-2",
+        "section": "goals",
+        "title": "VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册） — 目标",
+        "content": "五验收全达成：① auto run -r vm 左右两栏等宽可见（vm-two-columns.png 留档\n两栏等分+中缝可见）+ vm-smoke 退出码 0（复审净窗复跑 9/9，折后含 045\n第六组 11/11）；② regen 后 playwright 73 全过零回归（app.at 唯一 vue\n消费面，regen 后全量绿即双轨不回归证明；复审干净重跑同绿）；\n③ PARITY.md 在册：十二项差异逐项有归宿、有证据指针，T1/T2 实测类\n消费清单在册；④ README Layout note 销号（grep 零残留）+ DEBTS 新行\n编号 046/527/044/045 无漂移；⑤ 全程零 rust 改动（auto-down 与\nauto-lang 两仓核实，缺口登记不实现）。",
+        "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
+        "related": [
+          "PLAN-046"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -448,6 +459,17 @@
         "file": "docs/plans/archived/045-vm-table-column-resize.md",
         "related": [
           "PLAN-045"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P046-3",
+        "section": "architecture",
+        "title": "VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册） — 架构方案",
+        "content": "双轨两栏布局机制：app.at view 树 row{h-full w-full} + 两 col{flex-1\nmin-w-0 overflow-hidden（左 col 带 border-r）}；VM 轨 row→\nconvert_row_tracked_ctx/col→convert_column_tracked_ctx（aura_view_builder\ndispatch），flex-1→StyleClass::Flex1→width=Fill（iced_adapter :1024，\niced Row 两 Fill 子元素天然平分）；vue 轨 tag_to_tailwind（row=flex\nflex-row/col=flex flex-col）+ class attr 直传，与 scoped style 并存。\n工具类兜底形态：demo 构建无 Tailwind 运行时（package.json 无依赖/\nengine style.css 无工具类/CustomScrollbar tailwind 串惰性三证），vue 轨\n真 CSS 由 app.at style 块 scoped 工具类兜底定义（12 个 utility 精确\n对应 view 树用量）+ :deep 增强（去 left/right 锚改直挂）。\n组件臂 class 通路：autodown_editor class 解析进内层编辑壳（043 T6\n包装 Scrollable 取合成 w-full h-full）；autodown 臂 class 整串不读\n（渲染面板 py-4 px-5 缺席→观感族 W2）。left/right 未知 token VM 静默\n跳过（parse_single 兜底）。",
+        "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
+        "related": [
+          "PLAN-046"
         ],
         "status": "stable"
       }
@@ -678,6 +700,17 @@
           "PLAN-045"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P046-4",
+        "section": "designs",
+        "title": "VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册） — 详细设计",
+        "content": "类映射表契约：div.panels→row{h-full w-full}；section.panel→col{flex-1\nmin-w-0 overflow-hidden}；.left{border-right}→border-r（VM 消费\nBorderRight，border_color None→主题默认色）；.fill→flex-1 min-h-0\noverflow-hidden；.right .fill{padding}→py-4 px-5。兜底原则：T1 仅保证\n结构两栏，观感类 VM 缺席不阻塞——登记 PARITY 转 527/W2，style 块兜底。\nPARITY.md 差异清册格式：项/vue 现状/VM 现状/归宿/证据指针 五列 +\n实测类消费清单（逐 token 消费臂+行号快照+函数锚点双标）+ 预留波次\n索引（W2 主题←527 T8、W3 种子←ext 资产机制/DSL 多行字面量、W4 空态、\nW5 web-only 裁定）。e2e 定位钩裁定：语义类与 Tailwind 类双轨共存\n（待澄清④）。PARITY #4 表格行折后刷新为 045 已折入（复审修复 9bb23ea）。",
+        "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
+        "related": [
+          "PLAN-046"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -882,6 +915,17 @@
         "file": "docs/plans/archived/045-vm-table-column-resize.md",
         "related": [
           "PLAN-045"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P046-5",
+        "section": "tests",
+        "title": "VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册） — 测试设计",
+        "content": "vue 回归门：bash gen/regen.sh（REGEN OK 三闸：编译警告/vue-tsc/部署）+\nnpx playwright test 73 全过（T1/复审/折后三跑全绿）。VM 验收门：净窗\nauto.exe run -r vm（AUTOUI_MCP_PORT 指定空闲口——9247 被占曾致错连）+\nvm-smoke.mjs 退出码 0（执行 9/9×2+复审 9/9+折后 11/11 含 045 表格组）+\nautoui_screenshot 两栏截图留档（单分辨率，待澄清③落定）。\n类消费实测方法：class.rs parse_single/iced_adapter 消费臂/组件臂读码\n（行号快照+函数锚点）+ T2 截图双证。清册可核性：PARITY 每行带证据\n指针。flake 口径登记：vm-smoke warm-up 滚动收敛（净窗首 attempt 必现、\n重试 bar 内）；screenshot.spec 全 suite 并发误捕获（隔离复跑 0 像素差\n定案非回归）；容器编辑面基线 2px 子像素滑移（PIL bbox 实证视觉同帧）。",
+        "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
+        "related": [
+          "PLAN-046"
         ],
         "status": "verified"
       }
@@ -1095,6 +1139,17 @@
           "PLAN-045"
         ],
         "status": "published"
+      },
+      {
+        "id": "P046-6",
+        "section": "reviews",
+        "title": "VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册） — 复审记录",
+        "content": "复审 PASS（2026-09-04）：五验收逐条证据复验全过；遗漏/延后/workaround\n清查零阻塞（延后仅计划预授权 W2-W5；workaround=left/right 钩保留三层\n在案）。master 漂移处理：复审窗口期 045 折入（0a4f584），试合并冲突\n4 文件全机械（app.at 045 props+046 class 双取/README CONSUMED 段+\nPARITY 指针双取/两份 App.vue regen 再生），复审记录载归并语义与折后\n复跑要求。复审修复一处：PARITY #4 归宿刷新（9bb23ea）。债候选：D1\nvm-smoke warm-up 滚动收敛 flake（auto-lang 首帧 settling 排查候选）；\nD2 screenshot.spec 并发误捕获（确定性等待候选）；D3 PARITY 行号快照\n漂移（锚点双标缓解）。折后双门复跑绿：playwright 73/73 + vm-smoke\n11/11（两机制共存实证）。",
+        "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
+        "related": [
+          "PLAN-046"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1304,6 +1359,17 @@
         "file": "docs/plans/archived/045-vm-table-column-resize.md",
         "related": [
           "PLAN-045"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P046-1",
+        "section": "reports",
+        "title": "VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册） — 变更摘要",
+        "content": "README「Layout note」登记在案的 VM 轨竖排降级收编：app.at 两栏容器从\nweb 语义标签（div.panels + style 块 display:flex）改为 AutoUI 核心布局标签\nrow + 两个 col（各 flex-1 等宽）——双轨单源零新机制（VM: convert_row/\nconvert_column + Flex1→width=Fill；vue: tag_to_tailwind + class 直传）。\n随带把 panel left/right/fill 自定义类换 Tailwind 原生类（执行期修正：\nleft/right 保留为 e2e 定位钩——15 spec 300+ 选择器消费，待澄清④）；\nvue 轨工具类真 CSS 由 app.at style 块 scoped 兜底定义提供（demo 无\nTailwind 运行时）。PARITY.md 十二项差异清册入库（逐项归宿：本计划 T1/\nPLAN-043 044 045/auto-lang 527/W2-W5 波次/显式豁免）；README Layout\nnote 销号 + DEBTS 046 两行（主题观感→527 T8+W2、初始种子→W3）。\n零 rust 改动（两仓）。执行期新发现四件均登记非阻塞：e2e 定位钩类依赖、\nauto.exe 旧二进制缺 MCP click（cargo build -p auto 重编即平）、vm-smoke\nwarm-up 滚动收敛 flake（净窗首 attempt 必现、重试 bar 内）、全 suite math\n截图误捕获 flake（隔离复跑 0 像素差）。",
+        "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
+        "related": [
+          "PLAN-046"
         ],
         "status": "published"
       }

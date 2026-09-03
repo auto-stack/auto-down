@@ -1,17 +1,17 @@
 ---
 plan_id: PLAN-046
-status: drafting
+status: execution_done
 feature_name: VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册）
 author: [zhaopuming]
 created_at: 2026-09-03
-updated_at: 2026-09-03
+updated_at: 2026-09-04
 
 # Leave these EMPTY here — /auto-plan:review fills them:
 supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 0
+current_step: T5
 total_steps: 5
 ---
 
@@ -216,15 +216,20 @@ worktree 未提交 vm-smoke.mjs（T6 滚动探针）跑完的残留态。）
 
 - T1 app.at 两栏改造（row/col/flex-1 + 类映射表）+ regen。
   验证：`cd autodown/demo && npx playwright test`（72 全过）。
-  [前置：PLAN-043 折入 master]
+  [✅ 已完成] row{h-full w-full}+两 col{flex-1 min-w-0 overflow-hidden}（左 col 带 border-r）+组件类 fill→flex-1 min-h-0 overflow-hidden（渲染侧+py-4 px-5）；style 块结构段换 scoped 工具类兜底定义（demo 无 Tailwind 运行时，vue 轨真 CSS 由本文件提供）+:deep 去 left/right 锚直挂；left/right 类保留为 e2e 定位钩（15 spec 300+ 选择器消费，计划前提修正→待澄清④）；regen REGEN OK；worktree 提交 + playwright 73/73 全过零回归（套件现值 73）。
+  [前置：PLAN-043 折入 master]（已折：a5b184d 在 master）
 - T2 净窗 VM 两栏验证：`auto.exe run -r vm` + vm-smoke 退出码 0
   + 两栏截图 `demo/auto/vm-two-columns.png` 留档。
+  [✅ 已完成] 净窗（预存 auto.exe 残窗先清）+ vm-smoke 9/9 断言组全过退出码 0（首 attempt 滚动收敛 flake，脚本内建重试一次过=既定 bar）；vm-two-columns.png 留档——两栏等宽、中缝分隔线可见；容器编辑面基线 2px 子像素滑移刷新（视觉同帧）；工具链前置：auto.exe 旧二进制缺 MCP click（044 T6 动作）→ cargo build -p auto 重编至 master 后过。worktree 提交。
 - T3 `demo/auto/PARITY.md` 十二项差异清册入库（归宿+证据指针
   +实测 Unsupported 补录）。
+  [✅ 已完成] PARITY.md 入库：十二项逐表（归宿：#1 本计划/#2 #3 #8数据面 ✅043 044/#4→045/#5 #8观感→W2(527)/#6→W3/#7→W4/#9→W5/#10 #12 转介/#11 豁免）；类消费清单逐 token（auto-lang class.rs/iced_adapter.rs/aura_view_builder.rs 行号快照+函数锚点）；实测新增记录=autodown 组件臂 class 整串不读（渲染面板 py-4 px-5 缺席→并入 #5 观感族）、未知 token（left/right）静默跳过。worktree 提交。
 - T4 README Layout note 销号 + 豁免清单同步 + DEBTS 两新行
   （主题/种子）+ 残留核实结果落行。验证：grep 旧注记零残留。
+  [✅ 已完成] README Layout note 改写（两栏收编+兜底新形态+PARITY 指针）+VM track status 增 Two-column layout ✅046 / Theme look 🟡W2 / Initial seed 🟡W3 三行+旧行 PARITY 编号；DEBTS 新增 046 两行（主题观感→527 T8+W2、初始种子→W3）；csb 核实=数据面 043 已销号不新增、thumb 观感并入主题行；grep「stack vertically」零残留（仅计划文件自引）。worktree 提交 e942638。
 - T5 双门复跑（vue e2e + vm-smoke 净窗）+ 状态推进
   execution_done。
+  [✅ 已完成] 双门复跑全绿：playwright 73/73 退出码 0（1.2m）+ vm-smoke 净窗 9/9 断言组退出码 0（首 attempt 滚动收敛 warm-up flake 两回合同款读数，脚本内建重试 bar 内）；全程零 rust 改动（auto-down 无 rust 面、auto-lang 仅重编二进制至 master 未改源）。全 suite 截图 flake 一例（math-edit-face 被 code-block 区域误捕获）——隔离复跑 0 像素差证实 flake、基线还原，非本计划回归。status→execution_done 交 review。
 
 ## 复审记录
 
@@ -232,11 +237,22 @@ worktree 未提交 vm-smoke.mjs（T6 滚动探针）跑完的残留态。）
 
 ## 待澄清事项
 
-- 与 PLAN-043 的折返顺序：043 折入 master 后本计划 T1 即可开工
-  （T2-T5 无冲突可先行）；若 046 先执行则 T1 需 rebase 到 043
-  折后的 app.at 上重放——默认取前者。
-- 面板边框色/内边距等观感类在 VM 轨的 Unsupported 面实测后定
-  契约：保 style 块 vue 兜底 + PARITY 登记（默认案），还是即时
-  等 527 T3 补类后二次 regen（波次并入 W2）。
-- vm-two-columns 截图是否需要双分辨率（对齐 041 双截图口径的
-  宽窗+窄窗）实施时按等宽断言需要定夺。
+- ①（执行前落定）与 PLAN-043 的折返顺序：043 已折入 master
+  （a5b184d，2026-09-03），T1 即基于折后 app.at 开工，默认案成立，
+  无 rebase 需求。
+- ②（T1/T2 执行中落定，默认案）观感类 VM 轨 Unsupported 契约=保
+  style 块 vue 兜底 + PARITY 登记：实测唯一真缺口是 `autodown` 组件
+  臂 class 整串不读（渲染面板 py-4 px-5 内边距缺席，PARITY 实测清单
+  在册）——并入 #5 观感族转 W2/PLAN-527，不等 527 T3 二次 regen。
+- ③（T2 执行中落定）vm-two-columns 截图单分辨率即可：等宽断言由
+  截图（两栏等分+中缝可见）+ vm-smoke 结构断言组共同承载，窄窗档
+  无新增信息，不采双分辨率。
+- ④（T1 执行中落定）变更摘要称自定义类「只被 vue-only 的 style
+  块消费」对 e2e 面不成立：`.left`/`.right` 被 15 个 spec 文件 300+
+  处选为定位钩，删类直接 67 红。处置：两 col 在 Tailwind 类外保留
+  `left`/`right` 锚（VM 轨未知 token 零效果，见 style/class.rs
+  parse_single 未知类静默跳过），e2e spec 零改动；`.panel`/`.panels`
+  e2e 零消费照计划删。vue 轨工具类真 CSS 由 app.at style 块 scoped
+  兜底定义提供（demo 构建无 Tailwind 运行时——package.json 无
+  tailwind 依赖，engine style.css 无工具类，CustomScrollbar 的
+  tailwind 串同样惰性），即「vue 侧 style 块保留兜底」原则的落实。

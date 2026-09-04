@@ -1,5 +1,10 @@
 <template>
-  <div ref="root" class="autodown-editor">
+  <div
+    ref="root"
+    class="autodown-editor"
+    :class="{ 'is-dark': darkMode }"
+    :data-accent="accentAttr"
+  >
     <div ref="wrapper" class="autodown-editor-content-wrapper">
       <div class="autodown-editor-content" data-engine-editor tabindex="-1" @keydown="onContentKeydown">
         <SlashMenu :editor="adapter" :items="slashItems" />
@@ -322,7 +327,18 @@ const props = defineProps<{
    *  configured" placeholder states. */
   runQuery?: RunQueryFn
   loadBlock?: LoadBlockFn
+  /** Theme declaration entry (PLAN-051 T4): mirrors StreamingRenderer's
+   *  darkMode/accent — the DSL `dark_mode:`/`accent:` bindings land here so
+   *  the editor pane renders the same palette档 as the view pane. Values
+   *  per auto-lang Design 22 §7; unpassed = light/indigo (现状零差异). */
+  darkMode?: boolean
+  accent?: 'indigo' | 'coral' | 'ocean' | 'sage' | 'amber'
 }>()
+
+const ACCENTS = ['indigo', 'coral', 'ocean', 'sage', 'amber'] as const
+const accentAttr = computed(() =>
+  ACCENTS.includes(props.accent as (typeof ACCENTS)[number]) ? props.accent : 'indigo'
+)
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'focusblock', block: { id: string; height: number } | null): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
 

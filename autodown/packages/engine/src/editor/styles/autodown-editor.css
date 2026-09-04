@@ -7,9 +7,80 @@
    overrides ride [data-accent] groups below. */
 .autodown-editor,
 .streaming-document {
+  --ad-fg: #111827;
+  --ad-muted: #6b7280;
+  --ad-border: #e5e7eb;
+  --ad-surface: #ffffff;
   --ad-accent: #4f46e5;
   --ad-accent-strong: #4338ca;
   --ad-accent-soft: #eef2ff;
+  --ad-accent-rgb: 79 70 229;
+  --ad-accent-strong-dark: #818cf8;
+}
+
+/* ─── Theme tokens (PLAN-051 T4) ───
+   The neutral tokens above re-declare the numbers every rule already used
+   as its var() fallback — defining them on the dual pane root changes
+   nothing visually in light mode, but lets `.is-dark` flip the whole
+   document face by re-declaring once. Values are the spec rows of auto-lang
+   Design 22 §7 (light = the shipped vue values; dark = the VM track's zinc
+   baseline — FENCE_BG/HEADER/BORDER family — so the two tracks share one
+   dark truth). Per-accent groups below carry each palette's triple plus the
+   dark-only derivations (strong→400 step, soft→accent@15% via --ad-accent-rgb). */
+
+.autodown-editor[data-accent='indigo'],
+.streaming-document[data-accent='indigo'] {
+  --ad-accent: #4f46e5;
+  --ad-accent-strong: #4338ca;
+  --ad-accent-soft: #eef2ff;
+  --ad-accent-rgb: 79 70 229;
+  --ad-accent-strong-dark: #818cf8;
+}
+
+.autodown-editor[data-accent='coral'],
+.streaming-document[data-accent='coral'] {
+  --ad-accent: #e11d48;
+  --ad-accent-strong: #be123c;
+  --ad-accent-soft: #fff1f2;
+  --ad-accent-rgb: 225 29 72;
+  --ad-accent-strong-dark: #fb7185;
+}
+
+.autodown-editor[data-accent='ocean'],
+.streaming-document[data-accent='ocean'] {
+  --ad-accent: #0284c7;
+  --ad-accent-strong: #0369a1;
+  --ad-accent-soft: #f0f9ff;
+  --ad-accent-rgb: 2 132 199;
+  --ad-accent-strong-dark: #38bdf8;
+}
+
+.autodown-editor[data-accent='sage'],
+.streaming-document[data-accent='sage'] {
+  --ad-accent: #059669;
+  --ad-accent-strong: #047857;
+  --ad-accent-soft: #ecfdf5;
+  --ad-accent-rgb: 5 150 105;
+  --ad-accent-strong-dark: #34d399;
+}
+
+.autodown-editor[data-accent='amber'],
+.streaming-document[data-accent='amber'] {
+  --ad-accent: #d97706;
+  --ad-accent-strong: #b45309;
+  --ad-accent-soft: #fffbeb;
+  --ad-accent-rgb: 217 119 6;
+  --ad-accent-strong-dark: #fbbf24;
+}
+
+.autodown-editor.is-dark,
+.streaming-document.is-dark {
+  --ad-fg: #fafafa;
+  --ad-muted: #a1a1aa;
+  --ad-border: #3f3f46;
+  --ad-surface: #09090b;
+  --ad-accent-strong: var(--ad-accent-strong-dark);
+  --ad-accent-soft: rgb(var(--ad-accent-rgb) / 0.15);
 }
 
 .autodown-editor {
@@ -495,7 +566,7 @@ ol.list-node {
   margin: 1rem 0;
   border: 1px solid var(--ad-border, #e5e7eb);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--ad-surface, #ffffff);
   overflow: visible;
   padding: 1.1rem 1rem 1rem;
 }
@@ -614,7 +685,7 @@ ol.list-node {
   margin: 0.75rem 0;
   border: 1px solid var(--ad-border, #e5e7eb);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ad-surface, #ffffff);
   overflow: hidden;
 }
 
@@ -1183,4 +1254,183 @@ ol.list-node {
    ruling: CSS constant over JS measurement). */
 .autodown-block-placeholder.is-loading {
   min-height: 5.5rem;
+}
+
+/* ─── Dark theme overrides (PLAN-051 T4; values = Design 22 §7.4 深色列,
+   the VM track's zinc baseline — FENCE_BG (9,9,11) / FENCE_HEADER_BG
+   (39,39,42) / FENCE_BORDER (63,63,70) / FENCE_BODY_FG (250,250,250) etc).
+   Only faces whose dark value is NOT a plain token flip live here; anything
+   reading var(--ad-*) goes dark via the .is-dark token rule above. Editor
+   pane scoping (.autodown-editor-content) matches the light rules' shape;
+   pane-agnostic widget classes take both roots (plan 042 discipline). ─── */
+
+.autodown-editor.is-dark .autodown-editor-content pre {
+  background: #09090b;
+  border-color: #3f3f46;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code {
+  color: #fafafa;
+}
+
+.autodown-editor.is-dark .autodown-editor-content code {
+  background: rgb(161 161 170 / 0.12);
+  color: #fafafa;
+}
+
+.autodown-editor.is-dark .autodown-editor-content .code-block-container {
+  border-color: #3f3f46;
+  background: #09090b;
+}
+
+.autodown-editor.is-dark .autodown-editor-content .code-block-header {
+  background: #27272a;
+  border-bottom-color: #3f3f46;
+  color: #a1a1aa;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre[data-language] {
+  background: #09090b;
+}
+
+.autodown-editor.is-dark .code-action-btn,
+.streaming-document.is-dark .code-action-btn {
+  color: #a1a1aa;
+}
+
+.autodown-editor.is-dark .code-action-btn:hover,
+.streaming-document.is-dark .code-action-btn:hover {
+  background: rgb(161 161 170 / 0.14);
+  color: #fafafa;
+}
+
+.autodown-editor.is-dark .table-node tr:nth-child(even),
+.streaming-document.is-dark .table-node tr:nth-child(even) {
+  background: #18181b;
+}
+
+/* Callout dark = the VM alpha scheme (callout_kind_classes: *-500/50 border,
+   *-500/10 bg, *-400 header) — the structural divergence row of §7.4: vue's
+   solid pastel is the LIGHT spec, VM's alpha scheme is the DARK spec. */
+.autodown-editor.is-dark .autodown-callout-note {
+  background: rgb(59 130 246 / 0.1);
+  border-color: rgb(59 130 246 / 0.5);
+}
+
+.autodown-editor.is-dark .autodown-callout-note .autodown-callout-header {
+  color: #60a5fa;
+}
+
+.autodown-editor.is-dark .autodown-callout-info {
+  background: rgb(14 165 233 / 0.1);
+  border-color: rgb(14 165 233 / 0.5);
+}
+
+.autodown-editor.is-dark .autodown-callout-info .autodown-callout-header {
+  color: #38bdf8;
+}
+
+.autodown-editor.is-dark .autodown-callout-tip {
+  background: rgb(16 185 129 / 0.1);
+  border-color: rgb(16 185 129 / 0.5);
+}
+
+.autodown-editor.is-dark .autodown-callout-tip .autodown-callout-header {
+  color: #34d399;
+}
+
+.autodown-editor.is-dark .autodown-callout-warning,
+.autodown-editor.is-dark .autodown-callout-caution {
+  background: rgb(245 158 11 / 0.1);
+  border-color: rgb(245 158 11 / 0.5);
+}
+
+.autodown-editor.is-dark .autodown-callout-warning .autodown-callout-header,
+.autodown-editor.is-dark .autodown-callout-caution .autodown-callout-header {
+  color: #fbbf24;
+}
+
+.autodown-editor.is-dark .autodown-callout-danger,
+.autodown-editor.is-dark .autodown-callout-error {
+  background: rgb(239 68 68 / 0.1);
+  border-color: rgb(239 68 68 / 0.5);
+}
+
+.autodown-editor.is-dark .autodown-callout-danger .autodown-callout-header,
+.autodown-editor.is-dark .autodown-callout-error .autodown-callout-header {
+  color: #f87171;
+}
+
+.autodown-editor.is-dark .autodown-editor-content .autodown-math-block {
+  background: #09090b;
+}
+
+.autodown-editor.is-dark .autodown-image-fallback::after {
+  background: rgb(161 161 170 / 0.06);
+  border-color: #3f3f46;
+  color: #a1a1aa;
+}
+
+/* Editor-shell scrollbar flips with the pane (thumb rgba black→white). */
+.autodown-editor.is-dark .autodown-editor-content-wrapper {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.autodown-editor.is-dark .autodown-editor-content-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.autodown-editor.is-dark .autodown-editor-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* ─── hljs dark tokens (editor side; PLAN-051 T4) — values from the
+   dual-track single source (packages/core/rust/src/hljs_scope_map.rs
+   hljs_group_rgb(_, dark), github-dark palette; Design 22 §7.5). ─── */
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-keyword,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-selector-tag,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-doctag,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-section {
+  color: #ff7b72;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-title,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-title.function_,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-function .hljs-title {
+  color: #d2a8ff;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-string,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-regexp,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-addition {
+  color: #a5d6ff;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-number,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-literal,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-variable,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-template-variable,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-attr,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-attribute {
+  color: #79c0ff;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-comment,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-quote,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-deletion {
+  color: #8b949a;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-meta,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-meta-keyword,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-meta-string {
+  color: #7ee787;
+}
+
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-tag,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-name,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-built_in,
+.autodown-editor.is-dark .autodown-editor-content pre code .hljs-type {
+  color: #7ee787;
 }

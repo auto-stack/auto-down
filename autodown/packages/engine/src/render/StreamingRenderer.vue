@@ -1,5 +1,10 @@
 <template>
-  <div ref="containerRef" class="streaming-document" :class="{ 'is-sync': scrollSync }">
+  <div
+    ref="containerRef"
+    class="streaming-document"
+    :class="{ 'is-sync': scrollSync, 'is-dark': darkMode }"
+    :data-accent="accentAttr"
+  >
     <template v-for="(part, idx) in parts" :key="part.kind + '-' + idx">
       <MarkdownRender
         v-if="part.kind === 'markdown'"
@@ -95,11 +100,24 @@ const props = withDefaults(
      *  measurement. Plain streaming reads should turn this OFF to keep the
      *  normal heading/paragraph vertical rhythm. */
     scrollSync?: boolean
+    /** Theme declaration entry (PLAN-051 T4): which palette档 the document
+     *  face renders in. Declarative in the view tree (the DSL
+     *  `dark_mode:`/`accent:` bindings land here) — NOT an ambient CSS fact
+     *  the VM track can't see. Values per auto-lang Design 22 §7. */
+    darkMode?: boolean
+    accent?: 'indigo' | 'coral' | 'ocean' | 'sage' | 'amber'
   }>(),
   {
     streaming: false,
     scrollSync: true,
+    darkMode: false,
+    accent: 'indigo',
   }
+)
+
+const ACCENTS = ['indigo', 'coral', 'ocean', 'sage', 'amber'] as const
+const accentAttr = computed(() =>
+  ACCENTS.includes(props.accent as (typeof ACCENTS)[number]) ? props.accent : 'indigo'
 )
 
 const { segments } = useStreamingDocument(computed(() => props.source))
@@ -450,7 +468,7 @@ defineExpose({
 .streaming-document :deep(.markdown-renderer) {
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 /* Headings */
@@ -519,7 +537,7 @@ defineExpose({
 
 .streaming-document :deep(.admonition-content) {
   padding: 0 !important;
-  color: #111827 !important;
+  color: var(--ad-fg, #111827) !important;
 }
 
 .streaming-document :deep(.admonition-content) > .markdown-renderer > *:first-child {
@@ -575,7 +593,7 @@ defineExpose({
   margin: 0.75rem 0;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ad-surface, #ffffff);
   overflow: hidden;
 }
 
@@ -588,7 +606,7 @@ defineExpose({
   border-bottom: 1px solid transparent;
   font-weight: 500;
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--ad-fg, #111827);
   user-select: none;
   cursor: pointer;
   list-style: none;
@@ -601,6 +619,11 @@ defineExpose({
 
 .streaming-document :deep(details[open] summary) {
   border-bottom-color: #e5e7eb;
+}
+
+.streaming-document.is-dark :deep(details),
+.streaming-document.is-dark :deep(details[open] summary) {
+  border-color: #3f3f46;
 }
 
 .streaming-document :deep(details summary:hover) {
@@ -710,7 +733,7 @@ defineExpose({
 }
 
 .streaming-document :deep(pre[data-language] .codeblock-language-label:hover) {
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 /* Copy button for code blocks */
@@ -732,7 +755,7 @@ defineExpose({
 
 .streaming-document :deep(pre[data-language] .codeblock-copy-btn:hover) {
   background: hsl(220 9% 46% / 0.14);
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 .streaming-document :deep(pre[data-language] .codeblock-copy-icon) {
@@ -778,7 +801,7 @@ defineExpose({
   background: none;
   padding: 0;
   border: none;
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 /* ─── Lowlight syntax highlighting tokens (preview) ───
@@ -859,7 +882,7 @@ defineExpose({
   margin: 0.75rem 0;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ad-surface, #ffffff);
   overflow: hidden;
 }
 
@@ -885,7 +908,7 @@ defineExpose({
 .streaming-document :deep(.mermaid-label-text) {
   font-size: 0.8rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--ad-muted, #6b7280);
   text-transform: lowercase;
   white-space: nowrap;
   overflow: hidden;
@@ -910,7 +933,7 @@ defineExpose({
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: #6b7280;
+  color: var(--ad-muted, #6b7280);
   cursor: pointer;
   font-size: 0.8rem;
   line-height: 1;
@@ -921,7 +944,7 @@ defineExpose({
 .streaming-document :deep(.mermaid-mode-btn:hover),
 .streaming-document :deep(.mermaid-action-btn:hover) {
   background: hsl(220 9% 46% / 0.14);
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 .streaming-document :deep(.mermaid-block-header .action-icon) {
@@ -957,7 +980,7 @@ defineExpose({
 .streaming-document :deep(.mermaid-preview-area) {
   max-height: 320px;
   overflow: auto;
-  background: #ffffff;
+  background: var(--ad-surface, #ffffff);
 }
 
 .streaming-document :deep(.mermaid-source-panel) {
@@ -970,7 +993,7 @@ defineExpose({
   font-size: 0.88rem;
   line-height: 1.5;
   white-space: pre-wrap;
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 /* Inline code */
@@ -980,7 +1003,7 @@ defineExpose({
   background: hsl(220 9% 46% / 0.08);
   padding: 0.15rem 0.35rem;
   border-radius: 4px;
-  color: #111827;
+  color: var(--ad-fg, #111827);
 }
 
 /* Links */
@@ -1132,7 +1155,7 @@ defineExpose({
 .streaming-document :deep(hr) {
   margin: 1rem 0;
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--ad-border, #e5e7eb);
 }
 
 /* ---------- Tables ----------
@@ -1175,5 +1198,156 @@ defineExpose({
 /* Hide markstream-vue built-in resize handle */
 .streaming-document :deep(.table-node__resize-handle) {
   display: none !important;
+}
+
+/* ─── Dark theme overrides (PLAN-051 T4; Design 22 §7.4 深色列 = VM zinc
+   baseline). Only faces whose dark value is NOT a plain var() flip live
+   here — token-driven surfaces (fg/border/surface/headings/links/table th)
+   go dark via the .is-dark token rule in autodown-editor.css. !important
+   mirrors the vendor-override layer it must beat (markstream !important
+   rules); higher specificity (.is-dark) does the rest. ─── */
+
+.streaming-document.is-dark :deep(pre),
+.streaming-document.is-dark :deep(pre[data-language]),
+.streaming-document.is-dark :deep(pre:not([data-language])) {
+  background: #09090b !important;
+  border-color: #3f3f46 !important;
+}
+
+.streaming-document.is-dark :deep(.code-block-container) {
+  background: #09090b !important;
+  border-color: #3f3f46 !important;
+}
+
+.streaming-document.is-dark :deep(.code-block-header) {
+  background: #27272a !important;
+  border-bottom-color: #3f3f46 !important;
+  color: #a1a1aa !important;
+}
+
+.streaming-document.is-dark :deep(.codeblock-language-badge) {
+  background: rgb(161 161 170 / 0.1);
+  border-bottom-color: #3f3f46;
+  color: #a1a1aa;
+}
+
+.streaming-document.is-dark :deep(code) {
+  background: rgb(161 161 170 / 0.12);
+}
+
+.streaming-document.is-dark :deep(.admonition-note) {
+  background: rgb(59 130 246 / 0.1) !important;
+  border-color: rgb(59 130 246 / 0.5) !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-note) .admonition-legend {
+  color: #60a5fa !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-info) {
+  background: rgb(14 165 233 / 0.1) !important;
+  border-color: rgb(14 165 233 / 0.5) !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-info) .admonition-legend {
+  color: #38bdf8 !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-tip) {
+  background: rgb(16 185 129 / 0.1) !important;
+  border-color: rgb(16 185 129 / 0.5) !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-tip) .admonition-legend {
+  color: #34d399 !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-warning),
+.streaming-document.is-dark :deep(.admonition-caution) {
+  background: rgb(245 158 11 / 0.1) !important;
+  border-color: rgb(245 158 11 / 0.5) !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-warning) .admonition-legend,
+.streaming-document.is-dark :deep(.admonition-caution) .admonition-legend {
+  color: #fbbf24 !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-danger),
+.streaming-document.is-dark :deep(.admonition-error) {
+  background: rgb(239 68 68 / 0.1) !important;
+  border-color: rgb(239 68 68 / 0.5) !important;
+}
+
+.streaming-document.is-dark :deep(.admonition-danger) .admonition-legend,
+.streaming-document.is-dark :deep(.admonition-error) .admonition-legend {
+  color: #f87171 !important;
+}
+
+.streaming-document.is-dark :deep(.mermaid-source-panel) {
+  background: #09090b;
+}
+
+.streaming-document.is-dark :deep(.mermaid-block-container) > div:not(.mermaid-block-header) .flex {
+  background: rgba(9, 9, 11, 0.9);
+}
+
+.streaming-document.is-dark :deep(.image-error) {
+  background: rgb(161 161 170 / 0.06);
+  border-color: #3f3f46;
+  color: #a1a1aa;
+}
+
+.streaming-document.is-dark :deep(.checkbox-icon.checkbox-unchecked) {
+  color: #a1a1aa;
+}
+
+/* hljs dark tokens (streaming side) — values from the dual-track single
+   source (packages/core/rust/src/hljs_scope_map.rs, github-dark palette). */
+.streaming-document.is-dark :deep(pre code .hljs-keyword),
+.streaming-document.is-dark :deep(pre code .hljs-selector-tag),
+.streaming-document.is-dark :deep(pre code .hljs-doctag),
+.streaming-document.is-dark :deep(pre code .hljs-section) {
+  color: #ff7b72;
+}
+
+.streaming-document.is-dark :deep(pre code .hljs-title),
+.streaming-document.is-dark :deep(pre code .hljs-title.function_),
+.streaming-document.is-dark :deep(pre code .hljs-function .hljs-title) {
+  color: #d2a8ff;
+}
+
+.streaming-document.is-dark :deep(pre code .hljs-string),
+.streaming-document.is-dark :deep(pre code .hljs-regexp),
+.streaming-document.is-dark :deep(pre code .hljs-addition) {
+  color: #a5d6ff;
+}
+
+.streaming-document.is-dark :deep(pre code .hljs-number),
+.streaming-document.is-dark :deep(pre code .hljs-literal),
+.streaming-document.is-dark :deep(pre code .hljs-variable),
+.streaming-document.is-dark :deep(pre code .hljs-template-variable),
+.streaming-document.is-dark :deep(pre code .hljs-attr),
+.streaming-document.is-dark :deep(pre code .hljs-attribute) {
+  color: #79c0ff;
+}
+
+.streaming-document.is-dark :deep(pre code .hljs-comment),
+.streaming-document.is-dark :deep(pre code .hljs-quote),
+.streaming-document.is-dark :deep(pre code .hljs-deletion) {
+  color: #8b949a;
+}
+
+.streaming-document.is-dark :deep(pre code .hljs-meta),
+.streaming-document.is-dark :deep(pre code .hljs-meta-keyword),
+.streaming-document.is-dark :deep(pre code .hljs-meta-string) {
+  color: #7ee787;
+}
+
+.streaming-document.is-dark :deep(pre code .hljs-tag),
+.streaming-document.is-dark :deep(pre code .hljs-name),
+.streaming-document.is-dark :deep(pre code .hljs-built_in),
+.streaming-document.is-dark :deep(pre code .hljs-type) {
+  color: #7ee787;
 }
 </style>

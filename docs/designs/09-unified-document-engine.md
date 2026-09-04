@@ -331,7 +331,7 @@ Table/Codeblock/Image/Separator…`。这一映射是"渲染走 AURA"的落点�
 
 | 计划 | 主题 | 交付 |
 |---|---|---|
-| [Plan 016](../plans/archive/016-unified-block-core.md) | 统一块模型内核 | 强类型块树 + 选区/操作 + 序列化 + rust 发射探针 |
+| [Plan 016](../plans/archived/016-unified-block-core.md) | 统一块模型内核 | 强类型块树 + 选区/操作 + 序列化 + rust 发射探针 |
 | [Plan 017](../plans/017-render-unify-package-merge.md) | 渲染统一与包合并 | `@autodown/engine` 0.3.0 + 面板渲染器 + DOM 契约保持 |
 | [Plan 018](../plans/018-editor-kernel-replacement.md) | 编辑内核替换（vue） | Tiptap 退役 + 自研编辑层 + 命令层 API |
 | [Plan 019](../plans/019-rust-platform.md) | rust 平台落地 | autodown-core crate + iced 渲染 + 编辑壳 + registry 重定向 |

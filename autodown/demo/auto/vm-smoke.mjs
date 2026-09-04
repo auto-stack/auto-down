@@ -34,11 +34,20 @@
 // HTTP — JSON-RPC 2.0 POSTs to http://127.0.0.1:<port>/mcp with the tools
 // autoui_snapshot / autoui_action / autoui_state.
 //
-// Known pitfall (jade README:127): under PHYSICAL synthetic clicks the
-// probed process occasionally exits silently with code 1 (no stack, no
-// log) — this script stays on the MCP logical channel (no physical clicks)
-// and retries the whole run ONCE on failure, which is the established
-// workaround bar.
+// Known pitfall (root-caused by PLAN-049, 2026-09-04): the probed window
+// process occasionally dies mid-run — exit code 1, no stack, no log. Root
+// cause is EXTERNAL termination on this shared machine, NOT the app or the
+// probe channel: parallel agent sessions sweep stray auto.exe processes
+// with taskkill /F-class kills (TerminateProcess — measured to yield exit
+// code 1 with zero output), and OS/shell-level window closes produce the
+// clean exit-0 variant (PLAN 065's pinned "shell pre-closes" path). No
+// in-process silent-exit(1) path exists (PLAN-049 T3 exhaustive sweep);
+// idle/persistent-client arms die at uncorrelated times while untouched
+// arms outlive 5+ minutes — no timer, no MCP-client correlation, and the
+// old "physical synthetic clicks" attribution is retired (an idle,
+// zero-interaction arm dies the same way). This script stays on the MCP
+// logical channel and retries the whole run ONCE on failure, which rides
+// the gaps between sweep waves and remains the workaround bar.
 //
 // Usage (from autodown/demo/auto, in two terminals):
 //
@@ -517,7 +526,7 @@ async function runOnce() {
 
 async function main() {
   await waitForServer(30000)
-  // the jade README:127 silent-exit pitfall bar: retry the whole run once
+  // the PLAN-049 external-kill pitfall bar: retry the whole run once
   let lastErr
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -528,7 +537,7 @@ async function main() {
       return
     } catch (err) {
       lastErr = err
-      if (attempt === 1) console.error(`vm-smoke: first attempt failed (${err.message}) — retrying once (jade README:127 bar)`)
+      if (attempt === 1) console.error(`vm-smoke: first attempt failed (${err.message}) — retrying once (PLAN-049 external-kill bar)`)
     }
   }
   console.error(`vm-smoke: FAIL — ${lastErr.message}`)

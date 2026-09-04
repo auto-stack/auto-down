@@ -281,5 +281,18 @@ node vm-smoke.mjs            # exit 0 = pass; --port <n> for a non-default
 
 Notes: the script types a per-attempt nonce doc, so it is repeatable
 against a live window (no restart between runs); on failure it retries the
-whole run once (the jade README:127 silent-exit bar — physical-click probes
-flake; this script stays on the MCP logical channel).
+whole run once (the PLAN-049 external-kill bar — see below).
+
+Running caveat (PLAN-049, 2026-09-04): the VM window may die mid-session —
+silently with exit code 1 (no stack, no log) or cleanly with exit code 0
+(log tail shows `------------- end --------------`). Both are EXTERNAL
+terminations on this shared machine, not app defects: parallel agent
+sessions sweep stray `auto.exe` processes with taskkill-style kills
+(measured signature: `TerminateProcess` → exit 1, zero output), and
+OS/shell-level window closes yield the clean exit-0 variant (PLAN 065's
+"shell pre-closes" path; the app never sees CloseRequested). No in-process
+silent-exit path exists, there is no timer (untouched arms outlive 5+
+minutes), and MCP client state is uncorrelated. If a demo/soak window
+vanishes, restart it; for long soaks, launch the process detached from any
+agent session tree (e.g. PowerShell `Start-Process`) — a detached instance
+survived the full probe window in PLAN-049.

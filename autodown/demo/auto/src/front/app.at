@@ -141,10 +141,16 @@ widget App {
         // update and pushed into iced_adapter::set_dark_mode (auto-lang
         // Plan 370 D-GAP sync, renderer.rs read_state("dark_mode") arm), so
         // the `false` initial value runs the VM window on the light
-        // palette from frame one. vue track never consumes it (inert ref —
-        // e2e 73 is the zero-regression gate). Runtime switching entry
-        // (settings surface) is out of scope — registered as wontfix.
+        // palette from frame one. PLAN-051 T5: vue track now consumes it
+        // too — the `dark_mode:`/`accent:` props on both engine tags
+        // declare the palette档 in the view tree (engine darkMode/accent
+        // props → root .is-dark + data-accent), and the settings popover
+        // (settings_popover.at, T6) flips this state on both tracks.
         var dark_mode bool = false
+        // PLAN-051 T5: accent 盘名（indigo|coral|ocean|sage|amber）——vue 轨
+        // 经引擎 accent prop 消费（data-accent → --ad-accent* 覆盖组）；VM 轨
+        // document accent 消费为 PARITY 豁免行（popover swatch 本身两轨原生）。
+        var accent_color str = "indigo"
     }
 
     computed {
@@ -163,7 +169,11 @@ widget App {
 
     view {
         div {
-            class: "app",
+            // PLAN-051 T5: app 级 chrome 深浅条件类——vue 轨 .app-dark 兜底
+            // 规则在 style 块（.toolbar/.border-r 深色覆写，值=Design 22
+            // §7.1 深档）；VM 轨 class 惰性，chrome 由 dark_mode 状态经
+            // D-GAP 全局翻转（PLAN-047 链路）。
+            class: if .dark_mode { "app app-dark" } else { "app" },
             header {
                 class: "toolbar",
                 text "AutoDown v0.1"
@@ -191,6 +201,12 @@ widget App {
                             content: .content,
                             placeholder: "Start typing...",
                             class: "flex-1 min-h-0 overflow-hidden",
+                            // PLAN-051 T5: 主题声明入口——引擎 darkMode/accent
+                            // props（组件根 .is-dark + data-accent；缺省即
+                            // pre-051 观感）。VM 臂 prop 惰性（dark_mode 状态经
+                            // D-GAP 全局链路自达）。
+                            dark_mode: .dark_mode,
+                            accent: .accent_color,
                             // PLAN-043 T3: VM 轨滚动同步双臂（编辑壳全内容
                             // 高、外滚；vue 轨这些 props 不达组件根，惰性）。
                             scroll_sync: true,
@@ -211,6 +227,9 @@ widget App {
                             ref: "rendererRef",
                             content: .content,
                             streaming: false,
+                            // PLAN-051 T5: 主题声明入口——同编辑臂。
+                            dark_mode: .dark_mode,
+                            accent: .accent_color,
                             placeholder_block_id: .placeholder_id,
                             placeholder_height: .placeholder_height,
                             scroll_sync: true,
@@ -478,6 +497,27 @@ widget App {
 
         .splitter-hover-zone:hover::after {
             opacity: 1;
+        }
+
+        /* PLAN-051 T5: 深色档 app chrome（.app-dark 由视图树条件类挂上——
+           声明式，两轨可见；VM 轨不吃这些规则，其 chrome 走 D-GAP 全局
+           主题）。值=Design 22 §7.1 深档（zinc 系，VM 基准）。 */
+        .app-dark {
+            color: #f4f4f5;
+            background: #09090b;
+        }
+
+        .app-dark .toolbar {
+            border-bottom-color: #27272a;
+            background: #18181b;
+        }
+
+        .app-dark .border-r {
+            border-right-color: #27272a;
+        }
+
+        .app-dark .splitter-hover-zone::after {
+            background: rgba(255, 255, 255, 0.15);
         }
     }
 }

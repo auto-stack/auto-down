@@ -19,7 +19,7 @@ auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据
 | 6 | 初始文档种子 | ext `initial_content()` 载 src/content.ts 全文档 | ✅ 同文档起步（PLAN-047 收口）：顶层 `use.web.fn` → 适配器链 app_ext.at→app_ext.vm.at（生成物），initial_content 真符号非桩；`AUTO_VM_EXT_STUBS=0` 仍链接 | ✅ **PLAN-047 收口**（单源：content.ts → scripts/gen-vm-content.mjs 生成，双轨不漂移，T3 回路实证） | scripts/gen-vm-content.mjs；src/front/utils/app_ext.vm.at（GENERATED 头注）；app_ext.at 锚；vm-seeded-start.png |
 | 7 | 编辑器空态 | placeholder「Start typing...」空态文案 | 编辑壳臂 `let _ = props.get("placeholder")` 读取后忽略 | **W4 预留**，前置编辑壳空态能力 | auto-lang aura_view_builder.rs autodown_editor 臂 placeholder 行（Plan 040 注） |
 | 8 | CustomScrollbar 观感/拖拽 | 自绘 thumb + 拖拽 | 三测量数据已接（043）；拖拽发射面实证（T2 smoke drag 组过）；thumb 观感差异残留 | 数据面 ✅ **PLAN-043 收口**；thumb 观感段转介 auto-lang 侧/后续清册（原「并入 W2」——W2 主题段已由 PLAN-047 落地，thumb 未随，残段在册不销号） | DEBTS.md 040 CustomScrollbar 销号行；vm-smoke.mjs 拖拽断言；vm-drag-before/-after.png |
-| 9 | web-only 块降级 | mermaid/query/math 真渲染 | mermaid「web-only」头面板、query「未求值」标签、math 包裹降级 | **W5 裁定**（豁免登记 or 补渲染，按成本定夺） | vm-block-coverage2.png（041 实证） |
+| 9 | web-only 块降级 | mermaid/query/math 真渲染 | mermaid「web-only」头面板、query「未求值」标签、math「web-only」头面板 + $$ 包裹（048 math chrome 对齐） | ✅ **PLAN-048 裁定收口：显式豁免登记**（mermaid resvg 无布局引擎/query 求值归宿主/math KaTeX web-only——三者补渲染成本高企，维持降级 chrome + 显式标签；math header 随 048 对齐面板族） | vm-block-coverage2.png（041 实证）；048 截图随实机门补档 |
 | 10 | mono CJK tofu | 系统字体回退正常 | code fence 等宽字体 CJK 豆腐框 | **auto-lang 侧**（字体 fallback），清册转介 | 041 复审债候选三条之一 |
 | 11 | ext 桩告警四符号 | initial_content/is_vue/logSave/logCancel/useDemoAppBridge 真实现 | initial_content 经适配器链真实现（PLAN-047，app_ext.vm.at）；is_vue/logSave/logCancel/useDemoAppBridge 仍 no-op 平台桩 + 运行时各告警一次（**预期行为**） | **显式豁免维持（四符号）**（`AUTO_VM_EXT_STUBS=0` 可复原硬错误；initial_content 已出桩列，STUBS=0 下真符号链接） | DEBTS.md 040 ext 桩行（四符号修准）；README「Ext stub warnings」段；scripts/gen-vm-content.mjs |
 | 12 | 编辑面能力差 | @autodown/engine WYSIWYG 块家族（气泡/斜杠菜单/undo/节点视图） | cosmic-text 块编辑壳（块粒度编辑） | **长期线**，清册转介——台账「块组件契约/WYSIWYG」目标族主战场，非波次化对象 | packages/engine/EDITOR-CONTRACT.md；specs 台账 goals 族 |
@@ -65,5 +65,5 @@ app.at style 块 **scoped 工具类兜底定义** 提供（plan 046「vue 侧 st
 |------|------|------|-----------|
 | W2 | 主题对齐（VM 浅色两栏） | auto-lang PLAN-527 T8（dark/theme） | ✅ **PLAN-047 收口**主题段（#5）；#8 thumb 观感段、#4 渲染面板内边距（py-4 px-5 VM 消费臂）未随，转介 auto-lang 侧/后续清册 |
 | W3 | 初始文档种子 | auto-lang ext 资产机制 或 DSL 多行字面量立项 | ✅ **PLAN-047 收口**（#6；442 A3 适配器链 + 生成转义字面量，两前置均绕开） |
-| W4 | 编辑器空态 placeholder | 编辑壳空态能力 | #7 |
-| W5 | web-only 块降级裁定（豁免登记 or 补渲染） | 届时按成本定夺 | #9 |
+| W4 | 编辑器空态 placeholder | 编辑壳空态能力 | ✅ **PLAN-048 收口**（#7） |
+| W5 | web-only 块降级裁定（豁免登记 or 补渲染） | 届时按成本定夺 | ✅ **PLAN-048 裁定收口**（#9 显式豁免 + math chrome 对齐） |

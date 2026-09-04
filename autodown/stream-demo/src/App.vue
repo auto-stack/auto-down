@@ -80,7 +80,7 @@ onMounted(() => feed.play())
 </script>
 
 <template>
-  <div class="stream-demo">
+  <div class="stream-demo" :class="{ 'is-dark': darkMode }">
     <header class="stream-demo__header">
       <h1>AutoDown Streaming Demo · 对拍台</h1>
       <a href="https://github.com/..." target="_blank" rel="noreferrer">@autodown/engine</a>

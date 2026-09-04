@@ -214,27 +214,31 @@ function SetTheme(arg0: any): void {
             background: transparent;
         }
 
-        .bg-indigo-500 {
+        /* PLAN-051 复审 F2 修正：swatch 色类挂 .settings-popover 作用域——
+           裸类 (0,2,0 scoped) 输给按钮重置 .settings-popover button
+           (0,2,1 scoped)，五色 swatch 曾全透明（vue-051-accent-coral.png
+           判读发现）。作用域版 (0,3,0) 必胜；主题钮 active 底同升。 */
+        .settings-popover .bg-indigo-500 {
             background: #6366f1;
         }
 
-        .bg-indigo-600 {
+        .settings-popover .bg-indigo-600 {
             background: #4f46e5;
         }
 
-        .bg-rose-500 {
+        .settings-popover .bg-rose-500 {
             background: #f43f5e;
         }
 
-        .bg-sky-500 {
+        .settings-popover .bg-sky-500 {
             background: #0ea5e9;
         }
 
-        .bg-emerald-500 {
+        .settings-popover .bg-emerald-500 {
             background: #10b981;
         }
 
-        .bg-amber-500 {
+        .settings-popover .bg-amber-500 {
             background: #f59e0b;
         }
 

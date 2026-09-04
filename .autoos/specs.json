@@ -276,6 +276,17 @@
           "PLAN-050"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P051-2",
+        "section": "goals",
+        "title": "Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings — 目标",
+        "content": "F1-F6 全达成（复审 A1-A7 逐条复验 PASS）：\n\n1. **F1 规约化基座**：引擎渲染面全部硬编码样式值有 Design 22 §7 规约行出处（零游离程序核对），accent 双定义收敛单源。\n2. **F2 view≡stream 自动门**：stream-demo 对拍进 playwright，(light/dark)×indigo + dark×coral 三组断言零差异——**首跑即零差异**，复审期复跑仍绿。\n3. **F3 引擎主题声明入口**：双组件 props 缺省档与现状逐像素等价（既有基线零回归），切换断言钉死。\n4. **F4 双轨 settings**：vue 轨 popover 实机切深浅/accent 作用于两侧面板（.is-dark/data-accent 断言+截图）；VM 轨 popover 原生渲染、dark_mode 翻转驱动 D-GAP 链路（MCP 全链路驱动 PASS）。\n5. **F5 DEBTS 050 处置**：实现分支落地（成本远低于豁免线）——buffer 重着色 + core 层双向测试 + 实机深浅截图，DEBTS 行销号。\n6. **F6 默认布局零扰动**：edit+view 默认态不变（⚙ 钮+关态零渲染为工具栏增量），73 条既有 e2e 断言零改动全绿，vm-smoke 11/11。",
+        "file": "docs/plans/archived/051-vue-view-theme-spec-settings.md",
+        "related": [
+          "PLAN-051"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -522,10 +533,11 @@
         "id": "P047-3",
         "section": "architecture",
         "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 架构方案",
-        "content": "主题机制：app.at model 声明 renderer 识别名 dark_mode 变量（var dark_mode bool = false），auto-lang Plan 370 D-GAP sync（renderer.rs read_state(\"dark_mode\") 臂）每 view 更新推 iced_adapter::set_dark_mode——声明初值即首帧主题，a 案零 auto-lang 改动；Plan 458 env 种子（AUTO_UI_THEME）仅设置时介入。种子机制：content.ts 单源→scripts/gen-vm-content.mjs 转义单行字面量生成 app_ext.vm.at（GENERATED 头注+再生命令，幂等）→顶层 use.web.fn initial_content 经 app_ext.at 码评锚走 442 A3 适配器链（X.at→X.vm.at→X.web.at）。关键门控事实：.ts 导入路径从不进适配器链（ext_stubs.rs load_at_ext_imports 直 skip）；auto-man ext 拷贝 widget-use only——锚文件与顶层 use.web.fn 对 vue 构建双不可见（gen ext 目录仅 app_ext.ts 原样拷贝，复验）。",
+        "content": "主题机制：app.at model 声明 renderer 识别名 dark_mode 变量（var dark_mode bool = false），auto-lang Plan 370 D-GAP sync（renderer.rs read_state(\"dark_mode\") 臂）每 view 更新推 iced_adapter::set_dark_mode——声明初值即首帧主题，a 案零 auto-lang 改动；Plan 458 env 种子（AUTO_UI_THEME）仅设置时介入。种子机制：content.ts 单源→scripts/gen-vm-content.mjs 转义单行字面量生成 app_ext.vm.at（GENERATED 头注+再生命令，幂等）→顶层 use.web.fn initial_content 经 app_ext.at 码评锚走 442 A3 适配器链（X.at→X.vm.at→X.web.at）。关键门控事实：.ts 导入路径从不进适配器链（ext_stubs.rs load_at_ext_imports 直 skip）；auto-man ext 拷贝 widget-use only——锚文件与顶层 use.web.fn 对 vue 构建双不可见（gen ext 目录仅 app_ext.ts 原样拷贝，复验）。\n\n【PLAN-051 supersede 注记 2026-09-04】主题机制延伸至运行时切换器（settings 双轨+引擎 props 声明入口+fence buffer 重着色），由 P051-3 接替扩展；本条 D-GAP/浅色盘内容仍有效。",
         "file": "docs/plans/archived/047-vm-demo-look-finish.md",
         "related": [
-          "PLAN-047"
+          "PLAN-047",
+          "PLAN-051"
         ],
         "status": "stable"
       },
@@ -555,10 +567,22 @@
         "id": "P050-3",
         "section": "architecture",
         "title": "VM demo 代码块与行内渲染对齐 — 架构方案",
-        "content": "排查-修复不动架构，落点全在既有渲染链路（2026-09-04 master 快照锚点，\nauto-lang 为活跃仓，执行期以函数/臂名锚复核行号）：\n\n- **F1/F2 主战场**：`crates/auto-lang/src/ui/autodown_render.rs` ——\n  :392「lang-<token> 类携带语言到 renderer 的 syntect 着色路径」；\n  :407-419 PLAN-041 fence 三态统一（view/stream 正文 = 共享 buffer 绘制，\n  code-editor 缺席时降级 lang-<token> View::Text 走 renderer syntect）；\n  :246 `fence_view_key`。高亮 token 流的组装点即标点丢失嫌疑面；\n  高亮 Theme 的选取点即 F2 嫌疑面（与 Plan 370 D-GAP `set_dark_mode`\n  同路径核对主题联动）。\n- **F3**：`autodown_render.rs:969` fence chrome 结构（圆角容器 >\n  header + 代码区）——header 标签条在预览臂塌陷（文字缺失 + 容器宽度\n  shrink），编辑臂同结构正常（:962 测试先例可对照）。\n- **F4**：`crates/auto-lang/src/ui/autodown_editor/widget.rs`（cosmic-text\n  块编辑壳）——行内 span 测宽/布局重叠；048 刚在 master 稳住编辑壳\n  （66/66），直接其上修，不重开结构。\n- **登记面**：`autodown/demo/auto/PARITY.md` 差异总表补行（四项盲区\n  立案销账）；`DEBTS.md` 若实勘出余债随行登记。",
+        "content": "排查-修复不动架构，落点全在既有渲染链路（2026-09-04 master 快照锚点，\nauto-lang 为活跃仓，执行期以函数/臂名锚复核行号）：\n\n- **F1/F2 主战场**：`crates/auto-lang/src/ui/autodown_render.rs` ——\n  :392「lang-<token> 类携带语言到 renderer 的 syntect 着色路径」；\n  :407-419 PLAN-041 fence 三态统一（view/stream 正文 = 共享 buffer 绘制，\n  code-editor 缺席时降级 lang-<token> View::Text 走 renderer syntect）；\n  :246 `fence_view_key`。高亮 token 流的组装点即标点丢失嫌疑面；\n  高亮 Theme 的选取点即 F2 嫌疑面（与 Plan 370 D-GAP `set_dark_mode`\n  同路径核对主题联动）。\n- **F3**：`autodown_render.rs:969` fence chrome 结构（圆角容器 >\n  header + 代码区）——header 标签条在预览臂塌陷（文字缺失 + 容器宽度\n  shrink），编辑臂同结构正常（:962 测试先例可对照）。\n- **F4**：`crates/auto-lang/src/ui/autodown_editor/widget.rs`（cosmic-text\n  块编辑壳）——行内 span 测宽/布局重叠；048 刚在 master 稳住编辑壳\n  （66/66），直接其上修，不重开结构。\n- **登记面**：`autodown/demo/auto/PARITY.md` 差异总表补行（四项盲区\n  立案销账）；`DEBTS.md` 若实勘出余债随行登记。\n\n【PLAN-051 supersede 注记 2026-09-04】差异清册十六项→十七项（#17 运行时主题切换器+accent 盘 CONSUMED；F4 上游回归 051-候选行），由 P051-3 接替扩展；本条 #13-#16 收口行仍有效。",
         "file": "docs/plans/archived/050-vm-codeblock-inline-parity.md",
         "related": [
-          "PLAN-050"
+          "PLAN-050",
+          "PLAN-051"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P051-3",
+        "section": "architecture",
+        "title": "Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings — 架构方案",
+        "content": "四层纪律（真值流，规约先行——杜绝 vue 专属 CSS 注入承载语义）：\n\n1. **语义层（DSL 状态）**：`dark_mode`（app.at:147 既有）/`accent_color`（新增）——VM 经 Plan 370 D-GAP 消费，vue 经绑定消费。\n2. **声明层（视图树）**：app 级 chrome 条件类串（`.app-dark`）+ 引擎标签 `dark_mode:`/`accent:` 绑定（vue.rs 两臂发射 `:dark-mode`/`:accent`；VM 臂 prop 惰性、经全局链路自达）。\n3. **规约层（Design 22 §7）**：每受主题影响的面的取值先落规约行（格式照 §4.6：规约值+Vue 锚点+VM 锚点）；深色档以 VM zinc 现值为基准反向对齐（与 050 浅色档互为镜像）。\n4. **实现层（双端投影）**：引擎 CSS `.is-dark` 修饰类+`[data-accent]` 覆盖组（取值逐条对齐规约行）；VM `family_of` 常量双档+`hljs_scope_map.rs` 镜像。\n\n**关键结构裁定与锚点**：\n- demo 与 stream-demo 保持分立：demo=VM 平价锚（默认布局不动），stream-demo=测试仪器（对拍逻辑不可跨模式泛化）；三模式统一开关另行立项。\n- 引擎主题 token 层：`--ad-*` 中性板双根声明 + 五 accent `[data-accent]` 组 + `.is-dark` 档（strong→400 步、soft→accent@15% 经 `--ad-accent-rgb`）。\n- `native_button` 显式原生逃生名：避开 `button`→shadcn `<Button>` 映射（reka-ui 依赖链），VM 两臂 button 同臂别名；`shadcn: off` 整关方案否决（连引擎组件映射一起关）。\n- `app_ext.at` 空锚点+`use.web.fn` 转发声明 = Plan 424 认可的纯转发口形态（X.vm.at 链优先序不受影响）。\n- DEBTS 050 处置：`retheme_all_fence_buffers`（core.rs）挂 renderer 两翻转臂（Plan 370 D-GAP 值变化臂+Plan 518 set_theme 执行臂），fence 叶 `ViEditor::update_theme` 换档；PLAN-050 `ensure_code_family_spans` 帧内幂等自动补回 family span。\n- 子→父 emit 三补面（dynamic.rs/aura_view_builder.rs）：纯 emit 子件 HandlerNotFound 后声明式路由照派；Plan-367 引号键 `on\"SetTheme\"` 剥引号归一；`dispatch_parent_route` 按 `handler_param_count` 裁剪零参幻影载荷（与 PLAN-059 T9 musk 趋同汇流，注释双实证）。",
+        "file": "docs/plans/archived/051-vue-view-theme-spec-settings.md",
+        "related": [
+          "PLAN-051"
         ],
         "status": "stable"
       }
@@ -844,6 +868,17 @@
           "PLAN-050"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P051-4",
+        "section": "designs",
+        "title": "Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings — 详细设计",
+        "content": "- **Design 22 §7 章结构**：§7.1 中性色板（--ad-fg/muted/border/surface 浅=vue 现值/深=zinc）· §7.2 accent 五色盘（600/700/50 步进+深档 strong 400/soft 15% 经 --ad-accent-rgb）· §7.3 引擎文档面排版档（正文 0.95rem/1.6；heading 三方值不一致分叉登记）· §7.4 块家族 chrome 浅/深双列（callout 语义色深档=VM alpha 档的结构性分叉裁定）· §7.5 hljs 双档（组级七组，双轨单源=hljs_scope_map 生成物）· §7.6 编辑壳交互面（vue-only 归置）· §7.7 零游离盘点口径（`grep -oE '#[0-9a-fA-F]{6}'|sort -u` 对表）。\n- **swatch 特异度教训**：Vue scoped 下 `.settings-popover button`（reset，(0,2,1)）压过裸工具类（(0,2,0)）——五色 swatch 全透明；修=色类挂 `.settings-popover` 作用域升 (0,3,0)。程序门不可见此类「DOM 在场但视觉不可见」，Phase 2 目检补位。\n- **stream-demo 深色页 chrome**：同一 darkMode ref 驱动页根 `.is-dark`（body :has 选择器+工具栏/栏底/标签深档）——文档面翻白字而页底仍浅=白字白底（对拍门不报：两栏对称地错；对比度只能目检）。\n- **对拍自动化形态**：驱动 App 既有「对比」按钮（compare() 内含 waitSettled；comparePanes 为浏览器上下文模块测试侧不 import），断言 `.stream-demo__diff-report` 以「零差异」开头；主题经 settings UI 切换。\n- **hljs 深色配对**：无外挂主题 CSS——同选择器组加 `.is-dark` 作用域深色规则组（编辑侧）+`.streaming-document.is-dark :deep()`（流式侧，vendor !important 层同权反制）；值取 hljs_scope_map `hljs_group_rgb(_, dark)`（github-dark）。",
+        "file": "docs/plans/archived/051-vue-view-theme-spec-settings.md",
+        "related": [
+          "PLAN-051"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -1103,6 +1138,17 @@
         "file": "docs/plans/archived/050-vm-codeblock-inline-parity.md",
         "related": [
           "PLAN-050"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P051-5",
+        "section": "tests",
+        "title": "Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings — 测试设计",
+        "content": "- **引擎 vitest**：accent 单源三断言（0 副本/恰 3 声明/双根选择器；剥离 [data-accent] 组与 .is-dark 档后计基 Inventory）+ theme-props 7 用例（SSR 根属性断言：默认档零差异/翻转/未知 accent 回落/五 accent 组与深色规则组在场）。全量 786/786。\n- **codegen**：`test_autodown_theme_props_emit`（两臂各发射绑定 :dark-mode/:accent）+ `..._defaults`（缺省 :dark-mode=\"false\"+无 accent）；a2vue 002_markdown golden 随契约更新。tf 失败集≡master 两红基线；tv 3571/3571。\n- **对拍自动门**：`stream-demo/e2e/view-stream-parity.spec.ts` 三组（light/dark×indigo+dark×coral）驱动既有对比按钮断言零差异——首跑即零差异；根属性对称断言（.is-dark/data-accent 双根）同 spec 钉住。`pnpm -C stream-demo test` exit 0。\n- **demo e2e**：settings-theme.spec（⚙→popover→Dark→.app-dark+双面 .is-dark→✕→coral→回浅）+ 全量 74/74（73 基线零回归）。\n- **VM**：vm-smoke 11/11；vm-051-settings.mjs MCP 全链路程序门（⚙→popover 渲染→Dark→dark_mode=true→✕ 关闭→Light 回浅）。\n- **auto-lang core**：`fence_buffer_rethemes_on_runtime_flip`（hljs 基色前景 (250,250,250)↔(9,9,11) 双向钉死）；autodown_editor 模块 62/62。\n- **判读方法**：DOM 指纹+计算样式（对拍）+ Phase 2 逐图目检（判出 F1 对比度盲区/F2 不可见缺陷——程序门的已知盲区）+计算色探针（link rgb(225,29,72) 精确命中规约值）。",
+        "file": "docs/plans/archived/051-vue-view-theme-spec-settings.md",
+        "related": [
+          "PLAN-051"
         ],
         "status": "verified"
       }
@@ -1371,6 +1417,17 @@
           "PLAN-050"
         ],
         "status": "published"
+      },
+      {
+        "id": "P051-6",
+        "section": "reviews",
+        "title": "Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings — 验收标准+复审",
+        "content": "七验收 A1-A7 复审逐条 PASS（修 F1/F2 后全绿）：A1 规约章零游离 ✓；A2 对拍三组零差异 ✓；A3 props 缺省档零回归 ✓；A4 双轨 settings 实机+截图（修后复判 PASS）✓；A5 全量门（vitest 786/playwright 74/vm-smoke 11/tf≡基线/tv 3571）✓；A6 清册收口 ✓；A7 默认布局零扰动 ✓。\n\n**债候选（非阻塞）**：F4——VM 浅色档 view 臂深色 chrome（fence 深盘+标题深条，编辑臂全浅）；master 二进制 A/B 实证上游既有（回归落在 050 折入后的 master 并行合并窗口），DEBTS 051-候选（🟡）独立排查。\n\n**复审管线发现（在案）**：① 空 .at 锚点被 Plan 424 校验拒绝→vue 工程发射中断、vue-tsc 门静默跳过（regen 假绿形态， Worth 全体 regen 消费方警觉）；② `shadcn: off` 过钝（连引擎组件映射一起关）；③ auto-lang 子→父 emit 断点三连（已修）。无未批准延后；三模式开关/统一滚动条/VM document accent 为立项既定出域（待澄清 1-3）。",
+        "file": "docs/plans/archived/051-vue-view-theme-spec-settings.md",
+        "related": [
+          "PLAN-051"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1635,6 +1692,17 @@
         "file": "docs/plans/archived/050-vm-codeblock-inline-parity.md",
         "related": [
           "PLAN-050"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P051-1",
+        "section": "reports",
+        "title": "Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings — 变更摘要",
+        "content": "vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化（深浅/accent）+ 双轨 settings 全落地（T1-T11 + 复审修正，双仓十提交）：\n\n- **规约先行**：auto-lang Design 22 新增 §7「AutoDown Document Face 规约」章——浅色档逐值盘点（引擎 CSS 双载体 34/33 去重值+家族 widget 散值+mermaid 参数全收，`comm` 程序化零游离核对）+ 深色档（VM zinc 基准，VM 零改动）+ accent 五色三件套 + hljs 双档（hljs_scope_map 生成物单源）+ 排版分叉登记 + 编辑壳交互面归置。\n- **引擎**：accent 双定义收敛单源（`.autodown-editor,.streaming-document` 双根规则）+ `darkMode`/`accent` props 声明入口（根 `.is-dark`+`data-accent`，缺省档零差异）+ token 层/深色覆盖块/hljs github-dark 组双侧落地。\n- **双轨 settings**：`settings_popover.at` 适配件（shadcn token→具体值类、组件自带 scoped 兜底）+ `native_button` 原生逃生名（配 auto-lang VM 别名，零 shadcn/reka-ui 依赖）+ `app_ext.at` Plan 424 纯转发声明（解锁新 auto-man 校验中断的 vue 工程发射——vue-tsc 门曾被静默跳过的根因）；stream-demo 手写 settings + view≡stream 对拍自动门。\n- **VM**：fence buffer 运行时重着色（`retheme_all_fence_buffers` 挂两翻转臂，DEBTS 050 销号）；子→父 emit 三补面（纯 emit 子件派发/Plan-367 引号键归一/幻影载荷裁剪，与 auto-lang PLAN-059 T9 趋同汇流）。\n- **复审修正**：a2vue golden 随 T5 契约更新；swatch 作用域特异度修正；stream-demo 深色页 chrome。\n- **门读数**：引擎 vitest 786/786；demo playwright 74/74；stream-demo 对拍 3/3 首跑零差异；vm-smoke 11/11；tf 失败集≡master 两红基线；tv 3571/3571。证据八件（vue-051×3/stream-051/vm-051×2/探针×2）。",
+        "file": "docs/plans/archived/051-vue-view-theme-spec-settings.md",
+        "related": [
+          "PLAN-051"
         ],
         "status": "published"
       }

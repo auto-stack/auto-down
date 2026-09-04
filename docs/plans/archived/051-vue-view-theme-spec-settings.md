@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-051
-status: reviewed
+status: archived
 feature_name: Vue 轨 view 正确性收口 + view≡stream 自动门 + 主题规约化与双轨 settings
 author: [zhaopuming, ZCode]
 created_at: 2026-09-04

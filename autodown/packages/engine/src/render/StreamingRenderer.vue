@@ -423,12 +423,9 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Accent tokens (indigo) — the default streaming theme's single hue */
-.streaming-document {
-  --ad-accent: #4f46e5;
-  --ad-accent-strong: #4338ca;
-  --ad-accent-soft: #eef2ff;
-}
+/* Accent tokens: single-sourced in autodown-editor.css (PLAN-051 T3) — the
+   `.autodown-editor, .streaming-document` rule there feeds this root too
+   (this stylesheet ships with every engine consumer via style.css). */
 
 /* Segment spacing */
 .streaming-document > * + * {

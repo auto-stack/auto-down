@@ -1,11 +1,18 @@
 /* ─── Editor Chrome ─── */
-/* Accent tokens (plan 039 T2): the same indigo hue the streaming theme
-   defines on .streaming-document — headings must read identically in the
-   editor pane and the preview pane. */
-.autodown-editor {
+/* Accent tokens (plan 039 T2 → PLAN-051 T3 single-sourced): the one
+   definition feeding BOTH pane roots (.autodown-editor here and
+   .streaming-document in StreamingRenderer — this stylesheet is loaded by
+   every engine consumer via the style.css export). Values are the indigo
+   row of the accent palette spec (auto-lang Design 22 §7.2); per-accent
+   overrides ride [data-accent] groups below. */
+.autodown-editor,
+.streaming-document {
   --ad-accent: #4f46e5;
   --ad-accent-strong: #4338ca;
   --ad-accent-soft: #eef2ff;
+}
+
+.autodown-editor {
   position: relative;
   display: flex;
   flex-direction: column;

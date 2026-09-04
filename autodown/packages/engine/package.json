@@ -35,6 +35,29 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      },
+      "./parser": {
+        "import": "./dist/parser.js",
+        "types": "./dist/parser.d.ts"
+      },
+      "./render": {
+        "import": "./dist/render.js",
+        "types": "./dist/render.d.ts"
+      },
+      "./editor": {
+        "import": "./dist/editor.js",
+        "types": "./dist/editor.d.ts"
+      },
+      "./style.css": {
+        "default": "./dist/style.css"
+      }
+    }
+  },
   "scripts": {
     "build": "vue-tsc -b && vite build && node scripts/assert-parser-pure.mjs && node scripts/assert-no-tiptap.mjs && node scripts/assert-editor-gen.mjs && node scripts/write-dist-stamp.mjs",
     "test": "vitest run --passWithNoTests",

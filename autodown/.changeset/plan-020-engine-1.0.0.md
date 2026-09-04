@@ -1,6 +1,11 @@
 ---
-'@autodown/engine': major
+'@autodown/engine': minor
 ---
+
+(plan 052 T6 对账 2026-09-05：bump 由 major 改 minor——0.x 版本策略裁定
+「生态未达 1.0 包版本不得率先占用 1.0」在案，见
+2026-08-28-engine-version-policy-0-5-0.md；engine 已在 0.5.0，本条并入
+下一次 minor。文件名保留 1.0.0 字样不重命名——历史引用面。)
 
 plan 020: engine **1.0.0** — contract freeze. Consumers migrated to the
 single engine package: demo (Phase 2) and jade-garden (Phase 3) consume

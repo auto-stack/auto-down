@@ -33,6 +33,10 @@
   `scripts/write-dist-stamp.mjs` 对 `src/**` + `auto/**` 取内容 sha256 写
   `dist/.dist-stamp`，消费方 `scripts/assert-dist-fresh.mjs` 重算比对，
   不符即非零退出并提示 `pnpm --filter @autodown/engine build`。
+  **npm 发布形态（plan 052 T7）**：`publishConfig.exports` 在 pack/publish
+  时覆盖 exports——剥 `development` 条件的五出口纯 dist 形态（tarball 无
+  src，dev 条件命中即断的 027 复审裁定由此消解）；工作区 dev-直连语义
+  不动（development 条件只在工作区解析时命中）。
 - **DOM/事件面**：EDITOR-CONTRACT.md 全清单（根 class、`data-block-id`、
   `.autodown-wikilink-label`、CustomEvent 四则、`getBlockMap`/`containerRef`
   expose）。

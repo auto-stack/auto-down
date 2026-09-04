@@ -232,6 +232,17 @@
           "PLAN-046"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P047-2",
+        "section": "goals",
+        "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 目标",
+        "content": "六验收全达成：① 浅色主题+种子起步+并排三要素截图（vm-vue-side-by-side.png 拼接+两原件，复审独立净窗复证实证）；② app_ext.vm.at 适配器在册+STUBS=0 真符号（严苛档 Undefined 仅 is_vue；「正常运行」按真符号非桩口径，D2 登记四 TS 符号硬错为既有语义）；③ content.ts 单源回路（生成器幂等 git diff 空+probe 改动→双轨同现→还原→NOT FOUND）；④ 双门 playwright 73/73+vm-smoke 净窗退出码 0（复审独立复跑）；⑤ README/DEBTS/PARITY 三处修准 grep 零活性残留；⑥ auto-lang 零改动双核（tracked 源码零 diff）。",
+        "file": "docs/plans/archived/047-vm-demo-look-finish.md",
+        "related": [
+          "PLAN-047"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -470,6 +481,17 @@
         "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
         "related": [
           "PLAN-046"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P047-3",
+        "section": "architecture",
+        "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 架构方案",
+        "content": "主题机制：app.at model 声明 renderer 识别名 dark_mode 变量（var dark_mode bool = false），auto-lang Plan 370 D-GAP sync（renderer.rs read_state(\"dark_mode\") 臂）每 view 更新推 iced_adapter::set_dark_mode——声明初值即首帧主题，a 案零 auto-lang 改动；Plan 458 env 种子（AUTO_UI_THEME）仅设置时介入。种子机制：content.ts 单源→scripts/gen-vm-content.mjs 转义单行字面量生成 app_ext.vm.at（GENERATED 头注+再生命令，幂等）→顶层 use.web.fn initial_content 经 app_ext.at 码评锚走 442 A3 适配器链（X.at→X.vm.at→X.web.at）。关键门控事实：.ts 导入路径从不进适配器链（ext_stubs.rs load_at_ext_imports 直 skip）；auto-man ext 拷贝 widget-use only——锚文件与顶层 use.web.fn 对 vue 构建双不可见（gen ext 目录仅 app_ext.ts 原样拷贝，复验）。",
+        "file": "docs/plans/archived/047-vm-demo-look-finish.md",
+        "related": [
+          "PLAN-047"
         ],
         "status": "stable"
       }
@@ -711,6 +733,17 @@
           "PLAN-046"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P047-4",
+        "section": "designs",
+        "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 详细设计",
+        "content": "适配器接线契约：initial_content 移出 widget use 块入顶层 use.web.fn——SFC 生成器对顶层 use.web.fn 也发射 import（同扩展名剥离 specifier），直指 vm.at 曾致 vue-tsc Duplicate identifier；终形=widget 块保留 logSave/logCancel/is_vue+composable（vue 面 app_ext.ts 不动），initial_content 由顶层行提供，两 import 同 specifier 符号不相交行为恒等。app_ext.at=码评注释锚（port 面，两轨均不加载其代码）。载体案 a 定稿（转义 \n 字面量，a2r.at 先例；b 运行时读文件/c asset embed 未触发）。STUBS=0 读数口径：Undefined symbol 名单=真符号证明法（严苛档唯一 is_vue）。",
+        "file": "docs/plans/archived/047-vm-demo-look-finish.md",
+        "related": [
+          "PLAN-047"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -926,6 +959,17 @@
         "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
         "related": [
           "PLAN-046"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P047-5",
+        "section": "tests",
+        "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 测试设计",
+        "content": "双门口径：vue 回归门=regen+playwright 73 全量（首跑 scroll-sync bottom 1 红=并行 flake，隔离 7/7+净重跑 73/73——同 046 复审协议）；VM 验收门=vm-smoke 净窗退出码 0（nonce 覆盖语义对种子初态零适配，④落定）。单源回路实证：content.ts probe 行改动→生成器→VM autoui_exists 双臂命中+vue 截图同现→还原→NOT FOUND。生成器幂等：复跑 git diff 空。并排三要素截图：vm-vue-side-by-side.png（拼接）+ vue/-vm 两原件，同文档/同浅色/同两栏；剩余可见差异=登记在册小项（VM code fence 深底/heading 强调色差/web-only 降级/CJK tofu）。",
+        "file": "docs/plans/archived/047-vm-demo-look-finish.md",
+        "related": [
+          "PLAN-047"
         ],
         "status": "verified"
       }
@@ -1150,6 +1194,17 @@
           "PLAN-046"
         ],
         "status": "published"
+      },
+      {
+        "id": "P047-6",
+        "section": "reviews",
+        "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 复审记录",
+        "content": "复审记录（/auto-plan:review 2026-09-04，同会话接力）：六验收逐条独立复验全过（净窗 VM 重启截图/桩告警恰四/STUBS=0 唯一 is_vue/生成器幂等/双门复跑/grep 零残留/auto-lang 双核）；遗漏延后 workaround 清查零阻塞（残段 padding/thumb 系 W2 立项时即排除的外围，三处在册转介）；债候选 D1-D4：D1 README gen/「gitignored」过时表述、D2 STUBS=0 完整运行需四符号真实现（另行立项）、D3 scroll-sync e2e 并行 flake 族（无新增面）、D4 9247 被占环境注记（--port 机制已在文档）。",
+        "file": "docs/plans/archived/047-vm-demo-look-finish.md",
+        "related": [
+          "PLAN-047"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1370,6 +1425,17 @@
         "file": "docs/plans/archived/046-vm-demo-vue-parity.md",
         "related": [
           "PLAN-046"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P047-1",
+        "section": "reports",
+        "title": "VM demo 观感收尾（主题对齐 + 初始种子） — 变更摘要",
+        "content": "VM demo 观感收尾（W2 主题对齐 + W3 初始种子收编）。执行期新发现：musk.exe 长占 MCP 9247 走 AUTOUI_MCP_PORT=9248（两侧同读该变量）；多 VM 实例残留会令端口探针读旧窗——净窗纪律=先 Get-Process auto 全清再单实例；gen/ 非整体 gitignored（gen/front/vue/src/App.vue 等 tracked，README「gitignored」表述过时入债 D1）。文外补充： T2 接线实测弯——SFC 生成器对顶层 use.web.fn 也发射 import，直指 vm.at 曾致 vue-tsc Duplicate identifier，终形=移出 widget use 块+app_ext.at 锚链解析。",
+        "file": "docs/plans/archived/047-vm-demo-look-finish.md",
+        "related": [
+          "PLAN-047"
         ],
         "status": "published"
       }

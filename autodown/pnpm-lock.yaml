@@ -55,19 +55,6 @@ importers:
         specifier: ^3.3.8
         version: 3.3.8(typescript@5.9.3)
 
-  packages/core:
-    dependencies:
-      '@autodown/engine':
-        specifier: workspace:*
-        version: link:../engine
-    devDependencies:
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.7
-        version: 3.2.7(@types/node@22.20.1)(happy-dom@20.12.0)
-
   packages/engine:
     dependencies:
       hast-util-to-html:
@@ -128,22 +115,6 @@ importers:
       vue-tsc:
         specifier: ^3.3.8
         version: 3.3.8(typescript@5.9.3)
-
-  packages/vue:
-    dependencies:
-      '@autodown/engine':
-        specifier: workspace:*
-        version: link:../engine
-      vue:
-        specifier: ^3.4.0
-        version: 3.5.35(typescript@5.9.3)
-    devDependencies:
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.7
-        version: 3.2.7(@types/node@22.20.1)(happy-dom@20.12.0)
 
   stream-demo:
     dependencies:

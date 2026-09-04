@@ -1,7 +1,7 @@
 //! Smoke tests for the a2r-emitted autodown-core pilot crate (plan 016
 //! Phase 4): construct small block trees by hand, serialize, assert exact
 //! `.ad` text. Mirrors a subset of the TS roundtrip suite's directed cases
-//! (packages/core/src/__tests__/serializer-roundtrip.test.ts).
+//! (packages/engine/src/parser/__tests__/serializer-roundtrip.test.ts).
 
 use autodown_core::block_model::{
     attrSet, block, leafBlock, markedSpan, rng, span, Attr, BlockNode, BlockType, InlineSpan,

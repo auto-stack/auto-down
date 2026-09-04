@@ -26,7 +26,7 @@ generated pure re-export barrel (`export * from` the three modules).
   and `scanDelim`/`scanLink` return `DelimScan`/`LinkScan` structs instead
   of tuple arrays. TS behavior is pinned by markdown-parity (vs the real
   stream-markdown-parser) and the rust-parse-parity golden; the same source
-  a2r-emits into `packages/core/rust` (see that crate's README for the
+  a2r-emits into `packages/engine/rust` (see that crate's README for the
   registered divergences). The strong typed-tree output layer:
  `parse_blocks(src, isFinal)` runs
   `preprocessMarkdown` as a pre-step, converts the weak tree to `BlockNode`
@@ -85,7 +85,7 @@ isolatedModules safety).
 ## Dual-emission discipline (block_model.at)
 
 `block_model.at` is written to compile through BOTH a2ts (acceptance here) and
-a2r (the rust crate at `packages/core/rust/`). The rules are documented at the
+a2r (the rust crate at `packages/engine/rust/`). The rules are documented at the
 top of the .at file and verified by `tmp/dsl-probes/plan016/` probes; highlights:
 
 - every top-level `fn`/`type`/`enum` carries an explicit `pub` — a2ts exports
@@ -106,7 +106,7 @@ top of the .at file and verified by `tmp/dsl-probes/plan016/` probes; highlights
 ## a2r status (plan 016 Phase 4, 2026-08-25)
 
 `block_model.at` + `serializer.at` emit through a2r and compile clean
-(`cargo check` zero errors) into the pilot crate at `packages/core/rust/`
+(`cargo check` zero errors) into the pilot crate at `packages/engine/rust/`
 (crate `autodown-core`, zero deps). The Phase-1-recorded emitter gaps are
 fixed in the a2r backend itself (auto-lang side, uncommitted — see
 tmp/dsl-probes/plan016/REPORT.md Phase 4 addendum):

@@ -1,13 +1,14 @@
 # autodown-core (Rust pilot crate, plan 016 Phase 4)
 
-Zero-dependency Rust crate emitted by the a2r backend from the .at single
-sources of `@autodown/core` (and, from plan 019 Phase 1 on, the engine's
-dual-portable sources):
+Zero-dependency Rust crate emitted by the a2r backend from the engine's
+dual-portable .at single sources (originally `@autodown/core`'s, merged into
+`@autodown/engine` by plan 017; the crate moved from `packages/core/rust`
+to `packages/engine/rust` at the deprecated-shim archival, 2026-09-04):
 
-- `src/block_model.rs` ← `../auto/block_model.at` — block tree, selection, op
+- `src/block_model.rs` ← `../auto/parser/block_model.at` — block tree, selection, op
   set, `invertOp` undo inversion;
-- `src/serializer.rs` ← `../auto/serializer.at` — block tree → `.ad` text;
-- `src/palette_map.rs` ← `packages/engine/auto/render/palette_map.at`
+- `src/serializer.rs` ← `../auto/parser/serializer.at` — block tree → `.ad` text;
+- `src/palette_map.rs` ← `../auto/render/palette_map.at`
   (plan 019 / auto-lang plan-450) — block type → panel spec, the panel
   vocabulary single source (see the engine's PANEL-ALIGNMENT.md); after the
   a2r emission this is the mapping single source for iced panel renderers.
@@ -37,15 +38,16 @@ D:/autostack/auto-lang/target/debug/auto.exe trans --path block_model.at rust
 D:/autostack/auto-lang/target/debug/auto.exe trans --path serializer.at rust
 D:/autostack/auto-lang/target/debug/auto.exe trans --path ial.at rust
 D:/autostack/auto-lang/target/debug/auto.exe trans --path markdown_parser.at rust
-cp block_model.a2r.rs ../../../core/rust/src/block_model.rs
-cp serializer.a2r.rs ../../../core/rust/src/serializer.rs
-cp ial.a2r.rs ../../../core/rust/src/ial.rs
-cp markdown_parser.a2r.rs ../../../core/rust/src/markdown_parser.rs
-cd ../../../core/rust && cargo test
+cp block_model.a2r.rs ../../rust/src/block_model.rs
+cp serializer.a2r.rs ../../rust/src/serializer.rs
+cp ial.a2r.rs ../../rust/src/ial.rs
+cp markdown_parser.a2r.rs ../../rust/src/markdown_parser.rs
+cd ../../rust && cargo test
 ```
 
 `use block_model: …` in serializer.at is resolved relative to the working
-directory, so run the trans commands from `packages/core/auto/`.
+directory, so run the trans commands from `packages/engine/auto/parser`
+(next to block_model.at).
 
 ## Tests
 

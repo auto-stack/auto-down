@@ -1303,7 +1303,7 @@ defineExpose({
 }
 
 /* hljs dark tokens (streaming side) — values from the dual-track single
-   source (packages/core/rust/src/hljs_scope_map.rs, github-dark palette). */
+   source (packages/engine/rust/src/hljs_scope_map.rs, github-dark palette). */
 .streaming-document.is-dark :deep(pre code .hljs-keyword),
 .streaming-document.is-dark :deep(pre code .hljs-selector-tag),
 .streaming-document.is-dark :deep(pre code .hljs-doctag),

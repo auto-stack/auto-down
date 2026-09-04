@@ -13,7 +13,7 @@ auto-lang `crates/auto-lang/src/ui_gen/widget/registry.rs` 中的 widget 名。
 | Text | `paragraph` / `text` | `Text` ✓ 已登记 | `paragraph-node` / `text-node` | tag `p` / `span` |
 | H1–H6 | `heading`（level 属性） | —（019 待登记，建议 Text level 变体） | `heading-node heading-N` | tag `hN`，level 钳位 1..6 |
 | Separator | `thematic_break` | `Separator` ✓ 已登记 | `hr-node` | tag `hr` |
-| Codeblock | `code_block` | —（019 待登记） | `code-block-container` | 内部 `pre[data-language] > code` 是下游高亮/头部注入契约 |
+| Codeblock | `code_block` | —（019 待登记） | `code-block-container` | 内部 `pre[data-language] > code` 是下游高亮契约（~~头部注入~~——注入器已随 plan 039 T14 退役，标题栏由 CodeBlockWidget 模板直出，链见 EDITOR-CONTRACT §1 `.code-block-header` 行） |
 | Quote | `blockquote` | —（019 待登记） | `blockquote` | 内嵌 `markdown-renderer` 容器 |
 | List | `list` | —（019 待登记） | `list-node`（+ `list-decimal`/`list-disc`） | tag `ul`/`ol` 随 ordered |
 | Table | `table` | —（019 待登记） | `table-node` | thead/th 含 `table-node__resize-handle` |
@@ -41,7 +41,7 @@ auto-lang `crates/auto-lang/src/ui_gen/widget/registry.rs` 中的 widget 名。
   历史段移除是 Phase 3 唯一显式破坏点。
 - rust 侧（019）：palette_map.at 按双端可发射编写（无 vue/DOM 依赖），
   a2r 发射后即成为 iced 面板渲染器的映射单源（**已落地**：crate 模块
-  `packages/core/rust/src/palette_map.rs`，经 `pnpm gen:render` 再生；
+  `packages/engine/rust/src/palette_map.rs`，经 `pnpm gen:render` 再生；
   双端金标对拍 `tests/palette_parity.rs` ↔ engine
   `rust-palette-parity-gen.test.ts`；iced 面板渲染臂见 auto-lang plan-450
   批次三）；本表 registry 列的空位

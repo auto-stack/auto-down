@@ -84,13 +84,13 @@ Note: `@autodown/core` is consumed as built dist — run `pnpm build` in
 ## Rust emission (plan 019 Phase 1 / auto-lang plan-450)
 
 `pnpm gen:render` also a2r-emits `palette_map.at` into the rust crate
-`packages/core/rust/` (`src/palette_map.rs` — the mapping single source for
+`packages/engine/rust/` (`src/palette_map.rs` — the mapping single source for
 iced panel renderers; single post-fix RP1 makes the emitted struct `pub`).
 The raw a2r output stays at `palette_map.a2r.rs` for inspection (gitignored
 by the repo-wide `*.a2r.rs` rule, unlike the `.raw.ts` files).
 
 Cross-target parity (对拍): `src/render/__tests__/rust-palette-parity-gen.test.ts`
-rewrites `packages/core/rust/tests/golden/palette-map.golden.txt` on every
+rewrites `packages/engine/rust/tests/golden/palette-map.golden.txt` on every
 engine `pnpm test`; the crate's `tests/palette_parity.rs` asserts the same
 golden. Green on both sides = the a2ts and a2r emissions of the same source
 have not drifted.

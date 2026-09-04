@@ -2,7 +2,7 @@
 // runs the strong parse_blocks over a directed fixture corpus (final AND
 // streaming modes), projects the block tree to stable text lines, and
 // rewrites the golden consumed by the rust crate's tests/parse_parity.rs on
-// every engine `pnpm test`. The rust side (packages/core/rust/src/
+// every engine `pnpm test`. The rust side (packages/engine/rust/src/
 // markdown_parser.rs — a2r emission of the same auto/parser/markdown_parser.at)
 // asserts this file byte for byte; green on both sides = the two emissions
 // parse identically. (Marks/BlockType render by name; the numeric TS enums
@@ -99,7 +99,7 @@ function projBlock(b: any, out: string[], depth: number): void {
 
 const goldenPath = join(
   dirname(fileURLToPath(import.meta.url)),
-  '../../../../core/rust/tests/golden/parse-blocks.golden.txt',
+  '../../../rust/tests/golden/parse-blocks.golden.txt',
 )
 
 const header = [

@@ -1,4 +1,4 @@
-// Regenerate the @autodown/core TS sources from the Auto language sources in
+// Regenerate the engine parser TS sources from the Auto language sources in
 // this directory:
 //
 //   auto/ial.at             -> src/ial.ts
@@ -7,7 +7,7 @@
 //   auto/serializer.at      -> src/serializer.ts
 //   (barrel)                -> src/index.ts  (pure re-exports)
 //
-// Usage:  pnpm gen           (from packages/core)
+// Usage:  pnpm gen:parser    (from packages/engine)
 //         node auto/gen.mjs  (same thing)
 //
 // The Auto compiler binary is resolved in this order:

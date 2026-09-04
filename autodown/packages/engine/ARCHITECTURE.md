@@ -42,7 +42,7 @@
 - **编辑器事件载荷**：`open-wiki-link(title, blockId?)`（plan 020 恢复
   发射；payload 与旧 Tiptap 契约一致）。
 - **experimental（不随 1.0 冻结）**：rust/VM 平台面 —— autodown-core
-  crate（a2r 发射、`packages/core/rust`）与 VM natives（413 清单，
+  crate（a2r 发射、`packages/engine/rust`）与 VM natives（413 清单，
   auto-lang 侧）：尚未稳定，破坏性变更不升主版本。
 
 ## 3. 双端与单源通道
@@ -50,7 +50,7 @@
 - TS 端：`auto/parser`、`auto/render`（.at 单源）→ `pnpm gen:parser` /
   `gen:render` 再生成 `src/**/**.generated.ts`（纪律：改 .at 后必 regen，
   plan 019 批次七教训）。
-- rust 端：autodown-core crate（`packages/core/rust`）消费同一 .at 的
+- rust 端：autodown-core crate（`packages/engine/rust`）消费同一 .at 的
   a2r 发射；双端金标对拍 = `tests/parse_parity.rs` ×
   `src/rust/tests/golden/parity.ad`（engine 侧金标）。
 - 后端消费（jade-garden）：plan 021 起 back 块解析/链接提取同样单源到

@@ -2,7 +2,7 @@
 // auto-lang plan-450 批次五): rewrites the golden projection consumed by the
 // rust crate's tests/palette_parity.rs on every engine `pnpm test`, then
 // asserts a few invariants so a broken generation cannot write a "valid"
-// golden. The rust side (packages/core/rust/src/palette_map.rs — a2r emission
+// golden. The rust side (packages/engine/rust/src/palette_map.rs — a2r emission
 // of the same auto/render/palette_map.at) asserts this file byte for byte;
 // green on both sides = the two emissions have not drifted.
 
@@ -61,7 +61,7 @@ function projection(): string[] {
 
 const goldenPath = join(
     dirname(fileURLToPath(import.meta.url)),
-    '../../../../core/rust/tests/golden/palette-map.golden.txt',
+    '../../../rust/tests/golden/palette-map.golden.txt',
 )
 
 const header = [

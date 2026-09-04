@@ -2,7 +2,7 @@
 // .at products) from the Auto language sources in this directory (plan 008,
 // Phase 1; streaming_table.at retired by plan 037).
 //
-// Usage:  pnpm gen           (from packages/vue)
+// Usage:  pnpm gen:render    (from packages/engine)
 //         node auto/gen.mjs  (same thing)
 //
 // The Auto compiler binary is resolved in this order:
@@ -213,7 +213,8 @@ console.log(
 
 // palette_map.at -> rust (plan 019 Phase 1 / auto-lang plan-450 批次五):
 // the same source is a2r-emitted into the autodown-core crate
-// (packages/core/rust — standalone cargo crate, plan 016 Phase 4 pilot).
+// (packages/engine/rust — standalone cargo crate, plan 016 Phase 4 pilot,
+// relocated from packages/core/rust at the shim archival, 2026-09-04).
 // `auto trans --path palette_map.at rust` writes the raw a2r next to the
 // source (kept at palette_map.a2r.rs for inspection); the single post-fix
 // RP1 makes the emitted struct public (a2r emits a private struct behind
@@ -244,9 +245,9 @@ if (!paletteRs.includes('pub struct PanelSpec')) {
   console.error('rust post-fix RP1 did not match anything; compiler output changed?')
   process.exit(1)
 }
-writeFileSync(join(pkgRoot, '../core/rust/src/palette_map.rs'), paletteRs)
+writeFileSync(join(pkgRoot, 'rust/src/palette_map.rs'), paletteRs)
 console.log(
-  '[gen] auto/palette_map.at -> ../core/rust/src/palette_map.rs (raw kept at auto/palette_map.a2r.rs)'
+  '[gen] auto/palette_map.at -> rust/src/palette_map.rs (raw kept at auto/palette_map.a2r.rs)'
 )
 
 // artifact_hash.at (plan 031 D5): the rendered-artifact cache key — FNV-1a
@@ -321,7 +322,7 @@ if (hashRs.includes('pub fn artifact_hash(')) {
   process.exit(1)
 }
 hashRs = hashRs + RP2_WRAPPER
-writeFileSync(join(pkgRoot, '../core/rust/src/artifact_hash.rs'), hashRs)
+writeFileSync(join(pkgRoot, 'rust/src/artifact_hash.rs'), hashRs)
 console.log(
-  '[gen] auto/artifact_hash.at -> ../core/rust/src/artifact_hash.rs (raw kept at auto/artifact_hash.a2r.rs)'
+  '[gen] auto/artifact_hash.at -> rust/src/artifact_hash.rs (raw kept at auto/artifact_hash.a2r.rs)'
 )

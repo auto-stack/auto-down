@@ -60,5 +60,5 @@ autodown/test-results/
 *.a2r.rs
 
 # Rust crate 构建产物
-autodown/packages/core/rust/target/
+autodown/packages/engine/rust/target/
 autodown/stream-demo/test-results/

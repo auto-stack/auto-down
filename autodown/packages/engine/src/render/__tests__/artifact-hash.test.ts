@@ -89,7 +89,7 @@ describe('artifact-hash TS↔Rust parity golden (对拍)', () => {
 
     const goldenPath = join(
       dirname(fileURLToPath(import.meta.url)),
-      '../../../../core/rust/tests/golden/artifact-hash.golden.txt'
+      '../../../rust/tests/golden/artifact-hash.golden.txt'
     )
     const header = [
       '# artifact-hash cross-target parity golden (plan 031 D5).',

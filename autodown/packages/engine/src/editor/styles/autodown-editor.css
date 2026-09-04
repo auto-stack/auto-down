@@ -1385,7 +1385,7 @@ ol.list-node {
 }
 
 /* ─── hljs dark tokens (editor side; PLAN-051 T4) — values from the
-   dual-track single source (packages/core/rust/src/hljs_scope_map.rs
+   dual-track single source (packages/engine/rust/src/hljs_scope_map.rs
    hljs_group_rgb(_, dark), github-dark palette; Design 22 §7.5). ─── */
 
 .autodown-editor.is-dark .autodown-editor-content pre code .hljs-keyword,

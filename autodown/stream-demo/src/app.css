@@ -158,3 +158,35 @@ body {
   outline-offset: 1px;
   background: rgba(239, 68, 68, 0.08);
 }
+
+/* ── PLAN-051 T7: 主题控件（手写 settings）── */
+
+.stream-demo__spacer {
+  flex: 0 0 8px;
+}
+
+.stream-demo__theme-toggle {
+  font-weight: 600;
+}
+
+.stream-demo__swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stream-demo__swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0 !important;
+  border: 2px solid transparent !important;
+  border-radius: 9999px !important;
+}
+
+.stream-demo__swatch.is-active {
+  border-color: #374151 !important;
+}
+
+.stream-demo__swatch:not(.is-active) {
+  opacity: 0.45;
+}

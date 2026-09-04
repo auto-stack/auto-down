@@ -10,6 +10,7 @@ import { useDemoAppBridge } from '../auto/src/front/utils/app_ext'
 const demoAppBridge = useDemoAppBridge()
 
 import CustomScrollbar from './components/CustomScrollbar.vue'
+import SettingsPopover from '@/components/SettingsPopover.vue'
 
 
 const content = ref<string>('')
@@ -25,6 +26,7 @@ const right_client = ref<number>(0)
 const table_widths = ref<any>({})
 const dark_mode = ref<boolean>(false)
 const accent_color = ref<string>('indigo')
+const settings_open = ref<boolean>(false)
 // Plan 458: seed theme default from index.html bootstrap.
 if ((window as any).__AUTO_UI_THEME__ === 'light' || (window as any).__AUTO_UI_THEME__ === 'dark') dark_mode.value = (window as any).__AUTO_UI_THEME__ === 'dark'
 // Plan 458: seed accent default from index.html bootstrap.
@@ -50,9 +52,19 @@ const emit = defineEmits<{
   OnLeftScroll: [number, number, number]
   OnRightScroll: [number, number, number]
   ToggleDetails: [string]
+  OpenSettings: []
+  CloseSettings: []
+  SetTheme: [string]
+  SetAccent: [string]
   OnEditorFocus: [number]
   OnColResize: [string, number, number]
 }>()
+
+function CloseSettings(): void {
+  settings_open.value = false;
+
+  emit('CloseSettings')
+}
 
 function Edit(md: any): void {
   content.value = md;
@@ -90,6 +102,18 @@ function OnRightScroll(h: any, c: any, sy: any): void {
   emit('OnRightScroll', h, c, sy)
 }
 
+function OpenSettings(): void {
+  settings_open.value = true;
+
+  emit('OpenSettings')
+}
+
+function SetAccent(a: any): void {
+  accent_color.value = a;
+
+  emit('SetAccent', a); applyAccent(accent_color.value, document.documentElement.classList.contains('dark'))
+}
+
 function SetScrollTop(v: any): void {
   if (is_vue() != null) {demoAppBridge.setScrollTop(v);
   } else {
@@ -98,6 +122,12 @@ function SetScrollTop(v: any): void {
   }
 
   emit('SetScrollTop', v)
+}
+
+function SetTheme(t: any): void {
+  dark_mode.value = t == 'dark';
+
+  emit('SetTheme', t)
 }
 
 function SplitterHover(v: any): void {
@@ -242,19 +272,23 @@ watch(dark_mode, (v) => {
 <template>
     <div :class="[{ dark: dark_mode }, (dark_mode ? 'app app-dark' : 'app')]">
       <header class="toolbar">
-        <span>AutoDown v0.1</span>
+        <div class="w-full flex items-center justify-between">
+          <span>AutoDown v0.1</span>
+          <button class="settings-trigger w-7 h-7 flex items-center justify-center rounded text-sm text-gray-500 hover:text-gray-900 bg-transparent border-none cursor-pointer" @click="OpenSettings">⚙</button>
+        </div>
       </header>
+      <SettingsPopover :accent_color="accent_color" :dark_mode="dark_mode" :open="settings_open" :key="'SettingsPopover-1'" @Close="CloseSettings" @SetAccent="SetAccent($event)" @SetTheme="SetTheme($event)" />
       <main class="workspace" ref="workspaceRef">
         <div class="flex flex-row h-full w-full">
           <div class="flex flex-col flex-1 min-w-0 overflow-hidden border-r left">
-            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" :dark-mode="dark_mode" :accent="accent_color" class="flex-1 min-h-0 overflow-hidden" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-1'" />
+            <AutoDownEditor ref="editorRef" :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" :dark-mode="dark_mode" :accent="accent_color" class="flex-1 min-h-0 overflow-hidden" @cancel="handleCancel" @focusblock="OnEditorFocus($event)" @update:modelValue="Edit" @save="handleSave($event)" @scroll="OnLeftScroll" :key="'AutoDownEditor-2'" />
           </div>
           <div class="flex flex-col flex-1 min-w-0 overflow-hidden right">
-            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" :dark-mode="dark_mode" :accent="accent_color" class="flex-1 min-h-0 overflow-hidden py-4 px-5" @colresize="OnColResize" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-2'" />
+            <StreamingRenderer ref="rendererRef" :source="content" :streaming="false" :placeholder-block-id="placeholder_id" :placeholder-height="placeholder_height" :scroll-sync="true" :dark-mode="dark_mode" :accent="accent_color" class="flex-1 min-h-0 overflow-hidden py-4 px-5" @colresize="OnColResize" @detailsclick="ToggleDetails" @scroll="OnRightScroll" :key="'StreamingRenderer-3'" />
           </div>
         </div>
         <div class="splitter-hover-zone" @mouseenter="SplitterHover(1)" @mouseleave="SplitterHover(0)" />
-        <CustomScrollbar :clientHeight="csb_client" :is_vm="is_vue() == null" :scrollHeight="csb_height" :scrollTop="csb_top" :visible="hovering_splitter == 1" :key="'CustomScrollbar-3'" @update:scrollTop="SetScrollTop($event)" />
+        <CustomScrollbar :clientHeight="csb_client" :is_vm="is_vue() == null" :scrollHeight="csb_height" :scrollTop="csb_top" :visible="hovering_splitter == 1" :key="'CustomScrollbar-4'" @update:scrollTop="SetScrollTop($event)" />
       </main>
     </div>
 
@@ -422,5 +456,34 @@ watch(dark_mode, (v) => {
 
         .app-dark .splitter-hover-zone::after {
             background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* PLAN-051 T6: ⚙ 钮兜底（demo 无 tailwind 运行时）。 */
+        .settings-trigger {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-family: inherit;
+            line-height: 1;
+        }
+
+        .w-7 {
+            width: 1.75rem;
+        }
+
+        .h-7 {
+            height: 1.75rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .hover\:text-gray-900:hover {
+            color: #111827;
         }
     </style>

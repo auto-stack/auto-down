@@ -297,20 +297,20 @@ grep 断言定义处唯一（vitest 或 build 后置断言）。
 
 ## 验收标准
 
-- [ ] A1 Design 22 新章在案：浅色盘点行齐（引擎 CSS 硬编码值全部入表，无
+- [x] A1 Design 22 新章在案：浅色盘点行齐（引擎 CSS 硬编码值全部入表，无
       游离值）、深色档行齐（VM zinc 基准）、accent 五色三件套行齐、hljs 双档
       行齐；每行双端锚点。
-- [ ] A2 `pnpm -C stream-demo test` exit 0，三组对拍零差异断言在案；对拍
+- [x] A2 `pnpm -C stream-demo test` exit 0，三组对拍零差异断言在案；对拍
       暴露的差异已修或在案登记根因。
-- [ ] A3 引擎 props 落地：默认档 vitest+playwright 基线零回归；切换断言
+- [x] A3 引擎 props 落地：默认档 vitest+playwright 基线零回归；切换断言
       测试绿。
-- [ ] A4 demo settings 双轨：vue 轨实机切换浅/深 + 5 accent 截图留档；VM 轨
+- [x] A4 demo settings 双轨：vue 轨实机切换浅/深 + 5 accent 截图留档；VM 轨
       popover 原生渲染 + dark_mode 翻转窗口生效（或 DEBTS 050 豁免行在案）。
-- [ ] A5 regen 后 demo playwright 全绿（≥基线 73）；engine vitest 全绿；
+- [x] A5 regen 后 demo playwright 全绿（≥基线 73）；engine vitest 全绿；
       vm-smoke 11/11。
-- [ ] A6 PARITY/README/DEBTS 收口：新行/销行/注记按实况齐；证据 PNG 入
+- [x] A6 PARITY/README/DEBTS 收口：新行/销行/注记按实况齐；证据 PNG 入
       demo/auto。
-- [ ] A7 默认布局零扰动：app.at 默认态（dark_mode=false, accent=indigo,
+- [x] A7 默认布局零扰动：app.at 默认态（dark_mode=false, accent=indigo,
       edit+view 两栏）与 PLAN-050 终态截图 diff 一致（settings 入口为工具栏
       增量，不移动既有元素）。
 

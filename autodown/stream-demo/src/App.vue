@@ -10,6 +10,21 @@ const { text, streaming, progress } = feed
 
 const done = computed(() => progress.value >= 1)
 
+// PLAN-051 T7: 主题声明（手写轨——stream-demo 在 .at 闭环外）。经引擎
+// darkMode/accent props 喂两栏（声明式入口，同 demo 轨 DSL 绑定落点）；
+// 取值口径 = auto-lang Design 22 §7（浅=现行值，深=zinc 基准，accent 盘
+// indigo|coral|ocean|sage|amber）。
+const ACCENTS = ['indigo', 'coral', 'ocean', 'sage', 'amber'] as const
+const ACCENT_SWATCH: Record<(typeof ACCENTS)[number], string> = {
+  indigo: '#6366f1',
+  coral: '#f43f5e',
+  ocean: '#0ea5e9',
+  sage: '#10b981',
+  amber: '#f59e0b',
+}
+const darkMode = ref(false)
+const accent = ref<(typeof ACCENTS)[number]>('indigo')
+
 // PLAN-041 T12 对拍台：左栏 view 态（同一 StreamingRenderer 定格
 // streaming=false，隔离「流式落定 vs 一次性」单一变量）；右栏保留
 // feed 驱动流式。scroll-sync 两侧同值 false（开启时清 slot 边距属
@@ -65,7 +80,7 @@ onMounted(() => feed.play())
 </script>
 
 <template>
-  <div class="stream-demo">
+  <div class="stream-demo" :class="{ 'is-dark': darkMode }">
     <header class="stream-demo__header">
       <h1>AutoDown Streaming Demo · 对拍台</h1>
       <a href="https://github.com/..." target="_blank" rel="noreferrer">@autodown/engine</a>
@@ -87,16 +102,33 @@ onMounted(() => feed.play())
         class="stream-demo__diff-report"
         :class="{ 'is-clean': diffReport.startsWith('零差异') }"
       >{{ diffReport }}</span>
+      <span class="stream-demo__spacer"></span>
+      <button
+        class="stream-demo__theme-toggle"
+        :title="darkMode ? '切浅色' : '切深色'"
+        @click="darkMode = !darkMode"
+      >{{ darkMode ? '☀ Light' : '🌙 Dark' }}</button>
+      <span class="stream-demo__swatches" role="group" aria-label="accent 选择">
+        <button
+          v-for="name in ACCENTS"
+          :key="name"
+          class="stream-demo__swatch"
+          :class="{ 'is-active': accent === name }"
+          :style="{ background: ACCENT_SWATCH[name] }"
+          :title="name"
+          @click="accent = name"
+        ></button>
+      </span>
     </div>
 
     <div class="stream-demo__panes">
       <div class="stream-demo__pane" ref="leftPane">
         <div class="stream-demo__pane-label">view · 一次性全量</div>
-        <StreamingRenderer :source="SAMPLE_DOCUMENT" :streaming="false" :scroll-sync="false" />
+        <StreamingRenderer :source="SAMPLE_DOCUMENT" :streaming="false" :scroll-sync="false" :dark-mode="darkMode" :accent="accent" />
       </div>
       <div class="stream-demo__pane" ref="rightPane">
         <div class="stream-demo__pane-label">stream · feed 驱动</div>
-        <StreamingRenderer :source="text" :streaming="streaming" :scroll-sync="false" />
+        <StreamingRenderer :source="text" :streaming="streaming" :scroll-sync="false" :dark-mode="darkMode" :accent="accent" />
       </div>
     </div>
   </div>

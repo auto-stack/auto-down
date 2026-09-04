@@ -158,3 +158,104 @@ body {
   outline-offset: 1px;
   background: rgba(239, 68, 68, 0.08);
 }
+
+/* ── PLAN-051 T7: 主题控件（手写 settings）── */
+
+.stream-demo__spacer {
+  flex: 0 0 8px;
+}
+
+.stream-demo__theme-toggle {
+  font-weight: 600;
+}
+
+.stream-demo__swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stream-demo__swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0 !important;
+  border: 2px solid transparent !important;
+  border-radius: 9999px !important;
+}
+
+.stream-demo__swatch.is-active {
+  border-color: #374151 !important;
+}
+
+.stream-demo__swatch:not(.is-active) {
+  opacity: 0.45;
+}
+
+/* ── PLAN-051 复审 F1 修正：深色档页 chrome——文档面 .is-dark 把文字翻白，
+   页面底/栏底/工具栏若仍是浅底即白字白底（stream-051-dark.png 判读发现）。
+   同一 darkMode ref 驱动页根 .is-dark；值对齐 Design 22 §7.1 深档。 ── */
+.stream-demo.is-dark {
+  color: #e4e4e7;
+}
+
+body:has(.stream-demo.is-dark) {
+  background: #09090b;
+}
+
+.stream-demo.is-dark .stream-demo__header h1 {
+  color: #fafafa;
+}
+
+.stream-demo.is-dark .stream-demo__header a {
+  color: #a1a1aa;
+}
+
+.stream-demo.is-dark .stream-demo__toolbar {
+  background: #18181b;
+  border-color: #3f3f46;
+  box-shadow: none;
+}
+
+.stream-demo.is-dark .stream-demo__toolbar button {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #e4e4e7;
+}
+
+.stream-demo.is-dark .stream-demo__toolbar button:hover:not(:disabled) {
+  background: #3f3f46;
+}
+
+.stream-demo.is-dark .stream-demo__toolbar button:disabled {
+  opacity: 0.45;
+}
+
+.stream-demo.is-dark .stream-demo__status,
+.stream-demo.is-dark .stream-demo__diff-report {
+  color: #a1a1aa;
+}
+
+.stream-demo.is-dark .stream-demo__diff-report {
+  color: #f87171;
+}
+
+.stream-demo.is-dark .stream-demo__diff-report.is-clean {
+  color: #4ade80;
+}
+
+.stream-demo.is-dark .stream-demo__panes {
+  background: #09090b;
+  border-color: #3f3f46;
+}
+
+.stream-demo.is-dark .stream-demo__pane {
+  background: #09090b;
+}
+
+.stream-demo.is-dark .stream-demo__pane + .stream-demo__pane {
+  border-left-color: #3f3f46;
+}
+
+.stream-demo.is-dark .stream-demo__pane-label {
+  color: #71717a;
+}

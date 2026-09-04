@@ -118,6 +118,40 @@ and (b) the `:deep` vue-only enhancements. The two panels themselves are
 a core-layout `row` + two `col`s (equal width on both tracks — see the
 「Two-column layout」 status bullet above).
 
+## Settings / theme (PLAN-051)
+
+`src/front/settings_popover.at` — the dual-track settings popover (adapted
+from auto-lang `examples/ui/common/settings/settings_popover.at` with all
+shadcn token classes rewritten to concrete value classes; the vue-side
+fallbacks live in the widget's own `style {}` block). The ⚙ toolbar button
+opens it on both tracks: Theme (🌙 Dark / ☀ Light) and the five-accent
+palette (indigo/coral/ocean/sage/amber).
+
+- Declarative entry: the `dark_mode:`/`accent:` props on both engine tags
+  (vue: engine `darkMode`/`accent` props → root `.is-dark` +
+  `data-accent`; values spec'd in auto-lang Design 22 §7 — light = the
+  shipped vue values, dark = the VM zinc baseline, so the two tracks share
+  one dark truth). App chrome flips via the `.app-dark` conditional class.
+- VM track: the popover renders natively (`native_button` — the explicit
+  native escape name avoiding the `button`→shadcn `<Button>` mapping; VM
+  arm aliased in auto-lang), `dark_mode` flips through the PLAN-047 D-GAP
+  chain, and existing fence buffers RE-THEME at runtime
+  (`retheme_all_fence_buffers` — the DEBTS 050 disposition). Document
+  accent on VM is a registered PARITY #17 exemption.
+- VM child→parent emit notes: the popover's msg bubbling exercised three
+  auto-lang child_emit fixes (handler-less declarative dispatch, quoted
+  listener key normalization, phantom-payload trimming) — see the PARITY
+  #17 evidence pointers.
+- Evidence: `vue-051-light/dark/accent-coral.png` (playwright
+  `e2e/settings-theme.spec.ts`), `vm-051-light/dark.png`
+  (`vm-051-settings.mjs` over the AutoUI MCP channel), and the
+  view≡stream parity gate lives in `stream-demo` (`pnpm -C stream-demo
+  test`, three combos light/dark × indigo + dark × coral).
+- S001 INFO: `dark_mode`/`accent` are not yet in the generated
+  `schema/aura.at` (same tolerated pattern as `scroll_top`/
+  `table_col_widths` — non-blocking; regenerate the aura schema when
+  convenient).
+
 ## Layout
 
 - `pac.at` — Auto project manifest (`scene: "ui"`, `render: "vue"`).

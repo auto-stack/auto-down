@@ -33,5 +33,7 @@ sed -e 's|@/ext/src/front/utils/app_ext|../auto/src/front/utils/app_ext|g' \
   gen/front/vue/src/App.vue > ../src/App.vue
 sed 's|@/ext/src/front/utils/app_ext|../auto/src/front/utils/app_ext|g' \
   gen/front/vue/src/components/CustomScrollbar.vue > ../src/components/CustomScrollbar.vue
+# PLAN-051 T6: settings 弹层组件（自包含无 @/ 别名 import，直接拷贝）。
+cp gen/front/vue/src/components/SettingsPopover.vue ../src/components/SettingsPopover.vue
 
 echo "REGEN OK"

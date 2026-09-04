@@ -7,3 +7,14 @@
 // helpers + the content.ts-reading initial_content), and auto-man's ext copy
 // is fed by the widget use block only. Deliberately code-free — the port has
 // exactly one implementation per track and neither is written here.
+//
+// Plan 424 pure-forwarding port declaration (added PLAN-051 T6): newer
+// auto-man transpilers reject a use-block `.at` fn module with neither
+// top-level fns nor use.web bindings ("declares no top-level fns…"), which
+// aborted the vue project generation mid-flight (child widget SFCs and the
+// vue-tsc gate silently skipped). This forwarding declaration is the
+// sanctioned code-free form — the vue transpile turns it into a re-export
+// of the real app_ext.ts symbol, and the VM chain still resolves X.vm.at
+// FIRST (ext_stubs.rs resolve_vm_at_adapter order), so the adapter twin
+// below keeps winning untouched.
+use.web.fn initial_content from "src/front/utils/app_ext.ts"

@@ -77,6 +77,24 @@ VM track status (see DEBTS.md 040/043 rows and `PARITY.md`):
   (evidence: `vm-light-theme.png`). Renderer-pane padding/border cosmetics
   stay open (the `autodown` component arm still doesn't consume the class
   string — PARITY residual, auto-lang side).
+- **Code fence chrome + punctuation + label bars — CONSUMED since
+  PLAN-050** (PARITY #13/#14/#15): fence chrome is now theme-sourced on
+  both arms (`FENCE_CHROME_LIGHT` mirrors vue's `.code-block-container`
+  values; the D-GAP dark-mode sync marks the view dirty on value change so
+  the preview arm can't stick to a first-frame dark Element cache). The
+  previously invisible punctuation was never missing from the run stream —
+  the light hljs base-fg drew near-black on the hardcoded zinc-950 body;
+  same-source theming heals it (`console.log(foo)` renders complete).
+  Label bars are full-width with their own color class (the container
+  color class doesn't reach the child Text). Evidence:
+  `vm-050-fence-preview.png` / `vm-050-fence-editor.png` /
+  `vm-050-label-bars.png` / `vm-050-side-by-side.png`.
+- **Inline code overlap — CONSUMED since PLAN-050** (PARITY #16): the
+  paragraph buffer now measures inline-code spans with the same mono face
+  the draw side uses (Windows: Consolas both sides; cosmic's SyntaxEditor
+  rewrites line attrs after highlighting, so the family spans are
+  re-asserted idempotently per render frame). Fence token spacing rides
+  the same fix. Evidence: `vm-050-inline-code.png`.
 - **Initial document seed — CONSUMED since PLAN-047** (PARITY #6): both
   tracks start from `src/content.ts` — the single source. vue reads it
   through app_ext.ts; the VM resolves the top-level `use.web.fn

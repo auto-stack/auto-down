@@ -7,7 +7,7 @@ vue 轨（`auto run`，生成 App.vue）与 VM 轨（`auto run -r vm`，iced 桌
 auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据行号为
 2026-09-04 快照值，函数/臂名锚点为准。
 
-## 差异总表（十二项）
+## 差异总表（十六项）
 
 | # | 项 | vue 轨现状 | VM 轨现状 | 归宿 | 证据 |
 |---|----|-----------|----------|------|------|
@@ -23,6 +23,10 @@ auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据
 | 10 | mono CJK tofu | 系统字体回退正常 | code fence 等宽字体 CJK 豆腐框 | **auto-lang 侧**（字体 fallback），清册转介 | 041 复审债候选三条之一 |
 | 11 | ext 桩告警四符号 | initial_content/is_vue/logSave/logCancel/useDemoAppBridge 真实现 | initial_content 经适配器链真实现（PLAN-047，app_ext.vm.at）；is_vue/logSave/logCancel/useDemoAppBridge 仍 no-op 平台桩 + 运行时各告警一次（**预期行为**） | **显式豁免维持（四符号）**（`AUTO_VM_EXT_STUBS=0` 可复原硬错误；initial_content 已出桩列，STUBS=0 下真符号链接） | DEBTS.md 040 ext 桩行（四符号修准）；README「Ext stub warnings」段；scripts/gen-vm-content.mjs |
 | 12 | 编辑面能力差 | @autodown/engine WYSIWYG 块家族（气泡/斜杠菜单/undo/节点视图） | cosmic-text 块编辑壳（块粒度编辑；048 补齐跨块选区/跨容器合并/行首输入规则/undo 钉死——编辑行为面收口） | **长期线**，清册转介——台账「块组件契约/WYSIWYG」目标族主战场，非波次化对象；048 T1 产出的 vue↔rust 编辑语义用例对照表（26 组三态映射，计划复审记录在册）为 #12 长期线的底册输入 | packages/engine/EDITOR-CONTRACT.md；specs 台账 goals 族；PLAN-048 复审记录对照表 |
+| 13 | 代码块 chrome 主题分叉 | `.code-block-container` 浅色实值（#f9fafb 容器/#e5e7eb 边与 header/#374151 标签，engine autodown-editor.css） | ✅ 主题同源（PLAN-050）：`FENCE_CHROME_LIGHT` 浅色档对齐 vue 实值 + `family_of(Fence)` 按 `dark_mode` 选 static + 编辑壳 `fence_palette()` 同源翻转 + D-GAP 值变化标 view_dirty（预览臂 chrome 曾卡首帧暗色 Element 缓存——两臂分叉根因） | ✅ **PLAN-050 收口**（#5 主题族的 fence 段延伸：047 收的是面板级，fence 内 chrome 本行收口） | auto-lang ui/autodown_blocks.rs FENCE_CHROME_LIGHT/fence_palette/family_of；ui/iced/renderer.rs dynamic_view D-GAP 标脏；vm-050-fence-preview.png/-editor.png |
+| 14 | 代码块标点不可见 | lowlight 着色，标点齐整 | ✅ 全字符可见（PLAN-050）：根因非字符丢失——DocRun 流本就完整（探针实证 `(` `)` `.` 全在流中、x 单调），浅色 hljs 基色标点近黑 (0.04,0.04,0.04) 画在硬编码 zinc-950 暗底上不可见；#13 chrome 浅色化后自愈（同源翻转） | ✅ **PLAN-050 收口**（与 #13 同根同修；`fence_chrome_and_text_follow_light_theme` 测试钉死主题一致性） | vm-050-fence-preview.png（`console.log(foo)`/`fn main() {` 全标点实机）；auto-lang autodown_editor/core.rs 测试 |
+| 15 | fence 语言标签条塌陷 | 全宽 header 条 + 文字 + 折叠/复制钮 | ✅ 全宽标签条文字可读（PLAN-050）：根因 header Container 色类不达子 Text（默认前景近黑画 zinc-800 不可见）+ 宽度收缩成游离黑条；修 header `w-full` + `header_label` 自带色（暗/浅两档同修） | ✅ **PLAN-050 收口**（折叠/复制钮不在 VM 轨范围——只读降级 chrome 语义，048 #9 豁免族邻接） | auto-lang autodown_blocks.rs FENCE_CHROME(_LIGHT) header/header_label；vm-050-label-bars.png |
+| 16 | 行内 code 叠字 | 行内 code 等宽字体、无叠字 | ✅ mono 测宽=画宽（PLAN-050）：根因双层——段落 buffer 全文 sans 测宽而绘制侧 code 段换 mono（更宽）超槽压叠后词 + cosmic SyntaxEditor 高亮重写行 attrs_list 抹除 family span（syntect.rs:337-369）；修 `mono_family()`=Consolas（Windows，对齐绘制）+ render_frame 帧内 `ensure_code_family_spans` 幂等重落（fence token 间距散架同修：cosmic Monospace ≈8.2px ≠ Consolas ≈7.77px@14px） | ✅ **PLAN-050 收口**（`paragraph_inline_code_measured_mono` render_frame 后断言契约；插桩复验「, and a 」起点 328.97→348.70=Consolas 实宽） | auto-lang autodown_editor/core.rs mono_family/ensure_code_family_spans；vm-050-inline-code.png；vm-050-side-by-side.png |
 
 ## T1/T2 实测类消费清单（VM 轨，view 树逐 token）
 
@@ -63,7 +67,7 @@ app.at style 块 **scoped 工具类兜底定义** 提供（plan 046「vue 侧 st
 
 | 波次 | 内容 | 前置 | 吞吐差异项 |
 |------|------|------|-----------|
-| W2 | 主题对齐（VM 浅色两栏） | auto-lang PLAN-527 T8（dark/theme） | ✅ **PLAN-047 收口**主题段（#5）；#8 thumb 观感段、#4 渲染面板内边距（py-4 px-5 VM 消费臂）未随，转介 auto-lang 侧/后续清册 |
+| W2 | 主题对齐（VM 浅色两栏） | auto-lang PLAN-527 T8（dark/theme） | ✅ **PLAN-047 收口**主题段（#5）；**PLAN-050 续收 fence 内 chrome 段**（#13/#14，浅色 hljs 主题 × 硬编码暗板的分叉）；#8 thumb 观感段、#4 渲染面板内边距（py-4 px-5 VM 消费臂）仍未随，转介 auto-lang 侧/后续清册 |
 | W3 | 初始文档种子 | auto-lang ext 资产机制 或 DSL 多行字面量立项 | ✅ **PLAN-047 收口**（#6；442 A3 适配器链 + 生成转义字面量，两前置均绕开） |
 | W4 | 编辑器空态 placeholder | 编辑壳空态能力 | ✅ **PLAN-048 收口**（#7） |
 | W5 | web-only 块降级裁定（豁免登记 or 补渲染） | 届时按成本定夺 | ✅ **PLAN-048 裁定收口**（#9 显式豁免 + math chrome 对齐） |

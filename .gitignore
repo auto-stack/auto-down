@@ -61,3 +61,4 @@ autodown/test-results/
 
 # Rust crate 构建产物
 autodown/packages/core/rust/target/
+autodown/stream-demo/test-results/

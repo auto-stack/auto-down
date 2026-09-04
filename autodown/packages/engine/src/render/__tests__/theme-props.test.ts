@@ -21,7 +21,9 @@ const editorCss = readFileSync(
 const rendererVue = readFileSync(join(here, '../StreamingRenderer.vue'), 'utf8')
 
 async function renderRoot(props: Record<string, unknown>): Promise<string> {
-  return renderToString(createSSRApp({ render: () => h(StreamingRenderer, props) }))
+  // h(component as any, props)：引擎测试惯例（block-widget-parity 同款）
+  // ——宽松 props 走运行时校验，编译期不做形状断言。
+  return renderToString(createSSRApp({ render: () => h(StreamingRenderer as any, props) }))
 }
 
 describe('StreamingRenderer theme props (PLAN-051 T4)', () => {

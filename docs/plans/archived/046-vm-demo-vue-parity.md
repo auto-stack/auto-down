@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-046
-status: reviewed
+status: archived
 feature_name: VM demo 对齐 vue 版（两栏布局收编 + 平台差异清册）
 author: [zhaopuming]
 created_at: 2026-09-03

@@ -1,14 +1,21 @@
 ---
 plan_id: PLAN-050
-status: execution_done
+status: reviewed
 feature_name: VM demo 代码块与行内渲染对齐（token 标点/高亮主题/标签条/编辑壳行内）
 author: [zhaopuming]
 created_at: 2026-09-04T00:00:00+08:00
-updated_at: 2026-09-04T15:30:00+08:00
+updated_at: 2026-09-04T16:30:00+08:00
 
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P046-3: PARITY 差异清册十二项→十六项（#13-#16 收口行新增，W2 波次行续收注记）"
+  - "P047-3: 主题机制扩展——D-GAP dark_mode 值变化标 view_dirty 臂（预览臂 Element 缓存随主题翻转重建）"
+new_spec_components:
+  - "P050-架构: fence chrome 主题双档单源（FENCE_CHROME(_LIGHT) 类串+fence_palette 编辑壳配色+family_of 按 dark_mode 选 static，浅色档逐值对齐 vue .code-block-container）"
+  - "P050-设计: 行内 code mono 测宽帧内保障（mono_family=Consolas 双端对齐+ensure_code_family_spans 幂等重落——cosmic SyntaxEditor 高亮重写行 attrs_list 的显式适应）"
+  - "P050-翻案: 标点不可见=视觉不可见非字符丢失（DocRun 流完整实证），字符在场断言无鉴别力、主题一致性断言为准"
+touched_goals:
+  - "P046-2: VM demo 对齐 vue 版——差异清册扩至十六项，#13-#16 四症状收口"
+  - "P047-2: VM demo 观感收尾——fence 内 chrome 主题/标点可见性/标签条/行内渲染四症状收口"
 
 current_step: 7
 total_steps: 7
@@ -248,7 +255,89 @@ F1 与 F3 同在 fence 渲染链，先 F1 后 F3（同一实勘面）；F2 依�
 
 ## 复审记录
 
-（待 /auto-plan:review 填写）
+- **复审人**：zhaopuming（/auto-plan:review，2026-09-04）
+- **入口态**：execution_done → **reviewed（PASS）**
+- **代码面核实**：worktree auto-lang HEAD `461032df8`（4 文件 +275/−21：
+  autodown_blocks.rs / autodown_editor/core.rs / autodown_render.rs /
+  iced/renderer.rs）；折入 auto-lang master `53d4c57fc` 树一致性核验
+  （四文件 diff 空）；auto-down worktree plan-050-dev `0aad8cb`（证档+
+  PARITY+README+DEBTS）。诊断插桩/探针 grep = 0。
+
+### 验收逐条（七条全过）
+
+1. **F1 标点/间距 — PASS（口径翻案在案）**：计划原文「三语言全字符
+   断言」经 T1 实勘证据修正为主题一致性断言——DocRun 流本就含全部
+   字符（探针实证 `(` `)` `.` 在流中、x 单调），丢失是浅色 hljs 基色
+   近黑画 zinc-950 的**视觉不可见**，字符在场断言恒真无鉴别力；翻案
+   记录在 T1 [✅]。复验：`fence_chrome_and_text_follow_light_theme`
+   绿（浅 bg + 深色标点双断言，core.rs tests）；间距 = mono 双端
+   Consolas 对齐（插桩读数「, and a 」328.97→348.70 = 槽位=实宽）；
+   截图 `console.log(foo)`/`fn main() {`/`def fibonacci(n):` 全标点
+   （vm-050-fence-preview/-editor.png，js/rust/python/typescript 多语言）。
+2. **F2 浅色 — PASS**：测试断言 chrome 浅色（gray-50 族）+ 截图两臂
+   浅底；联动路径 = D-GAP 值变化标 view_dirty（renderer.rs
+   dynamic_view `LAST_SYNCED_DARK` swap 臂）+ family_of/fence_palette
+   同读 `theme::dark_mode`，代码在折入树复核。
+3. **F3 标签条 — PASS**：`fence_view_chrome_light_header_full_width_
+   label_colored` 绿（Width(Full) + 标签 TextColor 双断言）；
+   vm-050-label-bars.png 全宽可读，游离黑块消失。
+4. **F4 行内 — PASS**：autodown_editor **68/68**（66 基线不回退 + 2 新）；
+   `paragraph_inline_code_measured_mono` 为 render_frame 后断言的
+   诚实契约（SyntaxEditor 重写后 span 仍在）；vm-050-inline-code.png
+   行内不叠字。
+5. **PARITY 四项在册 — PASS**：差异总表十二→十六项（#13 chrome 主题
+   分叉 / #14 标点不可见 / #15 标签条塌陷 / #16 行内叠字，编号+归宿+
+   函数锚+截图四标）；W2 波次行续收注记；六件证档 PNG 实存（ls 复核）。
+6. **双门 — PASS**：vm-smoke 11 断言组全过退出码 0（终版二进制净窗）；
+   playwright **73/73**（1.3m，auto-down worktree，vue 轨零改动）。
+7. **零残留 — PASS**：W50DRAW/F4PROBE/probe_fence_runs/probe_inline_
+   code grep = 0；「游离黑块/塌陷/console .log foo」仅存 PLAN-050
+   曾/根因语境史实记录，无活性表述。
+
+### 全量门（复审即本计划唯一全量门）
+
+- `cargo tf`（worktree，HEAD=461032df8，复审复跑）：**3403/3405**，
+  2 失败 = `schema_drift::schema_drift_fence` + `docs_gen::
+  kitchen_sink_page_in_sync`——**与 master 基线同集**（T7 于 auto-lang
+  主 checkout 对照复跑同红，alert-dialog/dropdown-menu tag 覆盖漂移，
+  并行会话遗留，与 050 四文件无涉）；失败集≡基线 → 050 零新增回归。
+- `cargo tv`（同树）：**3565/3565 全绿**（VM 文件门，renderer.rs 触发）。
+
+### 遗漏/延后/workaround 清查
+
+- **遗漏**：无。T1-T7 每步有 diff 对应；side-by-side 复用 047 vue
+  原件而非新捕——vue 轨本计划零改动（playwright 73/73 证明），T6
+  [✅] 明注，非缩水。
+- **延后**：buffer hljs 主题构建期选定、运行时翻转不重刷存量 buffer
+  ——DEBTS.md 050 行登记（🟢，demo 无切换面），用户可见面静态一致。
+- **workaround**：`ensure_code_family_spans` 帧内重落是对 cosmic
+  SyntaxEditor 拥有行 attrs_list 生命周期的**显式适应**（上游行为，
+  cosmic-text syntect.rs:337-369），代码注释+测试契约在案；重落丢弃
+  段落颜色 span——段落绘制不消费颜色（ctx.syntax=false）已核，非
+  静默 hack。
+
+### 债候选（D1-D4，不阻塞）
+
+- D1：`mono_family()` 非 Windows 侧（cosmic Monospace vs iced
+  Font::MONOSPACE）advance 可能仍不齐——跨平台未测（demo 目标本
+  Windows 机），登记不修。
+- D2：段落 attrs_list 重落与「未来段落语法着色消费」的交互届时需
+  重审（现无消费方；若消费需合并保留颜色 span）。
+- D3：auto-lang master 基线 tf 门当前即红（schema_drift_fence +
+  kitchen_sink，并行会话 schema 漂移）——050 失败集≡基线零新增，
+  但后续计划全量门读数会带此背景，schema 再生成为独立事项。
+- D4：流程注记——050 执行期一次 `taskkill /IM` 误伤并行会话
+  auto.exe（049 在案外部击杀类的反向案例）；本计划其余全程按 PID
+  精确杀，教训沉淀：共享机禁用映像名通杀。
+
+### spec-impact 元数据
+
+- supersedes：P046-3（PARITY 差异清册十二项→十六项，#13-#16 收口行
+  新增）；P047-3（主题机制扩展——D-GAP 值变化标 view_dirty 臂）。
+- new：P050 六节（fence chrome 主题双档单源机制 + 行内 code mono
+  测宽帧内保障机制 + 四症状根因翻案记录）。
+- touched_goals：P046-2（VM demo 对齐 vue——清册 #13-#16 收口）、
+  P047-2（观感收尾——fence 内 chrome/标点/标签条/行内四症状收口）。
 
 ## 待澄清事项
 

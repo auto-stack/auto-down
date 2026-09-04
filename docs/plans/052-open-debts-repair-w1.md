@@ -1,15 +1,23 @@
 ---
 plan_id: PLAN-052
-status: execution_done
+status: reviewed
 feature_name: 开放债修复轮 W1——依赖安全清偿 + npm publish 前置 + 051-候选 VM 主题回归排查 + auto-lang 转介单
 author: [zhaopuming]
 created_at: 2026-09-04T23:50:28+08:00
-updated_at: 2026-09-05T01:05:00+08:00
+updated_at: 2026-09-05T01:35:00+08:00
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P027-2: 下游 dev 直连 engine 源码（development 条件出口）——补 npm 发布形态半面：publishConfig.exports pack 时剥 development（tarball 纯 dist），工作区 dev-直连条件不动（同一 manifest 双形态）"
+new_spec_components:
+  - "P052-架构: engine npm publish 技术前置——publishConfig.exports 五出口纯 dist + changesets 0.x 对账（plan-020 major→minor；config baseBranch main→master、access restricted→public 两阻断修复）+ tarball 三断言门（无 src/无 development/parser 出口装机真跑 parse_blocks）；实际 publish 择时（token/registry 用户决策）"
+  - "P052-机制: 051-候选排查读数与回归门——像素探针 probe-051-view-theme.mjs（自带 PNG 解码+pane 特征色 zinc950/#f9fafb 分析；--flip/--edit-fence 三轴）四读数矩阵（A1 首帧 FORK/A2a 深档同批 statics/A2b D-GAP 翻转不重建存量/A3 新建正确）→ pinpoint 双层（首帧取档错误+内容寻址缓存不随主题失效，auto-lang HEAD 实证仍在）+ vm-smoke 第七组 light-chrome 门（[group7] 哨兵确定性失败不吃 049 重试；AUTO_VM_KNOWN_FORK=1 门控，修复后摘门转硬断言）"
+  - "P052-清偿: 依赖安全基线——pnpm audit 16→0 双清零（mermaid 11.17.2 直更+六传递依赖区间内刷新）+ 机制注记（pnpm 11.6 audit --fix 落废弃字段、workspace overrides 静默不读 → update -r 区间路径，无 override 维护面）"
+  - "P052-转介: auto-lang 侧六条目转介单 docs/plans/attachments/052-auto-lang-transfer.md（051-候选/043×3/048/046/016/022，每条带可粘贴复现命令/嫌疑面/绕道现状/建议验收）；随行修复 auto-lang autodown-core 路径依赖断裂（彼仓 master 0b0161b57）"
+touched_goals:
+  - "P027-2: dev 直连 engine 源码——发布形态补面（G2，出口语义保形验证过）"
+  - "P050-2: VM demo 代码块与行内渲染对齐——051-候选回归门（vm-smoke 第七组）为本 goal 收口面的守卫延伸（G3）"
+  - "P051-2: 主题规约化与双轨 settings——同上回归门兼守 settings 落地后的浅档正确性（G3）"
 
 current_step: 15
 total_steps: 15
@@ -214,7 +222,24 @@ alias 用户已裁定不做）；039 CodeMirror 目标态（前置①npm 组件�
 
 ## 复审记录
 
-（T1 基线取证与 T11 隔离矩阵读数落此处）
+**复审（ZCode，2026-09-05，/auto-plan:review）——结论：PASS → reviewed**
+
+- **复审范围核对**：plan-052-dev 分支 base e7d079e..HEAD 共 8 提交，diff 足迹 10 文件（DEBTS/changesets×2/engine package.json+ARCHITECTURE/lockfile/PARITY/probe 新增/vm-smoke/转介单新增）与计划声称面完全一致，无游离改动；worktree 干净。
+- **验收①（audit 清零 + 027 注记）PASS**：复审重跑 `pnpm audit` 与 `--prod` 双 "No known vulnerabilities found"；DEBTS 027 行「▶本地清零待推送消账」注记在（含 push 后 GitHub 重扫终销口径与机制注记）。
+- **验收②（tarball 三断言 + 008 行8 注记）PASS**：复审重 pack `autodown-engine-0.5.0.tgz`——`package/src/` 计数 0、packed package.json `development` 计数 0、已装 tarball 工程内 `parse_blocks('# review')` 返 Heading；`npx changeset status` minor 单升 NO major；DEBTS 008 行8「▶ 技术前置就绪（plan 052 T6-T8」注记在。
+- **验收③（探针+读数+pinpoint+vm-smoke 第七组 + 051-候选行）PASS**：probe-051-view-theme.mjs 在库（257 行，export decodePng/analyzeFrame）；DEBTS 051-候选行「▶转介在案」含四读数+双层 pinpoint+探针路径；vm-smoke 第七组门控态复审重跑整轮 PASS（SKIP 行携带实时读数 zinc950=41.4%——fork 现存实证），无门控快速失败 exit 1 已在执行期验证。
+- **验收④（转介单 + 行注记）PASS**：转介单六条目（计划字面五组+051-候选=六，超集）；DEBTS「转介单在案（052 附件」七处注记齐（043×2/048/046/016×2/022）。
+- **验收⑤（全门复跑绿）PASS**：复审全门重跑——engine test 786/786 + build 四卫兵（dist 戳 47a05509811dc27e 不变=零漂移）、demo/stream-demo build、crate cargo 15/15、demo e2e 74/74（E2E_PORT 隔离）、stream-demo e2e 3/3、vm-smoke 门控整轮 PASS。
+- **遗漏清查**：无——15 任务各有 diff 落点；T1 基线 JSON 在默认检出 tmp/052-audit-baseline.json（16 项+归属）。
+- **口径偏差（非缺失）**：T11 验证文字「矩阵 6 格」实际收敛为四读数（A1/A2a/A2b/A3）——三轴设计（首帧/翻转 × 冷/热 × 启动浅/翻转落浅）操作坍缩后同轴全覆盖，pinpoint 决定性；计划所称「第八断言组」在 vm-smoke 头注顺延编号为 7（既有组 1-6 + 未入头注的 drag 组）——纯命名口径。
+- **延后清查**：实际 npm publish 未执行=待澄清#1 预授权（默认否）；GitHub Dependabot 消账 pending push=027 行注记在案；无未批准延后。
+- **workaround 清查**：T3 overrides 机制失效改 update -r=等价终态的**已记录**机制偏差（终态更优：无 override 维护面）；vm-smoke [group7] 哨兵=设计决策；探针 PNG 证据不入库（读数文字已固化 DEBTS/PARITY/计划三处）。
+- **债候登记（4 条，均非阻断）**：
+  1. jade-garden 无 pnpm-lock 的 audit 面（GitHub Dependabot 30 项含多 manifest）——push 后随重扫清点，残项转 jade 侧自查；
+  2. pnpm 11.6 workspace overrides 静默不读（工具链发现，机制注记在 027 行）——未来需硬钉传递依赖版本时另立机制或升级复测；
+  3. demo package.json 无 `test` 脚本（e2e 实入口 npx playwright test，计划 T5 已预案）——可补一行脚本的小欠账；
+  4. auto-lang 主检出 target/debug 仍为 20:55 旧二进制（其 master 已含路径修复未重建）——彼仓下次构建自然收敛。
+- **随行跨仓修复核验**：auto-lang autodown-core 路径断裂修复在其自身 worktree 完成（f5c86eeba）并折入其 master（0b0161b57），worktree 经 wt-guard 清理——符合依赖仓纪律。
 
 ## 待澄清事项
 

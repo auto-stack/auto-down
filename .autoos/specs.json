@@ -243,6 +243,17 @@
           "PLAN-047"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P049-2",
+        "section": "goals",
+        "title": "VM demo 窗口静默退出根因排查（exit 1 无栈无日志） — 目标",
+        "content": "1. 稳定复现：拿到 ≥3 种启动形态下的存活时长/退出码/日志尾部三列数据。\n2. 定位：圈定与\"无栈、无日志、code 1\"特征吻合的退出路径（file:line 级），\n   并用动态取证抓到退出瞬间的最后一行日志。\n3. 裁定：产出一句可检验的根因陈述 + 支撑它的对照实验证据。\n4. 收口：修复（soak ≥10 分钟不退 + vm-smoke 退出码 0）或债登记\n   （DEBTS.md 新行 + vm-smoke.mjs 头注归因修正 + demo README 运行注意）。",
+        "file": "docs/plans/archived/049-vm-silent-exit-probe.md",
+        "related": [
+          "PLAN-049"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -492,6 +503,17 @@
         "file": "docs/plans/archived/047-vm-demo-look-finish.md",
         "related": [
           "PLAN-047"
+        ],
+        "status": "stable"
+      },
+      {
+        "id": "P049-3",
+        "section": "architecture",
+        "title": "VM demo 窗口静默退出根因排查（exit 1 无栈无日志） — 架构方案",
+        "content": "排查不动产品架构。涉及的既有机制（全部已核实 file:line）：\n\n- **CLI 分发**：`crates/auto/src/main.rs:917-937` —— `-r vm` 走 renderer vm 轨。\n- **MCP 服务**：`crates/auto-lang/src/ui/mcp_server.rs:3284-3298`\n  `start_mcp_server` 把 `McpUiServer::run()` 放进 detached `std::thread`；\n  `:3300-3305` `mcp_port()` 读 `AUTOUI_MCP_PORT`（默认 9247）。\n- **心跳**：`crates/auto-lang/src/ui/iced/renderer.rs:6329-6348`\n  `mcp_heartbeat_subscription`（Plan 314）——MCP 活跃时每 2s 发\n  `__mcp_heartbeat` 消息保持快照新鲜，注释明言\"消息不匹配任何 update() 臂\"\n  是设计预期；`:11395` 是 update 里的配置热重载臂（借心跳节拍做 500ms 节流）。\n  VM 轨下该消息走到 VM handler 分发路径，因 demo 模块无 `__mcp_heartbeat`\n  符号而打三行告警（CALL_HANDLER_FOR_NOT_FOUND + 两级 fallback）——良性噪音。",
+        "file": "docs/plans/archived/049-vm-silent-exit-probe.md",
+        "related": [
+          "PLAN-049"
         ],
         "status": "stable"
       }
@@ -744,6 +766,17 @@
           "PLAN-047"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P049-4",
+        "section": "designs",
+        "title": "VM demo 窗口静默退出根因排查（exit 1 无栈无日志） — 详细设计",
+        "content": "### 假设清单（T5 逐个裁定或排除）\n\n- **H1 客户端断开触发**：最后一个 MCP 客户端断开后，server 线程或 iced\n  侧某收尾路径退出。观测 A/B 均符合\"客户端活动结束后不久退\"。\n- **H2 心跳计数阈值**：VM 轨心跳分发失败累计到某阈值（29 次？）触发退出。\n  两实例都存活 ~58s 的定量吻合是本假设的线索，也可能只是巧合。\n- **H3 被吞的 panic / 运行时错误**：主线程或关键线程 panic。Rust panic\n  默认打 stderr 栈，日志里没有 → 大部分 panic 面可排除，但\n  `panic = \"abort\"` 之外的静默路径（如 join handle 丢弃）仍需 T3 圈定。\n- **H4 环境干扰**：musk.exe（占 9247）或会话宿主对后台进程的回收。\n  判别点：前台手工启动是否同样退出（T2 可选臂）。\n\n### 复现矩阵设计（T1/T2）\n\n| 臂 | 启动 | MCP 客户端行为 | 观察窗 |\n|----|------|----------------|--------|\n| a 空载 | 9248 起 | 从不连接 | ≥3 分钟或退出即止 |\n| b 连后断 | 9248 起 | initialize + initialized 后立即断开 | 断开后 ≥3 分钟 |\n| c 常连 | 9248 起 | 每 5s 一次 autoui_snapshot 常连 | ≥3 分钟 |\n| d（可选） | 用户前台手工起 | 无 | 对照环境因素 |\n\n每臂记录：存活时长、退出码、日志尾 10 行、心跳告警条数。心跳仅在 MCP\n活跃时启用（renderer.rs:6338-6344 注释）——臂 a 若零心跳告警说明 MCP 未\n激活，该臂若仍退出则 H1/H2 大幅弱化。\n\n### 取证手段（T3/T4）\n\n1. 静态：grep `std::process::exit` / `ExitCode::from(1)` / `exit(1)` /\n   主返回 Err 面在 `crates/auto/src/main.rs` + `crates/auto-lang/src/ui/`。\n2. 动态：`RUST_BACKTRACE=full` 复跑常连臂；候选路径插临时 `eprintln!`\n   标记行后 `cargo build -p auto`（debug 增量）复跑，抓退出前最后一行。",
+        "file": "docs/plans/archived/049-vm-silent-exit-probe.md",
+        "related": [
+          "PLAN-049"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -970,6 +1003,17 @@
         "file": "docs/plans/archived/047-vm-demo-look-finish.md",
         "related": [
           "PLAN-047"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P049-5",
+        "section": "tests",
+        "title": "VM demo 窗口静默退出根因排查（exit 1 无栈无日志） — 测试设计",
+        "content": "- 探针脚本沿用 `vm-smoke.mjs:91-113` 的 MCP JSON-RPC 封装（initialize →\n  tools/call），新脚本只放 `tmp/` 或就地内联 node -e，不入 demo 正式面\n  （除非 T6 裁定 soak 脚本值得转正）。\n- 回归门按 T6 改动面定：改了 auto-lang → `cargo test -p auto-lang ui::`\n  相关模块 + vm-smoke.mjs 退出码 0；只改 demo/文档 → vm-smoke.mjs 即可。\n- 修复分支加 soak：修复后常连臂 ≥10 分钟存活且日志无新增告警类别。",
+        "file": "docs/plans/archived/049-vm-silent-exit-probe.md",
+        "related": [
+          "PLAN-049"
         ],
         "status": "verified"
       }
@@ -1205,6 +1249,17 @@
           "PLAN-047"
         ],
         "status": "published"
+      },
+      {
+        "id": "P049-6",
+        "section": "reviews",
+        "title": "VM demo 窗口静默退出根因排查（exit 1 无栈无日志） — 验收标准 / 复审记录",
+        "content": "1. 复现矩阵 ≥3 臂完成，三列数据（存活时长/退出码/日志尾）齐全成表。\n2. 退出路径清单 ≥1 条与\"无栈无日志 code 1\"吻合，动态取证抓到退出瞬间\n   最后一行日志（插桩标记或 RUST_BACKTRACE 输出）。\n3. 根因裁定成文：一句可检验根因陈述 + 对照实验命令与预期/实测结果，\n   写入本计划复审记录。\n4. 收口二选一完成：修复（soak ≥10 分钟不退 + vm-smoke 退出码 0）或\n   DEBTS.md 债登记（含复现命令与证据指针）。\n5. `vm-smoke.mjs` 头注的退出归因按实证修正（无论修复与否——归因修正\n   本身独立成立）。\n6. 若 T6 改了 auto-lang：相关 `cargo test -p auto-lang` 模块全过。\n\n### 复现矩阵总表（T1/T2/T5 对照实验，2026-09-04 11:06-11:42 实测）\n\n| 臂 | 形态 | 存活时长 | 退出码 | 日志尾/脚注 | watcher 现场（100ms 轮询） |\n|----|------|---------|--------|------------|---------------------------|\n| a | 9248 空载（无客户端） | 死于 (60,91]s | **1** | 无 `end` 脚注；3 条初始 scroll UI_EVENT 后全静默；心跳 0 行 | 未开 watcher |\n| b | 9248 连后断（t≈20s initialize 即走） | 死于 (150,180]s | **1** | 无脚注；心跳 42 行=14 拍（t≈48s 停=会话过期），死前 ~130s 静默 | 未开 watcher |\n| c | 9248 常连（5s snapshot） | ≥240s（脚本收尾杀，非自发） | — | 心跳 330 行连绵至死 | 死亡时刻=脚本清理 |\n| a2 | 9248 空载 | **90.9s**（watcher 精确） | **0** | **有 `end` 脚注**（干净收尾） | 无 taskkill 现场 → 壳层关窗路径 |\n| c2 | 9249 常连 | **260.0s** | **0** | 有脚注；心跳至死方休（客户端活着窗口仍被关） | 无 taskkill 现场 → 壳层关窗路径 |\n| a3 | 9248 空载 | 360s 全活（脚本杀） | — | — | 全程无事件（击杀波间歇期） |\n| a4 | 9250 孤儿游离（Start-Process 脱树） | **≥5min 仍活** | — | — | watcher4 期内无事件 |\n| 外部 30708 | 并行会话的 `run --render=vm` | 11:16:58→11:31:57 | 被杀 | — | **taskkill 出现 8ms 后消失**（硬杀现行） |\n| 原观测 A/B | 会话后台任务 | ~58s（心跳计数口径） | 1 | 无脚注 | —（2026-09-04 晨间，PLAN-047 后构建） |\n\n### 根因裁定（T5）\n\n**一句可检验陈述**：`auto run -r vm` 窗口的静默退出（code 1、无栈、无\n日志）**不是 demo/auto-lang/MCP 的进程内缺陷**——退出由共享机器上并行\nagent 会话的清理击杀（`taskkill /F` 类 `TerminateProcess`，实测该类击杀\n的进程退出码恰为 1 且零输出）造成；另有同体验的姊妹路径：OS/壳层关窗\n（Plan 065 钉死的「壳层先行代关」，CloseRequested 不达应用）→ 窗口关\n闭 → iced daemon 语义全窗退出 → `run()` Ok → **exit 0 + `end` 脚注**\n（a2/c2 两例）。死亡时机跟随并行会话活动波次（11:26-11:31 有击杀波、\n11:32-11:40 间歇），**无固定定时器**（a3 空载 360s 全活、a4 孤儿 ≥5min、\nc2 常连 260s、a2 91s——时长谱连续无周期）。与 physical synthetic\nclicks 无关（空载臂零交互亦死），与客户端断开/心跳计数无关（臂 a 无\n客户端无心跳仍死）。\n\n**证据链**：\n1. T3 静态清空：进程内无可达静默 exit(1)（main.rs 77 处皆打印且属启动\n   期；ui/ 零 exit；`Process.exit` 无调用者；iced 错误必经 miette 打印；\n   无 panic=abort/watchdog）。\n2. 受控实验：`taskkill /F /PID <ping>` → bash 报退出码 **恰为 1**、零\n   输出（`Stop-Process -Force` 则 -1）；Rust `Child::kill()`/Node libuv\n   kill 同走 `TerminateProcess(handle,1)`——静默 code 1 即监管者击杀签名。\n3. 现行捕获：30768→30708 实例死于 taskkill.exe 出现后 8ms；环境 12\n   分钟内 taskkill.exe 出现 7+ 次（并行会话清理为常态背景）。\n4. 干净关闭对照：a2/c2 死时无 taskkill 现场、有 `end` 脚注、code 0、\n   CloseRequested 探针不触发——与 renderer.rs:14557 Plan 065 注记\n   「Windows 壳层先行代关」逐点吻合。\n5. 反例排除：a3（空载树内）360s 全活 + a4（孤儿）≥5min——排除固定\n   定时器与「孤儿/树内」强相关；击杀目标为外部活动所选，非进程属性。\n\n**对照实验命令**（复现）：臂 a/a2 同款 `AUTOUI_MCP_PORT=9248 auto.exe\nrun -r vm > /tmp/soak.log 2>&1 &` 后 `while kill -0 $!; do sleep 30; done;\nwait $!; echo $?`——预期（实测）：共享机并行会话活跃期 1-4 分钟内退出\n码 1 无输出（a、b、原观测）；间歇期全程存活（a3、a4）；壳层关窗波及\n时退出码 0 且日志尾有 `------------- end --------------`（a2、c2）。\n\n**遗留边界**：具体「哪一支」并行会话/宿主发出每次击杀，需管理员权限\n进程创建审计（auditpol 4688 + 命令行）方可逐击指认——本环境无管理员\n（auditpol Access denied），已按外部类别收口；vm-smoke 重试一次的\nworkaround 维持有效（击杀间歇即过）。\n\n### 复审结论（/auto-plan:review，2026-09-04）\n\n**复审对象**：worktree `plan-049-dev` @ `4a74499`（单提交，3 文件\n+32/−9——DEBTS.md/README.md/vm-smoke.mjs；纯文档+注释改动，唯一\n非注释行是 vm-smoke 重试日志的文案字符串，零逻辑变化）。auto-lang\n仓本计划零改动（全程只读；该仓工作区的 532/536 计划文件改动属并行\n会话，与本计划无关）。\n\n**逐条验收复核**（复审亲验，非转录执行期勾）：\n\n1. **复现矩阵 ≥3 臂三列成表 — PASS**：复审记录 9 行总表（a/b/c +\n   a2/c2/a3/a4 + 外部实例 + 原观测）；证据文件在位抽查：`/tmp/soak-a.log`\n   心跳 grep=0、`soak-b.log`=42、`watcher.log` 3695B 在案，与矩阵数值\n   一致。\n2. **退出路径清单吻合 + 动态取证 — PASS（带形态偏离注记）**：T3 清单\n   第 5 条（外部 `TerminateProcess(1)`）与三特征完全吻合；动态证据\n   未走「插桩标记/backtrace」字面路径——外部击杀在进程内日志上**不可能**\n   留下标记（TerminateProcess 不给进程任何收尾机会），实际以 watcher\n   现行（taskkill 出现 8ms 后外部实例消失）+ 受控退出码实验（taskkill /F\n   → 恰 1 零输出）+ 两型死亡方式（硬杀 1 无脚注 / 干净 0 有脚注）钉死，\n   证据强度高于日志标记；RUST_BACKTRACE 全程零 panic 亦即「非进程内\n   崩溃」的反向证据。\n3. **根因裁定成文 — PASS**：一句可检验陈述 + 复现命令 + 预期/实测\n   对照 + 假设四裁定（H1✗/H2✗/H3✗/H4✓精化）齐备于本记录。\n4. **债登记 — PASS**：DEBTS.md 049 新行（复现命令经归档指针 +\n   证据指针 + 影响面/绕道）；指针已修为 `docs/plans/archived/049`\n   前瞻路径（与 039 行同例，merge 归档后不漂移）。\n5. **vm-smoke 头注归因修正 — PASS**：grep「PHYSICAL synthetic /\n   physical-click probes / jade README:127」worktree demo 目录零残留\n   （复审亲跑）。\n6. **auto-lang 模块测试 — N/A**：diff 零 rust 文件，不适用。\n\n**门禁**：vm-smoke 复审亲跑 **PASS 11 断言组 / 退出码 0**（9248 净窗\n起-测-收，窗口已清）。playwright 73 未跑——改动面为 DEBTS/README/\n纯注释脚本，按计划测试设计「只改 demo/文档 → vm-smoke.mjs 即可」的\n范围裁定（明示记录，非静默跳过）。\n\n**遗漏/延后/workaround 清查**（惰性收敛检查）：\n- 臂 d（可选前台对照）未做：计划明标可选不阻塞，已由 a4 孤儿臂 +\n  外部实例 red-handed 击杀替代覆盖 H4（T6 标记与待澄清②在案）——\n  非静默丢弃。\n- 击杀者逐击身份未指认：环境无管理员（auditpol denied）的固有边界，\n  DEBTS 049 行在案——非未经批准的延期。\n- retry-once workaround 维持：既有 bar 重赋因（归因修正本身就是本计划\n  交付物），未新增 hack，零 TODO 引入。\n- 债候选：**D1** 将来取得管理员权限时可做一次进程创建审计逐击指认\n  击杀者（已含于 DEBTS 049 行边界，不单列新行）。无其他候选。\n\n**结论**：六条验收全 PASS（1 条 N/A），无阻塞债，无未批准延期——\n**status → reviewed**，交 `/auto-plan:merge`。",
+        "file": "docs/plans/archived/049-vm-silent-exit-probe.md",
+        "related": [
+          "PLAN-049"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1436,6 +1491,17 @@
         "file": "docs/plans/archived/047-vm-demo-look-finish.md",
         "related": [
           "PLAN-047"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P049-1",
+        "section": "reports",
+        "title": "VM demo 窗口静默退出根因排查（exit 1 无栈无日志） — 变更摘要",
+        "content": "排查 `auto.exe run -r vm` 起的 VM demo 桌面窗口在运行约 1 分钟后静默退出\n（退出码 1、无 panic 栈、无错误日志）的问题：建立复现矩阵、静态圈定退出\n路径、动态取证、裁定根因，最后按修复面大小收口——小则修复并回归，大则\n登记 DEBTS.md 并修正 vm-smoke.mjs 头注的归因表述。",
+        "file": "docs/plans/archived/049-vm-silent-exit-probe.md",
+        "related": [
+          "PLAN-049"
         ],
         "status": "published"
       }

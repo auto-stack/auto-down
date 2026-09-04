@@ -7,7 +7,7 @@ vue 轨（`auto run`，生成 App.vue）与 VM 轨（`auto run -r vm`，iced 桌
 auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据行号为
 2026-09-04 快照值，函数/臂名锚点为准。
 
-## 差异总表（十六项）
+## 差异总表（十七项）
 
 | # | 项 | vue 轨现状 | VM 轨现状 | 归宿 | 证据 |
 |---|----|-----------|----------|------|------|
@@ -27,6 +27,8 @@ auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据
 | 14 | 代码块标点不可见 | lowlight 着色，标点齐整 | ✅ 全字符可见（PLAN-050）：根因非字符丢失——DocRun 流本就完整（探针实证 `(` `)` `.` 全在流中、x 单调），浅色 hljs 基色标点近黑 (0.04,0.04,0.04) 画在硬编码 zinc-950 暗底上不可见；#13 chrome 浅色化后自愈（同源翻转） | ✅ **PLAN-050 收口**（与 #13 同根同修；`fence_chrome_and_text_follow_light_theme` 测试钉死主题一致性） | vm-050-fence-preview.png（`console.log(foo)`/`fn main() {` 全标点实机）；auto-lang autodown_editor/core.rs 测试 |
 | 15 | fence 语言标签条塌陷 | 全宽 header 条 + 文字 + 折叠/复制钮 | ✅ 全宽标签条文字可读（PLAN-050）：根因 header Container 色类不达子 Text（默认前景近黑画 zinc-800 不可见）+ 宽度收缩成游离黑条；修 header `w-full` + `header_label` 自带色（暗/浅两档同修） | ✅ **PLAN-050 收口**（折叠/复制钮不在 VM 轨范围——只读降级 chrome 语义，048 #9 豁免族邻接） | auto-lang autodown_blocks.rs FENCE_CHROME(_LIGHT) header/header_label；vm-050-label-bars.png |
 | 16 | 行内 code 叠字 | 行内 code 等宽字体、无叠字 | ✅ mono 测宽=画宽（PLAN-050）：根因双层——段落 buffer 全文 sans 测宽而绘制侧 code 段换 mono（更宽）超槽压叠后词 + cosmic SyntaxEditor 高亮重写行 attrs_list 抹除 family span（syntect.rs:337-369）；修 `mono_family()`=Consolas（Windows，对齐绘制）+ render_frame 帧内 `ensure_code_family_spans` 幂等重落（fence token 间距散架同修：cosmic Monospace ≈8.2px ≠ Consolas ≈7.77px@14px） | ✅ **PLAN-050 收口**（`paragraph_inline_code_measured_mono` render_frame 后断言契约；插桩复验「, and a 」起点 328.97→348.70=Consolas 实宽） | auto-lang autodown_editor/core.rs mono_family/ensure_code_family_spans；vm-050-inline-code.png；vm-050-side-by-side.png |
+
+| 17 | 运行时主题切换器 + accent 盘 | settings popover（settings_popover.at 适配件）：⚙ 钮 → 深浅/accent 五色，引擎 darkMode/accent props 声明式消费（根 .is-dark + data-accent，Design 22 §7 规约行单源）；app 级 chrome 条件类 .app-dark | 同构：popover 两轨原生渲染（native_button 原生逃生名 + auto-lang VM 别名），dark_mode 状态经 D-GAP 全局翻转 + **fence buffer 运行时重着色**（retheme_all_fence_buffers 两翻转臂挂钩，DEBTS 050 销号）；document accent 消费豁免（见行内注） | ✅ **PLAN-051 收口**（vm-051-settings.mjs 实机全链路 PASS：⚙→popover→Dark→✕→Light 程序门 + vm-051-light/dark.png；document accent VM 侧 iced 主题接线为豁免残段，后续独立立项） | demo/auto/vm-051-settings.mjs；auto-lang dynamic.rs 三补面（纯 emit 子件派发/引号键归一/幻影载荷裁剪）；PARITY-051 证据 vue-051-*/vm-051-*.png |
 
 ## T1/T2 实测类消费清单（VM 轨，view 树逐 token）
 
@@ -67,7 +69,7 @@ app.at style 块 **scoped 工具类兜底定义** 提供（plan 046「vue 侧 st
 
 | 波次 | 内容 | 前置 | 吞吐差异项 |
 |------|------|------|-----------|
-| W2 | 主题对齐（VM 浅色两栏） | auto-lang PLAN-527 T8（dark/theme） | ✅ **PLAN-047 收口**主题段（#5）；**PLAN-050 续收 fence 内 chrome 段**（#13/#14，浅色 hljs 主题 × 硬编码暗板的分叉）；#8 thumb 观感段、#4 渲染面板内边距（py-4 px-5 VM 消费臂）仍未随，转介 auto-lang 侧/后续清册 |
+| W2 | 主题对齐（VM 浅色两栏） | auto-lang PLAN-527 T8（dark/theme） | ✅ **PLAN-047 收口**主题段（#5）；**PLAN-050 续收 fence 内 chrome 段**（#13/#14，浅色 hljs 主题 × 硬编码暗板的分叉）；#8 thumb 观感段、#4 渲染面板内边距（py-4 px-5 VM 消费臂）仍未随，转介 auto-lang 侧/后续清册；**PLAN-051 续收运行时主题切换器**（#17：popover+props+重着色，thumb 观感仍开放） |
 | W3 | 初始文档种子 | auto-lang ext 资产机制 或 DSL 多行字面量立项 | ✅ **PLAN-047 收口**（#6；442 A3 适配器链 + 生成转义字面量，两前置均绕开） |
 | W4 | 编辑器空态 placeholder | 编辑壳空态能力 | ✅ **PLAN-048 收口**（#7） |
 | W5 | web-only 块降级裁定（豁免登记 or 补渲染） | 届时按成本定夺 | ✅ **PLAN-048 裁定收口**（#9 显式豁免 + math chrome 对齐） |

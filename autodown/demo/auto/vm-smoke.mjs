@@ -28,6 +28,17 @@
 //      fast-path the OnColResize intercept uses; coordinate hit layer is
 //      covered by the rust headless suite) → state.table_widths gains the
 //      table key + the snapshot col_widths reflects the new width
+//   7. (plan 052 T12) light-mode fence chrome parity at clean start: the
+//      SEEDED document (content.ts — three fences) renders in the renderer
+//      pane with LIGHT fence chrome (#f9fafb FENCE_CHROME_LIGHT), editor
+//      pane light too — pixel-read via autoui_screenshot + the shared
+//      decoder from probe-051-view-theme.mjs. Regression gate for the
+//      051-candidate fork (DEBTS 051-候选: renderer arm resolves zinc-950
+//      dark plates in light mode at first build — 存量缓存, auto-lang side).
+//      Runs FIRST and only on the first attempt (typing replaces the seeded
+//      doc). KNOWN-FORK GATE: while the auto-lang fix is outstanding,
+//      AUTO_VM_KNOWN_FORK=1 skips group 7 with a loud note (readings still
+//      printed); ungate to enforce.
 //
 // Protocol (same channel the jade desktop flows ride, see
 // jade-garden/front/desktop/README.md:114-132): AutoUI MCP over Streamable
@@ -61,6 +72,10 @@ const args = process.argv.slice(2)
 const portIdx = args.indexOf('--port')
 const port = Number(portIdx >= 0 ? args[portIdx + 1] : process.env.AUTOUI_MCP_PORT || 9247)
 const base = `http://127.0.0.1:${port}/mcp`
+
+// plan 052 T12: shared pixel reader（单源解码器 + pane 分析器来自探针）
+import { readFileSync, copyFileSync } from 'node:fs'
+import { decodePng, analyzeFrame } from './probe-051-view-theme.mjs'
 
 // per-attempt nonce: the script is repeatable against a LIVE window without
 // a restart, and the in-process retry gets a fresh one (the baseline check
@@ -160,9 +175,37 @@ function elementIdOf(node) {
   return m ? m[1] : null
 }
 
-async function runOnce() {
+async function runOnce(attempt) {
   const checks = []
   const { doc: SMOKE_DOC, heading: HEADING_TEXT, paragraph: PARAGRAPH_TEXT } = smokeTexts()
+
+  // 7. (plan 052 T12) light-mode fence chrome parity at clean start —
+  //    the SEEDED doc (content.ts, three fences) must render LIGHT in the
+  //    renderer pane (zinc-950 share ~0, #f9fafb fenceLight present).
+  //    First attempt only: the type_text below replaces the seeded doc.
+  if (attempt === 1) {
+    const st = await callTool('autoui_state', { fields: ['dark_mode'] })
+    const dark = st.match(/dark_mode:?\s*(true|false)/)?.[1]
+    if (dark !== 'false') throw new Error(`[group7] expected clean-start dark_mode=false, got ${dark}`)
+    const shot = await callTool('autoui_screenshot', {})
+    const pngPath = shot.match(/[A-Za-z]:[^\s"']+\.png/)?.[0]
+    if (!pngPath) throw new Error(`no screenshot path in "${shot.slice(0, 120)}"`)
+    const img = decodePng(readFileSync(pngPath.replace(/\//g, '\\').replace(/^\\\\\?\\/, '')))
+    const frame = analyzeFrame(img)
+    const pct = (n, t) => (100 * n / Math.max(1, t)).toFixed(1) + '%'
+    const readings =
+      `editor dark=${pct(frame.left.dark, frame.left.total)} fenceLight=${pct(frame.left.light, frame.left.total)}` +
+      ` | renderer dark=${pct(frame.right.dark, frame.right.total)} zinc950=${pct(frame.right.zinc, frame.right.total)} fenceLight=${pct(frame.right.light, frame.right.total)}`
+    if (process.env.AUTO_VM_KNOWN_FORK === '1') {
+      checks.push(`[KNOWN-FORK SKIP] light fence chrome gate SKIPPED (AUTO_VM_KNOWN_FORK=1 — 051-候选 auto-lang 修复未落地; readings: ${readings})`)
+    } else {
+      const zincShare = frame.right.zinc / Math.max(1, frame.right.total)
+      const lightShare = frame.right.light / Math.max(1, frame.right.total)
+      if (zincShare > 0.05) throw new Error(`[group7] renderer pane shows zinc-950 dark plates in light mode (051-候选 fork live): ${readings}`)
+      if (lightShare < 0.01) throw new Error(`[group7] renderer pane shows no light fence chrome (#f9fafb) — seeded fences missing?: ${readings}`)
+      checks.push('light-mode fence chrome: renderer pane light (#f9fafb present, zinc-950 < 5%)')
+    }
+  }
 
   // 1. the left editor's input face (the block-editor shell's textarea)
   const before = parseAura(await callTool('autoui_snapshot', {}))
@@ -530,13 +573,21 @@ async function main() {
   let lastErr
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const checks = await runOnce()
+      const checks = await runOnce(attempt)
       console.log(`vm-smoke: PASS (port ${port})`)
       for (const c of checks) console.log(`  ✓ ${c}`)
       process.exitCode = 0
       return
     } catch (err) {
       lastErr = err
+      // plan 052 T12: the light-chrome gate's failure is a REAL fork, not a
+      // PLAN-049 external kill — retrying would skip group 7 (attempt 2) and
+      // mask the red. Fail fast instead.
+      if (err.message.startsWith('[group7]')) {
+        console.error(`vm-smoke: FAIL — light fence chrome gate (no retry for deterministic gate failures): ${err.message}`)
+        process.exitCode = 1
+        return
+      }
       if (attempt === 1) console.error(`vm-smoke: first attempt failed (${err.message}) — retrying once (PLAN-049 external-kill bar)`)
     }
   }

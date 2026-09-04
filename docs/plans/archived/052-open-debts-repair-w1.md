@@ -1,10 +1,10 @@
 ---
 plan_id: PLAN-052
-status: reviewed
+status: archived
 feature_name: 开放债修复轮 W1——依赖安全清偿 + npm publish 前置 + 051-候选 VM 主题回归排查 + auto-lang 转介单
 author: [zhaopuming]
 created_at: 2026-09-04T23:50:28+08:00
-updated_at: 2026-09-05T01:35:00+08:00
+updated_at: 2026-09-05T01:50:00+08:00
 
 # Leave these EMPTY here — /auto-plan:review fills them:
 supersedes_spec_components:

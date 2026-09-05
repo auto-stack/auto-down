@@ -11,7 +11,7 @@ supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 11
+current_step: 14
 total_steps: 14
 ---
 
@@ -398,17 +398,21 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
 
 ### W2.6 VM 排版对齐第一步：heading 族（用户 2026-09-05 指令——edit/view 两臂 H1 字色字号对不上）
 
-- [ ] **T14** heading 两臂收敛到 §7.3/§7.2 规约档（勘读数：vtree 实证只读臂
-  h1=`fg:#6466f1,font:36px`；编辑壳 heading_size=30px 黑——两臂互不一致且
-  均偏离规约）：① class IR 加 `TextPx(f32)` 任意字号通道（parse
-  `text-[<n>px]` + iced/gpui/headless 三 adapter 臂）；② `heading_classes`
-  h1 `text-[25.3px]`/h2 `text-[21.3px]`/h3 `text-[18.9px]`（§7.3 rem 投影）
-  + h1-h3 `font-bold`（h3 semibold→bold）+ 色 `text-indigo-700
-  dark:text-indigo-400`（§7.2 indigo strong 双档；VM document accent=#17
-  豁免，靛蓝静态合规）；③ `heading_size` 编辑壳同步 25.3/21.3/18.9/18/16/14；
-  ④ 编辑壳 heading 着色（cosmic 绘制色挂点探明则做，否则登记残段）。
-  验证：单测（parse/tables）绿 + 净窗 vtree 只读臂三档 fg/font 合规约 +
-  截图两臂 H1 目测同档。margins/其余家族=后续波次（§7.3 全量收敛另列）。
+- [✅ 已完成] **T14** heading 两臂收敛到 §7.3/§7.2 规约档。勘读数：vtree
+  实证只读臂 h1=`fg:#6466f1,font:36px`、编辑壳 30px 黑——两臂互不一致且
+  均偏离规约。落地（dep worktree 9aa9a6639+117f686a3，折回 master
+  f6e340004）：① 实现改走**既有 TextArbitrary 通道**（`text-[<n>px]`
+  原生支持；误加的 TextPx 重复件即加即撤）；② `heading_classes` h1-h3
+  `text-[25.3/21.3/18.9px] font-bold` + `text-indigo-700
+  dark:text-indigo-400`（palette 表值 67,56,202/129,140,248 恰=§7.2
+  strong 双档）；③ `heading_size` 25.3/21.3/18.9/18/16/14（h6 与只读臂
+  text-sm 对齐）；④ 编辑壳 heading buffer 前景=accent-strong+恒 700
+  （BlockDrawCtx.heading/heading_color，h1-h3）；伴随=vtree 转储补
+  font_size_arbitrary 通道（任意字号 font 字段此前静默缺席）。验证：
+  heading/autodown 组 191 绿 + editor 69 绿；净窗 vtree 三级 heading
+  `#4338ca`+25/21/18px 合规约；截图两臂 H1 同档（同色靛蓝同号加粗）。
+  预折门 tf 3439/3440（唯一红=charts 既有）。残留：heading margins、
+  其余家族（段落间距/列表/表格细节）=§7.3 全量收敛后续波次。
 
 ### W3 摘门控收口（T12/T13 完成后执行）
 

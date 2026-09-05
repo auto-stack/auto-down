@@ -12,7 +12,7 @@ new_spec_components: []
 touched_goals: []
 
 current_step: 11
-total_steps: 13
+total_steps: 14
 ---
 
 # [PLAN-053] 四象限逐像素统一（edit/view × 深/浅）——正式验收目标钉死
@@ -395,6 +395,20 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
 - [ ] **T13** 依赖折回 + 镜像行：auto-lang 预折门（cargo tf 全量）绿后
   worktree 折回彼仓 master；auto-lang DEBTS 补登 051-候选镜像行并随
   本仓销号流程同日销号（补 P052 缺口）。
+
+### W2.6 VM 排版对齐第一步：heading 族（用户 2026-09-05 指令——edit/view 两臂 H1 字色字号对不上）
+
+- [ ] **T14** heading 两臂收敛到 §7.3/§7.2 规约档（勘读数：vtree 实证只读臂
+  h1=`fg:#6466f1,font:36px`；编辑壳 heading_size=30px 黑——两臂互不一致且
+  均偏离规约）：① class IR 加 `TextPx(f32)` 任意字号通道（parse
+  `text-[<n>px]` + iced/gpui/headless 三 adapter 臂）；② `heading_classes`
+  h1 `text-[25.3px]`/h2 `text-[21.3px]`/h3 `text-[18.9px]`（§7.3 rem 投影）
+  + h1-h3 `font-bold`（h3 semibold→bold）+ 色 `text-indigo-700
+  dark:text-indigo-400`（§7.2 indigo strong 双档；VM document accent=#17
+  豁免，靛蓝静态合规）；③ `heading_size` 编辑壳同步 25.3/21.3/18.9/18/16/14；
+  ④ 编辑壳 heading 着色（cosmic 绘制色挂点探明则做，否则登记残段）。
+  验证：单测（parse/tables）绿 + 净窗 vtree 只读臂三档 fg/font 合规约 +
+  截图两臂 H1 目测同档。margins/其余家族=后续波次（§7.3 全量收敛另列）。
 
 ### W3 摘门控收口（T12/T13 完成后执行）
 

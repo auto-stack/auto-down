@@ -11,8 +11,8 @@ supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 8
-total_steps: 11
+current_step: 11
+total_steps: 13
 ---
 
 # [PLAN-053] 四象限逐像素统一（edit/view × 深/浅）——正式验收目标钉死
@@ -373,23 +373,55 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   双绿+模块导出验证；T6 复跑读数与接线前同值（zinc950 0.1%/40.4%，
   零行为漂移）。
 
-### W3 摘门控收口（硬依赖：auto-lang 051-候选修复=转介单①）
+### W2.5 依赖侧修复（auto-lang，转介单①收回自修——用户 2026-09-05 裁定）
 
-- [ ] **T9** 修复落地复验：auto-lang 修复折入 master + exe 重建后，跑
-  T6 矩阵——四读数 CONSISTENT（Q(light×view) fenceLight 在场 zinc950<5%
-  + F(view 翻转) 重建 + 深档双臂 zinc950 在场）。读数留档
-  `auto/quadrant-matrix-<日期>.txt` 为摘门控证据。验证：矩阵 verdict 全
-  CONSISTENT。
+- [✅ 已完成] **T12** 051-候选修复落地（auto-lang）：theme 模块加全局主题代数
+  （`set_dark_mode` 值变化自增）+ `StreamCache` 记录构建代数、代数不符
+  全量重建（D2 两 pinpoint：首帧 D-GAP 前取档 + 翻转缓存不失效，一并
+  覆盖）。TDD：先写「代数翻转→gens 增加/静态档位翻转」失败测试再实现。
+  worktree=`.wt/auto-down-053/auto-lang`（分支 auto-down-053-dev），构建走
+  计划私有 target。验证：本仓探针 `--quadrants` 七行全 CONSISTENT
+  （读数即 T9 证据）；auto-lang 侧 cargo check+定点测试绿。
+  ——[✅ 已完成] dep worktree 2d3b2d1e0：theme.rs THEME_EPOCH（值变化
+  自增 + theme_epoch() 读数）+ autodown_render.rs StreamCache.theme_epoch
+  复用判定；TDD `theme_flip_invalidates_stream_cache` 红→绿（同值回写
+  零扰动护栏）；autodown_render:: 23 绿 + autodown_blocks:: 6 绿。
+  **T9 复验（同日 17:2x，干净构建）**：净窗 `--quadrants` 七行全
+  CONSISTENT——Q(light×view) fenceLight 在场（原 FORK 40.4%）、F(view
+  翻转) 重建回场（原滞深 40.2%）；P053_TRACE 仪器化读数证 epoch 链路
+  （0→1 首帧自愈/1→2 翻转重建/稳态零扰动）；矩阵文件落盘为全绿版。
+  附注：本日下午一次「复验仍 FORK」判读系 launch 脚本 exe 路径 sed 静默
+  失配（实测为主检出旧 exe）——路径修正后即全绿，复盘注记随 T13。
+- [ ] **T13** 依赖折回 + 镜像行：auto-lang 预折门（cargo tf 全量）绿后
+  worktree 折回彼仓 master；auto-lang DEBTS 补登 051-候选镜像行并随
+  本仓销号流程同日销号（补 P052 缺口）。
+
+### W3 摘门控收口（T12/T13 完成后执行）
+
+- [✅ 已完成] **T9** 修复落地复验：auto-lang 修复折入 master + exe 重建后，跑
+  T6 矩阵——四读数 CONSISTENT。读数留档为摘门控证据。
+  ——[✅ 已完成] 随 T12 收回自修路径完成：干净构建（dep worktree 修复
+  2d3b2d1e0 折回后）净窗矩阵**七行全 CONSISTENT**（Q(light×view) 转绿、
+  F(view 翻转) 转绿，全绿版矩阵落 demo/auto/quadrant-matrix-2026-09-05.txt）。
 - [ ] **T10** 摘门控：改 `autodown/demo/auto/vm-smoke.mjs`（删
   AUTO_VM_KNOWN_FORK 分支，第七组+第八组转硬断言）+ 头注/README 门控
   说明清理。验证：净窗无门控 `node auto/vm-smoke.mjs --port N` 全组
   退出码 0。
+  ——【代码完成 0c245a3，净窗验证暂卡】摘门控/头注清理/node --check 全
+  就绪；净窗跑挂于组 4 滚动同步（见待澄清⑦，非本修复回归——无修复旧
+  exe 同样复现），环境恢复后重跑即验。
 - [ ] **T11** 台账收口 + 全门回归：DEBTS.md 051-候选行销号（附读数 +
   auto-lang 修复 commit 指针）；PARITY.md #17 注记更新 + #13 复验注记；
   `docs/plans/attachments/052-auto-lang-transfer.md` 条目①状态收口。
   验证：`grep -n "051-候选" DEBTS.md` 显示销号态；全门——`pnpm -r
   build` + engine 当期全量测试 + `pnpm exec playwright test` 全量 +
   vm-smoke 净窗退出码 0，计数落复审记录。
+  ——【台账+三门完成 0c245a3，vm-smoke 腿暂卡】DEBTS ✅已销账（读数+
+  2d3b2d1e0 指针+镜像行 20e9a63d2）、PARITY #17 收口注记/#13 复验注记、
+  转介单①终结全落地；`pnpm -r build` 绿（首跑 TS2307 为增量缓存瞬态，
+  复跑自愈）、engine 786/786（=基线）、playwright 全量 **88/88**（参数
+  化后计数：family 14+code-block 12+settings 2+其余 60）；vm-smoke 腿
+  待待澄清⑦环境恢复后补验。
 
 ## 复审记录
 
@@ -428,6 +460,9 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
    并入主题档/theme epoch，或 D-GAP 翻转臂增 view 臂 fence 面板失效）。
    W3 挂起维持，`AUTO_VM_KNOWN_FORK` 门控保持；下次复验=彼仓修复落地
    后重建 exe 跑 `--quadrants` 见两行 FORK 转 CONSISTENT 即 T9 过。
+   ——【2026-09-05 裁定：收回自修】用户裁定修复不复杂即不再彼仓立项，
+   直接在本计划加 W2.5 相位（T12/T13）于依赖 worktree 内自修——本条
+   转介语义由 T12/T13 承接，559 号占用一事作废。
 6. **VM 窗口环境漂移（2026-09-05 执行期实录，W2 验证期发现）**：
    (a) 探针默认端口 9247 被本机 musk 进程占用——VM 窗口改 `AUTOUI_MCP_PORT=9263`
    起（`auto/vm-053-launch.cmd`，计划私有 target exe）；(b) `.wt` 并行会话
@@ -437,3 +472,13 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
    偶发缺失（AutoCache 编译竞态嫌疑），重拉即愈——T6/T7 验证均以验证钮
    在场的窗口执行。以上均 auto-lang/环境侧，不影响本仓门逻辑；559 修复
    落地复验（T9）时沿用「验证钮在场→跑」口径。
+7. **VM 轨滚动事件→状态写回漂移（2026-09-05 傍晚实录，T10 净窗验证暂卡
+   根因）**：净窗 vm-smoke 组 4 滚动收敛断言失败——`autoui_state
+   left_top/right_top` 滞留旧值，而截图实证 pane 视觉已滚动（写臂
+   scroll_to 生效、on_scroll→state 回写断）；判别证据：修复前旧 exe
+   （13:23 主检出构建，无本修复）同样复现、本日晨同 binary 全组绿——
+   非本计划回归，属 VM 轨环境/编译缓存竞态面（与 ⚙ 缺失竞态同族，疑
+   AutoCache 供了异版 demo-widgets 编译或并行会话窗口饥饿）。恢复判据：
+   `node /tmp/scroll-probe.mjs 9263`（组 4 机制单测）报 SCROLL-OK 后重跑
+   `node auto/vm-smoke.mjs --port 9263` 期 exit 0，即 T10 验证 + T11
+   vm-smoke 腿双双补验；届时计划可翻 execution_done。

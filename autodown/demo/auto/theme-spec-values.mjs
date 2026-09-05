@@ -41,10 +41,14 @@ export const THEME_SPEC = {
 
 // VM 探针特征色（RGB 三元组，probe 现行口径）：
 export const VM_FEATURE_RGB = {
-  zinc950: [9, 9, 11],        // dark fence/底色 §7.4
-  fenceLight: [249, 250, 251], // light fence bg gray-50 §7.4
-  zinc700: [63, 63, 70],      // dark border 族 §7.4
-  zinc400: [161, 161, 166],   // dark header fg / muted §7.4
-  fgLight: [17, 24, 39],      // light 正文 fg gray-900 §7.1
-  fgDark: [250, 250, 251],    // dark 正文 fg zinc-50 §7.1
+  zinc950: [9, 9, 11],        // dark fence/底色 §7.4:232
+  fenceLight: [249, 250, 251], // light fence bg gray-50 §7.4:232
+  zinc700: [63, 63, 70],      // dark border 族 §7.4:232
+  zinc400: [161, 161, 166],   // dark header fg / muted §7.4:233（VM 锚点表值）
+  fgLight: [17, 24, 39],      // light 正文 fg gray-900 §7.1:193
+  fgDark: [250, 250, 251],    // dark 正文 fg zinc-50 §7.1:193
+  borderLight: [229, 231, 235], // light 边框 gray-200 §7.1:195
+  // heading accent-strong 双档采样 §7.2:208（indigo strong 浅 600 系/深 400 系）
+  indigoStrongLight: [67, 56, 202],  // #4338ca indigo-700
+  indigoStrongDark: [129, 140, 248], // #818cf8 indigo-400
 };

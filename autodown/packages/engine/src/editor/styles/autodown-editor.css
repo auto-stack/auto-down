@@ -1311,53 +1311,70 @@ ol.list-node {
 
 /* Callout dark = the VM alpha scheme (callout_kind_classes: *-500/50 border,
    *-500/10 bg, *-400 header) — the structural divergence row of §7.4: vue's
-   solid pastel is the LIGHT spec, VM's alpha scheme is the DARK spec. */
-.autodown-editor.is-dark .autodown-callout-note {
+   solid pastel is the LIGHT spec, VM's alpha scheme is the DARK spec.
+   Dual-scoped (PLAN-053 T5): the widget face is pane-agnostic, so the dark
+   flip must reach the streaming pane too (same pattern as the table row
+   above) — editor-only scoping left the view arm stuck on the light pastel. */
+.autodown-editor.is-dark .autodown-callout-note,
+.streaming-document.is-dark .autodown-callout-note {
   background: rgb(59 130 246 / 0.1);
   border-color: rgb(59 130 246 / 0.5);
 }
 
-.autodown-editor.is-dark .autodown-callout-note .autodown-callout-header {
+.autodown-editor.is-dark .autodown-callout-note .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-note .autodown-callout-header {
   color: #60a5fa;
 }
 
-.autodown-editor.is-dark .autodown-callout-info {
+.autodown-editor.is-dark .autodown-callout-info,
+.streaming-document.is-dark .autodown-callout-info {
   background: rgb(14 165 233 / 0.1);
   border-color: rgb(14 165 233 / 0.5);
 }
 
-.autodown-editor.is-dark .autodown-callout-info .autodown-callout-header {
+.autodown-editor.is-dark .autodown-callout-info .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-info .autodown-callout-header {
   color: #38bdf8;
 }
 
-.autodown-editor.is-dark .autodown-callout-tip {
+.autodown-editor.is-dark .autodown-callout-tip,
+.streaming-document.is-dark .autodown-callout-tip {
   background: rgb(16 185 129 / 0.1);
   border-color: rgb(16 185 129 / 0.5);
 }
 
-.autodown-editor.is-dark .autodown-callout-tip .autodown-callout-header {
+.autodown-editor.is-dark .autodown-callout-tip .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-tip .autodown-callout-header {
   color: #34d399;
 }
 
 .autodown-editor.is-dark .autodown-callout-warning,
-.autodown-editor.is-dark .autodown-callout-caution {
+.autodown-editor.is-dark .autodown-callout-caution,
+.streaming-document.is-dark .autodown-callout-warning,
+.streaming-document.is-dark .autodown-callout-caution {
   background: rgb(245 158 11 / 0.1);
   border-color: rgb(245 158 11 / 0.5);
 }
 
 .autodown-editor.is-dark .autodown-callout-warning .autodown-callout-header,
-.autodown-editor.is-dark .autodown-callout-caution .autodown-callout-header {
+.autodown-editor.is-dark .autodown-callout-caution .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-warning .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-caution .autodown-callout-header {
   color: #fbbf24;
 }
 
 .autodown-editor.is-dark .autodown-callout-danger,
-.autodown-editor.is-dark .autodown-callout-error {
+.autodown-editor.is-dark .autodown-callout-error,
+.streaming-document.is-dark .autodown-callout-danger,
+.streaming-document.is-dark .autodown-callout-error {
   background: rgb(239 68 68 / 0.1);
   border-color: rgb(239 68 68 / 0.5);
 }
 
 .autodown-editor.is-dark .autodown-callout-danger .autodown-callout-header,
-.autodown-editor.is-dark .autodown-callout-error .autodown-callout-header {
+.autodown-editor.is-dark .autodown-callout-error .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-danger .autodown-callout-header,
+.streaming-document.is-dark .autodown-callout-error .autodown-callout-header {
   color: #f87171;
 }
 

@@ -36,9 +36,18 @@
 //      051-candidate fork (DEBTS 051-候选: renderer arm resolves zinc-950
 //      dark plates in light mode at first build — 存量缓存, auto-lang side).
 //      Runs FIRST and only on the first attempt (typing replaces the seeded
-//      doc). KNOWN-FORK GATE: while the auto-lang fix is outstanding,
-//      AUTO_VM_KNOWN_FORK=1 skips group 7 with a loud note (readings still
-//      printed); ungate to enforce.
+//      doc). PLAN-053 T10 (2026-09-05): the AUTO_VM_KNOWN_FORK gate is
+//      RETIRED — the fix landed (auto-lang theme epoch + StreamCache theme
+//      invalidation) and the probe --quadrants matrix reads all-CONSISTENT;
+//      group 7 hard-asserts.
+//   8. (plan 053 T7 / D5) theme flip group: type a fence doc, then
+//      ⚙→🌙Dark→✕ → BOTH arms zinc-950 ≥ 5% (dark档 chrome theme-driven);
+//      ⚙→Light→✕ → BOTH arms fenceLight back ≥ 1% (flip-rebuild evidence).
+//      Runs LAST so the dark detour never pollutes the earlier groups'
+//      light clean window, and ends back in light (净窗纪律). Thresholds
+//      calibrated from the flip-probe doc's real readings (待澄清④).
+//      PLAN-053 T10: gate retired — hard assertions on both flips;
+//      [group8] errors stay deterministic failures (no PLAN-049 retry).
 //
 // Protocol (same channel the jade desktop flows ride, see
 // jade-garden/front/desktop/README.md:114-132): AutoUI MCP over Streamable
@@ -76,6 +85,8 @@ const base = `http://127.0.0.1:${port}/mcp`
 // plan 052 T12: shared pixel reader（单源解码器 + pane 分析器来自探针）
 import { readFileSync, copyFileSync } from 'node:fs'
 import { decodePng, analyzeFrame } from './probe-051-view-theme.mjs'
+// plan 053 T8: §7 投影单源——消息/注记里的特征色 hex 引 THEME_SPEC，不再散写
+import { THEME_SPEC } from './theme-spec-values.mjs'
 
 // per-attempt nonce: the script is repeatable against a LIVE window without
 // a restart, and the in-process retry gets a fresh one (the baseline check
@@ -134,6 +145,39 @@ async function waitForServer(timeoutMs) {
       await new Promise((r) => setTimeout(r, 500))
     }
   }
+}
+
+// --- plan 053 T7 (D5): theme-flip group helpers ---
+/** Press the first button-ish node matching `label` (the probe-051 idiom). */
+async function pressLabel(label) {
+  const found = await callTool('autoui_find', { label, limit: 5 })
+  const btnIds = [...found.matchAll(/button (vnode_\d+)/g)]
+  const allIds = [...found.matchAll(/vnode_\d+/g)]
+  const m = btnIds.length ? btnIds[btnIds.length - 1] : allIds[allIds.length - 1]
+  if (!m) throw new Error(`[group8] element not found by label ${label} — settings surface missing?`)
+  await callTool('autoui_action', { element_id: m[1], action: 'press' })
+}
+
+/** Screenshot + shared decoder + pane analyzer → the probe's frame stats. */
+async function frameReadings() {
+  const shot = await callTool('autoui_screenshot', {})
+  const pngPath = shot.match(/[A-Za-z]:[^\s"']+\.png/)?.[0]
+  if (!pngPath) throw new Error(`[group8] no screenshot path in "${shot.slice(0, 120)}"`)
+  const img = decodePng(readFileSync(pngPath.replace(/\//g, '\\').replace(/^\\\\\?\\/, '')))
+  return analyzeFrame(img)
+}
+
+async function darkModeFlag() {
+  const st = await callTool('autoui_state', { fields: ['dark_mode'] })
+  return st.match(/dark_mode:?\s*(true|false)/)?.[1]
+}
+
+function panesLine(frame) {
+  const pct = (n, t) => (100 * n / Math.max(1, t)).toFixed(1) + '%'
+  return (
+    `editor zinc950=${pct(frame.left.zinc, frame.left.total)} fenceLight=${pct(frame.left.light, frame.left.total)}` +
+    ` | renderer zinc950=${pct(frame.right.zinc, frame.right.total)} fenceLight=${pct(frame.right.light, frame.right.total)}`
+  )
 }
 
 /** Parse the AURA snapshot text into a lightweight tree:
@@ -196,15 +240,14 @@ async function runOnce(attempt) {
     const readings =
       `editor dark=${pct(frame.left.dark, frame.left.total)} fenceLight=${pct(frame.left.light, frame.left.total)}` +
       ` | renderer dark=${pct(frame.right.dark, frame.right.total)} zinc950=${pct(frame.right.zinc, frame.right.total)} fenceLight=${pct(frame.right.light, frame.right.total)}`
-    if (process.env.AUTO_VM_KNOWN_FORK === '1') {
-      checks.push(`[KNOWN-FORK SKIP] light fence chrome gate SKIPPED (AUTO_VM_KNOWN_FORK=1 — 051-候选 auto-lang 修复未落地; readings: ${readings})`)
-    } else {
-      const zincShare = frame.right.zinc / Math.max(1, frame.right.total)
-      const lightShare = frame.right.light / Math.max(1, frame.right.total)
-      if (zincShare > 0.05) throw new Error(`[group7] renderer pane shows zinc-950 dark plates in light mode (051-候选 fork live): ${readings}`)
-      if (lightShare < 0.01) throw new Error(`[group7] renderer pane shows no light fence chrome (#f9fafb) — seeded fences missing?: ${readings}`)
-      checks.push('light-mode fence chrome: renderer pane light (#f9fafb present, zinc-950 < 5%)')
-    }
+    // PLAN-053 T10: the AUTO_VM_KNOWN_FORK gate is RETIRED — the 051-候选
+    // fix landed (auto-lang theme epoch + StreamCache invalidation; probe
+    // --quadrants all-CONSISTENT 2026-09-05). Group 7 hard-asserts.
+    const zincShare = frame.right.zinc / Math.max(1, frame.right.total)
+    const lightShare = frame.right.light / Math.max(1, frame.right.total)
+    if (zincShare > 0.05) throw new Error(`[group7] renderer pane shows zinc-950 dark plates in light mode (051-候选 fork live): ${readings}`)
+    if (lightShare < 0.01) throw new Error(`[group7] renderer pane shows no light fence chrome (${THEME_SPEC.light.fenceBg}) — seeded fences missing?: ${readings}`)
+    checks.push(`light-mode fence chrome: renderer pane light (${THEME_SPEC.light.fenceBg} present, zinc-950 < 5%)`)
   }
 
   // 1. the left editor's input face (the block-editor shell's textarea)
@@ -564,6 +607,68 @@ async function runOnce(attempt) {
     checks.push('table resize: snapshot col_widths reflects the new width (state → binding round trip)')
   }
 
+  // 8. (plan 053 T7 / D5) theme flip group — runs LAST (dark detour stays
+  //    out of the earlier groups' light clean window) and flips BACK to
+  //    light at the end (净窗纪律). The post-group-6 doc is table-only and
+  //    the zinc-950 feature color lives on FENCE chrome, so type a fresh
+  //    fence doc first. Thresholds calibrated from the first gated run's
+  //    readings (plan 待澄清④: the flip-probe doc is ONE fence, so dark
+  //    zinc-950 lands ~6-7% per arm, NOT the full-doc 30%+): dark gate =
+  //    BOTH arms zinc-950 ≥ 5% (a working flip turns the fence dark; the
+  //    fork leaves the renderer arm light at 0%); light-return gate = BOTH
+  //    arms fenceLight ≥ 1% AND zinc-950 < 5% (catches the inverted
+  //    clean-start fork direction too — renderer stuck dark after flip-back).
+  {
+    const nonce8 = `${Date.now().toString(36)}-flip`
+    const snap8 = parseAura(await callTool('autoui_snapshot', {}))
+    const ta8 = findFirst(snap8, (n) => n.head.startsWith('textarea '))
+    if (!ta8) throw new Error('[group8] no textarea — editor face missing')
+    const FENCE_DOC = `# flip probe ${nonce8}\n\n\`\`\`js\nconst flip = "${nonce8}"\n\`\`\`\n`
+    const type8 = await callTool('autoui_action', { element_id: elementIdOf(ta8), action: 'type_text', value: FENCE_DOC })
+    if (!/status: ok/.test(type8)) throw new Error(`[group8] fence-doc type_text not ok: ${type8}`)
+    await new Promise((r) => setTimeout(r, 900))
+
+    if ((await darkModeFlag()) !== 'false') {
+      throw new Error('[group8] expected light start (dark_mode=false) — window left dirty by an earlier run?')
+    }
+
+    // PLAN-053 T10: the AUTO_VM_KNOWN_FORK gate is RETIRED (051-候选 fix
+    // landed — see group 7 note). Both flips hard-assert; [group8] errors
+    // remain deterministic failures (no PLAN-049 retry).
+
+    // → dark: ⚙ → 🌙 Dark → ✕, then BOTH arms zinc-950 (theme-driven chrome)
+    await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
+    await pressLabel('🌙 Dark'); await new Promise((r) => setTimeout(r, 900))
+    await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
+    const darkFrame = await frameReadings()
+    const darkLine = panesLine(darkFrame)
+    if (darkFrame.left.zinc / Math.max(1, darkFrame.left.total) < 0.05 || darkFrame.right.zinc / Math.max(1, darkFrame.right.total) < 0.05) {
+      // best-effort light restore before rethrowing (净窗纪律 on the
+      // failure path too — the next run's group-7 clean-start check
+      // depends on it)
+      try {
+        await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
+        await pressLabel('Light'); await new Promise((r) => setTimeout(r, 900))
+        await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
+      } catch { /* restore is best-effort; the assertion error below is primary */ }
+      throw new Error(`[group8] dark档 zinc-950 share < 5% on some arm (theme flip not applied — 051-候选): ${darkLine}`)
+    }
+    checks.push('theme flip → dark: BOTH arms zinc-950 ≥ 5% (dark档 fence chrome theme-driven)')
+
+    // → light: ⚙ → Light → ✕, then BOTH arms fenceLight back (flip-rebuild).
+    await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
+    await pressLabel('Light'); await new Promise((r) => setTimeout(r, 900))
+    await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
+    if ((await darkModeFlag()) !== 'false') throw new Error('[group8] flip-back to light failed (state.dark_mode still true)')
+    const lightFrame = await frameReadings()
+    const lightLine = panesLine(lightFrame)
+    const armBackLight = (h) => h.light / Math.max(1, h.total) >= 0.01 && h.zinc / Math.max(1, h.total) < 0.05
+    if (!armBackLight(lightFrame.left) || !armBackLight(lightFrame.right)) {
+      throw new Error(`[group8] flip-back to light: fenceLight missing or zinc-950 stuck on some arm (flip-rebuild broken — 051-候选): ${lightLine}`)
+    }
+    checks.push('theme flip → light: BOTH arms fenceLight back ≥ 1% and zinc-950 < 5% (flip-rebuild evidence)')
+  }
+
   return checks
 }
 
@@ -582,9 +687,10 @@ async function main() {
       lastErr = err
       // plan 052 T12: the light-chrome gate's failure is a REAL fork, not a
       // PLAN-049 external kill — retrying would skip group 7 (attempt 2) and
-      // mask the red. Fail fast instead.
-      if (err.message.startsWith('[group7]')) {
-        console.error(`vm-smoke: FAIL — light fence chrome gate (no retry for deterministic gate failures): ${err.message}`)
+      // mask the red. Fail fast instead. plan 053 T7: same bar for the
+      // group-8 theme-flip gate.
+      if (err.message.startsWith('[group7]') || err.message.startsWith('[group8]')) {
+        console.error(`vm-smoke: FAIL — deterministic gate failure (no retry for [group7]/[group8]): ${err.message}`)
         process.exitCode = 1
         return
       }

@@ -418,6 +418,16 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
    立项号 559，worktree `.wt/lang-559`）——本计划 W3 不设时限，以 T9
    进入条件为准；若彼仓修复长期未排期，本计划以 W1/W2 交付 + W3 挂起
    状态收段（门控门已在，摘门随修复走）。
+   ——【2026-09-05 16:1x 复验：进入条件仍不满足】559 已完工合并
+   （887384a3e），但其实际范围=vue 双端嵌入/desktop-host 债
+   （P559-1..6；动 dynamic.rs/iced renderer.rs，非取档时机/缓存键主题
+   失效修复）；计划私有 target 重建（559 合并后 master）复跑矩阵——
+   **FORK 逐位复现**（Q(light×view) zinc950 40.4%、F(view 翻转) 36.4%
+   滞深；worktree a2c17e3 留证）。051-候选修复仍无载体：转介单①需改指
+   （559 号已被占用），修复面仍以 pinpoint 为准（view 臂 fence 缓存键
+   并入主题档/theme epoch，或 D-GAP 翻转臂增 view 臂 fence 面板失效）。
+   W3 挂起维持，`AUTO_VM_KNOWN_FORK` 门控保持；下次复验=彼仓修复落地
+   后重建 exe 跑 `--quadrants` 见两行 FORK 转 CONSISTENT 即 T9 过。
 6. **VM 窗口环境漂移（2026-09-05 执行期实录，W2 验证期发现）**：
    (a) 探针默认端口 9247 被本机 musk 进程占用——VM 窗口改 `AUTOUI_MCP_PORT=9263`
    起（`auto/vm-053-launch.cmd`，计划私有 target exe）；(b) `.wt` 并行会话

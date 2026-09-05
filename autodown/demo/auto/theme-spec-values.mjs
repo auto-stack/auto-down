@@ -13,8 +13,10 @@ export const THEME_SPEC = {
     border: '#e5e7eb', surface: '#ffffff',
     // §7.1 heading strong 浅档 indigo-700（--ad-heading-strong）
     headingStrong: '#4338ca',
-    // §7.5 hljs 基础 fg 浅档 #09090b
+    // §7.5 hljs 基础 fg 浅档 #09090b（:264 基础 fg 行）
     hljsBaseFg: '#09090b',
+    // §7.5:257 Keyword 组：浅 #d73a49 (github-light) / 深 #ff7b72 (github-dark)
+    hljsKeyword: '#d73a49',
   },
   dark: {
     // §7.4 fence 深档：bg zinc-950
@@ -30,8 +32,10 @@ export const THEME_SPEC = {
     border: '#3f3f46', surface: '#09090b',
     // §7.1 heading strong 深档 indigo-400
     headingStrong: '#818cf8',
-    // §7.5 hljs 基础 fg 深档 #fafafa
+    // §7.5 hljs 基础 fg 深档 #fafafa（:264 基础 fg 行）
     hljsBaseFg: '#fafafa',
+    // §7.5:257 Keyword 组深档
+    hljsKeyword: '#ff7b72',
   },
 };
 

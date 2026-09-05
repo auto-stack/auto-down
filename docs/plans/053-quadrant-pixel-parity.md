@@ -1,0 +1,429 @@
+---
+plan_id: PLAN-053
+status: executing
+feature_name: 四象限逐像素统一（edit/view 臂 × 深/浅主题）钉成正式验收目标——双轨自动门 + 摘门控收口
+author: [zhaopuming, ZCode]
+created_at: 2026-09-05
+updated_at: 2026-09-05
+
+# Leave these EMPTY here — /auto-plan:review fills them:
+supersedes_spec_components: []
+new_spec_components: []
+touched_goals: []
+
+current_step: 8
+total_steps: 11
+---
+
+# [PLAN-053] 四象限逐像素统一（edit/view × 深/浅）——正式验收目标钉死
+
+## 变更摘要
+
+把「demo 左右两臂（edit/view）× 深/浅主题」四个象限的视觉统一从**现状恰好
+正确/已知分叉**升格为**常驻自动门**：判据单源 auto-lang Design 22 §7
+（浅/深双档逐值规约），vue 轨与 VM 轨各建门，并在 auto-lang 侧 051-候选
+修复落地后摘除 `AUTO_VM_KNOWN_FORK` 门控、销号双仓债务。
+
+三个来源缺口合一：
+
+1. **vue 轨深色象限无门**：`family-parity.spec.ts`（042 七家族 edit≡view
+   chrome 钉死）与 `code-block-parity.spec.ts`（039 fence 逐像素）全部只在
+   默认浅色档跑（grep 零 dark 覆盖）；`settings-theme.spec.ts`（051 T6）只
+   断言 `.is-dark`/`data-accent` class 落点 + 机械截图「判读在 Phase 2，
+   见计划两阶段协议」——051 复审做过一次性目检，但**无常驻像素级断言**。
+   深色实现已在（engine CSS `.is-dark` 规则组 61+56 处），缺的是门。
+2. **VM 轨四象限读数已勘、门未升格**：052 W3 探针
+   `probe-051-view-theme.mjs` 四轴矩阵实锤 light×view FORK（zinc950
+   40.4%）+ view 臂翻转不重建存量（A2b）——修复转介 auto-lang（转介单①）；
+   vm-smoke 第七组门控跳过中；**深色象限与翻转轴无断言**；探针仅覆盖
+   fence 单家族。
+3. **摘门控销账无宿主**：DEBTS 051-候选行写明「修复后摘门控转硬断言」，
+   该验收动作需要一个计划承载（052 已归档，且其范围明文将修复划出）。
+
+## 目标
+
+- **G1 判据单源落地**：§7 双档特征色投影为本仓单源模块，vue e2e 与 VM
+  探针共同消费；所有断言 expected 溯源规约行，**禁止「另一臂读回当
+  expected」**（防两臂双双漂移到同一错值）。
+- **G2 vue 轨四象限门**：family-parity + code-block-parity 双档参数化
+  （7 家族 × 深/浅 + fence 像素 × 深/浅，同主题内 edit≡view）+
+  settings-theme 补深档特征色程序断言（兑现 051 Phase 2 判读的程序化）。
+- **G3 VM 轨四象限门**：探针升格 `--quadrants` 矩阵（四象限 + 翻转轴 +
+  新建轴，多家族特征色）；vm-smoke 新增翻转组（与第七组同门控）。
+- **G4 摘门控收口**（硬依赖 auto-lang 051-候选修复=转介单①）：vm-smoke
+  第七组+翻转组摘 `AUTO_VM_KNOWN_FORK` 转硬断言；DEBTS 051-候选销号
+  （双仓）；PARITY #17/#13 注记更新；转介单①状态收口。
+
+### 「逐像素」口径（分轨声明，防口径歧义）
+
+- **vue 轨** = 039 先例：同名家元素 chrome 计算样式全等（edit 面 vs view
+  面）+ 盒模型 rect 级断言（面板高度/行距 Δ≤0.5px）；L1 强化断言对 §7
+  规约值（非臂间互读）。
+- **VM 轨** = 052 先例：特征色占比门限（zinc950 < 5%、fenceLight ≥ 1%
+  类）+ 网格形态图 + expected 单源 §7。VM 两臂渲染机制不同（cosmic-text
+  编辑壳 vs iced 渲染面板），无 DOM 计算样式可读——特征色矩阵是 VM 侧
+  「逐像素」的诚实口径，明文登记不冒称。
+
+### 排除面（在册豁免，不进矩阵）
+
+- **accent 轴**：正交轴不入四象限（document accent VM 消费豁免在案，
+  §7.2 VM 锚点 ➖ + PARITY #17 行内注）；vue 轨 accent 断言维持 051 现状
+  （class/attr 落点 + swatch）。
+- **排版分叉**：§7.3 已登记三处 heading 字号分叉（vue 1.58rem / VM 只读
+  臂应用级类表 / VM 编辑壳 30-24-20px）——051 T11 落表在案，本计划不回炒。
+- **web-only 降级族**：mermaid/query/math 按 PARITY #9 显式豁免，不入
+  矩阵（其降级 chrome 已有规约行，vm 侧按 PANEL_CHROME 断言可后续追加）。
+- **CustomScrollbar thumb 观感**（PARITY #8 残段）与渲染面板 `py-4 px-5`
+  消费（#5 残段）不在此列。
+
+## 架构方案
+
+### 判据分层（三层，全部可自动判读）
+
+- **L1 规约对表**（防共漂移）：expected 值来自 §7.1/§7.4/§7.5 双档表；
+  本仓投影 `theme-spec-values.mjs` 单源模块（probe/e2e 双消费）。
+- **L2 臂间 parity**（同主题内 edit≡view）：vue 轨 family-parity 模式
+  （同名家元素计算样式互对）；VM 轨同档特征色双臂读数互对。
+- **L3 翻转语义**（每臂随主题正确翻转）：首帧取档正确（A1/A2a 轴）+
+  运行时翻转重建存量（A2b 轴）+ 新建块取当前档（A3 轴）。
+
+### 四象限现状矩阵（2026-09-05 调研读数，验收基线）
+
+| 象限 | vue 轨 | VM 轨 |
+|---|---|---|
+| light×edit | ✅ 042+039 钉死（浅档） | ✅ A1 editor fenceLight 51.3% |
+| light×view | ✅ 同一 spec 双栏断言 | ❌ **FORK** zinc950 40.4%（051-候选） |
+| dark×edit | ❌ **无门**（实现有） | ✅ A2a editor zinc950 51.5%（050 同源翻转） |
+| dark×view | ❌ **无门**（实现有） | ⚠️ 值对机制错（statics 缓存非主题驱动） |
+| 翻转轴 | ⚠️ 仅 class 落点断言 | editor ✅ / **view ❌ 不重建**（A2b） |
+
+### 依赖关系
+
+- **W1/W2（G1-G3）不阻塞**：vue 轨与探针/门控扩展全部本仓可控，可先
+  落地（翻转组首跑预期红 = 门控跳过态，读数留档）。
+- **W3（G4）硬依赖**：auto-lang 侧 051-候选修复（转介单①；建议彼仓立项
+  559：首帧取档时机 + StreamCache/Element 缓存键并入主题档/theme epoch，
+  对照 050 编辑臂 `retheme_all_fence_buffers` 先例）。进入条件 = auto-lang
+  exe 重建后 `probe --quadrants` 四读数 CONSISTENT。
+
+## 技术栈
+
+- vue 轨门：Playwright（`autodown/demo/playwright.config.ts`，Desktop
+  Chrome 单 project；跑法 `pnpm exec playwright test e2e/<spec>.spec.ts`，
+  demo 无 test script——052 债候「demo test 脚本缺位」在案）。
+- VM 轨门：node .mjs + auto.exe MCP 通道（probe-051-view-theme.mjs 现成
+  启动/解码/分析件；vm-smoke.mjs 组结构）。
+- 规约投影：`theme-spec-values.mjs`（ESM，双消费；§7 为真值源，模块头注
+  溯源声明 + 逐值行号注释）。
+
+## 需求分析与背景调查
+
+### spec 台账谱系（.autoos/specs.json 概览提取）
+
+本计划承接的目标族：**P033-2**（BlockWidget 家族三模式同 chrome——四象限
+是其在主题轴上的延伸）、**P046-2/P047-2**（VM demo 对齐 vue 版/观感收尾
+——PARITY 清册 #5 主题段）、**P050-2**（fence chrome/行内渲染对齐——
+FENCE_CHROME(_LIGHT) 同源翻转）、**P051-2**（主题规约化与双轨 settings
+——§7 立章 + 两阶段协议 Phase 2 判读）、**P052-2**（051-候选排查收口 +
+转介单——四读数矩阵与第七组门控）。新计划不推翻上述任何条目，只补
+「深色象限 + 翻转轴常驻门 + 摘门控」这层验收缺位。
+
+### 关键证据链（调研读数，2026-09-05）
+
+- **vue 轨**：`e2e/family-parity.spec.ts`（7 组：Callout/Details/
+  Blockquote/List/Table/Heading/Paragraph，edit 面 vs view 面计算样式互对）
+  与 `e2e/code-block-parity.spec.ts`（6 例，rect 级）grep `is-dark|dark|
+  theme|accent` **零命中**；`e2e/settings-theme.spec.ts` 49 行，断言止于
+  class/attr + 截图落盘。engine CSS `.is-dark` 规则组已在
+  （autodown-editor.css 61 处 / StreamingRenderer.vue 56 处）。
+- **VM 轨**：probe 四轴读数（A1 FORK / A2a 同批 statics / A2b 翻转不重建
+  / A3 新建正确）；vm-smoke 第七组 `AUTO_VM_KNOWN_FORK=1` 门控跳过
+  （`vm-smoke.mjs:199-205`，浅档 view 臂双门限断言已写好）；深档/翻转轴
+  **零断言**。
+- **规约**：Design 22 §7.1 中性色板（--ad-fg/--ad-muted/--ad-border/
+  --ad-surface 浅深逐值）+ §7.4 块家族 chrome 双档（fence/blockquote/
+  table/callout/details/hr 逐行）+ §7.5 hljs 双档（含基础 fg 浅 #09090b /
+  深 #fafafa）——判据完备，无需新增规约行（唯一例外见待澄清① callout）。
+- **债务台账**：DEBTS.md 051-候选行（▶转介在案）+ auto-lang 侧**无镜像行**
+  （缺口，随 W3 双仓销号时一并补登-销号流程）；PARITY.md #17 已带 052
+  读数注记。
+
+## 详细设计
+
+### D1 单源特征色模块（W0）
+
+新文件 `autodown/demo/auto/theme-spec-values.mjs`：
+
+```js
+// theme-spec-values.mjs — PLAN-053 T1：Design 22 §7 双档特征色投影（单源）。
+// 真值源：auto-lang docs/design/autoui/base-styles-and-visual-parity.md
+// §7.1/§7.4/§7.5；本模块只做投影，分叉时先对表再改锚点实现。
+export const THEME_SPEC = {
+  light: { fenceBg:'#f9fafb', fenceBorder:'#e5e7eb', fenceHeaderBg:'#e5e7eb',
+           fenceHeaderFg:'#374151', bodyFg:'#111827', mutedFg:'#6b7280',
+           border:'#e5e7eb', surface:'#ffffff',
+           headingStrong:'#4338ca' /* indigo strong 浅档 600 */,
+           hljsBaseFg:'#09090b' },
+  dark:  { fenceBg:'#09090b' /* zinc-950 */, fenceBorder:'#3f3f46',
+           fenceHeaderBg:'#27272a' /* zinc-800 */, fenceHeaderFg:'#a1a1aa',
+           bodyFg:'#fafafa', mutedFg:'#a1a1aa', border:'#3f3f46',
+           surface:'#09090b', headingStrong:'#818cf8' /* indigo 400 */,
+           hljsBaseFg:'#fafafa' },
+}
+// VM 探针特征色（RGB 三元组，probe 现行口径）：
+export const VM_FEATURE_RGB = {
+  zinc950:[9,9,11], fenceLight:[249,250,251], zinc700:[63,63,70],
+  zinc400:[161,161,166], fgLight:[17,24,39], fgDark:[250,250,251],
+}
+```
+
+消费方：probe-051-view-theme.mjs（VM 特征色）、vm-smoke.mjs（第七组/
+翻转组门限）、vue e2e（TS 相对导入 `../auto/theme-spec-values.mjs`）。
+fenceHeaderBg 深档 zinc-800 = `#27272a`（§7.4 深档 header bg zinc-800——
+值从规约表取，若 §7 行未给 hex 则以 §7.1 zinc 系列表值补注）。
+
+### D2 vue 轨双档参数化（W1）
+
+`e2e/family-parity.spec.ts` 与 `e2e/code-block-parity.spec.ts` 改造：
+
+- 顶层循环 `for (const theme of ['light','dark'])` 生成双份 describe
+  （标题后缀 `-[light|dark]`）；
+- 深档前置 helper `switchToDark(page)`：goto `/` → 点 `.settings-trigger`
+  → `🌙 Dark` → `✕` 关闭 → 断言两引擎根 `.is-dark`（复用 settings-theme
+  既有点击序列；每例独立 page 默认浅，无需回切）；
+- 断言体不变（同名家元素 arm-to-arm 互对）——**首跑预期红清单**：深档
+  首跑的失败列表 = vue 轨深色象限实勘分叉表，落入 T5 处置。
+
+`e2e/settings-theme.spec.ts` 追加 L1 断言（深档段）：
+
+- 两 pane 各取代表元素：`.code-block-container`（computed
+  backgroundColor/borderColor = THEME_SPEC.dark.fenceBg/fenceBorder）、
+  h1/h2/h3（color = headingStrong）、正文段落（color = bodyFg）、
+  `.blockquote`（borderLeftColor = border）——每断言附 §7 行号注释；
+- 浅档对称补断言（同一批选择器，light 值）——补齐 L1 双档。
+
+### D3 深色档预存分叉处置（W1，读数驱动条件任务）
+
+§7.4 callout 行已登记结构性分叉：「深色档规约值=VM alpha 档（vue 深色
+对齐之）」——vue 深色档 callout 大概率仍是浅色系值（首跑红候补）。处置
+纪律：**规约先行**——分叉时先对 §7 表；vue 侧值偏离规约行 → 修 engine
+CSS 对齐规约值（小值编辑）；若发现规约行本身缺值/歧义 → 提 auto-lang 侧
+§7 行修订（随 W3 转介通道），本仓不私改规约。
+
+### D4 VM 探针 --quadrants 矩阵模式（W2）
+
+probe-051-view-theme.mjs 增开关 `--quadrants`：一次运行输出全矩阵读数
+（复用现 A1/A2a/A2b/A3 轴 + 特征色扩围）：
+
+| 读数 | 轴 | 断言语义（修复后期望） |
+|---|---|---|
+| Q(light×edit) | A1 editor 半 | fenceLight 在场、zinc950≈0 |
+| Q(light×view) | A1 renderer 半 | fenceLight 在场、zinc950<5% |
+| Q(dark×edit) | A2a editor 半 | zinc950 在场（主题驱动） |
+| Q(dark×view) | A2a renderer 半 | zinc950 在场且 **≠ A1 同值 statics**（翻转载痕） |
+| F(view 翻转) | A2b renderer 半 | 翻回浅后 fenceLight 回场（重建） |
+| F(edit 翻转) | A2b editor 半 | 同上（对照臂，现即正确） |
+| N(新建取档) | A3 | 新建 fence 浅档浅（现即正确） |
+
+特征色扩围（`VM_FEATURE_RGB` 全表）：除 fence chrome 外加正文 fg
+（fgLight/fgDark 象限占比）、边框族（zinc700 vs #e5e7eb——blockquote/
+table 边特征）、heading accent-strong 双档（indigo 400/700 系 RGB 采样）。
+每行输出 `expected=<§7 值来源>` 注记。矩阵读数落
+`auto/quadrant-matrix-<日期>.txt` 留档（--save 前缀沿用）。
+
+### D5 vm-smoke 翻转组（W2）
+
+vm-smoke.mjs 末尾新增断言组（编号顺延现第七组后，暂称第八组）：
+
+- 前置：全组跑完（不污染前序组的浅档净窗）；⚙→Dark→✕ 切深 → screenshot
+  → 双臂 zinc950 占比断言（>30% 档位值按首跑读数定标）→ 切回 Light →
+  screenshot → 双臂 fenceLight 回场断言（**view 臂断言修复前必红**）；
+- 门控：整组挂 `AUTO_VM_KNOWN_FORK`（与第七组同门——无门控确定性失败
+  exit 1 不吃 049 重试；门控态跳过带读数大声注记）；
+- 结束态回浅（净窗纪律，后续会话/复跑起点干净）。
+
+### D6 摘门控与双仓销账（W3，依赖 auto-lang 修复）
+
+- 进入条件：auto-lang 051-候选修复落地（彼仓计划，转介单①；建议号 559）
+  + exe 重建 → `node probe-051-view-theme.mjs --quadrants` 四读数
+  CONSISTENT（Q(light×view) fenceLight 在场 zinc950<5% + F(view 翻转)
+  重建）→ 读数留档为本任务证据。
+- 摘门控：vm-smoke.mjs 删 `AUTO_VM_KNOWN_FORK` 分支（第七组 + 第八组
+  转硬断言）；`README`/脚本头注的门控说明同步清理；净窗复跑全组退出码 0。
+- 台账：DEBTS.md 051-候选行销号（附四象限读数 + auto-lang 修复 commit
+  指针；auto-lang 侧镜像行随彼仓流程补登-销号）；PARITY.md #17 注记更新
+  （fork 修复 + 四象限常驻门在案）+ #13 加复验注记；转介单
+  `docs/plans/attachments/052-auto-lang-transfer.md` 条目①状态行更新。
+
+## 测试设计
+
+| 门 | 内容 | 命令（cwd=autodown/demo 除非注明） |
+|---|---|---|
+| vue L2 双档 | family-parity 14 例（7 家族×2 档）arm-to-arm | `pnpm exec playwright test e2e/family-parity.spec.ts` |
+| vue L2 fence | code-block-parity 12 例（6×2 档）rect 级 | `pnpm exec playwright test e2e/code-block-parity.spec.ts` |
+| vue L1 | settings-theme 特征色断言（双档×两 pane×5 选择器组） | `pnpm exec playwright test e2e/settings-theme.spec.ts` |
+| vue 全量 | 全 suite 零回归（新计数留档） | `pnpm exec playwright test` |
+| VM 探针 | --quadrants 四读数矩阵（工具，非门） | 另终端 `auto.exe run -r vm` 后 `node auto/probe-051-view-theme.mjs --port N --quadrants --save qm` |
+| VM 门 | vm-smoke 全组（W2 后 8 组：第七组门控 + 第八组门控；W3 后无门控硬断言） | `node auto/vm-smoke.mjs --port N` |
+| 单源模块 | THEME_SPEC 可导入、双消费零漂移 | `node -e "import('./auto/theme-spec-values.mjs').then(m=>console.log(Object.keys(m)))"` |
+
+已知 flake 协议沿用：scroll-sync 并行 flake 族（046/047 复审协议——隔离
+单跑 + 净重跑判定）；vm-smoke 净窗纪律（多 VM 实例残留探针读旧窗，047
+D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八组。
+
+## 验收标准
+
+1. **G1 单源**：`theme-spec-values.mjs` 在库且 probe/vm-smoke/e2e 三方
+   消费（import 可验证）；全部门断言 expected 溯源 §7（断言旁行号注释，
+   复审抽查零「读回当 expected」）。
+2. **G2 vue 四象限**：family-parity + code-block-parity 双档全绿（深档
+   首跑红清单全部处置：修复或登记，零静默跳过）；settings-theme L1 断言
+   绿；playwright 全量零回归（前后计数与差值留档复审记录）。
+3. **G3 VM 四象限**：探针 `--quadrants` 矩阵输出完整（7 行读数 + expected
+   注记）；vm-smoke 第八组在库且门控行为双验证（无门控确定性失败 exit 1 /
+   `AUTO_VM_KNOWN_FORK=1` 跳过带读数）。
+4. **G4 摘门控**（依赖 auto-lang 修复落地）：probe 四读数 CONSISTENT 留档；
+   vm-smoke 全组无门控净窗退出码 0；DEBTS 051-候选销号（本仓行 + auto-lang
+   镜像行销号流程注明）；PARITY #17/#13 注记更新；转介单①状态收口。
+5. **回归面**：`pnpm -r build` 全绿；engine 测试全量绿（786 基线，以当期
+   计数为准）；demo e2e 全量绿。
+
+## 执行步骤
+
+### W0 单源基座
+
+- [✅ 已完成] **T1** 单源特征色模块：新建 `autodown/demo/auto/theme-spec-values.mjs`
+  （D1 结构，THEME_SPEC + VM_FEATURE_RGB，头注溯源 §7 行号）。验证：
+  `cd autodown/demo && node -e "import('./auto/theme-spec-values.mjs').then(m=>console.log(Object.keys(m.THEME_SPEC.dark)))"`
+  输出特征色键清单。——[✅ 已完成] worktree bcc01d1：模块在库，import 输出 10 个 dark 键（fenceBg…hljsBaseFg）。
+
+### W1 vue 轨四象限门（不依赖 auto-lang）
+
+- [✅ 已完成] **T2** family-parity 双档参数化：改
+  `autodown/demo/e2e/family-parity.spec.ts`（D2：theme 循环 + 
+  switchToDark helper，断言体不动）。验证：`pnpm exec playwright test
+  e2e/family-parity.spec.ts`——浅档 7 例绿；深档首跑红清单落复审记录
+  （红=实勘分叉表，T5 输入）。——[✅ 已完成] worktree 5689e46：14 例跑
+  13 绿 1 红（E2E_PORT=5199）；深档红清单=callout 4 字段（edit 臂 vs
+  view 臂）：card backgroundColor `rgba(245,158,11,.1)` vs `rgb(255,251,235)`
+  （amber-50 浅色系）、borderTopColor/borderLeftColor `rgba(245,158,11,.5)`
+  vs `rgb(252,211,77)`（amber-300）、title color `rgb(251,191,36)`（amber-400）
+  vs `rgb(217,119,6)`（amber-600）——edit 臂=alpha 档（合 §7.4 规约），
+  view 臂（StreamingRenderer 深档）未翻转=分叉源，T5 处置。
+- [✅ 已完成] **T3** settings-theme L1 断言：改
+  `autodown/demo/e2e/settings-theme.spec.ts`（D2：深档段 + 浅档对称段，
+  import THEME_SPEC，断言旁 §7 行号注释）。验证：`pnpm exec playwright
+  test e2e/settings-theme.spec.ts` 全绿（红项归入 T5 处置表）。
+  ——[✅ 已完成] worktree a3ab50f：2/2 绿（051 冒烟原样 + 新 L1 测试
+  双 pane×双档：fence 容器/h1-h3/正文/blockquote 全过，§7.4:232、
+  §7.2:208+§7.3:222、§7.1:193、§7.4:237 行号在注）。
+- [✅ 已完成] **T4** code-block-parity 双档参数化：改
+  `autodown/demo/e2e/code-block-parity.spec.ts`（同 T2 模式）。验证：
+  `pnpm exec playwright test e2e/code-block-parity.spec.ts` 双档全绿。
+  ——[✅ 已完成] worktree acc3003：12/12 绿（首跑零红）。原浅档硬编码
+  期望改 THEME_SPEC 投影（fence header bg=§7.4:233、keyword=§7.5:257、
+  基础 fg=§7.5:264；hljsKeyword 双档行随 T4 入单源模块）——G1「expected
+  溯源规约」口径兑现。
+- [✅ 已完成] **T5** 深色档分叉处置（条件任务，T2-T4 红清单驱动）：按 D3 纪律逐项
+  处置——vue CSS 值编辑对齐 §7（engine CSS：
+  `autodown/packages/engine/src/editor/styles/autodown-editor.css` +
+  `packages/engine/src/render/StreamingRenderer.vue`）；规约行缺值则登记
+  待澄清②不动规约。验证：复跑 T2-T4 三 spec 全绿 + 分叉处置表落复审
+  记录（每项：选择器/旧值/规约值/出处行号）。——[✅ 已完成] worktree
+  5b76485：红清单仅 1 项（T2 callout 深档 4 字段）→ 处置=editor css
+  深档 callout 块加 `.streaming-document.is-dark` 作用域（值本合
+  §7.4:240 VM alpha 档，0 规约值改动；根因=现行家族面 `.autodown-callout-*`
+  的深档规则单 `.autodown-editor` 作用域，renderer 深档 `admonition-*`
+  规则不匹配现行面）；复跑 28/28 绿。处置表：`.right …callout-warning`
+  bg `rgb(255,251,235)`→`rgb(245,158,11,.1)`、border `rgb(252,211,77)`→
+  `rgb(245,158,11,.5)`、title `rgb(217,119,6)`→`rgb(251,191,36)`
+  （§7.4:240 深色列=VM alpha 档）。
+
+### W2 VM 轨四象限门（不依赖 auto-lang 修复）
+
+- [✅ 已完成] **T6** 探针 --quadrants：改 `autodown/demo/auto/probe-051-view-theme.mjs`
+  （D4：矩阵模式 + VM_FEATURE_RGB 特征色扩围 + expected 注记 + 读数落盘）。
+  验证：另终端起 VM 窗口后 `node auto/probe-051-view-theme.mjs --port N
+  --quadrants --save qm` 输出 7 行矩阵（修复前预期：Q(light×view) FORK、
+  F(view 翻转) FORK，其余 CONSISTENT——与 052 基线读数一致）。
+  ——[✅ 已完成] worktree 248c955：7 行矩阵全出+落盘
+  `auto/quadrant-matrix-2026-09-05.txt`；实测=052 基线精确复现：
+  Q(light×edit) CONSISTENT（zinc950 0.1%/fenceLight 51.2%）、
+  Q(light×view) **FORK**（zinc950 40.4%——与 052 读数同值）、
+  Q(dark×edit) C（51.4%）、Q(dark×view) C（33.3%）、F(edit) C（51.2% 回场）、
+  F(view) **FORK**（zinc 33.1% 滞留深）、N(新建) C（fenceLight 6.9%）；
+  summary=FORK rows 恰为预期两行。逐轴容错（AXIS-ERROR→INCOMPLETE 不拖垮
+  矩阵）随落地加注。
+- [✅ 已完成] **T7** vm-smoke 翻转组：改 `autodown/demo/auto/vm-smoke.mjs`（D5：
+  末尾第八组，门控同第七组，结束回浅）。验证：双模各跑一次——无门控
+  `node auto/vm-smoke.mjs --port N` 在第八组确定性 exit 1（读数带出）；
+  `AUTO_VM_KNOWN_FORK=1` 全组跳过注记态退出码 0。
+  ——[✅ 已完成] worktree 248c955：门控态 PASS **exit 0**（组 7+组 8 SKIP
+  注记带实测读数，多次复跑稳定）；无门控确定性 **exit 1** 落在第八组
+  （`[group8] dark档 zinc-950 share < 5% … editor zinc950=6.3% |
+  renderer zinc950=0.0% fenceLight=6.6%`——翻转不重建读数带出，REAL exit
+  1 经无管道复跑确认）；[group8] 前缀并入不吃 049 重试机制；失败路径
+  best-effort 回浅（净窗纪律）随落地补注。
+- [✅ 已完成] **T8** 单源接线：vm-smoke 第七组/第八组与 probe 改 import
+  `theme-spec-values.mjs`（删本地散值）。验证：`node --check` 两脚本 +
+  T6/T7 命令复跑读数不变（重构零行为漂移）。
+  ——[✅ 已完成] worktree 248c955：probe RGB 九值改 `VM_FEATURE_RGB` import
+  （本地字面量删除；模块补 borderLight/indigoStrongLight/Dark，
+  §7.1:195/§7.2:208）；vm-smoke 消息 hex 改 THEME_SPEC 引用；`node --check`
+  双绿+模块导出验证；T6 复跑读数与接线前同值（zinc950 0.1%/40.4%，
+  零行为漂移）。
+
+### W3 摘门控收口（硬依赖：auto-lang 051-候选修复=转介单①）
+
+- [ ] **T9** 修复落地复验：auto-lang 修复折入 master + exe 重建后，跑
+  T6 矩阵——四读数 CONSISTENT（Q(light×view) fenceLight 在场 zinc950<5%
+  + F(view 翻转) 重建 + 深档双臂 zinc950 在场）。读数留档
+  `auto/quadrant-matrix-<日期>.txt` 为摘门控证据。验证：矩阵 verdict 全
+  CONSISTENT。
+- [ ] **T10** 摘门控：改 `autodown/demo/auto/vm-smoke.mjs`（删
+  AUTO_VM_KNOWN_FORK 分支，第七组+第八组转硬断言）+ 头注/README 门控
+  说明清理。验证：净窗无门控 `node auto/vm-smoke.mjs --port N` 全组
+  退出码 0。
+- [ ] **T11** 台账收口 + 全门回归：DEBTS.md 051-候选行销号（附读数 +
+  auto-lang 修复 commit 指针）；PARITY.md #17 注记更新 + #13 复验注记；
+  `docs/plans/attachments/052-auto-lang-transfer.md` 条目①状态收口。
+  验证：`grep -n "051-候选" DEBTS.md` 显示销号态；全门——`pnpm -r
+  build` + engine 当期全量测试 + `pnpm exec playwright test` 全量 +
+  vm-smoke 净窗退出码 0，计数落复审记录。
+
+## 复审记录
+
+（待 /auto-plan:review 填写）
+
+## 待澄清事项
+
+1. **callout 深色档对齐处置**（T5 条件）：§7.4 深档规约值=VM alpha 档
+   （`*-500/10` bg 系），vue 深色档若仍浅色系实值——按纪律修 vue CSS
+   对齐规约（默认）；若对齐牵动面过大（callout 三件×5 kind×2 文件），
+   可登记分叉顺延（需用户裁定）。
+2. **§7 行缺值兜底**：zinc-800 hex（fence header 深档）等规约表未直给
+   hex 的行——按 §7.1 zinc 系列表值补注于 THEME_SPEC（行号注明推断链）；
+   若属规约歧义，提 auto-lang §7 行修订而非本仓私定。
+3. **playwright 时长**：双档参数化后 e2e 计数约 ×2（74+3 → ~155±）——
+   默认接受串行；若 CI 时长成为问题，后续以 playwright projects/分片
+   优化（不在本计划范围）。
+4. **vm-smoke 第八组深档门限定标**：zinc950 占比门限（>30% 暂定）按 T7
+   首跑实测定标后回填本计划（读数驱动，复审记录留痕）。
+   ——【已回填 2026-09-05】首跑读数：翻转探针单 fence 文档下深档
+   editor zinc950=6.3%、renderer（分叉滞浅）0.0%/fenceLight 6.6%。
+   定标：深档门=双臂 zinc950 ≥5%（修复后单 fence 文档约 6-7%）；回浅门=
+   双臂 fenceLight ≥1% 且 zinc950 <5%（兼防首帧反向滞深）。30% 口径仅
+   适用于全文档帧（探针矩阵 N 行实测 33-51%）。
+5. **W3 时机**：auto-lang 侧修复建议以彼仓独立计划承接（转介单①，建议
+   立项号 559，worktree `.wt/lang-559`）——本计划 W3 不设时限，以 T9
+   进入条件为准；若彼仓修复长期未排期，本计划以 W1/W2 交付 + W3 挂起
+   状态收段（门控门已在，摘门随修复走）。
+6. **VM 窗口环境漂移（2026-09-05 执行期实录，W2 验证期发现）**：
+   (a) 探针默认端口 9247 被本机 musk 进程占用——VM 窗口改 `AUTOUI_MCP_PORT=9263`
+   起（`auto/vm-053-launch.cmd`，计划私有 target exe）；(b) `.wt` 并行会话
+   活跃清理工作树/进程，VM 窗口多次被外部清杀（049 已录模式）+ 偶发早夭，
+   拉起后须以 `autoui_find ⚙` 验证在场再跑验证，失败即重拉（本执行内置
+   重试环通过）；(c) 首帧档位偶发竞态：同 exe 同源多次启动中 ⚙/SettingsPopover
+   偶发缺失（AutoCache 编译竞态嫌疑），重拉即愈——T6/T7 验证均以验证钮
+   在场的窗口执行。以上均 auto-lang/环境侧，不影响本仓门逻辑；559 修复
+   落地复验（T9）时沿用「验证钮在场→跑」口径。

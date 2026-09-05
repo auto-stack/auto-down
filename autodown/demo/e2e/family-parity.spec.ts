@@ -7,6 +7,13 @@
 // StreamingRenderer's hand-copied :deep rules) is exactly what this spec
 // exists to catch.
 //
+// PLAN-053 T2 (D2): the whole suite is parameterized over BOTH theme modes
+// (light + dark, title suffix -[light|dark]). Dark runs flip the theme via
+// the settings popover (switchToDark, the 051 settings-theme click sequence)
+// before any measurement; assertion bodies are theme-agnostic arm-to-arm
+// comparisons, so the dark columns close the dark×edit / dark×view gates.
+// Each test gets a fresh page that defaults to light — no switch-back needed.
+//
 // Seven groups (the plan's coverage list): Callout / Details / Blockquote /
 // List / Table / Heading / Paragraph. First run is expected RED — the
 // failure list IS the measured diff list (工作清单, recorded in the plan's
@@ -89,136 +96,158 @@ async function ready(page: Page): Promise<void> {
   await page.waitForTimeout(300)
 }
 
-test('callout family: edit face vs view face chrome parity', async ({ page }) => {
-  await ready(page)
-  // block-15 = $callout(type: "warning", title: "Warning")
-  await expect(page.locator('.right [data-block-id="block-15"] .autodown-callout')).toContainText('warning')
+/** PLAN-053 T2 (D2): flip to dark via the settings popover — the 051
+ *  settings-theme click sequence — and assert BOTH engine roots carry
+ *  .is-dark before any measurement happens in the dark quadrant. */
+async function switchToDark(page: Page): Promise<void> {
+  await page.click('.settings-trigger')
+  await expect(page.getByText('Settings')).toBeVisible()
+  await page.getByRole('button', { name: '🌙 Dark' }).click()
+  await expect(page.locator('.left .autodown-editor')).toHaveClass(/is-dark/)
+  await expect(page.locator('.right .streaming-document')).toHaveClass(/is-dark/)
+  await page.getByRole('button', { name: '✕' }).click()
+  await expect(page.getByText('Settings')).toBeHidden()
+}
 
-  const rightRoot = await chromeOf(page, '.right [data-block-id="block-15"] .autodown-callout-warning')
-  const rightTitle = await chromeOf(page, '.right [data-block-id="block-15"] .autodown-callout-title')
-  await focusLeft(page, 'block-15', '.left .autodown-attr-host.autodown-callout-title')
-  const leftRoot = await chromeOf(page, '.left [data-block-id="block-15"] .autodown-callout-warning')
-  const leftTitle = await chromeOf(page, '.left [data-block-id="block-15"] .autodown-callout-title')
+for (const theme of ['light', 'dark'] as const) {
+  test(`callout family: edit face vs view face chrome parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-15 = $callout(type: "warning", title: "Warning")
+    await expect(page.locator('.right [data-block-id="block-15"] .autodown-callout')).toContainText('warning')
 
-  expectChromeParity('callout', 'card', leftRoot, rightRoot, [
-    'backgroundColor', 'borderTopWidth', 'borderTopColor', 'borderLeftWidth', 'borderLeftColor',
-    'borderRadius', 'paddingTop', 'paddingBottom', 'paddingLeft', 'lineHeight',
-  ])
-  expectChromeParity('callout', 'title', leftTitle, rightTitle, [
-    'fontSize', 'fontWeight', 'lineHeight', 'color',
-  ])
-  // the card is actually chrome'd on both panes (not default transparent)
-  expect.soft(rightRoot.backgroundColor, 'callout card: view bg is styled').not.toBe('rgba(0, 0, 0, 0)')
-  expect.soft(leftRoot.backgroundColor, 'callout card: edit bg is styled').not.toBe('rgba(0, 0, 0, 0)')
-})
+    const rightRoot = await chromeOf(page, '.right [data-block-id="block-15"] .autodown-callout-warning')
+    const rightTitle = await chromeOf(page, '.right [data-block-id="block-15"] .autodown-callout-title')
+    await focusLeft(page, 'block-15', '.left .autodown-attr-host.autodown-callout-title')
+    const leftRoot = await chromeOf(page, '.left [data-block-id="block-15"] .autodown-callout-warning')
+    const leftTitle = await chromeOf(page, '.left [data-block-id="block-15"] .autodown-callout-title')
 
-test('details family: edit face vs view face chrome parity', async ({ page }) => {
-  await ready(page)
-  // block-18 = $details(summary: "Click to expand") — both panes render the
-  // family widget face (div.autodown-details, the panel pipeline); the
-  // summary ROW is the same-named comparable element.
-  await expect(page.locator('.right [data-block-id="block-18"] .autodown-details-summary-text')).toContainText('Click to expand')
+    expectChromeParity('callout', 'card', leftRoot, rightRoot, [
+      'backgroundColor', 'borderTopWidth', 'borderTopColor', 'borderLeftWidth', 'borderLeftColor',
+      'borderRadius', 'paddingTop', 'paddingBottom', 'paddingLeft', 'lineHeight',
+    ])
+    expectChromeParity('callout', 'title', leftTitle, rightTitle, [
+      'fontSize', 'fontWeight', 'lineHeight', 'color',
+    ])
+    // the card is actually chrome'd on both panes (not default transparent)
+    expect.soft(rightRoot.backgroundColor, 'callout card: view bg is styled').not.toBe('rgba(0, 0, 0, 0)')
+    expect.soft(leftRoot.backgroundColor, 'callout card: edit bg is styled').not.toBe('rgba(0, 0, 0, 0)')
+  })
 
-  const rightSummary = await chromeOf(page, '.right [data-block-id="block-18"] .autodown-details-summary')
-  // the collapsed card's marker/text clicks TOGGLE open (stopPropagation —
-  // they never reach the slot's select handler), so open it explicitly, then
-  // click the revealed content paragraph to focus a leaf inside the container
-  await page.locator('.left [data-block-id="block-18"] .autodown-details-marker').click()
-  await page.waitForSelector('.left [data-block-id="block-18"] .autodown-details-content p')
-  await page.locator('.left [data-block-id="block-18"] .autodown-details-content p').click()
-  await page.waitForSelector('.left .autodown-attr-host.autodown-details-summary-text', { timeout: 5000 })
-  const leftSummary = await chromeOf(page, '.left [data-block-id="block-18"] .autodown-details-summary')
-  expectChromeParity('details', 'summary row', leftSummary, rightSummary, [
-    'fontSize', 'fontWeight', 'lineHeight', 'color', 'backgroundColor',
-    'paddingTop', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRadius',
-  ])
-  expectHeightParity('details', 'summary row', leftSummary, rightSummary)
-})
+  test(`details family: edit face vs view face chrome parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-18 = $details(summary: "Click to expand") — both panes render the
+    // family widget face (div.autodown-details, the panel pipeline); the
+    // summary ROW is the same-named comparable element.
+    await expect(page.locator('.right [data-block-id="block-18"] .autodown-details-summary-text')).toContainText('Click to expand')
 
-test('blockquote family: edit face vs view face chrome parity', async ({ page }) => {
-  await ready(page)
-  // block-4 = the single blockquote
-  await expect(page.locator('.right [data-block-id="block-4"] blockquote')).toContainText('blockquote')
+    const rightSummary = await chromeOf(page, '.right [data-block-id="block-18"] .autodown-details-summary')
+    // the collapsed card's marker/text clicks TOGGLE open (stopPropagation —
+    // they never reach the slot's select handler), so open it explicitly, then
+    // click the revealed content paragraph to focus a leaf inside the container
+    await page.locator('.left [data-block-id="block-18"] .autodown-details-marker').click()
+    await page.waitForSelector('.left [data-block-id="block-18"] .autodown-details-content p')
+    await page.locator('.left [data-block-id="block-18"] .autodown-details-content p').click()
+    await page.waitForSelector('.left .autodown-attr-host.autodown-details-summary-text', { timeout: 5000 })
+    const leftSummary = await chromeOf(page, '.left [data-block-id="block-18"] .autodown-details-summary')
+    expectChromeParity('details', 'summary row', leftSummary, rightSummary, [
+      'fontSize', 'fontWeight', 'lineHeight', 'color', 'backgroundColor',
+      'paddingTop', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRadius',
+    ])
+    expectHeightParity('details', 'summary row', leftSummary, rightSummary)
+  })
 
-  const rightRoot = await chromeOf(page, '.right [data-block-id="block-4"] blockquote')
-  const rightP = await chromeOf(page, '.right [data-block-id="block-4"] blockquote p')
-  await focusLeft(page, 'block-4', '.left [data-block-id="block-4"] blockquote .markdown-renderer')
-  const leftRoot = await chromeOf(page, '.left [data-block-id="block-4"] blockquote')
-  const leftP = await chromeOf(page, '.left [data-block-id="block-4"] blockquote p')
+  test(`blockquote family: edit face vs view face chrome parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-4 = the single blockquote
+    await expect(page.locator('.right [data-block-id="block-4"] blockquote')).toContainText('blockquote')
 
-  expectChromeParity('blockquote', 'card', leftRoot, rightRoot, [
-    'borderLeftWidth', 'borderLeftColor', 'paddingLeft', 'paddingTop', 'paddingBottom', 'color',
-  ])
-  expectChromeParity('blockquote', 'body p', leftP, rightP, ['lineHeight', 'fontSize'])
-})
+    const rightRoot = await chromeOf(page, '.right [data-block-id="block-4"] blockquote')
+    const rightP = await chromeOf(page, '.right [data-block-id="block-4"] blockquote p')
+    await focusLeft(page, 'block-4', '.left [data-block-id="block-4"] blockquote .markdown-renderer')
+    const leftRoot = await chromeOf(page, '.left [data-block-id="block-4"] blockquote')
+    const leftP = await chromeOf(page, '.left [data-block-id="block-4"] blockquote p')
 
-test('list family: edit face vs view face chrome parity', async ({ page }) => {
-  await ready(page)
-  // block-11 = the nested bullet list
-  // direct-child ul: block-11 has a NESTED list inside the first item — the
-  // outer ul is the comparable root
-  await expect(page.locator('.right [data-block-id="block-11"] > ul')).toContainText('Bullet item one')
+    expectChromeParity('blockquote', 'card', leftRoot, rightRoot, [
+      'borderLeftWidth', 'borderLeftColor', 'paddingLeft', 'paddingTop', 'paddingBottom', 'color',
+    ])
+    expectChromeParity('blockquote', 'body p', leftP, rightP, ['lineHeight', 'fontSize'])
+  })
 
-  const rightUl = await chromeOf(page, '.right [data-block-id="block-11"] > ul.list-node')
-  const rightLi = await chromeOf(page, '.right [data-block-id="block-11"] > ul.list-node > li')
-  await focusLeft(page, 'block-11', '.left [data-block-id="block-11"] ul.list-node .markdown-renderer')
-  const leftUl = await chromeOf(page, '.left [data-block-id="block-11"] ul.list-node')
-  const leftLi = await chromeOf(page, '.left [data-block-id="block-11"] ul.list-node > li')
+  test(`list family: edit face vs view face chrome parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-11 = the nested bullet list
+    // direct-child ul: block-11 has a NESTED list inside the first item — the
+    // outer ul is the comparable root
+    await expect(page.locator('.right [data-block-id="block-11"] > ul')).toContainText('Bullet item one')
 
-  expectChromeParity('list', 'ul', leftUl, rightUl, ['paddingLeft', 'listStyleType'])
-  expectChromeParity('list', 'li', leftLi, rightLi, ['paddingTop', 'paddingBottom', 'lineHeight'])
-  expectHeightParity('list', 'li', leftLi, rightLi)
-})
+    const rightUl = await chromeOf(page, '.right [data-block-id="block-11"] > ul.list-node')
+    const rightLi = await chromeOf(page, '.right [data-block-id="block-11"] > ul.list-node > li')
+    await focusLeft(page, 'block-11', '.left [data-block-id="block-11"] ul.list-node .markdown-renderer')
+    const leftUl = await chromeOf(page, '.left [data-block-id="block-11"] ul.list-node')
+    const leftLi = await chromeOf(page, '.left [data-block-id="block-11"] ul.list-node > li')
 
-test('table family: edit face vs view face cell chrome parity', async ({ page }) => {
-  await ready(page)
-  // block-14 = the 3x4 table; edit face root is .autodown-table-editor (its
-  // toolbar is an edit affordance — cell chrome is the comparable surface)
-  await expect(page.locator('.right [data-block-id="block-14"] table')).toContainText('Foo')
+    expectChromeParity('list', 'ul', leftUl, rightUl, ['paddingLeft', 'listStyleType'])
+    expectChromeParity('list', 'li', leftLi, rightLi, ['paddingTop', 'paddingBottom', 'lineHeight'])
+    expectHeightParity('list', 'li', leftLi, rightLi)
+  })
 
-  const rightTh = await chromeOf(page, '.right [data-block-id="block-14"] table th')
-  const rightTd = await chromeOf(page, '.right [data-block-id="block-14"] table tbody td')
-  await focusLeft(page, 'block-14', '.left [data-block-id="block-14"] .autodown-table-editor .te-toolbar')
-  const leftTh = await chromeOf(page, '.left [data-block-id="block-14"] .autodown-table-editor table th')
-  const leftTd = await chromeOf(page, '.left [data-block-id="block-14"] .autodown-table-editor table tbody td')
+  test(`table family: edit face vs view face cell chrome parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-14 = the 3x4 table; edit face root is .autodown-table-editor (its
+    // toolbar is an edit affordance — cell chrome is the comparable surface)
+    await expect(page.locator('.right [data-block-id="block-14"] table')).toContainText('Foo')
 
-  expectChromeParity('table', 'th', leftTh, rightTh, [
-    'borderTopWidth', 'borderTopColor', 'borderLeftWidth', 'borderLeftColor',
-    'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight',
-    'fontSize', 'fontWeight', 'lineHeight', 'backgroundColor',
-  ])
-  expectChromeParity('table', 'td', leftTd, rightTd, [
-    'borderTopWidth', 'borderTopColor', 'borderLeftWidth', 'borderLeftColor',
-    'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight', 'fontSize', 'lineHeight',
-  ])
-  expectHeightParity('table', 'th', leftTh, rightTh)
-})
+    const rightTh = await chromeOf(page, '.right [data-block-id="block-14"] table th')
+    const rightTd = await chromeOf(page, '.right [data-block-id="block-14"] table tbody td')
+    await focusLeft(page, 'block-14', '.left [data-block-id="block-14"] .autodown-table-editor .te-toolbar')
+    const leftTh = await chromeOf(page, '.left [data-block-id="block-14"] .autodown-table-editor table th')
+    const leftTd = await chromeOf(page, '.left [data-block-id="block-14"] .autodown-table-editor table tbody td')
 
-test('heading family: focused host vs view face typography parity', async ({ page }) => {
-  await ready(page)
-  // block-2 = "## Heading Two" (single line — height is comparable)
-  await expect(page.locator('.right [data-block-id="block-2"] h2')).toContainText('Heading Two')
+    expectChromeParity('table', 'th', leftTh, rightTh, [
+      'borderTopWidth', 'borderTopColor', 'borderLeftWidth', 'borderLeftColor',
+      'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight',
+      'fontSize', 'fontWeight', 'lineHeight', 'backgroundColor',
+    ])
+    expectChromeParity('table', 'td', leftTd, rightTd, [
+      'borderTopWidth', 'borderTopColor', 'borderLeftWidth', 'borderLeftColor',
+      'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight', 'fontSize', 'lineHeight',
+    ])
+    expectHeightParity('table', 'th', leftTh, rightTh)
+  })
 
-  const right = await chromeOf(page, '.right [data-block-id="block-2"] h2.heading-node')
-  await focusLeft(page, 'block-2', '.left .autodown-block-host[data-block-id="block-2"]')
-  const left = await chromeOf(page, '.left .autodown-block-host[data-block-id="block-2"]')
+  test(`heading family: focused host vs view face typography parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-2 = "## Heading Two" (single line — height is comparable)
+    await expect(page.locator('.right [data-block-id="block-2"] h2')).toContainText('Heading Two')
 
-  expectChromeParity('heading', 'h2', left, right, ['fontSize', 'fontWeight', 'lineHeight', 'color'])
-  expectHeightParity('heading', 'h2', left, right)
-})
+    const right = await chromeOf(page, '.right [data-block-id="block-2"] h2.heading-node')
+    await focusLeft(page, 'block-2', '.left .autodown-block-host[data-block-id="block-2"]')
+    const left = await chromeOf(page, '.left .autodown-block-host[data-block-id="block-2"]')
 
-test('paragraph family: focused host vs view face typography parity', async ({ page }) => {
-  await ready(page)
-  // block-1 = the intro paragraph (long text — wrap-dependent height is NOT
-  // comparable across panes; line pitch + margins + mark colors are)
-  await expect(page.locator('.right [data-block-id="block-1"] p')).toContainText('bold')
+    expectChromeParity('heading', 'h2', left, right, ['fontSize', 'fontWeight', 'lineHeight', 'color'])
+    expectHeightParity('heading', 'h2', left, right)
+  })
 
-  const right = await chromeOf(page, '.right [data-block-id="block-1"] p.paragraph-node')
-  const rightStrong = await chromeOf(page, '.right [data-block-id="block-1"] p strong')
-  await focusLeft(page, 'block-1', '.left .autodown-block-host[data-block-id="block-1"]')
-  const left = await chromeOf(page, '.left .autodown-block-host[data-block-id="block-1"]')
-  const leftStrong = await chromeOf(page, '.left .autodown-block-host[data-block-id="block-1"] strong')
+  test(`paragraph family: focused host vs view face typography parity -[${theme}]`, async ({ page }) => {
+    await ready(page)
+    if (theme === 'dark') await switchToDark(page)
+    // block-1 = the intro paragraph (long text — wrap-dependent height is NOT
+    // comparable across panes; line pitch + margins + mark colors are)
+    await expect(page.locator('.right [data-block-id="block-1"] p')).toContainText('bold')
 
-  expectChromeParity('paragraph', 'p', left, right, ['fontSize', 'lineHeight', 'color'])
-  expectChromeParity('paragraph', 'strong', leftStrong, rightStrong, ['fontWeight', 'color'])
-})
+    const right = await chromeOf(page, '.right [data-block-id="block-1"] p.paragraph-node')
+    const rightStrong = await chromeOf(page, '.right [data-block-id="block-1"] p strong')
+    await focusLeft(page, 'block-1', '.left .autodown-block-host[data-block-id="block-1"]')
+    const left = await chromeOf(page, '.left .autodown-block-host[data-block-id="block-1"]')
+    const leftStrong = await chromeOf(page, '.left .autodown-block-host[data-block-id="block-1"] strong')
+
+    expectChromeParity('paragraph', 'p', left, right, ['fontSize', 'lineHeight', 'color'])
+    expectChromeParity('paragraph', 'strong', leftStrong, rightStrong, ['fontWeight', 'color'])
+  })
+}

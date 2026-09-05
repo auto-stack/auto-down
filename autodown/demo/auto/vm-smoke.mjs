@@ -36,19 +36,18 @@
 //      051-candidate fork (DEBTS 051-候选: renderer arm resolves zinc-950
 //      dark plates in light mode at first build — 存量缓存, auto-lang side).
 //      Runs FIRST and only on the first attempt (typing replaces the seeded
-//      doc). KNOWN-FORK GATE: while the auto-lang fix is outstanding,
-//      AUTO_VM_KNOWN_FORK=1 skips group 7 with a loud note (readings still
-//      printed); ungate to enforce.
+//      doc). PLAN-053 T10 (2026-09-05): the AUTO_VM_KNOWN_FORK gate is
+//      RETIRED — the fix landed (auto-lang theme epoch + StreamCache theme
+//      invalidation) and the probe --quadrants matrix reads all-CONSISTENT;
+//      group 7 hard-asserts.
 //   8. (plan 053 T7 / D5) theme flip group: type a fence doc, then
-//      ⚙→🌙Dark→✕ → BOTH arms zinc-950 ≥ 30% (dark档 chrome theme-driven);
-//      ⚙→Light→✕ → BOTH arms fenceLight back ≥ 1% (flip-rebuild evidence —
-//      the view arm is the 051-候选 fork, red until the auto-lang fix
-//      lands). Runs LAST so the dark detour never pollutes the earlier
-//      groups' light clean window, and ends back in light (净窗纪律).
-//      Same AUTO_VM_KNOWN_FORK gate as group 7: gate-set = readings printed
-//      with a loud SKIP note; no gate = hard assertions, and [group8]
-//      errors are deterministic failures (no PLAN-049 retry, same as
-//      [group7]).
+//      ⚙→🌙Dark→✕ → BOTH arms zinc-950 ≥ 5% (dark档 chrome theme-driven);
+//      ⚙→Light→✕ → BOTH arms fenceLight back ≥ 1% (flip-rebuild evidence).
+//      Runs LAST so the dark detour never pollutes the earlier groups'
+//      light clean window, and ends back in light (净窗纪律). Thresholds
+//      calibrated from the flip-probe doc's real readings (待澄清④).
+//      PLAN-053 T10: gate retired — hard assertions on both flips;
+//      [group8] errors stay deterministic failures (no PLAN-049 retry).
 //
 // Protocol (same channel the jade desktop flows ride, see
 // jade-garden/front/desktop/README.md:114-132): AutoUI MCP over Streamable
@@ -241,15 +240,14 @@ async function runOnce(attempt) {
     const readings =
       `editor dark=${pct(frame.left.dark, frame.left.total)} fenceLight=${pct(frame.left.light, frame.left.total)}` +
       ` | renderer dark=${pct(frame.right.dark, frame.right.total)} zinc950=${pct(frame.right.zinc, frame.right.total)} fenceLight=${pct(frame.right.light, frame.right.total)}`
-    if (process.env.AUTO_VM_KNOWN_FORK === '1') {
-      checks.push(`[KNOWN-FORK SKIP] light fence chrome gate SKIPPED (AUTO_VM_KNOWN_FORK=1 — 051-候选 auto-lang 修复未落地; readings: ${readings})`)
-    } else {
-      const zincShare = frame.right.zinc / Math.max(1, frame.right.total)
-      const lightShare = frame.right.light / Math.max(1, frame.right.total)
-      if (zincShare > 0.05) throw new Error(`[group7] renderer pane shows zinc-950 dark plates in light mode (051-候选 fork live): ${readings}`)
-      if (lightShare < 0.01) throw new Error(`[group7] renderer pane shows no light fence chrome (${THEME_SPEC.light.fenceBg}) — seeded fences missing?: ${readings}`)
-      checks.push(`light-mode fence chrome: renderer pane light (${THEME_SPEC.light.fenceBg} present, zinc-950 < 5%)`)
-    }
+    // PLAN-053 T10: the AUTO_VM_KNOWN_FORK gate is RETIRED — the 051-候选
+    // fix landed (auto-lang theme epoch + StreamCache invalidation; probe
+    // --quadrants all-CONSISTENT 2026-09-05). Group 7 hard-asserts.
+    const zincShare = frame.right.zinc / Math.max(1, frame.right.total)
+    const lightShare = frame.right.light / Math.max(1, frame.right.total)
+    if (zincShare > 0.05) throw new Error(`[group7] renderer pane shows zinc-950 dark plates in light mode (051-候选 fork live): ${readings}`)
+    if (lightShare < 0.01) throw new Error(`[group7] renderer pane shows no light fence chrome (${THEME_SPEC.light.fenceBg}) — seeded fences missing?: ${readings}`)
+    checks.push(`light-mode fence chrome: renderer pane light (${THEME_SPEC.light.fenceBg} present, zinc-950 < 5%)`)
   }
 
   // 1. the left editor's input face (the block-editor shell's textarea)
@@ -633,65 +631,42 @@ async function runOnce(attempt) {
     if ((await darkModeFlag()) !== 'false') {
       throw new Error('[group8] expected light start (dark_mode=false) — window left dirty by an earlier run?')
     }
-    const GATED = process.env.AUTO_VM_KNOWN_FORK === '1'
 
-    // Gate semantics (plan 053 T7): GATED = the group may SKIP with a loud
-    // note instead of failing — that includes the flip SURFACE being
-    // unavailable (e.g. the settings trigger dropped from the VM build, an
-    // auto-lang-side regression tracked in the plan's 待澄清): the window
-    // stays light (clean-window discipline) and the run stays green.
-    // Un-gated = any [group8] error is a deterministic failure (exit 1, no
-    // PLAN-049 retry).
-    try {
-      // → dark: ⚙ → 🌙 Dark → ✕, then BOTH arms zinc-950 (theme-driven chrome)
-      await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
-      await pressLabel('🌙 Dark'); await new Promise((r) => setTimeout(r, 900))
-      await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
-      const darkFrame = await frameReadings()
-      const darkLine = panesLine(darkFrame)
-      if (GATED) {
-        checks.push(`[KNOWN-FORK SKIP] theme-flip dark gate SKIPPED (AUTO_VM_KNOWN_FORK=1 — 051-候选 auto-lang 修复未落地; dark readings: ${darkLine})`)
-      } else {
-        if (darkFrame.left.zinc / Math.max(1, darkFrame.left.total) < 0.05 || darkFrame.right.zinc / Math.max(1, darkFrame.right.total) < 0.05) {
-          // best-effort light restore before rethrowing (净窗纪律 on the
-          // failure path too — the next run's group-7 clean-start check
-          // depends on it)
-          try {
-            await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
-            await pressLabel('Light'); await new Promise((r) => setTimeout(r, 900))
-            await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
-          } catch { /* restore is best-effort; the assertion error below is primary */ }
-          throw new Error(`[group8] dark档 zinc-950 share < 5% on some arm (theme flip not applied — 051-候选): ${darkLine}`)
-        }
-        checks.push('theme flip → dark: BOTH arms zinc-950 ≥ 5% (dark档 fence chrome theme-driven)')
-      }
+    // PLAN-053 T10: the AUTO_VM_KNOWN_FORK gate is RETIRED (051-候选 fix
+    // landed — see group 7 note). Both flips hard-assert; [group8] errors
+    // remain deterministic failures (no PLAN-049 retry).
 
-      // → light: ⚙ → Light → ✕, then BOTH arms fenceLight back (flip-rebuild).
-      //   The renderer arm is the 051-候选 fork — this assertion is RED until
-      //   the auto-lang fix lands (hence the group gate).
-      await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
-      await pressLabel('Light'); await new Promise((r) => setTimeout(r, 900))
-      await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
-      if ((await darkModeFlag()) !== 'false') throw new Error('[group8] flip-back to light failed (state.dark_mode still true)')
-      const lightFrame = await frameReadings()
-      const lightLine = panesLine(lightFrame)
-      if (GATED) {
-        checks.push(`[KNOWN-FORK SKIP] theme-flip light-return gate SKIPPED (AUTO_VM_KNOWN_FORK=1 — 051-候选 auto-lang 修复未落地; light readings: ${lightLine})`)
-      } else {
-        const armLight = (h) => h.light / Math.max(1, h.total) >= 0.01
-        const armBackLight = (h) => h.light / Math.max(1, h.total) >= 0.01 && h.zinc / Math.max(1, h.total) < 0.05
-        if (!armLight(lightFrame.left) || !armBackLight(lightFrame.right)) {
-          throw new Error(`[group8] flip-back to light: fenceLight missing or zinc-950 stuck on some arm (flip-rebuild broken — 051-候选): ${lightLine}`)
-        }
-        checks.push('theme flip → light: BOTH arms fenceLight back ≥ 1% and zinc-950 < 5% (flip-rebuild evidence)')
-      }
-    } catch (err) {
-      if (GATED && err.message.startsWith('[group8]')) {
-        checks.push(`[KNOWN-FORK SKIP] theme-flip group SKIPPED — flip surface unavailable (AUTO_VM_KNOWN_FORK=1; window kept light): ${err.message}`)
-      } else {
-        throw err
-      }
+    // → dark: ⚙ → 🌙 Dark → ✕, then BOTH arms zinc-950 (theme-driven chrome)
+    await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
+    await pressLabel('🌙 Dark'); await new Promise((r) => setTimeout(r, 900))
+    await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
+    const darkFrame = await frameReadings()
+    const darkLine = panesLine(darkFrame)
+    if (darkFrame.left.zinc / Math.max(1, darkFrame.left.total) < 0.05 || darkFrame.right.zinc / Math.max(1, darkFrame.right.total) < 0.05) {
+      // best-effort light restore before rethrowing (净窗纪律 on the
+      // failure path too — the next run's group-7 clean-start check
+      // depends on it)
+      try {
+        await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
+        await pressLabel('Light'); await new Promise((r) => setTimeout(r, 900))
+        await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
+      } catch { /* restore is best-effort; the assertion error below is primary */ }
+      throw new Error(`[group8] dark档 zinc-950 share < 5% on some arm (theme flip not applied — 051-候选): ${darkLine}`)
     }
+    checks.push('theme flip → dark: BOTH arms zinc-950 ≥ 5% (dark档 fence chrome theme-driven)')
+
+    // → light: ⚙ → Light → ✕, then BOTH arms fenceLight back (flip-rebuild).
+    await pressLabel('⚙'); await new Promise((r) => setTimeout(r, 500))
+    await pressLabel('Light'); await new Promise((r) => setTimeout(r, 900))
+    await pressLabel('✕'); await new Promise((r) => setTimeout(r, 500))
+    if ((await darkModeFlag()) !== 'false') throw new Error('[group8] flip-back to light failed (state.dark_mode still true)')
+    const lightFrame = await frameReadings()
+    const lightLine = panesLine(lightFrame)
+    const armBackLight = (h) => h.light / Math.max(1, h.total) >= 0.01 && h.zinc / Math.max(1, h.total) < 0.05
+    if (!armBackLight(lightFrame.left) || !armBackLight(lightFrame.right)) {
+      throw new Error(`[group8] flip-back to light: fenceLight missing or zinc-950 stuck on some arm (flip-rebuild broken — 051-候选): ${lightLine}`)
+    }
+    checks.push('theme flip → light: BOTH arms fenceLight back ≥ 1% and zinc-950 < 5% (flip-rebuild evidence)')
   }
 
   return checks

@@ -2,19 +2,19 @@
 [quad] A1 first-frame: dark_mode=false
 [quad] Q(light×edit): zinc950=0.1% fenceLight=51.3% dark=0.8% zinc700=0.0% zinc400=0.0% fgLight=0.0% fgDark=51.4% borderLight=15.0% indigoL=0.00% indigoD=0.00%
 [quad] Q(light×edit): verdict=CONSISTENT (expected=§7.4:232 浅档 fence bg #f9fafb 在场、zinc950≈0)
-[quad] Q(light×view): zinc950=40.4% fenceLight=0.0% dark=56.5% zinc700=0.0% zinc400=0.1% fgLight=0.0% fgDark=0.0% borderLight=0.0% indigoL=0.00% indigoD=0.03%
-[quad] Q(light×view): verdict=FORK (expected=§7.4:232 fenceLight 在场、zinc950<5%)
-[quad] Q(dark×edit): zinc950=51.5% fenceLight=0.0% dark=96.1% zinc700=1.4% zinc400=0.1% fgLight=30.8% fgDark=0.0% borderLight=0.1% indigoL=0.00% indigoD=0.00%
+[quad] Q(light×view): zinc950=0.1% fenceLight=40.2% dark=0.5% zinc700=0.0% zinc400=0.0% fgLight=0.0% fgDark=40.2% borderLight=16.0% indigoL=0.00% indigoD=0.03%
+[quad] Q(light×view): verdict=CONSISTENT (expected=§7.4:232 fenceLight 在场、zinc950<5%)
+[quad] Q(dark×edit): zinc950=51.5% fenceLight=0.0% dark=96.4% zinc700=1.4% zinc400=0.1% fgLight=31.1% fgDark=0.0% borderLight=0.1% indigoL=0.00% indigoD=0.00%
 [quad] Q(dark×edit): verdict=CONSISTENT (expected=§7.4:232 zinc-950 在场（主题驱动）)
-[quad] Q(dark×view): zinc950=36.5% fenceLight=0.3% dark=96.7% zinc700=0.0% zinc400=0.1% fgLight=40.2% fgDark=0.3% borderLight=0.0% indigoL=0.00% indigoD=0.00%
+[quad] Q(dark×view): zinc950=40.4% fenceLight=0.3% dark=96.2% zinc700=0.0% zinc400=0.1% fgLight=40.0% fgDark=0.3% borderLight=0.0% indigoL=0.00% indigoD=0.00%
 [quad] Q(dark×view): verdict=CONSISTENT (expected=§7.4:232 zinc-950 在场；机制正确性由 F(view 翻转) 轴判定)
 [quad] A2a state: dark=true
 [quad] A2b state: back-light=false
 [quad] F(edit 翻转): zinc950=0.0% fenceLight=51.3% dark=0.7% zinc700=0.0% zinc400=0.0% fgLight=0.0% fgDark=51.4% borderLight=15.0% indigoL=0.00% indigoD=0.00%
 [quad] F(edit 翻转): verdict=CONSISTENT (expected=§7.4:232 翻回浅后 fenceLight 回场（对照臂，现即正确）)
-[quad] F(view 翻转): zinc950=36.4% fenceLight=0.0% dark=51.2% zinc700=0.0% zinc400=0.1% fgLight=0.0% fgDark=0.0% borderLight=0.0% indigoL=0.00% indigoD=0.01%
-[quad] F(view 翻转): verdict=FORK (expected=§7.4:232 翻回浅后 fenceLight 回场（重建载痕）)
-[quad] A3/N(new): AXIS-ERROR — tool autoui_screenshot failed: [{"type":"text","text":"Error: Screenshot failed: Screenshot skipped: window size is zero (minimized or not yet laid out)"}]
-[quad] A3/N(new): verdict=INCOMPLETE (axis could not run; see AXIS-ERROR)
-[quad] summary: FORK rows = Q(light×view), F(view 翻转)
+[quad] F(view 翻转): zinc950=0.0% fenceLight=40.2% dark=0.4% zinc700=0.0% zinc400=0.0% fgLight=0.0% fgDark=40.2% borderLight=16.0% indigoL=0.00% indigoD=0.03%
+[quad] F(view 翻转): verdict=CONSISTENT (expected=§7.4:232 翻回浅后 fenceLight 回场（重建载痕）)
+[quad] N(新建取档): zinc950=0.0% fenceLight=6.9% dark=0.1% zinc700=0.0% zinc400=0.0% fgLight=0.0% fgDark=6.9% borderLight=4.0% indigoL=0.00% indigoD=0.01%
+[quad] N(新建取档): verdict=CONSISTENT (expected=§7.4:232 新建块取当前档（浅档浅）)
+[quad] summary: 全行 CONSISTENT
 [quad] 修复前基线预期：Q(light×view) 与 F(view 翻转) FORK，其余 CONSISTENT（052 读数）

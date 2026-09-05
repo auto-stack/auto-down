@@ -42,6 +42,12 @@
   门控跳过带读数）——**修复落地后摘门控转硬断言即本条验收**。
 - **建议验收**：摘门控后 vm-smoke 第七组绿（renderer zinc950 < 5% 且
   fenceLight 在场）+ probe A2b 翻回浅后 renderer fenceLight 在场。
+- **✅ 状态收口（2026-09-05，PLAN-053）**：彼仓未另立项（559 号被他范围
+  占用），修复经 auto-down PLAN-053 T12 收回自修落地——theme 主题代数 +
+  StreamCache 主题失效（auto-lang master merge 2d3b2d1e0，镜像 DEBTS 行
+  补登销号 20e9a63d2）；验收双判据均达成：`--quadrants` 七行全
+  CONSISTENT（含 A2b 翻转重建）+ vm-smoke 第七/八组摘门控转硬断言。
+  本条目终结。
 - **随行已修**：本仓归档迁移致 auto-lang `crates/auto-lang/Cargo.toml`
   autodown-core 路径断裂——auto-down-dev f5c86eeba 已折 auto-lang master
   0b0161b57。

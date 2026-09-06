@@ -194,6 +194,20 @@ core 拖拽列宽（min 宽 48px 钳制）实时 relayout；MouseReleased 落定
   验证：计数落复审记录。
   [✅ 已完成] tf 3461 跑 3460 过（唯一红=charts 既有 test_charts_gallery_compiles；kitchen_sink 本轮绿）；playwright 88/88；autodown engine 单测 7 二进制全绿；autodown_editor 79/79（合并 572 后复跑同绿+tf 合并树门 3460/3461 同唯一红）。折回：auto-lang master ff→a514df212（先并 master 2cc31aa96 过合并树门）、auto-down master ff→865c613（T7 录证）；工作树留置待 merge 终清。
 
+## 执行追记（复审前修复，2026-09-06）
+
+- **两臂列表缩进同款（用户实机反馈：一级/二级缩进两侧不一致）**：根因
+  =编辑臂列表用固定档（LIST_GUTTER 26 / LIST_INDENT 16），只读臂实为
+  流式词表（`Row[marker, body]` spacing 2——marker 槽 = marker run 自然
+  宽 + 2，嵌套列表挂 body 列 → 子级 marker 落父级文字 x）。修复：弃两
+  常量，walk 归因链传 `fs` 做 marker 槽 cosmic 测宽（进程级缓存；测宽=
+  画宽，054 钉 Inter 同族同例），marker 槽逐项流式（"10. " 宽序号同源）。
+  验证：新增 `nested_list_indent_follows_readonly_flow` 单测；模块
+  80/80；tf 3460/3461 唯一红=charts 既有；实机 2x 净窗逐行暗簇起点比对
+  （vm-indent 探针一次性量测）：圆点/嵌套/序号/task 四族两臂起点全同
+  （≤1 VM px 字距漂移）。折回 auto-lang master ed8690959（并 573 归档
+  提交后 ff）。
+
 ## 复审记录
 
 （待 /auto-plan:review 填写）

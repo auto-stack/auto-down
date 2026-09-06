@@ -1,15 +1,19 @@
 ---
 plan_id: PLAN-056
-status: execution_done
+status: reviewed
 feature_name: markdown 表格 cell `\|` 转义支持（parser 分列/反转义 + emit 反斜杠硬化）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-06
 updated_at: 2026-09-06
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P055-3: 修改（emit 往返转义口径扩为反斜杠先于管道硬化（GFM 序）；parser 侧补齐 cell 转义契约——G4 含转义半边自此闭合）"
+  - "P055-6: 修改（复审记录 D1 债务候选清偿——销号互链 PLAN-056）"
+new_spec_components:
+  - "markdown-parser: 新增表格 cell 转义契约（splitRowCells 逃逸感知分列+反转义：`\\|` 字面管道/`\\\\` 字面反斜杠/其余 `\\x` 保形；markdown_parser.at 单源 TS/rust 双端再生，parity 金标四组锁 escape-pipe/backslash/edges/mixed）"
+touched_goals:
+  - "PARITY #12 表格子项续进：编辑臂表格 G4 往返转义半边闭合（DEBTS 055-D1 清偿）"
 
 current_step: 6
 total_steps: 6
@@ -146,7 +150,29 @@ parse_parity 金标 + roundtrip 守恒表增组：`a\|b`（基础）、`\\`（�
 
 ## 复审记录
 
-（待 /auto-plan:review 填写）
+- **复审人**：ZCode（/auto-plan:review，2026-09-06）
+- **复核对象**：auto-down master `47fba63`（plan-056-dev 折回，T1-T3 parser/金标/守恒面）+ auto-lang master `9fe9bc6cc`（T4 emit 硬化，并 521 归档后合并态）；plan 代码面 = 7 文件（.at/raw.ts/rust 镜像/golden/parse_parity.rs/TS 测试/TS 产物）+ core.rs，diff 核对无计划外改动。
+
+### 验收逐项复验（重跑证据）
+
+1. **`a\|b` → 文本 `a|b`，TS/rust parity 双绿** — PASS。金标投影实查 `span a|b []`（escape-pipe 组，无破列）；engine TS 62 文件 786/786（金标由 TS 测试重写）；crate 7 二进制全绿（含行为断言 table_cell_escapes_parse_to_literal_text 两段：转义管道折叠 + 反斜杠折叠）。
+2. **emit → 重解析恒等** — PASS。auto-lang 模块 80/80 含回桩升级版 table_emit_roundtrip_after_cell_edit（`a\|b` emit→重解析恒等 + `a\b` 反斜杠往返新断言）。
+3. **只读臂零回归** — PASS。playwright **88/88 干净跑**（本轮无 flake；执行期两次 2 失败=scroll-sync 底部腿满载 flake=已登记 D3，隔离 7/7）；tf 3466 跑 3465 过（唯一红=`test_charts_gallery_compiles`，054 复审定性的 master/环境既有）；金标 diff=纯新增组、既有组零漂移（全量 diff 逐段核对）。
+4. **DEBTS 055-D1 销号 + 055 归档注记** — PASS。DEBTS.md 055 行 ✅已清偿（互链 PLAN-056）；055 归档计划复审记录 D1 加 ▶✅已清偿 注记（G4 转义半边闭合）。
+
+### 遗漏/延后/workaround 排查
+
+- **遗漏**：无。T1-T6 子项均有对应 diff；反斜杠契约（起草期发现的 emit/parser 不对称）已入 D2 并测试锁定。
+- **延后**：T3 跳过臂——serializer `tableRowMd` 确发射表格 cell 且不转义，但其头部**预登记保真度限界**明确「full escaper is a follow-up if real content needs it」（span 感知 escaper 需避 markup/code span，非 cell 级一行事）；按计划预设跳过臂处置、提交与复审双披露——登记为 serializer 侧既记 follow-up 的显式候选（非静默）。待澄清② wikilink 邻接形变按默认接受（金标既有组零漂移佐证无意外波及）；**待澄清③已实测闭环**：jade 部署副本 parser_gen.ts（600 行）无 splitRowCells/表格解析（022 时代仅部署 save 路径子集）——转义缺口不在消费面，无需同步。
+- **workaround**：无新增。逃逸扫描为正式实现（保守未扩 `\x` 转义面已在设计注记登记）。
+
+### 债务候选汇总
+
+- **D1（新，轻）**：serializer 表格 cell 转义缺位（预登记限界的显式化）——若真实内容需要，立「span 感知 markdown escaper」小计划（避 markup/code span，roundtrip 组同步）。
+
+### 结论
+
+四项验收全 PASS，T3 跳过臂与待澄清③均已披露/闭环，无未登记延后。**status → reviewed**，可进 `/auto-plan:merge`。
 
 ## 待澄清事项
 

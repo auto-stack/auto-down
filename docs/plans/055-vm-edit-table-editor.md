@@ -1,15 +1,23 @@
 ---
 plan_id: PLAN-055
-status: execution_done
+status: reviewed
 feature_name: VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-06
 updated_at: 2026-09-06
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P054: 修改（VM 编辑臂表格子项升级——054 的只读管道行呈现被本计划 Seg::Table 一等可编辑表格替换；骨架归因 DFS/DrawItem 基座直接续用）"
+  - "PARITY #12: 修改（编辑面能力差长期线的表格子项清偿——cell 可编辑+列宽拖拽+固定结构安全降级；行列结构动词仍留长期线，待澄清①裁定）"
+new_spec_components:
+  - "autodown-editor: 新增 Seg::Table 一等可编辑表格（rows[r][c] 逐 cell Paragraph 叶 + 结构位置键 reindex_table_keys + emit 管道行往返，\\| 转义 spans_flat 口径）"
+  - "autodown-editor: 新增表格网格几何与拖拽（table_widths 列宽状态等分缺省 + LeafAttrib.cell 槽 + 行分组先量后摆 + finalize chrome：表头 muted 底/1px 行列线；TableSlot 四路结构降级 [Enter 软换行/Backspace 禁合并/行首规则禁/跨 cell 删除拒]；列宽拖拽 ±4px 命中带先行+实时 relayout+min48 落定，复用 view::col_boundary_hit 手感）"
+  - "autodown-editor: 列表缩进改流式 marker 槽（marker run 自然宽+2，子级 marker 落父级文字 x；弃 LIST_GUTTER/LIST_INDENT 固定档，walk 链传 fs 测宽+进程缓存）——两臂缩进同款"
+  - "autodown_blocks: 新增表格 chrome 常量族（TABLE_PAD_X/Y、TABLE_RULE、TABLE_MIN_COL_W、TABLE_HIT_BAND、table_header_rgb 双档随主题）"
+touched_goals:
+  - "PARITY #12 表格子项清偿：VM 编辑臂表格一等化（形式对齐只读臂 + cell 可编辑 + 列宽可拖拽 + 固定结构安全）"
+  - "两臂形式对齐线（P053-2/P054 续进）：表格 chrome 对齐 + 列表缩进流式对齐（用户实机反馈当轮清偿）"
 
 current_step: 8
 total_steps: 8
@@ -210,7 +218,32 @@ core 拖拽列宽（min 宽 48px 钳制）实时 relayout；MouseReleased 落定
 
 ## 复审记录
 
-（待 /auto-plan:review 填写）
+- **复审人**：ZCode（/auto-plan:review，2026-09-06）
+- **复核对象**：auto-lang `ed8690959`（= plan-055-dev 折回后 master，含执行期两轮实机反馈修复）；auto-down `dd8789a`。plan 代码面 = fe2ca6dff（T1-T6）+ a22a591fe（缩进同款）两个 product 提交，diff 核对无计划外 product 改动。
+
+### 验收逐项复验（重跑证据）
+
+1. **表格形式对齐只读臂** — PASS。净窗 2x 截图并排（`plan055-table-two-arms.png` 入册）：编辑臂表头 muted 底/加粗、1px 行线、列线、px-3 py-2 在册（像素断言：表头底 97169px、行线 6、列线 572；只读臂行线 6）。附注：cell padding 12/8 为计划 D3 明确钉值（只读臂 px-4/py-3 词汇差异在案，属「基本一致」登记面）。
+2. **cell 可编辑 + emit 往返** — PASS。单测 `table_cell_editing_and_degraded_structure`（点击聚焦/键入即时生效）+ `table_emit_roundtrip_after_cell_edit`（live text→管道行、`\|` 转义）；净窗 ghost block-1（cell 命中，h=40.3）+ state.content 往返一致。
+3. **列宽可拖拽 + 落定保留** — PASS。单测 `table_column_drag_resizes`（命中带按压不建焦点/260 改宽→relayout/10→min48 钳制/松手保留）；两臂存储结构性隔离（编辑臂 core `table_widths` vs 只读臂 component state）。**债务候选 D2**：doc editor MCP 通道无逐键/拖拽合成事件，净窗拖拽腿由 rust 单测覆盖（045 T7 同例登记）。
+4. **表格内结构操作安全** — PASS。四路降级单测（Enter 软换行/块首禁合并/行首规则禁转换/跨 cell 删除拒绝）；`table_cell_line_start_rules_disabled` 钉死 cell 内 "# " 不迁移 kind。**附注**：后两路超出 Enter/Backspace 字面，为「固定结构」的应有加固（执行追记在案），非遗漏。
+5. **回归绿** — PASS。复审重跑：tf @ed8690959 3461 跑 3460 过（唯一红=`test_charts_gallery_compiles`——054 复审已二分定性为 master/环境既有，非本计划）；playwright 88/88（满载一轮 scroll-sync 底部腿 2 失败→隔离复跑 7/7×2 + 全量复跑 88/88 实锤负载性 flake，vue 轨既有且本计划 demo src 零改动——**债务候选 D3**）；autodown engine 7 二进制全绿；autodown_editor 80/80。
+
+### 遗漏/延后/workaround 排查
+
+- **遗漏**：无。T1-T8 子项均有对应 diff（ThematicBreak 维持 Raw ✓、截图入册 ✓、簿记 ✓、行首规则护栏 ✓）。
+- **延后**：**待澄清③**（G4 的「`\|` 转义重解析」半边）——执行期实锤 autodown-core `splitRowCells` 无转义感知，测试范围收敛 + 解析侧修复建议另立小计划，计划文件登记 + 两次向用户披露，按用户可见裁定通道处理 → **债务候选 D1**（G4 该半边计 partial，非静默）。待澄清②宿主列宽 fast-path 回路 = 计划建议档（v1 core 本地态）随状态同步契约计划。
+- **workaround**：`marker_slot_width` 进程缓存（性能机制，非 hack）；`THEME_LOCK` 测试互斥（测试基建修复，实锤三 set_dark_mode 测试与并发读档竞态 1/8 复现，10 连跑钉绿——记录于 fe2ca6dff 提交）。无产品面 hack。
+
+### 债务候选汇总
+
+- **D1**：autodown-core `splitRowCells` 不支持 `\|` 转义——cell 含字面 `|` 时 emit→重解析破列；解析侧小计划（跳过 `\|` 切分 + cell 文本反转义 + 只读臂快照回归）。
+- **D2**：doc editor MCP 通道缺逐键/拖拽合成事件（净窗录证面受限）；通道扩面属 mcp_server 面另立。
+- **D3**：playwright scroll-sync 底部腿满载 flake（vue 轨既有，非本计划引入）；demo 维护方候选。
+
+### 结论
+
+五项验收全 PASS（G4 转义半边按 D1 挂债非阻塞），无未登记延后。**status → reviewed**，可进 `/auto-plan:merge`。
 
 ## 待澄清事项
 

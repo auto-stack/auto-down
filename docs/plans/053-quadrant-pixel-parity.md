@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-053
-status: executing
+status: execution_done
 feature_name: 四象限逐像素统一（edit/view 臂 × 深/浅主题）钉成正式验收目标——双轨自动门 + 摘门控收口
 author: [zhaopuming, ZCode]
 created_at: 2026-09-05
@@ -11,8 +11,8 @@ supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 11
-total_steps: 13
+current_step: 14
+total_steps: 14
 ---
 
 # [PLAN-053] 四象限逐像素统一（edit/view × 深/浅）——正式验收目标钉死
@@ -396,6 +396,62 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   worktree 折回彼仓 master；auto-lang DEBTS 补登 051-候选镜像行并随
   本仓销号流程同日销号（补 P052 缺口）。
 
+### W2.6 VM 排版对齐第一步：heading 族（用户 2026-09-05 指令——edit/view 两臂 H1 字色字号对不上）
+
+- [✅ 已完成] **T14** heading 两臂收敛到 §7.3/§7.2 规约档。勘读数：vtree
+  实证只读臂 h1=`fg:#6466f1,font:36px`、编辑壳 30px 黑——两臂互不一致且
+  均偏离规约。落地（dep worktree 9aa9a6639+117f686a3，折回 master
+  f6e340004）：① 实现改走**既有 TextArbitrary 通道**（`text-[<n>px]`
+  原生支持；误加的 TextPx 重复件即加即撤）；② `heading_classes` h1-h3
+  `text-[25.3/21.3/18.9px] font-bold` + `text-indigo-700
+  dark:text-indigo-400`（palette 表值 67,56,202/129,140,248 恰=§7.2
+  strong 双档）；③ `heading_size` 25.3/21.3/18.9/18/16/14（h6 与只读臂
+  text-sm 对齐）；④ 编辑壳 heading buffer 前景=accent-strong+恒 700
+  （BlockDrawCtx.heading/heading_color，h1-h3）；伴随=vtree 转储补
+  font_size_arbitrary 通道（任意字号 font 字段此前静默缺席）。验证：
+  heading/autodown 组 191 绿 + editor 69 绿；净窗 vtree 三级 heading
+  `#4338ca`+25/21/18px 合规约；截图两臂 H1 同档（同色靛蓝同号加粗）。
+  预折门 tf 3439/3440（唯一红=charts 既有）。残留：heading margins、
+  其余家族（段落间距/列表/表格细节）=§7.3 全量收敛后续波次。
+- [✅ 已完成] **T15**（W2.6 续，用户截图验收驱动——块间 gap 不一致致左右
+  快速失齐）两臂块距对齐：`heading_extra_margins`（§7.3 vue margins
+  19.2/17.6 与 25.6/14.4 扣两臂共同 8px 基础节奏的额外量）进编辑壳布局
+  循环（块前/后空）；heading_classes 改 `mt-[]/mb-[]` 同值表达（去
+  mt-8/mb-4 旧值）；BLOCK_GAP 10→8 与只读臂 spacing 8 同值。验证：
+  autodown 191 绿；截图验收 H1-H3/blockquote/首两 fence 左右同 y，底部
+  残差 ~10-17px 为 fence 容器边界渲染差（后续微调）。折回 auto-lang
+  master ab307f191；tf 3439/3440。
+
+### W2.7 VM 块距/像素对齐续波（用户 2026-09-05 截图验收驱动）
+
+- [✅ 已完成] **T16** fence 逐块 pitch 收敛：px-measure.mjs 像素勘读（左/
+  右栏 fence header y 逐个比对）实证每 fence +8-10px 漂移；根因=只读臂
+  header `py-2`(≈33px)+外框 border 高于编辑壳 `FENCE_HEADER_H=28`；修
+  header 定高 `h-[28px]`（裸 `h-28` 走 spacing×4=112px 陷阱，任意值通道
+  才是像素）；dy +28.5→±4px 全文档逐块对齐（auto-lang d871bb76a 折回 +
+  40e7ca51d 快照测试追补——首折带红折回，追补同窗完成，复盘在案）；
+  tf 3439/3440。
+- [✅ 已完成] **T17** blockquote 两臂 chrome 收敛 §7.4：勘读=QUOTE_CHROME
+  `border-l-4` 从未被类解析（仅裸 border-l）→右栏无边框；`text-muted-foreground`
+  实际映射 OnSurface（非 §7.1 muted）。修复（auto-lang 3530cd793 折回）：
+  chrome 改 `border-l border-3`（单侧边框条机制，§7.4 左边 3px）+
+  `text-gray-500 dark:text-zinc-400`（§7.1:194 muted 双档）；编辑壳 quote 块
+  （骨架 Quote 段叶子集推导，免重建路径丢旗标）左条 3px+缩进 19px+muted
+  前景；walk_quote 初版误收全部叶子的 bug 即修；191 绿，截图两臂 quote
+  同款（左条+muted+缩进）。
+- [ ] **T18** 正文行高/字号档——【已测量，待决策】实测（多行段落截图）：
+  编辑壳视觉行 pitch≈35px（16px×1.45+余量）、只读臂≈32px（iced 默认
+  lh），且折行宽度不同（编辑壳不折/只读臂折）——多行段落逐行漂移实锤。
+  决策面：§7.3 收敛（body 15.2px/1.6 双臂，全文档 reflow，涉及
+  BODY_SIZE/LINE_H_MULT/只读臂 leading 类支持三处）vs 仅行距对齐
+  （LINE_H_MULT 调至只读臂实测值）。 blast radius 大，挂待用户裁定。
+  ——【✅ 已完成（用户裁定：全量收敛）】§7.3 档双臂落地：BODY_SIZE
+  16→15.2（0.95rem）、编辑壳行高分档 heading 1.3/正文 1.6/fence 1.5
+  （line_h_mult 替换全局 1.45）、只读臂正文档 text-base→text-[15.2px]
+  leading-[1.6]（span_class 单点）、heading 补 leading-[1.3]；多行段落
+  两臂逐行对齐实测（6 行同 y，行距 24.3px）；autodown 191+editor 69 绿；
+  折回 auto-lang master。T17/T18 完成后本波（W2.8）收段。
+
 ### W3 摘门控收口（T12/T13 完成后执行）
 
 - [✅ 已完成] **T9** 修复落地复验：auto-lang 修复折入 master + exe 重建后，跑
@@ -426,6 +482,12 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
 ## 复审记录
 
 （待 /auto-plan:review 填写）
+
+> **执行收段注记（2026-09-05）**：T1-T9/T12-T18 全勾；T10/T11 唯一未闭项=
+> 净窗 vm-smoke 全组验证，因 VM 轨滚动状态回写环境漂移暂挂（待澄清⑦，含
+> 恢复判据 scroll-probe SCROLL-OK）。摘门控代码、台账三件、playwright/
+> build/engine 三门均已绿；vm-smoke 门待复审门重跑兜底。后续排版收敛
+> （T14-T18 同线）与块家族可见化已另立 PLAN-054 承接。
 
 ## 待澄清事项
 

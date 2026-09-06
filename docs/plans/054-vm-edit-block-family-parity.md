@@ -287,6 +287,32 @@ left_top 状态读回滞留→同步腿/assert 不收敛）。与 053 T10 勘读
 **全部六条验收 PASS**（两条全量红均为 master/环境继承、二分实证与本计划
 无涉），无未披露缩面。→ `status: reviewed`，可进 `/auto-plan:merge`。
 
+### 复审追记（2026-09-06 用户实机反馈修复轮）
+
+用户实机对比截图指出四处两臂残差：①bullet 一大一小；②有序数字字体不一；
+③checkbox 两态图标字形不一；④列表行距/行高不一（两边高度不一致）。勘读
+定因三项、当轮修复折回（merge 8d4090fb0）：
+
+1. **字族不同源**（①②③字形根因）：只读臂全轨默认 **Inter**（应用嵌入
+   三字重），编辑臂 buffer 测量与 DocRun 绘制走 `Font::default()`
+   （SansSerif→系统 sans）——✔/□/•/数字字形两端不同。修复：编辑臂
+   `sans_family()`=Name("Inter") + `run_font` 同步；编辑臂共享 iced 全局
+   FontSystem（widget.rs install_font_system_source，Inter 已注册），
+   测宽=画宽（PLAN-050 同例）。
+2. **marker 号数不同**（①大小根因）：只读臂 marker/标题/摘要无 size 类
+   （落渲染默认 16px）；显式 `text-[15.2px] leading-[1.6]` 正文号后两臂
+   同号。
+3. **列表行距不同**（④根因）：编辑臂叶间一律 BLOCK_GAP 8，只读臂 list
+   items spacing 2/容器内 4。修复：归因 DFS 增 `sibling_gap`（list 2、
+   quote/callout/details 4、顶层 8），按兄弟关系逐叶补齐；行距单测断言
+   26.32（24.32+2）。
+
+净窗复拍（新鲜窗）：两臂 bullet/序号/task ✔□/表格管道行全同构，行距
+device 52px vs 53px（同值域）；粗体 warning 渲染正常。单测 97 绿。
+**勘读附记**：复验途中曾见 warning callout 内容行有插入字符——实为上一
+窗口被复审期 vm-smoke 键入序列污染的 buffer 残留（新鲜窗即净），非渲染
+缺陷；新鲜窗全净。
+
 ## 待澄清事项
 
 1. **图标配别方案**（T4 前置）：A=unicode 统一对（✔/□ 或 ☑/☐ 同族 +

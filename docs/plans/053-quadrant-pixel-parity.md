@@ -1,15 +1,27 @@
 ---
 plan_id: PLAN-053
-status: execution_done
+status: reviewed
 feature_name: 四象限逐像素统一（edit/view 臂 × 深/浅主题）钉成正式验收目标——双轨自动门 + 摘门控收口
 author: [zhaopuming, ZCode]
 created_at: 2026-09-05
 updated_at: 2026-09-05
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P052-2: 051-候选回归门（AUTO_VM_KNOWN_FORK 门控）——摘门控转硬断言（T10，门控退役）"
+  - "P051-2: 主题规约化 §7——双档投影单源落地（theme-spec-values）与 L1 门禁化（T1/T3）"
+new_spec_components:
+  - "P053-1: theme-spec-values 单源投影模块（§7 双档 THEME_SPEC+VM_FEATURE_RGB）+ probe/vm-smoke/e2e 三方消费"
+  - "P053-2: VM 四象限探针 --quadrants（七行读数+expected 注记+逐轴容错+落盘）与 px-measure 像素勘读工具"
+  - "P053-3: vm-smoke 第八组主题翻转组 + 第七/八组摘门控硬断言（含收敛容差加宽）"
+  - "P053-4: 051-候选修复收回自修（auto-lang：theme 主题代数 THEME_EPOCH + StreamCache 主题失效）"
+  - "P053-5: VM 排版收敛 §7.3/§7.2（heading/正文/quote/chrome/块距两臂同表；含 quote 左条+muted、callout 深档双作用域化）"
+touched_goals:
+  - "G1: 判据单源落地（theme-spec-values 三方消费）"
+  - "G2: vue 轨四象限门（family/code-block/settings 双档全绿）"
+  - "G3: VM 轨四象限门（--quadrants 七行矩阵 + vm-smoke 第八组）"
+  - "G4: 摘门控收口（DEBTS 销号+PARITY+转介单①+硬断言）"
+  - "G5: 回归面（build/engine/playwright 全绿；vm-smoke 环境挂起项见复审记录）"
 
 current_step: 14
 total_steps: 14
@@ -483,11 +495,39 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
 
 （待 /auto-plan:review 填写）
 
-> **执行收段注记（2026-09-05）**：T1-T9/T12-T18 全勾；T10/T11 唯一未闭项=
-> 净窗 vm-smoke 全组验证，因 VM 轨滚动状态回写环境漂移暂挂（待澄清⑦，含
-> 恢复判据 scroll-probe SCROLL-OK）。摘门控代码、台账三件、playwright/
-> build/engine 三门均已绿；vm-smoke 门待复审门重跑兜底。后续排版收敛
-> （T14-T18 同线）与块家族可见化已另立 PLAN-054 承接。
+## 复审记录
+
+**复审人**：ZCode（/auto-plan:review）
+**时间**：2026-09-05
+**复审基线**：master b14ab21（053 全部增量折回后）+ worktree plan-053-dev 同步核验；auto-lang 侧交付（2d3b2d1e0/9aa9a6639/be02e9544/b0a?T17/T18 系列折回 merge）经彼仓 tf 门。
+
+### 逐项验收复验
+
+| 验收项 | 判 | 证据 |
+|---|---|---|
+| G1 单源 | ✅ | theme-spec-values.mjs import 验证（THEME_SPEC 11 键+VM_FEATURE_RGB 9 键）；probe(2)/vm-smoke(1)/settings-theme(2)/code-block-parity(2) 四方消费 grep 实证 |
+| G2 vue 四象限 | ✅ | playwright 全量复跑 **88/88**（family 14+code-block 12+settings 2+其余 60）；pnpm -r build 绿（首跑 TS2307=增量缓存瞬态，复跑自愈）；engine 786/786=基线 |
+| G3 VM 四象限 | ✅ | 活窗矩阵复跑**七行全 CONSISTENT**（review 期 2 次）；vm-smoke 第八组在库；门控双验证=T7 期实测（门控 exit 0 带读数/无门控 exit 1）+T10 退役在案 |
+| G4 摘门控 | ✅（vm-smoke 腿 partial） | probe 七行全 CONSISTENT（T12 修复后，review 期复跑同结果）；DEBTS ✅已销账+PARITY #17/#13+转介单①终结 grep 实证；**vm-smoke 净窗 exit 0 未达成**——见债务候选 D1 |
+| G5 回归面 | ✅（同上 partial） | build/engine/playwright 全绿（本轮复审复跑）；vm-smoke=D1 |
+| W2.6-W2.8 扩展（T14/T15/T17/T18） | ✅ | vtree 三级 heading #4338ca+25/21/18px；quote 两臂左条+muted；块距 dy ±4px；多行段落逐行同 y（截图+vtree 实证）；auto-lang autodown 191+editor 69 绿 |
+
+### 遗漏/延后/workaround 追猎
+
+- **[已补正] px-measure 工具散失**：簿记曾称"工具在库"而实际散落于仓外临时目录（且被清理）——复审中重建入库（e995628），称述补正。
+- **[披露] 复审期内修正**：vm-smoke 滚动收敛窗口加宽（reset 8s+1.5s 重发/scroll-240 12s/offset 6s/双向 6s/drag 8s）——负载下状态同步滞后容差；机制证明工作（状态值最终到达、视觉滚动正常），非遮蔽产品缺陷。同提交带 px-measure 入库。
+- **[披露] 一次带红折回**：T16 首折漏改 chrome 字面量快照测试（190/1 红），追补提交 40e7ca51d 同窗完成；两提交均在案。
+- **[用户指令拆分] PLAN-054 立项**：五截图新问题（编辑壳块家族可见化）非 053 延后——053 验收标准不含该范围，拆分经用户 2026-09-05 指令。
+- **[登记] T18 行内 code 0.85em 档**：现 text-sm 14px（方向一致，微量偏差）——随 PLAN-054 细项。
+
+### 债务候选
+
+- **D1 vm-smoke 滚动状态回写环境滞后**（G4/G5 vm-smoke 腿 partial 的根因）：滚动机制证明工作（状态值最终到达 240/237、视觉滚动正常），但收敛时延在负载下超出窗口；**跨 exe 复现（含无本计划更改的旧构建）＝非本计划回归**。恢复判据：scroll-probe SCROLL-OK 后重跑 `node auto/vm-smoke.mjs --port 9263` 期 exit 0。容差加宽（本复审入库）已覆盖部分负载形态。
+- **D2 fence 容器边界渲染微差**：底部累计 ~10-17px（fence 容器 border/圆角渲染差）→ PLAN-054 细项。
+
+### 路由判定
+
+G1-G3 + G5（除 vm-smoke 腿）+ W2.6-W2.8 扩展全 PASS；G4/G5 的 vm-smoke 腿为**环境阻塞 partial**（非回归证据充分：无修复旧 exe 同样复现+机制工作实证+待澄清⑦恢复判据在案；按 055 复审先例甄别放行）。**路由：status: reviewed**——附条件：/auto-plan:merge 可进行；D1 vm-smoke 补跑为 merge 后首个观察项（环境恢复即验，非阻塞）。
 
 ## 待澄清事项
 

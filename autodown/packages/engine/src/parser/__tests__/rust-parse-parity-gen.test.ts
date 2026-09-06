@@ -29,6 +29,14 @@ const FIXTURES: Array<[string, string]> = [
   ['ul-empty-item', '-\n- 有内容\n'],
   ['ol-start', '3. 第三\n4. 第四\n'],
   ['table-ial', '| a | b |\n| :-- | --: |\n| 1 | 2 |\n{cols:[120,"auto"]}\n'],
+  // PLAN-056 D1: table cell escape contract - backslash-pipe is a
+  // literal pipe inside the cell (no column split), double backslash a
+  // literal backslash; cell text arrives unescaped. Keep in lockstep
+  // with the rust FIXTURES.
+  ['table-escape-pipe', '| a\\|b | c |\n| --- | --- |\n| x | y |\n'],
+  ['table-escape-backslash', '| a\\\\ | b |\n| --- | --- |\n| 1 | 2 |\n'],
+  ['table-escape-edges', '| \\|lead | tail\\| |\n| --- | --- |\n| 1 | 2 |\n'],
+  ['table-escape-mixed', '| a\\|b | c\\\\d |\n| --- | --- |\n| e\\|f | g\\\\h |\n'],
   ['thematic', '---\n\n***\n\n尾段\n'],
   [
     'inline-zoo',

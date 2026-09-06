@@ -6,7 +6,7 @@
 // engine `pnpm test`; a mismatch here means the two emissions of the same
 // .at source have drifted (or a fixture was edited on one side only).
 
-use autodown_core::block_model::{BlockNode, Value};
+use autodown_core::block_model::{BlockNode, BlockType, Value};
 use autodown_core::markdown_parser::parse_blocks;
 
 const FIXTURES: &[(&str, &str)] = &[
@@ -22,6 +22,25 @@ const FIXTURES: &[(&str, &str)] = &[
     (
         "table-ial",
         "| a | b |\n| :-- | --: |\n| 1 | 2 |\n{cols:[120,\"auto\"]}\n",
+    ),
+    // PLAN-056 D1: table cell escape contract — `\|` is a literal pipe
+    // inside the cell (no column split), `\\` a literal backslash; cell
+    // text arrives unescaped. Keep in lockstep with the TS FIXTURES.
+    (
+        "table-escape-pipe",
+        "| a\\|b | c |\n| --- | --- |\n| x | y |\n",
+    ),
+    (
+        "table-escape-backslash",
+        "| a\\\\ | b |\n| --- | --- |\n| 1 | 2 |\n",
+    ),
+    (
+        "table-escape-edges",
+        "| \\|lead | tail\\| |\n| --- | --- |\n| 1 | 2 |\n",
+    ),
+    (
+        "table-escape-mixed",
+        "| a\\|b | c\\\\d |\n| --- | --- |\n| e\\|f | g\\\\h |\n",
     ),
     ("thematic", "---\n\n***\n\n尾段\n"),
     (
@@ -150,4 +169,42 @@ fn parse_blocks_matches_ts_golden() {
         }
     }
     assert_eq!(lines.join("\n") + "\n", golden);
+}
+
+/// PLAN-056 D1: table cell escape contract — `\|` inside a cell is a
+/// literal pipe (no column split) and arrives unescaped; `\\` a literal
+/// backslash. The naive splitter split `a\|b` into `a\` + `b` and kept the
+/// backslash in the text.
+#[test]
+fn table_cell_escapes_parse_to_literal_text() {
+    let root = parse_blocks("| a\\|b | c |\n| --- | --- |\n| x | y |\n", true);
+    let table = root
+        .children
+        .iter()
+        .find(|b| b.kind == BlockType::Table)
+        .expect("table block");
+    let cell_text = |row: usize, col: usize| -> String {
+        table.children[row].children[col]
+            .inlines
+            .iter()
+            .map(|s| s.text.clone())
+            .collect::<Vec<_>>()
+            .join("")
+    };
+    assert_eq!(cell_text(0, 0), "a|b", "escaped pipe folds to literal");
+    assert_eq!(cell_text(0, 1), "c", "trailing cell intact");
+    assert_eq!(cell_text(1, 0), "x", "data row cell intact");
+
+    let root = parse_blocks("| a\\\\ | b |\n| --- | --- |\n| 1 | 2 |\n", true);
+    let table = root
+        .children
+        .iter()
+        .find(|b| b.kind == BlockType::Table)
+        .expect("table block");
+    let text: String = table.children[0].children[0]
+        .inlines
+        .iter()
+        .map(|s| s.text.clone())
+        .collect();
+    assert_eq!(text, "a\\", "escaped backslash folds to literal");
 }

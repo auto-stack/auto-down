@@ -721,17 +721,44 @@ fn isTableDelimiter(line str) bool {
 // Split "| a | b |" -> ["a", "b"] (leading/trailing pipes optional).
 // (The split result is copied through an indexed loop: a bare split-collect
 // return would infer Vec<&str> against the declared Vec<String>.)
+// PLAN-056 D1: escape-aware split — `\|` inside a cell is a literal pipe
+// (no column split) and `\\` a literal backslash, both unescaped in the
+// same pass; any other `\x` stays verbatim. Bare `|` still splits.
 fn splitRowCells(line str) List<str> {
     var t = line.trim()
     if startsWithStr(t, "|") { t = t.slice(1) }
     if endsWithTokSeq(t, "|") { t = t.slice(0, t.length.to(int) - 1) }
-    let raw = t.split("|")
     var out List<str> = []
+    var cur str = ""
     var i int = 0
-    while i < raw.length.to(int) {
-        out.push(raw[i])
+    while i < t.length.to(int) {
+        let c = t.char_at(i)
+        if c == 92 && i + 1 < t.length.to(int) {
+            let n = t.char_at(i + 1)
+            if n == 124 {
+                cur = cur + "|"
+                i += 2
+                continue
+            }
+            if n == 92 {
+                cur = cur + "\\"
+                i += 2
+                continue
+            }
+            cur = cur + "\\"
+            i += 1
+            continue
+        }
+        if c == 124 {
+            out.push(cur)
+            cur = ""
+            i += 1
+            continue
+        }
+        cur = cur + t.slice(i, i + 1)
         i += 1
     }
+    out.push(cur)
     return out
 }
 

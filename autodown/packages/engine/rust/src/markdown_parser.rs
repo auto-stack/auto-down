@@ -784,13 +784,35 @@ fn splitRowCells(line: &str) -> Vec<String> {
     if endsWithTokSeq(t.as_str(), "|") {
         t = t.chars().take(((t.chars().count() as i64) - 1) as usize).skip((0) as usize).collect::<String>();
     }
-    let raw = t.split("|").map(|s| s.to_string()).collect::<Vec<String>>();
     let mut out: Vec<String> = vec![];
+    let mut cur: String = "".to_string();
     let mut i: i64 = 0;
-    while i < (raw.len() as i64) {
-        out.push(raw[(i) as usize].clone());
+    while i < (t.chars().count() as i64) {
+        let c = t.chars().nth((i) as usize).unwrap_or('\0') as i64;
+        if c == 92 && i + 1 < (t.chars().count() as i64) {
+            let n = t.chars().nth((i + 1) as usize).unwrap_or('\0') as i64;
+            if n == 124 {
+                cur = format!("{}{}", cur, "|");
+                i += 2;
+                continue;
+            }            if n == 92 {
+                cur = format!("{}{}", cur, "\\");
+                i += 2;
+                continue;
+            }            cur = format!("{}{}", cur, "\\");
+            i += 1;
+            continue;
+        }
+        if c == 124 {
+            out.push(cur.to_string());
+            cur = "".to_string();
+            i += 1;
+            continue;
+        }
+        cur = format!("{}{}", cur, t.chars().take((i + 1) as usize).skip((i) as usize).collect::<String>());
         i += 1;
     }
+    out.push(cur.to_string());
     return out;
 }
 
@@ -1386,7 +1408,7 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
         }
         if setextLevel > 0 {
             let mut content = para.join("\n");
-            let children = parseInline(content.as_str(), isFinal);
+            let mut children = parseInline(content.as_str(), isFinal);
             nodes.push(headingNode(setextLevel, children.clone()));
             i = j;
             continue;
@@ -1429,7 +1451,7 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
                                     i = j;
                                     continue;
                                 }                            }                        }                    }                }            }            let content = para.join("\n");
-            let children = parseInline(content.as_str(), isFinal);
+            let mut children = parseInline(content.as_str(), isFinal);
             nodes.push(paraNode(children.clone()));
             i = j;
             continue;
@@ -1716,12 +1738,12 @@ fn tableConsume(mut lines: Vec<String>, start: i64, mut nodes: &mut Vec<WNode>, 
     let mut headerRowCells: Vec<WNode> = vec![];
     let mut ci: i64 = 0;
     while ci < (headerCells.len() as i64) {
-        let cellText = headerCells[(ci) as usize].clone().trim().to_string();
+        let mut cellText = headerCells[(ci) as usize].clone().trim().to_string();
         let mut align: String = "left".to_string();
         if ci < (aligns.len() as i64) {
             align = aligns[(ci) as usize].clone();
         }
-        let children = parseInline(cellText.as_str(), isFinal);
+        let mut children = parseInline(cellText.as_str(), isFinal);
         headerRowCells.push(cellNode(true, children.clone(), align.as_str()));
         ci += 1;
     }

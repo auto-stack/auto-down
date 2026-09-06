@@ -825,13 +825,37 @@ export function splitRowCells(line: string): string[] {
     if (endsWithTokSeq(t, "|")) {
         t = t.slice(0, Number(t.length) - 1);
     }
-    const raw = t.split("|");
     let out: string[] = [];
+    let cur: string = "";
     let i: number = 0;
-    while (i < Number(raw.length)) {
-        out.push(raw[i]);
+    while (i < Number(t.length)) {
+        const c = t.charCodeAt(i);
+        if (c == 92 && i + 1 < Number(t.length)) {
+            const n = t.charCodeAt(i + 1);
+            if (n == 124) {
+                cur = cur + "|";
+                i += 2;
+                continue;
+            }
+            if (n == 92) {
+                cur = cur + "\\";
+                i += 2;
+                continue;
+            }
+            cur = cur + "\\";
+            i += 1;
+            continue;
+        }
+        if (c == 124) {
+            out.push(cur);
+            cur = "";
+            i += 1;
+            continue;
+        }
+        cur = cur + t.slice(i, i + 1);
         i += 1;
     }
+    out.push(cur);
     return out;
 }
 

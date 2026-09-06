@@ -332,6 +332,17 @@
           "PLAN-054"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P056-2",
+        "section": "goals",
+        "title": "markdown 表格 cell 转义支持（parser 分列/反转义 + emit 反斜杠硬化） — 目标",
+        "content": "- **G1 parser 转义契约**：`a\\|b` cell 解析为文本 `a|b`（不破列）；`\\\\`\n  解析为字面 `\\`；TS/rust 双端 parity 金标在册。\n- **G2 往返闭环**：cell 含 `|`/`\\` 时 emit → 重解析结构+文本双稳定\n  （055 T2 期被挡掉的重解析断言回桩）。\n- **G3 只读臂零回归**：playwright 全量 + engine crate 全测绿；金标 diff\n  逐一判读入档。",
+        "file": "docs/plans/056-parser-table-cell-escape.md",
+        "related": [
+          "PLAN-056"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -674,6 +685,17 @@
           "PLAN-054"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P056-3",
+        "section": "architecture",
+        "title": "markdown 表格 cell 转义支持（parser 分列/反转义 + emit 反斜杠硬化） — 架构方案",
+        "content": "延续双端单源结构：解析面唯一改动点在 `packages/engine/auto/parser/\nmarkdown_parser.at` 的 `splitRowCells`（逃逸感知扫描分列 + 逐 cell 反转\n义），经既有再生链（`auto.exe trans --path markdown_parser.at rust` →\ncopy `.a2r.rs` 进 crate；TS 产物随 engine gen 链）双端生效。emit 面唯一\n改动点在 auto-lang `cell_live_text`（反斜杠先于管道转义——标准 GFM 序）。\n不引入新机制、不动表格块级结构。",
+        "file": "docs/plans/056-parser-table-cell-escape.md",
+        "related": [
+          "PLAN-056"
+        ],
+        "status": "stable"
       }
     ],
     "designs": [
@@ -1012,6 +1034,17 @@
           "PLAN-054"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P056-4",
+        "section": "designs",
+        "title": "markdown 表格 cell 转义支持（parser 分列/反转义 + emit 反斜杠硬化） — 详细设计",
+        "content": "### D1 逃逸感知分列（parser）\n\n`splitRowCells` 重写为单遍扫描：剥首尾 `|` 后逐字符走——`\\` + `|` → cell\n内字面 `|`；`\\` + `\\` → 字面 `\\`；裸 `|` → 分列；其余 `\\x` 原样保留（保\n守，不扩转义面）。反转义内联于扫描（分列与反转义同一遍，避免二次扫描口径\n漂移）。表头/数据行两处消费（`splitRowCells` 唯一出口）自动同权。\n\n### D2 emit 反斜杠硬化（auto-lang）\n\n`cell_live_text`：`t.replace('\\\\', \"\\\\\\\\\").replace('\\n', \" \")\n.replace('|', \"\\\\|\")`——反斜杠先于管道（GFM 序），保证含 `\\` 的 cell\nemit 后重解析文本恒等。\n\n### D3 serializer 写侧核对\n\n执行期首查 `serializer.at` 是否发射表格 cell 管道行：若发射，同口径加转\n义（roundtrip 闭环必需）；若不发射（表格不走 serializer），记录跳过缘由\n入复审。\n\n### D4 金标与守恒表增组\n\nparse_parity 金标 + roundtrip 守恒表增组：`a\\|b`（基础）、`\\\\`（字面反斜\n杠）、行首/行尾 `\\|`、多列混合。既有金标若因行为变更 diff——逐组人工判\n读（预期变更面=此前被破列的转义内容，现按字面归并），判读记录入复审。",
+        "file": "docs/plans/056-parser-table-cell-escape.md",
+        "related": [
+          "PLAN-056"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -1326,6 +1359,17 @@
         "file": "docs/plans/054-vm-edit-block-family-parity.md",
         "related": [
           "PLAN-054"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "P056-5",
+        "section": "tests",
+        "title": "markdown 表格 cell 转义支持（parser 分列/反转义 + emit 反斜杠硬化） — 测试设计",
+        "content": "| 门 | 内容 | 命令 |\n|---|---|---|\n| parity | 逃逸分列 TS/rust 双端一致（新增组） | `cd packages/engine && pnpm test`（markdown-parity + rust-parse-parity-gen） |\n| roundtrip | 含 `\\|`/`\\\\` cell 往返结构+文本稳定 | `cd autodown/packages/engine/rust && cargo test` |\n| 单测 | emit 反斜杠硬化 + 重解析断言回桩 | `cargo test -p auto-lang --lib --features autodown autodown_editor` |\n| 回归 | 只读臂快照 + 全量 | `npx playwright test`（demo）88/88 |\n| 回归 | auto-lang 全量 | `cargo tf --no-fail-fast`（唯一红=charts 既有） |",
+        "file": "docs/plans/056-parser-table-cell-escape.md",
+        "related": [
+          "PLAN-056"
         ],
         "status": "verified"
       }
@@ -1649,6 +1693,17 @@
           "PLAN-054"
         ],
         "status": "published"
+      },
+      {
+        "id": "P056-6",
+        "section": "reviews",
+        "title": "markdown 表格 cell 转义支持（parser 分列/反转义 + emit 反斜杠硬化） — 验收标准与复审记录",
+        "content": "1. `a\\|b` cell 解析文本 `a|b`，TS/rust parity 金标增组双绿。\n2. emit → 重解析：含 `|`/`\\` cell 结构+文本双稳定（055 期收敛断言回桩）。\n3. 只读臂零回归：playwright 88/88、engine crate 全测绿、tf 唯一红=charts\n   既有；金标 diff 判读记录入复审。\n4. DEBTS 055 D1 行销号（互链本计划），055 复审记录 D1 处加\"已清偿\"注记。\n\n- **复审人**：ZCode（/auto-plan:review，2026-09-06）\n- **复核对象**：auto-down master `47fba63`（plan-056-dev 折回，T1-T3 parser/金标/守恒面）+ auto-lang master `9fe9bc6cc`（T4 emit 硬化，并 521 归档后合并态）；plan 代码面 = 7 文件（.at/raw.ts/rust 镜像/golden/parse_parity.rs/TS 测试/TS 产物）+ core.rs，diff 核对无计划外改动。\n\n### 验收逐项复验（重跑证据）\n\n1. **`a\\|b` → 文本 `a|b`，TS/rust parity 双绿** — PASS。金标投影实查 `span a|b []`（escape-pipe 组，无破列）；engine TS 62 文件 786/786（金标由 TS 测试重写）；crate 7 二进制全绿（含行为断言 table_cell_escapes_parse_to_literal_text 两段：转义管道折叠 + 反斜杠折叠）。\n2. **emit → 重解析恒等** — PASS。auto-lang 模块 80/80 含回桩升级版 table_emit_roundtrip_after_cell_edit（`a\\|b` emit→重解析恒等 + `a\\b` 反斜杠往返新断言）。\n3. **只读臂零回归** — PASS。playwright **88/88 干净跑**（本轮无 flake；执行期两次 2 失败=scroll-sync 底部腿满载 flake=已登记 D3，隔离 7/7）；tf 3466 跑 3465 过（唯一红=`test_charts_gallery_compiles`，054 复审定性的 master/环境既有）；金标 diff=纯新增组、既有组零漂移（全量 diff 逐段核对）。\n4. **DEBTS 055-D1 销号 + 055 归档注记** — PASS。DEBTS.md 055 行 ✅已清偿（互链 PLAN-056）；055 归档计划复审记录 D1 加 ▶✅已清偿 注记（G4 转义半边闭合）。\n\n### 遗漏/延后/workaround 排查\n\n- **遗漏**：无。T1-T6 子项均有对应 diff；反斜杠契约（起草期发现的 emit/parser 不对称）已入 D2 并测试锁定。\n- **延后**：T3 跳过臂——serializer `tableRowMd` 确发射表格 cell 且不转义，但其头部**预登记保真度限界**明确「full escaper is a follow-up if real content needs it」（span 感知 escaper 需避 markup/code span，非 cell 级一行事）；按计划预设跳过臂处置、提交与复审双披露——登记为 serializer 侧既记 follow-up 的显式候选（非静默）。待澄清② wikilink 邻接形变按默认接受（金标既有组零漂移佐证无意外波及）；**待澄清③已实测闭环**：jade 部署副本 parser_gen.ts（600 行）无 splitRowCells/表格解析（022 时代仅部署 save 路径子集）——转义缺口不在消费面，无需同步。\n- **workaround**：无新增。逃逸扫描为正式实现（保守未扩 `\\x` 转义面已在设计注记登记）。\n\n### 债务候选汇总\n\n- **D1（新，轻）**：serializer 表格 cell 转义缺位（预登记限界的显式化）——若真实内容需要，立「span 感知 markdown escaper」小计划（避 markup/code span，roundtrip 组同步）。\n\n### 结论\n\n四项验收全 PASS，T3 跳过臂与待澄清③均已披露/闭环，无未登记延后。**status → reviewed**，可进 `/auto-plan:merge`。",
+        "file": "docs/plans/056-parser-table-cell-escape.md",
+        "related": [
+          "PLAN-056"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1968,6 +2023,17 @@
         "file": "docs/plans/054-vm-edit-block-family-parity.md",
         "related": [
           "PLAN-054"
+        ],
+        "status": "published"
+      },
+      {
+        "id": "P056-1",
+        "section": "reports",
+        "title": "markdown 表格 cell 转义支持（parser 分列/反转义 + emit 反斜杠硬化） — 变更摘要",
+        "content": "PLAN-055 复审债务 D1：autodown-core `markdown_parser` 的 `splitRowCells`\n按裸 `|` 切 cell、无转义感知——VM 编辑臂表格 emit 出的 `a\\|b` 重解析破列\n（G4 含转义半边 partial）。本计划在 parser 侧补齐标准 GFM 表格转义契约：\n分列时跳过 `\\|`（及 `\\\\`）、cell 文本反转义；emit 侧（auto-lang\n`cell_live_text`）补反斜杠先转义硬化，使「编辑 → emit → 重解析」全链路\n结构+文本双稳定。双端（.at → TS/rust）金标 parity + roundtrip 守恒表增组\n锁定；只读臂快照全量回归。",
+        "file": "docs/plans/056-parser-table-cell-escape.md",
+        "related": [
+          "PLAN-056"
         ],
         "status": "published"
       }

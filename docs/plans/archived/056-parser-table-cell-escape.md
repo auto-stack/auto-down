@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-056
-status: reviewed
+status: archived
 feature_name: markdown 表格 cell `\|` 转义支持（parser 分列/反转义 + emit 反斜杠硬化）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-06

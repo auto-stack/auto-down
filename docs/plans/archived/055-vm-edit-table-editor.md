@@ -237,7 +237,7 @@ core 拖拽列宽（min 宽 48px 钳制）实时 relayout；MouseReleased 落定
 
 ### 债务候选汇总
 
-- **D1**：autodown-core `splitRowCells` 不支持 `\|` 转义——cell 含字面 `|` 时 emit→重解析破列；解析侧小计划（跳过 `\|` 切分 + cell 文本反转义 + 只读臂快照回归）。
+- **D1**：autodown-core `splitRowCells` 不支持 `\|` 转义——cell 含字面 `|` 时 emit→重解析破列；解析侧小计划（跳过 `\|` 切分 + cell 文本反转义 + 只读臂快照回归）。**▶ ✅已清偿（PLAN-056，2026-09-06）**：parser 逃逸感知分列+反转义双端落地（金标四组锁），emit 反斜杠硬化回桩，实机转义往返核验过——G4 转义半边自此闭合。
 - **D2**：doc editor MCP 通道缺逐键/拖拽合成事件（净窗录证面受限）；通道扩面属 mcp_server 面另立。
 - **D3**：playwright scroll-sync 底部腿满载 flake（vue 轨既有，非本计划引入）；demo 维护方候选。
 

@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-056
-status: drafting
+status: execution_done
 feature_name: markdown 表格 cell `\|` 转义支持（parser 分列/反转义 + emit 反斜杠硬化）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-06
@@ -11,7 +11,7 @@ supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 0
+current_step: 6
 total_steps: 6
 ---
 
@@ -118,25 +118,31 @@ parse_parity 金标 + roundtrip 守恒表增组：`a\|b`（基础）、`\\`（�
 
 ## 执行步骤
 
-- [ ] **T1** `.at` 逃逸感知分列：`markdown_parser.at` splitRowCells 重写
+- [✅ 已完成] **T1** `.at` 逃逸感知分列：`markdown_parser.at` splitRowCells 重写
       （D1 算法）；`auto.exe trans` 再生 rust 产物 + copy 进 crate。
       验证：`cd autodown/packages/engine/rust && cargo test`（既有组全绿，
       新组红→绿在 T2）。
-- [ ] **T2** 金标/守恒表增组（D4 四组）+ TS 产物再生 + parity 双端跑。
+      [✅ 已完成] 逃逸扫描重写 + a2r 再生；TDD 红先行（table_cell_escapes_parse_to_literal_text 两段断言红：裸切 3 列/反斜杠残留）→ 实现后绿。
+- [✅ 已完成] **T2** 金标/守恒表增组（D4 四组）+ TS 产物再生 + parity 双端跑。
       验证：`cd packages/engine && pnpm test` 增组双绿；crate cargo test
       含新 roundtrip 组绿；金标 diff 判读记录成文。
-- [ ] **T3** serializer 写侧核对（D3）：发射表格则同口径转义 + roundtrip
+      [✅ 已完成] 四组（escape-pipe/backslash/edges/mixed）双端 FIXTURES 锁步；pnpm gen:parser 再生 TS 产物；engine TS 786/786（金标重写含新组投影 `span a|b`）；crate 全测绿；金标 diff=纯新增组，既有组零漂移。
+- [✅ 已完成] **T3** serializer 写侧核对（D3）：发射表格则同口径转义 + roundtrip
       组，否则记录跳过。验证：roundtrip 组绿（或跳过注记入复审）。
-- [ ] **T4** auto-lang emit 硬化（D2）：dep worktree 改 `cell_live_text`
+      [✅ 已完成] 核对结论：tableRowMd 确发射 cell，但不转义系 serializer.at 头部**预登记保真度限界**（"full escaper is a follow-up if real content needs it"）——正确补齐需 span 感知 escaper（避 markup/code span），属其既记 follow-up 非本计划 cell 转义契约面；按跳过臂处置，已披露。
+- [✅ 已完成] **T4** auto-lang emit 硬化（D2）：dep worktree 改 `cell_live_text`
       + `table_emit_roundtrip_after_cell_edit` 回桩升级（`a\|b` 重解析断
       言）。验证：`cargo test -p auto-lang --lib --features autodown
       autodown_editor` 全绿。
-- [ ] **T5** 回归：playwright 全量 88/88 + `cargo tf --no-fail-fast`
+      [✅ 已完成] 反斜杠先于管道转义（GFM 序）；回桩断言（转义 cell emit→重解析恒等）+ 反斜杠 cell 往返新断言；模块 80/80。
+- [✅ 已完成] **T5** 回归：playwright 全量 88/88 + `cargo tf --no-fail-fast`
       （唯一红=charts 既有）+ 净窗表格探针复跑（vm-table-055.mjs，emit
       转义路径实机过）。验证：三门前绿。
-- [ ] **T6** 折回与簿记：auto-lang 分支折回 master；DEBTS 055 D1 行销号
+      [✅ 已完成] tf 3466 跑 3465 过（唯一红=charts 既有）；playwright 满载 2 失败=scroll-sync 底部腿（已知 D3 flake，隔离 7/7、全量复跑 87-88 过——tf 后台并发系诱因）；净窗探针全过 + 实机转义往返核验（type `\|` 表格 → content 恒等于输入，D1 清偿实机实证）。
+- [✅ 已完成] **T6** 折回与簿记：auto-lang 分支折回 master；DEBTS 055 D1 行销号
       + 055 归档复审记录 D1 加清偿注记；提交带 PLAN-056。验证：计数落复
       审记录。
+      [✅ 已完成] auto-lang master ff→（并 521 归档提交后合并态模块 80/80）；auto-down master ff→47fba63；DEBTS 055-D1 行销号 + 055 归档计划清偿注记（见 T6 同提交）。
 
 ## 复审记录
 

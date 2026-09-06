@@ -1,15 +1,22 @@
 ---
 plan_id: PLAN-054
-status: execution_done
+status: reviewed
 feature_name: VM 编辑壳块家族渲染对齐（quote/callout/details/table/list 可见化 + fence 细节）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-05
 updated_at: 2026-09-06
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P053-2: 修改（VM 编辑壳块家族渲染对齐第二期——五族可见化与 fence 细节在其四象限统一目标上续进）"
+  - "PARITY #12: 修改（编辑壳块家族可见化落地——VM 编辑臂 quote/fence header/list marker/task/table 管道行/callout/details summary 可见性子集清偿；编辑能力仍留长期线）"
+  - "PARITY #4: 修改（callout chrome.body px-4 py-3 视图臂消费面补齐——贴边紧凑根因⑦）"
+new_spec_components:
+  - "style-ir: 新增 border-l-N 单侧宽度档（StyleClass::BorderLeftWidth + IcedStyle::side_border_width 专属通道，不触发四边容器边框；style_parity 白名单收窄+coverage 再生）"
+  - "autodown-editor: 新增骨架归因 DFS（walk_skeleton_attribution：quote/列表 marker 缩进/callout/details 容器 chrome 单遍产出）+ 渲染序列 DrawItem（表格管道行/thematic break 只读出运行，无布局槽）+ Seg::Callout/Details/List.checked（emit 往返保留 task[·]/$callout/$details）"
+touched_goals:
+  - "P053-2: VM 编辑壳块家族渲染对齐第二期——五截图根因全清偿（quote 去框/fence header 居中+no-lang 主题/列表任务标记/table 可见/callout-details 可见+图标统一）"
+  - "PARITY #12 可见性子集 + PARITY #4 callout padding 邻界面清偿"
 
 current_step: 10
 total_steps: 10
@@ -231,7 +238,54 @@ build_walk `BlockType::Table` 臂：目前拍平为空——改为单 Paragraph 
 
 ## 复审记录
 
-（待 /auto-plan:review 填写）
+**Reviewer**: ZCode（/auto-plan:review）· **时间**: 2026-09-06 · **对象**: 分支
+`plan-054-dev` / `auto-down-054-dev` 4 提交 + merge 57b7bde33（工作树已回同步，
+按合并态复核）。
+
+### 逐条验收（重验，不信任勾选）
+
+| # | 准则 | 判定 | 证据 |
+|---|---|---|---|
+| 1 | quote 两臂=左条+muted+缩进，无整圈边框 | **PASS** | 净窗截图（合并态 exe 复拍）：右臂 crop 仅 3px 左条无框；单测 migrated_chrome_strings + renders_fence_quote_list_ordered_start 锁 `border-l-3` 串；编辑壳 quote 叶 py-2 同款（pitch 归零实测） |
+| 2 | fence header 标签垂直居中（两臂）；无语言浅档可读 | **PASS** | 像素实测：标签中心 vs 带中心差 ≤1.5px；单测 fence_header_label_vertically_centered（py-2 类断言 + center_y 恒 false 锁）；fence_no_lang_theme_follows_dark_mode 单测 + 截图浅档 plain fence 深色可读（两臂） |
+| 3 | 列表编辑臂 圆点/序号/checkbox+缩进；只读臂 checkbox 两态同风格 | **PASS** | 截图两臂同构（bullets/嵌套缩进/1. 2./✔accent/□）；单测 list_markers_and_indent_drawn + task_checkboxes_drawn_and_roundtrip（accent 饱和度断言+emit 往返） |
+| 4 | table 编辑臂可见（管道文本行） | **PASS** | 截图表头/分隔/三数据行五格全可见；单测 table_pipe_lines_visible_in_edit_arm（含 emit 往返不变）；无布局槽→不可聚焦（澄清③边界） |
+| 5 | callout/details 编辑臂可见；只读臂 callout padding/icon 修正 | **PASS** | 截图三 callout（kind 条+图标标题+pad 内容）+ details（▸ summary+内容）；单测 callout_details_drawn_with_chrome_and_roundtrip（strip 3px fill/kind 色/emit 往返）+ renders_callout（chrome.body 断言） |
+| 6 | tf 全量（唯一红=charts 既有）+ playwright 全量绿 | **PASS（两既有红在案）** | 复审重跑 tf：3455 跑 3453 过，红=①charts（计划门定义既定）②kitchen_sink_page_in_sync——**二分实锤 02840d764（折回前 master）同红**：并行会话 547/569/570 提交的 docs-sync 失步，master 继承红，非本计划引入（本计划 diff 不触 examples//docs_gen）；playwright 复审重跑 **88/88 绿** |
+
+### vm-smoke 腿裁定（待澄清⑤）
+
+复审重跑仍卡滚动状态回写收敛（净窗、零交互、新鲜窗复现同症；视觉滚动正常，
+left_top 状态读回滞留→同步腿/assert 不收敛）。与 053 T10 勘读同症（当时已以
+"环境面非代码回归"归档并随 053 复审折回）；失败通道（Scrollable onscroll→状态
+回写）与本计划 diff（编辑核渲染/骨架/样式）无交集，且五族内容面已由净窗截图
+替代实证。**裁定：非阻塞**——挂待澄清⑤为债候选，环境恢复后由复审/merge 门或
+独立环境修复计划复跑。
+
+### 遗漏/延后/workaround 猎查
+
+- diff 零 TODO/FIXME/HACK；无静默丢项（10/10 步均有代码+验证双证据）。
+- **计划文→实现的四处分歧（码为准，均已根因化登记）**：①T2 center_y→py-2
+  （iced 臂 center_y=true 强制 height(Fill) 顶掉定高——副作用实测抓出）；
+  ②T7 Raw 出运行替代 Paragraph buffer（比计划文案更强的只读保证，守澄清③）；
+  ③T1 编辑壳 quote 叶补 py-2（"两臂同款"的 pitch 必要项）；④T8 Seg 新变体
+  （澄清④按最小扰动裁定，已记录）。
+- **显式延后（用户可见，非偷缩）**：图标方案 B 矢量绘制（计划原文"先 A 后视
+  观感升级"）；callout/details 容器内结构编辑（Enter/合并 no-op——PARITY #12
+  长期线边界，计划约束③）；pitch 残差 f+2px/h−2.5px（≤053 ±4px 验收带，
+  待澄清⑥留档）。
+
+### 债候选（移交台账）
+
+1. `kitchen_sink_page_in_sync` master 继承红（02840d764 实锤）——归属并行
+   会话 547/569/570 提交，建议知会对应计划修复（KITCHEN_SINK_UPDATE 再生）。
+2. vm-smoke 滚动状态回写环境漂移（待澄清⑤，053⑦延续）。
+3. 两臂 pitch 残差（待澄清⑥）与图标方案 B 升级权（待澄清①尾）。
+
+### 结论
+
+**全部六条验收 PASS**（两条全量红均为 master/环境继承、二分实证与本计划
+无涉），无未披露缩面。→ `status: reviewed`，可进 `/auto-plan:merge`。
 
 ## 待澄清事项
 

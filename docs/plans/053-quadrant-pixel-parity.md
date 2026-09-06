@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-053
-status: executing
+status: execution_done
 feature_name: 四象限逐像素统一（edit/view 臂 × 深/浅主题）钉成正式验收目标——双轨自动门 + 摘门控收口
 author: [zhaopuming, ZCode]
 created_at: 2026-09-05
@@ -482,6 +482,12 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
 ## 复审记录
 
 （待 /auto-plan:review 填写）
+
+> **执行收段注记（2026-09-05）**：T1-T9/T12-T18 全勾；T10/T11 唯一未闭项=
+> 净窗 vm-smoke 全组验证，因 VM 轨滚动状态回写环境漂移暂挂（待澄清⑦，含
+> 恢复判据 scroll-probe SCROLL-OK）。摘门控代码、台账三件、playwright/
+> build/engine 三门均已绿；vm-smoke 门待复审门重跑兜底。后续排版收敛
+> （T14-T18 同线）与块家族可见化已另立 PLAN-054 承接。
 
 ## 待澄清事项
 

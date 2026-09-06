@@ -422,6 +422,21 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   残差 ~10-17px 为 fence 容器边界渲染差（后续微调）。折回 auto-lang
   master ab307f191；tf 3439/3440。
 
+### W2.7 VM 块距/像素对齐续波（用户 2026-09-05 截图验收驱动）
+
+- [✅ 已完成] **T16** fence 逐块 pitch 收敛：px-measure.mjs 像素勘读（左/
+  右栏 fence header y 逐个比对）实证每 fence +8-10px 漂移；根因=只读臂
+  header `py-2`(≈33px)+外框 border 高于编辑壳 `FENCE_HEADER_H=28`；修
+  header 定高 `h-[28px]`（裸 `h-28` 走 spacing×4=112px 陷阱，任意值通道
+  才是像素）；dy +28.5→±4px 全文档逐块对齐（auto-lang d871bb76a 折回 +
+  40e7ca51d 快照测试追补——首折带红折回，追补同窗完成，复盘在案）；
+  tf 3439/3440。
+- [ ] **T17** blockquote 边框观感（QUOTE_CHROME `border-l-4` 两臂可见
+  性勘读与收敛）。
+- [ ] **T18** 正文行高/字号档（§7.3 body 15.2px/1.6 vs VM BODY_SIZE
+  16px/LINE_H_MULT 1.45 vs 只读臂 iced 默认——多行段落逐行漂移源，测
+  后决策）。
+
 ### W3 摘门控收口（T12/T13 完成后执行）
 
 - [✅ 已完成] **T9** 修复落地复验：auto-lang 修复折入 master + exe 重建后，跑

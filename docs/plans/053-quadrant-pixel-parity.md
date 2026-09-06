@@ -431,11 +431,20 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   才是像素）；dy +28.5→±4px 全文档逐块对齐（auto-lang d871bb76a 折回 +
   40e7ca51d 快照测试追补——首折带红折回，追补同窗完成，复盘在案）；
   tf 3439/3440。
-- [ ] **T17** blockquote 边框观感（QUOTE_CHROME `border-l-4` 两臂可见
-  性勘读与收敛）。
-- [ ] **T18** 正文行高/字号档（§7.3 body 15.2px/1.6 vs VM BODY_SIZE
-  16px/LINE_H_MULT 1.45 vs 只读臂 iced 默认——多行段落逐行漂移源，测
-  后决策）。
+- [✅ 已完成] **T17** blockquote 两臂 chrome 收敛 §7.4：勘读=QUOTE_CHROME
+  `border-l-4` 从未被类解析（仅裸 border-l）→右栏无边框；`text-muted-foreground`
+  实际映射 OnSurface（非 §7.1 muted）。修复（auto-lang 3530cd793 折回）：
+  chrome 改 `border-l border-3`（单侧边框条机制，§7.4 左边 3px）+
+  `text-gray-500 dark:text-zinc-400`（§7.1:194 muted 双档）；编辑壳 quote 块
+  （骨架 Quote 段叶子集推导，免重建路径丢旗标）左条 3px+缩进 19px+muted
+  前景；walk_quote 初版误收全部叶子的 bug 即修；191 绿，截图两臂 quote
+  同款（左条+muted+缩进）。
+- [ ] **T18** 正文行高/字号档——【已测量，待决策】实测（多行段落截图）：
+  编辑壳视觉行 pitch≈35px（16px×1.45+余量）、只读臂≈32px（iced 默认
+  lh），且折行宽度不同（编辑壳不折/只读臂折）——多行段落逐行漂移实锤。
+  决策面：§7.3 收敛（body 15.2px/1.6 双臂，全文档 reflow，涉及
+  BODY_SIZE/LINE_H_MULT/只读臂 leading 类支持三处）vs 仅行距对齐
+  （LINE_H_MULT 调至只读臂实测值）。 blast radius 大，挂待用户裁定。
 
 ### W3 摘门控收口（T12/T13 完成后执行）
 

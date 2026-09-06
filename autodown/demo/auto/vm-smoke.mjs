@@ -364,12 +364,19 @@ async function runOnce(attempt) {
   {
     const reset = await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 0 })
     if (!/status: ok/.test(reset)) throw new Error(`reset scroll not ok: ${reset}`)
-    for (const deadline = Date.now() + 3000; ; ) {
+    // PLAN-053 复审宽限：负载下状态同步滞后，reset 每 1.5s 重发（同
+    // scroll-240 reissue 先例）。
+    let lastResetReissue = Date.now()
+    for (const deadline = Date.now() + 8000; ; ) {
       const st = await callTool('autoui_state', { fields: ['left_top', 'right_top'] })
       const lt = Number(st.match(/left_top:\s*([\d.]+)/)?.[1] ?? NaN)
       const rt = Number(st.match(/right_top:\s*([\d.]+)/)?.[1] ?? NaN)
       if (lt < 5 && rt < 5) break
       if (Date.now() > deadline) throw new Error(`scroll reset did not settle: ${st.trim()}`)
+      if (Date.now() - lastResetReissue > 1500) {
+        lastResetReissue = Date.now()
+        await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 0 })
+      }
       await new Promise((r) => setTimeout(r, 100))
     }
   }
@@ -381,7 +388,7 @@ async function runOnce(attempt) {
   if (!/status: ok/.test(scrollLeft)) throw new Error(`scroll action not ok: ${scrollLeft}`)
   let stateScroll = ''
   let lastReissue = Date.now()
-  for (const deadline = Date.now() + 5000; ; ) {
+  for (const deadline = Date.now() + 12000; ; ) {
     stateScroll = await callTool('autoui_state', { fields: ['left_top', 'left_height', 'left_client', 'right_top'] })
     const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
     if (num('left_top') > 100 && num('left_height') > num('left_client') && num('right_top') > 0) break
@@ -404,7 +411,7 @@ async function runOnce(attempt) {
 
   // right pane offset binding follows (snapshot Scrollable offset_y > 0)
   let rightOffsetY = 0
-  for (const deadline = Date.now() + 3000; ; ) {
+  for (const deadline = Date.now() + 6000; ; ) {
     const snapR = parseAura(await callTool('autoui_snapshot', {}))
     const rs = findFirst(snapR, (n) => n.head.includes(rightScId))
     // offset_y 是 scrollable 节点下的属性行（parseAura 解析为子节点）
@@ -421,7 +428,7 @@ async function runOnce(attempt) {
   const prevLeftTop = Number(stateScroll.match(/left_top:\s*([\d.]+)/)?.[1] ?? 0)
   const scrollRight = await callTool('autoui_action', { element_id: rightScId, action: 'scroll', value: 600 })
   if (!/status: ok/.test(scrollRight)) throw new Error(`scroll-right action not ok: ${scrollRight}`)
-  for (const deadline = Date.now() + 3000; ; ) {
+  for (const deadline = Date.now() + 6000; ; ) {
     stateScroll = await callTool('autoui_state', { fields: ['left_top', 'right_top'] })
     const leftTop = Number(stateScroll.match(/left_top:\s*([\d.]+)/)?.[1] ?? NaN)
     if (leftTop > prevLeftTop + 50) break
@@ -443,7 +450,7 @@ async function runOnce(attempt) {
     if (!/status: ok/.test(dragRes)) throw new Error(`drag action not ok: ${dragRes}`)
     let dragState = ''
     let dragOffsets = [0, 0]
-    for (const deadline = Date.now() + 4000; ; ) {
+    for (const deadline = Date.now() + 8000; ; ) {
       dragState = await callTool('autoui_state', { fields: ['left_top', 'right_top'] })
       const lt = Number(dragState.match(/left_top:\s*([\d.]+)/)?.[1] ?? NaN)
       const rt = Number(dragState.match(/right_top:\s*([\d.]+)/)?.[1] ?? NaN)

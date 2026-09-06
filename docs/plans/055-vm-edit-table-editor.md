@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-055
-status: drafting
+status: execution_done
 feature_name: VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-06
@@ -11,7 +11,7 @@ supersedes_spec_components: []
 new_spec_components: []
 touched_goals: []
 
-current_step: 0
+current_step: 8
 total_steps: 8
 ---
 
@@ -155,36 +155,44 @@ core 拖拽列宽（min 宽 48px 钳制）实时 relayout；MouseReleased 落定
 
 ### W1 结构与几何
 
-- [ ] **T1** Seg::Table 结构化：build_walk Table 臂逐 cell 建 Paragraph
+- [✅ 已完成] **T1** Seg::Table 结构化：build_walk Table 臂逐 cell 建 Paragraph
   叶（首行表头标记），替换 Seg::Raw 臂；ThematicBreak 维持 Raw。
   文件：`crates/auto-lang/src/ui/autodown_editor/core.rs`。
   验证：`cargo test -p auto-lang --lib --features autodown autodown_editor`
   （既有管道行测试 T7 按新形态改写：`table_pipe_lines_visible_in_edit_arm`
   → 表格 chrome 断言）。
-- [ ] **T2** emit 往返：emit_seg(Table) 管道行发射（cell live text、`\|`
+  [✅ 已完成] Seg::Table{key,rows} 落地 + reindex_table_keys 结构位置键；管道行测试改写为 table_chrome_drawn_and_roundtrip；模块 79 测 10 连跑全绿（commit fe2ca6dff）。
+- [✅ 已完成] **T2** emit 往返：emit_seg(Table) 管道行发射（cell live text、`\|`
   转义、分隔行）；单测：cell 编辑后 emit 结构一致。
   验证：同上 + 新增 `table_emit_roundtrip_after_cell_edit`。
-- [ ] **T3** 网格几何归因：table_widths 状态（等分缺省）+ LeafAttrib.cell
+  [✅ 已完成] emit_seg(Table)+cell_live_text 落地；table_emit_roundtrip_after_cell_edit 绿——附记：`\|` 重解析半边被 autodown-core splitRowCells 无转义感知挡住，收敛为 emit 侧断言，解析侧挂待澄清③。
+- [✅ 已完成] **T3** 网格几何归因：table_widths 状态（等分缺省）+ LeafAttrib.cell
   （x/w/row/col）+ 行高对齐；render_frame 按 cell x/w 布局（wrap 生效）。
   验证：新增 `table_grid_geometry_attributed` 单测（cell x/w 断言）。
-- [ ] **T4** 表格 chrome 绘制：表头底色/行线/列线/padding 常量入
+  [✅ 已完成] table_col_widths 解算+CellSlot 挂叶+行分组累计器（先量后摆）落地；table_grid_geometry_attributed 绿（等分 330/x=pad/行 pitch 40.32）。
+- [✅ 已完成] **T4** 表格 chrome 绘制：表头底色/行线/列线/padding 常量入
   autodown_blocks + fills 落地。验证：新增 `table_chrome_drawn` 单测
   （fills 断言）+ 净窗截图对照只读臂。
+  [✅ 已完成] TABLE_PAD_X/Y、TABLE_RULE、TABLE_MIN_COL_W、TABLE_HIT_BAND、table_header_rgb 入 autodown_blocks；finalize_table_row fills 落地；table_chrome_drawn_and_roundtrip fills 断言绿（截图对照归 T7）。
 
 ### W2 编辑与拖拽
 
-- [ ] **T5** cell 编辑接线：locate_leaf 增 TableSlot；Enter/Backspace
+- [✅ 已完成] **T5** cell 编辑接线：locate_leaf 增 TableSlot；Enter/Backspace
   表格内降级（软换行/禁合并）；点击 cell 聚焦 caret。验证：新增
   `table_cell_editing_and_degraded_structure` 单测。
-- [ ] **T6** 列宽拖拽：列边界命中带（±4px）+ 拖拽 relayout + 落定写
+  [✅ 已完成] TableSlot+四路降级（enter_split/merge_into_previous/delete_doc_selection/try_line_start_rule 护栏）落地；table_cell_editing_and_degraded_structure + table_cell_line_start_rules_disabled 绿。
+- [✅ 已完成] **T6** 列宽拖拽：列边界命中带（±4px）+ 拖拽 relayout + 落定写
   table_widths（min 48px）。验证：新增 `table_column_drag_resizes` 单测
   （模拟 MousePressed/Dragged/Released 序列）。
-- [ ] **T7** 净窗集成验证：两臂表格形式对照截图；cell 键入 + 列拖拽操作
+  [✅ 已完成] table_boundary_hit（复用只读臂 view::col_boundary_hit 手感）+ apply_col_drag + TableGeom 快照落地；table_column_drag_resizes 绿（命中不建焦点/260 改宽/min48 钳制/落定保留）。
+- [✅ 已完成] **T7** 净窗集成验证：两臂表格形式对照截图；cell 键入 + 列拖拽操作
   录证（MCP type + 前后 px-crop）；往返 state 断言。
   验证：净窗截图入册 + autoui_state 断言。
-- [ ] **T8** 回归与折回：`cargo tf --no-fail-fast` + 本仓 playwright 全量
+  [✅ 已完成] vm-table-055.mjs 探针全过：type_text 表格文档 → state.content 往返一致；编辑臂表头 muted 底/行线/列线 + 只读臂行线像素断言；click 步进扫 → ghost block-1（cell 聚焦，h=40.3）；三截图入册（plan055-table-two-arms/edit-arm/readonly-arm）。登记：doc editor 无逐键/拖拽 MCP 通道（仅 click 合成），坐标序列由 T6 rust 单测覆盖（045 T7 同例）。
+- [✅ 已完成] **T8** 回归与折回：`cargo tf --no-fail-fast` + 本仓 playwright 全量
   + autodown 单测；折回 auto-lang master + 簿记（提交带 PLAN-055）。
   验证：计数落复审记录。
+  [✅ 已完成] tf 3461 跑 3460 过（唯一红=charts 既有 test_charts_gallery_compiles；kitchen_sink 本轮绿）；playwright 88/88；autodown engine 单测 7 二进制全绿；autodown_editor 79/79（合并 572 后复跑同绿+tf 合并树门 3460/3461 同唯一红）。折回：auto-lang master ff→a514df212（先并 master 2cc31aa96 过合并树门）、auto-down master ff→865c613（T7 录证）；工作树留置待 merge 终清。
 
 ## 复审记录
 
@@ -198,8 +206,18 @@ core 拖拽列宽（min 宽 48px 钳制）实时 relayout；MouseReleased 落定
    （另立计划或并入 PARITY #12 对应轮次）。
 2. **列宽落定通道**：编辑臂 core 本地态（v1 默认）vs 对齐 045 fast-path
    写宿主 `table_col_widths`（两臂列宽共享一份状态）？（建议 v1 本地态，
-   两臂独立拖拽；宿主回路随状态同步契约计划）
+   两臂独立拖拽；宿主回路随状态同步契约计划）【执行按建议 v1 本地态】
 3. **表头行可编辑性**：vue 编辑面 thead 单元格同样可编辑——VM 侧建议
    一致（表头=普通可编辑叶 + 表头样式）；若需"表头只读"另行裁定。
+   【执行按建议一致（表头可编辑+加粗样式）】
 4. **列宽默认策略**：等分（v1 默认）vs 内容优先测量（cosmic 量宽取
    max+padding，列多时挤溢出需钳制）？（建议 v1 等分 + 拖拽后记忆）
+   【执行按建议等分 + 拖拽后记忆】
+5. **【执行期新增 2026-09-06】`\|` 转义重解析不受 parser 支持**：G4 的
+   "重解析结构不变（含 `\|` 转义）"半边受阻——autodown-core
+   `markdown_parser.rs splitRowCells`（auto-down 仓）按裸 `|` 切 cell、
+   无转义感知，emit 出的 `a\|b` 重解析会破列（本计划实现面仅 auto-lang，
+   parser 修复属 auto-down 另一面板+快照回归面）。本轮收敛：emit 侧
+   保留 `\|` 转义（spans_flat 口径、与只读臂同源、对标准 markdown
+   消费方正确），重解析单测只覆盖无 `|` 内容；解析侧转义支持建议另立
+   小计划（splitRowCells 跳过 `\|` + cell 文本反转义 + 只读臂快照回归）。

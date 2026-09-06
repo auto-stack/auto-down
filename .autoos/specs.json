@@ -310,6 +310,17 @@
         ],
         "section": "goals",
         "status": "proposed"
+      },
+      {
+        "id": "P055-2",
+        "section": "goals",
+        "title": "VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽） — 目标",
+        "content": "- **G1** 表格形式对齐：编辑臂表格与只读臂基本一致——表头行样式（muted 底/\n  加粗）、行分隔线、列分隔线、单元格 padding；不再是管道文本行。\n- **G2** 单元格可编辑：点击 cell 聚焦、caret/选区/键入正常；编辑后内容经\n  emit 往返回写 markdown 表格。\n- **G3** 列宽可拖拽：列边界命中带拖拽实时重排，落定保留（对齐 P045-2 的\n  只读臂拖拽手感）。\n- **G4** 往返安全：表格编辑后 emit 的 markdown 重解析结构不变（含 `\\|`\n  转义）；结构操作（Enter/Backspace 合并）在表格内安全降级。",
+        "file": "docs/plans/055-vm-edit-table-editor.md",
+        "related": [
+          "PLAN-055"
+        ],
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -630,6 +641,17 @@
         ],
         "section": "architecture",
         "status": "stable"
+      },
+      {
+        "id": "P055-3",
+        "section": "architecture",
+        "title": "VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽） — 架构方案",
+        "content": "延续 PLAN-054 已落地的\"骨架归因 + 逐叶 chrome\"三件套（walk_skeleton_attribution\n/ LeafAttrib / DrawItem），不引入新机制族：\n\n- **Seg::Table 结构化**：`Seg::Raw(table_to_markdown)` → `Seg::Table { rows }`，\n  rows[r][c] = cell 内 segs（首行=表头，各 cell 为独立 Paragraph 叶 buffer，\n  可聚焦可编辑）。数据源 = build_walk 的 Table 臂（row/cell 两级展开）。\n- **网格几何归因**：LeafAttrib 增 cell 槽 (table_key, row, col, x, w)。\n  列宽状态 = core 内 `table_widths: Mutex<HashMap<u64, Vec<f32>>>`\n  （table_key = 结构位置哈希），默认等分；cell 内文字按列宽 wrap。\n  行高 = 行内最高叶。\n- **表格 chrome 绘制**：fills 画表头底色/行分隔线/列分隔线（对齐只读臂\n  table-panel 词汇：行线 1px border 色、表头 muted 底），cell padding\n  ≈ px-3 py-2（12/8），文字 x/w 缩进由归因给足。\n- **列宽拖拽**（P045-2 手感移植）：MousePressed 命中列边界 ±4px 带\n  （优先于文本 caret 放置）→ 列拖拽态；MouseDragged 实时改宽 relayout；\n  MouseReleased 落定写 `table_widths`。v1 widget+core 本地态，宿主回路\n  （045 fast-path 对齐）列待澄清。\n- **编辑接线**：locate_leaf 增 `TableSlot { table_pos, row, col }`；Enter/\n  Backspace-merge 在表格叶内降级（同 callout/details 策略——soft 换行/\n  禁合并）。表格为**固定结构**：无增删行列/删表操作（用户裁定\n  待澄清①，2026-09-06——结构动词与表格结构操作协议后续单独讨论）。\n- **emit 往返**：emit_seg(Table) 逐 cell 取 live text → 管道行 + 分隔行\n  （`\\|` 转义沿用 spans_flat 口径），编辑后往返保留结构。",
+        "file": "docs/plans/055-vm-edit-table-editor.md",
+        "related": [
+          "PLAN-055"
+        ],
+        "status": "stable"
       }
     ],
     "designs": [
@@ -946,6 +968,17 @@
         ],
         "section": "designs",
         "status": "stable"
+      },
+      {
+        "id": "P055-4",
+        "section": "designs",
+        "title": "VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽） — 详细设计",
+        "content": "### D1 Seg::Table 结构化（G2 基座）\n\nbuild_walk Table 臂：`rows[r][c] = Vec<Seg>`（cell 内段，当前 parser cell\n= 单段落 inlines → 单 Leaf）；BlockBuf 逐 cell 建入（Paragraph kind）。\nemit_seg(Table)：cells live text → `| c1 | c2 |` 行 + 首行后 `| --- |`\n分隔行；cell 内 `|` → `\\|`（spans_flat 口径）。往返单测：编辑 cell 文本\n→ emit → 重解析结构一致。\n\n### D2 网格几何归因（G1/G3 基座）\n\nwalk_seg 增 Table 臂：`table_widths` 取列宽（缺省 = 可用宽/列数 等分），\n逐 cell 递归 walk（x_base += 列累计宽 + cell pad）。LeafAttrib 增\n`cell: Option<(key, row, col, w)>`；行高 = 行内叶 max(total_h)（实现：\n按行分组两遍布局——先量后摆，或同 y 布局 + 行末对齐推进；执行期按对\nrender_frame 扰动最小裁定）。locate_leaf 增 TableSlot；Enter/Backspace\n表格内降级（禁拆/禁合并）。\n\n### D3 表格 chrome（G1）\n\nfills：表头行底色（muted 档，随主题）、行底 1px 分隔线、列间 1px 分隔\n线、cell padding 由归因 x/w 直接给足（文字 x = cell.x + 12，wrap 宽 =\ncell.w − 24）。chrome 常量（pad/线色/表头底色）入 autodown_blocks 单源，\n只读臂 table 词汇对齐。\n\n### D4 列宽拖拽（G3）\n\nwidget MousePressed：先于 caret 命中做列边界判定（命中带 ±4 逻辑 px，\ny ∈ 表格行区）→ 进入拖拽（记录 table_key + col）；MouseDragged 更新\ncore 拖拽列宽（min 宽 48px 钳制）实时 relayout；MouseReleased 落定写入\n`table_widths`（持久于 core，表结构变更时按列数重置/裁剪）。宿主回路\n（045 fast-path 写 `table_col_widths` 状态）列待澄清②。",
+        "file": "docs/plans/055-vm-edit-table-editor.md",
+        "related": [
+          "PLAN-055"
+        ],
+        "status": "stable"
       }
     ],
     "tests": [
@@ -1239,6 +1272,17 @@
           "PLAN-053"
         ],
         "section": "tests",
+        "status": "verified"
+      },
+      {
+        "id": "P055-5",
+        "section": "tests",
+        "title": "VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽） — 测试设计",
+        "content": "| 门 | 内容 | 命令（cwd=auto-lang 除注明） |\n|---|---|---|\n| 单测 | Seg::Table build/emit 往返（cell 编辑后结构一致、`\\|` 转义） | `cargo test -p auto-lang --lib --features autodown autodown_editor` |\n| 单测 | 网格几何：cell x/w 归因、列宽默认等分、拖拽改宽后 relayout | 同上（新增单测） |\n| 单测 | 定位/降级：TableSlot 命中、Enter/Backspace 表格内降级 | 同上 |\n| 集成 | VM 净窗截图：两臂表格形式同构（表头/行线/列线）；cell 键入；列拖拽前后对比 | 本仓 demo：MCP type/scroll + px-crop |\n| 回归 | auto-lang 全量 tf（唯一红=charts 既有+kitchen_sink master 继承） | `cargo tf --no-fail-fast` |\n| 回归 | 本仓 playwright 全量 + autodown 单测 | `npx playwright test`（demo） |",
+        "file": "docs/plans/055-vm-edit-table-editor.md",
+        "related": [
+          "PLAN-055"
+        ],
         "status": "verified"
       }
     ],
@@ -1539,6 +1583,17 @@
         ],
         "section": "reviews",
         "status": "published"
+      },
+      {
+        "id": "P055-6",
+        "section": "reviews",
+        "title": "VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽） — 验收标准与复审记录",
+        "content": "1. 编辑臂表格形式与只读臂基本一致：表头样式、行/列分隔线、cell padding\n   （净窗截图并排对照）。\n2. cell 可编辑：点击聚焦 caret、键入即时生效、选区可用；编辑后 emit 往返\n   保留（autoui_state + 重解析单测）。\n3. 列宽可拖拽：列边界命中带拖拽实时重排、松手落定保留；两臂各自独立\n   拖拽互不串扰（净窗操作录证/前后截图）。\n4. 表格内结构操作安全：Enter/Backspace 不破坏表格结构（单测）。\n5. 回归绿：tf（唯一红=charts 既有 + kitchen_sink master 继承红）、\n   playwright 全量、autodown 单测全绿。\n\n- **复审人**：ZCode（/auto-plan:review，2026-09-06）\n- **复核对象**：auto-lang `ed8690959`（= plan-055-dev 折回后 master，含执行期两轮实机反馈修复）；auto-down `dd8789a`。plan 代码面 = fe2ca6dff（T1-T6）+ a22a591fe（缩进同款）两个 product 提交，diff 核对无计划外 product 改动。\n\n### 验收逐项复验（重跑证据）\n\n1. **表格形式对齐只读臂** — PASS。净窗 2x 截图并排（`plan055-table-two-arms.png` 入册）：编辑臂表头 muted 底/加粗、1px 行线、列线、px-3 py-2 在册（像素断言：表头底 97169px、行线 6、列线 572；只读臂行线 6）。附注：cell padding 12/8 为计划 D3 明确钉值（只读臂 px-4/py-3 词汇差异在案，属「基本一致」登记面）。\n2. **cell 可编辑 + emit 往返** — PASS。单测 `table_cell_editing_and_degraded_structure`（点击聚焦/键入即时生效）+ `table_emit_roundtrip_after_cell_edit`（live text→管道行、`\\|` 转义）；净窗 ghost block-1（cell 命中，h=40.3）+ state.content 往返一致。\n3. **列宽可拖拽 + 落定保留** — PASS。单测 `table_column_drag_resizes`（命中带按压不建焦点/260 改宽→relayout/10→min48 钳制/松手保留）；两臂存储结构性隔离（编辑臂 core `table_widths` vs 只读臂 component state）。**债务候选 D2**：doc editor MCP 通道无逐键/拖拽合成事件，净窗拖拽腿由 rust 单测覆盖（045 T7 同例登记）。\n4. **表格内结构操作安全** — PASS。四路降级单测（Enter 软换行/块首禁合并/行首规则禁转换/跨 cell 删除拒绝）；`table_cell_line_start_rules_disabled` 钉死 cell 内 \"# \" 不迁移 kind。**附注**：后两路超出 Enter/Backspace 字面，为「固定结构」的应有加固（执行追记在案），非遗漏。\n5. **回归绿** — PASS。复审重跑：tf @ed8690959 3461 跑 3460 过（唯一红=`test_charts_gallery_compiles`——054 复审已二分定性为 master/环境既有，非本计划）；playwright 88/88（满载一轮 scroll-sync 底部腿 2 失败→隔离复跑 7/7×2 + 全量复跑 88/88 实锤负载性 flake，vue 轨既有且本计划 demo src 零改动——**债务候选 D3**）；autodown engine 7 二进制全绿；autodown_editor 80/80。\n\n### 遗漏/延后/workaround 排查\n\n- **遗漏**：无。T1-T8 子项均有对应 diff（ThematicBreak 维持 Raw ✓、截图入册 ✓、簿记 ✓、行首规则护栏 ✓）。\n- **延后**：**待澄清③**（G4 的「`\\|` 转义重解析」半边）——执行期实锤 autodown-core `splitRowCells` 无转义感知，测试范围收敛 + 解析侧修复建议另立小计划，计划文件登记 + 两次向用户披露，按用户可见裁定通道处理 → **债务候选 D1**（G4 该半边计 partial，非静默）。待澄清②宿主列宽 fast-path 回路 = 计划建议档（v1 core 本地态）随状态同步契约计划。\n- **workaround**：`marker_slot_width` 进程缓存（性能机制，非 hack）；`THEME_LOCK` 测试互斥（测试基建修复，实锤三 set_dark_mode 测试与并发读档竞态 1/8 复现，10 连跑钉绿——记录于 fe2ca6dff 提交）。无产品面 hack。\n\n### 债务候选汇总\n\n- **D1**：autodown-core `splitRowCells` 不支持 `\\|` 转义——cell 含字面 `|` 时 emit→重解析破列；解析侧小计划（跳过 `\\|` 切分 + cell 文本反转义 + 只读臂快照回归）。\n- **D2**：doc editor MCP 通道缺逐键/拖拽合成事件（净窗录证面受限）；通道扩面属 mcp_server 面另立。\n- **D3**：playwright scroll-sync 底部腿满载 flake（vue 轨既有，非本计划引入）；demo 维护方候选。\n\n### 结论\n\n五项验收全 PASS（G4 转义半边按 D1 挂债非阻塞），无未登记延后。**status → reviewed**，可进 `/auto-plan:merge`。",
+        "file": "docs/plans/055-vm-edit-table-editor.md",
+        "related": [
+          "PLAN-055"
+        ],
+        "status": "published"
       }
     ],
     "reports": [
@@ -1837,6 +1892,17 @@
           "PLAN-053"
         ],
         "section": "reports",
+        "status": "published"
+      },
+      {
+        "id": "P055-1",
+        "section": "reports",
+        "title": "VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽） — 变更摘要",
+        "content": "PLAN-054 将 VM 编辑臂表格以**只读管道文本行**呈现（Seg::Raw，无布局槽、不可\n编辑），并在待澄清③预留\"若验收期望可编辑，需另行立项\"。用户实机验收后裁定\n期望升级：**编辑臂表格应形式上与只读臂基本一致（真表格外观），且 cell 可编辑、\n列宽可拖拽**——参考既有详细实现：vue 轨 P037-2 `TableBlockWidget` 三模式\n（edit 面 = contenteditable 单元格 + blur 提交 + 行列结构动词工具栏；view 面 =\n表格 + 列宽拖拽把手）与 VM 只读臂 P045-2（`View::Table` 列宽状态 + 列边界\n命中拖拽 + DSL 状态回路）。本计划把表格从\"只读固化段\"升级为 VM 编辑壳内的\n**一等可编辑表格**。",
+        "file": "docs/plans/055-vm-edit-table-editor.md",
+        "related": [
+          "PLAN-055"
+        ],
         "status": "published"
       }
     ]

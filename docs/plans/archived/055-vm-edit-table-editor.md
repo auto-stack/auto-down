@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-055
-status: reviewed
+status: archived
 feature_name: VM 编辑臂表格编辑器（表格形式对齐只读臂 + cell 可编辑 + 列宽拖拽）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-06

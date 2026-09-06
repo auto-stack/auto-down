@@ -445,6 +445,12 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   决策面：§7.3 收敛（body 15.2px/1.6 双臂，全文档 reflow，涉及
   BODY_SIZE/LINE_H_MULT/只读臂 leading 类支持三处）vs 仅行距对齐
   （LINE_H_MULT 调至只读臂实测值）。 blast radius 大，挂待用户裁定。
+  ——【✅ 已完成（用户裁定：全量收敛）】§7.3 档双臂落地：BODY_SIZE
+  16→15.2（0.95rem）、编辑壳行高分档 heading 1.3/正文 1.6/fence 1.5
+  （line_h_mult 替换全局 1.45）、只读臂正文档 text-base→text-[15.2px]
+  leading-[1.6]（span_class 单点）、heading 补 leading-[1.3]；多行段落
+  两臂逐行对齐实测（6 行同 y，行距 24.3px）；autodown 191+editor 69 绿；
+  折回 auto-lang master。T17/T18 完成后本波（W2.8）收段。
 
 ### W3 摘门控收口（T12/T13 完成后执行）
 

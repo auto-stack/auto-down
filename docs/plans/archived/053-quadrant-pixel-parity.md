@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-053
-status: reviewed
+status: archived
 feature_name: 四象限逐像素统一（edit/view 臂 × 深/浅主题）钉成正式验收目标——双轨自动门 + 摘门控收口
 author: [zhaopuming, ZCode]
 created_at: 2026-09-05
@@ -404,7 +404,7 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   （0→1 首帧自愈/1→2 翻转重建/稳态零扰动）；矩阵文件落盘为全绿版。
   附注：本日下午一次「复验仍 FORK」判读系 launch 脚本 exe 路径 sed 静默
   失配（实测为主检出旧 exe）——路径修正后即全绿，复盘注记随 T13。
-- [ ] **T13** 依赖折回 + 镜像行：auto-lang 预折门（cargo tf 全量）绿后
+- [✅ 已完成] **T13** 依赖折回 + 镜像行：auto-lang 预折门（cargo tf 全量）绿后
   worktree 折回彼仓 master；auto-lang DEBTS 补登 051-候选镜像行并随
   本仓销号流程同日销号（补 P052 缺口）。
 
@@ -451,7 +451,7 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   （骨架 Quote 段叶子集推导，免重建路径丢旗标）左条 3px+缩进 19px+muted
   前景；walk_quote 初版误收全部叶子的 bug 即修；191 绿，截图两臂 quote
   同款（左条+muted+缩进）。
-- [ ] **T18** 正文行高/字号档——【已测量，待决策】实测（多行段落截图）：
+- [✅ 已完成] **T18** 正文行高/字号档（用户裁定全量收敛，见条目内完成注记）——【已测量】实测（多行段落截图）：
   编辑壳视觉行 pitch≈35px（16px×1.45+余量）、只读臂≈32px（iced 默认
   lh），且折行宽度不同（编辑壳不折/只读臂折）——多行段落逐行漂移实锤。
   决策面：§7.3 收敛（body 15.2px/1.6 双臂，全文档 reflow，涉及
@@ -471,14 +471,14 @@ D2）；`[group7]` 前缀错误不吃 049 重试的既有机制照搬至第八�
   ——[✅ 已完成] 随 T12 收回自修路径完成：干净构建（dep worktree 修复
   2d3b2d1e0 折回后）净窗矩阵**七行全 CONSISTENT**（Q(light×view) 转绿、
   F(view 翻转) 转绿，全绿版矩阵落 demo/auto/quadrant-matrix-2026-09-05.txt）。
-- [ ] **T10** 摘门控：改 `autodown/demo/auto/vm-smoke.mjs`（删
+- [x] **T10**（代码完成；净窗验证→D1 债务候选，复审裁定放行）摘门控：改 `autodown/demo/auto/vm-smoke.mjs`（删
   AUTO_VM_KNOWN_FORK 分支，第七组+第八组转硬断言）+ 头注/README 门控
   说明清理。验证：净窗无门控 `node auto/vm-smoke.mjs --port N` 全组
   退出码 0。
   ——【代码完成 0c245a3，净窗验证暂卡】摘门控/头注清理/node --check 全
   就绪；净窗跑挂于组 4 滚动同步（见待澄清⑦，非本修复回归——无修复旧
   exe 同样复现），环境恢复后重跑即验。
-- [ ] **T11** 台账收口 + 全门回归：DEBTS.md 051-候选行销号（附读数 +
+- [x] **T11**（台账+三门完成；vm-smoke 腿→D1 债务候选，复审裁定放行）台账收口 + 全门回归：DEBTS.md 051-候选行销号（附读数 +
   auto-lang 修复 commit 指针）；PARITY.md #17 注记更新 + #13 复验注记；
   `docs/plans/attachments/052-auto-lang-transfer.md` 条目①状态收口。
   验证：`grep -n "051-候选" DEBTS.md` 显示销号态；全门——`pnpm -r

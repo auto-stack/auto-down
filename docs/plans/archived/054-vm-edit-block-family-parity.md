@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-054
-status: reviewed
+status: archived
 feature_name: VM 编辑壳块家族渲染对齐（quote/callout/details/table/list 可见化 + fence 细节）
 author: [zhaopuming, ZCode]
 created_at: 2026-09-05

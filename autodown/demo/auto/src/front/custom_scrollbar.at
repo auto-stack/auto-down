@@ -71,7 +71,10 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
             // 为已用 handler 使生成器发射函数+defineEmits 声明（未引用
             // handler 过滤器，plan 015 P1#4）。
             div {
-                class: "custom-scrollbar-thumb w-[8px] rounded bg-black/30",
+                // PLAN-058 T12（#8 thumb 观感）：bg-black/30 命名色+透明度
+                // 修饰符 VM class 解析器不认（静默跳过→thumb 无底色不可
+                // 见）；arbitrary hex /N 形态（plan 503 支持）语义等价。
+                class: "custom-scrollbar-thumb w-[8px] rounded bg-[#000000]/30",
                 style_obj: { height: f"${.thumb_h}px", transform: f"translateY(${.thumb_t}px)" },
                 onmousedown.stop: .ThumbDown($event)
             }

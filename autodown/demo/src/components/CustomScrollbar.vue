@@ -103,7 +103,7 @@ function update_scrollTop(v: any): void {
 
 <template>
     <div class="custom-scrollbar absolute top-0 right-0 bottom-0 w-[10px] h-full" :class="{ visible: props.visible || hovering == 1 || dragging == 1, dragging: dragging == 1 }" ref="trackEl" @mousedown="TrackDown($event)" @mouseenter="hover_change(1)" @mouseleave="hover_change(0)" @mousemove="e => Move(e.clientX - (e.currentTarget as HTMLElement).getBoundingClientRect().left, e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top)" @mouseup="ThumbUp" @scroll="update_scrollTop">
-      <div class="custom-scrollbar-thumb w-[8px] rounded bg-black/30" :style="({ height: `${thumb_h}px`, transform: `translateY(${thumb_t}px)` } as any)" @mousedown.stop="ThumbDown($event)" />
+      <div class="custom-scrollbar-thumb w-[8px] rounded bg-[#000000]/30" :style="({ height: `${thumb_h}px`, transform: `translateY(${thumb_t}px)` } as any)" @mousedown.stop="ThumbDown($event)" />
     </div>
 
 </template>

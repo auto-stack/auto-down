@@ -1,17 +1,49 @@
 <!-- App component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { StreamingRenderer } from '@autodown/engine'
+import { AutoDownEditor, StreamingRenderer } from '@autodown/engine'
 
 import { initial_content } from '@/ext/src/front/utils/showcase_ext'
 import { log_ready, is_vue } from '@/ext/src/front/utils/showcase_ext'
 
 
 const content = ref<string>('')
+const stream_text = ref<string>('')
+const show_edit = ref<boolean>(true)
+const show_view = ref<boolean>(true)
+const show_stream = ref<boolean>(true)
 
 const emit = defineEmits<{
   Init: []
+  Edit: [string]
+  ToggleEdit: []
+  ToggleView: []
+  ToggleStream: []
 }>()
+
+function Edit(md: any): void {
+  content.value = md;
+
+  emit('Edit', md)
+}
+
+function ToggleEdit(): void {
+  show_edit.value = !show_edit.value;
+
+  emit('ToggleEdit')
+}
+
+function ToggleStream(): void {
+  show_stream.value = !show_stream.value;
+
+  emit('ToggleStream')
+}
+
+function ToggleView(): void {
+  show_view.value = !show_view.value;
+
+  emit('ToggleView')
+}
 
 onMounted(() => {
   content.value = initial_content();
@@ -24,7 +56,44 @@ onMounted(() => {
 
 <template>
     <div class="app">
-      <StreamingRenderer :source="content" :streaming="false" :scroll-sync="true" :dark-mode="false" :key="'StreamingRenderer-1'" />
+      <header class="toolbar">
+        <div class="toolbar-inner">
+          <span>AutoDown Showcase</span>
+          <div class="toggles">
+            <button :class="(show_edit ? 'toggle toggle-on toggle-edit' : 'toggle toggle-edit')" @click="ToggleEdit">edit</button>
+            <button :class="(show_view ? 'toggle toggle-on toggle-view' : 'toggle toggle-view')" @click="ToggleView">view</button>
+            <button :class="(show_stream ? 'toggle toggle-on toggle-stream' : 'toggle toggle-stream')" @click="ToggleStream">stream</button>
+          </div>
+        </div>
+      </header>
+      <main class="workspace">
+        <div class="flex flex-row h-full w-full">
+          <template v-if="show_edit">
+            <div class="flex flex-col flex-1 min-w-0 overflow-hidden col-edit">
+              <div class="pane-header">
+                <span>edit</span>
+              </div>
+              <AutoDownEditor :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" :dark-mode="false" class="flex-1 min-h-0 overflow-hidden" @update:modelValue="Edit" :key="'AutoDownEditor-1'" />
+            </div>
+          </template>
+          <template v-if="show_view">
+            <div class="flex flex-col flex-1 min-w-0 overflow-hidden col-view">
+              <div class="pane-header">
+                <span>view</span>
+              </div>
+              <StreamingRenderer :source="content" :streaming="false" :scroll-sync="true" :dark-mode="false" class="flex-1 min-h-0 overflow-hidden py-4 px-5" :key="'StreamingRenderer-2'" />
+            </div>
+          </template>
+          <template v-if="show_stream">
+            <div class="flex flex-col flex-1 min-w-0 overflow-hidden col-stream">
+              <div class="pane-header">
+                <span>stream</span>
+              </div>
+              <StreamingRenderer :source="stream_text" :streaming="true" :scroll-sync="true" :dark-mode="false" class="flex-1 min-h-0 overflow-hidden py-4 px-5" :key="'StreamingRenderer-3'" />
+            </div>
+          </template>
+        </div>
+      </main>
     </div>
 
 </template>
@@ -42,5 +111,126 @@ onMounted(() => {
             height: 100vh;
             font-family: system-ui, -apple-system, sans-serif;
             color: #111827;
+        }
+
+        .toolbar {
+            flex-shrink: 0;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .toolbar-inner {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggles {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toggle {
+            padding: 4px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #fff;
+            color: #374151;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .toggle-on {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        .workspace {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .pane-header {
+            flex-shrink: 0;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #6b7280;
+            background: #f3f4f6;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Utility classes (vue track: the DSL maps row/col/flex-1 to real
+         * CSS via these scoped rules — demo app.at precedent; VM track
+         * consumes row/col/flex-1 natively, unknown tokens zero-effect). */
+        .flex {
+            display: flex;
+        }
+
+        .flex-row {
+            flex-direction: row;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .flex-1 {
+            flex: 1 1 0%;
+        }
+
+        .h-full {
+            height: 100%;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .min-w-0 {
+            min-width: 0;
+        }
+
+        .min-h-0 {
+            min-height: 0;
+        }
+
+        .overflow-hidden {
+            overflow: hidden;
+        }
+
+        .px-5 {
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+        }
+
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        :deep(.autodown-editor) {
+            border: none;
+            border-radius: 0;
+        }
+
+        :deep(.autodown-editor-content-wrapper) {
+            height: 100%;
+            overflow-y: auto;
         }
     </style>

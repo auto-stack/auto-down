@@ -1,10 +1,12 @@
 // app.at — PLAN-059 three-mode showcase root widget (demo app.at precedent,
 // plan 040 contract flow). File name is the auto CLI's hardcoded entry
 // (src/front/app.at), hence the demo-shared name despite the showcase app.
-// Single static pane at T2: model content seeded from the ext fn via the
-// top-level use.web.fn port, one `autodown` renderer at streaming:false.
-// The three-mode layout (T3), feed state machine (T5), vue timer bridge
-// (T6) and theme settings (T7) grow into this file in later tasks.
+//
+// Three-mode layout (T3): toolbar with edit/view/stream toggles (any
+// combination, all on by default) over a row of conditional cols —
+// edit = autodown_editor (content single source, oninput writes .content),
+// view = autodown streaming:false (live mirror), stream = autodown
+// streaming:true on .stream_text (feed window, T5 fills the state machine).
 //
 // Regenerate + deploy: bash gen/regen.sh (from showcase/auto).
 // VM track: D:/autostack/auto-lang/target/debug/auto.exe run -r vm.
@@ -16,19 +18,96 @@ widget App {
         fn: log_ready, is_vue from "src/front/utils/showcase_ext.ts"
     }
 
-    msg Msg { Init }
+    msg Msg { Init, Edit(str), ToggleEdit, ToggleView, ToggleStream }
 
     model {
         // The document body — single source (edit writes, view mirrors).
         var content str = ""
+        // Stream feed window (T5 state machine); empty until a replay.
+        var stream_text str = ""
+        // Pane visibility toggles — any combination, all on by default.
+        var show_edit bool = true
+        var show_view bool = true
+        var show_stream bool = true
     }
 
     view {
         div {
             class: "app",
-            autodown {
-                content: .content,
-                streaming: false
+            header {
+                class: "toolbar",
+                div {
+                    class: "toolbar-inner",
+                    text "AutoDown Showcase"
+                    div {
+                        class: "toggles",
+                        // Pane toggles — the e2e anchors are the class names
+                        // (toggle-edit/toggle-view/toggle-stream); showcase
+                        // owns its own anchors, the demo .left/.right set is
+                        // untouched (PLAN-059 冻结锚零扰动).
+                        native_button "edit" {
+                            onclick: .ToggleEdit,
+                            class: if .show_edit { "toggle toggle-on toggle-edit" } else { "toggle toggle-edit" }
+                        }
+                        native_button "view" {
+                            onclick: .ToggleView,
+                            class: if .show_view { "toggle toggle-on toggle-view" } else { "toggle toggle-view" }
+                        }
+                        native_button "stream" {
+                            onclick: .ToggleStream,
+                            class: if .show_stream { "toggle toggle-on toggle-stream" } else { "toggle toggle-stream" }
+                        }
+                    }
+                }
+            }
+            main {
+                class: "workspace",
+                row {
+                    class: "h-full w-full",
+                    if .show_edit {
+                        col {
+                            class: "flex-1 min-w-0 overflow-hidden col-edit",
+                            div {
+                                class: "pane-header",
+                                text "edit"
+                            }
+                            autodown_editor {
+                                content: .content,
+                                placeholder: "Start typing...",
+                                class: "flex-1 min-h-0 overflow-hidden",
+                                oninput: .Edit
+                            }
+                        }
+                    }
+                    if .show_view {
+                        col {
+                            class: "flex-1 min-w-0 overflow-hidden col-view",
+                            div {
+                                class: "pane-header",
+                                text "view"
+                            }
+                            autodown {
+                                content: .content,
+                                streaming: false,
+                                class: "flex-1 min-h-0 overflow-hidden py-4 px-5"
+                            }
+                        }
+                    }
+                    if .show_stream {
+                        col {
+                            class: "flex-1 min-w-0 overflow-hidden col-stream",
+                            div {
+                                class: "pane-header",
+                                text "stream"
+                            }
+                            autodown {
+                                content: .stream_text,
+                                streaming: true,
+                                class: "flex-1 min-h-0 overflow-hidden py-4 px-5"
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -40,6 +119,18 @@ widget App {
                 log_ready("init")
             }
         }
+        .Edit(md) -> {
+            .content = md
+        }
+        .ToggleEdit -> {
+            .show_edit = !.show_edit
+        }
+        .ToggleView -> {
+            .show_view = !.show_view
+        }
+        .ToggleStream -> {
+            .show_stream = !.show_stream
+        }
     }
 
     style {
@@ -49,6 +140,127 @@ widget App {
             height: 100vh;
             font-family: system-ui, -apple-system, sans-serif;
             color: #111827;
+        }
+
+        .toolbar {
+            flex-shrink: 0;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .toolbar-inner {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggles {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toggle {
+            padding: 4px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #fff;
+            color: #374151;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .toggle-on {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        .workspace {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .pane-header {
+            flex-shrink: 0;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #6b7280;
+            background: #f3f4f6;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Utility classes (vue track: the DSL maps row/col/flex-1 to real
+         * CSS via these scoped rules — demo app.at precedent; VM track
+         * consumes row/col/flex-1 natively, unknown tokens zero-effect). */
+        .flex {
+            display: flex;
+        }
+
+        .flex-row {
+            flex-direction: row;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .flex-1 {
+            flex: 1 1 0%;
+        }
+
+        .h-full {
+            height: 100%;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .min-w-0 {
+            min-width: 0;
+        }
+
+        .min-h-0 {
+            min-height: 0;
+        }
+
+        .overflow-hidden {
+            overflow: hidden;
+        }
+
+        .px-5 {
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+        }
+
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        :deep(.autodown-editor) {
+            border: none;
+            border-radius: 0;
+        }
+
+        :deep(.autodown-editor-content-wrapper) {
+            height: 100%;
+            overflow-y: auto;
         }
     }
 }

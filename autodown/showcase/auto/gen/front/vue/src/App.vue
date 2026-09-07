@@ -3,8 +3,8 @@
 import { ref, onMounted } from 'vue'
 import { StreamingRenderer } from '@autodown/engine'
 
-import { initial_content } from '../auto/src/front/utils/showcase_ext'
-import { log_ready, is_vue } from '../auto/src/front/utils/showcase_ext'
+import { initial_content } from '@/ext/src/front/utils/showcase_ext'
+import { log_ready, is_vue } from '@/ext/src/front/utils/showcase_ext'
 
 
 const content = ref<string>('')

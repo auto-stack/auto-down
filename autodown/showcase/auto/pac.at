@@ -1,0 +1,7 @@
+name: "showcase-app"
+version: "1.0.0"
+scene: "ui"
+render: "vue"
+npm_deps: {
+  "@autodown/engine": "link:../../../../../../packages/engine"
+}

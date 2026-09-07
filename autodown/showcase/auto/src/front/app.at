@@ -1,0 +1,54 @@
+// app.at — PLAN-059 three-mode showcase root widget (demo app.at precedent,
+// plan 040 contract flow). File name is the auto CLI's hardcoded entry
+// (src/front/app.at), hence the demo-shared name despite the showcase app.
+// Single static pane at T2: model content seeded from the ext fn via the
+// top-level use.web.fn port, one `autodown` renderer at streaming:false.
+// The three-mode layout (T3), feed state machine (T5), vue timer bridge
+// (T6) and theme settings (T7) grow into this file in later tasks.
+//
+// Regenerate + deploy: bash gen/regen.sh (from showcase/auto).
+// VM track: D:/autostack/auto-lang/target/debug/auto.exe run -r vm.
+
+use.web.fn initial_content from "src/front/utils/showcase_ext.at"
+
+widget App {
+    use {
+        fn: log_ready, is_vue from "src/front/utils/showcase_ext.ts"
+    }
+
+    msg Msg { Init }
+
+    model {
+        // The document body — single source (edit writes, view mirrors).
+        var content str = ""
+    }
+
+    view {
+        div {
+            class: "app",
+            autodown {
+                content: .content,
+                streaming: false
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            .content = initial_content()
+            if is_vue() != None {
+                log_ready("init")
+            }
+        }
+    }
+
+    style {
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+            color: #111827;
+        }
+    }
+}

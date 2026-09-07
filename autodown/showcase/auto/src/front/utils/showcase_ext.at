@@ -1,0 +1,17 @@
+// showcase_ext.at — the showcase ext PORT anchor (PLAN-059; demo
+// app_ext.at precedent PLAN-047 T2). The stable name that callers reference:
+// on the VM target the Plan 442 A3 adapter chain resolves this file to its
+// sibling showcase_ext.vm.at (GENERATED from sample.ts by
+// scripts/gen-vm-content.mjs — T4). On the vue target this file is never
+// loaded: the SFC keeps importing the hand-written showcase_ext.ts, and
+// auto-man's ext copy is fed by the widget use block only. Deliberately
+// code-free — the port has exactly one implementation per track and neither
+// is written here.
+//
+// Plan 424 pure-forwarding port declaration (demo app_ext.at precedent,
+// PLAN-051 T6): newer auto-man transpilers reject a use-block `.at` fn
+// module with neither top-level fns nor use.web bindings. This forwarding
+// declaration is the sanctioned code-free form — the vue transpile turns it
+// into a re-export of the real showcase_ext.ts symbol, and the VM chain
+// still resolves X.vm.at FIRST (ext_stubs.rs resolve_vm_at_adapter order).
+use.web.fn initial_content from "src/front/utils/showcase_ext.ts"

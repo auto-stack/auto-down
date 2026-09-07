@@ -56,107 +56,107 @@ export function noNodes(): WNode[] {
 }
 
 export function codeNode(language: string, code: string, loading: boolean): WNode {
-    return WNode("code_block", null, null, language, code, loading, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("code_block", null, null, language, code, loading, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function headingNode(level: number, children: WNode[]): WNode {
-    return WNode("heading", null, level, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("heading", null, level, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function thematicNode(): WNode {
-    return WNode("thematic_break", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("thematic_break", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function quoteNode(children: WNode[]): WNode {
-    return WNode("blockquote", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("blockquote", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function paraNode(children: WNode[]): WNode {
-    return WNode("paragraph", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("paragraph", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function tableNode(header: WNode[], rows: WNode[], loading: boolean): WNode {
-    return WNode("table", null, null, null, null, loading, null, null, null, null, null, header, rows, null, null, null, null, null, null, null, null);
+    return new WNode("table", null, null, null, null, loading, null, null, null, null, null, header, rows, null, null, null, null, null, null, null, null);
 }
 
 export function rowNode(cells: WNode[]): WNode {
-    return WNode("table_row", null, null, null, null, null, null, null, null, null, cells, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("table_row", null, null, null, null, null, null, null, null, null, cells, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function cellNode(isHeaderCell: boolean, children: WNode[], align: string): WNode {
-    return WNode("table_cell", null, null, null, null, null, children, null, null, null, null, null, null, isHeaderCell, align, null, null, null, null, null, null);
+    return new WNode("table_cell", null, null, null, null, null, children, null, null, null, null, null, null, isHeaderCell, align, null, null, null, null, null, null);
 }
 
 export function listNode(ordered: boolean, startN: number | null, items: WNode[]): WNode {
-    return WNode("list", null, null, null, null, null, null, ordered, startN, items, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("list", null, null, null, null, null, null, ordered, startN, items, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function itemNode(children: WNode[], checkedFlag: boolean | null): WNode {
-    return WNode("list_item", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, checkedFlag);
+    return new WNode("list_item", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, checkedFlag);
 }
 
 export function strongNode(children: WNode[]): WNode {
-    return WNode("strong", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("strong", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function emNode(children: WNode[]): WNode {
-    return WNode("emphasis", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("emphasis", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function underlineNode(children: WNode[]): WNode {
-    return WNode("underline", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("underline", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function strikeNode(children: WNode[]): WNode {
-    return WNode("strikethrough", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("strikethrough", null, null, null, null, null, children, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function codeSpanNode(code: string): WNode {
-    return WNode("inline_code", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("inline_code", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function hardbreakNode(): WNode {
-    return WNode("hardbreak", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("hardbreak", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function imageNode(src: string, alt: string): WNode {
-    return WNode("image", null, null, null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, src, alt, null);
+    return new WNode("image", null, null, null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, src, alt, null);
 }
 
 export function linkNode(href: string, title: string | null, textContent: string, children: WNode[], loading: boolean): WNode {
-    return WNode("link", null, null, null, null, loading, children, null, null, null, null, null, null, null, null, href, title, textContent, null, null, null);
+    return new WNode("link", null, null, null, null, loading, children, null, null, null, null, null, null, null, null, href, title, textContent, null, null, null);
 }
 
 export function wikilinkNode(title: string): WNode {
-    return WNode("wikilink", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
+    return new WNode("wikilink", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
 }
 
 export function mathInlineNode(code: string): WNode {
-    return WNode("math_inline", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("math_inline", null, null, null, code, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function calloutNode(ctype: string, title: string, children: WNode[]): WNode {
-    return WNode("callout", null, null, ctype, null, null, children, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
+    return new WNode("callout", null, null, ctype, null, null, children, null, null, null, null, null, null, null, null, null, title, null, null, null, null);
 }
 
 export function detailsNode(summary: string, openFlag: boolean, children: WNode[]): WNode {
-    return WNode("details", null, null, null, null, openFlag, children, null, null, null, null, null, null, null, null, null, null, summary, null, null, null);
+    return new WNode("details", null, null, null, null, openFlag, children, null, null, null, null, null, null, null, null, null, null, summary, null, null, null);
 }
 
 export function queryNode(query: string): WNode {
-    return WNode("query", query, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("query", query, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function embedNode(src: string): WNode {
-    return WNode("embed", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, src, null, null);
+    return new WNode("embed", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, src, null, null);
 }
 
 export function mathNode(src: string): WNode {
-    return WNode("math_block", null, null, null, src, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("math_block", null, null, null, src, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function mermaidNode(src: string): WNode {
-    return WNode("mermaid", null, null, null, src, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("mermaid", null, null, null, src, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function isMathOpenLine(line: string): boolean {
@@ -187,7 +187,7 @@ export function isMathCloseLine(line: string): boolean {
 }
 
 export function rawTextNode(content: string): WNode {
-    return WNode("text", content, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("text", content, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export class DelimScan {
@@ -1024,7 +1024,7 @@ export function compOpenScan(line: string): CompScan | null {
     }
     const name = line.slice(nameStart, q);
     const argstr = line.slice(q + 1, r);
-    return CompScan(name, argstr, r);
+    return new CompScan(name, argstr, r);
 }
 
 export function isContainerCompOpen(line: string): boolean {
@@ -1032,7 +1032,7 @@ export function isContainerCompOpen(line: string): boolean {
     if (found == null) {
         return false;
     }
-    const cs = found ?? CompScan("", "", 0);
+    const cs = found ?? new CompScan("", "", 0);
     if (cs.name != "callout") {
         if (cs.name != "details") {
             return false;
@@ -1316,7 +1316,7 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
 
         const comp = compOpenScan(line);
         if (comp != null) {
-            const cs = comp ?? CompScan("", "", 0);
+            const cs = comp ?? new CompScan("", "", 0);
             if (isContainerCompOpen(line)) {
                 
 
@@ -1890,7 +1890,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (startsWithAt(line, "***", i)) {
                 let afterT = scanDelim(line, i, "***", false, isFinal);
                 if (afterT != null) {
-                    const scT = afterT ?? DelimScan(0, "");
+                    const scT = afterT ?? new DelimScan(0, "");
                     if (buf != "") {
                         nodes.push(textNode(buf));
                         buf = "";
@@ -1903,7 +1903,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (startsWithAt(line, "**", i)) {
                 let after = scanDelim(line, i, "**", true, isFinal);
                 if (after != null) {
-                    const sc = after ?? DelimScan(0, "");
+                    const sc = after ?? new DelimScan(0, "");
                     if (buf != "") {
                         nodes.push(textNode(buf));
                         buf = "";
@@ -1915,7 +1915,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             }
             let afterEm = scanDelim(line, i, "*", false, isFinal);
             if (afterEm != null) {
-                const scEm = afterEm ?? DelimScan(0, "");
+                const scEm = afterEm ?? new DelimScan(0, "");
                 if (buf != "") {
                     nodes.push(textNode(buf));
                     buf = "";
@@ -1935,7 +1935,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (startsWithAt(line, "___", i)) {
                 let afterU3 = scanDelim(line, i, "___", false, isFinal);
                 if (afterU3 != null) {
-                    const scU3 = afterU3 ?? DelimScan(0, "");
+                    const scU3 = afterU3 ?? new DelimScan(0, "");
                     if (buf != "") {
                         nodes.push(textNode(buf));
                         buf = "";
@@ -1951,7 +1951,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (startsWithAt(line, "__", i)) {
                 let afterU2 = scanDelim(line, i, "__", false, isFinal);
                 if (afterU2 != null) {
-                    const scU2 = afterU2 ?? DelimScan(0, "");
+                    const scU2 = afterU2 ?? new DelimScan(0, "");
                     if (buf != "") {
                         nodes.push(textNode(buf));
                         buf = "";
@@ -1963,7 +1963,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             }
             let afterU = scanDelim(line, i, "_", false, isFinal);
             if (afterU != null) {
-                const scU = afterU ?? DelimScan(0, "");
+                const scU = afterU ?? new DelimScan(0, "");
                 if (buf != "") {
                     nodes.push(textNode(buf));
                     buf = "";
@@ -1980,7 +1980,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (startsWithAt(line, "~~", i)) {
                 let afterS = scanDelim(line, i, "~~", false, isFinal);
                 if (afterS != null) {
-                    const scS = afterS ?? DelimScan(0, "");
+                    const scS = afterS ?? new DelimScan(0, "");
                     if (buf != "") {
                         nodes.push(textNode(buf));
                         buf = "";
@@ -2065,7 +2065,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             if (startsWithAt(line, "![", i)) {
                 let imgAfter = scanLink(line, i + 1, isFinal, seenCode);
                 if (imgAfter != null) {
-                    const img = imgAfter ?? LinkScan(0, "", "", false, null, "");
+                    const img = imgAfter ?? new LinkScan(0, "", "", false, null, "");
                     if (buf != "") {
                         nodes.push(textNode(buf));
                         buf = "";
@@ -2116,7 +2116,7 @@ export function parseInlineLine(line: string, isFinal: boolean): WNode[] {
             }
             let after = scanLink(line, i, isFinal, seenCode);
             if (after != null) {
-                const lk = after ?? LinkScan(0, "", "", false, null, "");
+                const lk = after ?? new LinkScan(0, "", "", false, null, "");
                 if (buf != "") {
                     nodes.push(textNode(buf));
                     buf = "";
@@ -2413,7 +2413,7 @@ export function textNode(content: string): WNode {
 
     s = s.split(String.fromCharCode(1)).join("\"");
     s = s.split(String.fromCharCode(2)).join("'");
-    return WNode("text", s, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    return new WNode("text", s, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
 
 export function isWordCharCode(c: number): boolean {
@@ -2763,7 +2763,7 @@ export function scanDelim(line: string, i: number, delim: string, autoCloseWhenF
     }
     if (close != -1) {
         let next: number = afterStart + close + Number(delim.length);
-        return DelimScan(next, innerText);
+        return new DelimScan(next, innerText);
     }
     if (!autoCloseWhenFinal) {
         if (isFinal) {
@@ -2778,7 +2778,7 @@ export function scanDelim(line: string, i: number, delim: string, autoCloseWhenF
     if (inner.char_at(0) == 32) {
         return null;
     }
-    return DelimScan(Number(line.length), inner);
+    return new DelimScan(Number(line.length), inner);
 }
 
 export function findBacktickRun(line: string, from: number, count: number): number {
@@ -2946,12 +2946,12 @@ export function scanLink(line: string, i: number, isFinal: boolean, seenCode: bo
             if (seenCode) {
                 urlTitle = null;
             }
-            return LinkScan(Number(line.length), text, urlHref, true, urlTitle, tailText);
+            return new LinkScan(Number(line.length), text, urlHref, true, urlTitle, tailText);
         }
         if (isBareDomain(frag)) {
-            return LinkScan(Number(line.length), text, "http://" + frag, true, null, "");
+            return new LinkScan(Number(line.length), text, "http://" + frag, true, null, "");
         }
-        return LinkScan(Number(line.length), text, "", true, null, "");
+        return new LinkScan(Number(line.length), text, "", true, null, "");
     }
     let inner = line.slice(after + 1, end);
     let href = inner;
@@ -2976,7 +2976,7 @@ export function scanLink(line: string, i: number, isFinal: boolean, seenCode: bo
             }
         }
     }
-    return LinkScan(end + 1, text, href, false, title, "");
+    return new LinkScan(end + 1, text, href, false, title, "");
 }
 
 export function extractAnchorBlock(text: string): string {

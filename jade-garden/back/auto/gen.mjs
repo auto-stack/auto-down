@@ -5,8 +5,9 @@
 //   a2r  -> ../server/src/<name>_gen.rs (included as `mod <name>_gen;`)
 //
 // Post-fixes (mirrors engine auto/parser/gen.mjs):
-//   B1  a2ts omits `new` for struct constructions in return/let positions ->
-//       rewrite `<Struct>(` -> `new <Struct>(` for the module's structs.
+//   B1  RETIRED (plan 577 / auto-lang PLAN-577 T4a): a2ts inserts `new` for
+//       struct constructions at every position — the per-source struct lists
+//       and the rewrite were removed.
 //   C1  Auto's `char_at` intrinsic -> JS `charCodeAt` (plan 019).
 //   Rust output verbatim + `#![allow(non_snake_case, dead_code)]` header
 //   (a2r keeps the Auto camelCase identifiers).
@@ -29,53 +30,33 @@ const AUTO_EXE =
 const SOURCES = [
   {
     at: 'parser.at',
-    structs: ['PBlock', 'AnchorSplit', 'FrontSplit', 'PropPair'],
   },
   {
     at: 'links.at',
-    structs: ['LineBlock', 'WikiLinkHit', 'LinkScan', 'TagScan'],
   },
   {
     at: 'tasks.at',
-    structs: ['TaskScanItem'],
   },
   {
     at: 'query.at',
-    structs: ['QueryTask', 'QueryEvalOut', 'QueryEvalOut2', 'OffsetDays'],
   },
   {
     at: 'agenda.at',
-    structs: ['AgTaskRef', 'AgGroup'],
   },
   {
     at: 'srs.at',
-    structs: ['PropPair', 'Qa', 'SrsBlock', 'SrsCardRaw', 'SchedOut'],
   },
   {
     at: 'search.at',
-    structs: ['SrPage', 'SrBlock', 'SrHit'],
   },
   {
     at: 'unlinked.at',
-    structs: ['UnlinkedHit'],
   },
   {
     at: 'linkgraph.at',
-    structs: ['LgPage', 'LgAlias', 'LgLink', 'LgBacklink', 'LgOutlink', 'LgNode', 'LgEdge', 'LgGraph'],
   },
   {
     at: 'api.at',
-    structs: [
-      'ApiError',
-      'WorkspaceInfo', 'WorkspaceOpenRequest', 'FileNode', 'FileCreateRequest',
-      'FileRenameRequest', 'FileDeleteRequest', 'UploadAssetResponse', 'WikiDoc',
-      'Backlink', 'Outlink', 'GraphNode', 'GraphEdge', 'GraphData',
-      'SearchResult', 'SearchResponse', 'TaskItem', 'TasksResponse',
-      'AgendaGroup', 'AgendaResponse', 'QueryResponse', 'Card', 'CardsResponse',
-      'CardReviewRequest', 'CardReviewResponse', 'ImportResult', 'SyncStatus',
-      'WhiteboardShape', 'WhiteboardDoc', 'BlockInfo', 'BlockResponse',
-      'UnlinkedRef', 'UnlinkedRefsResponse',
-    ],
     // Contract is client-facing only — the backend serde DTOs stay
     // hand-written (runtime authority); no a2r emission.
     tsOnly: true,
@@ -83,16 +64,6 @@ const SOURCES = [
     front: true,
   },
 ]
-
-const ctorRegexFor = (structs) =>
-  new RegExp(`(?<!new )\\b(${structs.join('|')})\\(`, 'g')
-
-// B1: struct constructions need `new` outside argument position.
-const b1 = (ctorRe, src) =>
-  src
-    .split('\n')
-    .map((line) => (line.startsWith('export class ') ? line : line.replace(ctorRe, 'new $1(')))
-    .join('\n')
 
 // C1 (plan 019): Auto's snake_case `char_at` is not a JS string method —
 // rewrite to charCodeAt (code-unit semantics, engine-parity with chars().nth
@@ -132,14 +103,12 @@ const stripApiFnBlocks = (s) => {
 function emit(source) {
   const atPath = path.join(here, source.at)
   const stem = path.basename(source.at, '.at')
-  const ctorRe = ctorRegexFor(source.structs)
-
   // ---- TS twin ----
   execFileSync(AUTO_EXE, ['trans', '--path', atPath, 'ts'], { stdio: 'ignore' })
   const rawTsPath = path.join(here, `${stem}.ts`)
   const rawTs = fs.readFileSync(rawTsPath, 'utf8')
   fs.rmSync(rawTsPath, { force: true })
-  const ts = b1(ctorRegexFor(source.structs), charAtFix(rawTs))
+  const ts = charAtFix(rawTs)
   let tsFixed = source.at === 'api.at' ? jsonAnyFix(ts) : ts
   if (source.at === 'api.at') tsFixed = stripApiFnBlocks(tsFixed)
   const outTs = path.join(here, 'gen-ts', `${stem}_gen.ts`)
@@ -202,16 +171,6 @@ function emit(source) {
     }
     fs.writeFileSync(outRs, rs)
     fs.writeFileSync(path.join(here, `${stem}.raw.rs`), rawRs)
-  }
-
-  // ---- sanity: no unresolved bare struct ctor left in TS ----
-  const bad = ts
-    .split('\n')
-    .map((l, i) => (ctorRe.test(l) && !l.startsWith('export class') ? `${i + 1}: ${l}` : ''))
-    .filter(Boolean)
-  if (bad.length) {
-    console.error(`[gen] ${source.at}: B1 left bare struct ctors:\n` + bad.join('\n'))
-    process.exit(1)
   }
 
   const targets = source.tsOnly

@@ -534,12 +534,12 @@ fn evalAt(s: &str, mut qtask: QueryTask, todayIso: &str) -> QueryEvalOut {
     }
     if startsWithStr(t.as_str(), "[[") && endsWithStr(t.as_str(), "]]") {
         let inner = t.chars().take(((t.chars().count() as i64) - 2) as usize).skip((2) as usize).collect::<String>();
-        let hit = eqAsciiIgnoreCase(qtask.title.as_str(), inner.as_str()) || containsIgnoreCase(qtask.content.as_str(), inner.as_str());
+        let mut hit = eqAsciiIgnoreCase(qtask.title.as_str(), inner.as_str()) || containsIgnoreCase(qtask.content.as_str(), inner.as_str());
         return evalOut(hit);
     }
     if startsWithStr(t.as_str(), "#") {
         let tag = t.chars().skip((1) as usize).collect::<String>();
-        let hit = containsIgnoreCase(qtask.content.as_str(), format!("{}{}", "#", tag).as_str()) || findStr(qtask.content.as_str(), format!("{}{}", format!("{}{}", "[[", tag), "]]").as_str()) >= 0;
+        let mut hit = containsIgnoreCase(qtask.content.as_str(), format!("{}{}", "#", tag).as_str()) || findStr(qtask.content.as_str(), format!("{}{}", format!("{}{}", "[[", tag), "]]").as_str()) >= 0;
         return evalOut(hit);
     }
     return evalErr(format!("{}{}", "Unknown query: ", t).as_str());

@@ -28,31 +28,32 @@
 //       annotate the `tableAttrs` local as `TableAttr[]`.
 //
 // block_model.at:
-//   B1  a2ts only inserts `new` for struct constructions in argument position;
-//       return/let positions emit bare `Type(...)` calls (TS2348) -> rewrite
-//       every `<Struct>(` construction to `new <Struct>(` (enum constructors
-//       like `Op.InsertText(` are dot-prefixed and not matched).
-//   B2  a2ts emits `export const enum`; `const enum` is unsafe across module
-//       boundaries under isolatedModules -> rewrite to `export enum`.
+//   B1  RETIRED (plan 577 / auto-lang PLAN-577 T4a): a2ts now inserts `new`
+//   for struct constructions at every position (return/let included) — the
+//   assertion-style fix stopped matching and was removed.
+//   B2  RETIRED (plan 577 / auto-lang PLAN-577 T4b): a2ts emits plain
+//   `export enum` (isolatedModules-safe) — no const-enum rewrite needed.
 //
 // markdown_parser.at (plan 016 Phase 2, moved from packages/vue/auto):
 //   M1  `use block_model:` / `use ial:` emit bare module specifiers mid-file
 //       (at the `use` site) -> rewrite to "./block-model.js" / "./ial.js" and
 //       hoist both import lines to the top of the file. M1 is shared via
 //       hoistUseImports(label, src, {from: to}).
-//   B1  same struct-`new` fix as block_model (the converter section
-//       constructs BlockNode/InlineSpan/Attr in return/let positions).
+//   B1  RETIRED (see above).
 //
 // serializer.at (plan 016 Phase 3):
 //   M1  `use block_model:` -> "./block-model.js", hoisted (same helper).
-//   B1  applied leniently (no-op today: the serializer constructs no structs
-//       outside argument position).
+//   B1  RETIRED (see above).
 //
 // Historical note (2026-08-25): the pre-existing F1 (`number | null[]`
 // precedence) and F2 (missing `export`) fixes were retired — current auto.exe
 // (auto-lang master bd629c7a) emits parenthesized union arrays and `export`
 // keywords natively. F5 (empty main() trailer strip) only ever applied to
 // sources with a `main`; none of the current sources has one.
+// Historical note (2026-09-07, plan 577): B1/B2 retired — auto-lang PLAN-577
+// T4a/T4b made the emitter natively emit `new <Struct>(` everywhere and plain
+// `enum`; the assertion-style post-fixes stopped matching (by design) and
+// were removed.
 //
 // No other manual edits are made; if any assertion fails, re-check the
 // compiler output before adjusting.
@@ -95,40 +96,9 @@ const transpile = (name) => {
   return raw
 }
 
-// B1 shared: struct constructions need `new` outside argument position
-const structNames = [
-  'SourceRange',
-  'Attr',
-  'InlineSpan',
-  'SpanSplit',
-  'BlockNode',
-  'BlockPos',
-  'Selection',
-  'EditResult',
-  'InsertTextOp',
-  'SplitBlockOp',
-  'MergeBlocksOp',
-  'SetBlockTypeOp',
-  'LiftBlockOp',
-  'WrapBlockOp',
-  'ReplaceRangeOp',
-  // plan 019 Phase 1 dual-portable rewrite: weak-tree + ial structs
-  'TableAttr',
-  'PreDoc',
-  'WNode',
-  'DelimScan',
-  'LinkScan',
-  // plan 030: $ component block opener scan
-  'CompScan',
-]
-const ctorRe = new RegExp(`(?<!new )\\b(${structNames.join('|')})\\(`, 'g')
-const addNewToStructCtors = (s) =>
-  s
-    .split('\n')
-    .map((line) =>
-      line.startsWith('export class ') ? line : line.replace(ctorRe, 'new $1(')
-    )
-    .join('\n')
+// B1/B2 struct-`new` + const-enum post-fixes RETIRED (plan 577 — the
+// assertion on B1-ial fired first: zero matches against the new emitter
+// output). No replacement needed.
 
 // C1 (plan 019): Auto's snake_case `char_at` is not a JS string method —
 // a2ts passes member calls through verbatim, so rewrite to charCodeAt.
@@ -154,7 +124,6 @@ let ial = transpile('ial')
 // real types. Only C1 (char_at -> charCodeAt) still applies.
 
 ial = charAtFix(ial)
-ial = apply('B1-ial', ial, addNewToStructCtors)
 
 writeFileSync(
   join(pkgRoot, 'src', 'parser', 'ial.ts'),
@@ -165,11 +134,6 @@ console.log('[gen] auto/ial.at -> src/ial.ts (raw kept at auto/ial.raw.ts)')
 // ------------------------------------------------------------- block_model.at
 
 let bm = transpile('block_model')
-
-// B2: const enum -> enum (before B1 so class-skip logic stays simple)
-bm = apply('B2', bm, (s) => s.replaceAll('export const enum', 'export enum'))
-// B1: struct constructions need `new` outside argument position
-bm = apply('B1', bm, addNewToStructCtors)
 
 writeFileSync(
   join(pkgRoot, 'src', 'parser', 'block-model.ts'),
@@ -203,9 +167,6 @@ md = hoistUseImports('M1', md, { block_model: './block-model.js', ial: './ial.js
 // C1: char_at -> charCodeAt (plan 019)
 md = charAtFix(md)
 
-// B1: struct constructions need `new` outside argument position
-md = apply('B1', md, addNewToStructCtors)
-
 writeFileSync(
   join(pkgRoot, 'src', 'parser', 'markdown-parser.ts'),
   headerFor('AutoDown Core — incremental markdown parser (semantic subset) + strong block-tree output.', 'markdown_parser.at') + md
@@ -218,9 +179,6 @@ let ser = transpile('serializer')
 
 // M1: rewrite + hoist the `use block_model:` import
 ser = hoistUseImports('M1', ser, { block_model: './block-model.js' })
-// B1: serializer.at constructs no structs outside argument position today;
-// run the fix leniently (no-op is fine here, unlike the parser above).
-ser = addNewToStructCtors(ser)
 
 writeFileSync(
   join(pkgRoot, 'src', 'parser', 'serializer.ts'),

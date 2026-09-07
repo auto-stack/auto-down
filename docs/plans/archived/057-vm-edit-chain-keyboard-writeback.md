@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-057
-status: reviewed
+status: archived
 feature_name: VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2）
 author: [zhaopuming]
 created_at: 2026-09-07

@@ -343,6 +343,17 @@
           "PLAN-056"
         ],
         "status": "proposed"
+      },
+      {
+        "id": "P057-2",
+        "title": "VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2） — 目标",
+        "content": "1. **真实键盘编辑回写 state.content**（048）：编辑壳内真实键盘输入（合成键/\n   物理键同路径）后 `on_change` 发布的消息携带全文 → 解释器\n   `on_with_input_for(widget, \"Edit\", Some(text))` → `.Edit(str)` 收到实参 →\n   `.content` 更新 → 右栏 renderer pane 重渲染。\n2. **doc editor MCP 逐键/拖拽合成通道**（055 D2）：净窗可 e2e 驱动编辑壳的\n   逐键键入（cell 逐字编辑）与鼠标拖拽（表格列宽拖拽、拖选）——不再只靠\n   rust 单测覆盖。\n3. 两面互为验收仪器：逐键合成走 core 真实按键处理 → 触发（1）修复后的\n   发布链——vm-smoke 一组断言同时钉死通道与回写。",
+        "file": "docs/plans/archived/057-vm-edit-chain-keyboard-writeback.md",
+        "related": [
+          "PLAN-057"
+        ],
+        "section": "goals",
+        "status": "proposed"
       }
     ],
     "architecture": [
@@ -617,7 +628,10 @@
         "related": [
           "PLAN-048"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P057-3"
+        ]
       },
       {
         "id": "P050-3",
@@ -673,7 +687,10 @@
         "related": [
           "PLAN-055"
         ],
-        "status": "stable"
+        "status": "stable",
+        "superseded_by": [
+          "P057-3"
+        ]
       },
       {
         "id": "P054-3",
@@ -695,6 +712,17 @@
         "related": [
           "PLAN-056"
         ],
+        "status": "stable"
+      },
+      {
+        "id": "P057-3",
+        "title": "VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2） — 架构方案",
+        "content": "**面 A 回写修复（auto-lang renderer.rs，解释器 dynamic 臂）**\n\n断链机理（立项期代码走查实测，执行期以先红后绿复核）：\n\n- DocEditor dynamic 臂闭包 `renderer.rs:18757-18762`：写 `INPUT_TEXT` 线程局部\n  + 返回预构造 `msg.clone()`——其 `input_value` 恒 `None`；\n- 主派发 `renderer.rs:12887` → `dynamic.rs:1238 on_with_input_for(widget,\n  \"Edit\", None)`；\n- `dynamic.rs:1299-1330` 仅在 `input_value: Some` 时把文本作为 handler 首实参\n  （`.Edit(str)` 的 str）——`None` 则无参调用，`.content` 永不更新；\n- `INPUT_TEXT` 在解释器路径**零消费**（唯一读者 `last_input_text()`\n  `renderer.rs:1067`，调用方仅 ui_gen 生成物 `ui_gen/rust.rs:1241`）——闭包里\n  的写入是解释器路径上的死代码；\n- 对照正面先例：textarea `wire_textarea_actions`（`renderer.rs:585-672`）每次\n  动作构造 `IcedMessage { widget, event, input_value: Some(text) }` 新消息——\n  textarea 真实键盘因此工作；\n- MCP `type_text` 正常的原因：VM 模式经独立订阅把 ActionMessage 直转\n  `IcedMessage`（input_value: Some，`renderer.rs:19623-19634` 注记自证）。\n\n修复：DocEditor（:18757-18762）与 CodeEditor（:18702-18708，同款闭包=同族\n潜伏，同修）两处 dynamic 臂闭包改 textarea 先例——发布时构造\n`input_value: Some(<编辑器全文>)` 的新消息。**generic 臂不动**\n（`build_autodown_editor_generic` :17960-17962 /\n`build_code_editor_generic` :18009-18010）——ui_gen 生成物路径靠\n`last_input_text()` 消费，语义保持。\n\n**面 B MCP 合成通道（auto-lang mcp_server.rs + renderer.rs 拦截臂）**\n\n- `key_press` action：payload `\"storage_key␟keyspec\"`，keyspec v1 词表 =\n  13 命名键（left/right/up/down/home/end/pageup/pagedown/enter/backspace/\n  delete/escape/tab，映射 `EditorKey`，`code_editor/core/mod.rs:73-90`）+\n  `c:X` 单字符（→`Char(char)`）；修饰键后置（见待澄清③）。\n  拦截臂 `__mcp_key`：`core.handle_input(DocInput::KeyPressed { key, text,\n  modifiers: none })` 直调（`with_font_system` 包裹，`__mcp_click` :11608-11650\n  同构）→ `out.text_changed` 时按既有发布链发 `on_change` 消息（带\n  `input_value: Some`——经面 A 修复后的同一形态）。\n- `editor_drag` action：payload `\"storage_key␟x0,y0;x1,y1;...\"` 序列 →\n  `MousePressed → MouseDragged×n → MouseReleased` 逐段 `core.handle_input`\n  （`DocInput` 三变体在 `autodown_editor/core.rs:343-368`；覆盖 055 表格列宽\n  拖拽与 048 T3 拖选面）。\n- action 枚举与工具描述同步（`mcp_server.rs:598/609`）。\n\n**面 C 验收门（auto-down vm-smoke.mjs）**\n\n- 新断言组两组，插入在现组 7（主题首帧）之后、组 8（主题翻转，必须居末）\n  之前执行（净窗纪律，组 8 注记在册）：\n  - **[group9] 逐键链路**：经 `key_press` 逐键输入短文档（≥5 字符 + Backspace\n    修正 + Enter）→ `autoui_state content` 反映全部编辑 → 右栏重渲染 → 与\n    `type_text` 打同一文档的终态逐字节相等（等价性双断言）；\n  - **[group10] 表格列拖拽**：复用组 6 表格文档，`editor_drag` 拖列边界序列 →\n    列宽变化断言（state 读数或几何）。\n- 逐键组无门控、确定性失败不吃 049 重试（组 7 先例口径）。\n\n**同构代证口径**：真实物理键盘手验不构成验收门——逐键合成与物理键共用\n`DocInput::KeyPressed` 同一 core 处理路径（043 T9/T10 D2 签核先例：以同构\n消息合成通道代证）。可选披露臂：净窗人工敲键复核留证（执行则附 PNG/state）。",
+        "file": "docs/plans/archived/057-vm-edit-chain-keyboard-writeback.md",
+        "related": [
+          "PLAN-057"
+        ],
+        "section": "architecture",
         "status": "stable"
       }
     ],
@@ -1045,6 +1073,17 @@
           "PLAN-056"
         ],
         "status": "stable"
+      },
+      {
+        "id": "P057-4",
+        "title": "VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2） — 详细设计",
+        "content": "1. **闭包改造（面 A）**：两处 dynamic 臂闭包（`renderer.rs:18702-18708`\n   CodeEditor、:18757-18762 DocEditor）改为：\n   ```rust\n   widget = widget.on_change(move || {\n       let text = <editor_text>(&sk2);\n       IcedMessage {\n           widget: msg.widget.clone(),\n           event: msg.event.clone(),\n           input_value: Some(text),\n       }\n   });\n   ```\n   （DocEditor 取 `ade::autodown_editor_text(&sk2)`，CodeEditor 取\n   `ce::code_editor_text(&sk)`；`INPUT_TEXT` 写入在 dynamic 臂移除——该路径\n   零读者，generic 臂保持原样。）\n2. **key_press 通道（面 B-1）**：`mcp_server.rs` 枚举 + keyspec 解析函数\n   （`\"c:X\"` 与 13 命名键 → `EditorKey`；解析失败即报错返回，不静默）；\n   `renderer.rs` `__mcp_key` 拦截臂（`__mcp_click` 后同族位置）：\n   `with_font_system(|fs| core.handle_input(fs, DocInput::KeyPressed{..}, NullClipboard))`\n   → `out.text_changed` 时取 `autodown_editor_text(&sk)` 构造\n   `IcedMessage { widget/event 取编辑壳 on_change 消息, input_value: Some }`\n   返回（`iced::Task::done`）——与 type_text 订阅直转同形态；`focus_changed`\n   时 `write_ghost_state`（:11632-11647 click 臂同款）；末尾 `__noop` 回发\n   驱动重绘（Plan 482 通道，click 臂同款）。\n3. **editor_drag 通道（面 B-2）**：payload 解析出坐标序列 →\n   `MousePressed(x0,y0)` → 逐点 `MouseDragged(x,y)` → `MouseReleased` 各一\n   次 `core.handle_input`；`text_changed`/`focus_changed` 处理同上。\n4. **vm-smoke 组（面 C）**：新组执行序=组 7 后、组 8 前（组 8 居末纪律）；\n   [group9] 断言三件：`autoui_state content` 含逐键编辑结果（含 Backspace\n   修正）、右栏渲染断言（既有组 2 linkage 同口径）、`type_text` 等价终态\n   逐字节相等；[group10] 断言：拖拽前后列宽读数变化（组 6 表格文档复用）。\n   两组失败均确定性报错（不吃 049 重试）。",
+        "file": "docs/plans/archived/057-vm-edit-chain-keyboard-writeback.md",
+        "related": [
+          "PLAN-057"
+        ],
+        "section": "designs",
+        "status": "stable"
       }
     ],
     "tests": [
@@ -1371,6 +1410,17 @@
         "related": [
           "PLAN-056"
         ],
+        "status": "verified"
+      },
+      {
+        "id": "P057-5",
+        "title": "VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2） — 测试设计",
+        "content": "- **rust 单测**（auto-lang）：keyspec→EditorKey 解析全覆盖（13 命名键 +\n  `c:X` + 非法输入报错臂）；两拦截臂 payload 解析（`__mcp_click` 既有测试\n  同族位置）；闭包消息形态如可单测（IcedMessage 构造提辅助函数则直测，\n  否则经 vm-smoke 端到端覆盖并披露）。\n- **vm-smoke**：[group9]/[group10] 如上；整轮回归含组 1-8 零漂移。\n- **demo e2e**：`pnpm test:e2e` 88/88（vue 轨零回归确认）。\n- **先红后绿**：[group9] 在面 A 修复前跑——逐键后 state.content 不动（048\n  症状复现）→ 修复后绿。执行期留两读数证（红/绿各一）。",
+        "file": "docs/plans/archived/057-vm-edit-chain-keyboard-writeback.md",
+        "related": [
+          "PLAN-057"
+        ],
+        "section": "tests",
         "status": "verified"
       }
     ],
@@ -1704,6 +1754,17 @@
           "PLAN-056"
         ],
         "status": "published"
+      },
+      {
+        "id": "P057-6",
+        "title": "VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2） — 验收标准 + 复审记录",
+        "content": "1. [group9] 逐键链路：`key_press` 逐键输入（≥5 字符 + Backspace + Enter）→\n   `autoui_state content` 反映全部编辑 → 右栏重渲染 → 与 `type_text` 同文档\n   终态逐字节相等。\n2. [group10] 拖拽链路：表格列边界 `editor_drag` 序列 → 列宽变化断言成立。\n3. 回归门：vm-smoke 整轮全绿（组 1-8 零漂移 + 两组新增）；demo e2e 88/88；\n   auto-lang `cargo test` 受影响面全绿。\n4. 台账收口：DEBTS 048 行、055 D2 行销号注记；转介单③终结段（含\n   「custom_scrollbar/分数化绕道不涉——048 与 043 行分立」口径澄清）。\n5. 真实物理键盘手验为可选披露臂（043 D2 同构代证口径），不作验收门。\n\n## 复审记录\n\n**Reviewer**：zhaopuming（/auto-plan:review，2026-09-07）。**复核基线**：双侧\nworktree 已折回清场（T10），按 skill 规则对默认 checkout 复核——且 master 已\n叠并入 577/565 两期并行合并（auto-down 8b28c1d / auto-lang ecc27c81e 在上），\n全部读数取自含后续合并的现行 master（更严口径）。057 提交面核对：auto-down\na6d5ecf→7eaf55a（3 文件 +341/-146）、auto-lang 5ed1e96df→7b4d6400e（5 文件\n+640/-12），与计划宣称面一致。\n\n**逐验收判定**（全部复审期重跑，不信执行期勾选）：\n\n1. **[group9] 逐键链路 — PASS**：现行 master 重建 exe + 净窗门控态整轮，\n   `key chain` 三断言绿（`content===\"hello\\n\\nvm\"` 含 Backspace 修正、右栏\n   双段渲染、type_text 终态逐字节等价）。代码面抽查：DocEditor dynamic 臂\n   闭包发布 `input_value: Some(autodown_editor_text)`（renderer.rs 现行\n   :18920-18934 一带，PLAN-057 注记在位）、INPUT_TEXT 写入该臂已无\n   （`INPUT_TEXT.with` 剩 11 处全在 generic/ui_gen/输入面路径）。\n2. **[group10] 拖拽链路 — PASS**：同轮 `editor drag: col boundary\n   213.0,102.0;273.0,102.0 -> editor_col_widths[col0] = 273.0` 绿。\n3. **回归门 — PASS（带披露）**：①vm-smoke 门控态整轮 PASS（组 1-3/5-8 零\n   漂移 + 两组新增 + 组 8 居末）；非门控腿仍被组 4 环境债阻塞（复审重跑\n   读数逐位同执行期：left_top 240.001/right_top 237.17——待澄清④，基线\n   实证在案，追认门控态为等效验收面）。②demo e2e **88/88 全绿**（执行期\n   86/88 的 2 失败经复审重跑消解=055 D3 瞬态满载 flake，执行期基线同败\n   实证在案——待澄清⑤留档）。③auto-lang 受影响面：`--features autodown`\n   plan057 6/6、autodown_editor 81/81、mcp 20 绿+1 红\n   （`desktop_mcp_switcher_thumbs`——执行期已在 pre-057 master 基线实证\n   预存，窗口切换器缩略图面，与本计划施工面无关）。④全量门 `cargo tf\n   --no-fail-fast` 3468/3469 唯一红 `test_charts_gallery_compiles`（charts\n   既有红，577 合并消息同口径在册）。\n4. **台账收口 — PASS**：DEBTS 048 行/055 D2 行销号注记 2 处、转介单（052\n   附件）条目③终结段 1 处均现行 master 抽查在位（含「custom_scrollbar/\n   分数化绕道不涉——048 与 043 行分立」口径澄清）。\n5. **物理键盘可选披露臂 — N/A**（计划明文非验收门；同构代证口径已在\n   销号注记留档）。\n\n**遗漏/延后/workaround 清猎**（Step 3 专项）：\n\n- **遗漏**：未发现——T1-T10 均有对应 diff 与读数；group9/group10、单测\n  6 件、探针工具、台账三处全数在现行 master 到位。\n- **延后**：keyspec 修饰键余量（待澄清③）为立项期已批 v1 范围决策，非\n  执行期静默缩面；滚动腿环境债为 pre-existing（待澄清④），均非本计划\n  借口性推迟。\n- **Workaround（均已披露，无静默）**：①载荷 4 段 `sk␟widget␟event␟spec`\n  （拦截事件名占 event 槽的机械必要扩展，T3 注记）；②`autoui_editor_state`\n  探针取代 state 读数（.at 零改动约束下未声明键写不进——T7 注记）；\n  ③`VM_SKIP_SCROLL_LEG=1` 选通（非门控态硬断言保持，待澄清④）；④回声\n  守卫为执行期发现竞态的实质修复（单测钉死），非绕道。\n- **非阻断观察（N1）**：`tool_editor_state` 经 `autodown_editor(&sk)` 探测\n  未渲染编辑壳时会创建空 core 注册项（下帧 sync_external 即重建覆盖，\n  LRU 有界）——无行为影响，留档不改。\n- **非阻断观察（N2）**：计划正文括注的双仓分支名与 053/056 既定约定互换\n  （auto-lang=auto-down-057-dev / auto-down=plan-057-dev），执行按 skill\n  规则+先例落位，双侧 log 溯源已核对无误——后续计划立项文案留意对齐。\n\n**结论**：五验收全 PASS（3 带在册披露），无阻断债。spec-impact 元数据已\n填（supersedes P048-3/P055-3、new P057-1/P057-2、touched P048-2/P055-2，\n对照 .autoos/specs.json 现行 ID 核对）。status → **reviewed**，可进\n/auto-plan:merge。",
+        "file": "docs/plans/archived/057-vm-edit-chain-keyboard-writeback.md",
+        "related": [
+          "PLAN-057"
+        ],
+        "section": "reviews",
+        "status": "published"
       }
     ],
     "reports": [
@@ -2035,6 +2096,17 @@
         "related": [
           "PLAN-056"
         ],
+        "status": "published"
+      },
+      {
+        "id": "P057-1",
+        "title": "VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2） — 变更摘要",
+        "content": "auto-lang `renderer.rs` dynamic 臂 DocEditor/CodeEditor 两处 `on_change` 闭包按\ntextarea `wire_textarea_actions` 先例改为发布 `input_value: Some(text)` 的新消息\n（修复真实键盘 → `.App.Edit` → `state.content` 断链，DEBTS 048 行 / 转介单③）；\nmcp_server 新增 `key_press` / `editor_drag` 两合成 action（`__mcp_key` /\n`__mcp_drag_ade` 拦截臂，`core.handle_input` 直调 = `__mcp_click` 同信任路径，\nDEBTS 055 D2 行）；auto-down 侧 vm-smoke 增逐键与拖拽两断言组；台账三处收口。\nvue 轨零改动（engine/demo src 不动，仅 vm-smoke.mjs）。",
+        "file": "docs/plans/archived/057-vm-edit-chain-keyboard-writeback.md",
+        "related": [
+          "PLAN-057"
+        ],
+        "section": "reports",
         "status": "published"
       }
     ]

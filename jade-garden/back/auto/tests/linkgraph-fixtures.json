@@ -96,6 +96,31 @@
       }
     },
     {
+      "name": "graph bare alias target stays unresolved (Obsidian-aligned)",
+      "kind": "graph",
+      "pages": [
+        { "path": "a.ad", "title": "Alpha" },
+        { "path": "j.ad", "title": "Journal" }
+      ],
+      "aliases": [
+        { "tagName": "daily", "pagePath": "j.ad" }
+      ],
+      "links": [
+        { "sourcePage": "a.ad", "targetPage": "Journal", "context": "", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" },
+        { "sourcePage": "j.ad", "targetPage": "daily", "context": "", "sourceBlockUuid": "", "targetBlockUuid": "", "linkType": "wiki" }
+      ],
+      "title": "",
+      "expected": {
+        "nodes": [
+          { "id": "a.ad", "label": "Alpha", "degree": 1 },
+          { "id": "j.ad", "label": "Journal", "degree": 1 }
+        ],
+        "edges": [
+          { "source": "a.ad", "target": "j.ad" }
+        ]
+      }
+    },
+    {
       "name": "resolve via alias",
       "kind": "resolve",
       "pages": [{ "path": "a.ad", "title": "Alpha" }],

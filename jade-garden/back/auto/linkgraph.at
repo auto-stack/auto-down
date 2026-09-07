@@ -124,6 +124,19 @@ pub fn resolvePagePath(pages List<LgPage>, aliases List<LgAlias>, title str) str
     return ""
 }
 
+// plan 058 A3（Obsidian 口径）：title-only 解析——不扫 aliases。图谱边构造
+// 专用：裸 `[[alias]]` 链接按未解析处理（与反链 canonical-only、unlinked
+// mentions 含 alias 的三面统一为「裸 alias 写法 = 未解析」；对照 Obsidian
+// 官方文档：补全只产 `[[真标题|alias]]`，裸 alias 不作链接目标）。
+pub fn resolvePagePathByTitle(pages List<LgPage>, title str) str {
+    for p in pages {
+        if eqIgnoreCase(p.title, title) {
+            return "" + p.path
+        }
+    }
+    return ""
+}
+
 fn canonicalTitleOf(pages List<LgPage>, path str) str {
     for p in pages {
         if p.path == path {
@@ -248,7 +261,8 @@ pub fn graphData(pages List<LgPage>, aliases List<LgAlias>, links List<LgLink>) 
     var edges List<LgEdge> = []
     for l in links {
         if l.targetPage != "" {
-            let targetPath = resolvePagePath(pages, aliases, l.targetPage)
+            // plan 058 A3：title-only 解析——裸 alias target 不建边（未解析即丢）
+            let targetPath = resolvePagePathByTitle(pages, l.targetPage)
             if targetPath != "" {
                 let sourceId = l.sourcePage
                 let targetId = targetPath

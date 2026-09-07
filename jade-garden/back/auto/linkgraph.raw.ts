@@ -160,6 +160,15 @@ export function resolvePagePath(pages: LgPage[], aliases: LgAlias[], title: stri
     return "";
 }
 
+export function resolvePagePathByTitle(pages: LgPage[], title: string): string {
+    for (const p of pages) {
+        if (eqIgnoreCase(p.title, title)) {
+            return "" + p.path;
+        }
+    }
+    return "";
+}
+
 export function canonicalTitleOf(pages: LgPage[], path: string): string {
     for (const p of pages) {
         if (p.path == path) {
@@ -286,7 +295,9 @@ export function graphData(pages: LgPage[], aliases: LgAlias[], links: LgLink[]):
     let edges: LgEdge[] = [];
     for (const l of links) {
         if (l.targetPage != "") {
-            const targetPath = resolvePagePath(pages, aliases, l.targetPage);
+            
+
+            const targetPath = resolvePagePathByTitle(pages, l.targetPage);
             if (targetPath != "") {
                 const sourceId = l.sourcePage;
                 const targetId = targetPath;

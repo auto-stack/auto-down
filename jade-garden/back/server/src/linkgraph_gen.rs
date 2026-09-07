@@ -127,6 +127,15 @@ pub fn resolvePagePath(pages: Vec<LgPage>, aliases: Vec<LgAlias>, title: &str) -
     return "".to_string();
 }
 
+pub fn resolvePagePathByTitle(pages: Vec<LgPage>, title: &str) -> String {
+    for p in &pages {
+        if eqIgnoreCase(p.title.as_str(), title) {
+            return format!("{}{}", "", p.path);
+        }
+    }
+    return "".to_string();
+}
+
 fn canonicalTitleOf(pages: Vec<LgPage>, path: &str) -> String {
     for p in &pages {
         if p.path == path {
@@ -238,7 +247,7 @@ fn sortNodes(items: Vec<LgNode>) -> Vec<LgNode> {
     return out;
 }
 
-pub fn graphData(mut pages: Vec<LgPage>, mut aliases: Vec<LgAlias>, links: Vec<LgLink>) -> LgGraph {
+pub fn graphData(mut pages: Vec<LgPage>, aliases: Vec<LgAlias>, links: Vec<LgLink>) -> LgGraph {
 
 
     let mut nodes: Vec<LgNode> = vec![];
@@ -250,7 +259,9 @@ pub fn graphData(mut pages: Vec<LgPage>, mut aliases: Vec<LgAlias>, links: Vec<L
     let mut edges: Vec<LgEdge> = vec![];
     for l in &links {
         if l.targetPage != "" {
-            let targetPath = resolvePagePath(pages.clone(), aliases.clone(), l.targetPage.as_str());
+            
+
+            let targetPath = resolvePagePathByTitle(pages.clone(), l.targetPage.as_str());
             if targetPath != "" {
                 let sourceId = l.sourcePage.clone();
                 let targetId = targetPath.to_string();

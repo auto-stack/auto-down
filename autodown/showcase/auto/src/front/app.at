@@ -15,7 +15,11 @@ use.web.fn initial_content from "src/front/utils/showcase_ext.at"
 
 widget App {
     use {
+        // PLAN-059 T6: vue 轨 timer 桥（demo useDemoAppBridge 先例——零参
+        // composable 在 setup 顶层调用，reactive bag 经 .showcaseBridge 消费）。
+        // use 块条目间不带尾逗号（解析器硬约束，060 记录于计划待澄清）。
         fn: log_ready, is_vue from "src/front/utils/showcase_ext.ts"
+        composable: useShowcaseBridge from "src/front/utils/showcase_ext.ts"
     }
 
     msg Msg { Init, Edit(str), ToggleEdit, ToggleView, ToggleStream,
@@ -41,14 +45,20 @@ widget App {
     }
 
     computed {
+        // PLAN-059 T6: feed 窗口三态按轨分派（demo csb_* 先例）——vue 轨
+        // 读 showcaseBridge（timer 在 ext 桥驱动），VM 轨读 widget state
+        //（T5 状态机驱动）。stream 栏绑定 feed_text。
+        feed_text => is_vue() != None ? .showcaseBridge.streamText : .stream_text
+        feed_source_text => is_vue() != None ? .showcaseBridge.feedSource : .feed_source
+        feed_playing => is_vue() != None ? .showcaseBridge.playing : .playing
         // feed 进度/落定态（栏头状态行同源）。表达式面：str.len()/substr/
         // str() 数字转串/三元链——aura_view_builder 9392+ 内建面 + jade
         // tabs_store.at 的 handler 内 len()/Math.min 双轨先例。
-        stream_len => .stream_text.len()
-        source_len => .feed_source.len()
-        settled => .source_len > 0 && .stream_text == .feed_source
+        stream_len => .feed_text.len()
+        source_len => .feed_source_text.len()
+        settled => .source_len > 0 && .feed_text == .feed_source_text
         stream_pct => .source_len == 0 ? 100 : (.stream_len * 100 / .source_len)
-        stream_status => .settled ? "已落定" : (.playing ? ("流式中 " + .stream_pct.str() + "%") : (.source_len > 0 ? "已暂停" : "未开始"))
+        stream_status => .settled ? "已落定" : (.feed_playing ? ("流式中 " + .stream_pct.str() + "%") : (.source_len > 0 ? "已暂停" : "未开始"))
     }
 
     view {
@@ -86,7 +96,7 @@ widget App {
                         if is_vue() != None {
                             native_button "▶" {
                                 onclick: .FeedPlayPause,
-                                class: if .playing { "ctrl-btn ctrl-on btn-play" } else { "ctrl-btn btn-play" }
+                                class: if .feed_playing { "ctrl-btn ctrl-on btn-play" } else { "ctrl-btn btn-play" }
                             }
                         }
                         native_button "⏭" {
@@ -157,7 +167,7 @@ widget App {
                                 span { class: "pane-status", text .stream_status }
                             }
                             autodown {
-                                content: .stream_text,
+                                content: .feed_text,
                                 streaming: true,
                                 class: "flex-1 min-h-0 overflow-hidden py-4 px-5"
                             }
@@ -193,26 +203,49 @@ widget App {
         // FeedPlayPause：从未开始或已落定态起播都取新快照；暂停/续播走
         // 原快照（播放期间编辑 content 不干扰本次重播）。
         .FeedReset -> {
-            .feed_source = .content
-            .stream_text = ""
-            .playing = false
-        }
-        .FeedStep -> {
-            if .feed_source.len() > 0 && .stream_text.len() < .feed_source.len() {
-                .stream_text = .feed_source.substr(0, Math.min(.feed_source.len(), .stream_text.len() + .speed))
+            if is_vue() != None {
+                .showcaseBridge.reset(.content)
             } else {
+                .feed_source = .content
+                .stream_text = ""
                 .playing = false
             }
         }
-        .FeedPlayPause -> {
-            if .feed_source == "" || .stream_text == .feed_source {
-                .feed_source = .content
-                .stream_text = ""
+        .FeedStep -> {
+            if is_vue() != None {
+                .showcaseBridge.step()
+            } else {
+                if .feed_source.len() > 0 && .stream_text.len() < .feed_source.len() {
+                    .stream_text = .feed_source.substr(0, Math.min(.feed_source.len(), .stream_text.len() + .speed))
+                } else {
+                    .playing = false
+                }
             }
-            .playing = !.playing
+        }
+        .FeedPlayPause -> {
+            if is_vue() != None {
+                if .showcaseBridge.feedSource == "" || .showcaseBridge.streamText == .showcaseBridge.feedSource {
+                    .showcaseBridge.reset(.content)
+                }
+                .showcaseBridge.playing = !.showcaseBridge.playing
+                if .showcaseBridge.playing {
+                    .showcaseBridge.play()
+                } else {
+                    .showcaseBridge.stop()
+                }
+            } else {
+                if .feed_source == "" || .stream_text == .feed_source {
+                    .feed_source = .content
+                    .stream_text = ""
+                }
+                .playing = !.playing
+            }
         }
         .FeedSetSpeed(v) -> {
             .speed = v
+            if is_vue() != None {
+                .showcaseBridge.speed = v
+            }
         }
     }
 

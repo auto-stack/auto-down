@@ -5,6 +5,7 @@
 # Gates: any "Warning: Failed to compile" (stale-SFC trap) or gen vue-tsc
 # error aborts BEFORE deploy — no silent stale deploys.
 set -e
+set -o pipefail
 cd "$(dirname "$0")/.."
 AUTO=${AUTO:-D:/autostack/auto-lang/target/debug/auto.exe}
 
@@ -17,8 +18,11 @@ mkdir -p gen/front/vue/src/src
 cp ../src/sample.ts gen/front/vue/src/src/sample.ts
 
 "$AUTO" build -d . 2>&1 | tee gen/build.log
-if grep -q "Warning: Failed to compile" gen/build.log; then
-  echo "!!! BUILD HAD COMPILE WARNINGS — aborting deploy" >&2
+if grep -q "Failed to compile" gen/build.log; then
+  # covers both the stale-SFC trap ("Warning: Failed to compile") and hard
+  # parse errors ("Error: × Failed to compile app.at") — T6 hole found: a
+  # bare parse error exited 0 through the old warning-only grep + tee pipe.
+  echo "!!! BUILD FAILED TO COMPILE — aborting deploy" >&2
   exit 1
 fi
 if grep -q "error TS" gen/build.log; then

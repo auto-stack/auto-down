@@ -15,6 +15,7 @@
 //   vue-only bridge write (VM state has no template-ref fields).
 // - log_ready — init console marker (the demo logSave/logCancel slot).
 
+import { reactive, ref } from 'vue'
 import { SAMPLE_DOCUMENT } from '../../../../src/sample'
 
 export function initial_content(): string {
@@ -27,4 +28,67 @@ export function is_vue(): boolean {
 
 export function log_ready(msg: string) {
   console.log('showcase:', msg)
+}
+
+// PLAN-059 T6: vue-track autoplay bridge — the timer lives here (jade
+// precedent: the DSL has no tick primitive; timers are an ext escape-hatch,
+// vue-only). The feed window state is BRIDGE-OWNED on the vue track (demo
+// csb_* dual-source precedent: computeds dispatch by track — vue reads the
+// bridge, VM reads the widget model state the T5 state machine drives).
+// Widget handlers guard with is_vue() and delegate to reset/step/play/stop.
+export function useShowcaseBridge() {
+  const feedSource = ref('')
+  const streamText = ref('')
+  const playing = ref(false)
+  const speed = ref(96)
+  let timer: number | null = null
+
+  // One feed tick: grow the window by `speed` chars; auto-settle at the end
+  // (playing flag down + interval cleared — no dangling timer, plan T6).
+  function step() {
+    if (streamText.value.length < feedSource.value.length) {
+      const next = Math.min(feedSource.value.length, streamText.value.length + speed.value)
+      streamText.value = feedSource.value.slice(0, next)
+      if (next >= feedSource.value.length) {
+        playing.value = false
+        stop()
+      }
+    } else {
+      playing.value = false
+      stop()
+    }
+  }
+
+  function play() {
+    stop()
+    timer = window.setInterval(step, 90)
+  }
+
+  function stop() {
+    if (timer !== null) {
+      window.clearInterval(timer)
+      timer = null
+    }
+  }
+
+  // Replay semantics (mirrors the VM arm of .FeedReset / .FeedPlayPause):
+  // snapshot the CURRENT content — edits during playback don't disturb the
+  // running replay; the next replay takes a fresh snapshot.
+  function reset(src: string) {
+    stop()
+    feedSource.value = src
+    streamText.value = ''
+    playing.value = false
+  }
+
+  return reactive({
+    feedSource,
+    streamText,
+    playing,
+    speed,
+    step,
+    play,
+    stop,
+    reset,
+  })
 }

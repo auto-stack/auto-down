@@ -5,6 +5,9 @@ import { AutoDownEditor, StreamingRenderer } from '@autodown/engine'
 
 import { initial_content } from '@/ext/src/front/utils/showcase_ext'
 import { log_ready, is_vue } from '@/ext/src/front/utils/showcase_ext'
+import { useShowcaseBridge } from '@/ext/src/front/utils/showcase_ext'
+
+const showcaseBridge = useShowcaseBridge()
 
 
 const content = ref<string>('')
@@ -16,11 +19,14 @@ const feed_source = ref<string>('')
 const playing = ref<boolean>(false)
 const speed = ref<number>(96)
 
-const stream_len = computed<any>(() => stream_text.value.length)
-const source_len = computed<any>(() => feed_source.value.length)
-const settled = computed<boolean>(() => source_len.value > 0 && stream_text.value === feed_source.value)
+const feed_text = computed<any>(() => (is_vue() != null ? showcaseBridge.streamText : stream_text.value))
+const feed_source_text = computed<any>(() => (is_vue() != null ? showcaseBridge.feedSource : feed_source.value))
+const feed_playing = computed<any>(() => (is_vue() != null ? showcaseBridge.playing : playing.value))
+const stream_len = computed<any>(() => feed_text.value.length)
+const source_len = computed<any>(() => feed_source_text.value.length)
+const settled = computed<boolean>(() => source_len.value > 0 && feed_text.value === feed_source_text.value)
 const stream_pct = computed<any>(() => (source_len.value === 0 ? 100 : stream_len.value * 100 / source_len.value))
-const stream_status = computed<any>(() => (settled.value ? '已落定' : (playing.value ? '流式中 ' + stream_pct.value.toString() + '%' : (source_len.value > 0 ? '已暂停' : '未开始'))))
+const stream_status = computed<any>(() => (settled.value ? '已落定' : (feed_playing.value ? '流式中 ' + stream_pct.value.toString() + '%' : (source_len.value > 0 ? '已暂停' : '未开始'))))
 
 const emit = defineEmits<{
   Init: []
@@ -41,32 +47,41 @@ function Edit(md: any): void {
 }
 
 function FeedPlayPause(): void {
-  if (feed_source.value == '' || stream_text.value == feed_source.value) {feed_source.value = content.value;
+  if (is_vue() != null) {if (showcaseBridge.feedSource == '' || showcaseBridge.streamText == showcaseBridge.feedSource) {showcaseBridge.reset(content.value);
+  }showcaseBridge.playing = !showcaseBridge.playing;
+  if (showcaseBridge.playing) {showcaseBridge.play();
+  } else {showcaseBridge.stop();
+  }} else {if (feed_source.value == '' || stream_text.value == feed_source.value) {feed_source.value = content.value;
   stream_text.value = '';
+  }playing.value = !playing.value;
   }
-  playing.value = !playing.value;
 
   emit('FeedPlayPause')
 }
 
 function FeedReset(): void {
-  feed_source.value = content.value;
+  if (is_vue() != null) {showcaseBridge.reset(content.value);
+  } else {feed_source.value = content.value;
   stream_text.value = '';
   playing.value = false;
+  }
 
   emit('FeedReset')
 }
 
 function FeedSetSpeed(v: any): void {
   speed.value = v;
+  if (is_vue() != null) {showcaseBridge.speed = v;
+  }
 
   emit('FeedSetSpeed', v)
 }
 
 function FeedStep(): void {
-  if (feed_source.value.length > 0 && stream_text.value.length < feed_source.value.length) {stream_text.value = feed_source.value.substring(0, (0) + (Math.min(feed_source.value.length, stream_text.value.length + speed.value)));
+  if (is_vue() != null) {showcaseBridge.step();
+  } else {if (feed_source.value.length > 0 && stream_text.value.length < feed_source.value.length) {stream_text.value = feed_source.value.substring(0, (0) + (Math.min(feed_source.value.length, stream_text.value.length + speed.value)));
   } else {playing.value = false;
-  }
+  }}
 
   emit('FeedStep')
 }
@@ -110,7 +125,7 @@ onMounted(() => {
           </div>
           <div class="stream-controls">
             <template v-if="is_vue() != null">
-              <button :class="(playing ? 'ctrl-btn ctrl-on btn-play' : 'ctrl-btn btn-play')" @click="FeedPlayPause">▶</button>
+              <button :class="(feed_playing ? 'ctrl-btn ctrl-on btn-play' : 'ctrl-btn btn-play')" @click="FeedPlayPause">▶</button>
             </template>
             <button class="ctrl-btn btn-step" @click="FeedStep">⏭</button>
             <button class="ctrl-btn btn-replay" @click="FeedReset">↻</button>
@@ -148,7 +163,7 @@ onMounted(() => {
                   <span>{{ stream_status }}</span>
                 </span>
               </div>
-              <StreamingRenderer :source="stream_text" :streaming="true" :scroll-sync="true" :dark-mode="false" class="flex-1 min-h-0 overflow-hidden py-4 px-5" :key="'StreamingRenderer-3'" />
+              <StreamingRenderer :source="feed_text" :streaming="true" :scroll-sync="true" :dark-mode="false" class="flex-1 min-h-0 overflow-hidden py-4 px-5" :key="'StreamingRenderer-3'" />
             </div>
           </template>
         </div>

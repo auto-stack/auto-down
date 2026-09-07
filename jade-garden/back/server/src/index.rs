@@ -12,11 +12,11 @@
 //!
 //! Semantics preserved from the SQLite implementation (scan equivalents
 //! of the old SQL): COLLATE NOCASE ≈ ASCII case-insensitive compare;
-//! ORDER BY reproduced where a consumer saw ordered rows. Known latent
-//! quirk carried over unchanged: index_file removes the page's blocks
-//! before the uuid stability lookup runs, so that lookup never hits and
-//! block uuids regenerate on every save (pre-existing behavior, logged
-//! in the plan — fixing it is a separate semantic decision).
+//! ORDER BY reproduced where a consumer saw ordered rows. The SQLite-era
+//! quirk "uuid stability lookup runs after the page's rows are removed"
+//! was fixed in plan 058: ^id-anchored blocks now keep their uuid across
+//! re-indexes (the lookup runs against a pre-delete snapshot), while
+//! unanchored blocks regenerate their uuid on every save by design.
 
 use crate::block::{generate_uuid, Block, BlockKind};
 use crate::links_gen;
@@ -116,10 +116,23 @@ impl Index {
             .map(|d| d.as_secs() as i64)
             .unwrap_or(0);
 
-        // Remove old data for this page. NOTE: this runs before the uuid
-        // stability lookup below, exactly like the SQL flow — the lookup
-        // therefore never hits and uuids regenerate per save (preserved
-        // quirk, see module docs).
+        // Snapshot the page's anchored (block_id -> uuid) pairs before the
+        // removal below, so re-indexing keeps ^id-anchored blocks on their
+        // existing uuids (plan 058: the lookup used to run after the delete
+        // and never hit — the SQLite-era quirk).
+        let old_anchored: Vec<(String, String)> = self
+            .data
+            .blocks
+            .iter()
+            .filter(|b| b.page_path == rel)
+            .filter_map(|b| {
+                b.block_id
+                    .as_ref()
+                    .map(|bid| (bid.clone(), b.uuid.clone()))
+            })
+            .collect();
+
+        // Remove old data for this page.
         self.data.blocks.retain(|b| b.page_path != rel);
         self.data.links.retain(|l| l.source_page != rel);
         self.data.tags.retain(|t| t.page_path != rel);
@@ -134,35 +147,44 @@ impl Index {
             mtime,
         });
 
-        for block in &parsed.blocks {
-            // Preserved quirk: always empty (rows were removed above).
-            let uuid = if let Some(bid) = &block.block_id {
-                self.data
-                    .blocks
-                    .iter()
-                    .find(|b| b.page_path == rel && b.block_id.as_deref() == Some(bid))
-                    .map(|b| b.uuid.clone())
-                    .unwrap_or_else(generate_uuid)
-            } else {
-                generate_uuid()
-            };
+        let new_rows: Vec<BlockRow> = parsed
+            .blocks
+            .iter()
+            .map(|block| {
+                // Anchored blocks reuse the pre-delete uuid; unanchored
+                // blocks get a fresh one per save (first match wins).
+                let uuid = if let Some(bid) = &block.block_id {
+                    old_anchored
+                        .iter()
+                        .find(|(old_bid, _)| old_bid == bid)
+                        .map(|(_, uuid)| uuid.clone())
+                        .unwrap_or_else(generate_uuid)
+                } else {
+                    generate_uuid()
+                };
 
-            let props_json = serde_json::to_string(&block.properties).unwrap_or_default();
-            self.data.blocks.push(BlockRow {
-                uuid,
-                page_path: rel.clone(),
-                block_id: block.block_id.clone(),
-                kind: kind_str(block.kind),
-                content: block.content.clone(),
-                properties: props_json,
-                line_start: block.line_start,
-                line_end: block.line_end,
-            });
-        }
+                let props_json =
+                    serde_json::to_string(&block.properties).unwrap_or_default();
+                BlockRow {
+                    uuid,
+                    page_path: rel.clone(),
+                    block_id: block.block_id.clone(),
+                    kind: kind_str(block.kind),
+                    content: block.content.clone(),
+                    properties: props_json,
+                    line_start: block.line_start,
+                    line_end: block.line_end,
+                }
+            })
+            .collect();
+        self.data.blocks.extend(new_rows.iter().cloned());
 
-        // Extract links, tags, and aliases from raw text.
+        // Extract links, tags, and aliases from raw text. Link/tag rows are
+        // built against the stabilized BlockRow uuids (plan 058 A2) — the
+        // parser stamps its own ephemeral uuids per parse and those never
+        // matched a stored row.
         let (_, body) = split_frontmatter(text);
-        let links = extract_links(&body, &rel, &parsed.blocks);
+        let links = extract_links(&body, &rel, &new_rows);
         self.data.links.extend(links);
 
         let aliases = extract_aliases(&parsed.frontmatter);
@@ -173,7 +195,7 @@ impl Index {
                 block_uuid: alias.block_uuid,
             });
         }
-        for tag in extract_tags(&body, &rel, &parsed.blocks) {
+        for tag in extract_tags(&body, &rel, &new_rows) {
             self.data.tags.push(TagRow {
                 page_path: tag.page_path,
                 tag_name: tag.tag_name,
@@ -631,7 +653,7 @@ fn rel_path(wiki: &Path, path: &Path) -> String {
         .replace('\\', "/")
 }
 
-fn extract_links(body: &str, source_page: &str, blocks: &[Block]) -> Vec<LinkRow> {
+fn extract_links(body: &str, source_page: &str, blocks: &[BlockRow]) -> Vec<LinkRow> {
     let line_blocks: Vec<links_gen::LineBlock> = blocks
         .iter()
         .map(|b| links_gen::LineBlock {
@@ -657,7 +679,7 @@ fn opt_string(s: String) -> Option<String> {
     (!s.is_empty()).then_some(s)
 }
 
-fn extract_tags(body: &str, page_path: &str, blocks: &[Block]) -> Vec<TagRow> {
+fn extract_tags(body: &str, page_path: &str, blocks: &[BlockRow]) -> Vec<TagRow> {
     let line_blocks: Vec<links_gen::LineBlock> = blocks
         .iter()
         .map(|b| links_gen::LineBlock {
@@ -730,6 +752,69 @@ mod tests {
         let outlinks = idx.outlinks("Alpha").unwrap();
         assert_eq!(outlinks.len(), 1);
         assert_eq!(outlinks[0].target_page.as_deref(), Some("B"));
+    }
+
+    #[test]
+    fn anchored_block_uuid_stable_across_saves() {
+        let mut idx = Index::open_in_memory().unwrap();
+        let text = "# A\n\n- item ^anchor\n";
+        idx.index_file(Path::new("/wiki"), Path::new("/wiki/A.ad"), text, "A")
+            .unwrap();
+        let v1 = idx.find_block_in_page("A", "anchor").unwrap().unwrap().uuid;
+        // Re-index the same file (a save): the ^id-anchored block keeps its uuid.
+        idx.index_file(Path::new("/wiki"), Path::new("/wiki/A.ad"), text, "A")
+            .unwrap();
+        let v2 = idx.find_block_in_page("A", "anchor").unwrap().unwrap().uuid;
+        assert_eq!(v1, v2);
+        // The stabilized uuid also resolves through find_block.
+        assert!(idx.find_block(&v1).unwrap().is_some());
+    }
+
+    #[test]
+    fn unanchored_block_uuid_regenerates_per_save() {
+        let mut idx = Index::open_in_memory().unwrap();
+        let text = "# A\n\nplain paragraph\n";
+        idx.index_file(Path::new("/wiki"), Path::new("/wiki/A.ad"), text, "A")
+            .unwrap();
+        let v1 = idx.data.blocks[0].uuid.clone();
+        idx.index_file(Path::new("/wiki"), Path::new("/wiki/A.ad"), text, "A")
+            .unwrap();
+        let v2 = idx.data.blocks[0].uuid.clone();
+        assert_ne!(v1, v2);
+    }
+
+    #[test]
+    fn link_and_tag_rows_reference_block_uuids() {
+        let mut idx = Index::open_in_memory().unwrap();
+        let text = "# A\n\nLink to [[B]]. ^ref\n\n- item with #tag\n";
+        idx.index_file(Path::new("/wiki"), Path::new("/wiki/A.ad"), text, "A")
+            .unwrap();
+        // Every block-scoped link/tag row must point at a BlockRow uuid of
+        // the same page (they used to reference the parser's per-parse
+        // ephemeral uuids and never matched a stored row).
+        for l in &idx.data.links {
+            if let Some(sbu) = &l.source_block_uuid {
+                assert!(
+                    idx.data.blocks.iter().any(|b| &b.uuid == sbu),
+                    "link row uuid {sbu} not in blocks"
+                );
+            }
+        }
+        for t in &idx.data.tags {
+            if let Some(bu) = &t.block_uuid {
+                assert!(
+                    idx.data.blocks.iter().any(|b| &b.uuid == bu),
+                    "tag row uuid {bu} not in blocks"
+                );
+            }
+        }
+        // The anchored block's row is what the link row points at.
+        let row = idx.find_block_in_page("A", "ref").unwrap().unwrap().uuid;
+        assert!(idx
+            .data
+            .links
+            .iter()
+            .any(|l| l.source_block_uuid.as_deref() == Some(&row)));
     }
 
     #[test]

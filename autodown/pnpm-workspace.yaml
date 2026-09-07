@@ -2,3 +2,4 @@ packages:
   - 'packages/*'
   - 'demo'
   - 'stream-demo'
+  - 'showcase'

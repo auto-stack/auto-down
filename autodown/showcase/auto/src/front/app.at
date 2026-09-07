@@ -18,7 +18,9 @@ widget App {
         fn: log_ready, is_vue from "src/front/utils/showcase_ext.ts"
     }
 
-    msg Msg { Init, Edit(str), ToggleEdit, ToggleView, ToggleStream }
+    msg Msg { Init, Edit(str), ToggleEdit, ToggleView, ToggleStream,
+              // PLAN-059 T5: feed 状态机——重播快照/步进/播放暂停/三档速度。
+              FeedStep, FeedReset, FeedPlayPause, FeedSetSpeed(int) }
 
     model {
         // The document body — single source (edit writes, view mirrors).
@@ -29,6 +31,24 @@ widget App {
         var show_edit bool = true
         var show_view bool = true
         var show_stream bool = true
+        // PLAN-059 T5 feed 状态机：feed_source = 重播开始时的 content 快照
+        //（播放期间继续编辑不影响本次重播，再播取新快照）；playing 仅 vue
+        // 轨真驱动（T6 timer），VM 轨步进代用（DEBTS 059 豁免行）；speed =
+        // 字符/步三档（24|96|384 × 90ms tick）。
+        var feed_source str = ""
+        var playing bool = false
+        var speed int = 96
+    }
+
+    computed {
+        // feed 进度/落定态（栏头状态行同源）。表达式面：str.len()/substr/
+        // str() 数字转串/三元链——aura_view_builder 9392+ 内建面 + jade
+        // tabs_store.at 的 handler 内 len()/Math.min 双轨先例。
+        stream_len => .stream_text.len()
+        source_len => .feed_source.len()
+        settled => .source_len > 0 && .stream_text == .feed_source
+        stream_pct => .source_len == 0 ? 100 : (.stream_len * 100 / .source_len)
+        stream_status => .settled ? "已落定" : (.playing ? ("流式中 " + .stream_pct.str() + "%") : (.source_len > 0 ? "已暂停" : "未开始"))
     }
 
     view {
@@ -56,6 +76,41 @@ widget App {
                         native_button "stream" {
                             onclick: .ToggleStream,
                             class: if .show_stream { "toggle toggle-on toggle-stream" } else { "toggle toggle-stream" }
+                        }
+                    }
+                    // PLAN-059 T5: stream 控制组——重播/步进/速度三档；▶
+                    // 仅 vue 轨（timer 走 ext 逃生舱，VM 无 tick 原语，DEBTS
+                    // 059 豁免行；VM 轨 ⏭ 步进代用）。
+                    div {
+                        class: "stream-controls",
+                        if is_vue() != None {
+                            native_button "▶" {
+                                onclick: .FeedPlayPause,
+                                class: if .playing { "ctrl-btn ctrl-on btn-play" } else { "ctrl-btn btn-play" }
+                            }
+                        }
+                        native_button "⏭" {
+                            onclick: .FeedStep,
+                            class: "ctrl-btn btn-step"
+                        }
+                        native_button "↻" {
+                            onclick: .FeedReset,
+                            class: "ctrl-btn btn-replay"
+                        }
+                        div {
+                            class: "speed-select",
+                            native_button "慢" {
+                                onclick: .FeedSetSpeed(24),
+                                class: if .speed == 24 { "ctrl-btn speed-btn-on speed-lo" } else { "ctrl-btn speed-lo" }
+                            }
+                            native_button "中" {
+                                onclick: .FeedSetSpeed(96),
+                                class: if .speed == 96 { "ctrl-btn speed-btn-on speed-mid" } else { "ctrl-btn speed-mid" }
+                            }
+                            native_button "快" {
+                                onclick: .FeedSetSpeed(384),
+                                class: if .speed == 384 { "ctrl-btn speed-btn-on speed-hi" } else { "ctrl-btn speed-hi" }
+                            }
                         }
                     }
                 }
@@ -99,6 +154,7 @@ widget App {
                             div {
                                 class: "pane-header",
                                 text "stream"
+                                span { class: "pane-status", text .stream_status }
                             }
                             autodown {
                                 content: .stream_text,
@@ -130,6 +186,33 @@ widget App {
         }
         .ToggleStream -> {
             .show_stream = !.show_stream
+        }
+        // PLAN-059 T5 feed 状态机。FeedReset：快照 content → feed_source、
+        // 清空 stream 窗口（再次重播取新快照）。FeedStep：前缀切片步进
+        //（str.len()/substr/Math.min 双轨内建面），到头自动熄播放旗。
+        // FeedPlayPause：从未开始或已落定态起播都取新快照；暂停/续播走
+        // 原快照（播放期间编辑 content 不干扰本次重播）。
+        .FeedReset -> {
+            .feed_source = .content
+            .stream_text = ""
+            .playing = false
+        }
+        .FeedStep -> {
+            if .feed_source.len() > 0 && .stream_text.len() < .feed_source.len() {
+                .stream_text = .feed_source.substr(0, Math.min(.feed_source.len(), .stream_text.len() + .speed))
+            } else {
+                .playing = false
+            }
+        }
+        .FeedPlayPause -> {
+            if .feed_source == "" || .stream_text == .feed_source {
+                .feed_source = .content
+                .stream_text = ""
+            }
+            .playing = !.playing
+        }
+        .FeedSetSpeed(v) -> {
+            .speed = v
         }
     }
 
@@ -189,6 +272,40 @@ widget App {
             overflow: hidden;
         }
 
+        .stream-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .ctrl-btn {
+            padding: 4px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #fff;
+            color: #374151;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .ctrl-on {
+            background: #10b981;
+            border-color: #10b981;
+            color: #fff;
+        }
+
+        .speed-select {
+            display: flex;
+            gap: 4px;
+            margin-left: 4px;
+        }
+
+        .speed-btn-on {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
         .pane-header {
             flex-shrink: 0;
             height: 32px;
@@ -202,6 +319,15 @@ widget App {
             color: #6b7280;
             background: #f3f4f6;
             border-bottom: 1px solid #e5e7eb;
+        }
+
+        .pane-status {
+            margin-left: auto;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 11px;
+            color: #6b7280;
         }
 
         /* Utility classes (vue track: the DSL maps row/col/flex-1 to real

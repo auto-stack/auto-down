@@ -58,6 +58,32 @@ fn q_i64(q: &serde_json::Value, key: &str, default: i64) -> i64 {
     q_str(q, key).and_then(|s| s.parse().ok()).unwrap_or(default)
 }
 
+/// PLAN-058 T14：信封 body 字符串字段读取。
+fn body_str(body: &serde_json::Value, key: &str) -> Result<String, ApiError> {
+    body.get(key)
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| ApiError::bad_request(format!("missing field `{key}`")))
+}
+
+/// PLAN-058 T14：信封 body base64 字段解码。
+fn body_b64(body: &serde_json::Value, key: &str) -> Result<Vec<u8>, ApiError> {
+    let s = body_str(body, key)?;
+    b64_decode(&s).map_err(|e| ApiError::bad_request(format!("invalid base64 `{key}`: {e}")))
+}
+
+fn b64_encode(data: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(data)
+}
+
+fn b64_decode(s: &str) -> Result<Vec<u8>, String> {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD
+        .decode(s.trim())
+        .map_err(|e| e.to_string())
+}
+
 fn q_bool(q: &serde_json::Value, key: &str, default: bool) -> bool {
     q_str(q, key).map(|s| s == "true").unwrap_or(default)
 }
@@ -108,10 +134,16 @@ fn route_result(
             Ok(json!(null))
         }
 
-        // Assets (multipart) — binary bodies cannot cross the VM envelope.
-        ("POST", ["api", "assets", "upload"]) => Err(ApiError::bad_request(
-            "assets upload is not served by the VM backend (multipart unsupported)",
-        )),
+        // PLAN-058 T14（转介⑥）：三路由 base64-in-JSON 信封收口（022
+        // Phase 3 D4 豁免就此销）——二进制以 data_b64 字段过 JSON 信封
+        // （默认路线，058 待澄清①）：上传 {name, data_b64}、导入
+        // {data_b64}、导出回 {format, encoding, data}。
+        ("POST", ["api", "assets", "upload"]) => {
+            let name = body_str(body, "name")?;
+            let bytes = body_b64(body, "data_b64")?;
+            let path = crate::assets::upload_asset_core(state, &name, &bytes)?;
+            Ok(json!({ "path": path }))
+        }
 
 
         ("GET", ["api", "wiki", ..]) => {
@@ -172,14 +204,25 @@ fn route_result(
             Ok(ok_json(&crate::srs::review_card_impl(state, req)?))
         }
 
-        // Import / Export — binary zip and multipart cannot cross the VM
-        // envelope (e2e does not exercise these; plan-noted limitation).
-        ("GET", ["api", "export", "markdown"]) => Err(ApiError::bad_request(
-            "export is not served by the VM backend (binary payload unsupported)",
-        )),
-        ("POST", ["api", "import", "markdown"]) => Err(ApiError::bad_request(
-            "import is not served by the VM backend (multipart unsupported)",
-        )),
+        // PLAN-058 T14（转介⑥）：导出 zip 经 base64 过信封（同一
+        // export_markdown_core，axum 壳的 binary 响应语义不动）。
+        ("GET", ["api", "export", "markdown"]) => {
+            let zip = crate::import_export::export_markdown_core(state)?;
+            let data = b64_encode(&zip);
+            Ok(json!({
+                "format": "zip",
+                "encoding": "base64",
+                "data": data,
+            }))
+        }
+        ("POST", ["api", "import", "markdown"]) => {
+            let bytes = body_b64(body, "data_b64")?;
+            let imported = crate::import_export::import_markdown_core(state, &bytes)
+                .map_err(ApiError::bad_request)?;
+            crate::links::rebuild_index_sync(state.clone())
+                .map_err(ApiError::bad_request)?;
+            Ok(json!({ "imported": imported }))
+        }
 
         // Sync
         ("GET", ["api", "sync", "status"]) => Ok(ok_json(&crate::sync::sync_status_impl())),
@@ -214,5 +257,115 @@ fn route_result(
         _ => Err(ApiError::bad_request(format!(
             "No VM route for {method} {path}"
         ))),
+    }
+}
+
+#[cfg(test)]
+mod plan058_tests {
+    use super::*;
+    use crate::state::AppState;
+    use std::sync::Arc;
+
+    fn make_workspace() -> (tempfile::TempDir, Arc<AppState>) {
+        let tmp = tempfile::tempdir().unwrap();
+        let wiki = tmp.path().join("wiki");
+        std::fs::create_dir(&wiki).unwrap();
+        let state = Arc::new(AppState::with_workspace_root(tmp.path().to_path_buf()));
+        (tmp, state)
+    }
+
+    fn envelope(method: &str, path: &str, body: serde_json::Value) -> String {
+        json!({
+            "method": method,
+            "path": path,
+            "query": {},
+            "body": body,
+        })
+        .to_string()
+    }
+
+    /// PLAN-058 T14（转介⑥）：base64 信封三路由往返——导出 zip → 删源
+    /// → 导入回灌 → 文件与索引恢复（桌面形态通道的端到端判据）。
+    #[test]
+    fn vm_envelope_export_import_roundtrip() {
+        let (tmp, state) = make_workspace();
+        let wiki = state.wiki_dir().unwrap();
+        std::fs::write(
+            wiki.join("note.ad"),
+            "---
+title: Note
+---
+
+Link to [[Other]].
+".replace("\n", "
+"),
+        )
+        .unwrap();
+        std::fs::write(wiki.join("other.ad"), "# Other
+").unwrap();
+        crate::links::rebuild_index_sync(state.clone()).unwrap();
+
+        // Export over the VM envelope.
+        let resp = dispatch(&state, &envelope("GET", "/api/export/markdown", serde_json::Value::Null))
+            .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&resp).unwrap();
+        assert_eq!(v["status"], 200, "export dispatch: {resp}");
+        assert_eq!(v["body"]["format"], "zip");
+        assert_eq!(v["body"]["encoding"], "base64");
+        let b64 = v["body"]["data"].as_str().unwrap();
+        assert!(!b64.is_empty());
+
+        // Drop the source file, then import the archive back.
+        std::fs::remove_file(wiki.join("note.ad")).unwrap();
+        let resp2 = dispatch(
+            &state,
+            &envelope(
+                "POST",
+                "/api/import/markdown",
+                json!({ "data_b64": b64 }),
+            ),
+        )
+        .unwrap();
+        let v2: serde_json::Value = serde_json::from_str(&resp2).unwrap();
+        assert_eq!(v2["status"], 200, "import dispatch: {resp2}");
+        assert_eq!(v2["body"]["imported"], 2, "both .md restored");
+        let restored = std::fs::read_to_string(wiki.join("note.ad")).unwrap();
+        assert!(restored.contains("Link to [[Other]]"), "content restored");
+
+        // Index follows the rebuild (backlinks reachable through the same state).
+        let resp3 = dispatch(
+            &state,
+            &envelope("GET", "/api/backlinks/Other", serde_json::Value::Null),
+        )
+        .unwrap();
+        assert!(resp3.contains("note.ad"), "index rebuilt after import: {resp3}");
+        drop(tmp);
+    }
+
+    /// PLAN-058 T14：资产上传 base64 信封。
+    #[test]
+    fn vm_envelope_asset_upload() {
+        let (tmp, state) = make_workspace();
+        let payload = b"png-bytes-PLAN058".to_vec();
+        let b64 = {
+            use base64::Engine;
+            base64::engine::general_purpose::STANDARD.encode(&payload)
+        };
+        let resp = dispatch(
+            &state,
+            &envelope(
+                "POST",
+                "/api/assets/upload",
+                json!({ "name": "shot img.png", "data_b64": b64 }),
+            ),
+        )
+        .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&resp).unwrap();
+        assert_eq!(v["status"], 200, "upload dispatch: {resp}");
+        let path = v["body"]["path"].as_str().unwrap();
+        assert!(path.starts_with("assets/"), "relative path: {path}");
+        let disk = state.wiki_dir().unwrap().join(path);
+        assert_eq!(std::fs::read(&disk).unwrap(), payload, "bytes on disk");
+        drop(tmp);
     }
 }

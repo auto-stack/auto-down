@@ -137,10 +137,20 @@ pub fn delete_file(path str) {
 
 // ------------------------------------------------------ assets
 
-// ROUTE: POST /api/assets/upload  (multipart: file → UploadAssetResponse)
-// 无 #[api] fn——multipart 不过 VM 信封（Phase 3 D4 登记偏差），门检豁免。
+// ROUTE: POST /api/assets/upload  (web: multipart file；VM: AssetUploadRequest base64)
+// PLAN-058 T14：VM 信封 base64 形态（022 Phase 3 D4 豁免收口）。
 pub type UploadAssetResponse {
     path str
+}
+
+pub type AssetUploadRequest {
+    name str
+    data_b64 str
+}
+
+#[api(method = "POST", path = "/api/assets/upload")]
+pub fn upload_asset() UploadAssetResponse {
+    return None
 }
 
 // ------------------------------------------------------ wiki docs
@@ -367,12 +377,33 @@ pub fn review_card(page_path str, block_id str, grade int) CardReviewResponse {
 
 // ------------------------------------------------------ import / export
 
-// ROUTE: GET /api/export/markdown  → zip archive (binary blob)
-// ROUTE: POST /api/import/markdown  (multipart: archive → ImportResult)
-// 二者均无 #[api] fn——二进制 blob 与 multipart 不过 VM 信封（Phase 3 D4），
-// 门检豁免。
+// ROUTE: GET /api/export/markdown  (web: zip binary blob；VM: ExportArchive)
+// ROUTE: POST /api/import/markdown  (web: multipart；VM: ImportArchiveRequest)
+// PLAN-058 T14（转介⑥）：三路由 base64-in-JSON 过 VM 信封（022 Phase 3
+// D4 豁免收口）——web 轨 fetch 层仍走 multipart/binary 原语义（api.ts
+// 手写层独占），VM 信封侧 payload 形态如下。
 pub type ImportResult {
     imported int
+}
+
+pub type ExportArchive {
+    format str
+    encoding str
+    data str
+}
+
+#[api(method = "GET", path = "/api/export/markdown")]
+pub fn export_markdown() ExportArchive {
+    return None
+}
+
+pub type ImportArchiveRequest {
+    data_b64 str
+}
+
+#[api(method = "POST", path = "/api/import/markdown")]
+pub fn import_markdown() ImportResult {
+    return None
 }
 
 // ------------------------------------------------------ sync

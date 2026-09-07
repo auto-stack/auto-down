@@ -35,7 +35,9 @@ pub struct ExportManifest {
     pub files: Vec<String>,
 }
 
-pub async fn export_markdown(State(state): State<Arc<AppState>>) -> Result<Response, crate::error::ApiError> {
+/// PLAN-058 T14（转介⑥）：导出 zip 组装 core——axum 壳（binary body 响应）
+/// 与 VM base64 信封（vm_dispatch）共用。
+pub fn export_markdown_core(state: &AppState) -> Result<Vec<u8>, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let mut zip_buf = Vec::new();
     {
@@ -77,7 +79,42 @@ pub async fn export_markdown(State(state): State<Arc<AppState>>) -> Result<Respo
 
         zip.finish().map_err(|e| e.to_string())?;
     }
+    Ok(zip_buf)
+}
 
+/// PLAN-058 T14：导入 core——zip 字节进（axum multipart 壳与 VM base64
+/// 信封共用），返回导入文件数。索引重建由调用面选路（axum await
+/// rebuild_index / VM 侧 rebuild_index_sync）。
+pub fn import_markdown_core(state: &AppState, data: &[u8]) -> Result<usize, String> {
+    let wiki = state.wiki_dir().ok_or("No workspace open")?;
+    let mut imported = 0;
+    let cursor = std::io::Cursor::new(data);
+    let mut archive = zip::ZipArchive::new(cursor).map_err(|e| format!("Invalid zip: {e}"))?;
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let name = file.name().to_string();
+        if !name.ends_with(".md") || name.contains("..") {
+            continue;
+        }
+        let ad_name = name.replace(".md", ".ad");
+        let target = wiki.join(&ad_name);
+        let target = normalize_path(&target);
+        if !target.starts_with(&wiki) {
+            continue;
+        }
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).map_err(|e| e.to_string())?;
+        std::fs::write(&target, contents).map_err(|e| e.to_string())?;
+        imported += 1;
+    }
+    Ok(imported)
+}
+
+pub async fn export_markdown(State(state): State<Arc<AppState>>) -> Result<Response, crate::error::ApiError> {
+    let zip_buf = export_markdown_core(&state)?;
     Ok(Response::builder()
         .header("Content-Type", "application/zip")
         .header(
@@ -92,7 +129,6 @@ pub async fn import_markdown(
     State(state): State<Arc<AppState>>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, crate::error::ApiError> {
-    let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let mut imported = 0;
 
     while let Ok(Some(field)) = multipart.next_field().await {
@@ -100,28 +136,7 @@ pub async fn import_markdown(
         if data.is_empty() {
             continue;
         }
-        let cursor = std::io::Cursor::new(&data);
-        let mut archive = zip::ZipArchive::new(cursor).map_err(|e| format!("Invalid zip: {e}"))?;
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-            let name = file.name().to_string();
-            if !name.ends_with(".md") || name.contains("..") {
-                continue;
-            }
-            let ad_name = name.replace(".md", ".ad");
-            let target = wiki.join(&ad_name);
-            let target = normalize_path(&target);
-            if !target.starts_with(&wiki) {
-                continue;
-            }
-            if let Some(parent) = target.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).map_err(|e| e.to_string())?;
-            std::fs::write(&target, contents).map_err(|e| e.to_string())?;
-            imported += 1;
-        }
+        imported = import_markdown_core(&state, &data).map_err(crate::error::ApiError::bad_request)?;
     }
 
     crate::links::rebuild_index(state.clone())

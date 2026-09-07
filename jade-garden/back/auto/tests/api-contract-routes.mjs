@@ -50,11 +50,9 @@ assert.deepEqual(
 // Routes that cannot pass the VM dispatch envelope (Phase 3 D4 deviation):
 // multipart request bodies and binary (zip) responses. Explicit list —
 // a route outside this set without an #[api] fn fails the gate.
-const VM_ENVELOPE_EXEMPT = new Set([
-  'POST /api/assets/upload',
-  'GET /api/export/markdown',
-  'POST /api/import/markdown',
-])
+// PLAN-058 T14: the three former exemptions now cross the envelope as
+// base64-in-JSON (data_b64 / {format, encoding, data}) — set emptied.
+const VM_ENVELOPE_EXEMPT = new Set([])
 
 const apiFns = new Map() // "METHOD path" -> fn name
 for (const line of apiAt.split('\n')) {

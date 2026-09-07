@@ -13,35 +13,44 @@ pub struct UploadAssetResponse {
     path: String,
 }
 
-pub async fn upload_asset(
-    State(state): State<Arc<AppState>>,
-    mut multipart: Multipart,
-) -> Result<Json<UploadAssetResponse>, crate::error::ApiError> {
+/// PLAN-058 T14（转介⑥）：资产落盘 core——axum multipart 壳与 VM base64
+/// 信封（vm_dispatch）共用，返回相对路径。
+pub fn upload_asset_core(
+    state: &AppState,
+    file_name: &str,
+    data: &[u8],
+) -> Result<String, crate::error::ApiError> {
     let wiki = state.wiki_dir().ok_or("No workspace open")?;
     let assets_dir = wiki.join("assets");
     std::fs::create_dir_all(&assets_dir).map_err(|e| format!("Failed to create assets dir: {e}"))?;
 
+    let ext = std::path::Path::new(file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bin");
+    let safe_name = sanitize_filename(file_name);
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let dest_name = format!("{timestamp}_{safe_name}.{ext}")
+        .replace(' ', "_")
+        .replace("..", ".");
+    let dest = assets_dir.join(&dest_name);
+    std::fs::write(&dest, data).map_err(|e| format!("Failed to write asset: {e}"))?;
+
+    Ok(format!("assets/{dest_name}"))
+}
+
+pub async fn upload_asset(
+    State(state): State<Arc<AppState>>,
+    mut multipart: Multipart,
+) -> Result<Json<UploadAssetResponse>, crate::error::ApiError> {
     while let Ok(Some(field)) = multipart.next_field().await {
         let file_name = field.file_name().unwrap_or("asset").to_string();
         let data = field.bytes().await.map_err(|e| format!("Failed to read upload: {e}"))?;
         if data.is_empty() {
             continue;
         }
-
-        let ext = std::path::Path::new(&file_name)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("bin");
-        let safe_name = sanitize_filename(&file_name);
-        let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-        let dest_name = format!("{timestamp}_{safe_name}.{ext}")
-            .replace(' ', "_")
-            .replace("..", ".");
-        let dest = assets_dir.join(&dest_name);
-        std::fs::write(&dest, data).map_err(|e| format!("Failed to write asset: {e}"))?;
-
-        let rel = format!("assets/{dest_name}");
-        return Ok(Json(UploadAssetResponse { path: rel }));
+        let path = upload_asset_core(&state, &file_name, &data)?;
+        return Ok(Json(UploadAssetResponse { path }));
     }
 
     Err(crate::error::ApiError::bad_request("No file uploaded"))

@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-058
-status: reviewed
+status: archived
 feature_name: 开放债修复轮 W2——jade 语义双修（uuid 稳定化 + 图谱 Obsidian 口径收敛）+ auto-lang 转介单执行波（②④⑥+048）+ e2e D3 断言加固 + 台账顺手清理
 author: [zhaopuming]
 created_at: 2026-09-07

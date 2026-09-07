@@ -1,14 +1,19 @@
 ---
 plan_id: PLAN-060
-status: execution_done
+status: reviewed
 feature_name: 双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航）
 author: [zhaopuming]
 created_at: 2026-09-07T18:20:00+08:00
-updated_at: 2026-09-07T20:35:00+08:00
+updated_at: 2026-09-07T20:58:00+08:00
 
-supersedes_spec_components: []
+supersedes_spec_components:
+  - "P048-3: VM 编辑行为收尾（架构）——enter_split/merge_into_previous 块键语义扩展（PLAN-060 标题尾块降级 + 空尾块合并钉死）"
+  - "P046-3: VM demo 对齐 vue 版（架构）——PARITY 平台差异清册第 18 行新增（块键 UX 三项双轨对齐）"
 new_spec_components: []
-touched_goals: []
+touched_goals:
+  - "P048-2: VM 编辑行为收尾——块键 UX 语义对齐（标题回车降级/空块退格合并钉死）"
+  - "P057-2: VM 编辑链路——MCP 合成通道实机验证（vm-060-probe.mjs 三断言）"
+  - "P028-2: 编辑器体验收尾——网页轨块键 UX 三项补齐（回车降级/退格合并/跨块垂直导航）"
 
 current_step: 6
 total_steps: 6
@@ -186,7 +191,7 @@ VM 编辑壳与 showcase 三模式页共享同一实现，VM 侧修一处双 dem
 
 ## 复审记录
 
-（execution_done 2026-09-07——待 /auto-plan:review 终审）
+（/auto-plan:review 终审 2026-09-07 20:55，reviewer: zhaopuming + ZCode）
 
 ### T1 现状核对结论（2026-09-07）
 
@@ -238,6 +243,40 @@ VM 编辑壳与 showcase 三模式页共享同一实现，VM 侧修一处双 dem
 - auto-lang worktree auto-down-dev：572d27591（T2/T3 core.rs）。
 - auto-down worktree plan-060-dev：T4/T5 提交（probe + 截图 + PARITY 第 18 行）。
   两 worktree 待 /auto-plan:merge 折回各自主支。
+
+### /auto-plan:review 终审记录（2026-09-07）
+
+**复核方式**：两 worktree 实际 diff（auto-lang 572d27591 = core.rs 单文件
++76/-2；auto-down 5184e66 = probe/PARITY/截图）+ 独立重跑全部验证，不采信
+执行期勾选。
+
+**验收标准逐条判定**：
+
+| # | 标准 | 判定 | 证据 |
+|---|------|------|------|
+| 1 | VM 行尾/行中标题回车 → 尾块段落、左半截保持 H1 | ✅ pass | 单测 enter_split_heading_tail_demotes_to_paragraph / _at_end_yields_empty_paragraph 绿；vm-060-probe.mjs 实机 ALL PASS（content 无空标题行 + DOC2 尾巴以段落落下）；vm-060-enter.png 目视：新块段落高度无标题样式、右栏同步 |
+| 2 | 空块退格合并回上一块末尾 | ✅ pass | backspace_empty_tail_merges_to_prev_end（junction offset=9 断言）；探针 content 字节还原基线 |
+| 3 | 网页轨 ↑/↓ 跨块（端点落位） | ✅ pass | demo e2e 复跑 5/5（heading-enter-backspace 2 + cross-block-arrow-nav 3）；engine 单测导航组 |
+| 4 | auto-lang cargo test 全绿（新增 3 单测在内） | ⚠️ partial（master 既有红制约，非本计划回归） | tv/tf 双档同签名对照：worktree 与 master 同为唯一失败 test_charts_gallery_compiles（tf 2619/3475 run, 2618 passed, 1 failed, 96 skipped 两侧一致）；lib 档失败名集逐名差集为空（master 基线 ~201 红）；触达模块 autodown_editor::core::tests 79/79 绿 |
+| 5 | PARITY 登记 + 探针脚本 + 截图入库 | ✅ pass | plan-060-dev 提交 5184e66：PARITY 第 18 行 + vm-060-probe.mjs + vm-060-enter/-backspace.png |
+
+**遗漏/延后/workaround 盘点**：
+
+- 延后（用户已批准，非silent）：字形级正上方落位 → 端点落位（待澄清②已
+  销号；VM nav_goal_x 为超集保留）。
+- 遗漏：无——diff 与任务清单一一对应（T2 单文件 +76/-2；T4/T5 三件套在库）。
+- workaround：无未声明项（ext 保守亲和性几何、↓ 块首归位宏任务、探针
+  click 聚焦路径均为有记录的设计选择，前者两项已入代码注释）。
+- **debt candidate（非本计划范围，建议单独清红）**：auto-lang master 的
+  ~201 lib 既有红 + charts_gallery tf/tv 红（该红使 tf 档在两侧都提前
+  收束、856 个测试被 runner 扣下）——全绿依赖 master 自身清红。
+
+**分歧记录（merge 时处理）**：两 worktree 分支落后各自 master 的并行推进
+（auto-lang master → 0c29a80dd/plan587；auto-down master → 6ea4ce0）——
+折回前需先同步 master 再合流，避免把并行提交反向回卷。
+
+**路由**：全部验收项 pass（#4 partial 为 master 既有红制约、零新增失败，
+非本计划回归）→ `status: reviewed`，交 /auto-plan:merge 折回。
 
 ## 待澄清事项
 

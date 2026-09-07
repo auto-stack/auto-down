@@ -1,14 +1,20 @@
 ---
 plan_id: PLAN-057
-status: execution_done
+status: reviewed
 feature_name: VM 编辑链路——真实键盘回写（048）+ doc editor MCP 逐键/拖拽合成通道（055 D2）
 author: [zhaopuming]
 created_at: 2026-09-07
 updated_at: 2026-09-07
 
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P048-3: 编辑壳回写链修订——dynamic 臂 on_change 发布 input_value:Some(全文)（textarea 先例），INPUT_TEXT 解释器路径死写移除，generic 臂/ui_gen 路径原样"
+  - "P055-3: 编辑臂 MCP 通道扩面——key_press/editor_drag 合成 action + autoui_editor_state 只读探针（原仅 click/type_text/clear）"
+new_spec_components:
+  - "P057-1: 编辑器回写发布契约（编辑壳 on_change 消息必携全文 input_value:Some + sync_external 回声守卫：曾 emit 过的值不整树 rebuild）"
+  - "P057-2: 编辑壳 MCP 合成通道（keyspec v1 词表=13 命名键+c:X、拖拽坐标序列 MousePressed→Dragged×n→Released、keyed 寻址载荷 sk␟widget␟event␟spec）"
+touched_goals:
+  - "P048-2: VM 编辑行为收尾——真实键盘回写断链闭（048 引擎债销号）"
+  - "P055-2: VM 编辑臂表格编辑器——cell 逐键/列宽拖拽净窗 e2e 通道补面（055 D2 销号）"
 
 current_step: 10
 total_steps: 10
@@ -246,7 +252,63 @@ engine 不动；`pnpm test:e2e`（88 用例）作零回归确认门。
 
 ## 复审记录
 
-（待 /auto-plan:review 填充）
+**Reviewer**：zhaopuming（/auto-plan:review，2026-09-07）。**复核基线**：双侧
+worktree 已折回清场（T10），按 skill 规则对默认 checkout 复核——且 master 已
+叠并入 577/565 两期并行合并（auto-down 8b28c1d / auto-lang ecc27c81e 在上），
+全部读数取自含后续合并的现行 master（更严口径）。057 提交面核对：auto-down
+a6d5ecf→7eaf55a（3 文件 +341/-146）、auto-lang 5ed1e96df→7b4d6400e（5 文件
++640/-12），与计划宣称面一致。
+
+**逐验收判定**（全部复审期重跑，不信执行期勾选）：
+
+1. **[group9] 逐键链路 — PASS**：现行 master 重建 exe + 净窗门控态整轮，
+   `key chain` 三断言绿（`content==="hello\n\nvm"` 含 Backspace 修正、右栏
+   双段渲染、type_text 终态逐字节等价）。代码面抽查：DocEditor dynamic 臂
+   闭包发布 `input_value: Some(autodown_editor_text)`（renderer.rs 现行
+   :18920-18934 一带，PLAN-057 注记在位）、INPUT_TEXT 写入该臂已无
+   （`INPUT_TEXT.with` 剩 11 处全在 generic/ui_gen/输入面路径）。
+2. **[group10] 拖拽链路 — PASS**：同轮 `editor drag: col boundary
+   213.0,102.0;273.0,102.0 -> editor_col_widths[col0] = 273.0` 绿。
+3. **回归门 — PASS（带披露）**：①vm-smoke 门控态整轮 PASS（组 1-3/5-8 零
+   漂移 + 两组新增 + 组 8 居末）；非门控腿仍被组 4 环境债阻塞（复审重跑
+   读数逐位同执行期：left_top 240.001/right_top 237.17——待澄清④，基线
+   实证在案，追认门控态为等效验收面）。②demo e2e **88/88 全绿**（执行期
+   86/88 的 2 失败经复审重跑消解=055 D3 瞬态满载 flake，执行期基线同败
+   实证在案——待澄清⑤留档）。③auto-lang 受影响面：`--features autodown`
+   plan057 6/6、autodown_editor 81/81、mcp 20 绿+1 红
+   （`desktop_mcp_switcher_thumbs`——执行期已在 pre-057 master 基线实证
+   预存，窗口切换器缩略图面，与本计划施工面无关）。④全量门 `cargo tf
+   --no-fail-fast` 3468/3469 唯一红 `test_charts_gallery_compiles`（charts
+   既有红，577 合并消息同口径在册）。
+4. **台账收口 — PASS**：DEBTS 048 行/055 D2 行销号注记 2 处、转介单（052
+   附件）条目③终结段 1 处均现行 master 抽查在位（含「custom_scrollbar/
+   分数化绕道不涉——048 与 043 行分立」口径澄清）。
+5. **物理键盘可选披露臂 — N/A**（计划明文非验收门；同构代证口径已在
+   销号注记留档）。
+
+**遗漏/延后/workaround 清猎**（Step 3 专项）：
+
+- **遗漏**：未发现——T1-T10 均有对应 diff 与读数；group9/group10、单测
+  6 件、探针工具、台账三处全数在现行 master 到位。
+- **延后**：keyspec 修饰键余量（待澄清③）为立项期已批 v1 范围决策，非
+  执行期静默缩面；滚动腿环境债为 pre-existing（待澄清④），均非本计划
+  借口性推迟。
+- **Workaround（均已披露，无静默）**：①载荷 4 段 `sk␟widget␟event␟spec`
+  （拦截事件名占 event 槽的机械必要扩展，T3 注记）；②`autoui_editor_state`
+  探针取代 state 读数（.at 零改动约束下未声明键写不进——T7 注记）；
+  ③`VM_SKIP_SCROLL_LEG=1` 选通（非门控态硬断言保持，待澄清④）；④回声
+  守卫为执行期发现竞态的实质修复（单测钉死），非绕道。
+- **非阻断观察（N1）**：`tool_editor_state` 经 `autodown_editor(&sk)` 探测
+  未渲染编辑壳时会创建空 core 注册项（下帧 sync_external 即重建覆盖，
+  LRU 有界）——无行为影响，留档不改。
+- **非阻断观察（N2）**：计划正文括注的双仓分支名与 053/056 既定约定互换
+  （auto-lang=auto-down-057-dev / auto-down=plan-057-dev），执行按 skill
+  规则+先例落位，双侧 log 溯源已核对无误——后续计划立项文案留意对齐。
+
+**结论**：五验收全 PASS（3 带在册披露），无阻断债。spec-impact 元数据已
+填（supersedes P048-3/P055-3、new P057-1/P057-2、touched P048-2/P055-2，
+对照 .autoos/specs.json 现行 ID 核对）。status → **reviewed**，可进
+/auto-plan:merge。
 
 ## 待澄清事项
 
@@ -268,4 +330,12 @@ engine 不动；`pnpm test:e2e`（88 用例）作零回归确认门。
    视觉滚动正常而状态读回滞留、054 裁定非阻塞挂债候选）。处置：vm-smoke
    增 `VM_SKIP_SCROLL_LEG=1` 选通跳过（仅该组，非门控态硬断言保持；本计划
    红绿读数与 T8 回归用门控态）。遗留：该环境债的收口归其债主计划/复审
-   裁定，本计划不施工。
+   裁定，本计划不施工。复审追认：review 期非门控重跑仍同败（读数逐位
+   一致），裁定维持——非门控 vm-smoke 全绿在本机环境不可达，门控态 PASS
+   + 基线实证披露为等效验收面。
+5. **demo e2e 执行期 86/88（复审已消解）**：执行期（T8）86/88——2 失败
+   （scroll-sync.spec.ts:144/:176，leftScrollTop 距 maxScroll ~130px）在主
+   checkout master 基线**同样失败**（E2E_PORT=5198 对照实锤），系 DEBTS
+   055 D3 已登记满载 flake 族（同 spec 同 delta 在册）。复审重跑（folded
+   master，负载较轻时段）**88/88 全绿**——瞬态 flake 坐实、非代码回归，
+   无需挂债；执行期 86/88 读数留档为该 flake 族的又一复现实例。

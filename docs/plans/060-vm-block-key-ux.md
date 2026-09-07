@@ -1,16 +1,21 @@
 ---
 plan_id: PLAN-060
-status: drafting
+status: reviewed
 feature_name: 双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航）
 author: [zhaopuming]
 created_at: 2026-09-07T18:20:00+08:00
-updated_at: 2026-09-07T19:40:00+08:00
+updated_at: 2026-09-07T20:58:00+08:00
 
-supersedes_spec_components: []
+supersedes_spec_components:
+  - "P048-3: VM 编辑行为收尾（架构）——enter_split/merge_into_previous 块键语义扩展（PLAN-060 标题尾块降级 + 空尾块合并钉死）"
+  - "P046-3: VM demo 对齐 vue 版（架构）——PARITY 平台差异清册第 18 行新增（块键 UX 三项双轨对齐）"
 new_spec_components: []
-touched_goals: []
+touched_goals:
+  - "P048-2: VM 编辑行为收尾——块键 UX 语义对齐（标题回车降级/空块退格合并钉死）"
+  - "P057-2: VM 编辑链路——MCP 合成通道实机验证（vm-060-probe.mjs 三断言）"
+  - "P028-2: 编辑器体验收尾——网页轨块键 UX 三项补齐（回车降级/退格合并/跨块垂直导航）"
 
-current_step: 0
+current_step: 6
 total_steps: 6
 ---
 
@@ -154,30 +159,124 @@ VM 编辑壳与 showcase 三模式页共享同一实现，VM 侧修一处双 dem
 
 ## 执行步骤
 
-- [ ] T1 现状核对落档：精读 core.rs:964-985（键盘路由）、3452-3560（enter_split）、
-      3652 起（merge_into_previous），把「空尾块 Backspace 现状是否已合并、
-      光标是否落 junction」的结论写进本计划复审记录节。
-      验证：结论有 core.rs 行号引用。
-- [ ] T2 尾块降级：按详细设计改 `enter_split`（crates/auto-lang/src/ui/autodown_editor/core.rs，
-      ② 新建缓冲处 kind 映射）。验证：`cargo test -p auto-lang
-      enter_split_heading`（新单测先行红→绿）。
-- [ ] T3 空块合并验证/修复：按 T1 结论补 `backspace_empty_tail_merges_to_prev_end`
-      单测；若现状不达标则修 `merge_into_previous`/路由条件。
-      验证：`cargo test -p auto-lang backspace_empty_tail`。
-- [ ] T4 VM 探针 + 手验：写 `autodown/demo/auto/vm-060-probe.mjs`（9359 合成通道，
-      vm-059-probe.mjs 结构先例），跑通两行为断言，截图 vm-060-enter.png /
-      vm-060-backspace.png 入库。验证：node 探针退出码 0 + 截图在库。
-- [ ] T5 PARITY 登记：`autodown/demo/auto/PARITY.md` 增补三项对齐记录
-      （标题回车降级、空块退格合并、跨块垂直导航的方向与生效面；③注明
-      VM 的 nav_goal_x 字形落位为超集、网页轨端点落位为已裁定子集）。
-      验证：文件 diff 可读。
-- [ ] T6 收尾门禁：auto-lang `cargo test` 全绿；auto-down 侧
-      `git diff master -- autodown/demo autodown/showcase` 为空 + demo e2e
-      全量绿（零回归确认）。验证：两条命令输出贴复审记录。
+- [✅ 已完成] T1 现状核对落档：core.rs:973-987 Backspace 路由（caret_at_soft_start →
+      merge_into_previous，成功即 captured）；:3652-3742 merge（junction 落位
+      place_caret_byte + remove_leaves_compact + 焦点回迁）；:792 caret_at_soft_start
+      空块为真。结论：空尾块退格现状已达标（见复审记录）。
+- [✅ 已完成] T2 尾块降级：enter_split ② 段 kind 映射
+      `LeafKind::Heading(_) => LeafKind::Paragraph`（core.rs:3511-3520，注释
+      「保持同级」一并更正）。TDD：enter_split_heading_tail_demotes/at_end 两用例
+      先红（断言 Paragraph 得 Heading）→ 实现后绿。验证：cargo test -p auto-lang
+      --features autodown --lib enter_split_heading = 2 passed。
+- [✅ 已完成] T3 空块合并钉死：backspace_empty_tail_merges_to_prev_end 单测
+      （块数还原/emit_document 还原/焦点回 block-0/cursor_byte_offset=9=junction），
+      现状达标零逻辑改动。注：新块 id 为 blocks vec 追加位（Some(2)）非显示位次
+      （先例 enter_at_item_end 同款）；emit_document 无尾随换行（同既有合并测试口径）。
+      验证：cargo test ... backspace_empty_tail = 1 passed。
+- [✅ 已完成] T4 VM 探针 + 手验：vm-060-probe.mjs（worktree demo/auto，MCP 9359，
+      worktree 构建 auto.exe）——type_text 归一基线 + click 聚焦块 0（__mcp_click
+      焦点路径，vm-smoke group9 先例；focus=null 时 KeyPressed 无处落键为实测发现）
+      → 行尾 Enter 断言无空标题行/空段落插入（4×
+ 序列化口径）→ 截图
+      vm-060-enter.png → Backspace 断言 content 字节还原 → 截图
+      vm-060-backspace.png → 行中 Enter 断言 " One" 段落落下。node 探针 ALL PASS。
+- [✅ 已完成] T5 PARITY 登记：PARITY.md 差异总表增第 18 行（块键编辑 UX 三项
+      双轨对齐：①尾块降级 ②空块退格合并现状达标钉死 ③跨块垂直导航 VM
+      nav_goal_x 字形落位为超集、网页轨端点落位为裁定子集）。文件 diff 在案。
+- [✅ 已完成] T6 收尾门禁：auto-lang --lib 全量 4604 passed / 201 failed——
+      失败清单与 master 基线（4603/201，无本次改动）逐名差集为空（套件 ±2 抖动），
+      零新增失败；触达模块 autodown_editor::core::tests 79/79 绿。auto-down 侧
+      `git diff master -- autodown/demo autodown/showcase` 为空；demo e2e 全量
+      93/93 绿（含网页轨两项热修 spec）。输出详见复审记录。
 
 ## 复审记录
 
-（drafting——T1 结论与执行期发现随执行填入）
+（/auto-plan:review 终审 2026-09-07 20:55，reviewer: zhaopuming + ZCode）
+
+### T1 现状核对结论（2026-09-07）
+
+- **键盘路由**（core.rs:973-987）：`EditorKey::Backspace` → `caret_at_soft_start(bi)`
+  → `merge_into_previous` 成功即 `return out.captured()`（吞键）；:964-971 Enter →
+  `enter_split` 失败落软换行。
+- **空尾块退格现状**：回车后的空尾块 `at_soft_start` 为真（core.rs:792-795）→
+  路由命中 → `merge_into_previous`（:3652）：DFS 叶序找前驱（首块 false）、
+  Fence/表格双向禁合、列表项余段约束，`place_caret_byte(pb, junction)` 光标落
+  上一块原文本末尾，`remove_leaves_compact` 摘除死叶、焦点回迁 prev。
+  **结论：需求②现状达标，无逻辑改动，单测钉死**。
+- **enter_split 尾块继承**（②段原注释「标题续行为登记余量：保持同级」）：
+  与网页轨修复前同款缺陷——T2 降级修正。
+
+### 执行期发现（2026-09-07）
+
+1. **新块 id = blocks vec 追加位 ≠ 显示位次**（先例 enter_at_item_end 的
+   Some(2)）：断言焦点/文本须用追加位；remove_leaves_compact 后
+   `bi < prev_bi` 补偿（既有代码在案）。
+2. **emit_document 无尾随换行**（headless 测试口径，与既有合并测试一致）；
+   空段两侧 
+
+ 分隔 → 标题后插空段 = 4×
+。
+3. **MCP key_press 需聚焦块**：focus=null 时 KeyPressed 无处落键（实测）；
+   聚焦路径 = autoui_action click（widget-local px，vm-smoke group9
+   "40,12" 先例）。
+4. **autoui_state 的字符串字段以字面 
+ 转义输出**，探针比较前需解码。
+5. **auto-lang master 基线自带 ~201 个 lib 失败**（环境/主态相关，遍布
+   musk/plan370/412/442/492 等模块，套件存在 ±2 抖动）——plan 的
+   「cargo test 全绿」门按「与 master 基线逐名差集为空 + 触达模块绿」
+   执行（T6），真全绿依赖 master 自身清红，非本计划范围。
+
+### 门禁输出（T6）
+
+- auto-lang（worktree .wt/auto-down-060/auto-lang，branch auto-down-dev）：
+  `cargo test -p auto-lang --features autodown --lib` → 4604 passed / 201
+  failed（失败名集 = master 基线，零新增）；autodown_editor::core::tests
+  79/79（76 存量 + 3 新增）。
+- auto-down（主检出）：`git diff master -- autodown/demo autodown/showcase`
+  空；`npx playwright test` 93/93。
+- VM 实机（worktree auto.exe + demo/auto，AUTOUI_MCP_PORT=9359）：
+  vm-060-probe.mjs ALL PASS；证据 vm-060-enter.png（Enter 后新块以段落
+  高度渲染、无标题样式、右栏同步）/ vm-060-backspace.png（合并还原态）。
+
+### 双侧落位
+
+- auto-lang worktree auto-down-dev：572d27591（T2/T3 core.rs）。
+- auto-down worktree plan-060-dev：T4/T5 提交（probe + 截图 + PARITY 第 18 行）。
+  两 worktree 待 /auto-plan:merge 折回各自主支。
+
+### /auto-plan:review 终审记录（2026-09-07）
+
+**复核方式**：两 worktree 实际 diff（auto-lang 572d27591 = core.rs 单文件
++76/-2；auto-down 5184e66 = probe/PARITY/截图）+ 独立重跑全部验证，不采信
+执行期勾选。
+
+**验收标准逐条判定**：
+
+| # | 标准 | 判定 | 证据 |
+|---|------|------|------|
+| 1 | VM 行尾/行中标题回车 → 尾块段落、左半截保持 H1 | ✅ pass | 单测 enter_split_heading_tail_demotes_to_paragraph / _at_end_yields_empty_paragraph 绿；vm-060-probe.mjs 实机 ALL PASS（content 无空标题行 + DOC2 尾巴以段落落下）；vm-060-enter.png 目视：新块段落高度无标题样式、右栏同步 |
+| 2 | 空块退格合并回上一块末尾 | ✅ pass | backspace_empty_tail_merges_to_prev_end（junction offset=9 断言）；探针 content 字节还原基线 |
+| 3 | 网页轨 ↑/↓ 跨块（端点落位） | ✅ pass | demo e2e 复跑 5/5（heading-enter-backspace 2 + cross-block-arrow-nav 3）；engine 单测导航组 |
+| 4 | auto-lang cargo test 全绿（新增 3 单测在内） | ⚠️ partial（master 既有红制约，非本计划回归） | tv/tf 双档同签名对照：worktree 与 master 同为唯一失败 test_charts_gallery_compiles（tf 2619/3475 run, 2618 passed, 1 failed, 96 skipped 两侧一致）；lib 档失败名集逐名差集为空（master 基线 ~201 红）；触达模块 autodown_editor::core::tests 79/79 绿 |
+| 5 | PARITY 登记 + 探针脚本 + 截图入库 | ✅ pass | plan-060-dev 提交 5184e66：PARITY 第 18 行 + vm-060-probe.mjs + vm-060-enter/-backspace.png |
+
+**遗漏/延后/workaround 盘点**：
+
+- 延后（用户已批准，非silent）：字形级正上方落位 → 端点落位（待澄清②已
+  销号；VM nav_goal_x 为超集保留）。
+- 遗漏：无——diff 与任务清单一一对应（T2 单文件 +76/-2；T4/T5 三件套在库）。
+- workaround：无未声明项（ext 保守亲和性几何、↓ 块首归位宏任务、探针
+  click 聚焦路径均为有记录的设计选择，前者两项已入代码注释）。
+- **debt candidate（非本计划范围，建议单独清红）**：auto-lang master 的
+  ~201 lib 既有红 + charts_gallery tf/tv 红（该红使 tf 档在两侧都提前
+  收束、856 个测试被 runner 扣下）——全绿依赖 master 自身清红。
+
+**分歧记录（merge 时处理）**：两 worktree 分支落后各自 master 的并行推进
+（auto-lang master → 0c29a80dd/plan587；auto-down master → 6ea4ce0）——
+折回前需先同步 master 再合流，避免把并行提交反向回卷。
+
+**路由**：全部验收项 pass（#4 partial 为 master 既有红制约、零新增失败，
+非本计划回归）→ `status: reviewed`，交 /auto-plan:merge 折回。
 
 ## 待澄清事项
 

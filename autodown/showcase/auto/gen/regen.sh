@@ -9,13 +9,12 @@ cd "$(dirname "$0")/.."
 AUTO=${AUTO:-D:/autostack/auto-lang/target/debug/auto.exe}
 
 # --- Gen-project mirrors (double-src shims; jade gap 32) ---
-# Activated in T4 when showcase_ext.ts starts importing ../../src/sample:
 # showcase_ext.ts's ../../../../src/... imports resolve to
 # gen/front/vue/src/src/... in the gen tree. Delete-then-copy: cp -r nests
 # when the target exists (jade gap 50).
 rm -rf gen/front/vue/src/src
 mkdir -p gen/front/vue/src/src
-# cp ../src/sample.ts gen/front/vue/src/src/sample.ts   # T4
+cp ../src/sample.ts gen/front/vue/src/src/sample.ts
 
 "$AUTO" build -d . 2>&1 | tee gen/build.log
 if grep -q "Warning: Failed to compile" gen/build.log; then

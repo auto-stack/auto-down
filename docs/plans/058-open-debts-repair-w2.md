@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-058
-status: execution_done
+status: reviewed
 feature_name: 开放债修复轮 W2——jade 语义双修（uuid 稳定化 + 图谱 Obsidian 口径收敛）+ auto-lang 转介单执行波（②④⑥+048）+ e2e D3 断言加固 + 台账顺手清理
 author: [zhaopuming]
 created_at: 2026-09-07
@@ -8,9 +8,18 @@ updated_at: 2026-09-07
 # worktree: /d/autostack/.wt/auto-down-058/auto-down (plan-058-dev)
 
 # Leave these EMPTY here — /auto-plan:review fills them:
-supersedes_spec_components: []
-new_spec_components: []
-touched_goals: []
+supersedes_spec_components:
+  - "P022-2/P022-4（jade-garden VM 化目标与阶段划分）：storage 壳语义修订——块 uuid 稳定化（^id 锚块跨保存复用、无锚每存换新为登记行为）、链接行 block_uuid 与 BlockRow 同源、链接四面 Obsidian 口径统一（graphData title-only 解析）、VM 信封 base64 扩展（022 Phase 3 D4 豁免清零）"
+  - "P052-2/P052-3（开放债修复轮 W1 + 转介单）：转介单 ②④⑥ 三条终结——②三缺口经 plan 576 清偿验证+绕道物理退役、④观感消费、⑥ base64 信封通道"
+  - "P055-5/P055-2（表格编辑器测试设计）：D3 scroll-sync 底部断言收敛轮询化（expect.poll，判据=原目标合取）"
+new_spec_components:
+  - "PLAN-058 六节存款（goals/architecture/designs/tests/reviews/reports，merge 时入 specs.json）：面 A 语义双修裁定与实现、面 B 转介执行波（探针先例口径+绕道退役）、面 C 断言加固形态、面 D 台账清理"
+touched_goals:
+  - "P022-2: jade-garden VM 化——storage uuid/链接语义与信封通道收口"
+  - "P046-2/P047-2: VM demo 对齐——观感残段（py-4 px-5/thumb/mermaid 标签）收口"
+  - "P052-2: 开放债修复轮 W1——转介单余量清偿"
+  - "P055-2: VM 表格编辑计划遗留 D3 测试债清偿"
+  - "P057-2: VM 编辑链路——043 绕道退役回归（解释器真消费）"
 
 current_step: 17
 total_steps: 17
@@ -372,7 +381,56 @@ the last block」与「both panels reach their max scroll together」两用例�
 
 ## 复审记录
 
-（复审时填写）
+**复审人**：zhaopuming 会话（ZCode）；**时间**：2026-09-07；**入口态**：execution_done → **裁定：reviewed（PASS）**。
+
+### 逐项验收复审（全部独立复跑，不信勾选框）
+
+1. **022 uuid 债可销 — PASS**：worktree 复跑 `cargo test`（45/45），四断言用例在
+   册（anchored_block_uuid_stable_across_saves 含 find_block 旧 uuid 命中、
+   unanchored 换新保形、link_and_tag_rows_reference_block_uuids 行引用同源）；
+   index.rs:123 old_anchored 快照代码实读确认。
+2. **022 反链债可销 — PASS**：裁定注记落册（Obsidian 口径，官方文档引证在
+   计划正文）；`node tests/linkgraph-parity.mjs` 8 cases 绿 + rust 臂 45/45；
+   linkgraph.at:131 resolvePagePathByTitle + :265 graphData 消费实读确认；
+   金标自环反例在 fixtures（红→绿过程在 T5 证据）。
+3. **转介②④⑥+048 可结项 — PASS**：auto-lang 侧 plan058 探针 + mermaid 浅色
+   测试 **9/9 复跑绿**（master HEAD）；custom_scrollbar.at `is_vm` 计数=0、
+   renderer.rs 拦截臂移除（仅注释提及）实读确认；PARITY #5/#8/实测清单行
+   ✅ 注记在册；转介单 ②④⑥ 终结注记 ×3 在册；⑥ dispatch 级往返双测
+   （vm_envelope_export_import_roundtrip/asset_upload）随 45/45 复跑绿，
+   契约门 28/28 + 豁免清零 + 桌面副本字节一致。
+4. **055 D3 债可销 — PASS**：scroll-sync.spec.ts 两用例 expect.poll 形态实读
+   确认（判据=原断言合取）；复审期全量 demo e2e **88/88**（1.7m）。
+5. **台账卫生 — PASS**：DEBTS 10 处 PLAN-058 注记（九行销号+027 push 注记）、
+   line22 陈旧重复行划线、与验收 1-5 一一对应。
+6. **零回归 — PASS**：范围核对 f316f9b..HEAD = 28 文件（jade back/demo/
+   台账），**packages/engine 零触碰**；back cargo test 45/45、契约/parity 门
+   绿、demo e2e 88/88、净窗 vm-smoke 门控态整轮 PASS（master HEAD exe 重建
+   后复审自跑）、非门控组4 读数与在册基线同形（left_top 240.001 族零漂移）、
+   auto-lang tv 档 3610 绿/唯一红=charts 在册（057 同款口径）。
+
+### 遗漏/延后/workaround 清猎（Step 3 专项）
+
+- **遗漏**：无——每任务均有对应 diff 证据；T4 验证文「三产物」与实际五件
+  （含 .at/fixture）之差已在执行期 marker 内自纠为「五件」。
+- **延后（均有披露、无静默）**：①desktop 导入导出 UI 按钮接线（债项=通道
+  非_ui，验收按通道口径达成）；②vm-smoke 组4 环境债 DEBTS 补登记（归复审
+  裁定，见下）；③027 push 后 GitHub 重扫（merge push 属用户动作）。
+- **workaround/残留（非阻断债候，auto-lang 侧）**：①`__mcp_drag` 合成坐标
+  仍 +0.001（renderer.rs ~11818——nanbox 绕道在测试仪器路径的余音，0.001px
+  仪器噪声、产品面零影响）；②renderer.rs PLAN-043 T10 注释段残留
+  「SetScrollTop fast-path/frac」旧措辞（纯注释陈旧）；③环境类：aliyun
+  镜像 index 新版本条目回退致 Cargo.lock（彼仓 gitignored 本地件）经官方
+  index 降 pin（find-msvc-tools 0.1.11/zstd-safe 7.2.4）——零仓内内容变更。
+- **复审裁定（待澄清④延伸）**：vm-smoke 组4 环境债维持「不补 DEBTS 行」——
+  057 待澄清④已追认门控态等效且注明「归债主计划裁定」，本计划零施工零
+  漂移，再立一行属冗余登记；037 滚动状态回写漂移族的收口仍归彼族债主
+  计划。
+
+### 复审结论
+
+六验收全 PASS，无阻断债；两项非阻断仪器/注释残留（auto-lang 侧）+ 三项
+披露延后在案。**路由：reviewed，可进 /auto-plan:merge。**
 
 ## 待澄清事项
 

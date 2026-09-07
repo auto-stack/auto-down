@@ -1548,6 +1548,7 @@ version = "0.1.0"
 dependencies = [
  "auto-lang",
  "axum",
+ "base64",
  "chrono",
  "lazy_static",
  "notify 8.2.0",

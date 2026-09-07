@@ -113,6 +113,14 @@
 
 ## ⑤ 016：a2ts 发射器缺口 T1-T4 / a2r 发射器残留 R1/R4 + Phase 0 五小修
 
+> **✅ 结项（2026-09-07，auto-lang PLAN-577）**：a2ts T1-T4 全修（四定向
+> 探针过 tsc）+ gen.mjs B1/B2 断言式后修退役（移除后管线绿，TS 产品字节级
+> 零漂移）；a2r R1/R4 经查已被过渡计划（433 A1/447/019）清偿（探针降级为
+> 回归锁），Phase 0 五小修全落地（含 final 转义=DEBTS 022 行同步销号）；
+> `packages/engine/rust` 再生链 cargo test 全绿（block_model.rs 漂移仅
+> enum derive Hash×2）。DEBTS 016 两行已销号互链 PLAN-577。R 类硬前置
+> 就绪，Phase 4 crate 试点解锁。
+
 - **症状（详单以 DEBTS 016 两行为准，tmp/dsl-probes 探针报告已随 tmp 清空）**：
   a2ts：T1 多 payload enum 构造不散装元组；T2 `is` 的 `else ->` 臂断裂；
   T3 可选值上 `is` 恒假比较；T4 return/let 位结构体构造缺 `new` + `const enum`

@@ -223,7 +223,7 @@ pub fn searchAll(mut pages: Vec<SrPage>, mut blocks: Vec<SrBlock>, rawQuery: &st
         let bl = blocks[(bi) as usize].clone();
         let cc = countOccurrences(asciiLower(bl.content.as_str()).as_str(), needle.as_str());
         if cc > 0 {
-            let snip = buildSnippet(bl.content.as_str(), needle.as_str(), openMark, closeMark, ellipsis);
+            let mut snip = buildSnippet(bl.content.as_str(), needle.as_str(), openMark, closeMark, ellipsis);
             hits.push(SrHit { isPage: false, path: bl.pagePath.to_string(), title: "".to_string(), uuid: bl.uuid.to_string(), blockId: bl.blockId.to_string(), content: bl.content.to_string(), snippet: snip.to_string() });
             counts.push(cc);
         }

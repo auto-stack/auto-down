@@ -9,7 +9,7 @@ export class SourceRange {
 }
 
 export function rng(s: number, e: number): SourceRange {
-    return SourceRange(s, e);
+    return new SourceRange(s, e);
 }
 
 export type Value =
@@ -153,7 +153,7 @@ export function attrSet(attrs: Attr[], key: string, value: Value): Attr[] {
         out.push(attrs[i]);
     }
     if (idx >= 0) {
-        out[idx] = Attr(key, value);
+        out[idx] = new Attr(key, value);
     } else {
         out.push(new Attr(key, value));
     }
@@ -178,7 +178,7 @@ export function dupAttrs(attrs: Attr[]): Attr[] {
     return out;
 }
 
-export const enum Mark {
+export enum Mark {
     Strong,
     Em = 1,
     Code = 2,
@@ -235,15 +235,15 @@ export class InlineSpan {
 }
 
 export function span(text: string): InlineSpan {
-    return InlineSpan(text, [], []);
+    return new InlineSpan(text, [], []);
 }
 
 export function markedSpan(text: string, marks: Mark[]): InlineSpan {
-    return InlineSpan(text, marks, []);
+    return new InlineSpan(text, marks, []);
 }
 
 export function spanWith(text: string, marks: Mark[], attrs: Attr[]): InlineSpan {
-    return InlineSpan(text, marks, attrs);
+    return new InlineSpan(text, marks, attrs);
 }
 
 export function spansText(spans: InlineSpan[]): string {
@@ -362,10 +362,10 @@ export function spansSplitAt(spans: InlineSpan[], offset: number): SpanSplit {
             pos = sEnd;
         }
     }
-    return SpanSplit(before, after);
+    return new SpanSplit(before, after);
 }
 
-export const enum BlockType {
+export enum BlockType {
     Heading,
     Paragraph = 1,
     Fence = 2,
@@ -404,19 +404,19 @@ export class BlockNode {
 }
 
 export function block(id: string, kind: BlockType): BlockNode {
-    return BlockNode(id, kind, [], [], [], rng(0, 0));
+    return new BlockNode(id, kind, [], [], [], rng(0, 0));
 }
 
 export function blockFull(id: string, kind: BlockType, attrs: Attr[], children: BlockNode[], inlines: InlineSpan[], source: SourceRange): BlockNode {
-    return BlockNode(id, kind, attrs, children, inlines, source);
+    return new BlockNode(id, kind, attrs, children, inlines, source);
 }
 
 export function attrOf(key: string, value: Value): Attr {
-    return Attr(key, value);
+    return new Attr(key, value);
 }
 
 export function leafBlock(id: string, kind: BlockType, text: string): BlockNode {
-    return BlockNode(id, kind, [], [], [span(text)], rng(0, Number(text.length)));
+    return new BlockNode(id, kind, [], [], [span(text)], rng(0, Number(text.length)));
 }
 
 export function blockText(node: BlockNode): string {
@@ -424,15 +424,15 @@ export function blockText(node: BlockNode): string {
 }
 
 export function withInlines(node: BlockNode, spans: InlineSpan[]): BlockNode {
-    return BlockNode(node.id, node.kind, node.attrs, node.children, spans, node.source);
+    return new BlockNode(node.id, node.kind, node.attrs, node.children, spans, node.source);
 }
 
 export function withKind(node: BlockNode, kind: BlockType): BlockNode {
-    return BlockNode(node.id, kind, node.attrs, node.children, node.inlines, node.source);
+    return new BlockNode(node.id, kind, node.attrs, node.children, node.inlines, node.source);
 }
 
 export function withChildren(node: BlockNode, kids: BlockNode[]): BlockNode {
-    return BlockNode(node.id, node.kind, node.attrs, kids, node.inlines, node.source);
+    return new BlockNode(node.id, node.kind, node.attrs, kids, node.inlines, node.source);
 }
 
 export function dupNodes(nodes: BlockNode[]): BlockNode[] {
@@ -448,11 +448,11 @@ export function anchorOf(node: BlockNode): string {
 }
 
 export function withBlockAnchor(node: BlockNode, newId: string): BlockNode {
-    return BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source);
+    return new BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source);
 }
 
 export function withIdAndAnchor(node: BlockNode, newId: string): BlockNode {
-    return BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source);
+    return new BlockNode(newId, node.kind, attrSet(node.attrs, "anchor", Value.Str(newId)), node.children, node.inlines, node.source);
 }
 
 export function hasIdDeep(tree: BlockNode, id: string): boolean {
@@ -481,7 +481,7 @@ export function retargetAnchor(tree: BlockNode, id: string, newId: string): Bloc
     for (let i = 0; i < Number(tree.children.length); i++) {
         out.push(retargetAnchor(tree.children[i], id, newId));
     }
-    return BlockNode(tree.id, tree.kind, tree.attrs, out, tree.inlines, tree.source);
+    return new BlockNode(tree.id, tree.kind, tree.attrs, out, tree.inlines, tree.source);
 }
 
 export function findBlock(node: BlockNode, id: string): BlockNode | null {
@@ -614,11 +614,11 @@ export class Selection {
 }
 
 export function collapsedSel(blockId: string, offset: number): Selection {
-    return Selection(new BlockPos(blockId, offset), new BlockPos(blockId, offset));
+    return new Selection(new BlockPos(blockId, offset), new BlockPos(blockId, offset));
 }
 
 export function pos(blockId: string, offset: number): BlockPos {
-    return BlockPos(blockId, offset);
+    return new BlockPos(blockId, offset);
 }
 
 export class InsertTextOp {
@@ -732,24 +732,24 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
         const found = findBlock(tree, a.pos.blockId);
         const target = found ?? missingBlock();
         if (target.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const spans2 = spansInsert(target.inlines, a.pos.offset, a.text);
         const tree2 = replaceNode(tree, target.id, [withInlines(target, spans2)]);
-        return EditResult(tree2, collapsedSel(a.pos.blockId, a.pos.offset + Number(a.text.length)));
+        return new EditResult(tree2, collapsedSel(a.pos.blockId, a.pos.offset + Number(a.text.length)));
     }
     else if (__auto_is_3._tag === "SplitBlock") {
         const a = __auto_is_3.value;
         const found = findBlock(tree, a.pos.blockId);
         const target = found ?? missingBlock();
         if (target.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const split = spansSplitAt(target.inlines, a.pos.offset);
-        const left = BlockNode(target.id, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.before, rng(target.source.start, target.source.start + a.pos.offset));
-        const right = BlockNode(a.newId, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.after, rng(target.source.start + a.pos.offset, target.source.end));
+        const left = new BlockNode(target.id, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.before, rng(target.source.start, target.source.start + a.pos.offset));
+        const right = new BlockNode(a.newId, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.after, rng(target.source.start + a.pos.offset, target.source.end));
         const tree2 = replaceNode(tree, target.id, [left, right]);
-        return EditResult(tree2, collapsedSel(a.newId, 0));
+        return new EditResult(tree2, collapsedSel(a.newId, 0));
     }
     else if (__auto_is_3._tag === "MergeBlocks") {
         const a = __auto_is_3.value;
@@ -758,10 +758,10 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
         const foundB = findBlock(tree, a.bId);
         const nodeB = foundB ?? missingBlock();
         if (nodeA.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         if (nodeB.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const junction: number = Number(blockText(nodeA).length);
         let merged: InlineSpan[] = [];
@@ -778,35 +778,35 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
         for (const c of nodeB.children) {
             kids.push(c);
         }
-        const a2 = BlockNode(nodeA.id, nodeA.kind, nodeA.attrs, kids, merged, rng(nodeA.source.start, nodeB.source.end));
+        const a2 = new BlockNode(nodeA.id, nodeA.kind, nodeA.attrs, kids, merged, rng(nodeA.source.start, nodeB.source.end));
         const tree1 = replaceNode(tree, a.bId, []);
         const tree2 = replaceNode(tree1, a.aId, [a2]);
-        return EditResult(tree2, collapsedSel(a.aId, junction));
+        return new EditResult(tree2, collapsedSel(a.aId, junction));
     }
     else if (__auto_is_3._tag === "SetBlockType") {
         const a = __auto_is_3.value;
         const found = findBlock(tree, a.id);
         const target = found ?? missingBlock();
         if (target.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const tree2 = replaceNode(tree, a.id, [withKind(target, a.kind)]);
-        return EditResult(tree2, selection);
+        return new EditResult(tree2, selection);
     }
     else if (__auto_is_3._tag === "LiftBlock") {
         const a = __auto_is_3.value;
         const foundT = findBlock(tree, a.id);
         const target = foundT ?? missingBlock();
         if (target.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const foundP = parentOf(tree, a.id);
         const parent = foundP ?? missingBlock();
         if (parent.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         if (parent.id == tree.id) {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const idx = childIndex(parent, a.id);
         let beforeKids: BlockNode[] = [];
@@ -828,18 +828,18 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
             repl.push(new BlockNode(parent.id + "-l", parent.kind, dupAttrs(parent.attrs), afterKids, parent.inlines, parent.source));
         }
         const tree2 = replaceNode(tree, parent.id, repl);
-        return EditResult(tree2, selection);
+        return new EditResult(tree2, selection);
     }
     else if (__auto_is_3._tag === "WrapBlock") {
         const a = __auto_is_3.value;
         const found = findBlock(tree, a.id);
         const target = found ?? missingBlock();
         if (target.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
-        const wrapper = BlockNode(a.newId, a.kind, [], [target], [], rng(target.source.start, target.source.end));
+        const wrapper = new BlockNode(a.newId, a.kind, [], [target], [], rng(target.source.start, target.source.end));
         const tree2 = replaceNode(tree, a.id, [wrapper]);
-        return EditResult(tree2, selection);
+        return new EditResult(tree2, selection);
     }
     else if (__auto_is_3._tag === "ReplaceRange") {
         const a = __auto_is_3.value;
@@ -848,7 +848,7 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
             const found = findBlock(tree, sel.anchor.blockId);
             const target = found ?? missingBlock();
             if (target.id == "") {
-                return EditResult(tree, selection);
+                return new EditResult(tree, selection);
             }
             let lo: number = sel.anchor.offset;
             let hi: number = sel.head.offset;
@@ -859,31 +859,31 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
             }
             const spans2 = spansInsert(spansDelete(target.inlines, lo, hi), lo, a.text);
             const tree2 = replaceNode(tree, target.id, [withInlines(target, spans2)]);
-            return EditResult(tree2, collapsedSel(sel.anchor.blockId, lo + Number(a.text.length)));
+            return new EditResult(tree2, collapsedSel(sel.anchor.blockId, lo + Number(a.text.length)));
         }
         const foundPA = parentOf(tree, sel.anchor.blockId);
         const pa = foundPA ?? missingBlock();
         const foundPH = parentOf(tree, sel.head.blockId);
         const ph = foundPH ?? missingBlock();
         if (pa.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         if (ph.id == "") {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         if (pa.id != ph.id) {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const ai = childIndex(pa, sel.anchor.blockId);
         const hi2 = childIndex(pa, sel.head.blockId);
         if (ai < 0) {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         if (hi2 < 0) {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         if (ai > hi2) {
-            return EditResult(tree, selection);
+            return new EditResult(tree, selection);
         }
         const aBlock = pa.children[ai];
         const hBlock = pa.children[hi2];
@@ -895,11 +895,11 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
         for (const c of hBlock.children) {
             kids3.push(c);
         }
-        const merged = BlockNode(aBlock.id, aBlock.kind, aBlock.attrs, kids3, [span(mergedText)], rng(aBlock.source.start, hBlock.source.end));
+        const merged = new BlockNode(aBlock.id, aBlock.kind, aBlock.attrs, kids3, [span(mergedText)], rng(aBlock.source.start, hBlock.source.end));
         const tree2 = spliceRange(tree, pa.id, ai, hi2 + 1, [merged]);
-        return EditResult(tree2, collapsedSel(sel.anchor.blockId, sel.anchor.offset + Number(a.text.length)));
+        return new EditResult(tree2, collapsedSel(sel.anchor.blockId, sel.anchor.offset + Number(a.text.length)));
     }
-    return EditResult(tree, selection);
+    return new EditResult(tree, selection);
 }
 
 export function textInRange(tree: BlockNode, sel: Selection): string {

@@ -446,7 +446,7 @@ export function parseIalLine(line: string): TableAttr | null {
         }
         rows = parseArray(r2.slice(0, c2));
     }
-    return TableAttr(cols, rows);
+    return new TableAttr(cols, rows);
 }
 
 export function preprocessMarkdown(md: string): PreDoc {
@@ -476,7 +476,7 @@ export function preprocessMarkdown(md: string): PreDoc {
                         if (j < Number(lines.length)) {
                             const ial = parseIalLine(lines[j]);
                             if (ial != null) {
-                                attrs.push(ial ?? TableAttr([], []));
+                                attrs.push(ial ?? new TableAttr([], []));
                                 let k: number = i;
                                 while (k < j) {
                                     out.push(lines[k]);
@@ -495,7 +495,7 @@ export function preprocessMarkdown(md: string): PreDoc {
             i += 1;
         }
     }
-    return PreDoc(out.join("\n"), attrs);
+    return new PreDoc(out.join("\n"), attrs);
 }
 
 export function buildIAL(colwidth: (number | null)[], rowheight: (number | null)[]): string | null {

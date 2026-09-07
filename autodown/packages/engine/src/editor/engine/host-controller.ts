@@ -123,6 +123,23 @@ export class BlockHostController {
     return true
   }
 
+  /** Previous mergeable sibling of this block, resolved MODEL-side. The
+   *  deployed host DOM nests the contenteditable inside per-block slot
+   *  wrappers (node-slot > node-content), so a previousElementSibling lookup
+   *  is always null and the DOM route never fired the merge. Returns null at
+   *  the first child position or when the previous sibling is not an
+   *  editable leaf (containers and attr-only blocks never merge) — the same
+   *  guard onBackspaceAtStart applies, so a non-null result guarantees the
+   *  op will land. */
+  prevSiblingId(): string | null {
+    const parent = parentOf(this.engine.doc, this.blockId)
+    if (!parent) return null
+    const idx = parent.children.findIndex((c) => c.id === this.blockId)
+    if (idx <= 0) return null
+    const prev = parent.children[idx - 1]
+    return isEditableLeaf(prev) ? prev.id : null
+  }
+
   /** Tab / Shift+Tab inside a list item → indent / outdent (plan 025 P1T3).
    *  Returns false (browser default) when the block is not in a list. */
   onTab(shift: boolean): boolean {

@@ -203,7 +203,7 @@ describe('split_block', () => {
   )
   const tree = doc(heading, leafBlock('p1', BlockType.Paragraph, 'tail'))
 
-  it('positive: splits into two siblings of the same kind, cursor to the new block start', () => {
+  it('positive: heading split demotes the tail to Paragraph, cursor to the new block start', () => {
     const r = apply(tree, Op.SplitBlock(new SplitBlockOp(pos('h1', 2), 'h2')))
     expect(summary(r.tree)).toEqual([
       'doc',
@@ -211,16 +211,35 @@ describe('split_block', () => {
       '',
       [
         ['h1', 'Heading', 'he'],
-        ['h2', 'Heading', 'llo'],
+        ['h2', 'Paragraph', 'llo'],
         ['p1', 'Paragraph', 'tail'],
       ],
     ])
     expect(r.selection.head).toEqual(new BlockPos('h2', 0))
   })
 
-  it('positive: attrs are copied into both halves', () => {
+  it('positive: the head keeps heading attrs, the demoted tail drops them', () => {
     const r = apply(tree, Op.SplitBlock(new SplitBlockOp(pos('h1', 2), 'h2')))
-    expect(attrGetInt(findBlock(r.tree, 'h2')!.attrs, 'level', 0)).toBe(2)
+    expect(attrGetInt(findBlock(r.tree, 'h1')!.attrs, 'level', 0)).toBe(2)
+    expect(attrGetInt(findBlock(r.tree, 'h2')!.attrs, 'level', 0)).toBe(0)
+  })
+
+  it('invariant: undoing a merge into a heading round-trips the tail to Paragraph', () => {
+    const merge = Op.MergeBlocks(new MergeBlocksOp('h1', 'p1'))
+    const undo = invertOp(tree, merge) // junction from the PRE-merge tree
+    const merged = apply(tree, merge)
+    expect(findBlock(merged.tree, 'h1')!.kind).toBe(BlockType.Heading)
+    expect(blockText(findBlock(merged.tree, 'h1')!)).toBe('hellotail')
+    const r = apply(merged.tree, undo)
+    expect(summary(r.tree)).toEqual([
+      'doc',
+      'Paragraph',
+      '',
+      [
+        ['h1', 'Heading', 'hello'],
+        ['p1', 'Paragraph', 'tail'],
+      ],
+    ])
   })
 
   it('negative: missing block id leaves the tree unchanged', () => {

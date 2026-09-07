@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   Attr,
   BlockNode,
+  BlockPos,
   BlockType,
   Mark,
   Value,
@@ -63,6 +64,38 @@ describe('BlockHostController', () => {
     const c3 = new BlockHostController(e, 'p3')
     expect(c3.onBackspaceAtStart('p1')).toBe(true)
     expect(e.doc.children.map((c) => blockText(c))).toEqual(['ab', 'cd'])
+  })
+
+  it('Enter on a heading demotes the tail; Backspace merges back via the model-side prev', () => {
+    const e = new EditorEngine(doc(leafBlock('h1', BlockType.Heading, 'Hello')), collapsedSel('h1', 5))
+    const c1 = new BlockHostController(e, 'h1')
+    c1.onEnter(5, 'b-new')
+    // split invariant: the tail is a plain Paragraph, not a Heading
+    expect(findBlock(e.doc, 'b-new')!.kind).toBe(BlockType.Paragraph)
+    const c2 = new BlockHostController(e, 'b-new')
+    expect(c2.prevSiblingId()).toBe('h1')
+    expect(c2.onBackspaceAtStart(c2.prevSiblingId())).toBe(true)
+    expect(e.doc.children.map((n) => n.kind)).toEqual([BlockType.Heading])
+    expect(blockText(findBlock(e.doc, 'h1')!)).toBe('Hello')
+    // the merge lands the caret at the junction (end of the previous line)
+    expect(e.selection.head).toEqual(new BlockPos('h1', 5))
+  })
+
+  it('prevSiblingId resolves the previous editable sibling model-side', () => {
+    const e = new EditorEngine(
+      doc(leafBlock('p1', BlockType.Paragraph, 'one'), leafBlock('p2', BlockType.Paragraph, 'two')),
+      collapsedSel('p2', 0)
+    )
+    expect(new BlockHostController(e, 'p2').prevSiblingId()).toBe('p1')
+    expect(new BlockHostController(e, 'p1').prevSiblingId()).toBeNull()
+  })
+
+  it('prevSiblingId returns null before a container sibling (never merges)', () => {
+    const e = new EditorEngine(
+      doc(ul('l1', li('i1', leafBlock('p1', BlockType.Paragraph, 'x'))), leafBlock('p2', BlockType.Paragraph, 'y')),
+      collapsedSel('p2', 0)
+    )
+    expect(new BlockHostController(e, 'p2').prevSiblingId()).toBeNull()
   })
 
   it('composition: preedit inputs are ignored, commit lands once', () => {

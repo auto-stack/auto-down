@@ -18,7 +18,7 @@ exports[`op sequence snapshot > a small editing session stays deterministic 1`] 
       [
         [
           "p2",
-          "Heading",
+          "Paragraph",
           " world!",
         ],
       ],

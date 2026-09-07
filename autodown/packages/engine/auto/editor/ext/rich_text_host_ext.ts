@@ -117,11 +117,6 @@ export function caretOffset(el: HTMLElement): number {
   return range.toString().length
 }
 
-export function previousSiblingId(el: HTMLElement): string | null {
-  const prev = el.previousElementSibling as HTMLElement | null
-  return prev?.dataset.blockId ?? null
-}
-
 // -- event wiring (BlockHost.vue handlers, verbatim) --------------------------------
 
 export function hostInput(el: HTMLElement, controller: BlockHostController): void {
@@ -173,9 +168,15 @@ export function hostKeydown(e: KeyboardEvent, controller: BlockHostController): 
     e.preventDefault()
     controller.onEnter(caretOffset(el), `b-${Math.random().toString(36).slice(2, 8)}`)
   } else if (e.key === 'Backspace' && caretOffset(el) === 0) {
-    const prev = previousSiblingId(el)
-    if (prev) e.preventDefault()
-    controller.onBackspaceAtStart(prev)
+    // Prev sibling resolves MODEL-side (controller.prevSiblingId): the
+    // deployed host is an only child of its per-block slot wrapper
+    // (node-slot > node-content), so the old previousElementSibling route
+    // always returned null and this merge arm never fired. preventDefault
+    // rides the op result — the browser default yields only when the model
+    // took the op (list-item lift/merge included; there prev may
+    // legitimately be null).
+    const merged = controller.onBackspaceAtStart(controller.prevSiblingId())
+    if (merged) e.preventDefault()
   } else if (e.key === 'Tab') {
     // list indent / outdent (plan 025 P1T3); outside a list the browser
     // default (focus move) is untouched

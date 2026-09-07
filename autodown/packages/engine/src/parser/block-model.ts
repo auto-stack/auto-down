@@ -733,6 +733,21 @@ export function missingBlock(): BlockNode {
     return block("", BlockType.Paragraph);
 }
 
+export function splitTailKind(kind: BlockType): BlockType {
+    if (kind == BlockType.Heading) {
+        return BlockType.Paragraph;
+    }
+    return kind;
+}
+
+export function splitTailAttrs(kind: BlockType, attrs: Attr[]): Attr[] {
+    if (kind == BlockType.Heading) {
+        const empty: Attr[] = [];
+        return empty;
+    }
+    return dupAttrs(attrs);
+}
+
 export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResult {
         const __auto_is_3 = op;
     if (__auto_is_3._tag === "InsertText") {
@@ -755,7 +770,7 @@ export function applyOp(tree: BlockNode, selection: Selection, op: Op): EditResu
         }
         const split = spansSplitAt(target.inlines, a.pos.offset);
         const left = new BlockNode(target.id, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.before, rng(target.source.start, target.source.start + a.pos.offset));
-        const right = new BlockNode(a.newId, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.after, rng(target.source.start + a.pos.offset, target.source.end));
+        const right = new BlockNode(a.newId, splitTailKind(target.kind), splitTailAttrs(target.kind, target.attrs), dupNodes(target.children), split.after, rng(target.source.start + a.pos.offset, target.source.end));
         const tree2 = replaceNode(tree, target.id, [left, right]);
         return new EditResult(tree2, collapsedSel(a.newId, 0));
     }

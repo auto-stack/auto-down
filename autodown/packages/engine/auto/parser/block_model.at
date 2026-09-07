@@ -31,8 +31,11 @@
 // Semantics notes (MVP):
 // - New ids are supplied by the caller (op payloads), keeping the model pure
 //   and deterministic; the BlockId generation/reuse strategy lands in Phase 3.
-// - splitBlock copies the target's attrs into both halves; source ranges are
-//   split at the text offset (approximate for nested blocks).
+// - splitBlock keeps the target's kind+attrs on the head half; the tail half
+//   demotes per the markdown line-construct invariant (see splitTailKind —
+//   an ATX heading is single-line, so its split tail is always a Paragraph
+//   with clean attrs). Source ranges are split at the text offset
+//   (approximate for nested blocks).
 // - mergeBlocks concatenates inline spans without merging boundary spans.
 // - liftBlock of a multi-child wrapper: the before-part keeps the wrapper id,
 //   the after-part gets `<id>-l` (deterministic, documented).
@@ -603,6 +606,28 @@ pub fn missingBlock() BlockNode {
     return block("", BlockType.Paragraph)
 }
 
+// Enter-split tail semantics (the markdown line-construct invariant): an ATX
+// heading is a single-line construct — the `#` marker belongs to the line
+// being split, so the tail half can never stay a Heading. The tail demotes
+// to Paragraph; every other kind inherits the target's kind. splitTailAttrs
+// drops the target's attrs alongside the demotion (heading-only attrs like
+// `level` must not leak onto a plain block); non-demoted tails keep a dup.
+// SplitBlock doubles as invertOp(MergeBlocks), so this invariant is also
+// what lets "paragraph merged into a heading, then undone" round-trip: the
+// tail re-emerges as a Paragraph.
+pub fn splitTailKind(kind BlockType) BlockType {
+    if kind == BlockType.Heading { return BlockType.Paragraph }
+    return kind
+}
+
+pub fn splitTailAttrs(kind BlockType, attrs List<Attr>) List<Attr> {
+    if kind == BlockType.Heading {
+        let empty List<Attr> = []
+        return empty
+    }
+    return dupAttrs(attrs)
+}
+
 pub fn applyOp(tree BlockNode, selection Selection, op Op) EditResult {
     is op {
         Op.InsertText(a) -> {
@@ -619,7 +644,7 @@ pub fn applyOp(tree BlockNode, selection Selection, op Op) EditResult {
             if target.id == "" { return EditResult(tree, selection) }
             let split = spansSplitAt(target.inlines, a.pos.offset)
             let left = BlockNode(target.id, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.before, rng(target.source.start, target.source.start + a.pos.offset))
-            let right = BlockNode(a.newId, target.kind, dupAttrs(target.attrs), dupNodes(target.children), split.after, rng(target.source.start + a.pos.offset, target.source.end))
+            let right = BlockNode(a.newId, splitTailKind(target.kind), splitTailAttrs(target.kind, target.attrs), dupNodes(target.children), split.after, rng(target.source.start + a.pos.offset, target.source.end))
             let tree2 = replaceNode(tree, target.id, [left, right])
             return EditResult(tree2, collapsedSel(a.newId, 0))
         }

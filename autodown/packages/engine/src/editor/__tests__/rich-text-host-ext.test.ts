@@ -31,7 +31,6 @@ import {
   hostCls,
   hostText,
   caretOffset,
-  previousSiblingId,
   hostInput,
   hostKeydown,
   hostPaste,
@@ -56,6 +55,7 @@ function fakeController(overrides: Record<string, unknown> = {}): FakeController
     composition: { composing: false },
     onInput: vi.fn(),
     onEnter: vi.fn(),
+    prevSiblingId: vi.fn(() => null),
     onBackspaceAtStart: vi.fn(),
     onTab: vi.fn(() => true),
     onPasteMarkdown: vi.fn(),
@@ -168,15 +168,6 @@ describe('caret / sibling math', () => {
     window.getSelection()?.removeAllRanges()
     expect(caretOffset(el)).toBe(0)
   })
-
-  it('previousSiblingId reads data-block-id off the preceding block', () => {
-    const a = document.createElement('div')
-    a.dataset.blockId = 'prev-1'
-    const el = hostEl('abc')
-    document.body.insertBefore(a, el)
-    expect(previousSiblingId(el)).toBe('prev-1')
-    expect(previousSiblingId(a)).toBeNull()
-  })
 })
 
 // -- composition trio ----------------------------------------------------------------
@@ -284,23 +275,27 @@ describe('hostKeydown', () => {
     expect(newId).toMatch(/^b-[a-z0-9]{4,8}$/)
   })
 
-  it('Backspace at offset 0 with a previous sibling merges (prevented); without one degrades', () => {
-    const prev = document.createElement('div')
-    prev.dataset.blockId = 'prev-1'
+  it('Backspace at offset 0 merges model-side (prevented) when the op lands; degrades otherwise', () => {
     const el = hostEl('hello')
-    document.body.insertBefore(prev, el)
     setCaret(el, 0)
-    const c = fakeController()
+    const c = fakeController({
+      prevSiblingId: vi.fn(() => 'prev-1'),
+      onBackspaceAtStart: vi.fn(() => true),
+    })
     const merged = keydownEvent('Backspace', {}, el)
     hostKeydown(merged, c)
     expect(merged.defaultPrevented).toBe(true)
     expect(c.onBackspaceAtStart).toHaveBeenCalledWith('prev-1')
 
-    prev.remove()
     const degraded = keydownEvent('Backspace', {}, el)
-    hostKeydown(degraded, c)
+    hostKeydown(
+      degraded,
+      fakeController({
+        prevSiblingId: vi.fn(() => null),
+        onBackspaceAtStart: vi.fn(() => false),
+      })
+    )
     expect(degraded.defaultPrevented).toBe(false)
-    expect(c.onBackspaceAtStart).toHaveBeenLastCalledWith(null)
   })
 
   it('Tab preventDefaults when the controller reports a list indent/outdent', () => {

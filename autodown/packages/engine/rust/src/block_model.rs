@@ -675,6 +675,21 @@ pub fn missingBlock() -> BlockNode {
     return block("", BlockType::Paragraph.clone());
 }
 
+pub fn splitTailKind(kind: BlockType) -> BlockType {
+    if kind == BlockType::Heading {
+        return BlockType::Paragraph;
+    }
+    return kind;
+}
+
+pub fn splitTailAttrs(kind: BlockType, mut attrs: Vec<Attr>) -> Vec<Attr> {
+    if kind == BlockType::Heading {
+        let empty: Vec<Attr> = vec![];
+        return empty;
+    }
+    return dupAttrs(attrs.clone());
+}
+
 pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult {
     match op {
         Op::InsertText(a) => {
@@ -695,7 +710,7 @@ pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult 
             }
             let split = spansSplitAt(target.inlines.clone(), a.pos.offset);
             let left = BlockNode { id: target.id.to_string(), kind: target.kind.clone(), attrs: dupAttrs(target.attrs.clone()), children: dupNodes(target.children.clone()), inlines: split.before.clone(), source: rng(target.source.start, target.source.start + a.pos.offset) };
-            let right = BlockNode { id: a.newId.to_string(), kind: target.kind.clone(), attrs: dupAttrs(target.attrs.clone()), children: dupNodes(target.children.clone()), inlines: split.after.clone(), source: rng(target.source.start + a.pos.offset, target.source.end) };
+            let right = BlockNode { id: a.newId.to_string(), kind: splitTailKind(target.kind.clone()), attrs: splitTailAttrs(target.kind.clone(), target.attrs.clone()), children: dupNodes(target.children.clone()), inlines: split.after.clone(), source: rng(target.source.start + a.pos.offset, target.source.end) };
             let tree2 = replaceNode(tree.clone(), target.id.as_str(), vec![left.clone(), right.clone()]);
             return EditResult { tree: tree2, selection: collapsedSel(a.newId.as_str(), 0) };
         },

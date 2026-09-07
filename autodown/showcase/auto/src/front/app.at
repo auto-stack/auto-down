@@ -64,9 +64,12 @@ widget App {
         // PLAN-059 T6: feed 窗口三态按轨分派（demo csb_* 先例）——vue 轨
         // 读 showcaseBridge（timer 在 ext 桥驱动），VM 轨读 widget state
         //（T5 状态机驱动）。stream 栏绑定 feed_text。
-        feed_text => is_vue() != None ? .showcaseBridge.streamText : .stream_text
-        feed_source_text => is_vue() != None ? .showcaseBridge.feedSource : .feed_source
-        feed_playing => is_vue() != None ? .showcaseBridge.playing : .playing
+        // 分支序（复审修正）：VM 臂放 then——VM 上 vue 臂的 .showcaseBridge
+        // 不可解析，放 else 时 054 分支回退未兜住（stream 栏起屏误染全
+        // 文档）；cond 取 == None 反转后两轨各走可解析臂。
+        feed_text => is_vue() == None ? .stream_text : .showcaseBridge.streamText
+        feed_source_text => is_vue() == None ? .feed_source : .showcaseBridge.feedSource
+        feed_playing => is_vue() == None ? .playing : .showcaseBridge.playing
         // feed 进度/落定态（栏头状态行同源）。表达式面：str.len()/substr/
         // str() 数字转串/三元链——aura_view_builder 9392+ 内建面 + jade
         // tabs_store.at 的 handler 内 len()/Math.min 双轨先例。
@@ -85,10 +88,10 @@ widget App {
             class: if .dark_mode { "app app-dark" } else { "app" },
             header {
                 class: "toolbar",
-                div {
+                row {
                     class: "toolbar-inner",
                     text "AutoDown Showcase"
-                    div {
+                    row {
                         class: "toggles",
                         // Pane toggles — the e2e anchors are the class names
                         // (toggle-edit/toggle-view/toggle-stream); showcase
@@ -110,7 +113,7 @@ widget App {
                     // PLAN-059 T5: stream 控制组——重播/步进/速度三档；▶
                     // 仅 vue 轨（timer 走 ext 逃生舱，VM 无 tick 原语，DEBTS
                     // 059 豁免行；VM 轨 ⏭ 步进代用）。
-                    div {
+                    row {
                         class: "stream-controls",
                         if is_vue() != None {
                             native_button "▶" {
@@ -126,7 +129,7 @@ widget App {
                             onclick: .FeedReset,
                             class: "ctrl-btn btn-replay"
                         }
-                        div {
+                        row {
                             class: "speed-select",
                             native_button "慢" {
                                 onclick: .FeedSetSpeed(24),
@@ -168,7 +171,7 @@ widget App {
                     if .show_edit {
                         col {
                             class: "flex-1 min-w-0 overflow-hidden col-edit",
-                            div {
+                            row {
                                 class: "pane-header",
                                 text "edit"
                             }
@@ -188,7 +191,7 @@ widget App {
                     if .show_view {
                         col {
                             class: "flex-1 min-w-0 overflow-hidden col-view",
-                            div {
+                            row {
                                 class: "pane-header",
                                 text "view"
                             }
@@ -204,7 +207,7 @@ widget App {
                     if .show_stream {
                         col {
                             class: "flex-1 min-w-0 overflow-hidden col-stream",
-                            div {
+                            row {
                                 class: "pane-header",
                                 text "stream"
                                 span { class: "pane-status", text .stream_status }

@@ -28,9 +28,9 @@ if ((window as any).__AUTO_UI_THEME__ === 'light' || (window as any).__AUTO_UI_T
 // Plan 458: seed accent default from index.html bootstrap.
 if (typeof (window as any).__AUTO_UI_ACCENT__ === 'string') accent_color.value = (window as any).__AUTO_UI_ACCENT__
 
-const feed_text = computed<any>(() => (is_vue() != null ? showcaseBridge.streamText : stream_text.value))
-const feed_source_text = computed<any>(() => (is_vue() != null ? showcaseBridge.feedSource : feed_source.value))
-const feed_playing = computed<any>(() => (is_vue() != null ? showcaseBridge.playing : playing.value))
+const feed_text = computed<any>(() => (is_vue() == null ? stream_text.value : showcaseBridge.streamText))
+const feed_source_text = computed<any>(() => (is_vue() == null ? feed_source.value : showcaseBridge.feedSource))
+const feed_playing = computed<any>(() => (is_vue() == null ? playing.value : showcaseBridge.playing))
 const stream_len = computed<any>(() => feed_text.value.length)
 const source_len = computed<any>(() => feed_source_text.value.length)
 const settled = computed<boolean>(() => source_len.value > 0 && feed_text.value === feed_source_text.value)
@@ -251,20 +251,20 @@ watch(dark_mode, (v) => {
 <template>
     <div :class="[{ dark: dark_mode }, (dark_mode ? 'app app-dark' : 'app')]">
       <header class="toolbar">
-        <div class="toolbar-inner">
+        <div class="flex flex-row toolbar-inner">
           <span>AutoDown Showcase</span>
-          <div class="toggles">
+          <div class="flex flex-row toggles">
             <button :class="(show_edit ? 'toggle toggle-on toggle-edit' : 'toggle toggle-edit')" @click="ToggleEdit">edit</button>
             <button :class="(show_view ? 'toggle toggle-on toggle-view' : 'toggle toggle-view')" @click="ToggleView">view</button>
             <button :class="(show_stream ? 'toggle toggle-on toggle-stream' : 'toggle toggle-stream')" @click="ToggleStream">stream</button>
           </div>
-          <div class="stream-controls">
+          <div class="flex flex-row stream-controls">
             <template v-if="is_vue() != null">
               <button :class="(feed_playing ? 'ctrl-btn ctrl-on btn-play' : 'ctrl-btn btn-play')" @click="FeedPlayPause">▶</button>
             </template>
             <button class="ctrl-btn btn-step" @click="FeedStep">⏭</button>
             <button class="ctrl-btn btn-replay" @click="FeedReset">↻</button>
-            <div class="speed-select">
+            <div class="flex flex-row speed-select">
               <button :class="(speed == 24 ? 'ctrl-btn speed-btn-on speed-lo' : 'ctrl-btn speed-lo')" @click="FeedSetSpeed(24)">慢</button>
               <button :class="(speed == 96 ? 'ctrl-btn speed-btn-on speed-mid' : 'ctrl-btn speed-mid')" @click="FeedSetSpeed(96)">中</button>
               <button :class="(speed == 384 ? 'ctrl-btn speed-btn-on speed-hi' : 'ctrl-btn speed-hi')" @click="FeedSetSpeed(384)">快</button>
@@ -278,7 +278,7 @@ watch(dark_mode, (v) => {
         <div class="flex flex-row h-full w-full">
           <template v-if="show_edit">
             <div class="flex flex-col flex-1 min-w-0 overflow-hidden col-edit">
-              <div class="pane-header">
+              <div class="flex flex-row pane-header">
                 <span>edit</span>
               </div>
               <AutoDownEditor :content="content" :placeholder="'Start typing...'" :can-edit="true" :show-actions="true" :dark-mode="dark_mode" :accent="accent_color" class="flex-1 min-h-0 overflow-hidden" @update:modelValue="Edit" :key="'AutoDownEditor-2'" />
@@ -286,7 +286,7 @@ watch(dark_mode, (v) => {
           </template>
           <template v-if="show_view">
             <div class="flex flex-col flex-1 min-w-0 overflow-hidden col-view">
-              <div class="pane-header">
+              <div class="flex flex-row pane-header">
                 <span>view</span>
               </div>
               <StreamingRenderer :source="content" :streaming="false" :scroll-sync="true" :dark-mode="dark_mode" :accent="accent_color" class="flex-1 min-h-0 overflow-hidden py-4 px-5" :key="'StreamingRenderer-3'" />
@@ -294,7 +294,7 @@ watch(dark_mode, (v) => {
           </template>
           <template v-if="show_stream">
             <div class="flex flex-col flex-1 min-w-0 overflow-hidden col-stream">
-              <div class="pane-header">
+              <div class="flex flex-row pane-header">
                 <span>stream</span>
                 <span class="pane-status">
                   <span>{{ stream_status }}</span>

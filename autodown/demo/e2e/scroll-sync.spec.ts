@@ -155,22 +155,30 @@ test.describe('scroll sync', () => {
     const track = await page.locator('.custom-scrollbar').first().boundingBox()
     expect(track).toBeTruthy()
     await page.mouse.click(track!.x + track!.width / 2, track!.y + track!.height - 10)
-    await page.waitForTimeout(200)
 
-    const info = await leftWrapper.evaluate((wrapper) => {
-      const blocks = Array.from(wrapper.querySelectorAll('[data-block-id]'))
-      const last = blocks[blocks.length - 1] as HTMLElement
-      const actions = wrapper.closest('.autodown-editor')?.querySelector('.autodown-editor-actions') as HTMLElement
-      const wrapperRect = wrapper.getBoundingClientRect()
-      const lastRect = last.getBoundingClientRect()
-      const actionsRect = actions.getBoundingClientRect()
-      return {
-        leftBottom: lastRect.bottom - wrapperRect.top + wrapper.scrollTop,
-        actionsTop: actionsRect.top - wrapperRect.top + wrapper.scrollTop,
-      }
-    })
-
-    expect(info.leftBottom).toBeLessThanOrEqual(info.actionsTop + 1)
+    // PLAN-058 (055 D3): converge-poll instead of a fixed settle wait — under
+    // machine load the smooth-scroll animation can exceed 200ms; the polled
+    // predicate is the original assertion target (strength unchanged).
+    await expect
+      .poll(
+        async () => {
+          const info = await leftWrapper.evaluate((wrapper) => {
+            const blocks = Array.from(wrapper.querySelectorAll('[data-block-id]'))
+            const last = blocks[blocks.length - 1] as HTMLElement
+            const actions = wrapper.closest('.autodown-editor')?.querySelector('.autodown-editor-actions') as HTMLElement
+            const wrapperRect = wrapper.getBoundingClientRect()
+            const lastRect = last.getBoundingClientRect()
+            const actionsRect = actions.getBoundingClientRect()
+            return {
+              leftBottom: lastRect.bottom - wrapperRect.top + wrapper.scrollTop,
+              actionsTop: actionsRect.top - wrapperRect.top + wrapper.scrollTop,
+            }
+          })
+          return info.leftBottom - (info.actionsTop + 1)
+        },
+        { timeout: 5000, message: 'last block should clear the bottom toolbar' },
+      )
+      .toBeLessThanOrEqual(0)
   })
 
   test('both panels reach their max scroll together at the bottom', async ({ page }) => {
@@ -186,29 +194,39 @@ test.describe('scroll sync', () => {
     const track = await page.locator('.custom-scrollbar').first().boundingBox()
     expect(track).toBeTruthy()
     await page.mouse.click(track!.x + track!.width / 2, track!.y + track!.height - 10)
-    await page.waitForTimeout(200)
 
-    const info = await page.evaluate(() => {
-      const leftWrapper = document.querySelector('.left .autodown-editor-content-wrapper') as HTMLElement
-      const rightDocument = document.querySelector('.right .streaming-document') as HTMLElement
-      return {
-        leftScrollTop: leftWrapper.scrollTop,
-        leftMaxScroll: leftWrapper.scrollHeight - leftWrapper.clientHeight,
-        rightScrollTop: rightDocument.scrollTop,
-        rightMaxScroll: rightDocument.scrollHeight - rightDocument.clientHeight,
-      }
-    })
-
-    expect(info.leftScrollTop).toBeGreaterThan(0)
-    expect(info.rightScrollTop).toBeGreaterThan(0)
-    expect(info.leftScrollTop).toBeCloseTo(info.leftMaxScroll, 0)
-    // The right renderer drops the trailing empty paragraph that Tiptap keeps
-    // on the left, so the right max scroll is slightly smaller. Allow the same
-    // 10px tolerance that occurs in practice while still validating that the
-    // right side has scrolled to the bottom of its actual content.
-    expect(info.rightScrollTop).toBeGreaterThanOrEqual(info.rightMaxScroll - 10)
+    // PLAN-058 (055 D3): converge-poll instead of a fixed settle wait — the
+    // polled predicate is the conjunction of the original assertions
+    // (strength unchanged; toBeCloseTo(x, 0) ≡ |Δ| < 0.5, right keeps its
+    // documented 10px tolerance).
+    const readScroll = () =>
+      page.evaluate(() => {
+        const leftWrapper = document.querySelector('.left .autodown-editor-content-wrapper') as HTMLElement
+        const rightDocument = document.querySelector('.right .streaming-document') as HTMLElement
+        return {
+          leftScrollTop: leftWrapper.scrollTop,
+          leftMaxScroll: leftWrapper.scrollHeight - leftWrapper.clientHeight,
+          rightScrollTop: rightDocument.scrollTop,
+          rightMaxScroll: rightDocument.scrollHeight - rightDocument.clientHeight,
+        }
+      })
+    await expect
+      .poll(
+        async () => {
+          const info = await readScroll()
+          return (
+            info.leftScrollTop > 0 &&
+            info.rightScrollTop > 0 &&
+            Math.abs(info.leftScrollTop - info.leftMaxScroll) < 0.5 &&
+            info.rightScrollTop >= info.rightMaxScroll - 10
+          )
+        },
+        { timeout: 5000, message: 'both panels should reach their max scroll together' },
+      )
+      .toBe(true)
     // Synchronisation is meaningful: the right side should have scrolled past
-    // the bottom of the last visible block.
+    // the bottom of the last visible block (read post-convergence).
+    const info = await readScroll()
     const rightLastBlockBottom = await page.evaluate(() => {
       const rightDocument = document.querySelector('.right .streaming-document') as HTMLElement
       const blocks = Array.from(rightDocument.querySelectorAll('[data-block-id]'))

@@ -11,6 +11,12 @@
 // Regenerate + deploy: bash gen/regen.sh (from showcase/auto).
 // VM track: D:/autostack/auto-lang/target/debug/auto.exe run -r vm.
 
+// PLAN-059 T7(修正): VM 轨子件注册——顶层 `use <模块>` 把兄弟 .at widget
+// 登记进运行时 WidgetRegistry(lib.rs register_transitive_widgets 只沿 use
+// 语句链收集;demo app.at L73/L78 同款)。缺此行则 ⚙ 弹层在 VM 永不渲染
+// (vue 轨不受影响——vue gen 扫描 front 目录自行 import)。
+use settings_popover
+
 use.web.fn initial_content from "src/front/utils/showcase_ext.at"
 
 widget App {

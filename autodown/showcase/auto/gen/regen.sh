@@ -33,6 +33,8 @@ fi
 # --- Deploy: rewrite the gen-only aliases to showcase-relative paths ---
 sed -e 's|@/ext/src/front/utils/showcase_ext|../auto/src/front/utils/showcase_ext|g' \
   gen/front/vue/src/App.vue > ../src/App.vue
-# T7 adds: cp gen/front/vue/src/components/SettingsPopover.vue ../src/components/SettingsPopover.vue
+# PLAN-059 T7: settings 弹层组件（自包含无 @/ 别名 import，直接拷贝）。
+mkdir -p ../src/components
+cp gen/front/vue/src/components/SettingsPopover.vue ../src/components/SettingsPopover.vue
 
 echo "REGEN OK"

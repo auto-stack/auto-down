@@ -24,7 +24,11 @@ widget App {
 
     msg Msg { Init, Edit(str), ToggleEdit, ToggleView, ToggleStream,
               // PLAN-059 T5: feed 状态机——重播快照/步进/播放暂停/三档速度。
-              FeedStep, FeedReset, FeedPlayPause, FeedSetSpeed(int) }
+              FeedStep, FeedReset, FeedPlayPause, FeedSetSpeed(int),
+              // PLAN-059 T7: settings 回路（051 demo 同名契约）——⚙ 开、✕ 关、
+              // 主题/accent 由 SettingsPopover 子件消息冒泡（on "SetTheme"/
+              // "SetAccent" 监听）。
+              OpenSettings, CloseSettings, SetTheme(str), SetAccent(str) }
 
     model {
         // The document body — single source (edit writes, view mirrors).
@@ -42,6 +46,12 @@ widget App {
         var feed_source str = ""
         var playing bool = false
         var speed int = 96
+        // PLAN-059 T7: 主题（051 语义）——dark_mode 是 renderer 认可名
+        //（VM 经 D-GAP 全局翻转，PLAN-047 链路）；accent 盘名经引擎
+        // darkMode/accent props 三栏贯通（vue 轨 .is-dark + data-accent）。
+        var dark_mode bool = false
+        var accent_color str = "indigo"
+        var settings_open bool = false
     }
 
     computed {
@@ -63,7 +73,10 @@ widget App {
 
     view {
         div {
-            class: "app",
+            // PLAN-059 T7: app 级 chrome 深浅条件类——vue 轨 .app-dark 兜底
+            // 规则在 style 块（051 demo 同款，值=Design 22 §7.1 深档）；
+            // VM 轨 class 惰性，chrome 由 dark_mode 状态经 D-GAP 全局翻转。
+            class: if .dark_mode { "app app-dark" } else { "app" },
             header {
                 class: "toolbar",
                 div {
@@ -123,7 +136,24 @@ widget App {
                             }
                         }
                     }
+                    // PLAN-059 T7: ⚙ 钮开 settings 弹层（native_button=显式
+                    // 原生逃生名，051 demo 先例——vue 侧避开 button→shadcn
+                    // Button 映射，零新 npm 依赖）。
+                    native_button "⚙" {
+                        onclick: .OpenSettings,
+                        class: "settings-trigger w-7 h-7 flex items-center justify-center rounded text-sm text-gray-500 hover:text-gray-900 bg-transparent border-none cursor-pointer"
+                    }
                 }
+            }
+            // PLAN-059 T7: settings 弹层（settings_popover.at 兄弟件，051
+            // demo 原样复制）——open=false 时零渲染，默认布局不变。
+            SettingsPopover {
+                open: .settings_open,
+                dark_mode: .dark_mode,
+                accent_color: .accent_color,
+                on "Close": .CloseSettings,
+                on "SetTheme": .SetTheme($event),
+                on "SetAccent": .SetAccent($event)
             }
             main {
                 class: "workspace",
@@ -140,6 +170,11 @@ widget App {
                                 content: .content,
                                 placeholder: "Start typing...",
                                 class: "flex-1 min-h-0 overflow-hidden",
+                                // PLAN-059 T7: 主题声明入口（051 引擎 props——
+                                // 组件根 .is-dark + data-accent；VM 臂 prop 惰性，
+                                // dark_mode 经 D-GAP 全局链路自达）。
+                                dark_mode: .dark_mode,
+                                accent: .accent_color,
                                 oninput: .Edit
                             }
                         }
@@ -154,7 +189,9 @@ widget App {
                             autodown {
                                 content: .content,
                                 streaming: false,
-                                class: "flex-1 min-h-0 overflow-hidden py-4 px-5"
+                                class: "flex-1 min-h-0 overflow-hidden py-4 px-5",
+                                dark_mode: .dark_mode,
+                                accent: .accent_color
                             }
                         }
                     }
@@ -169,7 +206,9 @@ widget App {
                             autodown {
                                 content: .feed_text,
                                 streaming: true,
-                                class: "flex-1 min-h-0 overflow-hidden py-4 px-5"
+                                class: "flex-1 min-h-0 overflow-hidden py-4 px-5",
+                                dark_mode: .dark_mode,
+                                accent: .accent_color
                             }
                         }
                     }
@@ -246,6 +285,19 @@ widget App {
             if is_vue() != None {
                 .showcaseBridge.speed = v
             }
+        }
+        // PLAN-059 T7: settings 回路（051 demo 同名契约逐字对齐）。
+        .OpenSettings -> {
+            .settings_open = true
+        }
+        .CloseSettings -> {
+            .settings_open = false
+        }
+        .SetTheme(t) -> {
+            .dark_mode = t == "dark"
+        }
+        .SetAccent(a) -> {
+            .accent_color = a
         }
     }
 
@@ -352,6 +404,45 @@ widget App {
             color: #6b7280;
             background: #f3f4f6;
             border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* PLAN-059 T7: 深档 chrome（051 demo .app-dark 同款 + showcase
+         * 控件组的 zinc 深档覆写，值=Design 22 §7.1 深列）。 */
+        .app-dark {
+            color: #f4f4f5;
+            background: #09090b;
+        }
+
+        .app-dark .toolbar {
+            border-bottom-color: #27272a;
+            background: #18181b;
+        }
+
+        .app-dark .pane-header {
+            color: #a1a1aa;
+            background: #18181b;
+            border-bottom-color: #27272a;
+        }
+
+        .app-dark .toggle,
+        .app-dark .ctrl-btn {
+            background: #27272a;
+            border-color: #3f3f46;
+            color: #d4d4d8;
+        }
+
+        .app-dark .toggle-on,
+        .app-dark .ctrl-on,
+        .app-dark .speed-btn-on {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        .settings-trigger {
+            border: none;
+            background: transparent;
+            cursor: pointer;
         }
 
         .pane-status {

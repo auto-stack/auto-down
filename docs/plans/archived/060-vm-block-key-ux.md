@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-060
-status: reviewed
+status: archived
 feature_name: 双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航）
 author: [zhaopuming]
 created_at: 2026-09-07T18:20:00+08:00

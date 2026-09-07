@@ -376,6 +376,17 @@
         "related": [
           "PLAN-059"
         ]
+      },
+      {
+        "id": "P060-2",
+        "section": "goals",
+        "status": "proposed",
+        "title": "双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航） — 目标",
+        "content": "- VM 轨 `enter_split` 的尾块类型语义与网页轨 splitTailKind 不变式一致\n  （Heading 尾块 → Paragraph；Fence 不拆、TableSlot 不拆维持现状）。\n- VM 轨空块 Backspace 合并行为与网页轨一致（合并回上一块、光标到 junction）。\n- 网页轨补齐 ↑/↓ 跨块垂直导航，语义以 VM `navigate_vertical` 为基准\n  （块边界迁焦邻块 + 对应水平位置落点 + 连续导航共享目标列）。\n- 行为证据：auto-lang 侧 Rust 单测 + AutoUI MCP 合成通道探针（9359，vm-059 先例）\n  + 截图；网页轨侧 Playwright 真键盘 e2e。\n- demo（`autodown/demo`）与 showcase（`autodown/showcase`）文档内容源码零改动\n  （引擎 src 与 auto-lang crates 除外）。",
+        "file": "docs/plans/archived/060-vm-block-key-ux.md",
+        "related": [
+          "PLAN-060"
+        ]
       }
     ],
     "architecture": [
@@ -768,6 +779,17 @@
         "related": [
           "PLAN-059"
         ]
+      },
+      {
+        "id": "P060-3",
+        "section": "architecture",
+        "status": "stable",
+        "title": "双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航） — 架构方案",
+        "content": "- VM 编辑壳位于 **auto-lang 仓库** `crates/auto-lang/src/ui/autodown_editor/`\n  （core.rs 结构编辑引擎 + widget.rs），与 auto-down 仓库的 TS 引擎**互不依赖**\n  （auto-lang Cargo.toml 无 autodown-core 依赖，已核实）——两轨语义各自实现，\n  需要手工对齐，这正是本计划存在的理由。\n- 对齐基准 = auto-down 侧 block_model.at 的 `splitTailKind/splitTailAttrs`\n  不变式（auto/parser/block_model.at，9c6f3bf）与 host-controller 的\n  `prevSiblingId`（模型侧前驱 + isEditableLeaf 守卫）。\n- 平台差异（PARITY）登记在 `autodown/demo/auto/PARITY.md`。",
+        "file": "docs/plans/archived/060-vm-block-key-ux.md",
+        "related": [
+          "PLAN-060"
+        ]
       }
     ],
     "designs": [
@@ -1150,6 +1172,17 @@
         "related": [
           "PLAN-059"
         ]
+      },
+      {
+        "id": "P060-4",
+        "section": "designs",
+        "status": "stable",
+        "title": "双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航） — 详细设计",
+        "content": "- **T2 尾块降级**：`enter_split` 内 ② 新建缓冲处，新块 kind 由\n  `block_kind_of(bi)` 改为经降级映射：`LeafKind::Heading → LeafKind::Paragraph`\n  （若 LeafKind 无 Paragraph 命名，用现状非 Fence 非表格文本叶的对应变体；\n  以实际枚举为准）。`new_item_continuation`（列表续项）判定先于新块构造，\n  不受影响；Fence/TableSlot 早退分支维持现状。行高参数已是 PARA 分支，降级后\n  语义自洽。\n- **T3 空块合并**：核对 core.rs:974-985 的 Backspace 路由条件（光标 offset 0）\n  与 `merge_into_previous` 对空尾块的行为；若现状已合并且光标落 junction 则只补\n  单测钉死，不改逻辑。\n- **T4 网页轨跨块垂直导航**：已于本计划立项当日随复审热修落地（未随 VM 任务\n  执行），实现要点存档——`hostKeydown` 增 ArrowUp/Down 分支（auto/editor/ext/\n  rich_text_host_ext.ts，已逐字节部署 src/）；行边界探测 `caretOnFirstLine/\n  caretOnLastLine` 用「光标前后文本的行盒」判定，不依赖光标自身 rect\n  （节点边界处塌缩 Range 无盒）；亲和性取保守方向（↑ 用后文首盒、↓ 用前文\n  末盒为光标行，保原生块内移动优先）；落位 = controller.navigateUp/navigateDown\n  （host-controller.ts，模型侧邻块 + isEditableLeaf 守卫）→ engine.select →\n  响应式重挂载聚焦（mountHost 端点落位），↓ 另以宏任务把光标归到块首。\n  字形级正上方匹配（VM nav_goal_x 语义）网页轨暂缓，留作后续精化。\n- 两处语义对齐均以网页轨行为为验收基准（网页轨 e2e\n  `demo/e2e/heading-enter-backspace.spec.ts` 两用例即行为说明书）。",
+        "file": "docs/plans/archived/060-vm-block-key-ux.md",
+        "related": [
+          "PLAN-060"
+        ]
       }
     ],
     "tests": [
@@ -1509,6 +1542,17 @@
         "file": "docs/plans/archived/059-three-mode-showcase.md",
         "related": [
           "PLAN-059"
+        ]
+      },
+      {
+        "id": "P060-5",
+        "section": "tests",
+        "status": "verified",
+        "title": "双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航） — 测试设计",
+        "content": "- Rust 单测（core.rs 现有测试模块内，headless 构造 BlockBuf）：\n  - `enter_split_heading_tail_demotes_to_paragraph`：Heading 块行中回车，\n    断言新块 kind 为段落变体且携带尾巴文本、左半截保持 Heading。\n  - `enter_split_heading_at_end_yields_empty_paragraph`：行尾回车得空段落。\n  - `backspace_empty_tail_merges_to_prev_end`：回车后立即退格，断言块数还原、\n    文本并回、光标落 junction（若 T3 核发现现状缺失则先修后测）。\n- MCP 探针：`autodown/demo/auto/vm-060-probe.mjs`（vm-059-probe.mjs 先例）——\n  9359 通道逐键合成：进 H1 → End → Enter → 断言新块段落；Backspace → 断言合并；\n  截图证据 `vm-060-*.png`。\n- 网页轨 e2e（已随热修落地）：`demo/e2e/cross-block-arrow-nav.spec.ts` 真键盘\n  3 用例——↓ 进下一块开头 / ↑ 回上一块末尾；行中首线 ↑ 也跨块（行粒度非\n  offset-0 粒度）；换行块内 ↑↓ 保持原生、仅边界跨块。\n- 门禁：auto-lang `cargo test` 全绿；auto-down demo e2e 全量零回归\n  （demo/showcase 源不动应保持全绿）。",
+        "file": "docs/plans/archived/060-vm-block-key-ux.md",
+        "related": [
+          "PLAN-060"
         ]
       }
     ],
@@ -1875,6 +1919,17 @@
         "related": [
           "PLAN-059"
         ]
+      },
+      {
+        "id": "P060-6",
+        "section": "reviews",
+        "status": "published",
+        "title": "双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航） — 验收标准 / 复审记录",
+        "content": "1. VM demo（iced 桌面）内：\"Heading One\" 行尾回车 → 新块为空段落（非 H1）；\n   行中回车 → 尾巴文本成为段落内容，左半截保持 H1。\n2. 回车产生的空块上 Backspace → 空块消失、文本并回上一块、光标在上一块末尾。\n3. 网页轨：多行段落实首行按 ↑ 迁入上一块（对应水平位置就近落位），末行按 ↓\n   迁入下一块；连续 ↑/↓ 跨多块共享目标列；块内行间导航仍为原生行为。\n4. auto-lang cargo test 全绿（新增 3 单测在内）；demo e2e 全量零回归。\n5. PARITY.md 增补对齐记录（三项：两项 VM 侧对齐 + 一项 web 侧补齐）；\n   探针脚本 + 截图入库。\n\n---\n\n（/auto-plan:review 终审 2026-09-07 20:55，reviewer: zhaopuming + ZCode）\n\n### T1 现状核对结论（2026-09-07）\n\n- **键盘路由**（core.rs:973-987）：`EditorKey::Backspace` → `caret_at_soft_start(bi)`\n  → `merge_into_previous` 成功即 `return out.captured()`（吞键）；:964-971 Enter →\n  `enter_split` 失败落软换行。\n- **空尾块退格现状**：回车后的空尾块 `at_soft_start` 为真（core.rs:792-795）→\n  路由命中 → `merge_into_previous`（:3652）：DFS 叶序找前驱（首块 false）、\n  Fence/表格双向禁合、列表项余段约束，`place_caret_byte(pb, junction)` 光标落\n  上一块原文本末尾，`remove_leaves_compact` 摘除死叶、焦点回迁 prev。\n  **结论：需求②现状达标，无逻辑改动，单测钉死**。\n- **enter_split 尾块继承**（②段原注释「标题续行为登记余量：保持同级」）：\n  与网页轨修复前同款缺陷——T2 降级修正。\n\n### 执行期发现（2026-09-07）\n\n1. **新块 id = blocks vec 追加位 ≠ 显示位次**（先例 enter_at_item_end 的\n   Some(2)）：断言焦点/文本须用追加位；remove_leaves_compact 后\n   `bi < prev_bi` 补偿（既有代码在案）。\n2. **emit_document 无尾随换行**（headless 测试口径，与既有合并测试一致）；\n   空段两侧 \n\n 分隔 → 标题后插空段 = 4×\n。\n3. **MCP key_press 需聚焦块**：focus=null 时 KeyPressed 无处落键（实测）；\n   聚焦路径 = autoui_action click（widget-local px，vm-smoke group9\n   \"40,12\" 先例）。\n4. **autoui_state 的字符串字段以字面 \n 转义输出**，探针比较前需解码。\n5. **auto-lang master 基线自带 ~201 个 lib 失败**（环境/主态相关，遍布\n   musk/plan370/412/442/492 等模块，套件存在 ±2 抖动）——plan 的\n   「cargo test 全绿」门按「与 master 基线逐名差集为空 + 触达模块绿」\n   执行（T6），真全绿依赖 master 自身清红，非本计划范围。\n\n### 门禁输出（T6）\n\n- auto-lang（worktree .wt/auto-down-060/auto-lang，branch auto-down-dev）：\n  `cargo test -p auto-lang --features autodown --lib` → 4604 passed / 201\n  failed（失败名集 = master 基线，零新增）；autodown_editor::core::tests\n  79/79（76 存量 + 3 新增）。\n- auto-down（主检出）：`git diff master -- autodown/demo autodown/showcase`\n  空；`npx playwright test` 93/93。\n- VM 实机（worktree auto.exe + demo/auto，AUTOUI_MCP_PORT=9359）：\n  vm-060-probe.mjs ALL PASS；证据 vm-060-enter.png（Enter 后新块以段落\n  高度渲染、无标题样式、右栏同步）/ vm-060-backspace.png（合并还原态）。\n\n### 双侧落位\n\n- auto-lang worktree auto-down-dev：572d27591（T2/T3 core.rs）。\n- auto-down worktree plan-060-dev：T4/T5 提交（probe + 截图 + PARITY 第 18 行）。\n  两 worktree 待 /auto-plan:merge 折回各自主支。\n\n### /auto-plan:review 终审记录（2026-09-07）\n\n**复核方式**：两 worktree 实际 diff（auto-lang 572d27591 = core.rs 单文件\n+76/-2；auto-down 5184e66 = probe/PARITY/截图）+ 独立重跑全部验证，不采信\n执行期勾选。\n\n**验收标准逐条判定**：\n\n| # | 标准 | 判定 | 证据 |\n|---|------|------|------|\n| 1 | VM 行尾/行中标题回车 → 尾块段落、左半截保持 H1 | ✅ pass | 单测 enter_split_heading_tail_demotes_to_paragraph / _at_end_yields_empty_paragraph 绿；vm-060-probe.mjs 实机 ALL PASS（content 无空标题行 + DOC2 尾巴以段落落下）；vm-060-enter.png 目视：新块段落高度无标题样式、右栏同步 |\n| 2 | 空块退格合并回上一块末尾 | ✅ pass | backspace_empty_tail_merges_to_prev_end（junction offset=9 断言）；探针 content 字节还原基线 |\n| 3 | 网页轨 ↑/↓ 跨块（端点落位） | ✅ pass | demo e2e 复跑 5/5（heading-enter-backspace 2 + cross-block-arrow-nav 3）；engine 单测导航组 |\n| 4 | auto-lang cargo test 全绿（新增 3 单测在内） | ⚠️ partial（master 既有红制约，非本计划回归） | tv/tf 双档同签名对照：worktree 与 master 同为唯一失败 test_charts_gallery_compiles（tf 2619/3475 run, 2618 passed, 1 failed, 96 skipped 两侧一致）；lib 档失败名集逐名差集为空（master 基线 ~201 红）；触达模块 autodown_editor::core::tests 79/79 绿 |\n| 5 | PARITY 登记 + 探针脚本 + 截图入库 | ✅ pass | plan-060-dev 提交 5184e66：PARITY 第 18 行 + vm-060-probe.mjs + vm-060-enter/-backspace.png |\n\n**遗漏/延后/workaround 盘点**：\n\n- 延后（用户已批准，非silent）：字形级正上方落位 → 端点落位（待澄清②已\n  销号；VM nav_goal_x 为超集保留）。\n- 遗漏：无——diff 与任务清单一一对应（T2 单文件 +76/-2；T4/T5 三件套在库）。\n- workaround：无未声明项（ext 保守亲和性几何、↓ 块首归位宏任务、探针\n  click 聚焦路径均为有记录的设计选择，前者两项已入代码注释）。\n- **debt candidate（非本计划范围，建议单独清红）**：auto-lang master 的\n  ~201 lib 既有红 + charts_gallery tf/tv 红（该红使 tf 档在两侧都提前\n  收束、856 个测试被 runner 扣下）——全绿依赖 master 自身清红。\n\n**分歧记录（merge 时处理）**：两 worktree 分支落后各自 master 的并行推进\n（auto-lang master → 0c29a80dd/plan587；auto-down master → 6ea4ce0）——\n折回前需先同步 master 再合流，避免把并行提交反向回卷。\n\n**路由**：全部验收项 pass（#4 partial 为 master 既有红制约、零新增失败，\n非本计划回归）→ `status: reviewed`，交 /auto-plan:merge 折回。",
+        "file": "docs/plans/archived/060-vm-block-key-ux.md",
+        "related": [
+          "PLAN-060"
+        ]
       }
     ],
     "reports": [
@@ -2239,6 +2294,17 @@
         "file": "docs/plans/archived/059-three-mode-showcase.md",
         "related": [
           "PLAN-059"
+        ]
+      },
+      {
+        "id": "P060-1",
+        "section": "reports",
+        "status": "published",
+        "title": "双轨块键编辑 UX 三项对齐（标题回车降级 + 空块退格合并 + 跨块垂直导航） — 变更摘要",
+        "content": "用户 2026-09-07 人工复核 demo 页面（网页轨）提出三项块编辑 UX 需求。前两项当日已在\n网页轨落地（commit 9c6f3bf：block_model.at splitTailKind/splitTailAttrs + host-controller\nprevSiblingId 模型侧前驱解析），本计划把**同一 UX/UI 需求**对齐到 VM（iced 桌面）轨：\n\n1. **标题块内回车**：尾块降级为普通段落（ATX 标题是单行构造，`#` 记号不跨行；\n   行中回车时尾巴文本成为新段落的内容；行尾回车得到空段落）。\n   —— 网页轨 ✅ 已落地；**VM 轨待对齐**（本计划 T2/T3）。\n2. **空块 Backspace**：删除空块并合并回上一块末尾，光标落在 junction\n   （上一行文本末尾），不得卡在空行上。\n   —— 网页轨 ✅ 已落地；**VM 轨待验证/对齐**（本计划 T3）。\n3. **方向键跨块垂直导航**：↑/↓ 在块边界应迁焦到上/下一个块内部（对应水平\n   位置落点），而不是被锁死在当前块的文本行内。\n   —— **双向各缺一半，本计划前已互补落地**：VM 轨本就有 navigate_vertical\n   （navigate_vertical + nav_goal_x 水平落点记忆）；网页轨由本会话补齐端点\n   降落版（用户拍板：正上方字形匹配缓行，↑ 落上一块最后一个可编辑位置、\n   ↓ 落下一块开头即可），随本计划记录，VM 侧无需改动此项。\n\nVM 编辑壳与 showcase 三模式页共享同一实现，VM 侧修一处双 demo 受益；网页轨的\n前两项已入库、第三项随本计划落地。",
+        "file": "docs/plans/archived/060-vm-block-key-ux.md",
+        "related": [
+          "PLAN-060"
         ]
       }
     ]

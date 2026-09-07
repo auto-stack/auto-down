@@ -85,6 +85,21 @@
 - **绕道现状**：无（真实键盘是用户主路径）。
 - **建议验收**：真实键盘输入 N 字符 → `autoui_state content` 反映（可加
   vm-smoke 组：物理键通道 vs type_text 同断言）。
+- **✅ 状态收口（2026-09-07，PLAN-057）**：断链根因 = auto-lang renderer.rs
+  编辑壳 dynamic 臂 on_change 闭包发布预构造消息（input_value 恒 None）——
+  解释器 on_with_input_for 不把文本作 handler 首实参，`.Edit(str)` 收不到
+  值、state.content 永不更新（INPUT_TEXT 线程局部在解释器路径零读者，闭包
+  里的写入是死代码）。修复 = 闭包改 textarea 先例（wire_textarea_actions）
+  发布 `input_value: Some(全文)` 新消息，CodeEditor dynamic 臂同族同修；
+  执行期并修连发回声竞态（core sync_external 回声守卫——被后续按键超越的
+  旧自回显晚到不再整树 rebuild 清焦点，快速连打丢键同根因收口）。验收按
+  本条建议落地 = vm-smoke [group9] 逐键链路组：key_press ×12（经 core
+  KeyPressed 真路径 = 物理键同构处理）→ state.content 含 Backspace 修正、
+  右栏重渲染、与 type_text 同文档终态逐字节相等（净窗绿；043 T9/T10 D2
+  同构代证口径——物理键手验为可选披露臂）。**口径澄清：条目②的
+  custom_scrollbar/分数化绕道不涉本条——048（编辑回写链）与 043 行
+  （nanbox 整值 float 等）分立，彼绕道随其自身债主计划收口，本条修复
+  零触碰。**本条目终结。
 
 ## ④ 046 残段：VM 观感类消费缺席（渲染面板内边距 / CustomScrollbar thumb 观感）
 

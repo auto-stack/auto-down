@@ -71,6 +71,13 @@
 - **建议验收**：①子件体 computed 引用解析出真值；②引号 emit 经派发路由
   （C2① `on<name>` 回送触发）；③nanbox 整值 float 保真——届时本仓退役
   custom_scrollbar.at 双轨分派与 +1e-3 分数化绕道并复跑 vm-smoke 全组。
+- **✅ 状态收口（2026-09-07，PLAN-058 面 B）**：三件引擎缺口经查已被彼仓
+  plan 576（D2/G3/T1-T2，2026-09-07 销号）与 nanbox float 系过渡清偿——
+  探针 7 例（plan058_engine_gap_tests + 语料 plan058_child_emit_computed）
+  全绿，按条目⑤先例降级为回归锁；物理退役随本计划 T11 落地：
+  renderer.rs 043 T6 三事件拦截臂（含 frac +1e-3）移除、custom_scrollbar.at
+  is_vm 双轨/left_* 双声明退役、app.at OnLeft/OnRightScroll 补齐对栏级联；
+  净窗 vm-smoke 门控态整轮 PASS + 非门控组4 基线同形零漂移。本条目终结。
 
 ## ③ 048：真实键盘编辑不更新 .at state.content
 
@@ -110,6 +117,11 @@
   view 树逐 token 实测）；肉眼对照 vue 轨截图。
 - **嫌疑面**：auto-lang 组件臂 class 消费（ui/autodown_blocks.rs 族）。
 - **建议验收**：PARITY 实测清单内边距/thumb 项转 ✅（清单重跑）。
+- **✅ 状态收口（2026-09-07，PLAN-058 T12）**：auto-lang autodown 臂观感段
+  （py-*/px-*/p-*）内容侧 padded Container 消费（结构段不并入包装层）；
+  thumb 观感经 demo 侧 token 改写（bg-black/30→bg-[#000000]/30，命名色+
+  透明度修饰符 VM class 解析器不认）；PARITY #5/#8/实测清单 py-px 行转 ✅，
+  实机四点核验（内边距/浅 fence 标签/thumb 可见/浅主题）。本条目终结。
 
 ## ⑤ 016：a2ts 发射器缺口 T1-T4 / a2r 发射器残留 R1/R4 + Phase 0 五小修
 
@@ -140,6 +152,13 @@
 - **嫌疑面/提案**：auto-lang VM HTTP 信封扩展（base64/分块）或宿主文件能力
   桥——Phase 5 收口时裁定路线（022 计划在案）。
 - **建议验收**：桌面形态导入导出往返成功（e2e 或手验留档）。
+- **✅ 状态收口（2026-09-07，PLAN-058 T14）**：路线裁定 = base64-in-JSON
+  （058 待澄清①默认）——jade back 三路由 core 抽取 + vm_dispatch 三臂
+  信封（{name,data_b64}/{data_b64}/{format,encoding,data}，导入后
+  rebuild_index_sync）+ api.at #[api] 三声明（门豁免清零 28/28）；dispatch
+  级往返双测（导出→删源→导入→文件+索引恢复；资产字节落盘）+ back
+  cargo test 45/45。web 轨 fetch 层原语义零改动；desktop UI 按钮接线为
+  后续面（债项=通道）。本条目终结。
 
 ---
 

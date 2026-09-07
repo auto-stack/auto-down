@@ -87,6 +87,17 @@ export class UploadAssetResponse {
     }
 }
 
+export class AssetUploadRequest {
+    name: string;
+    data_b64: string;
+
+    constructor(name: string, data_b64: string) {
+        this.name = name;
+        this.data_b64 = data_b64;
+    }
+}
+
+
 export class WikiDoc {
     frontmatter: Record<string, any>;
     body: string;
@@ -351,6 +362,28 @@ export class ImportResult {
         this.imported = imported;
     }
 }
+
+export class ExportArchive {
+    format: string;
+    encoding: string;
+    data: string;
+
+    constructor(format: string, encoding: string, data: string) {
+        this.format = format;
+        this.encoding = encoding;
+        this.data = data;
+    }
+}
+
+
+export class ImportArchiveRequest {
+    data_b64: string;
+
+    constructor(data_b64: string) {
+        this.data_b64 = data_b64;
+    }
+}
+
 
 export class SyncStatus {
     status: string;

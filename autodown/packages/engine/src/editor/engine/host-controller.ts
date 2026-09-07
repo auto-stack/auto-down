@@ -17,6 +17,7 @@ import {
   Mark,
   MergeBlocksOp,
   Op,
+  Selection,
   SplitBlockOp,
   blockText,
   findBlock,
@@ -138,6 +139,44 @@ export class BlockHostController {
     if (idx <= 0) return null
     const prev = parent.children[idx - 1]
     return isEditableLeaf(prev) ? prev.id : null
+  }
+
+  /** Next mergeable sibling of this block, mirror of prevSiblingId. */
+  nextSiblingId(): string | null {
+    const parent = parentOf(this.engine.doc, this.blockId)
+    if (!parent) return null
+    const idx = parent.children.findIndex((c) => c.id === this.blockId)
+    if (idx < 0 || idx + 1 >= parent.children.length) return null
+    const next = parent.children[idx + 1]
+    return isEditableLeaf(next) ? next.id : null
+  }
+
+  /** Cross-block vertical navigation, ↑ at the host's first visual line:
+   *  select the previous editable-leaf sibling with the caret at its END
+   *  (the reactive remount then mounts that block's host, whose mount
+   *  focus lands the caret at the block end — exactly the contract).
+   *  Returns the target block id, or null when there is nothing to
+   *  navigate to (first block / container siblings stay out of v1). */
+  navigateUp(): string | null {
+    const prev = this.prevSiblingId()
+    if (!prev) return null
+    const found = findBlock(this.engine.doc, prev)
+    if (!found) return null
+    const end = blockText(found).length
+    const sel = new Selection(new BlockPos(prev, end), new BlockPos(prev, end))
+    this.engine.select(sel)
+    return prev
+  }
+
+  /** ↓ at the last visual line: select the next editable-leaf sibling with
+   *  the caret at its START. mountHost defaults the caret to the block end,
+   *  so the ext re-places the caret at offset 0 once the remount has run. */
+  navigateDown(): string | null {
+    const next = this.nextSiblingId()
+    if (!next) return null
+    const sel = new Selection(new BlockPos(next, 0), new BlockPos(next, 0))
+    this.engine.select(sel)
+    return next
   }
 
   /** Tab / Shift+Tab inside a list item → indent / outdent (plan 025 P1T3).

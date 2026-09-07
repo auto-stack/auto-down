@@ -117,6 +117,73 @@ export function caretOffset(el: HTMLElement): number {
   return range.toString().length
 }
 
+// -- cross-block vertical navigation geometry -----------------------------------
+
+/** Tops of the non-zero-height line boxes a range occupies, in document
+ *  order (empty without layout — jsdom / detached hosts). */
+function lineTops(range: Range): number[] {
+  const rects = range.getClientRects()
+  const tops: number[] = []
+  for (let i = 0; i < rects.length; i++) {
+    if (rects[i].height > 0) tops.push(rects[i].top)
+  }
+  return tops
+}
+
+/** Line boxes before vs after the collapsed caret (in host text order). */
+function prePostLineTops(el: HTMLElement): { preTops: number[]; postTops: number[] } {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return { preTops: [], postTops: [] }
+  const caret = sel.getRangeAt(0)
+  if (!caret.collapsed) return { preTops: [], postTops: [] }
+  const pre = document.createRange()
+  pre.selectNodeContents(el)
+  pre.setEnd(caret.startContainer, caret.startOffset)
+  const post = document.createRange()
+  post.selectNodeContents(el)
+  post.setStart(caret.startContainer, caret.startOffset)
+  return { preTops: lineTops(pre), postTops: lineTops(post) }
+}
+
+/** Is the collapsed caret on the host's FIRST visual line? The caret's
+ *  drawn line sits between the last preceding box and the first following
+ *  box (affinity); ↑ takes the LATER bound as the caret's line — the
+ *  conservative reading that keeps native in-block movement alive. No
+ *  preceding box at all means first line (offset 0 / empty host). */
+export function caretOnFirstLine(el: HTMLElement): boolean {
+  const { preTops, postTops } = prePostLineTops(el)
+  const caretLine = postTops.length > 0 ? postTops[0] : preTops[preTops.length - 1]
+  if (caretLine == null) return true
+  return !preTops.some((t) => t < caretLine - 1)
+}
+
+/** Is the collapsed caret on the host's LAST visual line? Mirror of
+ *  caretOnFirstLine: ↓ takes the EARLIER bound (the last preceding box's
+ *  line) as the caret's line. No following box means last line. */
+export function caretOnLastLine(el: HTMLElement): boolean {
+  const { preTops, postTops } = prePostLineTops(el)
+  const caretLine = preTops.length > 0 ? preTops[preTops.length - 1] : postTops[0]
+  if (caretLine == null) return true
+  return !postTops.some((t) => t > caretLine + 1)
+}
+
+/** Place the DOM caret at a block host's start (offset 0), after the
+ *  reactive remount has mounted that block's live host (mountHost defaults
+ *  the caret to the block end — the ↓ contract is the NEXT block's first
+ *  position). Macrotask timing rides after Vue's microtask flush. */
+function placeCaretAtBlockStart(blockId: string): void {
+  setTimeout(() => {
+    const host = document.querySelector(`.autodown-block-host[data-block-id="${blockId}"]`)
+    if (!host) return
+    const range = document.createRange()
+    range.selectNodeContents(host)
+    range.collapse(true)
+    const sel = window.getSelection()
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+  }, 0)
+}
+
 // -- event wiring (BlockHost.vue handlers, verbatim) --------------------------------
 
 export function hostInput(el: HTMLElement, controller: BlockHostController): void {
@@ -177,6 +244,20 @@ export function hostKeydown(e: KeyboardEvent, controller: BlockHostController): 
     // legitimately be null).
     const merged = controller.onBackspaceAtStart(controller.prevSiblingId())
     if (merged) e.preventDefault()
+  } else if (e.key === 'ArrowUp' && caretOnFirstLine(el)) {
+    // Cross-block vertical navigation (web parity with the VM shell's
+    // navigate_vertical): ↑ from the host's FIRST visual line moves into
+    // the previous editable-leaf block at its END — the geometry-exact
+    // "directly above" landing needs glyph-hit plumbing the web track
+    // deliberately defers (user ruling 2026-09-07: end position suffices).
+    // Interior lines keep the native in-block behaviour untouched.
+    if (controller.navigateUp()) e.preventDefault()
+  } else if (e.key === 'ArrowDown' && caretOnLastLine(el)) {
+    const target = controller.navigateDown()
+    if (target) {
+      e.preventDefault()
+      placeCaretAtBlockStart(target)
+    }
   } else if (e.key === 'Tab') {
     // list indent / outdent (plan 025 P1T3); outside a list the browser
     // default (focus move) is untouched

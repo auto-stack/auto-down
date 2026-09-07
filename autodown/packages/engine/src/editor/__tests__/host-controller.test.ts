@@ -98,6 +98,36 @@ describe('BlockHostController', () => {
     expect(new BlockHostController(e, 'p2').prevSiblingId()).toBeNull()
   })
 
+  it('navigateUp/Down move the engine selection to the sibling block endpoints', () => {
+    const e = new EditorEngine(
+      doc(leafBlock('p1', BlockType.Paragraph, 'one'), leafBlock('p2', BlockType.Paragraph, 'two')),
+      collapsedSel('p1', 0)
+    )
+    const c2 = new BlockHostController(e, 'p2')
+    expect(c2.navigateUp()).toBe('p1')
+    expect(e.selection.head).toEqual(new BlockPos('p1', 3)) // end of previous block
+    const c1 = new BlockHostController(e, 'p1')
+    expect(c1.navigateDown()).toBe('p2')
+    expect(e.selection.head).toEqual(new BlockPos('p2', 0)) // start of next block
+  })
+
+  it('navigateUp/Down return null at the ends and skip container siblings', () => {
+    const e = new EditorEngine(
+      doc(
+        leafBlock('p0', BlockType.Paragraph, 'head'),
+        ul('l1', li('i1', leafBlock('p1', BlockType.Paragraph, 'x'))),
+        leafBlock('p2', BlockType.Paragraph, 'y')
+      ),
+      collapsedSel('p0', 0)
+    )
+    const c0 = new BlockHostController(e, 'p0')
+    expect(c0.navigateUp()).toBeNull() // first block
+    expect(c0.navigateDown()).toBeNull() // next sibling is a container
+    const c2 = new BlockHostController(e, 'p2')
+    expect(c2.navigateDown()).toBeNull() // last block
+    expect(c2.navigateUp()).toBeNull() // previous sibling is the container
+  })
+
   it('composition: preedit inputs are ignored, commit lands once', () => {
     const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, '')), collapsedSel('p1', 0))
     const c = new BlockHostController(e, 'p1')

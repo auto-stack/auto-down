@@ -31,6 +31,8 @@ import {
   hostCls,
   hostText,
   caretOffset,
+  caretOnFirstLine,
+  caretOnLastLine,
   hostInput,
   hostKeydown,
   hostPaste,
@@ -57,6 +59,8 @@ function fakeController(overrides: Record<string, unknown> = {}): FakeController
     onEnter: vi.fn(),
     prevSiblingId: vi.fn(() => null),
     onBackspaceAtStart: vi.fn(),
+    navigateUp: vi.fn(() => null),
+    navigateDown: vi.fn(() => null),
     onTab: vi.fn(() => true),
     onPasteMarkdown: vi.fn(),
     onRichBlur: vi.fn(),
@@ -122,6 +126,32 @@ function pasteEvent(textPlain: string): ClipboardEvent {
 
 afterEach(() => {
   document.body.innerHTML = ''
+})
+
+/** happy-dom has no layout: fabricate line boxes for the navigation helpers'
+ *  Range geometry. Ranges are told apart by their text content (pre = text
+ *  before the caret, post = text after; the collapsed caret itself is never
+ *  measured). */
+function stubGeometry(text: string, caret: number, beforeTops: number[], afterTops: number[]): void {
+  const L = (top: number) => ({ top, height: 20 })
+  const beforeText = text.slice(0, caret)
+  const afterText = text.slice(caret)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(Range.prototype as any).getClientRects = function (this: Range) {
+    const txt = this.toString()
+    if (txt === beforeText) return beforeTops.map(L) as any
+    if (txt === afterText) return afterTops.map(L) as any
+    return [] as any
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(Range.prototype as any).getBoundingClientRect = function () {
+    return { top: 0, height: 0 }
+  }
+}
+
+afterEach(() => {
+  delete (Range.prototype as any).getClientRects
+  delete (Range.prototype as any).getBoundingClientRect
 })
 
 // -- face computation (host-face.ts absorbed; value table frozen) -------------------
@@ -333,6 +363,70 @@ describe('hostKeydown', () => {
     hostKeydown(composing, mid)
     expect(composing.defaultPrevented).toBe(false)
     expect(mid.onEnter).not.toHaveBeenCalled()
+  })
+
+  // -- cross-block vertical navigation (↑/↓ at the host's first/last line) --
+
+  it('ArrowUp at the first line crosses to the previous block (prevented)', () => {
+    const el = hostEl('hello')
+    setCaret(el, 0)
+    stubGeometry('hello', 0, [], [100])
+    const c = fakeController({ navigateUp: vi.fn(() => 'p0') })
+    const e = keydownEvent('ArrowUp', {}, el)
+    hostKeydown(e, c)
+    expect(e.defaultPrevented).toBe(true)
+    expect(c.navigateUp).toHaveBeenCalledTimes(1)
+  })
+
+  it('ArrowUp off the first line keeps the native in-block default', () => {
+    const el = hostEl('hello')
+    setCaret(el, 2)
+    stubGeometry('hello', 2, [60, 100], [])
+    const c = fakeController()
+    const e = keydownEvent('ArrowUp', {}, el)
+    hostKeydown(e, c)
+    expect(e.defaultPrevented).toBe(false)
+    expect(c.navigateUp).not.toHaveBeenCalled()
+  })
+
+  it('ArrowDown at the last line crosses and schedules the start-caret placement', () => {
+    vi.useFakeTimers()
+    try {
+      const el = hostEl('hello')
+      setCaret(el, 5)
+      stubGeometry('hello', 5, [100], [])
+      const c = fakeController({ navigateDown: vi.fn(() => 'p2') })
+      const e = keydownEvent('ArrowDown', {}, el)
+      hostKeydown(e, c)
+      expect(e.defaultPrevented).toBe(true)
+      expect(c.navigateDown).toHaveBeenCalledTimes(1)
+      // the deferred placement query misses (no remount in jsdom) — must not throw
+      vi.runAllTimers()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+// -- vertical navigation geometry (caretOnFirstLine / caretOnLastLine) ---------------
+
+describe('cross-block navigation geometry', () => {
+  it('caretOnFirstLine: true on the first line, false when a prior line box exists', () => {
+    const el = hostEl('hello world')
+    setCaret(el, 3)
+    stubGeometry('hello world', 3, [100], [100])
+    expect(caretOnFirstLine(el)).toBe(true)
+    stubGeometry('hello world', 3, [60, 100], [100])
+    expect(caretOnFirstLine(el)).toBe(false)
+  })
+
+  it('caretOnLastLine: true on the last line, false when a later line box exists', () => {
+    const el = hostEl('hello world')
+    setCaret(el, 3)
+    stubGeometry('hello world', 3, [100], [100])
+    expect(caretOnLastLine(el)).toBe(true)
+    stubGeometry('hello world', 3, [100], [140])
+    expect(caretOnLastLine(el)).toBe(false)
   })
 })
 

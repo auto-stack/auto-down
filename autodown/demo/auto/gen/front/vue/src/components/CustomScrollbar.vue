@@ -7,22 +7,14 @@ const props = withDefaults(defineProps<{
   scrollHeight: number
   clientHeight: number
   visible?: boolean
-  is_vm?: boolean
 }>(), {
   visible: false,
-  is_vm: false,
 })
 
 const dragging = ref<number>(0)
 const hovering = ref<number>(0)
 const grab_armed = ref<number>(0)
 const grab_offset = ref<number>(0)
-const left_top = ref<number>(0)
-const left_height = ref<number>(0)
-const left_client = ref<number>(0)
-const right_top = ref<number>(0)
-const right_height = ref<number>(0)
-const right_client = ref<number>(0)
 
 const trackEl = ref<HTMLElement | null>(null)
 
@@ -50,14 +42,8 @@ function Move(x: any, y: any): void {
   }
 
 
-
-
-
-
-  if (props.is_vm) {left_top.value = v;
-  if (left_height.value > left_client.value && right_height.value > right_client.value) {right_top.value = v / (left_height.value - left_client.value) * (right_height.value - right_client.value);
-  }} else {let _ = update_scrollTop(v);
-  }}}}
+  let _ = update_scrollTop(v);
+  }}}
 
   emit('Move', x, y)
 }

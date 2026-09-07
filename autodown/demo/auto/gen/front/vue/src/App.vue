@@ -90,6 +90,8 @@ function OnLeftScroll(h: any, c: any, sy: any): void {
   left_top.value = sy;
   left_height.value = h;
   left_client.value = c;
+  if (h > c && right_height.value > right_client.value) {right_top.value = sy / (h - c) * (right_height.value - right_client.value);
+  }
 
   emit('OnLeftScroll', h, c, sy)
 }
@@ -98,6 +100,8 @@ function OnRightScroll(h: any, c: any, sy: any): void {
   right_top.value = sy;
   right_height.value = h;
   right_client.value = c;
+  if (h > c && left_height.value > left_client.value) {left_top.value = sy / (h - c) * (left_height.value - left_client.value);
+  }
 
   emit('OnRightScroll', h, c, sy)
 }
@@ -288,7 +292,7 @@ watch(dark_mode, (v) => {
           </div>
         </div>
         <div class="splitter-hover-zone" @mouseenter="SplitterHover(1)" @mouseleave="SplitterHover(0)" />
-        <CustomScrollbar :clientHeight="csb_client" :is_vm="is_vue() == null" :scrollHeight="csb_height" :scrollTop="csb_top" :visible="hovering_splitter == 1" :key="'CustomScrollbar-4'" @update:scrollTop="SetScrollTop($event)" />
+        <CustomScrollbar :clientHeight="csb_client" :scrollHeight="csb_height" :scrollTop="csb_top" :visible="hovering_splitter == 1" :key="'CustomScrollbar-4'" @update:scrollTop="SetScrollTop($event)" />
       </main>
     </div>
 

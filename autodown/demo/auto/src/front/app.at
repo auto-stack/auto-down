@@ -293,7 +293,6 @@ widget App {
                     scrollHeight: .csb_height,
                     clientHeight: .csb_client,
                     visible: .hovering_splitter == 1,
-                    is_vm: is_vue() == None,
                     on "update:scrollTop": .SetScrollTop($event)
                 }
             }
@@ -326,23 +325,29 @@ widget App {
                 .left_top = v
             }
         }
-        // PLAN-043 T3/T6: VM 轨两栏比例联动。参数序 (h, c, sy) =
-        // (scrollHeight, clientHeight, scrollTop)——VM 三参 handler 首参
-        // 绑定损坏（首参读到垃圾、二三参正常，DEBTS 登记），scrollTop
-        // 放第三位绕道。级联回授环由 rust 侧 pending 队列 0.5px 去抖
-        // 几何收敛终结。vue 轨 @scroll 不达组件根（滚动发生在内层
+        // PLAN-043 T3（PLAN-058 恢复双轨真消费）：VM 轨两栏比例联动。
+        // 参数序 (h, c, sy) = (scrollHeight, clientHeight, scrollTop)——
+        // 043 期的三参首参绑定损坏已随 nanbox 整值 float 修复清偿，参数
+        // 序保留（语义不变）。级联回授环由 rust 侧 pending 队列 0.5px
+        // 去抖几何收敛终结。vue 轨 @scroll 不达组件根（滚动发生在内层
         // wrapper），两 handler 永不触发，bridge 路径零变化。
         .OnLeftScroll(h, c, sy) -> {
-            // 契约面（vue 生成侧）——VM 轨由 update 层 rust 直写快道
-            // 执行（引擎 handler 浮点写入腐坏，见 renderer.rs T6 注）。
+            // PLAN-058: 043 T6 rust 直写快道退役——VM 轨与 vue 轨同走
+            // 解释器 handler（三测量 + 对栏比例级联，级联式与快道同源）。
             .left_top = sy
             .left_height = h
             .left_client = c
+            if h > c && .right_height > .right_client {
+                .right_top = sy / (h - c) * (.right_height - .right_client)
+            }
         }
         .OnRightScroll(h, c, sy) -> {
             .right_top = sy
             .right_height = h
             .right_client = c
+            if h > c && .left_height > .left_client {
+                .left_top = sy / (h - c) * (.left_height - .left_client)
+            }
         }
         // PLAN-044 T5: 块聚焦 → ghost 占位。vue 轨：$event = {id,height}|null
         // 写 bridge（computed vue 臂读取，editingBlock 自本计划真点亮）；

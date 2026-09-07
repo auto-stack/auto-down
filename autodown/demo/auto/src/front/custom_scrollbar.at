@@ -33,7 +33,7 @@
 // single-source contract (vertical drags from the thumb center stay in
 // bounds; e2e drags are in-strip).
 
-widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool = false, is_vm: bool = false) {
+widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, visible: bool = false) {
     msg Msg {
         "update:scrollTop"(f64),
         "hover-change"(int),
@@ -50,16 +50,6 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
         // 坐标原语，偏移从首帧坐标对 thumb_t 反推）。
         var grab_armed int = 0
         var grab_offset f64 = 0
-        // PLAN-043 T10: 双声明（Plan 320 模式——子件 handler 经改写器只认
-        // 本件 state_fields；声明后 .left_* 重写为 __state 访问，运行期按
-        // 名落根态与父件共享，渲染期由父侧 ensure 同步回灌）。VM 直写臂
-        // 用；vue 轨不触（走 emit）。
-        var left_top f64 = 0
-        var left_height f64 = 0
-        var left_client f64 = 0
-        var right_top f64 = 0
-        var right_height f64 = 0
-        var right_client f64 = 0
     }
 
     computed {
@@ -168,21 +158,10 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
                         if v > max_scroll2 {
                             v = max_scroll2
                         }
-                        // PLAN-043 T10: 双轨分派。vue：emit(update:scrollTop)
-                        // → 父绑定 .SetScrollTop（原语义）。VM：体内引号 emit
-                        // 编译为对子件自身空 handler 的内联直调，不经派发器，
-                        // PLAN-051 C2① 的 on<name> 路由回送不触发（引擎缺口，
-                        // DEBTS 在案——带计算实参的子件 emit 平台性不通）；
-                        // 改直写根态（Plan 320 统一态：子 handler 写根态即
-                        // 父态）+ 镜像 fast-path 的对栏比例同步。
-                        if .is_vm {
-                            .left_top = v
-                            if .left_height > .left_client && .right_height > .right_client {
-                                .right_top = v / (.left_height - .left_client) * (.right_height - .right_client)
-                            }
-                        } else {
-                            let _ = ."update:scrollTop"(v)
-                        }
+                        // PLAN-058: 单轨 emit（043 T10 双轨分派退役——引号
+                        // emit 计算实参的派发路由已由 PLAN-576 G3 清偿，
+                        // VM 轨与 vue 轨同走父绑定 .SetScrollTop 原语义）。
+                        let _ = ."update:scrollTop"(v)
                     }
                 }
             }

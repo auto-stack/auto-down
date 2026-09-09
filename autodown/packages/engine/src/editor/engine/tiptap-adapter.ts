@@ -37,7 +37,7 @@ import { parse_blocks } from '../../parser/markdown-parser'
 import { ref } from 'vue'
 import type { EditorEngine } from './editor-engine'
 import { marksInRange, tableAddRowTree, tableAddColumnAtTree, tableDeleteColumnAtTree } from './commands'
-import { domSelectionAdapter, getFocusedRichHost, toggleMark } from './selection-adapter'
+import { activeMarksAtCaret, domSelectionAdapter, getFocusedRichHost, toggleMark } from './selection-adapter'
 import { blockRangeToDomRange } from './selection-map'
 
 const KIND_COMMANDS: Record<string, BlockType> = {
@@ -188,6 +188,10 @@ export interface EditorAdapter {
    *  the 1.0.0 frozen surface (plan 020 Phase 4) — a required field would
    *  break external implementors. */
   __engine?: EditorEngine
+  /** plan-062 T-04: reactive bump for caret-only moves (the engine emit
+   *  fires on content changes; bare caret moves need their own tick so
+   *  isActive-driven computeds re-evaluate). */
+  __bump?: () => void
 }
 
 function sameSelection(a: Selection, b: Selection): boolean {
@@ -232,7 +236,14 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
     isActive: (name: string) => {
       void selectionTick.value
       const m = MARK_BY_NAME[name]
-      if (m != null) return hasMark(marksInRange(engine, engine.selection), m)
+      if (m != null) {
+        // plan-062 T-04: collapsed caret — the engine selection does not
+        // track bare caret moves; the DOM caret's enclosing styled element
+        // is the truth for the cancel-channel highlight.
+        const live = activeMarksAtCaret()
+        if (live.length > 0) return live.includes(m)
+        return hasMark(marksInRange(engine, engine.selection), m)
+      }
       const kind = BLOCK_BY_NAME[name]
       if (kind == null) return false
       const family = new Set<BlockType>()
@@ -301,6 +312,9 @@ export function createEditorAdapter(engine: EditorEngine): EditorAdapter {
     },
     chain: () => createChain(engine),
     __engine: engine,
+    __bump: () => {
+      selectionTick.value++
+    },
   }
   return adapter
 }

@@ -11,7 +11,11 @@ test('rich host: Ctrl+Z reverts the typed run, Ctrl+Y restores it', async ({ pag
   await page.goto('/')
   await page.waitForSelector('.left [data-block-id]', { timeout: 10000 })
 
-  await page.locator('.left [data-node-type="Paragraph"]').first().click()
+  const para = page.locator('.left [data-node-type="Paragraph"]').first()
+  const box = (await para.boundingBox())!
+  // click PAST the text end: the click-caret handoff honours the pointed-at
+  // position now, so a center click would type mid-sentence
+  await para.click({ position: { x: box.width - 4, y: box.height / 2 } })
   const host = page.locator('.left .autodown-block-host')
   await expect(host).toBeVisible()
   // mount render keeps the baseline text (link is the last inline)

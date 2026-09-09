@@ -42,16 +42,19 @@
 
 widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool) {
     use {
-        fn: renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, viewCodeInner, editCodeInner, rootDataLanguage from "ext/code_block_widget_ext.ts"
+        fn: renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, viewCodeInner, editCodeInner, rootDataLanguage, draftCodeOf, captureCodeClick, takePendingCodeCaret, nodeIdOf from "ext/code_block_widget_ext.ts"
     }
 
-    msg Msg { Init, AreaInput, AreaScroll, Blur }
+    msg Msg { Init, AreaInput, AreaScroll, Blur, ViewClick }
 
     model {
         // prop-initialized (TDZ-safe since b4b74fd09, code_editor_block idiom):
         // SSR renders the committed code; the controller builds once per
-        // instance (null without a ctx — view/stream).
-        var code_draft str = nodeText(.node)
+        // instance (null without a ctx — view/stream). The draft collapses
+        // the closed-fence representation newline (draftCodeOf) — the
+        // phantom empty last line never enters the caret-bearing face; the
+        // controller restores it on commit.
+        var code_draft str = draftCodeOf(.node)
         var controller Array<str> = codeController(.ctx)
     }
 
@@ -206,6 +209,12 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
                     data-language: .language,
                     aria-busy: .aria_busy,
                     tabindex: "0",
+                    // click-caret handoff: bubble-phase handler on the pre
+                    // runs before the node-slot chrome's selectBlock in the
+                    // same event — record where the user pointed so the edit
+                    // face's mount focus can land the caret there instead of
+                    // at end-of-text.
+                    onclick: .ViewClick($event),
                     html: .view_inner_html
                 }
             }
@@ -215,14 +224,22 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
     on {
         .Init -> {
             if .is_edit {
-                focusCodeArea(.area, .readonly)
+                focusCodeArea(.area, .readonly, takePendingCodeCaret(.block_id))
                 syncCodeHighlight(.area, .hl)
             }
         }
 
-        .AreaInput(e) -> {
-            resizeCodeArea(e.target)
-            syncCodeHighlight(e.target, .hl)
+        .ViewClick(e) -> {
+            // view/stream faces carry ctx: null — key the handoff on the
+            // node id, the same id the edit face's ctx.blockId carries
+            captureCodeClick(e, nodeIdOf(.node))
+        }
+
+        .AreaInput(v) -> {
+            // the v-model fold passes the NEW VALUE string (compiler idiom),
+            // not the event — the textarea is reachable through the ref
+            resizeCodeArea(.area)
+            syncCodeHighlight(.area, .hl)
         }
 
         .AreaScroll(e) -> {
@@ -232,7 +249,7 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
         .Blur(e) -> {
             if !.readonly {
                 let c = .controller
-                c.commit(e.target.value)
+                c.commitDraft(e.target.value)
             }
         }
     }
@@ -296,15 +313,24 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
           inset: 0;
           margin: 0;
           box-sizing: border-box;
-          padding: 0.6rem 0.75rem;
+          /* View-face pre mirror (font metrics, not just padding): the view
+             pre inherits 0.95rem/1.6 from .autodown-editor-content and its
+             STRUT inflates every line box to 24.32px even though the glyphs
+             are the code child's 0.88rem/1.5. Mirroring the same font/leading
+             here makes the line boxes identical, so the focus swap changes
+             nothing — no height jump, no glyph reflow. The code child picks
+             the shared `.autodown-editor-content pre code` rule (0.88rem/1.5)
+             exactly like the view face does, and 0.85em/1em resolves to the
+             same 12.92px/15.2px padding. */
+          padding: 0.85em 1em;
           border: none;
           overflow: hidden;
           pointer-events: none;
           background: transparent;
           color: #111827;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 0.88rem;
-          line-height: 1.5;
+          font-size: 0.95rem;
+          line-height: 1.6;
           white-space: pre-wrap;
           word-break: break-word;
         }
@@ -313,7 +339,8 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
           width: 100%;
           box-sizing: border-box;
           min-height: 3rem;
-          padding: 0.6rem 0.75rem;
+          /* same 12.92px/15.2px padding as the highlight pre above */
+          padding: 0.8075rem 0.95rem;
           border: none;
           outline: none;
           resize: none;
@@ -324,8 +351,13 @@ widget CodeBlockWidget(mode: str, node: Array<str>, ctx: Array<str>, final: bool
           color: transparent;
           caret-color: #111827;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          /* glyph metrics stay the code face (0.88rem) so caret advances
+             match the painted glyphs; the leading goes to the view pre's
+             24.32px line boxes (1.6 × 0.95rem) so line k of the textarea
+             lands on line k of the overlay — the half-leading distributes
+             identically on both sides. */
           font-size: 0.88rem;
-          line-height: 1.5;
+          line-height: 1.52rem;
           white-space: pre-wrap;
           word-break: break-word;
         }

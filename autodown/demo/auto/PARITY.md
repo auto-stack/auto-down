@@ -7,7 +7,7 @@ vue 轨（`auto run`，生成 App.vue）与 VM 轨（`auto run -r vm`，iced 桌
 auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据行号为
 2026-09-04 快照值，函数/臂名锚点为准。
 
-## 差异总表（十七项）
+## 差异总表（十九项）
 
 | # | 项 | vue 轨现状 | VM 轨现状 | 归宿 | 证据 |
 |---|----|-----------|----------|------|------|
@@ -31,6 +31,8 @@ auto-lang master 为活动仓（并行会话持续推进），下述 rust 证据
 | 17 | 运行时主题切换器 + accent 盘 | settings popover（settings_popover.at 适配件）：⚙ 钮 → 深浅/accent 五色，引擎 darkMode/accent props 声明式消费（根 .is-dark + data-accent，Design 22 §7 规约行单源）；app 级 chrome 条件类 .app-dark | 同构：popover 两轨原生渲染（native_button 原生逃生名 + auto-lang VM 别名），dark_mode 状态经 D-GAP 全局翻转 + **fence buffer 运行时重着色**（retheme_all_fence_buffers 两翻转臂挂钩，DEBTS 050 销号）；document accent 消费豁免（见行内注） | ✅ **PLAN-051 收口**（vm-051-settings.mjs 实机全链路 PASS：⚙→popover→Dark→✕→Light 程序门 + vm-051-light/dark.png；document accent VM 侧 iced 主题接线为豁免残段，后续独立立项）。**PLAN-052 T10-T12 读数注记（2026-09-05）**：浅档干净启动 view 臂 fence 深盘分叉（051-候选，非 051 引入）经像素探针 probe-051-view-theme.mjs 四轴判读——首帧 FORK（renderer zinc950 40.4%）、深档对照同批 statics、D-GAP 翻回浅不重建存量（A2b）、编辑新建 fence 正确浅（A3）→ pinpoint=首帧取档错误+内容寻址缓存不随主题失效；auto-lang HEAD 仍在；回归门=vm-smoke 第七组（AUTO_VM_KNOWN_FORK 门控，修复后摘门）。**PLAN-053 T10/T12 收口注记（2026-09-05）**：fork 已修（转介单①收回自修——theme 主题代数+StreamCache 主题失效，auto-lang master 2d3b2d1e0 折回）；`--quadrants` 七行全 CONSISTENT；第七组+第八组（主题翻转组）摘门控转硬断言，AUTO_VM_KNOWN_FORK 门控退役 | demo/auto/vm-051-settings.mjs；auto-lang dynamic.rs 三补面（纯 emit 子件派发/引号键归一/幻影载荷裁剪）；PARITY-051 证据 vue-051-*/vm-051-*.png |
 
 | 18 | 块键编辑 UX 三项（标题回车尾块降级 / 空块退格合并 / 方向键跨块垂直导航） | ①②③ 全落地（2026-09-07 复审轮，commit 9c6f3bf + cd8fa98）：① SplitBlock 尾块 Heading→Paragraph（block_model.at splitTailKind 不变式 + level 属性不随降级复制）；② 空块退格合并（prevSiblingId 模型侧前驱修复 DOM 兄弟死路 + ext 按合并结果 preventDefault）；③ ↑/↓ 跨块垂直导航（caretOnFirstLine/LastLine 行盒探测 + navigateUp/Down 端点落位：↑ 上一块末尾 / ↓ 下一块开头，字形级正上方匹配缓行） | ①✅ **PLAN-060 收口**：enter_split 尾块降级（LeafKind::Heading→Paragraph，原「保持同级」即同款缺陷）；②✅ **现状达标随单测钉死**：caret_at_soft_start → merge_into_previous（junction 落位/焦点回迁/块数还原）；③✅ 原生已有且为超集（navigate_vertical + nav_goal_x 字形落位记忆，批次十④） | ✅ **PLAN-060 收口**（TDD 3 单测：enter_split_heading_tail_demotes/at_end + backspace_empty_tail_merges_to_prev_end；vm-060-probe.mjs MCP 实机三断言 PASS）；VM 的 nav_goal_x 字形落位保留为超集行为，网页轨端点落位为已裁定子集 | auto-lang autodown_editor/core.rs enter_split/merge_into_previous；vm-060-enter.png/-backspace.png；demo/auto/vm-060-probe.mjs；demo/e2e/heading-enter-backspace.spec.ts + cross-block-arrow-nav.spec.ts（网页轨真键盘对照） |
+
+| 19 | 块首点光标落点（文本叶块点击交接 / 容器点击归属 / 表格单元格聚焦） | ✅ **本次（2026-09-09）网页轨落地**：click-caret 单槽通道（点 / 明文偏移 / cellId 三类载荷）+ `resolveClickHit`（叶包装 ↔ 模型原子子叶按文档序配对、表格行列定位）+ `selectBlock` 深选覆盖 + RichTextHost / 表格编辑面挂载消费；实测修复前 H2 点 `i`(offset 4)→caret 11、容器点第 2 项→焦点落第 1 项、表格编辑面不聚焦，修复后逐项 = 点击位 | ⏳ 待核对 / 对齐（**PLAN-061** T-04/T-05）：VM 轨点击为单趟字形命中（handle_mouse_press → hit_test → Action::Click → locate_leaf，cell 自 PLAN-055 为独立叶 buffer），结构上无预览面替换环节，疑已达标，待 MCP 9359 `__mcp_click` 探针实证 | ⏳ **PLAN-061 立案**（网页轨已落地留证，VM 侧核对任务在册；docs/plans/061-click-caret-parity.md） | engine src/editor/engine/click-caret.ts（:64/76/101/168/181/212/224）；src/editor/components/EngineEditor.vue:617/828；demo/e2e/block-click-caret.spec.ts（8）+ codeblock-click-caret.spec.ts（2）；auto-lang autodown_editor/core.rs:1162/1219/2047/2703 |
 
 ## T1/T2 实测类消费清单（VM 轨，view 树逐 token）
 

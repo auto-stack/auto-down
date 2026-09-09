@@ -50,6 +50,20 @@ export class CodeEditorController {
     return true
   }
 
+  /** The code widget's commit: the edit face drafts the COLLAPSED text
+   *  (draftCodeOf strips the closed-fence representation newline), so the
+   *  model representation is restored here before the compare+write — an
+   *  untouched blur stays a no-op, a real edit always wins, and a trailing
+   *  newline the user actually typed becomes model content on top of the
+   *  representation. Math/mermaid draft the model text verbatim and keep
+   *  using commit. */
+  commitDraft(newCode: string): boolean {
+    if (this.knownCode.endsWith('\n')) {
+      newCode = newCode + '\n'
+    }
+    return this.commit(newCode)
+  }
+
   private readModel(): string {
     const found = findBlock(this.engine.doc, this.blockId)
     return found ? blockText(found) : ''

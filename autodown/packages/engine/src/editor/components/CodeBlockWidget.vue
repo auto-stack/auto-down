@@ -1,7 +1,7 @@
 <!-- CodeBlockWidget component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, viewCodeInner, editCodeInner, rootDataLanguage } from '../ext/code_block_widget_ext'
+import { renderCodeHighlight, focusCodeArea, resizeCodeArea, syncCodeHighlight, nodeLanguage, nodeText, nodeLoading, ctxReadonly, ctxBlockId, codeController, viewCodeInner, editCodeInner, rootDataLanguage, draftCodeOf, captureCodeClick, takePendingCodeCaret, nodeIdOf } from '../ext/code_block_widget_ext'
 
 
 const props = defineProps<{
@@ -11,7 +11,7 @@ const props = defineProps<{
   final: boolean
 }>()
 
-const code_draft = ref<any>(nodeText(props.node))
+const code_draft = ref<any>(draftCodeOf(props.node))
 const controller = ref<any>(codeController(props.ctx))
 
 const hl = ref<HTMLElement | null>(null)
@@ -36,13 +36,16 @@ const emit = defineEmits<{
   AreaInput: [any]
   AreaScroll: [any]
   Blur: [any]
+  ViewClick: [any]
 }>()
 
-function AreaInput(e: any): void {
-  resizeCodeArea(e.target);
-  syncCodeHighlight(e.target, hl.value!);
+function AreaInput(v: any): void {
 
-  emit('AreaInput', e)
+
+  resizeCodeArea(area.value!);
+  syncCodeHighlight(area.value!, hl.value!);
+
+  emit('AreaInput', v)
 }
 
 function AreaScroll(e: any): void {
@@ -53,14 +56,22 @@ function AreaScroll(e: any): void {
 
 function Blur(e: any): void {
   if (!readonly.value) {let c = controller.value;
-  c.commit(e.target.value);
+  c.commitDraft(e.target.value);
   }
 
   emit('Blur', e)
 }
 
+function ViewClick(e: any): void {
+
+
+  captureCodeClick(e, nodeIdOf(props.node));
+
+  emit('ViewClick', e)
+}
+
 onMounted(() => {
-  if (is_edit.value) {focusCodeArea(area.value!, readonly.value);
+  if (is_edit.value) {focusCodeArea(area.value!, readonly.value, takePendingCodeCaret(block_id.value));
   syncCodeHighlight(area.value!, hl.value!);
   }
 })
@@ -97,7 +108,7 @@ onMounted(() => {
           </div>
           <div class="code-editor-stack">
             <pre class="code-editor-highlight" :aria-hidden="'true'" v-html="edit_code_inner" ref="hl" />
-            <textarea class="code-editor-textarea" :disabled="readonly" ref="area" :spellcheck="'false'" v-model="code_draft" @blur="Blur($event)" @input="AreaInput($event)" @scroll="AreaScroll($event)" />
+            <textarea class="code-editor-textarea" :disabled="readonly" ref="area" :spellcheck="'false'" v-model="code_draft" @blur="Blur($event)" @input="AreaInput(($event.target as HTMLInputElement).value)" @scroll="AreaScroll($event)" />
           </div>
         </div>
       </template>
@@ -120,7 +131,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-        <pre :class="pre_class" :aria-busy="aria_busy" :data-language="language" v-html="view_inner_html" :tabindex="'0'" />
+        <pre :class="pre_class" :aria-busy="aria_busy" :data-language="language" v-html="view_inner_html" :tabindex="'0'" @click="ViewClick($event)" />
       </template>
     </div>
 
@@ -191,15 +202,24 @@ onMounted(() => {
           inset: 0;
           margin: 0;
           box-sizing: border-box;
-          padding: 0.6rem 0.75rem;
+          /* View-face pre mirror (font metrics, not just padding): the view
+             pre inherits 0.95rem/1.6 from .autodown-editor-content and its
+             STRUT inflates every line box to 24.32px even though the glyphs
+             are the code child's 0.88rem/1.5. Mirroring the same font/leading
+             here makes the line boxes identical, so the focus swap changes
+             nothing — no height jump, no glyph reflow. The code child picks
+             the shared `.autodown-editor-content pre code` rule (0.88rem/1.5)
+             exactly like the view face does, and 0.85em/1em resolves to the
+             same 12.92px/15.2px padding. */
+          padding: 0.85em 1em;
           border: none;
           overflow: hidden;
           pointer-events: none;
           background: transparent;
           color: #111827;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 0.88rem;
-          line-height: 1.5;
+          font-size: 0.95rem;
+          line-height: 1.6;
           white-space: pre-wrap;
           word-break: break-word;
         }
@@ -208,7 +228,8 @@ onMounted(() => {
           width: 100%;
           box-sizing: border-box;
           min-height: 3rem;
-          padding: 0.6rem 0.75rem;
+          /* same 12.92px/15.2px padding as the highlight pre above */
+          padding: 0.8075rem 0.95rem;
           border: none;
           outline: none;
           resize: none;
@@ -219,8 +240,13 @@ onMounted(() => {
           color: transparent;
           caret-color: #111827;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          /* glyph metrics stay the code face (0.88rem) so caret advances
+             match the painted glyphs; the leading goes to the view pre's
+             24.32px line boxes (1.6 × 0.95rem) so line k of the textarea
+             lands on line k of the overlay — the half-leading distributes
+             identically on both sides. */
           font-size: 0.88rem;
-          line-height: 1.5;
+          line-height: 1.52rem;
           white-space: pre-wrap;
           word-break: break-word;
         }

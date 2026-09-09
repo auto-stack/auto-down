@@ -26,7 +26,9 @@
 // Deployed verbatim to src/editor/ext/table_block_widget_ext.ts by gen.mjs
 // (assert-editor-gen guards the byte sync).
 
+import { getCurrentInstance } from 'vue'
 import { htmlText } from './code_block_widget_ext'
+import { placeCaretAtPoint, takeClickCaret } from '../engine/click-caret'
 
 export { htmlText }
 
@@ -35,6 +37,35 @@ export function commitTableCell(controller: any, e: any): void {
   const cellId = el?.dataset?.cellId
   if (!cellId) return
   controller.commitCell(cellId, (el as HTMLElement).innerText.replace(/\n+$/, ''))
+}
+
+/** Mount focus (the widget's .Init): the table face is a cell grid with no
+ *  focus of its own, so a preview click's handoff (click-caret's cellId +
+ *  point payload) focuses the addressed cell and lands the caret where the
+ *  user pointed — without it the first click on a preview cell left focus
+ *  nowhere and the position was lost. No handoff (keyboard focus,
+ *  programmatic select) keeps the face's old no-focus behavior. */
+export function focusPendingCell(blockId: string): void {
+  const inst = getCurrentInstance()
+  const root = (inst?.proxy?.$el as HTMLElement | undefined) ?? null
+  if (!root || blockId === '') return
+  const entry = takeClickCaret(blockId)
+  if (!entry || !entry.cellId) return
+  const cell = Array.from(root.querySelectorAll<HTMLElement>('[data-cell-id]')).find(
+    (el) => el.dataset.cellId === entry.cellId,
+  )
+  if (!cell) return
+  cell.focus()
+  if (placeCaretAtPoint(cell, entry)) return
+  // no caret API / point outside the cell — the cell end, the other faces'
+  // append-at-end default
+  const doc = cell.ownerDocument
+  const range = doc.createRange()
+  range.selectNodeContents(cell)
+  range.collapse(false)
+  const sel = doc.defaultView?.getSelection() ?? null
+  sel?.removeAllRanges()
+  sel?.addRange(range)
 }
 
 /** The dyn root's tag: the view face IS the table (tablePanel's root), the

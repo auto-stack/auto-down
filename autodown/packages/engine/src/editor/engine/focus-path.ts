@@ -30,8 +30,9 @@ export function focusPathOf(tree: BlockNode, focusedId: string): Set<string> {
  *  atomic-face rule below applies to kinds like Fence/Table whose edit face
  *  is the whole block). Without this exemption the registered container edit
  *  slots would capture focus on the card itself and deep editing would need
- *  a second click. */
-const COMPOSITE_CONTAINER_KINDS = new Set<number>([
+ *  a second click. Exported for click-caret's wrapper pairing (same ruling,
+ *  one source). */
+export const COMPOSITE_CONTAINER_KINDS = new Set<number>([
   BlockType.Callout,
   BlockType.Details,
   BlockType.Blockquote,

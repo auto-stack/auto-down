@@ -372,22 +372,32 @@ function handleContainerClick(event: MouseEvent) {
   const target = event.target as HTMLElement
   // plan 039 T14: the actions live in the widget header, a SIBLING of the
   // pre — resolve the pre through the container.
-  const resolvePre = (btn: HTMLElement) =>
-    btn.closest('pre') ?? btn.closest('.code-block-container')?.querySelector('pre[data-language]') ?? null
-  const expandBtn = target.closest?.('[data-codeblock-expand-btn]') as HTMLElement | null
-  if (expandBtn && containerRef.value) {
+  const resolvePre = (el: HTMLElement) =>
+    el.closest('pre') ?? el.closest('.code-block-container')?.querySelector('pre[data-language]') ?? null
+  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
+  if (copyBtn && containerRef.value) {
+    const pre = resolvePre(copyBtn)
+    const code = pre?.querySelector('code')?.textContent ?? ''
     event.preventDefault()
     event.stopPropagation()
-    resolvePre(expandBtn)?.classList.toggle('is-collapsed')
+    navigator.clipboard.writeText(code)
     return
   }
-  const copyBtn = target.closest?.('[data-codeblock-copy-btn]') as HTMLElement | null
-  if (!copyBtn || !containerRef.value) return
-  const pre = resolvePre(copyBtn)
-  const code = pre?.querySelector('code')?.textContent ?? ''
-  event.preventDefault()
-  event.stopPropagation()
-  navigator.clipboard.writeText(code)
+  // Whole-header collapse (read pane only — the editor pane's header doubles
+  // as the block-focus/language-menu surface and stays icon-only via
+  // CodeBlockMenu): details/summary model, the header is the largest hit
+  // target. The language trigger keeps its own semantics and never collapses;
+  // the expand icon needs no special case — it is header content.
+  const header = target.closest?.('.code-block-header') as HTMLElement | null
+  const languageTrigger = target.closest?.('[data-codeblock-language-badge]') as HTMLElement | null
+  if (header && !languageTrigger && containerRef.value) {
+    event.preventDefault()
+    event.stopPropagation()
+    header
+      .closest('.code-block-container')
+      ?.querySelector('pre[data-language]')
+      ?.classList.toggle('is-collapsed')
+  }
 }
 
 /**
@@ -1077,18 +1087,11 @@ defineExpose({
   gap: 0.25rem;
 }
 
-/* Reorder actions: expand (chevron) -> copy -> three-dots menu */
-.streaming-document :deep(.code-block-header > .flex > :nth-child(1)) {
-  order: 2;
-}
-
-.streaming-document :deep(.code-block-header > .flex > :nth-child(2)) {
-  order: 1;
-}
-
-.streaming-document :deep(.code-block-header > .flex > :nth-child(3)) {
-  order: 3;
-}
+/* The actions render in the family widget's DOM order ([copy][collapse]) —
+   the same order the editor pane's faces use. An earlier revision of this
+   rule reordered them (chevron -> copy -> three-dots) for a header that
+   still had a three-dots menu; with the menu retired by the family
+   unification the reorder only desynced the two panes. */
 
 .streaming-document :deep(.code-block-header button) {
   display: inline-flex;

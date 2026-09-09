@@ -18,10 +18,14 @@ async function focusListItem(page: Page, n: number): Promise<Locator> {
   const text = n === 0 ? 'Bullet item one' : 'Bullet item two'
   const target = page.locator('.left').getByText(text, { exact: true }).first()
   await target.scrollIntoViewIfNeeded()
-  await target.click()
+  // click PAST the text end: the click-caret handoff honours the pointed-at
+  // position, and every caller below appends at the item end
+  const box = (await target.boundingBox())!
+  const atEnd = { position: { x: box.width - 2, y: box.height / 2 } }
+  await target.click(atEnd)
   if (n > 0) {
     await page.waitForTimeout(250)
-    await target.click()
+    await target.click(atEnd)
   }
   const host = page.locator('.left .autodown-block-host')
   await expect(host).toBeVisible()

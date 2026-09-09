@@ -24,6 +24,7 @@ import type { BlockHostController } from '../engine/host-controller'
 import { dispatchSlashState, slashQueryAt } from '../engine/tiptap-adapter'
 import { spansToHtml } from '../engine/rich-html'
 import { setFocusedRichHost, getFocusedRichHost, domSelectionAdapter, toggleMark } from '../engine/selection-adapter'
+import { placeCaretAtPoint, takeClickCaret } from '../engine/click-caret'
 import { Mark } from '../../parser/block-model'
 
 // -- semantic host face (absorbed from engine/host-face.ts, plan 029) ------------
@@ -71,18 +72,24 @@ const liveHosts = new WeakSet<HTMLElement>()
 /** Mount: when the host mounts it IS the newly focused block — inject the
  *  rich snapshot (spansToHtml of the model inlines, evaluated once by the
  *  assembler — the engine is not Vue-reactive, so it never invalidates
- *  under the user's caret), take DOM focus with the caret at the end
- *  (append-at-end flows, Ctrl+End parity), and register the unmount
+ *  under the user's caret), take DOM focus, and register the unmount
  *  deregistration of the focused-rich-host slot (BlockHost's
- *  onBeforeUnmount). */
-export function mountHost(initialHtml: string): void {
+ *  onBeforeUnmount).
+ *
+ *  Caret: a pending click-caret handoff (the preview face's click) is
+ *  re-resolved against THIS face's glyphs — the faces are layout-identical,
+ *  so the browser lands the caret exactly where the user pointed. Every
+ *  other mount path (keyboard focus, history remount, programmatic select,
+ *  append-at-end flows, Ctrl+End parity) keeps the end-of-text default. */
+export function mountHost(initialHtml: string, blockId?: string): void {
   const inst = getCurrentInstance()
   const node = (inst?.proxy?.$el as HTMLElement | undefined) ?? null
   if (!node) return
   liveHosts.add(node)
   node.innerHTML = initialHtml
   node.focus()
-  caretToEnd(node)
+  const entry = blockId ? takeClickCaret(blockId) : null
+  if (!entry || !placeCaretAtPoint(node, entry)) caretToEnd(node)
   onBeforeUnmount(() => {
     liveHosts.delete(node)
     if (getFocusedRichHost() === node) setFocusedRichHost(null)

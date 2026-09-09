@@ -298,6 +298,7 @@ import { editSlotFor } from '../../render/block-component'
 import { h, type VNode } from 'vue'
 import { EditorEngine } from '../engine/editor-engine'
 import { BlockHostController, isEditableLeaf } from '../engine/host-controller'
+import { captureClickCaret, resolveClickHit, slotAnchorOf } from '../engine/click-caret'
 import { historyActionOf, runHistory } from '../engine/undo-wiring'
 import { focusPathOf, focusTargetOf, lastFocusTargetOf } from '../engine/focus-path'
 import { domRangeToBlockRange } from '../engine/selection-map'
@@ -615,7 +616,22 @@ function slotChrome(
       // whole container back to its first leaf)
       onClick: (ev: MouseEvent) => {
         ev.stopPropagation()
-        selectBlock(node.id)
+        // click-caret handoff (engine/click-caret.ts): resolve WHAT the click
+        // addresses and WHERE it pointed before the repaint swaps this
+        // preview for the edit face. Without it every first click on an
+        // unfocused block threw the caret to the block end, and a collapsed
+        // container resolved focus to its FIRST leaf instead of the clicked
+        // item. Only the RichTextHost face consumes a point, so only its
+        // anchors capture (widget faces own their handoff — the fence records
+        // a text offset in its own pre handler and a point entry for the same
+        // block would clobber it; the table rides the cellId payload).
+        const hit = resolveClickHit(node, ev.currentTarget as HTMLElement | null, ev)
+        // only a resolved hit records — an unresolved click (container
+        // chrome, a widget face's own handoff like the fence's pre handler)
+        // must leave the store untouched; the channel's expiry clears stale
+        // entries
+        if (hit.anchor) captureClickCaret(ev, hit.targetId, hit.anchor, hit.cellId)
+        selectBlock(node.id, hit.targetId)
       },
     },
     [
@@ -809,12 +825,15 @@ function getBlockMap(): BlockInfo[] {
   return out
 }
 
-function selectBlock(id: string): void {
+function selectBlock(id: string, deepTargetId?: string): void {
   // deep selection (plan 025 P1T1): a clicked container resolves to its
-  // first focusable descendant — containers never host.
+  // first focusable descendant — containers never host. A resolved click
+  // (click-caret's container/table hit) names the descendant the user
+  // actually pointed at, which wins over the first-leaf default.
   const found = findBlock(engine.doc, id)
   if (!found) return
-  const target = focusTargetOf(found) ?? found
+  const deep = deepTargetId && deepTargetId !== id ? findBlock(engine.doc, deepTargetId) : null
+  const target = (deep && focusTargetOf(deep) === deep ? deep : null) ?? focusTargetOf(found) ?? found
   const p = new BlockPos(target.id, 0)
   engine.select(new Selection(p, p))
   repaintVersion.value++

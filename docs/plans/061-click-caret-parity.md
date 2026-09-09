@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-061
-status: executing
+status: execution_done
 feature_name: 双轨点击落点对齐（块首点光标交接 + 容器点击归属 + 表格单元格聚焦）
 author: [zhaopuming]
 created_at: 2026-09-09T17:45:00+08:00
-updated_at: 2026-09-09T19:30:00+08:00
+updated_at: 2026-09-09T22:10:00+08:00
 plan_revision: 1
-current_step: 3
+current_step: 6
 total_steps: 6
 supersedes_spec_components: []
 new_spec_components: []
@@ -216,12 +216,28 @@ buffer，PLAN-055 起 cell 一等可编辑）。**结构上不存在「预览面
 - [✅ 已完成] T-03 网页轨表格单元格聚焦：cellId 载荷 + `focusPendingCell` +
       表格 widget `.Init`（`table_block_widget.at` / `.vue` 同步，gen 逐字节复现）；
       Callout / Details 用例同批；e2e 8 例全绿 + 单测 14。
-- [ ] T-04 VM 轨核对：`vm-061-probe.mjs` 三组 `__mcp_click` 合成点击 + 断言；
-      产出「网页轨语义 × VM 现状」对照表。
-- [ ] T-05 VM 轨差异收口：按 T-04 结果补单测钉死或最小改动修复（含表格 cell
-      命中边界复核）。
-- [ ] T-06 门禁与清册：两仓门禁；PARITY 第 19 行销行；探针 / 截图入库；网页轨
-      改动提交。
+- [✅ 已完成] T-04 VM 轨核对：`vm-061-probe.mjs` 三组 `__mcp_click` 合成点击 +
+      断言；产出「网页轨语义 × VM 现状」对照表。
+      （2026-09-09 ALL PASS A1..A7/B1..B3：叶块首点=点击处字形 x=40→off5、
+      x=120→off16 字形单调含行内标记；列表第 2 项/引用/Callout/Details 正文
+      各有独立点击带归属被点中项；表格 cell geometry 快照命中 off2→8；fence
+      代码行字形级 + 行尾 Down 无幻影尾行。证据 vm-061-para-caret/
+      -table-cell/-fence-caret.png，提交 b6fcae6。对照表结论：三语义 VM 天然
+      达标，零逻辑改动。）
+- [✅ 已完成] T-05 VM 轨差异收口：按 T-04 结果补单测钉死或最小改动修复（含表格
+      cell 命中边界复核）。
+      （达标 → 单测钉死路径：core.rs 三 headless 单测 mouse_click_leaf_lands_
+      caret_at_clicked_glyph / mouse_click_list_lands_on_clicked_item /
+      mouse_click_table_lands_on_clicked_cell，scoped 3/3 绿，提交 c944f1028
+      （auto-lang auto-down-dev）。）
+- [✅ 已完成] T-06 门禁与清册：两仓门禁；PARITY 第 19 行销行；探针 / 截图入库；
+      网页轨改动提交。
+      （auto-lang worktree 全量 lib 4623 passed/201 failed，失败名集 ⊆ master
+      基线逐名差集为空（master 同轮 202 红，多出的 ffi_dual_013_dep_method 为
+      并行漂移且本 worktree 通过）；auto-down 主检出 engine vitest 820/820 +
+      pnpm build 三 assert + demo e2e 103/103。PARITY #19 双侧 ✅（提交
+      d2d6d28）；网页轨 35 文件提交 2b5c3da。观察两项登记 PARITY：空白点击
+      最近块回落（VM 特有）、Details 编辑臂恒展开。）
 
 ## 复审记录
 
@@ -237,6 +253,21 @@ buffer，PLAN-055 起 cell 一等可编辑）。**结构上不存在「预览面
   三项点击语义 + F1/F2 全部达标，空白回落与 Details 编辑臂恒展开两项观察
   在案）；姊妹计划撞号已解编（行内 input rules 改编号 PLAN-062）。
   next: work 继续（T-04 正式探针入库 → T-05 单测 → T-06 门禁清册）。
+- stage: work | PLAN-061 | r1 | outcome: **pass** | 2026-09-09。
+  code_commit：auto-down plan-061-dev 2b5c3da（T-01..T-03 网页轨 35 文件）→
+  b6fcae6（T-04 探针+截图）→ d2d6d28（T-06 PARITY #19 销行）；auto-lang
+  auto-down-dev c944f1028（T-05 三单测，基线 3f42de7e5）。
+  task_ids：T-04/T-05/T-06（T-01..T-03 立项前已落地随 2b5c3da 入库）。
+  evidence：vm-061-probe.mjs ALL PASS（A1..A7/B1..B3）+ 三截图；core.rs
+  scoped 3/3；auto-lang 全量 lib 失败名集逐名差集为空（wt 201 红 ⊆ master
+  基线）；auto-down vitest 820/820 + build 三 assert + e2e 103/103。
+  执行期发现：①探针哨兵不得与文档既有大写撞字（D×Details → 行内容重建错位）
+  ②state 桥冷启动"连续相等"误判稳定（type_text 后先等内容变化再等稳定）
+  ③VM 最小化窗口布局失效——探针前置必须 screenshot 可用门 ④聚焦块编辑面
+  emit 增行（ghost 移位）→ 行带按内容对齐而非行号 ⑤行带底部为行尾钳制区
+  （块 padding 域点击钳行尾，非缺陷）。
+  blockers：无。
+  next: review（execution_done；两 worktree 留存待复审/合并折回）。
 
 ## 待澄清事项
 

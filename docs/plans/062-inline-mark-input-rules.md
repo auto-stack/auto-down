@@ -243,11 +243,31 @@ Ctrl/Cmd+B/I/U → 有选区 `toggleMark(lo, hi)`；无选区 `toggleMark(off, o
 
 ## 9. 复审记录
 
-- 2026-09-09 drafting handoff（plan_revision 1）：stage=new，PLAN-061 rev1。
-  依据 2026-09-09 会话设计讨论（方案 1 + 两块主流拼图；`/` 状态菜单废弃）与
-  §4.3 现状调查起草；§4.2 收录同会话 F1–F5 已修台账。任务覆盖 AC-01..08 与
-  SD-01..04；T-01 为有界前置调查。outcome: **pass**（草案就绪）；next: work
-  （待用户授权启动执行）；T-08 默认 defer。
+- 2026-09-09 drafting handoff（plan_revision 1）：stage=new，PLAN-062 rev1
+  （原 PLAN-061，撞号解编改号）。依据 2026-09-09 会话设计讨论（方案 1 + 两块
+  主流拼图；`/` 状态菜单废弃）与 §4.3 现状调查起草；§4.2 收录同会话 F1–F5
+  已修台账。任务覆盖 AC-01..08 与 SD-01..04；T-01 为有界前置调查。outcome:
+  **pass**（草案就绪）；next: work（待用户授权启动执行）；T-08 默认 defer。
+- stage: work | PLAN-062 | r1 | outcome: **pass** | 2026-09-09。
+  code_commit：plan-062-dev 2ae6733（T-01..T-06 实现 12 文件）+ 9bf1fe0
+  （T-07 PARITY 第 20 行）；base master dfae2c9。
+  task_ids：T-01..T-07（T-08 三期 caret-reveal 维持 defer）。
+  evidence：engine vitest 833/833（+13 新测：匹配器矩阵 + transform + host
+  级）；pnpm build 三 assert 全绿；demo e2e 108/108（103 存量 +
+  inline-input-rules 5）。
+  AC 结果：AC-01..05 pass；AC-06 部分达成——选区 toggle ✓、无选区「解除」✓
+  （removeMarkAtCaret 折叠通道）、「进入 stored mark」方向未实现（适配器
+  apply-at-caret 域），增量登记 PARITY #20；AC-07 pass（门禁全绿 +
+  PARITY #12/#20 在册）；AC-08 待 merge 批次落 specs.json。
+  执行期发现四条入档：①spansInsert mark 末尾边界续写是 AC-02 的模型级根源
+  （边界=外插普通 span 的行为变更有既有测试面，全量套件零回归佐证）②Chromium
+  对「块内、行内元素之后」caret 做风格续写规范化——caret 位置赢不了它，需
+  ZWSP 锚（hostText 剥离，模型零污染）③hostInput 既有 resync 分支以文本相等
+  为条件，spans 差异不可见——inline 规则路径需显式 pending resync 标志
+  ④ext 单源双文件（auto/ 源 + src/ 部署）改动必须双侧同步，assert-editor-gen
+  为守门。
+  blockers：无（AC-06 进入方向已登记为增量，不阻断 execution_done）。
+  next: review。
 
 ## 10. 待澄清事项
 

@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-062
-status: drafting
+status: execution_done
 feature_name: 行内字体编辑交互改造（markdown input rules + bubble 状态可见化 + caret-reveal）
 author: zcode
 created_at: 2026-09-09T16:40:00+08:00
-updated_at: 2026-09-09T16:40:00+08:00
+updated_at: 2026-09-09T23:59:00+08:00
 plan_revision: 1
-current_step: 0
+current_step: 7
 total_steps: 8
 supersedes_spec_components: []
 new_spec_components:
@@ -228,13 +228,13 @@ Ctrl/Cmd+B/I/U → 有选区 `toggleMark(lo, hi)`；无选区 `toggleMark(off, o
 
 | ID | 任务 | 依赖 | 文件/符号（已核对） | 产出 | 验收 | 验证命令与预期 |
 |----|------|------|--------------------|------|------|----------------|
-| T-01 | 前置调查（有界）：行内 `\*` 转义现状与最小守卫方案；undo 合并窗口惯例（读 `undo-wiring.ts`） | — | `parser/markdown-parser.ts`（P056 转义）、`editor/engine/undo-wiring.ts` | 决策件：转义守卫实现 or 豁免登记；undo 合并方式结论（写入本文件 §10） | 调查完成 | — |
-| T-02 | `inline-input-rules.ts`：数据表 + `matchInlineRule` 纯函数 + span 变换纯函数（`marks.ts` 风格） | T-01 | 新文件 `src/editor/engine/inline-input-rules.ts`；`marks.ts` | 纯函数层 + 矩阵单测 | AC-04 部分 | `npx vitest run src/editor/engine` 全绿 |
-| T-03 | 接入 `BlockHostController.onInput`：块级 `fireRuleOn` 后进行行内匹配、applyTree 单窗、光标出 mark；IME/Code/转义守卫 | T-02 | `editor/engine/host-controller.ts`（onInput:82） | flow 输入可用 | AC-01..03 | vitest + 手动探针 |
-| T-04 | 二期：`bubbleShouldShow` caret 命中扩展 + caret 行盒定位 | T-03 | `ext/bubble_menu_ext.ts`、`bubble_menu.at`（如谓词参数需扩）、`editor/engine/selection-adapter.ts` | 取消通道可用 | AC-05 | demo e2e |
-| T-05 | 二期：`onContentKeydown` 快捷键 B/I/U → toggleMark（stored mark 语义） | T-03 | `editor/components/EngineEditor.vue`（onContentKeydown） | 快捷键可用 | AC-06 | demo e2e |
-| T-06 | demo e2e：新 spec `inline-input-rules.spec.ts`（AC-01..06 真键盘路径） | T-03..05 | `demo/e2e/inline-input-rules.spec.ts`（新） | 回归钉 | AC-01..06 | `npx playwright test` ≥97 全绿 |
-| T-07 | PARITY #12 差异行登记 + 048 对照表补行 | T-03 | `demo/auto/PARITY.md` | 双轨差异在册 | AC-07 | 文档存在 |
+| T-01 | ✅ 前置调查（有界）——转义：parser 行内无 `\*` 转义（P056 仅表格 cell）→ 最小守卫「marker 前紧邻 \ 不触发」落地于匹配器，序列化转义登记债行（§10.2）；undo：沿用 fireRuleOn 惯例（diff apply 后 applyGroup 独立 undo 窗，单步即回 marker 原文=AC-03） | — | 调查完成 | — |
+| T-02 | ✅ `inline-input-rules.ts`：INLINE_INPUT_RULES 长优先数据表 + `matchInlineRule` 纯匹配器（转义/连排/跨行/空 inner/中段含 marker 全守卫）+ `fireInlineRuleOn`（Code 区任一字符守卫 + applyGroup 单 undo + select 出 mark）；单测 `inline-input-rules.test.ts` 12 例矩阵 + transform 契约。提交 2ae6733 | vitest 12/12 | ✅ |
+| T-03 | ✅ 接入 `BlockHostController.onInput`：块级优先、行内次之；`desiredCaretOffset` + `caretToOffset`（styled 边界 ZWSP 锚抗 Chromium 续写）+ hostInput caret 精确 resync；host 级单测（caret 3 + 单 undo）。提交 2ae6733 | vitest host 套件绿 | ✅ |
+| T-04 | ✅ bubble 取消通道：`EngineBubbleMenu.derive` 折叠 caret 放行 + `activeMarksAtCaret`（DOM 包裹语义）→ shouldShow + active 高亮；`removeMarkAtCaret` + toggleMark 折叠分支 = 点按解除；适配器 `isActive` 折叠口径 + `__bump` tick。e2e AC-05 绿。提交 2ae6733 | e2e AC-05 绿 | ✅ |
+| T-05 | ✅ 快捷键：B/I 存量（024/036）+ **U 补齐**（hostKeydown → toggleMark Underline）；无选区「进入 stored mark」方向未实现（解除方向已通）——AC-06 部分达成，增量登记 PARITY #20 | hostKeydown U 用例随 e2e AC-06 | ✅（部分，增量在册） |
+| T-06 | ✅ demo e2e `inline-input-rules.spec.ts` 5 例（AC-01..06 真键盘）：转换/cursor 出 mark/单 undo/转义不触发/bubble 取消通道/Ctrl+B 选区 toggle 全绿；全量 108/108。提交 2ae6733 | playwright 108/108 | ✅ |
+| T-07 | ✅ PARITY 第 20 行登记（行内字体编辑 vue 轨先行；rust CodeEditorCore 未实现延续 #12 面）。提交 9bf1fe0 | PARITY #20 在册 | ✅ |
 | T-08 | 三期 caret-reveal：立项 + 决策件（默认 defer，需用户单独授权后才执行） | T-04 | 渲染管线（`rich-html.ts`/RichTextHost） | 决策件 | — | — |
 
 执行顺序：T-01 → T-02 → T-03 →（T-04、T-05 可并行）→ T-06 → T-07；T-08 独立。

@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-061
-status: execution_done
+status: reviewed
 feature_name: 双轨点击落点对齐（块首点光标交接 + 容器点击归属 + 表格单元格聚焦）
 author: [zhaopuming]
 created_at: 2026-09-09T17:45:00+08:00
@@ -9,7 +9,9 @@ plan_revision: 1
 current_step: 6
 total_steps: 6
 supersedes_spec_components: []
-new_spec_components: []
+new_spec_components:
+  - "P061-1: 引擎编辑器——点击落点交接规则（未聚焦块首点光标落点击处字形；折叠容器聚焦被点中子叶；表格聚焦被点中 cell。AC-01..03）"
+  - "P061-2: 引擎编辑器——点击落点边界条款（数学/Mermaid 无源坐标光标落末尾；Callout 标题与 Details 摘要 chrome 不参与交接。AC-04）"
 touched_goals:
   - "P034-1: RichTextHost 基础 widget（语义化宿主 chrome .at 单源 + IME/选区接线归 ext 桥）+ 文本叶子块编辑面切换 + VM 端宿主契约冻结——文本叶块编辑面的挂载落点（网页轨 click-caret 交接的宿主面）"
   - "P025-2: 容器块编辑（聚焦路径下沉装配 + 列表/引用结构命令 + 输入规则容器化修复）——深选规则（点击容器 → 第一个可聚焦后代）被本次「点击归属」解析覆盖"
@@ -268,6 +270,36 @@ buffer，PLAN-055 起 cell 一等可编辑）。**结构上不存在「预览面
   （块 padding 域点击钳行尾，非缺陷）。
   blockers：无。
   next: review（execution_done；两 worktree 留存待复审/合并折回）。
+- stage: review | PLAN-061 | r1 | outcome: **pass** | 2026-09-09。
+  reviewed_commit：auto-down plan-061-dev d2d6d28（worktree 冻结干净 0 dirty
+  ——探针复跑的截图/套件再生均恢复冻结态）；base_commit：auto-down master
+  225c266。dependency_revisions：auto-lang auto-down-dev c944f1028（base
+  3f42de7e5，ui/ 与探针用 master exe 18ab5d642 零 diff 已证）。
+  spec_inputs：new_spec_components 定稿 P061-1/P061-2（frontmatter），merge
+  时随六节存款落 .autoos/specs.json。
+  独立性声明：复审在实现会话内进行（未另起上下文），故全部验收按工件重跑
+  复现，不采信实现期总结。
+  acceptance_results：
+  - AC-01 pass——worktree 内重装依赖独立复跑：engine vitest 820/820 + demo
+    e2e 103/103（1.7m，含 block-click-caret 8 例 + codeblock-click-caret
+    2 例，offset 相等断言在册）。
+  - AC-02 pass——同上 e2e（容器 6 例：无序/有序/任务/引用/Callout/Details）。
+  - AC-03 pass——同上 e2e（表格 data-cell-id 聚焦断言）。
+  - AC-04 pass——codeblock-click-caret 2 例在 103 内绿；undo/
+    container-editing/code-block-parity 修订例全绿；数学/Mermaid/chrome
+    保留例随 wysiwyg 套件在册。
+  - AC-05 pass——重跑复现：vm-061-probe.mjs ALL PASS（A1..A7/B1..B3；探针
+    口径=master 构建 exe，ui/ 与分支零 diff 已证）；core::tests::mouse_click
+    3/3 复跑绿。
+  - AC-06 pass——两仓门禁全绿（auto-down 820/820 + 103/103 + build 三
+    assert；auto-lang 全量 lib 差集口径在案——worktree 冻结后代码未变，
+    SHAs 复核一致，全量证据沿用并注记理由）；PARITY #19 双侧 ✅
+    （d2d6d28）；探针/截图入库（b6fcae6）。
+  findings：无阻断项。非阻断观察两项（空白点击最近块回落 / Details 编辑臂
+  恒展开）已按 PARITY #19 登记面处置，超出 061 范围的后续裁定候选。
+  evidence：本计划复审记录 + worktree 冻结件 d2d6d28 / c944f1028 +
+  vm-061-para-caret/-table-cell/-fence-caret.png（已入库）。
+  next: merge。
 
 ## 待澄清事项
 

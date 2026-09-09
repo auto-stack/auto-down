@@ -387,6 +387,17 @@
         "related": [
           "PLAN-060"
         ]
+      },
+      {
+        "id": "P061-2",
+        "section": "goals",
+        "status": "proposed",
+        "title": "双轨点击落点对齐 — 目标",
+        "content": "- 任何未聚焦文本叶块（Heading/Paragraph 含行内标记）首点光标落点击处字形（AC-01）。\n- 折叠列表（无序/有序/任务）/Blockquote/Callout/Details 首点聚焦被点中子叶且光标落\n  点击处（AC-02）。\n- 表格预览单元格点击后编辑面聚焦该 cell（data-cell-id）且光标落点击处（AC-03）。\n- 代码块交接零回归；数学/Mermaid 与容器 chrome 既有行为显式保留（AC-04）。\n- VM 轨 __mcp_click 三组断言 PASS + Rust 单测钉死 + 双轨对照表（AC-05）。\n- 两仓门禁全绿；PARITY #19 登记/销行；探针与截图入库（AC-06）。",
+        "file": "docs/plans/archived/061-click-caret-parity.md",
+        "related": [
+          "PLAN-061"
+        ]
       }
     ],
     "architecture": [
@@ -790,6 +801,17 @@
         "related": [
           "PLAN-060"
         ]
+      },
+      {
+        "id": "P061-3",
+        "section": "architecture",
+        "status": "stable",
+        "title": "双轨点击落点对齐 — 架构方案",
+        "content": "网页轨四段机制：通道模块 click-caret.ts（单槽 pending store，键=将挂载编辑面的块 id，\n载荷三类）；捕获 slotChrome.onClick 先 resolveClickHit 解析归属再 captureClickCaret\n（只对可消费命中记录，if(hit.anchor)）；解析 = 叶块自身/表格 caretRangeFromPoint+行列\n定位/折叠容器叶包装↔模型原子子叶按文档序配对（数不等回退深选不猜）；消费 = 编辑面\n挂载后以同一 caret API 重解点（两面布局等价落同一字形）。VM 轨：handle_mouse_press\n单趟 hit_test+Action::Click+locate_leaf（cell 一等叶 buffer），无预览面替换环节。",
+        "file": "docs/plans/archived/061-click-caret-parity.md",
+        "related": [
+          "PLAN-061"
+        ]
       }
     ],
     "designs": [
@@ -1183,6 +1205,17 @@
         "related": [
           "PLAN-060"
         ]
+      },
+      {
+        "id": "P061-4",
+        "section": "designs",
+        "status": "stable",
+        "title": "双轨点击落点对齐 — 详细设计",
+        "content": "三条语义要点：捕获只对「会挂载可消费编辑面」的命中记录；容器配对要求「DOM 叶包装数\n== 模型原子子叶数」，不等即回退深选（不猜）；数学/Mermaid 无源坐标映射显式不参与。\nVM 轨核对口径 = __mcp_click 合成点击三类目标，断言焦点块/叶槽与 caret 字节偏移\n（vm-061-probe.mjs：归一基线→首击→独占哨兵 diff content，y 地图行带自动发现，表格\ngeometry 快照定位，窗口可见前置门）。",
+        "file": "docs/plans/archived/061-click-caret-parity.md",
+        "related": [
+          "PLAN-061"
+        ]
       }
     ],
     "tests": [
@@ -1553,6 +1586,17 @@
         "file": "docs/plans/archived/060-vm-block-key-ux.md",
         "related": [
           "PLAN-060"
+        ]
+      },
+      {
+        "id": "P061-5",
+        "section": "tests",
+        "status": "verified",
+        "title": "双轨点击落点对齐 — 测试设计",
+        "content": "- 网页轨：单测 click-caret.test.ts 14 + code-block-caret.test.ts 10；e2e\n  block-click-caret 8 + codeblock-click-caret 2（红→绿证据在案）；全套 vitest\n  820/820 + demo e2e 103/103（worktree 重装依赖独立复跑两轮在册）。\n- VM 轨：core.rs 三单测 mouse_click_leaf_lands_caret_at_clicked_glyph /\n  mouse_click_list_lands_on_clicked_item / mouse_click_table_lands_on_clicked_cell\n  （3/3）；vm-061-probe.mjs ALL PASS（A1..A7/B1..B3）+ 三截图；auto-lang 全量 lib\n  wt 201 红 ⊆ master 基线逐名差集为空（复审轮冻结 SHAs 复核一致沿用）。",
+        "file": "docs/plans/archived/061-click-caret-parity.md",
+        "related": [
+          "PLAN-061"
         ]
       }
     ],
@@ -1930,6 +1974,17 @@
         "related": [
           "PLAN-060"
         ]
+      },
+      {
+        "id": "P061-6",
+        "section": "reviews",
+        "status": "published",
+        "title": "双轨点击落点对齐 — 验收标准 / 复审记录",
+        "content": "验收 AC-01..06 全列（计划正文）。\n\n---\n\n（/auto-plan:review 终审 2026-09-09，reviewer: zhaopuming + ZCode；实现会话内复审，\n验收按工件重跑复现，不采信实现期总结）AC-01..04 pass（worktree 重装依赖独立复跑\n820/820 + 103/103）；AC-05 pass（vm-061-probe ALL PASS 复跑 + mouse_click 3/3）；\nAC-06 pass（PARITY #19 双侧 ✅ d2d6d28；探针/截图入库 b6fcae6；全量 lib 差集证据\nSHAs 复核一致沿用）。非阻断观察：①空白点击最近块回落（VM 特有）②Details 编辑臂\n恒展开——已按 PARITY #19 登记面处置。\n\n---\n\n（/auto-plan:merge 2026-09-09）prepared（立案 225c266）→ landed（plan-061-dev\n2b5c3da/b6fcae6/d2d6d28 折回 master 8b6aab7；auto-lang 侧 c944f1028 折回\n87e5c350f）→ ledger_refreshed（本 P061-1..6 六节存款，tracked）→ archived\n（docs/plans/archived/061-click-caret-parity.md）。",
+        "file": "docs/plans/archived/061-click-caret-parity.md",
+        "related": [
+          "PLAN-061"
+        ]
       }
     ],
     "reports": [
@@ -2305,6 +2360,17 @@
         "file": "docs/plans/archived/060-vm-block-key-ux.md",
         "related": [
           "PLAN-060"
+        ]
+      },
+      {
+        "id": "P061-1",
+        "section": "reports",
+        "status": "published",
+        "title": "双轨点击落点对齐（块首点光标交接 + 容器点击归属 + 表格单元格聚焦） — 变更摘要",
+        "content": "用户实机报告的「未聚焦块首点光标甩块末尾、容器点错对象、表格编辑面不聚焦」三缺陷：\n网页轨 click-caret 单槽通道（点/明文偏移/cellId 三类载荷）+ resolveClickHit（叶包装↔\n模型原子子叶文档序配对、表格行列定位）+ selectBlock 深选覆盖 + RichTextHost/表格/\n代码块挂载消费（T-01..T-03）；同批 F1..F5 CodeBlock 编辑面修正（点击 caret 交接/幻影\n尾行/31px 幻影空白/换面字体高度/双栏按钮序）随本计划入库。VM 轨核对：单趟字形命中\n天然达标，零逻辑改动，三 Rust 单测钉死（T-04/T-05，auto-lang auto-down-dev 折回\n87e5c350f）。",
+        "file": "docs/plans/archived/061-click-caret-parity.md",
+        "related": [
+          "PLAN-061"
         ]
       }
     ]

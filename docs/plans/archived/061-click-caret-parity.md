@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-061
-status: reviewed
+status: archived
 feature_name: 双轨点击落点对齐（块首点光标交接 + 容器点击归属 + 表格单元格聚焦）
 author: [zhaopuming]
 created_at: 2026-09-09T17:45:00+08:00

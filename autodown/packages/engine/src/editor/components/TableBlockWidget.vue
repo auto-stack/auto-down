@@ -1,8 +1,8 @@
 <!-- TableBlockWidget component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { BlockChildren } from '../ext/container_ext'
-import { commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText } from '../ext/table_block_widget_ext'
+import { commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText, focusPendingCell } from '../ext/table_block_widget_ext'
 
 
 const props = defineProps<{
@@ -30,6 +30,7 @@ const loading_colspan = computed<any>(() => streamColspan(props.columns))
 const loading_html = computed<any>(() => htmlText('Loading'))
 
 const emit = defineEmits<{
+  Init: []
   AddRowAbove: []
   AddRow: []
   DeleteRow: []
@@ -93,6 +94,10 @@ function DeleteTable(): void {
 function AddColumnBefore(): void {
   emit('AddColumnBefore')
 }
+
+onMounted(() => {
+  focusPendingCell(props.blockId);
+})
 
 
 </script>

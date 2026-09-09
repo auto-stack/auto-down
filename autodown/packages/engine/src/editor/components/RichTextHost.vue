@@ -82,7 +82,7 @@ function Paste(e: any): void {
 }
 
 onMounted(() => {
-  mountHost(props.initial_html);
+  mountHost(props.initial_html, props.blockId);
 })
 
 

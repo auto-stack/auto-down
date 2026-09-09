@@ -215,6 +215,25 @@ for (const theme of ['light', 'dark'] as const) {
     const rightPre = rightFirst.locator('pre')
     await rightFirst.locator('[data-codeblock-expand-btn]').click()
     await expect(rightPre).toHaveClass(/is-collapsed/)
+
+    // button order parity: the read pane must render the widget's DOM order
+    // ([copy][collapse]) like the editor pane — a stale streaming-scope
+    // order-rule used to visually reverse the right pane's pair
+    for (const pane of ['.left [data-block-id="block-5"]', '.right .streaming-document .code-block-container']) {
+      const copyX = (await page.locator(`${pane} [data-codeblock-copy-btn]`).first().boundingBox())!.x
+      const expandX = (await page.locator(`${pane} [data-codeblock-expand-btn]`).first().boundingBox())!.x
+      expect(copyX, `copy left of collapse in ${pane}`).toBeLessThan(expandX)
+    }
+
+    // whole-header collapse (read pane): a click on the header's blank area
+    // toggles, a second click un-toggles...
+    await rightFirst.locator('.code-block-header').click()
+    await expect(rightPre).not.toHaveClass(/is-collapsed/)
+    await rightFirst.locator('.code-block-header').click()
+    await expect(rightPre).toHaveClass(/is-collapsed/)
+    // ...and the language trigger never collapses (its own no-op semantics)
+    await rightFirst.locator('.code-header-trigger').click()
+    await expect(rightPre).toHaveClass(/is-collapsed/)
   })
 
   test(`edit face: the overlay highlight is visibly token-colored (plan 039 T9) -[${theme}]`, async ({ page }) => {

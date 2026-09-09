@@ -32,8 +32,11 @@
 //   fail vue-tsc — details_node_view Noop idiom).
 // - .Init is the onMounted hook: mountHost grabs the root via
 //   getCurrentInstance().$el (auto_down_editor_ext idiom), injects
-//   initial_html, focuses with the caret at end, and registers the
-//   onBeforeUnmount focusedRichHost deregistration.
+//   initial_html, focuses, and registers the onBeforeUnmount
+//   focusedRichHost deregistration. The caret lands on the pending
+//   click-caret handoff when the preview face recorded one (the first click
+//   on an unfocused block), end-of-text otherwise (blockId keys the
+//   handoff — engine/click-caret.ts).
 
 widget RichTextHost(controller: Array<str>, blockId: str, blockKind: str, level: int, initial_html: str) {
     use {
@@ -71,7 +74,7 @@ widget RichTextHost(controller: Array<str>, blockId: str, blockKind: str, level:
 
     on {
         .Init -> {
-            mountHost(.initial_html)
+            mountHost(.initial_html, .blockId)
         }
 
         // BlockHost's bare @click.stop — the handler is required by the DSL,

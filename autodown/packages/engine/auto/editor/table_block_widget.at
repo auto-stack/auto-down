@@ -39,11 +39,11 @@
 
 widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonly: bool, final: bool, header_cells: Array<str>, body_rows: Array<str>, columns: Array<str>, rows: Array<str>) {
     use {
-        fn: commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText from "ext/table_block_widget_ext.ts"
+        fn: commitTableCell, rootTag, rootClass, rootAriaBusy, rootBlockId, rootNodeType, streamHeader, streamBody, streamColspan, htmlText, focusPendingCell from "ext/table_block_widget_ext.ts"
         component: BlockChildren from "ext/container_ext.ts"
     }
 
-    msg Msg { AddRowAbove, AddRow, DeleteRow, AddColumnBefore, AddColumn, DeleteColumn, DeleteTable, CellBlur }
+    msg Msg { Init, AddRowAbove, AddRow, DeleteRow, AddColumnBefore, AddColumn, DeleteColumn, DeleteTable, CellBlur }
 
     computed {
         is_edit => .mode == "edit"
@@ -257,6 +257,13 @@ widget TableBlockWidget(mode: str, controller: Array<str>, blockId: str, readonl
     }
 
     on {
+        // onMounted hook (the RichTextHost .Init idiom): a preview click's
+        // click-caret handoff focuses the addressed cell and lands the caret
+        // at the pointed-at position — the face itself never took focus.
+        .Init -> {
+            focusPendingCell(.blockId)
+        }
+
         .AddRowAbove -> {
             let c = .controller
             c.addRowAbove()

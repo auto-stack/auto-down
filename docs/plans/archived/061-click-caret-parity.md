@@ -300,6 +300,14 @@ buffer，PLAN-055 起 cell 一等可编辑）。**结构上不存在「预览面
   evidence：本计划复审记录 + worktree 冻结件 d2d6d28 / c944f1028 +
   vm-061-para-caret/-table-cell/-fence-caret.png（已入库）。
   next: merge。
+- stage: merge | PLAN-061 | r1 | 2026-09-09 收据：prepared（立案 225c266）→
+  landed（plan-061-dev 2b5c3da/b6fcae6/d2d6d28 折回 master 8b6aab7；auto-lang
+  侧 c944f1028 折回 87e5c350f）→ ledger_refreshed（P061-1..6 六节存款，
+  tracked specs.json 回读验证）→ archived（本件，status:archived 6469b62）→
+  cleaned（wt-guard 四 worktree 全 clean——auto-down-061/auto-down 首扫
+  BLOCKED：pnpm node_modules junction，robocopy 空目录镜像安全清后复扫
+  clean；plan-061-dev / auto-down-dev / plan-600-dev 三分支删；两组目录
+  移除；worktree list 复核零残留）。
 
 ## 待澄清事项
 

@@ -291,6 +291,13 @@ Ctrl/Cmd+B/I/U → 有选区 `toggleMark(lo, hi)`；无选区 `toggleMark(off, o
   - AC-08 merge 时落账（P062-1..6 六节存款，本批复审记录含终审全量）。
   findings：无阻断。evidence：worktree 冻结件 30c3dac + 本记录。
   next: merge。
+- stage: merge | PLAN-062 | r1 | 2026-09-09 收据：prepared（立案：061 撞号
+  解编改号，225c266）→ landed（plan-062-dev 2ae6733/9bf1fe0/30c3dac 折回
+  master 962d6c3）→ ledger_refreshed（P062-1..6 六节存款，tracked
+  specs.json 回读验证）→ archived（本件，status:archived 33106aa）→
+  cleaned（wt-guard clean——pnpm junction robocopy 镜像预清；worktree 内
+  tracked 文件磁盘删除残留经 --force 移除，内容已冻结于 30c3dac 及 master
+  折回提交；plan-062-dev 分支删；组目录移除；list 复核零残留）。
 
 ## 10. 待澄清事项
 

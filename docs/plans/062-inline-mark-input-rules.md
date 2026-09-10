@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-062
-status: execution_done
+status: reviewed
 feature_name: 行内字体编辑交互改造（markdown input rules + bubble 状态可见化 + caret-reveal）
 author: zcode
 created_at: 2026-09-09T16:40:00+08:00
@@ -268,6 +268,29 @@ Ctrl/Cmd+B/I/U → 有选区 `toggleMark(lo, hi)`；无选区 `toggleMark(off, o
   为守门。
   blockers：无（AC-06 进入方向已登记为增量，不阻断 execution_done）。
   next: review。
+- stage: review | PLAN-062 | r1 | outcome: **pass** | 2026-09-09。
+  reviewed_commit：plan-062-dev 30c3dac（worktree 冻结干净——本轮复审补档
+  T-06 spec 文件入库，前笔 2ae6733 漏 add demo 侧文件）；base_commit：
+  auto-down master dfae2c9。
+  独立性声明：复审在实现会话内进行，验收按工件重跑复现。
+  acceptance_results：
+  - AC-01/02 pass——fresh 复跑 e2e（**agc** 转换 + marker 无残留 + cursor
+    出 mark 后新键入纯文本，innerHTML 断言在册）。
+  - AC-03 pass——e2e 单 Ctrl+Z 回 '**agc**'（复跑绿）。
+  - AC-04 pass——单测矩阵 12/12（转义/连排/跨行/嵌套/长优先）+ e2e
+    转义不触发/~~~~ 与 * * 抽测（复跑绿）。
+  - AC-05 pass——e2e：caret 入 bold token → bubble visible + Bold 按钮
+    active + 点按解除（复跑绿）。
+  - AC-06 **partial（所有者裁定登记为增量）**——选区 Ctrl+B toggle ✓（e2e
+    绿）；无选区「解除」✓（removeMarkAtCaret 折叠通道）；「进入 stored
+    mark」未实现：文本偏移 diff 管线无法表达插入点样式，需 spans 级 diff
+    升级——设计缺口超出本计划边界，PARITY #20 已登记为后续增量。计划所有
+    者在知悉该部分的前提下指示归档折回（2026-09-09 会话指令）。
+  - AC-07 pass——fresh 复跑：engine vitest 833/833 + demo e2e 108/108 +
+    build 三 assert（实现轮在案，SHAs 一致沿用）；PARITY #12/#20 在册。
+  - AC-08 merge 时落账（P062-1..6 六节存款，本批复审记录含终审全量）。
+  findings：无阻断。evidence：worktree 冻结件 30c3dac + 本记录。
+  next: merge。
 
 ## 10. 待澄清事项
 

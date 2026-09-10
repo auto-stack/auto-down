@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-062
-status: reviewed
+status: archived
 feature_name: 行内字体编辑交互改造（markdown input rules + bubble 状态可见化 + caret-reveal）
 author: zcode
 created_at: 2026-09-09T16:40:00+08:00

@@ -281,9 +281,19 @@ export function spansInsert(spans: InlineSpan[], offset: number, text: string): 
             const sLen: number = Number(s.text.length);
             if (offset <= pos + sLen) {
                 const at: number = offset - pos;
-                const nt: string = s.text.slice(0, at) + text + s.text.slice(at);
-                out.push(new InlineSpan(nt, s.marks, s.attrs));
-                done = true;
+                // plan-062 AC-02: inserting at the exact END of a MARKED span
+                // lands OUTSIDE the mark (cursor-out-of-mark — new typing is
+                // plain; kills the toggle-continuation pain). Plain spans
+                // keep the in-span append (normalizeSpans re-merges).
+                if (at === sLen && s.marks.length > 0) {
+                    out.push(s);
+                    out.push(span(text));
+                    done = true;
+                } else {
+                    const nt: string = s.text.slice(0, at) + text + s.text.slice(at);
+                    out.push(new InlineSpan(nt, s.marks, s.attrs));
+                    done = true;
+                }
             } else {
                 out.push(s);
             }

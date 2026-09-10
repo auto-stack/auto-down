@@ -105,13 +105,60 @@ function caretToEnd(node: HTMLElement): void {
   sel?.addRange(range)
 }
 
+/** Place the collapsed caret at a text-code-unit offset within the host
+ *  (plan-062 T-03) — the inverse of caretOffset. Falls back to end-of-text
+ *  when the offset overshoots (clamped model edits). */
+export function caretToOffset(node: HTMLElement, offset: number): void {
+  const walker = node.ownerDocument.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+  let remaining = Math.max(0, offset)
+  let current: Text | null = null
+  let placed = false
+  while ((current = walker.nextNode() as Text | null)) {
+    const len = current.data.length
+    if (remaining <= len) {
+      const range = document.createRange()
+      // Boundary at the exact end of a STYLED node's text: place the caret
+      // AFTER the styled element (plan-062 AC-02) — setting it inside would
+      // make new typing inherit the mark.
+      if (remaining === len) {
+        const parent = current.parentElement
+        if (parent && parent !== node) {
+          // ZWSP caret anchor (stripped by hostText): a bare element-
+          // boundary caret gets canonicalized by Chromium INTO the inline,
+          // so typing would extend the mark — the anchor keeps it outside.
+          const zwsp = node.ownerDocument.createTextNode(ZWSP_ANCHOR)
+          parent.after(zwsp)
+          range.setStart(zwsp, 1)
+          range.collapse(true)
+          const sel = window.getSelection()
+          sel?.removeAllRanges()
+          sel?.addRange(range)
+          placed = true
+          break
+        }
+      }
+      range.setStart(current, remaining)
+      range.collapse(true)
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+      placed = true
+      break
+    }
+    remaining -= len
+  }
+  if (!placed) caretToEnd(node)
+}
+
 // -- text/caret math -----------------------------------------------------------------
 
 /** Chromium renders a trailing space in contenteditable as U+00A0 —
  *  normalize at the DOM boundary or the "- "/"# " input-rule markers never
  *  match and the model collects nbsp pollution. */
+const ZWSP_ANCHOR = '​'
+
 export function hostText(el: HTMLElement): string {
-  return (el.textContent ?? '').replace(/\u00A0/g, ' ')
+  return (el.textContent ?? '').replace(/\u00A0/g, ' ').replace(/\u200B/g, '')
 }
 
 /** Caret offset in text-code-unit terms (Range math over the host subtree). */
@@ -203,7 +250,12 @@ export function hostInput(el: HTMLElement, controller: BlockHostController): voi
   // Skipped mid-composition: the preedit lives only in the DOM.
   if (!controller.composition.composing && hostText(el) !== controller.text) {
     el.innerHTML = spansToHtml(controller.inlines)
-    caretToEnd(el)
+    // plan-062 T-03: an inline input rule parks the engine caret right
+    // after the mark — place the DOM caret exactly there (end-of-text
+    // fallback keeps the block-rule path as-is).
+    const want = controller.desiredCaretOffset()
+    if (want == null) caretToEnd(el)
+    else caretToOffset(el, want)
   }
   if (typeof document !== 'undefined') {
     dispatchSlashState(slashQueryAt(controller.text, caretOffset(el)), controller.id, caretOffset(el))
@@ -229,6 +281,12 @@ export function hostKeydown(e: KeyboardEvent, controller: BlockHostController): 
     if (k === 'i') {
       e.preventDefault()
       toggleMark(domSelectionAdapter, Mark.Em)
+      return
+    }
+    if (k === 'u') {
+      // plan-062 T-05: Ctrl/Cmd+U joins B/I (underline → Mark.Underline).
+      e.preventDefault()
+      toggleMark(domSelectionAdapter, Mark.Underline)
       return
     }
     if (k === 'k') {

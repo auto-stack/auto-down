@@ -53,6 +53,21 @@ describe('BlockHostController', () => {
     expect(blockText(findBlock(e.doc, 'p1')!)).toBe('# ')
   })
 
+  it('plan-062 T-03: inline paired-marker rule fires and parks the caret after the mark', () => {
+    const e = new EditorEngine(doc(leafBlock('p1', BlockType.Paragraph, '')), collapsedSel('p1', 0))
+    const c = new BlockHostController(e, 'p1')
+    c.onInput('**agc**')
+    const found = findBlock(e.doc, 'p1')!
+    expect(blockText(found)).toBe('agc')
+    expect(found.inlines.some((s: any) => s.text === 'agc' && s.marks.includes(Mark.Strong))).toBe(true)
+    // the engine caret sits right after the mark — the DOM resync reads this
+    expect(e.selection.anchor.offset).toBe(3)
+    expect(c.desiredCaretOffset()).toBe(3)
+    // ONE undo step reverts to the typed marker text (AC-03)
+    e.undo()
+    expect(blockText(findBlock(e.doc, 'p1')!)).toBe('**agc**')
+  })
+
   it('Enter splits via the engine and backspace-at-start merges with the sibling', () => {
     const e = new EditorEngine(
       doc(leafBlock('p1', BlockType.Paragraph, 'ab'), leafBlock('p2', BlockType.Paragraph, 'cd')),

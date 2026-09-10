@@ -33,6 +33,7 @@ import { EditorEngine } from './editor-engine'
 import { CompositionSession } from './composition'
 import { diffToOp } from './text-diff'
 import { fireRuleOn } from './input-rules'
+import { fireInlineRuleOn } from './inline-input-rules'
 import { backspaceAtItemStart, enterInItem, enterInQuote, indentItem, outdentItem } from './list-commands'
 import { domRootToSpans } from './rich-html'
 
@@ -63,6 +64,14 @@ export class BlockHostController {
     return found ? found.inlines : []
   }
 
+  /** Where the DOM caret should sit after a model-side rewrite: the engine
+   *  selection when it targets this block (inline input rules park it after
+   *  the mark), else null → the resync falls back to end-of-text. */
+  desiredCaretOffset(): number | null {
+    const sel = this.engine.selection
+    return sel.anchor.blockId === this.blockId ? sel.anchor.offset : null
+  }
+
   /** The host was (re)rendered from the engine — re-sync the known text
    *  (history changes repaint the host). */
   syncFromModel(): string {
@@ -78,8 +87,12 @@ export class BlockHostController {
     this.knownText = newText
     if (!op) return null
     this.engine.apply(op)
-    // give the input rule a chance (marker just completed)
-    fireRuleOn(this.engine, this.blockId)
+    // give the input rules a chance (marker just completed): block rules
+    // first (`***` whole-block), then the inline paired-marker rules
+    // (plan-062 T-03) — block-level wins so `***` never double-fires.
+    if (!fireRuleOn(this.engine, this.blockId)) {
+      fireInlineRuleOn(this.engine, this.blockId)
+    }
     this.syncFromModel()
     return op
   }

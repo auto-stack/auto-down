@@ -223,9 +223,53 @@ export const domSelectionAdapter: SelectionAdapter = {
   },
 }
 
+/** PLAN-600 T-04 (plan-062): marks whose styled element encloses the
+ *  COLLAPSED caret in the focused rich host — the cancel-channel source.
+ *  hostRange/isActive are selection-oriented (collapsed → null), so this
+ *  walks the start container directly. Empty when no focused host / plain
+ *  text. */
+export function activeMarksAtCaret(): Mark[] {
+  const host = focusedRichHost
+  const sel = typeof window === 'undefined' ? null : window.getSelection()
+  if (!host || !sel || sel.rangeCount === 0) return []
+  const range = sel.getRangeAt(0)
+  if (!host.contains(range.startContainer)) return []
+  const out: Mark[] = []
+  for (const m of [Mark.Strong, Mark.Em, Mark.Underline, Mark.Del, Mark.Code]) {
+    const tag = MARK_TAGS[m]
+    if (tag != null && enclosingTag(host, range.startContainer, TAG_ALIASES[tag] ?? [tag])) {
+      out.push(m)
+    }
+  }
+  return out
+}
+
+/** PLAN-600/062: unwrap the styled element enclosing the COLLAPSED caret
+ *  (the bubble cancel channel at a bare caret). False when the caret is
+ *  not in the host or sits in plain text. */
+export function removeMarkAtCaret(mark: Mark): boolean {
+  const host = focusedRichHost
+  const sel = typeof window === 'undefined' ? null : window.getSelection()
+  if (!host || !sel || sel.rangeCount === 0) return false
+  const range = sel.getRangeAt(0)
+  if (!host.contains(range.startContainer)) return false
+  const tag = MARK_TAGS[mark]
+  if (tag == null) return false
+  const wrap = enclosingTag(host, range.startContainer, TAG_ALIASES[tag] ?? [tag])
+  if (!wrap) return false
+  unwrapEl(wrap)
+  return true
+}
+
 /** The old domToggleMark decision (isActive ? remove : apply) — a module
  *  convenience for the call sites, deliberately OUTSIDE the frozen
  *  four-method interface (D1). */
 export function toggleMark(adapter: SelectionAdapter, mark: Mark): boolean {
+  if (adapter === (domSelectionAdapter as SelectionAdapter)) {
+    // plan-062 T-04 cancel channel: a collapsed caret has no DOM range for
+    // the wrap/unwrap protocol — unwrap the enclosing styled element
+    // directly (apply-at-caret is the stored-mark domain, out of scope).
+    if (adapter.getSelection() == null) return removeMarkAtCaret(mark)
+  }
   return adapter.isActive(mark) ? adapter.removeMark(mark) : adapter.applyMark(mark)
 }

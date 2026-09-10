@@ -56,6 +56,7 @@ function fakeController(overrides: Record<string, unknown> = {}): FakeController
     inlines: [span('hello')],
     composition: { composing: false },
     onInput: vi.fn(),
+    desiredCaretOffset: vi.fn(() => null),
     onEnter: vi.fn(),
     prevSiblingId: vi.fn(() => null),
     onBackspaceAtStart: vi.fn(),

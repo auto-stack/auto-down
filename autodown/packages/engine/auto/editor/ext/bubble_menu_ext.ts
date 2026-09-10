@@ -40,6 +40,8 @@ import {
   Link as LinkIcon,
   Underline,
 } from 'lucide-vue-next'
+import { Mark } from '../../parser/block-model'
+import { activeMarksAtCaret, domSelectionAdapter } from '../engine/selection-adapter'
 import type { EditorEngine } from '../engine/editor-engine'
 
 // The static lucide icon set, looked up by button name from the widget's
@@ -57,21 +59,24 @@ export function bubbleIcon(name: keyof typeof BUBBLE_ICONS): unknown {
   return BUBBLE_ICONS[name]
 }
 
-// shouldShow for the engine host: editable editor + non-collapsed selection
-// only. v1 note: a block-granular selection is collapsed whenever anchor ==
-// focus, so this only opens once an inline selection model exists.
+// shouldShow for the engine host: editable editor + a non-collapsed
+// selection, OR (plan-062 T-04) a collapsed caret sitting inside a marked
+// token — the cancel channel. state.marks is engineStateOf's caret-mark
+// read (marksAtRange collapsed semantics); non-engine editors omit it and
+// keep the selection-only behavior.
 export function bubbleShouldShow({
   editor,
   state,
 }: {
   editor: any
-  state: { selection: { empty: boolean } }
+  state: { selection: { empty: boolean }; marks?: unknown[] }
 }): boolean {
-  const { empty } = state.selection
-  if (!editor.isEditable || empty || editor.isActive('image')) {
+  if (!editor.isEditable || editor.isActive('image')) {
     return false
   }
-  return true
+  const { empty } = state.selection
+  if (!empty) return true
+  return Array.isArray(state.marks) && state.marks.length > 0
 }
 
 // The link button's action: unset an active link, otherwise prompt for a
@@ -127,14 +132,27 @@ const EngineBubbleMenu = defineComponent({
         visible.value = false
         return
       }
+      // plan-062 T-04: caret-only moves do not bump the adapter tick on
+      // their own — bump here so the active-state computeds re-evaluate.
+      props.editor?.__bump?.()
       const sel = typeof window === 'undefined' ? null : window.getSelection()
-      const domRange =
-        sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed ? sel.getRangeAt(0) : null
+      // plan-062 T-04: a collapsed caret is no longer auto-hidden — the
+      // cancel channel shows the bubble on a marked token under the caret
+      // (shouldShow decides; the caret rect positions it). No DOM selection
+      // at all still hides.
+      const domRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null
       if (!domRange) {
         visible.value = false
         return
       }
-      const ctx = { editor: props.editor, state: engineStateOf(engine) }
+      // plan-062 T-04: collapsed caret → the marks enclosing the caret via
+      // the live DOM selection (the engine selection does not track bare
+      // caret moves, so the DOM adapter is the truth source here).
+      let marks: unknown[] | undefined = undefined
+      if (domRange.collapsed) {
+        marks = activeMarksAtCaret()
+      }
+      const ctx = { editor: props.editor, state: { ...engineStateOf(engine), marks } }
       visible.value = props.shouldShow ? Boolean(props.shouldShow(ctx)) : false
       if (!visible.value) return
       // positioning: float above the selection rect (computeMenuPosition

@@ -398,6 +398,17 @@
         "related": [
           "PLAN-061"
         ]
+      },
+      {
+        "id": "P062-2",
+        "section": "goals",
+        "status": "proposed",
+        "title": "行内字体编辑交互改造 — 目标",
+        "content": "- 键入 **agc**/*x*/~~x~~/`x` 闭合即转换：span 变换、marker 无残留、光标出\n  mark、新键入纯文本（AC-01/02）。\n- 一次 undo 回到原 marker 文本（AC-03）。\n- 守卫：Code 区不触发、转义 opener/closer 不触发、**a* 不被 * 截胡、跨行\n  不触发（AC-04）。\n- caret 入已格式化 token → bubble 弹出 + active + 点按解除（AC-05）。\n- Ctrl/Cmd+B/I/U：选区 toggle（AC-06 选区半；无选区「进入 stored mark」\n  方向登记为增量——PARITY #20）。\n- 门禁全绿 + PARITY #20 登记（AC-07）。",
+        "file": "docs/plans/archived/062-inline-mark-input-rules.md",
+        "related": [
+          "PLAN-062"
+        ]
       }
     ],
     "architecture": [
@@ -812,6 +823,17 @@
         "related": [
           "PLAN-061"
         ]
+      },
+      {
+        "id": "P062-3",
+        "section": "architecture",
+        "status": "stable",
+        "title": "行内字体编辑交互改造 — 架构方案",
+        "content": "纯匹配器 inline-input-rules.ts（INLINE_INPUT_RULES 长优先数据表 +\nmatchInlineRule 文本扫描：转义/连排两侧/跨行/空 inner/中段含同 marker 全\n守卫）+ fireInlineRuleOn（Code 区任一字符守卫 + applyGroup 单 undo +\nselect 出 mark）。接线：host-controller.onInput 块级 fireRuleOn 优先、行内\n次之；DOM 侧 spansInsert mark 末尾边界=外插普通 span（AC-02 模型基础）+\ncaretToOffset styled 边界 ZWSP 锚（抗 Chromium 续写，hostText 剥离模型零\n污染）+ hostInput 精确 resync。bubble：EngineBubbleMenu.derive 放行折叠\ncaret + activeMarksAtCaret（DOM 包裹语义）+ removeMarkAtCaret 解除通道 +\nadapter isActive 折叠口径 + __bump tick。",
+        "file": "docs/plans/archived/062-inline-mark-input-rules.md",
+        "related": [
+          "PLAN-062"
+        ]
       }
     ],
     "designs": [
@@ -1216,6 +1238,17 @@
         "related": [
           "PLAN-061"
         ]
+      },
+      {
+        "id": "P062-4",
+        "section": "designs",
+        "status": "stable",
+        "title": "行内字体编辑交互改造 — 详细设计",
+        "content": "匹配器：closer 精确匹配于 caret-len 处（转义拒绝）；opener 自右向左扫最近\n未转义同 marker（连排两侧拒绝——**a* 不被 * 截胡）；inner 非空、不含同\nmarker、区域无换行。变换：applyGroup([ReplaceRange(region→inner)]) + after\n树函数 toggleMarkOnSpans(inner, mark) + normalizeSpans；select(inner 末)。\nbubble：derive 放行折叠 caret，activeMarksAtCaret 经 MARK_TAGS/TAG_ALIASES\n逐族 enclosingTag 判定；removeMarkAtCaret unwrap 解除。",
+        "file": "docs/plans/archived/062-inline-mark-input-rules.md",
+        "related": [
+          "PLAN-062"
+        ]
       }
     ],
     "tests": [
@@ -1597,6 +1630,17 @@
         "file": "docs/plans/archived/061-click-caret-parity.md",
         "related": [
           "PLAN-061"
+        ]
+      },
+      {
+        "id": "P062-5",
+        "section": "tests",
+        "status": "verified",
+        "title": "行内字体编辑交互改造 — 测试设计",
+        "content": "- 单测 inline-input-rules.test 12 例（矩阵：命中/未闭合/无 opener/空 inner/\n  长优先/**a* 截胡/转义/跨行/嵌套/caret 边界 + transform：转换/出 mark/单\n  undo/Code 守卫）。\n- host 级：onInput → fire → caret 3 + 单 undo（host-controller.test 扩）。\n- e2e inline-input-rules.spec 5 例真键盘（AC-01..06）。\n- 门禁：engine vitest 833/833 + build 三 assert + demo e2e 108/108\n  （103 存量 + 5 新增）；复审 fresh 复跑两轮在册。",
+        "file": "docs/plans/archived/062-inline-mark-input-rules.md",
+        "related": [
+          "PLAN-062"
         ]
       }
     ],
@@ -1985,6 +2029,17 @@
         "related": [
           "PLAN-061"
         ]
+      },
+      {
+        "id": "P062-6",
+        "section": "reviews",
+        "status": "published",
+        "title": "行内字体编辑交互改造 — 验收标准 / 复审记录",
+        "content": "验收 AC-01..08（计划正文表）。\n\n---\n\n（/auto-plan:review 终审\n2026-09-09，reviewer: zhaopuming + ZCode；实现会话内复审，验收按工件重跑\n复现）AC-01..05/07 pass（fresh 复跑 vitest 833/833 + e2e 108/108 于\n30c3dac）；AC-06 partial——选区 toggle ✓、无选区「解除」✓（\nremoveMarkAtCaret）、「进入 stored mark」未实现（文本偏移 diff 管线无法\n表达插入点样式，需 spans 级 diff 升级）——所有者裁定登记为 PARITY #20\n增量后归档；AC-08 merge 批次落账（本 P062-1..6）。\n\n---\n\n（/auto-plan:merge 2026-09-09）prepared（立案：061 撞号解编改号 PLAN-062，\n225c266）→ landed（plan-062-dev 2ae6733/9bf1fe0/30c3dac 折回 master\n962d6c3）→ ledger_refreshed（本 P062-1..6 六节存款，tracked specs.json）\n→ archived（docs/plans/archived/062-inline-mark-input-rules.md）。",
+        "file": "docs/plans/archived/062-inline-mark-input-rules.md",
+        "related": [
+          "PLAN-062"
+        ]
       }
     ],
     "reports": [
@@ -2371,6 +2426,17 @@
         "file": "docs/plans/archived/061-click-caret-parity.md",
         "related": [
           "PLAN-061"
+        ]
+      },
+      {
+        "id": "P062-1",
+        "section": "reports",
+        "status": "published",
+        "title": "行内字体编辑交互改造 — 变更摘要",
+        "content": "引擎编辑器行内字体（Bold/Italic/Strike/Code）flow 输入主通道：键入 **agc** 等\n成对 marker，闭合即 span 变换、光标落 mark 之外（从模型上消灭 toggle 后新\n打字继承字体的痛点）；配套 bubble 撤销通道（caret 入已格式化 token 弹出 +\nactive 高亮 + 点按解除）与 Ctrl/Cmd+B/I/U 快捷键。同批收录 F1..F5 CodeBlock\n编辑面修正（随 PLAN-061 入库）。",
+        "file": "docs/plans/archived/062-inline-mark-input-rules.md",
+        "related": [
+          "PLAN-062"
         ]
       }
     ]

@@ -42,6 +42,7 @@ function Move(x: any, y: any): void {
   }
 
 
+  console.log('P1-move-before-emit');
   let _ = update_scrollTop(v);
   }}}
 

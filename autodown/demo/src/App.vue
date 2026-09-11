@@ -1,6 +1,6 @@
 <!-- App component - Auto-generated from Auto language -->
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { AutoDownEditor, StreamingRenderer } from '@autodown/engine'
 
 import { initial_content } from '../auto/src/front/utils/app_ext'
@@ -27,6 +27,7 @@ const right_height = ref<number>(0)
 const right_client = ref<number>(0)
 const sync_anchor_block = ref<number>(-1)
 const left_scroll_events = ref<number>(0)
+const left_settle_due = ref<number>(0)
 const table_widths = ref<any>({})
 const dark_mode = ref<boolean>(false)
 const accent_color = ref<string>('indigo')
@@ -56,6 +57,7 @@ const emit = defineEmits<{
   OnLeftScroll: [number, number, number]
   OnRightScroll: [number, number, number]
   ToggleDetails: [string]
+  SettleSync: []
   OpenSettings: []
   CloseSettings: []
   SetTheme: [string]
@@ -93,12 +95,9 @@ function OnLeftScroll(h: any, c: any, sy: any): void {
   left_height.value = h;
   left_client.value = c;
   left_scroll_events.value = left_scroll_events.value + 1;
-  if (h > c && right_height.value > right_client.value) {let max_r = right_height.value - right_client.value;
-  let target = sy / (h - c) * max_r;
-  if (target < 0) {target = 0;
-  }if (target > max_r) {target = max_r;
-  }right_top_cmd.value = target;
-  }
+
+
+  left_settle_due.value = 1;
 
   emit('OnLeftScroll', h, c, sy)
 }
@@ -141,6 +140,17 @@ function SetTheme(t: any): void {
   emit('SetTheme', t)
 }
 
+function SettleSync(): void {
+  if (is_vue() == null && left_settle_due.value == 1 && left_height.value > left_client.value) {left_settle_due.value = 0;
+  if (left_height.value > left_client.value && right_height.value > right_client.value) {let max_l = left_height.value - left_client.value;
+  let max_r = right_height.value - right_client.value;
+  let t = left_top_view.value / max_l * max_r;
+  if (t < 0) {t = 0;
+  }if (t > max_r) {t = max_r;
+  }right_top_cmd.value = t;
+  }}
+}
+
 function SplitterHover(v: any): void {
   hovering_splitter.value = v;
 
@@ -178,6 +188,19 @@ onMounted(() => {
   demoAppBridge.rendererRef = rendererRef.value!;
   }
 })
+
+let __timer_SettleSync: any = null
+const __t51_on_SettleSync = async () => { if (true) { if (is_vue() == null && left_settle_due.value == 1 && left_height.value > left_client.value) {left_settle_due.value = 0;
+if (left_height.value > left_client.value && right_height.value > right_client.value) {let max_l = left_height.value - left_client.value;
+let max_r = right_height.value - right_client.value;
+let t = left_top_view.value / max_l * max_r;
+if (t < 0) {t = 0;
+}if (t > max_r) {t = max_r;
+}right_top_cmd.value = t;
+}}
+ } }
+onMounted(() => { __timer_SettleSync = setInterval(__t51_on_SettleSync, 100) })
+onUnmounted(() => { if (__timer_SettleSync !== null) { clearInterval(__timer_SettleSync); __timer_SettleSync = null } })
 
 
 

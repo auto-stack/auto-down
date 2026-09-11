@@ -267,6 +267,9 @@ widget App {
                             // PLAN-043 T3: VM 轨滚动同步双臂（编辑壳全内容
                             // 高、外滚；vue 轨这些 props 不达组件根，惰性）。
                             scroll_sync: true,
+                            // PLAN-063 T-04d: 锚块高亮——滚动时判定「首个完整可见块」
+                            // 并在编辑器内描边（对拍观察同步参考）。
+                            sync_anchor: true,
                             scroll_top: .left_top_cmd,
                             onscroll: .OnLeftScroll,
                             // PLAN-044 T5: 块聚焦读出——vue @focusblock（EngineEditor

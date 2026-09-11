@@ -58,7 +58,13 @@ function measureRightBlocks(container: HTMLElement): MeasuredBlock[] {
 
 function measureLeftBlocks(wrapper: HTMLElement): MeasuredBlock[] {
   const wrapperRect = wrapper.getBoundingClientRect()
-  const blocks = Array.from(wrapper.querySelectorAll('.autodown-editor-content [data-block-id]')).map((el) => {
+  // Slot-scoped on purpose: an inner edit face can ALSO carry data-block-id
+  // (the code block's CodeBlockMenu host wrapper does), and measuring it
+  // would make the spacer rules below land on the wrapper too — a margin
+  // INSIDE the focused card (the phantom whitespace bug). The node-slot is
+  // the one carrier that exists in both faces (engine plan 039 T4b), so it
+  // mirrors the right pane's slot-scoped attribute.
+  const blocks = Array.from(wrapper.querySelectorAll('.autodown-editor-content .node-slot[data-block-id]')).map((el) => {
     const htmlEl = el as HTMLElement
     const rect = htmlEl.getBoundingClientRect()
     return {
@@ -202,14 +208,14 @@ function applyBlockSpacers(leftBlocks: MeasuredBlock[], rightBlocks: MeasuredBlo
       const rightMarginBottom = commonDistance - right.height
 
       rules.push(
-        `.autodown-editor-content [data-block-id="${left.id}"] { margin-bottom: ${leftMarginBottom}px !important; }`,
+        `.autodown-editor-content .node-slot[data-block-id="${left.id}"] { margin-bottom: ${leftMarginBottom}px !important; }`,
         `.streaming-document .node-slot[data-block-slot-id="${right.id}"] { margin-bottom: ${rightMarginBottom}px !important; }`
       )
     }
 
     if (leftNext) {
       rules.push(
-        `.autodown-editor-content [data-block-id="${left.id}"] + [data-block-id] { margin-top: 0 !important; }`
+        `.autodown-editor-content .node-slot[data-block-id="${left.id}"] + .node-slot { margin-top: 0 !important; }`
         // plan 039 T4b: the zeroing above lands on the SAME element in both
         // states now — the engine mounts the focused face inside the slot
         // chrome (EngineEditor assembleView parity, revising plan 029's
@@ -397,7 +403,7 @@ export function useSyncedScroll(options: SyncedScrollOptions): SyncedScrollState
     // positions used for scroll mapping.
     leftBlocks.value = measureLeftBlocks(leftEl)
     rightBlocks.value = measureRightBlocks(renderer.containerRef)
-    leftFirstOffset.value = firstBlockAbsTop(leftEl, '.autodown-editor-content [data-block-id]')
+    leftFirstOffset.value = firstBlockAbsTop(leftEl, '.autodown-editor-content .node-slot[data-block-id]')
     rightFirstOffset.value = firstBlockAbsTop(renderer.containerRef, '.node-slot[data-block-slot-id]')
 
     // Add an invisible spacer on the shorter side so both containers have the

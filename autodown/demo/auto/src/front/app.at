@@ -26,7 +26,9 @@
 //   streaming-family props, `scroll_sync` is CONSUMED on VM since PLAN-043
 //   (pane gets a View::Scrollable wrapper: `scroll_top` binding = write arm,
 //   `onscroll` event = read arm — top/height/client ride the message back to
-//   the handler); `placeholder_block_id`/`placeholder_height` (ghost) are
+//   the handler; PLAN-063 puts the two arms on separate state — write arm
+//   binds `*_top_cmd`, read arm writes `*_top_view` — and sync is one-way
+//   left→right, see the model/handler notes); `placeholder_block_id`/`placeholder_height` (ghost) are
 //   CONSUMED on VM since PLAN-044 (focused-block ghost box before the hit
 //   block); `table_col_widths`/`oncolresize` (column resize) are CONSUMED on
 //   VM since PLAN-045 (header-edge drag → per-table widths state; vue arm
@@ -133,12 +135,25 @@ widget App {
         var ghost_height f64 = 0
         // PLAN-043 T3: VM 轨滚动三测量（左右栏各一份；vue 轨数据仍走
         // demoAppBridge——CustomScrollbar 绑定经 is_vue 分派，见 computed）。
-        var left_top f64 = 0
+        // PLAN-063 T1: 命令/显示分离——`*_top_cmd` 唯一绑 Scrollable 的
+        // `scroll_top` 写臂，只由用户意图（拖拽 SetScrollTop）或单向同步跳转
+        // 写入；`*_top_view` 只由 `onscroll` echo 写入（thumb 显示 + 同步输入）。
+        // 043 的单变量双臂闭环（echo → 写臂 → scroll_to → echo）实测以帧率自激
+        //（会话日志 761 次 OnLeftScroll 乒乓），分离后 echo 不再进 pending 队列，
+        // 回环结构性消除。不变式：OnXxxScroll 禁止写任何 *_top_cmd。
+        var left_top_cmd f64 = 0
+        var left_top_view f64 = 0
         var left_height f64 = 0
         var left_client f64 = 0
-        var right_top f64 = 0
+        var right_top_cmd f64 = 0
+        var right_top_view f64 = 0
         var right_height f64 = 0
         var right_client f64 = 0
+        // PLAN-063: 块锚定同步的锚块索引（v2 rust 直写；-1 = 未锚定）。
+        var sync_anchor_block int = -1
+        // PLAN-063: 左栏滚动事件计数——vm-smoke 反振荡断言的可观测面（停手
+        // 后计数必须停增）。
+        var left_scroll_events int = 0
         // PLAN-045 T6: 表格列宽状态 VM 单源（rust 直写快道：OnColResize
         // 拦截按表键写 map——"t{blockHash}" 键，他键保留；重渲染/打字/流式
         // 后列宽保持，比 vue 的重渲染即丢更强）。autodown element 的
@@ -172,8 +187,9 @@ widget App {
         placeholder_height => is_vue() != None ? (.demoAppBridge.editingBlock != null ? .demoAppBridge.editingBlock.height : null) : (.ghost_id != "" ? .ghost_height : null)
         // PLAN-043 T3: CustomScrollbar 数据按轨分派——vue 轨 bridge ref
         //（useSyncedScroll 写，零变化）；VM 轨 scroll state（OnScroll
-        // handler 写；is_vue 在 VM 为 None 走 state 臂）。
-        csb_top => is_vue() != None ? .demoAppBridge.scrollTop : .left_top
+        // handler 写；is_vue 在 VM 为 None 走 state 臂）。PLAN-063: thumb 位置
+        // 读显示变量 left_top_view（echo 真值），不读命令变量。
+        csb_top => is_vue() != None ? .demoAppBridge.scrollTop : .left_top_view
         csb_height => is_vue() != None ? .demoAppBridge.scrollHeight : .left_height
         csb_client => is_vue() != None ? .demoAppBridge.clientHeight : .left_client
     }
@@ -242,7 +258,7 @@ widget App {
                             // PLAN-043 T3: VM 轨滚动同步双臂（编辑壳全内容
                             // 高、外滚；vue 轨这些 props 不达组件根，惰性）。
                             scroll_sync: true,
-                            scroll_top: .left_top,
+                            scroll_top: .left_top_cmd,
                             onscroll: .OnLeftScroll,
                             // PLAN-044 T5: 块聚焦读出——vue @focusblock（EngineEditor
                             // emit，载荷 {id,height}|null）；VM onfocus 消息
@@ -265,7 +281,7 @@ widget App {
                             placeholder_block_id: .placeholder_id,
                             placeholder_height: .placeholder_height,
                             scroll_sync: true,
-                            scroll_top: .right_top,
+                            scroll_top: .right_top_cmd,
                             onscroll: .OnRightScroll,
                             // PLAN-043 T4: Details 折叠回路——summary 点击
                             // → 消息（键 = 块结构键）→ handler 翻转 content
@@ -320,34 +336,41 @@ widget App {
             if is_vue() != None {
                 .demoAppBridge.setScrollTop(v)
             } else {
-                // PLAN-043 T3: VM 轨直写左栏 state——offset 绑定拉动编辑栏，
-                // 滚动事件回灌三测量并对右栏比例级联。
-                .left_top = v
+                // PLAN-063 T1: VM 轨写命令变量——唯一的用户意图写臂入口。
+                // Scrollable 的 scroll_top 绑定据此发一次 scroll_to，echo 落
+                // left_top_view，不再回流到本变量（043 期直写 left_top 与
+                // echo 同变量是自激环的成因）。
+                .left_top_cmd = v
             }
         }
-        // PLAN-043 T3（PLAN-058 恢复双轨真消费）：VM 轨两栏比例联动。
-        // 参数序 (h, c, sy) = (scrollHeight, clientHeight, scrollTop)——
-        // 043 期的三参首参绑定损坏已随 nanbox 整值 float 修复清偿，参数
-        // 序保留（语义不变）。级联回授环由 rust 侧 pending 队列 0.5px
-        // 去抖几何收敛终结。vue 轨 @scroll 不达组件根（滚动发生在内层
-        // wrapper），两 handler 永不触发，bridge 路径零变化。
+        // PLAN-063 T1（替代 043 双向比例联动）：单向左→右命令式同步。
+        // 参数序 (h, c, sy) = (scrollHeight, clientHeight, scrollTop)。
+        // 左栏 echo 只写显示/测量变量与事件计数；同步臂只写右栏命令变量
+        //（v1 比例近似钳制到 [0, max]；v2 由 rust 直写块锚定目标，见计划 T-04）。
+        // 右栏 echo 永不回写左栏（单向）——两栏 handler 之间没有环。
+        // vue 轨 @scroll 不达组件根（滚动发生在内层 wrapper），两 handler
+        // 永不触发，bridge 路径零变化。
         .OnLeftScroll(h, c, sy) -> {
-            // PLAN-058: 043 T6 rust 直写快道退役——VM 轨与 vue 轨同走
-            // 解释器 handler（三测量 + 对栏比例级联，级联式与快道同源）。
-            .left_top = sy
+            .left_top_view = sy
             .left_height = h
             .left_client = c
+            .left_scroll_events = .left_scroll_events + 1
             if h > c && .right_height > .right_client {
-                .right_top = sy / (h - c) * (.right_height - .right_client)
+                let max_r = .right_height - .right_client
+                var target = sy / (h - c) * max_r
+                if target < 0 {
+                    target = 0
+                }
+                if target > max_r {
+                    target = max_r
+                }
+                .right_top_cmd = target
             }
         }
         .OnRightScroll(h, c, sy) -> {
-            .right_top = sy
+            .right_top_view = sy
             .right_height = h
             .right_client = c
-            if h > c && .left_height > .left_client {
-                .left_top = sy / (h - c) * (.left_height - .left_client)
-            }
         }
         // PLAN-044 T5: 块聚焦 → ghost 占位。vue 轨：$event = {id,height}|null
         // 写 bridge（computed vue 臂读取，editingBlock 自本计划真点亮）；

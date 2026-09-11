@@ -70,6 +70,24 @@
   vue 轨 handler 永不触发（is_vue 惰性），零影响。
 - 与 T-04d 合并落地：直写 + 去抖同属 rust 消费侧改造。
 
+## 2b. T-04d-2 设计定稿（2026-09-11 实机验收后确认）
+
+- 用户实机确认 v1 比例同步存在偏差（两栏内容高度不同：左 2653 vs 右 3088），
+  块锚定是正解。锚块判定已落地（sync_anchor 高亮链，auto-lang ac3b46ce1）——
+  ade 存储的 anchor_block 即同步参考块索引。
+- **iced 0.14 限制**：`iced_runtime::widget::operation::scroll_to` 仅支持
+  AbsoluteOffset（像素），无「滚到子件」——右栏目标必须拿到块布局坐标。
+- **确认机制**（wrap_with_ghost 是天然包点，逐块循环 in
+  autodown_render.rs:216-238）：新增 View 变体
+  `AnchorSlot { index, child }`——layout 期把块内容 y 写入全局注册表
+  （块 0 即内容原点：content_y_i = abs_y_i − abs_y_0），SettleSync 的
+  rust 消费侧读注册表得 right 目标 = content_y_anchor，写 right_top_cmd
+  （或经 write_state）。
+- **改动面**：View 枚举 +1 变体；穷尽 match 补臂（renderer.rs into_iced/
+  style/kind/MCP/patch_input ~6 处 + vnode_converter/node_converter ~2 处，
+  全部委托 child）；autodown_render 包点；SettleSync 消费接线；注册表
+  单文档约定（v1 限度）。估算 10-15 编辑点 + 语料测试，需一整段专注实现。
+
 ## 3. 回折与收口
 
 - auto-down-dev 分支经验证后由 auto-plan-merge 折回 auto-lang master

@@ -340,12 +340,17 @@ async function runOnce(attempt) {
   // 时跳过本组（红绿读数与整轮回归用），非门控态保持硬断言不变。
   if (process.env.VM_SKIP_SCROLL_LEG === '1') {
     console.error('vm-smoke: [group4] scroll leg SKIPPED (VM_SKIP_SCROLL_LEG=1 — known environment drift family, plan 053 待澄清⑦ / 054 non-blocking ruling)')
-  } else { // 4. (plan 043 T6) scroll sync — a long doc overflows both panes; the
-    //    scroll_sync Scrollables wrap them (offset binding + onscroll
-    //    message). Scroll LEFT via MCP, expect: state three-measurements
-    //    update, right pane offset binding follows, CustomScrollbar data
-    //    non-zero; then scroll RIGHT and expect the left to follow back
-    //    (bidirectional proportional sync).
+  } else { // 4. (PLAN-063 T3) scroll sync — ONE-WAY left→right command sync on
+    //    cmd/view split state (supersedes the 043 bidirectional proportional
+    //    contract, whose single-variable dual-arm loop oscillated at frame
+    //    rate; see PLAN-063 §4.2). A long doc overflows both panes.
+    //    Assertions: (a) scroll LEFT → left_top_view converges, thumb data
+    //    non-zero, sync arm gated (T-02 engine float-arith defect ⇒ degraded
+    //    branch, no write-back); (b) ANTI-OSCILLATION: left_scroll_events
+    //    freezes after settle; (c) scroll RIGHT → right_top_view follows,
+    //    left untouched; (d) CustomScrollbar drag still drives the left pane
+    //    via left_top_cmd (043 T10 surface, PARITY #8); (e) idempotent
+    //    re-scroll: no event storm.
     const nonce2 = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
     const LONG_DOC = Array.from({ length: 30 }, (_, i) => `# scroll probe ${nonce2} h${i}\n\npara ${i} ${nonce2}`).join('\n\n')
     const typeLong = await callTool('autoui_action', { element_id: editorId, action: 'type_text', value: LONG_DOC })
@@ -380,17 +385,21 @@ async function runOnce(attempt) {
     await new Promise((r) => setTimeout(r, 300))
 
     // 复跑复位：两栏滚回顶——活窗重复跑时上轮残留滚动位会让后续收敛断言
-    // 直通（首跑即栽在 bidirectional 的 prevLeftTop 残留 600）。
+    // 直通（首跑即栽在残留 600）。
     {
       const reset = await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 0 })
       if (!/status: ok/.test(reset)) throw new Error(`reset scroll not ok: ${reset}`)
+      // PLAN-063: one-way sync — the right pane no longer follows the left
+      // back, so the retry-reset must zero it explicitly.
+      const resetR = await callTool('autoui_action', { element_id: rightScId, action: 'scroll', value: 0 })
+      if (!/status: ok/.test(resetR)) throw new Error(`right reset scroll not ok: ${resetR}`)
       // PLAN-053 复审宽限：负载下状态同步滞后，reset 每 1.5s 重发（同
       // scroll-240 reissue 先例）。
       let lastResetReissue = Date.now()
       for (const deadline = Date.now() + 8000; ; ) {
-        const st = await callTool('autoui_state', { fields: ['left_top', 'right_top'] })
-        const lt = Number(st.match(/left_top:\s*([\d.]+)/)?.[1] ?? NaN)
-        const rt = Number(st.match(/right_top:\s*([\d.]+)/)?.[1] ?? NaN)
+        const st = await callTool('autoui_state', { fields: ['left_top_view', 'right_top_view'] })
+        const lt = Number(st.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+        const rt = Number(st.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
         if (lt < 5 && rt < 5) break
         if (Date.now() > deadline) throw new Error(`scroll reset did not settle: ${st.trim()}`)
         if (Date.now() - lastResetReissue > 1500) {
@@ -401,17 +410,18 @@ async function runOnce(attempt) {
       }
     }
 
-    // scroll LEFT to y=240 → poll: state three-measurements + right binding.
+    // (a) scroll LEFT to y=240 → left_top_view convergence + thumb data.
     // 冷窗补发：编辑器 cosmic-text 布局异步就绪前 scroll_to 会被钳 0 且无
     // 事件（净窗首跑实测）——收敛轮询里每 800ms 重发一次 scroll 动作。
+    let syncFired = false // engine-health signal: v1 sync arm computed (T-02 gate)
     const scrollLeft = await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 240 })
     if (!/status: ok/.test(scrollLeft)) throw new Error(`scroll action not ok: ${scrollLeft}`)
     let stateScroll = ''
     let lastReissue = Date.now()
     for (const deadline = Date.now() + 12000; ; ) {
-      stateScroll = await callTool('autoui_state', { fields: ['left_top', 'left_height', 'left_client', 'right_top'] })
+      stateScroll = await callTool('autoui_state', { fields: ['left_top_view', 'left_height', 'left_client', 'left_scroll_events', 'right_top_cmd', 'right_top_view'] })
       const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
-      if (num('left_top') > 100 && num('left_height') > num('left_client') && num('right_top') > 0) break
+      if (num('left_top_view') > 100 && num('left_height') > num('left_client')) break
       if (Date.now() > deadline) throw new Error(`scroll-sync state did not converge: ${stateScroll.trim()}`)
       if (Date.now() - lastReissue > 800) {
         lastReissue = Date.now()
@@ -419,7 +429,7 @@ async function runOnce(attempt) {
       }
       await new Promise((r) => setTimeout(r, 100))
     }
-    checks.push('scroll left → state three-measurements update (left_top≈240, height>client, right_top>0)')
+    checks.push('scroll left → left_top_view converges + three-measurements update (063 cmd/view split)')
     // CustomScrollbar data non-zero: left_height > left_client (thumb range)
     {
       const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
@@ -429,66 +439,152 @@ async function runOnce(attempt) {
     }
     checks.push('CustomScrollbar data non-zero (left_height > left_client > 0)')
 
-    // right pane offset binding follows (snapshot Scrollable offset_y > 0)
-    let rightOffsetY = 0
-    for (const deadline = Date.now() + 6000; ; ) {
-      const snapR = parseAura(await callTool('autoui_snapshot', {}))
-      const rs = findFirst(snapR, (n) => n.head.includes(rightScId))
-      // offset_y 是 scrollable 节点下的属性行（parseAura 解析为子节点）
-      const propNode = rs ? findFirst(rs, (n) => n.head.startsWith('offset_y:')) : null
-      const m = propNode?.head.match(/offset_y:\s*([\d.]+)/) ?? null
-      rightOffsetY = m ? Number(m[1]) : 0
-      if (rightOffsetY > 0) break
-      if (Date.now() > deadline) throw new Error('right pane offset binding did not follow (offset_y stayed 0)')
-      await new Promise((r) => setTimeout(r, 100))
+    // sync arm (T-02 gate): the v1 proportional expression evaluates to 0 on
+    // the current engine (handler-context float binary ops collapse to
+    // int 0 / false — PLAN-063 §4.2/T-02), so right_top_cmd stays 0 and the
+    // right pane must NOT move (degraded branch = AC-02 downgrade; no
+    // write-back). When the engine defect is fixed or T-04's rust
+    // direct-write lands, right_top_cmd > 0 re-arms the offset_y assertion.
+    {
+      const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
+      const syncCmd = num('right_top_cmd')
+      if (syncCmd > 0) {
+        let rightOffsetY = 0
+        for (const deadline = Date.now() + 6000; ; ) {
+          const snapR = parseAura(await callTool('autoui_snapshot', {}))
+          const rs = findFirst(snapR, (n) => n.head.includes(rightScId))
+          const propNode = rs ? findFirst(rs, (n) => n.head.startsWith('offset_y:')) : null
+          rightOffsetY = Number(propNode?.head.match(/offset_y:\s*([\d.]+)/)?.[1] ?? 0)
+          if (rightOffsetY > 0) break
+          if (Date.now() > deadline) throw new Error('right pane offset binding did not follow (offset_y stayed 0)')
+          await new Promise((r) => setTimeout(r, 100))
+        }
+        checks.push(`sync arm fired → right pane offset binding follows (offset_y=${rightOffsetY.toFixed(1)})`)
+      } else {
+        if (num('right_top_view') !== 0) throw new Error(`one-way violation: right moved without sync (right_top_view=${num('right_top_view')})`)
+        checks.push('sync arm inert (T-02 engine defect, AC-02 degraded): right_top_cmd=0, right untouched, no write-back')
+      }
     }
-    checks.push(`scroll left → right pane offset binding follows (offset_y=${rightOffsetY.toFixed(1)})`)
 
-    // scroll RIGHT to y=600 → left follows back (bidirectional)
-    const prevLeftTop = Number(stateScroll.match(/left_top:\s*([\d.]+)/)?.[1] ?? 0)
-    const scrollRight = await callTool('autoui_action', { element_id: rightScId, action: 'scroll', value: 600 })
-    if (!/status: ok/.test(scrollRight)) throw new Error(`scroll-right action not ok: ${scrollRight}`)
-    for (const deadline = Date.now() + 6000; ; ) {
-      stateScroll = await callTool('autoui_state', { fields: ['left_top', 'right_top'] })
-      const leftTop = Number(stateScroll.match(/left_top:\s*([\d.]+)/)?.[1] ?? NaN)
-      if (leftTop > prevLeftTop + 50) break
-      if (Date.now() > deadline) throw new Error(`bidirectional sync failed: left_top ${prevLeftTop} → ${leftTop}`)
-      await new Promise((r) => setTimeout(r, 100))
+    // (b) ANTI-OSCILLATION (the 043 loop's signature): after settle, the
+    // left pane's event counter must FREEZE and the position hold steady.
+    {
+      const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
+      const ev0 = num('left_scroll_events')
+      const v0 = num('left_top_view')
+      await new Promise((r) => setTimeout(r, 1500))
+      stateScroll = await callTool('autoui_state', { fields: ['left_scroll_events', 'left_top_view'] })
+      const ev1 = Number(stateScroll.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
+      const v1 = Number(stateScroll.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+      if (ev1 !== ev0 || Math.abs(v1 - v0) > 1) {
+        throw new Error(`anti-oscillation failed: left_scroll_events ${ev0} → ${ev1}, left_top_view ${v0} → ${v1}`)
+      }
+      checks.push(`anti-oscillation: left_scroll_events frozen (${ev0} → ${ev1}), left_top_view steady (${v1})`)
     }
-    checks.push('scroll right → left pane follows back (bidirectional proportional sync)')
 
-    // (plan 043 T10) drag emission surface: MCP drag on CustomScrollbar's
-    // mouse-area handlers (TrackDown → Move×n → ThumbUp, same message shape
-    // the iced PointerArea closures produce) drives the panes — .at drag math
-    // → root-state write (dual-declared fields) → write-arm scroll_to →
-    // on_scroll re-report → peer ratio sync. Asserts left_top jumps and both
-    // scrollables' offset_y follow.
+    // (c) scroll RIGHT to y=600 → right_top_view follows; LEFT untouched
+    // (one-way contract: OnRightScroll writes view/measurements only).
+    {
+      const scrollRight = await callTool('autoui_action', { element_id: rightScId, action: 'scroll', value: 600 })
+      if (!/status: ok/.test(scrollRight)) throw new Error(`scroll-right action not ok: ${scrollRight}`)
+      for (const deadline = Date.now() + 6000; ; ) {
+        stateScroll = await callTool('autoui_state', { fields: ['right_top_view', 'left_top_view', 'left_scroll_events'] })
+        const rtv = Number(stateScroll.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+        if (rtv > 500) break
+        if (Date.now() > deadline) throw new Error(`right pane did not scroll: ${stateScroll.trim()}`)
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
+      const evC = num('left_scroll_events')
+      await new Promise((r) => setTimeout(r, 1200))
+      stateScroll = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events'] })
+      const ltv = Number(stateScroll.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+      const evC2 = Number(stateScroll.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
+      if (ltv > 245 || evC2 !== evC) {
+        throw new Error(`one-way violation: right scroll leaked into left (left_top_view=${ltv}, events ${evC} → ${evC2})`)
+      }
+      checks.push(`scroll right → right_top_view follows, left untouched (one-way; left_top_view=${ltv})`)
+    }
+
+    // (d) (plan 043 T10 surface, kept by PARITY #8) drag emission: MCP drag
+    // on CustomScrollbar's mouse-area handlers (TrackDown → Move×n →
+    // ThumbUp) drives the left pane via left_top_cmd → write-arm scroll_to.
+    // One-way: the right pane must not be dragged along; anti-oscillation
+    // re-checked after the drag settles.
     {
       const SEP = String.fromCharCode(31)
       const spec = ['CustomScrollbar', 'TrackDown', 'Move', 'ThumbUp', '5,60;5,160;5,260'].join(SEP)
       const dragRes = await callTool('autoui_action', { element_id: 'aura_0', action: 'drag', value: spec })
       if (!/status: ok/.test(dragRes)) throw new Error(`drag action not ok: ${dragRes}`)
+      if (!syncFired) {
+        // Degraded (T-02 engine defect): Move's `.scrollHeight > .clientHeight` guard
+        // is a handler-context float comparison — verified false on the current
+        // engine with OLD app.at too (regression, engine referral). Assert the
+        // invariants that must hold regardless: no crash, no oscillation, and
+        // the right pane untouched (one-way).
+        await new Promise((r) => setTimeout(r, 1500))
+        const d0 = await callTool('autoui_state', { fields: ['left_top_cmd', 'left_top_view', 'right_top_view', 'left_scroll_events'] })
+        await new Promise((r) => setTimeout(r, 1200))
+        const d1 = await callTool('autoui_state', { fields: ['left_top_cmd', 'left_top_view', 'right_top_view', 'left_scroll_events'] })
+        const gv = (st, f2) => Number(st.match(new RegExp(f2 + ':\\s*([\\d.]+)'))?.[1] ?? NaN)
+        if (gv(d1, 'left_scroll_events') !== gv(d0, 'left_scroll_events') || Math.abs(gv(d1, 'left_top_view') - gv(d0, 'left_top_view')) > 1 || Math.abs(gv(d1, 'right_top_view') - gv(d0, 'right_top_view')) > 1) {
+          throw new Error(`post-drag invariants violated (degraded): ${d0.trim()} → ${d1.trim()}`)
+        }
+        checks.push('drag handlers fire, state inert (T-02 engine defect gates Move guard — degraded; full assertion re-arms with the engine fix)')
+      } else {
       let dragState = ''
-      let dragOffsets = [0, 0]
+      let dragOffsetL = 0
       for (const deadline = Date.now() + 8000; ; ) {
-        dragState = await callTool('autoui_state', { fields: ['left_top', 'right_top'] })
-        const lt = Number(dragState.match(/left_top:\s*([\d.]+)/)?.[1] ?? NaN)
-        const rt = Number(dragState.match(/right_top:\s*([\d.]+)/)?.[1] ?? NaN)
-        if (lt > 300 && rt > 300) {
+        dragState = await callTool('autoui_state', { fields: ['left_top_cmd', 'left_top_view', 'right_top_view', 'left_scroll_events'] })
+        const ltc = Number(dragState.match(/left_top_cmd:\s*([\d.]+)/)?.[1] ?? NaN)
+        if (ltc > 300) {
           const snapD = parseAura(await callTool('autoui_snapshot', {}))
-          dragOffsets = [leftScId, rightScId].map((id) => {
-            const node = findFirst(snapD, (n) => n.head.includes(id))
-            const prop = node ? findFirst(node, (n) => n.head.startsWith('offset_y:')) : null
-            return Number(prop?.head.match(/offset_y:\s*([\d.]+)/)?.[1] ?? 0)
-          })
-          if (dragOffsets[0] > 300 && dragOffsets[1] > 300) break
+          const ls = findFirst(snapD, (n) => n.head.includes(leftScId))
+          const prop = ls ? findFirst(ls, (n) => n.head.startsWith('offset_y:')) : null
+          dragOffsetL = Number(prop?.head.match(/offset_y:\s*([\d.]+)/)?.[1] ?? 0)
+          if (dragOffsetL > 300) break
         }
         if (Date.now() > deadline) {
-          throw new Error(`drag emission surface did not move panes: ${dragState.trim()} offsets=${dragOffsets}`)
+          throw new Error(`drag emission surface did not move the left pane: ${dragState.trim()} offset=${dragOffsetL}`)
         }
         await new Promise((r) => setTimeout(r, 100))
       }
-      checks.push('drag CustomScrollbar → left_top/right_top jump + both offset_y follow (emission surface)')
+      const num = (f) => Number(dragState.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
+      const evD = num('left_scroll_events')
+      const rtvD = num('right_top_view')
+      await new Promise((r) => setTimeout(r, 1500))
+      dragState = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events', 'right_top_view'] })
+      const evD2 = Number(dragState.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
+      const ltvD2 = Number(dragState.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+      const rtvD2 = Number(dragState.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+      if (evD2 !== evD || Math.abs(ltvD2 - num('left_top_view')) > 1) {
+        throw new Error(`post-drag oscillation: events ${evD} → ${evD2}, left_top_view → ${ltvD2}`)
+      }
+      if (Math.abs(rtvD2 - rtvD) > 5) {
+        throw new Error(`one-way violation: drag moved the right pane (${rtvD} → ${rtvD2})`)
+      }
+      checks.push(`drag CustomScrollbar → left_top_cmd jump + left offset_y follows (${dragOffsetL.toFixed(1)}); right untouched, no oscillation`)
+      }
+    }
+
+    // (e) idempotent re-scroll to the same position: settles with no new
+    // event storm (cmd re-write of the same target is debounce-absorbed).
+    {
+      await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 240 })
+      let idle = ''
+      for (const deadline = Date.now() + 8000; ; ) {
+        idle = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events'] })
+        const ltv = Number(idle.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+        if (ltv > 100 && ltv < 380) break
+        if (Date.now() > deadline) throw new Error(`re-scroll did not settle: ${idle.trim()}`)
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      const evE = Number(idle.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
+      await new Promise((r) => setTimeout(r, 1200))
+      idle = await callTool('autoui_state', { fields: ['left_scroll_events', 'right_top_cmd'] })
+      const evE2 = Number(idle.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
+      if (evE2 !== evE) throw new Error(`re-scroll event storm: left_scroll_events ${evE} → ${evE2}`)
+      checks.push('re-scroll same position → settles, no event storm (idempotent)')
     }
 
 

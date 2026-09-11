@@ -42,11 +42,16 @@ VM track status (see DEBTS.md 040/043 rows and `PARITY.md`):
   row/col natively and `flex-1` → Flex1 → width=Fill; the pre-046
   vertical-stack degradation (README「Layout note」v1 divergence) is
   retired. Evidence: `vm-two-columns.png`.
-- **Scroll sync — CONSUMED since PLAN-043**: `scroll_sync: true` wraps the
-  pane in a View::Scrollable — `scroll_top` binding is the write arm and
-  the `onscroll` event the read arm (args = scrollHeight, clientHeight,
-  scrollTop); the two panes sync proportionally in both directions
-  (vm-smoke group 4 asserts it).
+- **Scroll sync — ONE-WAY since PLAN-063** (supersedes the 043 bidirectional
+  proportional contract, whose single-variable dual-arm loop oscillated at
+  frame rate — PLAN-063 §4.2): `scroll_sync: true` still wraps the pane in a
+  View::Scrollable, but the two arms live on SPLIT state — `scroll_top`
+  binds `*_top_cmd` (written only by user intent: CustomScrollbar drag, or
+  the one-shot sync jump), and the `onscroll` echo writes `*_top_view`
+  (thumb display + sync input). Sync is left→right only (v1 proportional,
+  v2 block-anchored via rust direct-write — both gated by the engine defect
+  on file as DEBTS 063); the right pane scrolls freely and never writes
+  back. Do NOT reintroduce echo→cmd writes — that edge was the loop.
 - **Ghost placeholder — CONSUMED since PLAN-044**:
   `placeholder_block_id`/`placeholder_height` bind into the read-only arm —
   the `block-N`-hit block grows a fixed-height `View::Container{bg-muted}`

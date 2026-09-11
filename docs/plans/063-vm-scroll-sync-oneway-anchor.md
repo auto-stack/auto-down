@@ -4,9 +4,9 @@ status: executing
 feature_name: VM 轨滚动同步改造——命令/显示状态分离消振 + 单向块锚定同步（撤销双向实时比例联动）
 author: zcode
 created_at: 2026-09-11T18:15:00+08:00
-updated_at: 2026-09-11T18:30:00+08:00
+updated_at: 2026-09-11T20:40:00+08:00
 plan_revision: 1
-current_step: 0
+current_step: 6
 total_steps: 7
 supersedes_spec_components: []
 new_spec_components:
@@ -377,13 +377,13 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 
 | ID | 任务 | 依赖 | 文件/符号（已核对） | 产出 | 验收 | 验证命令与预期 |
 |----|------|------|--------------------|------|------|----------------|
-| T-01 | app.at 状态分离（§5.1）+ handler 单向重写 + csb_top 切 view + 事件计数器；`bash gen/regen.sh` | — | app.at :136-141/:176/:244-246/:267-269/:319-351；gen/regen.sh | 抖动消失的 VM 窗口；再生 App.vue | AC-01 前提、AC-04 前提 | `node tmp/vm-scroll-osc-probe.mjs 9359 600`：60 采样 left_top_view 恒定、事件 ≤3；gen 门禁零告警 |
-| T-02 | 有界调查：handler 内比例算式为 0（最小复现 + 二分 + 对照 master 构建）；产出决策件（引擎缺陷→DEBTS 转介 / .at 侧规避） | T-01 | 新建最小 .at probe；auto-lang 对照构建 | §10.2/DEBTS 决策记录 | AC-05 | 决策件含可复现命令与两构建读数 |
-| T-03 | vm-smoke 第 4 组重写（§5.7 a–e）+ PARITY #2/#8、README :45-49、DEBTS 行落稿 | T-01, T-02 | vm-smoke.mjs :343-470；PARITY.md :15/:21；README.md :45-49；DEBTS.md | 新契约 smoke | AC-01..03, AC-07 | `node vm-smoke.mjs --port 9359` 退出码 0 |
-| T-04 | 块锚定引擎胶水（转介单 063-auto-lang-transfer.md；§5.4 三选一裁定 + rust 直写 `right_top_cmd`/`sync_anchor_block`）——**需用户对 auto-lang 范围单独授权** | T-01；§10.1 授权 | auto-lang renderer.rs/aura_view_builder.rs（独立 worktree）；转介单；smoke AC-06 断言 | 像素级锚定 | AC-06 | `cargo test -p auto-lang` 相关模块绿；vm-smoke 全组含 AC-06 |
-| T-05 | 有界调查：tick 对 demo .at 可用性；可用则实装 150ms 停稳去抖 | T-01 | renderer.rs:20365/:19578 对照；app.at | 决策件（+可选实装） | AC-08 | 决策件 + （若实装）smoke 时序断言 |
-| T-06 | vue 轨回归 | T-01 | autodown/demo/src/App.vue；e2e | 回归报告 | AC-04 | `pnpm -C autodown/demo exec playwright test` 108/108 |
-| T-07 | 收口：specs.json P063 六节草稿（merge 时落账）、§5.2 grep 白名单复核、复审交接 | T-01..T-03, T-05, T-06 | .autoos/specs.json；app.at | 交接记录 | AC-07 | grep 断言零违例；review 交接 |
+| T-01 | ✅ 已完成——commit 17de027（worktree plan-063-dev）。实证：原生滚轮 A/B（Win32 SendInput 真实滚轮路径）——旧 app.at 5 格 → 5 秒 340 次 OnLeftScroll 帧率乒乓 L120↔L240；新 app.at 同输入 6 事件即停稳（left_top_view=300，left_top_cmd=0，计数冻结）；regen 门禁 REGEN OK | — | app.at :136-141/:176/:244-246/:267-269/:319-351；gen/regen.sh | 抖动消失的 VM 窗口；再生 App.vue | AC-01 前提、AC-04 前提 | `node tmp/vm-scroll-osc-probe.mjs 9359 600`：60 采样 left_top_view 恒定、事件 ≤3；gen 门禁零告警 |
+| T-02 | ✅ 已完成——裁定=**引擎缺陷**：handler 内 f64 二元算术/比较坍缩 int 0/恒假（dbg 二分：参数/state 读取完好，`h-c`→0(int)、`if h>c&&…`→false；普通脚本同式 738.6273 正常）；殃及拖拽 Move 守卫（旧 app.at 现引擎同证，回归非 063 引入）。DEBTS 063 转介行在册。偏差记录：auto-lang 对照构建未做（lang-602 worktree 会话中期被清；回退窗口改以 09-04 vm-smoke 组 4 全绿为锚） | T-01 | 新建最小 .at probe；auto-lang 对照构建 | §10.2/DEBTS 决策记录 | AC-05 | 决策件含可复现命令与两构建读数 |
+| T-03 | ✅ 已完成——commit 57c7f60。vm-smoke 全量 **PASS 20/20**（首次尝试，未动用 049 重试）：组 4 新契约 a–e 全绿（(a)(d) 按 syncFired 引擎健康信号门控降级；反振荡计数冻结 3→3；单向性右滚左不动；幂等复滚无事件风暴）；PARITY #2/#8、README、DEBTS 063 行落稿 | T-01, T-02 | vm-smoke.mjs :343-470；PARITY.md :15/:21；README.md :45-49；DEBTS.md | 新契约 smoke | AC-01..03, AC-07 | `node vm-smoke.mjs --port 9359` 退出码 0 |
+| T-04 | ⏸ **blocked（待 §10.1 用户授权）**：块锚定引擎胶水（转介单 + rust 直写）。附：v1 同步臂/拖拽亦待该引擎修复（DEBTS 063），T-04 落地时一并复归 | T-01；§10.1 授权 | auto-lang renderer.rs/aura_view_builder.rs（独立 worktree）；转介单；smoke AC-06 断言 | 像素级锚定 | AC-06 | `cargo test -p auto-lang` 相关模块绿；vm-smoke 全组含 AC-06 |
+| T-05 | ✅ 已完成——裁定=**可用**：051 C7 已落 VM 轨 `timer {every_ms, when}` 动态 timer 面（parser.rs:14727、dynamic.rs:407、renderer.rs:15416/13229，062 F1 修空转拍置脏）；DEBTS 059 前提部分过时（注记入 063 行）。停稳去抖实装折叠进 T-04（同步写本身受 T-02 门控，先去抖无对象） | T-01 | renderer.rs:20365/:19578 对照；app.at | 决策件（+可选实装） | AC-08 | 决策件 + （若实装）smoke 时序断言 |
+| T-06 | ✅ 已完成——worktree e2e 全量 **108/108**（E2E_PORT=5199，1.8m），含 scroll-sync.spec.ts 原样通过与生成器 PLAN-601 主题漂移验证（App.vue 再生随行折入，e2e 判绿）；engine build 三 assert + gen 树 vue-tsc 门禁随 regen 通过 | T-01 | autodown/demo/src/App.vue；e2e | 回归报告 | AC-04 | `pnpm -C autodown/demo exec playwright test` 108/108 |
+| T-07 | ✅ 已完成——§5.2 白名单 grep 零违例（cmd 写者仅 :343 SetScrollTop / :367 同步臂）；specs 六节=§5 规范增量表（SD-01..05，merge 时落账）；work 交接记录见 §9 | T-01..T-03, T-05, T-06 | .autoos/specs.json；app.at | 交接记录 | AC-07 | grep 断言零违例；review 交接 |
 
 执行顺序：T-01 →（T-02 ∥ T-05 ∥ T-06）→ T-03 → T-07；T-04 授权后插入
 （T-03 之后即可独立进行）。每步随行跑目标 smoke/探针；收口跑 vue e2e 全量。
@@ -402,6 +402,16 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
   "摘写臂"细化为"cmd/view 状态分离"以保住 043 T10 拖拽面（PARITY #8），
   属同授权范围内的实现精化。
 
+### work 交接（2026-09-11，T-01..T-03/T-05..T-07）
+
+- `stage: work | plan_id: PLAN-063 | plan_revision: 1 | outcome: blocked（仅 T-04）`
+- code_commit：worktree plan-063-dev = 17de027（T-01）→ 57c7f60（T-02/T-03/T-05 文档与 smoke）；主检出立项 634f608。
+- task_ids：T-01 ✅ T-02 ✅ T-03 ✅ T-05 ✅ T-06 ✅ T-07 ✅；T-04 ⏸ blocked（§10.1）。
+- evidence：滚轮 A/B（§8 T-01 行）；vm-smoke 20/20 PASS（组 4 新契约，含两处预授权降级臂）；e2e 108/108；DEBTS 063 引擎转介行 + PARITY #2/#8 + README 改写。
+- 运行时说明（复审须知）：VM 验证 exe = auto-lang 主检出 16:51 构建（master ≈29aa7a9ab 前后，autodown-core 路径依赖指 auto-down 主检出）；lang-602 worktree 于会话中期被并行会话清理，fresh 复审需以彼时 master 重建 exe 复跑。
+- blockers：T-04 需用户二选一——(i) 授权 auto-lang 范围（独立 worktree，含引擎 f64 缺陷修复 + 块锚定直写 + 停稳去抖实装，AC-02/03/06 全量复归）；(ii) 将 T-04 剥离为彼仓独立计划/转介单，本计划以现行降级口径收口复审。
+- next：用户裁定 → work 续 T-04 或 review（现行降级口径）。
+
 ## 10. 待澄清事项
 
 1. **T-04 授权与仓址（阻塞 AC-06）**：auto-lang 改动在独立新 worktree 进行，
@@ -411,7 +421,6 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
    兜底——T-04 调查后定，影响 AC-06 精度口径。
 3. **反向同步需求确认**：默认永不做右→左；若未来需要，必须带"程序性滚动源"
    标记并重新过振荡审查。**决定人：用户（默认否）。**
-4. **旧状态名兼容**：`left_top/right_top` 更名为 `*_cmd/*_view` 后，
-   `vm-smoke.mjs` 随 T-03 重写；归档计划/历史探针中的旧名不回改（历史件）。
-   无外部消费者（已 grep：仅 vm-smoke 与 app.at 自身、DEBTS 叙述）。
+4. ✅ 已裁定（T-03 执行）：旧名无外部消费者，vm-smoke 已随组 4 重写消费新名；
+   归档计划/历史探针不回改（历史件）。
 5. **停稳阈值**：若 T-05 实装，默认 150ms；是否需要可配置入口待定（默认不配）。

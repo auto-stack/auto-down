@@ -164,7 +164,8 @@ widget CustomScrollbar(scrollTop: f64, scrollHeight: f64, clientHeight: f64, vis
                         // PLAN-058: 单轨 emit（043 T10 双轨分派退役——引号
                         // emit 计算实参的派发路由已由 PLAN-576 G3 清偿，
                         // VM 轨与 vue 轨同走父绑定 .SetScrollTop 原语义）。
-                        let _ = ."update:scrollTop"(v)
+                        print("P1-move-before-emit")
+                let _ = ."update:scrollTop"(v)
                     }
                 }
             }

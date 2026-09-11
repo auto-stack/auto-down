@@ -448,6 +448,7 @@ async function runOnce(attempt) {
     {
       const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
       const syncCmd = num('right_top_cmd')
+      syncFired = syncCmd > 0
       if (syncCmd > 0) {
         let rightOffsetY = 0
         for (const deadline = Date.now() + 6000; ; ) {

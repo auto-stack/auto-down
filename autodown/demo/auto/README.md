@@ -49,9 +49,11 @@ VM track status (see DEBTS.md 040/043 rows and `PARITY.md`):
   binds `*_top_cmd` (written only by user intent: CustomScrollbar drag, or
   the one-shot sync jump), and the `onscroll` echo writes `*_top_view`
   (thumb display + sync input). Sync is left→right only (v1 proportional,
-  v2 block-anchored via rust direct-write — both gated by the engine defect
-  on file as DEBTS 063); the right pane scrolls freely and never writes
-  back. Do NOT reintroduce echo→cmd writes — that edge was the loop.
+  v2 block-anchored via rust direct-write — PLAN-063 T-04, in progress); the
+  right pane scrolls freely and never writes back. The two engine defects
+  that gated sync/drag (f64 arithmetic + quoted-emit route) are FIXED on
+  auto-lang auto-down-dev (abd6aeca8 + 1a828a2cf) — vm-smoke runs the full
+  assertions. Do NOT reintroduce echo→cmd writes — that edge was the loop.
 - **Ghost placeholder — CONSUMED since PLAN-044**:
   `placeholder_block_id`/`placeholder_height` bind into the read-only arm —
   the `block-N`-hit block grows a fixed-height `View::Container{bg-muted}`

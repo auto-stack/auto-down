@@ -412,6 +412,19 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 - blockers：T-04 需用户二选一——(i) 授权 auto-lang 范围（独立 worktree，含引擎 f64 缺陷修复 + 块锚定直写 + 停稳去抖实装，AC-02/03/06 全量复归）；(ii) 将 T-04 剥离为彼仓独立计划/转介单，本计划以现行降级口径收口复审。
 - next：用户裁定 → work 续 T-04 或 review（现行降级口径）。
 
+### work 阶段记录 2（T-04d-2 部分落地 + 挂起，2026-09-11 深夜）
+
+- auto-lang auto-down-dev 新增 7872023ad：AnchorSlot 变体 + 布局期块高注册表 +
+  SettleSync 消费 + table_resize 树守卫——**机制全部落地**。
+- **挂起**：AnchorSlot 委托层在 iced 0.14 树上触发 mouse_area 无状态
+  downcast panic（RUST_BACKTRACE 实证：anchor_slot::update → container →
+  column → mouse_area → tree.rs:254）。wrap 以 ANCHOR_SLOTS_ENABLED=false
+  挂起（autodown_render.rs），右栏恢复渲染。疑点：children()/diff() 已按
+  hover_area 规范实现仍触发——需 iced 0.14 树 diff 语义的专项调试。
+- 现行可用态：v1 比例同步臂（f64 修复后正确计算，实机 861.73 跟随）+
+  锚块高亮 + 零振荡 + 拖拽。偏差（比例近似）待 T-04d-2 启用后归零。
+- vm-smoke 20/20（re-run 群组 7 需新窗，属操作项非缺陷）。
+
 ## 10. 待澄清事项
 
 1. **T-04 授权与仓址（阻塞 AC-06）**：auto-lang 改动在独立新 worktree 进行，

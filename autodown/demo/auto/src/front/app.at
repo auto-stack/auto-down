@@ -104,7 +104,6 @@ widget App {
 
     msg Msg { Init, handleSave(str), handleCancel, Edit(str), SetScrollTop(f64), SplitterHover(int),
               OnLeftScroll(f64, f64, f64), OnRightScroll(f64, f64, f64), ToggleDetails(str),
-              SettleSync,
               // PLAN-051 T6: settings 弹层回路——⚙ 钮开、✕ 钮关、主题/accent
               // 由 SettingsPopover 子件消息冒泡（on "SetTheme"/"SetAccent"
               // 监听，CustomScrollbar on "update:scrollTop" 同模式）。
@@ -155,9 +154,6 @@ widget App {
         // PLAN-063: 左栏滚动事件计数——vm-smoke 反振荡断言的可观测面（停手
         // 后计数必须停增）。
         var left_scroll_events int = 0
-        // PLAN-063 T-04e: 停稳去抖旗标——OnLeftScroll 置位，SettleSync tick
-        //（every_ms: 100）消费并执行一次同步（「一次手势一次同步」）。
-        var left_settle_due int = 0
         // PLAN-045 T6: 表格列宽状态 VM 单源（rust 直写快道：OnColResize
         // 拦截按表键写 map——"t{blockHash}" 键，他键保留；重渲染/打字/流式
         // 后列宽保持，比 vue 的重渲染即丢更强）。autodown element 的
@@ -181,11 +177,6 @@ widget App {
         var accent_color str = "indigo"
         // PLAN-051 T6: settings 弹层开合状态。
         var settings_open bool = false
-    }
-
-    // PLAN-063 T-04e: 滚动停稳 tick——单向同步的节拍源（051 C7 动态 timer 面）。
-    timer {
-        SettleSync (every_ms: 100)
     }
 
     computed {
@@ -367,25 +358,20 @@ widget App {
             .left_height = h
             .left_client = c
             .left_scroll_events = .left_scroll_events + 1
-            // PLAN-063 T-04e: 每次滚动只置 due，同步延后到 SettleSync tick——
-            // 「滚动停稳后一次手势一次同步」。公式本体移入 .SettleSync。
-            .left_settle_due = 1
-        }
-        .SettleSync -> {
-            if is_vue() == None && .left_settle_due == 1 && .left_height > .left_client {
-                .left_settle_due = 0
-                if .left_height > .left_client && .right_height > .right_client {
-                    let max_l = .left_height - .left_client
-                    let max_r = .right_height - .right_client
-                    var t = .left_top_view / max_l * max_r
-                    if t < 0 {
-                        t = 0
-                    }
-                    if t > max_r {
-                        t = max_r
-                    }
-                    .right_top_cmd = t
+            // PLAN-063: v1 比例同步臂——每次滚动同步一次（单向无写回无环；
+            // T-02 f64 修复后公式可正确计算；钳制 [0, max_r]）。T-04d-2
+            // 落地后此处换块锚定目标。
+            if .left_height > .left_client && .right_height > .right_client {
+                let max_l = .left_height - .left_client
+                let max_r = .right_height - .right_client
+                var t = .left_top_view / max_l * max_r
+                if t < 0 {
+                    t = 0
                 }
+                if t > max_r {
+                    t = max_r
+                }
+                .right_top_cmd = t
             }
         }
         .OnRightScroll(h, c, sy) -> {

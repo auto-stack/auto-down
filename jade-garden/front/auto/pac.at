@@ -8,7 +8,7 @@ render: "vue"
 # back/server/target/release/jade-garden-back（JADE_GARDEN_PORT 端口覆盖）。
 front_port: 17300
 back_port: 17301
-daemon: jade-garden
+daemon: "jade-garden"
 shadcn: off
 default_classes: off
 npm_deps: {

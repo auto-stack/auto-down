@@ -406,7 +406,11 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
   主检出读回验证通过（6 id 在案）；file 溯源指本文件归档路径。
 - **archived**：docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md，
   status: archived，completion_kind: delivered。
-- **cleaned**：（清理后补记——见下）
+- **cleaned**：双 worktree 移除（auto-down 侧先清 pnpm junction 农场后
+  wt-guard clean；auto-lang 侧 guard 首过即 clean）；分支 plan-063-dev
+  （ccaeb26）与 auto-down-dev（5f128faf5）均 -d 删除（祖先已验证）；组目录
+  .wt/auto-down-063 已删。终态：auto-lang master 6ffda20cd、auto-down
+  master 9c06b99。
 
 ### re-review（2026-09-13，四发现修复后终审）
 

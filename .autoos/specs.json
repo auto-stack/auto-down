@@ -409,6 +409,17 @@
         "related": [
           "PLAN-062"
         ]
+      },
+      {
+        "id": "P063-1",
+        "section": "goals",
+        "status": "proposed",
+        "title": "VM 轨滚动同步改造：命令/显示分离消振 + 单向块锚定同步 — 目标",
+        "content": "- 零振荡：左栏任意滚动方式停手后滚动事件有限次停增，无乒乓（043 双向比例\n  联动的帧率自激结构性退役）。\n- 单向同步：左→右一次性落位——v2 块锚定顶对齐（rust 直写，唯一同步源；\n  v1 比例近似臂已随 T-04d-2 摘除）。\n- 右栏自由：右栏原生滚动不回写左栏。\n- 不回退：CustomScrollbar 拖拽发射面与 thumb 显示保持（PARITY #8）。\n- vue 轨零改动：useSyncedScroll 不动，e2e 基线不变。",
+        "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
+        "related": [
+          "PLAN-063"
+        ]
       }
     ],
     "architecture": [
@@ -834,6 +845,17 @@
         "related": [
           "PLAN-062"
         ]
+      },
+      {
+        "id": "P063-2",
+        "section": "architecture",
+        "status": "stable",
+        "title": "VM 轨滚动同步改造 — 架构方案",
+        "content": "- **命令/显示状态分离**：scroll_top 写臂唯一绑 *_top_cmd（用户拖拽/同步\n  跳转写入），onscroll echo 只写 *_top_view（thumb 显示+测量）——echo→写臂\n  回环边结构性删除，任意引擎行为下振荡不可能发生。\n- **单向块锚定管线**：编辑壳 scroll 回调锚块判定（首个完整可见块，tol 2px）\n  → 锚槽注册（pending）→ 渲染 update 尾 drain → content_y（前块高累计+\n  列间距，AnchorSlot 布局期记录块高，屏内外均有效）→ write_state 直写\n  right_top_cmd（写臂既有通路滚动；sync_anchor_block 直写供断言观测）。\n- **iced 0.14 委托 wrapper 树规范**：委托 widget 的 update/mouse_interaction\n  必须传 tree.children[0]（container 等透明委托件 update 原树透传——传自身\n  树会把无状态树错配给孙代，downcast 崩）；operate/overlay/size_hint 同步\n  委托。检视层（VNode/snapshot）对包装件透传子件。\n- **注册表单文档约定**（v1 限度）：AnchorSlot 块高注册表全局单文档。",
+        "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
+        "related": [
+          "PLAN-063"
+        ]
       }
     ],
     "designs": [
@@ -1249,6 +1271,17 @@
         "related": [
           "PLAN-062"
         ]
+      },
+      {
+        "id": "P063-3",
+        "section": "designs",
+        "status": "stable",
+        "title": "VM 轨滚动同步改造 — 详细设计",
+        "content": "- **app.at 契约面**：scroll_sync: true + scroll_top: .*_top_cmd + onscroll\n  （左编辑器另带 sync_anchor: true 高亮开关）；右栏 autodown 元素声明\n  sync_anchor_target: \".right_top_cmd\"（字符串字面量字段名，非状态引用；\n  与 sync_anchor 解耦——target 属右栏自身）。OnXxxScroll 禁止写任何\n  *_top_cmd（不变式，grep 白名单断言）。\n- **View::AnchorSlot 变体**：into_iced/render_dynamic_view/style/kind/map_msg/\n  snapshot 透明/vnode 透传全臂委托 child；autodown_render 两包点（streamed\n  + 非 streamed）由 ANCHOR_SLOTS_ENABLED 门控（恒 true）。\n- **vm-smoke 组 4 契约（a-f 腿）**：滚左收敛+sync 臂必燃+锚索引断言（锚臂\n  宽限轮±1px 抖动补发对抗 block_rects 就绪竞态）；反振荡计数冻结；右滚\n  不动锚不写 cmd；拖拽右栏锚跟随收敛（cmd/view 差<2）+事件有界；幂等\n  复滚无风暴；AC-06 确定性 sync_anchor_block==0。053 回读漂移族以 800ms\n  reissue 补强（文件内既有先例）。",
+        "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
+        "related": [
+          "PLAN-063"
+        ]
       }
     ],
     "tests": [
@@ -1641,6 +1674,17 @@
         "file": "docs/plans/archived/062-inline-mark-input-rules.md",
         "related": [
           "PLAN-062"
+        ]
+      },
+      {
+        "id": "P063-4",
+        "section": "tests",
+        "status": "verified",
+        "title": "VM 轨滚动同步改造 — 测试设计",
+        "content": "- vm-smoke 组 4（a-f）+ 全量 21/21 两连净窗；AC-06 四腿断言在案。\n- auto-lang：cargo tf 全量绿（合并树 3534/3534）；lib default 3505/0；\n  --features autodown 残差=既有环境抖动族（osconfig resolve 等，三运行\n  交叉核对，master 208 名同规模）。\n- vue e2e 108/108（regen 后复跑复绿）。\n- 探针：tmp/t04d2-verify.mjs（滚左→状态采样→P063-C 消费行核验）。",
+        "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
+        "related": [
+          "PLAN-063"
         ]
       }
     ],
@@ -2040,6 +2084,17 @@
         "related": [
           "PLAN-062"
         ]
+      },
+      {
+        "id": "P063-6",
+        "section": "reviews",
+        "status": "published",
+        "title": "VM 轨滚动同步改造 — 验收标准 / 复审记录",
+        "content": "验收 AC-01..08（计划正文 §7 表）。\n\n---\n\n（/auto-plan:review 2026-09-13，实现会话内复审、按工件重建）首轮\nneeds_fix：F1 PARITY/README 过时措辞、F2 T-04e 假声明+DEBTS 补记缺、F3\nApp.vue regen 陈旧、F4 截图噪声——修复轮 049657e 闭环。终审 pass：e2e\n108/108（regen 后实跑）、VM 轨证据复用声明成立（修复轮零 VM 代码）。\n\n合并 gate 追记（erratum）：57d3ae105 误将 lib 探针期 ANCHOR_SLOTS_ENABLED\n=false 入 commit（其后 smoke 跑旧 exe 掩盖），合并树重建后暴露——5f128faf5\n恢复 true，合并树 cargo tf 3534/3534 + vm-smoke 21/21 + 折回后 master exe\n复跑 vm-smoke PASS。delivery_commit 见复审记录合并收据。",
+        "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
+        "related": [
+          "PLAN-063"
+        ]
       }
     ],
     "reports": [
@@ -2437,6 +2492,17 @@
         "file": "docs/plans/archived/062-inline-mark-input-rules.md",
         "related": [
           "PLAN-062"
+        ]
+      },
+      {
+        "id": "P063-5",
+        "section": "reports",
+        "status": "published",
+        "title": "VM 轨滚动同步改造 — 变更摘要",
+        "content": "双向实时比例联动（043 契约）退役，VM 轨换装命令/显示状态分离 + 单向块\n锚定命令式同步（滚左 700→锚块 9→y=846.79→右栏 echo 跟随，顶对齐）；随行\n修复两引擎缺陷（handler f64 算术坍缩 abd6aeca8、空体引号 handler emit 路由\n1a828a2cf）与块锚定机制三缺陷（iced 树委托 334d44e53、VNode 检视透传\n6d3cd294e、探针期常量回退 5f128faf5——合并落地门禁拦截）。v1 比例臂摘除，\n去抖按 §0.3 预授权退役（App 级 timer 缺口入 DEBTS 065）。",
+        "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
+        "related": [
+          "PLAN-063"
         ]
       }
     ]

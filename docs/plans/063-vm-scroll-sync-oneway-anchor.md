@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-063
-status: executing
+status: reviewed
 feature_name: VM 轨滚动同步改造——命令/显示状态分离消振 + 单向块锚定同步（撤销双向实时比例联动）
 author: zcode
 created_at: 2026-09-11T18:15:00+08:00
 updated_at: 2026-09-13T21:30:00+08:00
 plan_revision: 1
-current_step: 6
+current_step: 7
 total_steps: 7
 supersedes_spec_components: []
 new_spec_components:
@@ -389,6 +389,30 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 （T-03 之后即可独立进行）。每步随行跑目标 smoke/探针；收口跑 vue e2e 全量。
 
 ## 9. 复审记录
+
+### re-review（2026-09-13，四发现修复后终审）
+
+- `stage: review` | plan_id: PLAN-063 | plan_revision: 1 | **outcome: pass** |
+  reviewed_commit: auto-lang auto-down-dev 57d3ae105（行为面未变，test-only
+  尾 commit）+ auto-down plan-063-dev 049657e（修复轮）| base_commit: 同
+  前记录 | spec_inputs: 同前记录
+- 四发现闭环核验：
+  - F1 ✅ 049657e——PARITY #2 改「v2 rust 直写唯一同步源（v1 比例臂已随
+    T-04d-2 摘除）」+ 证据列补 T-04d-2 收口句；README 同步段改 landed。
+  - F2 ✅ e449070（计划 T-04 行 T-04e 改写实装尝试后撤除）+ 049657e
+    （DEBTS 065 新行：App 级 timer 派发未接通，059 同族，🟡 延期）。
+  - F3 ✅ 049657e——gen/regen.sh REGEN OK，App.vue SettleSync 残留清零
+    （9→0），gen/front 两中间产物随行；regen 后 e2e 全量 **108/108 复绿**
+    （2.0m，实跑）。
+  - F4 ✅ 049657e——container-edit-faces.png 取证截图随修复轮入库；worktree
+    status 干净（仅余会话性未追踪 PNG）。
+- **证据复用声明**：修复轮零 VM 轨代码改动（仅 .md/DEBTS/生成 App.vue/
+  截图）——vm-smoke 21/21 两连净窗与 cargo tf 3516/3516 证据按前记录
+  引用；vue 轨证据以 regen 后实跑 e2e 108/108 为准（新鲜）。
+- **acceptance_results**: AC-01..08 全部 pass（AC-07/AC-08 由 partial
+  转正）。
+- **next**：merge（auto-plan-merge；含 auto-lang auto-down-dev 回折与
+  worktree 清理；specs P063 六节落账）。
 
 ### review（2026-09-13，T-04 全段收口后复审）
 

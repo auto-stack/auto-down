@@ -52,7 +52,11 @@ assert.deepEqual(
 // a route outside this set without an #[api] fn fails the gate.
 // PLAN-058 T14: the three former exemptions now cross the envelope as
 // base64-in-JSON (data_b64 / {format, encoding, data}) — set emptied.
-const VM_ENVELOPE_EXEMPT = new Set([])
+// PLAN-064 T-04: GET /api/health joins — the desktop daemon ensure ping
+// (main.rs, plain-text "ok", PLAN-013 T5) is infrastructure, not a JSON
+// contract route; it registers a ROUTE marker for the route/contract对拍
+// and rides this exemption instead of an #[api] fn (25 fn face unchanged).
+const VM_ENVELOPE_EXEMPT = new Set(['GET /api/health'])
 
 const apiFns = new Map() // "METHOD path" -> fn name
 for (const line of apiAt.split('\n')) {

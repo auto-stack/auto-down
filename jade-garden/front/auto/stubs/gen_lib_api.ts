@@ -6,11 +6,19 @@
 // in front/src/stores/auto/ has its import sed-rewritten to
 // auto/src/front/utils/tabs_store_ext.ts (the real implementations).
 
-export async function readWikiSafe(_path: string): Promise<any> {
+// PLAN-064 T-04: the store use line is now the contract fn names
+// (read_wiki/write_wiki) + the four helper names; stripExt/adoptSaveResult
+// were sunk into tabs_store.at module fns and readWikiSafe was inlined at
+// the call sites.
+export async function read_wiki(_path: string): Promise<any> {
   return null
 }
 
-export async function writeWiki(_path: string, _doc: any): Promise<any> {
+export async function write_wiki(
+  _path: string,
+  _frontmatter: any,
+  _body: string,
+): Promise<any> {
   return null
 }
 
@@ -23,19 +31,6 @@ export function ensureBlockAnchors(body: string, _originalBody: string): string 
 }
 
 export function recordRecent(_path: string, _title: string): void {}
-
-export function stripExt(path: string, _ext: string): string {
-  return path
-}
-
-/** Loose mirror of tabs_store_ext.adoptSaveResult (gen-tree
- * typecheck only — see readWikiSafe above for the idiom). */
-export function adoptSaveResult(
-  _tab: any,
-  _sentFm: Record<string, any>,
-  _sentBody: string,
-  _saved: any,
-): void {}
 
 export function confirmClose(_title: string): boolean {
   return true

@@ -6,35 +6,52 @@
 // project the import resolves to stubs/gen_lib_api.ts, a behavior-free
 // mirror that only exists so gen-side vue-tsc passes — it never ships.)
 //
-// Only what the DSL genuinely cannot express lives here:
-// - the load() catch branch (readWikiSafe's null return maps to the store's
-//   `if doc == null` branches — the original caught load errors),
-// - `rethrow` (the DSL has try/catch/finally but no `throw` statement; the
-//   Save handler's catch calls it so save rejections propagate to facade
-//   callers exactly like the original Pinia store),
-// - regex literals (stripExt; the DSL has no regex),
-// - the cross-store call into the Pinia recentFiles store,
-// - window.confirm with an interpolated message.
+// PLAN-064 T-04 shrank this face to the web-side shim for the reworked
+// store: the six-helper disposal sank stripExt/adoptSaveResult INTO the
+// .at (module fns) and inlined readWikiSafe at the call sites. What stays
+// here is exactly what the web tree must provide for the store's use line
+// (`use back.api: read_wiki, write_wiki, ensureBlockAnchors, recordRecent,
+// confirmClose, rethrow`) — the VM tree resolves the same names against
+// plain helper fns in the desktop contract copy (back/auto/api.at):
+// - read_wiki / write_wiki: aliases of the hand-written client face
+//   (write_wiki adapts the field-scalar call to the {frontmatter, body}
+//   doc shape the client api owns),
+// - rethrow (the DSL has try/catch/finally but no `throw` statement —
+//   save rejections propagate to facade callers exactly like the original
+//   Pinia store),
+// - ensureBlockAnchors (save-time lazy `^anchor` injection, parser.at
+//   TS twin segmentation; VM v1 runs identity — registered deviation),
+// - recordRecent (cross-store bridge into the Pinia recentFiles store;
+//   VM v1 writes the Plan 401 session KV instead — same use line),
+// - confirmClose (window.confirm with an interpolated message; VM v1
+//   default-confirms — registered deviation).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
-import { readWiki, writeWiki, type WikiDoc } from '../../../../src/lib/api'
+import { readWiki, writeWiki } from '../../../../src/lib/api'
 import { parseBody, type PBlock } from '../../../../src/lib/parser_gen'
 import { useRecentFilesStore } from '../../../../src/stores/recentFiles'
 
-export { writeWiki }
+/** Contract-name alias: readWiki never rejects on its own — the store's
+ *  inlined try/catch maps failures to the null branch (the original
+ *  load() caught errors; the wrapper lived here until PLAN-064 T-04). */
+export function read_wiki(path: string) {
+  return readWiki(path)
+}
 
-// plan-022 Phase 5: save-time lazy anchor injection now consumes the
-// parser.at TS twin (front/src/lib/parser_gen.ts, GENERATED) — the
-// blockParser.ts hand-written mirror is retired (three-mirror unification).
+/** Contract-name alias: the #[api] write_wiki(path, frontmatter, body)
+ *  field-scalar call shape adapted onto the client doc-shape api. */
+export function write_wiki(path: string, frontmatter: Record<string, any>, body: string) {
+  return writeWiki(path, { frontmatter, body })
+}
 
-/** Re-throws the caught error. The DSL gained try/catch/finally
- *  (compiler >= c5b5fecf) but has no `throw` statement, so the Save
- *  handler's `catch (e) { rethrow(e) }` restores the original save()
- *  semantics: the rejection propagates out of the async handler (after the
- *  finally block clears tab.saving) to whoever awaited save(). This closes
- *  the deviation formerly documented here and in front/auto/README.md
- *  gap 4 (writeWikiSafe swallowed save failures into console.error). */
+/** Re-throws the caught error. The DSL has try/catch/finally
+ *  (compiler >= c5b5fecf) but no `throw` statement (and catch is
+ *  mandatory), so the Save handler's `catch (e) { rethrow(e) }` restores
+ *  the original save() semantics: the rejection propagates out of the
+ *  async handler (after the finally block clears tab.saving) to whoever
+ *  awaited save(). VM-side the same-named plain fn swallows (registered
+ *  deviation, PLAN-064 T-04; upgrade = auto-lang throw statement). */
 export function rethrow(e: unknown): never {
   throw e
 }
@@ -132,64 +149,14 @@ export function ensureBlockAnchors(body: string, previousBody?: string): string 
   return lines.join('\n')
 }
 
-/** readWiki that never rejects: the original load() had a try/catch whose
- *  catch branch marked the tab loaded, kept the body, and logged — that
- *  maps to a null return handled in the store's `if doc == null` branch. */
-export async function readWikiSafe(path: string): Promise<WikiDoc | null> {
-  try {
-    return await readWiki(path)
-  } catch (e) {
-    console.error('Failed to load wiki doc', e)
-    return null
-  }
-}
-
-/** Cross-store bridge into the (still Pinia) recentFiles store. */
+/** Cross-store bridge into the (still Pinia) recentFiles store. VM-side
+ *  the same-named plain fn writes the Plan 401 session KV instead. */
 export function recordRecent(path: string, title: string): void {
   useRecentFilesStore().record(path, title)
 }
 
-/** Adopt a save's server echo without clobbering concurrent user edits
- * (plan 022 Phase 3 double-writer fix). The VM backend's slower save
- * round-trips exposed it: a panel frontmatter commit landing while
- * writeWiki is in flight was reverted by the stale echo
- * (`tab.frontmatter = saved.frontmatter` wrote back the PRE-edit map,
- * silently dropping the edit — e2e 11-properties' disk showed the add-row
- * key surviving next to a reverted `status`).
- *
- * Reference compare-and-swap: commitFrontmatter REPLACES tab.frontmatter
- * (never mutates in place), so an unchanged reference means no user edit
- * raced the round-trip and the echo is safe to adopt wholesale; a changed
- * reference keeps the user's map and re-stamps only the server-owned
- * `updated_at`. The body gets the same guard — the editor re-pushes its
- * body on every change so it self-heals, but adopting a stale echo would
- * flash-revert dirty state mid-typing. */
-export function adoptSaveResult(
-  tab: any,
-  sentFm: Record<string, any>,
-  sentBody: string,
-  saved: WikiDoc,
-): void {
-  if (tab.frontmatter === sentFm) {
-    tab.frontmatter = saved.frontmatter || {}
-  } else {
-    const stamped = { ...(tab.frontmatter ?? {}) }
-    const updated = (saved.frontmatter ?? {}).updated_at
-    if (updated !== undefined) stamped.updated_at = updated
-    tab.frontmatter = stamped
-  }
-  if (tab.body === sentBody) {
-    tab.body = saved.body
-    tab.originalBody = saved.body
-  }
-}
-
-/** path.replace(/<ext>$/, '') — the DSL has no regex literals. */
-export function stripExt(path: string, ext: string): string {
-  return path.replace(new RegExp(ext.replace(/\./g, '\\.') + '$'), '')
-}
-
-/** confirm(`Close "${title}" without saving?`) — kept verbatim. */
+/** confirm(`Close "${title}" without saving?`) — kept verbatim. VM-side
+ *  the same-named plain fn default-confirms (registered deviation). */
 export function confirmClose(title: string): boolean {
   return confirm(`Close "${title}" without saving?`)
 }

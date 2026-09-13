@@ -56,6 +56,14 @@ pub type ApiError {
 pub type JsonAny {
 }
 
+// ------------------------------------------------------ daemon health
+
+// PLAN-064 T-04 补登（P013 T5 落地时的缺口，master 上契约门预存红）：
+// /api/health 是桌面 daemon ensure ping（main.rs:82，纯文本 "ok"），不是
+// JSON 契约路由——只登记 ROUTE 标记对拍，#[api] fn 层经门检的
+// VM_ENVELOPE_EXEMPT 豁免（无信封类型、无 #[api] fn，25 fn 面不变）。
+// ROUTE: GET /api/health
+
 // ------------------------------------------------------ workspace
 
 // ROUTE: GET /api/workspace
@@ -497,4 +505,35 @@ pub type UnlinkedRefsResponse {
 #[api(method = "GET", path = "/api/unlinked/{title}")]
 pub fn get_unlinked_refs(title str) UnlinkedRefsResponse {
     return None
+}
+
+// ---------------- VM 侧 store 助手层（PLAN-064 T-04）----------------
+// tabs_store.at 的 use 行在 VM 轨解析到本文件（desktop 契约副本，gen.mjs
+// 原样部署）；这些是 plain fn（无 #[api] 属性——api-contract-routes 门检
+// 只扫 #[api] 行，路由对拍面不变，#[api] fn 数仍 25）。web 轨不消费它们：
+// sed 改写后由 front/auto/src/front/utils/tabs_store_ext.ts 提供同名导出。
+// 处置表与偏差登记见 desktop/ext-registry.json（tabs_store_ext.ts 条目）。
+fn ensureBlockAnchors(body str, previous_body str) str {
+    // deviation v1：VM 保存不注入 ^锚点（与 plan-022 骨架 save 现行为一致，
+    // frontmatter 保真 slice 4 实证）；升级 sink 前置 = VM 侧可消费 parser
+    // 行号面。
+    return body
+}
+
+fn recordRecent(path str, title str) {
+    // bridge：Plan 401 session KV（localStorage 桥，442 webcompat None-on-miss
+    // 语义）；web 侧同名 ext 走 Pinia recentFiles，语义各自保形。
+    localStorage.setItem("jade:recent", path)
+}
+
+fn confirmClose(title str) bool {
+    // deviation：VM 轨默认确认（关闭即弃）；confirm 模态到位后升级 bridge
+    // （P022-6 已登记延后项的既定语义保形）。
+    return true
+}
+
+fn rethrow(e str) {
+    // deviation：DSL 无 throw 语句且 catch 强制必填（T-04 编译器实证）——
+    // VM 侧保存失败在此吞错（finally 已复位 tab.saving）；升级前置 =
+    // auto-lang throw 语句提案（README §8）。
 }

@@ -4,9 +4,9 @@
   "baseline": "desktop/README §2（2026-08-29 机扫 37 文件）；2026-09-14 复扫：文件数 37 不变（29 widget ext + 8 store ext）；内容漂移=blocks_store_ext 读路径已接 engine parser、tabs_store_ext ensureBlockAnchors 已接 parser_gen（DEBTS 020 已清偿行）、blockParser.ts 已删除",
   "schema": "{file, fn, class: sink|bridge|deviation, target, evidence, gate}；class 三分类（PLAN-064 §0/§5.1）：sink=下沉 .at（含 web-codegen shim——widget .at 化即原生取代）/ bridge=VM 原生·宿主桥 / deviation=登记偏差（平台缺口走 auto-lang 提案，禁止第四类 jade 侧绕过）",
   "counts": {
-    "sink": 245,
-    "bridge": 36,
-    "deviation": 21
+    "sink": 241,
+    "bridge": 37,
+    "deviation": 22
   },
   "entries": [
     {
@@ -2099,9 +2099,25 @@
     },
     {
       "file": "tabs_store_ext.ts",
+      "fn": "read_wiki",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：readWiki 别名——契约 fn 名 use 行（web TS client 面）；VM 侧 #[api] read_wiki 340 改写",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "write_wiki",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：writeWiki 别名 + 字段标量→doc 形状适配；VM 侧 #[api] write_wiki",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
       "fn": "rethrow",
-      "class": "sink",
-      "target": "迁移时下沉 .at：catch(e){rethrow(e)} 语义 = 删除 catch 后天然传播（DSL 无 throw；try/finally 保留）",
+      "class": "deviation",
+      "target": "登记偏差：web 侧 catch 再抛（facade rejection 传播语义保形）；VM 侧 plain fn 吞错——DSL 无 throw 且 catch 强制必填（T-04 编译器实证）；升级前置=auto-lang throw 语句提案",
       "evidence": "PLAN-064 §5.2 六助手处置表",
       "gate": "T-04"
     },
@@ -2115,34 +2131,10 @@
     },
     {
       "file": "tabs_store_ext.ts",
-      "fn": "readWikiSafe",
-      "class": "sink",
-      "target": "迁移时下沉 .at：read_wiki + try/catch null 映射内联到 store 调用点（原 load catch 忠实翻译）；VM/PC 双轨同语义",
-      "evidence": "PLAN-064 §5.2 六助手处置表",
-      "gate": "T-04"
-    },
-    {
-      "file": "tabs_store_ext.ts",
       "fn": "recordRecent",
       "class": "bridge",
       "target": "VM 原生/宿主桥：web 侧 Pinia recentFiles 桥（语义不动）；VM 侧 401 session KV（localStorage 桥）",
       "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
-      "gate": "T-04"
-    },
-    {
-      "file": "tabs_store_ext.ts",
-      "fn": "adoptSaveResult",
-      "class": "sink",
-      "target": "迁移时下沉 .at：保存回写 CAS 纯状态逻辑 → store handler 内联/纯值 helper（022 Phase 3 双读竞争防护同域）",
-      "evidence": "PLAN-064 §5.2 六助手处置表",
-      "gate": "T-04"
-    },
-    {
-      "file": "tabs_store_ext.ts",
-      "fn": "stripExt",
-      "class": "sink",
-      "target": "迁移时下沉 .at：后缀剥离 → .at 纯函数（split 先例；DSL 无 regex 字面量）",
-      "evidence": "PLAN-064 §5.2 六助手处置表",
       "gate": "T-04"
     },
     {
@@ -2152,14 +2144,6 @@
       "target": "登记偏差：VM 轨默认确认（关闭即弃）；web 侧 window.confirm 保留。confirm 模态到位升级 bridge（P022-6 既定语义保形）",
       "evidence": "PLAN-064 §5.2 六助手处置表",
       "gate": "T-04/T-05"
-    },
-    {
-      "file": "tabs_store_ext.ts",
-      "fn": "writeWiki",
-      "class": "bridge",
-      "target": "VM 原生/宿主桥：RAW writeWiki → #[api] write_wiki 通道别名（web 侧 TS client 面；VM 侧 340 改写）",
-      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
-      "gate": "T-04"
     },
     {
       "file": "theme_popover_ext.ts",

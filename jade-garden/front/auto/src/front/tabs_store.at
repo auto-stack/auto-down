@@ -2,17 +2,74 @@
 // Pinia → Auto store pilot (plan 011 Phase 5.1), port of the original
 // hand-written front/src/stores/tabs.ts.
 //
-// All external functions come through `use back.api:` — the ONLY import
-// channel the store codegen supports. It emits
-// `import { ... } from '@/lib/api'`, which the Regenerate flow sed-rewrites
-// to utils/tabs_store_ext.ts when copying into front/src/ (the gen project
-// resolves it to the stubs/gen_lib_api.ts mirror instead).
-// Save uses REAL try/catch/finally (compiler >= c5b5fecf, gap 4 resolved):
-// writeWiki is the RAW api call (rejects), the catch rethrows via the ext
-// `rethrow` helper so the rejection propagates like the original Pinia
-// store; finally keeps tab.saving accurate on both paths. Load keeps its
-// original catch behavior via readWikiSafe's null return.
-use back.api: readWikiSafe, writeWiki, rethrow, ensureBlockAnchors, recordRecent, stripExt, confirmClose, adoptSaveResult
+// Shared VERBATIM between the two render trees (PLAN-064 T-04):
+//   - web: front/auto/src/front/ → `auto build` + sed → src/stores/auto/
+//     useTabsStore.ts, whose '@/lib/api' import is sed-rewritten to
+//     utils/tabs_store_ext.ts (the shrunken web shim face)
+//   - VM:  copy at jade-garden/front/desktop/src/front/; `use back.api:`
+//     resolves against the desktop contract copy (src/back/api.at) where
+//     the VM-side helper fns live (plain fns, no #[api])
+//
+// External surface after the six-helper disposal (PLAN-064 §5.2):
+//   - read_wiki / write_wiki: contract fn names (#[api] channel). The old
+//     ext readWikiSafe wrapper is INLINED at the call sites (try/catch →
+//     null mapping, the original load() catch semantics); writeWiki's
+//     {frontmatter, body} doc shape is adapted by the ext alias on web.
+//   - stripExt / adoptSaveResult: SUNK into the module-level fns below
+//     (Plan 367 P2-4 store-file module fns — emitted into the composable
+//     on web, plain fns on VM). save() keeps the ext `rethrow` in its
+//     catch: the DSL has no throw statement and catch is mandatory, so
+//     rejection propagation on web rides the ext; VM-side the helper
+//     swallows (registered deviation, upgrade = auto-lang throw stmt).
+//   - ensureBlockAnchors: web = full parser_gen-backed impl in the ext;
+//     VM = identity (deviation v1: no ^anchor injection, same as the
+//     plan-022 skeleton save; upgrade when VM can consume parser line
+//     ranges).
+//   - recordRecent: web = Pinia recentFiles bridge (semantics unchanged);
+//     VM = Plan 401 session KV via the localStorage bridge.
+//   - confirmClose: web = window.confirm; VM = default-confirm (close
+//     discards dirty edits — P022-6 registered semantics, upgrade when
+//     the auto-lang confirm modal lands).
+use back.api: read_wiki, write_wiki, ensureBlockAnchors, recordRecent, confirmClose, rethrow
+
+// Sunk from the ext stripExt (regex suffix strip) — the a2r-clean idiom
+// (parser.at endsWithStr family): no regex literals in the DSL.
+fn strip_ext(path str, ext str) str {
+    var n = path.length
+    var m = ext.length
+    if n >= m {
+        var tail = path.slice(n - m, n)
+        if tail == ext {
+            return path.slice(0, n - m)
+        }
+    }
+    return path
+}
+
+// Sunk from the ext adoptSaveResult (plan 022 Phase 3 double-writer fix):
+// adopt a save's server echo without clobbering concurrent user edits.
+// Pure-value form — the handler assigns the fields back. An unchanged
+// frontmatter reference means no user edit raced the round-trip and the
+// echo is safe to adopt wholesale; a changed reference keeps the user's
+// map and re-stamps only the server-owned updated_at. The body gets the
+// same guard (an unchanged body adopts the echo; a raced body stands).
+fn adopt_save_result(sent_fm map, cur_fm map, sent_body str, cur_body str, saved map) map {
+    var out_fm = cur_fm
+    if cur_fm == sent_fm {
+        out_fm = saved.frontmatter
+    } else {
+        var upd = saved.frontmatter.updated_at
+        if upd != "" {
+            out_fm.updated_at = upd
+        }
+    }
+    var out = { frontmatter: out_fm, body: cur_body, original_body: cur_body }
+    if cur_body == sent_body {
+        out.body = saved.body
+        out.original_body = saved.body
+    }
+    return out
+}
 
 store Tabs {
     model {
@@ -40,7 +97,12 @@ store Tabs {
             if existing != null {
                 .active_path = path
                 if !existing.loaded && !existing.isGraph {
-                    var doc2 = readWikiSafe(path)
+                    var doc2 = None
+                    try {
+                        doc2 = read_wiki(path)
+                    } catch (e) {
+                        doc2 = None
+                    }
                     // Post-await re-check: a slow read must not overwrite a
                     // tab that loaded (or went dirty) meanwhile — Open and
                     // Load both read the doc on open; on the VM backend the
@@ -65,11 +127,16 @@ store Tabs {
             if existing == null {
                 var t2 = title
                 if t2 == "" {
-                    t2 = stripExt(path, ".ad")
+                    t2 = strip_ext(path, ".ad")
                 }
                 .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: false, saving: false })
                 .active_path = path
-                var doc = readWikiSafe(path)
+                var doc = None
+                try {
+                    doc = read_wiki(path)
+                } catch (e) {
+                    doc = None
+                }
                 var tab = .tabs.find(t => t.path == path)
                 // Post-await re-check (same double-reader race as above):
                 // Load may have populated the tab while this read was in
@@ -99,7 +166,7 @@ store Tabs {
             var title = "全局图谱"
             if center != "" {
                 path = f"__graph__:${center}"
-                title = f"局部图谱：${stripExt(center, ".ad")}"
+                title = f"局部图谱：${strip_ext(center, ".ad")}"
             }
             var existing = .tabs.find(t => t.path == path)
             if existing != null {
@@ -121,7 +188,7 @@ store Tabs {
             if existing == null {
                 var t2 = title
                 if t2 == "" {
-                    t2 = stripExt(path, ".canvas")
+                    t2 = strip_ext(path, ".canvas")
                 }
                 .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isWhiteboard: true })
                 .active_path = path
@@ -131,7 +198,12 @@ store Tabs {
         .Load(path) -> {
             var tab = .tabs.find(t => t.path == path)
             if tab != null && !tab.loaded {
-                var doc = readWikiSafe(path)
+                var doc = None
+                try {
+                    doc = read_wiki(path)
+                } catch (e) {
+                    doc = None
+                }
                 // Post-await re-check (double-reader race, plan 022
                 // Phase 3): a concurrent Open/Load that finished first
                 // owns the tab; this late echo must not clobber it.
@@ -191,19 +263,23 @@ store Tabs {
                 try {
                     var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
                     // Capture what we send: adoptSaveResult compares against
-                    // the live tab to keep user edits that committed while the
-                    // save round-tripped (stale-echo revert fix, plan 022
-                    // Phase 3 — see tabs_store_ext.adoptSaveResult).
+                    // the live tab to keep user edits that committed while
+                    // the save round-tripped (stale-echo revert fix, plan
+                    // 022 Phase 3 — the adopt_save_result module fn above).
                     var sentFm = tab.frontmatter
-                    var saved = writeWiki(path, { frontmatter: sentFm, body: body2 })
-                    adoptSaveResult(tab, sentFm, body2, saved)
+                    var sentBody = tab.body
+                    var saved = write_wiki(path, sentFm, body2)
+                    var r = adopt_save_result(sentFm, tab.frontmatter, sentBody, tab.body, saved)
+                    tab.frontmatter = r.frontmatter
+                    tab.body = r.body
+                    tab.originalBody = r.original_body
                     tab.dirty = false
                 } catch (e) {
                     // Original save() had no catch — the rejection propagated
-                    // (after finally). The DSL has no throw statement, so the
-                    // ext `rethrow` helper re-throws; the emitted JS runs
-                    // finally first, then the rejection leaves the async
-                    // handler and reaches facade callers.
+                    // (after finally). The DSL has no throw statement and
+                    // catch is mandatory (compiler parse rule), so the ext
+                    // `rethrow` helper re-throws on web; VM-side the helper
+                    // swallows (registered deviation, PLAN-064 T-04).
                     rethrow(e)
                 } finally {
                     tab.saving = false

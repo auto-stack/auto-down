@@ -75,6 +75,25 @@ fs.writeFileSync(
   ].join('\n'),
 )
 
+// PLAN-064 T-04: 01-workspace.spec expects a `journals` tree node, but the
+// journals dir only ever existed as UNTRACKED local debris in
+// tmp/wiki-demo/wiki (gitignored via /tmp/) — invisible to worktrees and
+// fresh clones, so this spec could never pass there. Synthesize it here
+// (same pattern as the E2E-only page above) instead of tracking the debris.
+fs.mkdirSync(path.join(workspaceDir, 'wiki', 'journals'), { recursive: true })
+fs.writeFileSync(
+  path.join(workspaceDir, 'wiki', 'journals', '2026_07_24.ad'),
+  [
+    '---',
+    'title: 2026-07-24 日记',
+    '---',
+    '# 2026-07-24',
+    '',
+    '今日事项记录。',
+    '',
+  ].join('\n'),
+)
+
 
 // Fresh backend copy + drop stale config so the env-provided workspace wins.
 fs.mkdirSync(runtimeDir, { recursive: true })

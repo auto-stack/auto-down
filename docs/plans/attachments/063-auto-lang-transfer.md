@@ -1,7 +1,7 @@
 # PLAN-063 auto-lang 转介单（T-04 引擎面）
 
-状态：执行中（T-04b/c 已落地并验证；T-04d/e 设计要点在案）
-分支：auto-lang `auto-down-dev`（worktree `D:/autostack/.wt/auto-down-063/auto-lang`，基线 master a3d53cbfc）
+状态：**执行完毕**（T-04b/c/d-2/e 全部落地并验证，2026-09-13——见 §2b 结案注记；余项仅 merge 回折）
+分支：auto-lang `auto-down-dev`（worktree `D:/autostack/.wt/auto-down-063/auto-lang`，基线 master a3d53cbfc；T-04d-2 尾 commit 334d44e53/6d3cd294e/57d3ae105）
 关联：auto-down PLAN-063（docs/plans/063-vm-scroll-sync-oneway-anchor.md）、DEBTS 063 行（已销号）、PARITY #2/#8
 
 ## 1. 已落地修复（已验证）
@@ -70,7 +70,7 @@
   vue 轨 handler 永不触发（is_vue 惰性），零影响。
 - 与 T-04d 合并落地：直写 + 去抖同属 rust 消费侧改造。
 
-## 2b. T-04d-2 设计定稿（2026-09-11 实机验收后确认）
+## 2b. T-04d-2 设计定稿（2026-09-11 实机验收后确认；✅ 2026-09-13 落地结案）
 
 - 用户实机确认 v1 比例同步存在偏差（两栏内容高度不同：左 2653 vs 右 3088），
   块锚定是正解。锚块判定已落地（sync_anchor 高亮链，auto-lang ac3b46ce1）——
@@ -87,6 +87,26 @@
   style/kind/MCP/patch_input ~6 处 + vnode_converter/node_converter ~2 处，
   全部委托 child）；autodown_render 包点；SettleSync 消费接线；注册表
   单文档约定（v1 限度）。估算 10-15 编辑点 + 语料测试，需一整段专注实现。
+
+### 2b' 结案注记（2026-09-13）
+
+- **panic 根因**（非 iced 树 diff 语义玄学）：iced 0.14 `container` 是树
+  **透明委托**（tag/state/children/diff 全转发 content，update **原树透
+  传**不换层）。AnchorSlot::update/mouse_interaction 误传自身 `tree` 而
+  非 `tree.children[0]` → 经透明 container 链把本件无状态树错配给 column
+  首个孙件 → mouse_area downcast 崩。「layout 未调用/右栏空白」是 slots
+  关闭态 + 陈旧 exe 的观察假象（11:22 err.log 复核：无 SLOT 打印亦无
+  panic）。修复=334d44e53（update/mouse_interaction 传 children[0] +
+  operate/overlay/size_hint 补齐）。
+- **次生**：VNode 检视层须透传（6d3cd294e，降级空 Text 断 MCP 寻址）；
+  sink 注册与 sync_anchor 解耦（target 属右栏自身，334d44e53 内）；测试
+  结构断言剥层（57d3ae105 doc_children 辅助）。
+- **消费链定稿**：`sync_anchor_target` prop（字符串字面量字段名）注册
+  sink → 编辑壳 scroll 回调 set_anchor_from_scroll → pending → 渲染
+  update 尾 drain → content_y → write_state(right_top_cmd) + 直写
+  sync_anchor_block（AC-06 观测面）。
+- **门禁**：vm-smoke 21/21 两连绿（含 AC-06 四腿）；e2e 108/108；lib
+  default 3505/0、--features autodown 残差为既有环境抖动族。
 
 ## 3. 回折与收口
 

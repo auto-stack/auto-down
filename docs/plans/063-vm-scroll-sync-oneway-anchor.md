@@ -4,9 +4,9 @@ status: executing
 feature_name: VM 轨滚动同步改造——命令/显示状态分离消振 + 单向块锚定同步（撤销双向实时比例联动）
 author: zcode
 created_at: 2026-09-11T18:15:00+08:00
-updated_at: 2026-09-11T21:40:00+08:00
+updated_at: 2026-09-13T21:30:00+08:00
 plan_revision: 1
-current_step: 6
+current_step: 7
 total_steps: 7
 supersedes_spec_components: []
 new_spec_components:
@@ -369,7 +369,7 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 | AC-03 | 右栏自由滚动不回写左栏；CustomScrollbar 拖拽与 thumb 显示不回退 | vm-smoke c/d 判据；thumb_t 随原生滚动更新（`left_top_view`） |
 | AC-04 | vue 轨零回归 | regen diff 审阅 + demo e2e 全量 108/108（scroll-sync.spec.ts 原样通过） |
 | AC-05 | handler 算式为 0 的根因裁定成文 | T-02 决策件（最小复现 + 二分结论）；若引擎缺陷 → DEBTS 转介行在册（SD-05①） |
-| AC-06 | 块锚定顶对齐（v2，转介后） | 左栏首个完整可见块 i 与右栏块 i 顶差 ≤2px（或引擎可测精度）；smoke 断言 `sync_anchor_block` == 预期索引；**授权前 pending，不阻塞 T-01..T-03/T-05..T-07 收口** |
+| AC-06 | 块锚定顶对齐（v2，转介后） | ✅ 已达标（2026-09-13）：滚左 700 → 锚块 9 → content_y=846.79 → right_top_cmd 写入 → 右栏 echo 跟随 846.79（顶差≈0）；smoke (f) 腿 `sync_anchor_block == 0` 精确断言 + (a) 腿 ≥1 断言；锚块琥珀描边与右栏顶对齐截图在案 |
 | AC-07 | 契约面对齐 | PARITY #2 / README :45-49 改写 diff + specs.json P063 六节（merge 时）；§5.2 grep 白名单断言零违例 |
 | AC-08 | 停稳去抖有结论 | T-05 决策件：可用→实装 + smoke 时序断言；不可用→DEBTS 059 同族补记 |
 
@@ -380,7 +380,7 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 | T-01 | ✅ 已完成——commit 17de027（worktree plan-063-dev）。实证：原生滚轮 A/B（Win32 SendInput 真实滚轮路径）——旧 app.at 5 格 → 5 秒 340 次 OnLeftScroll 帧率乒乓 L120↔L240；新 app.at 同输入 6 事件即停稳（left_top_view=300，left_top_cmd=0，计数冻结）；regen 门禁 REGEN OK | — | app.at :136-141/:176/:244-246/:267-269/:319-351；gen/regen.sh | 抖动消失的 VM 窗口；再生 App.vue | AC-01 前提、AC-04 前提 | `node tmp/vm-scroll-osc-probe.mjs 9359 600`：60 采样 left_top_view 恒定、事件 ≤3；gen 门禁零告警 |
 | T-02 | ✅ 已完成——裁定=**引擎缺陷**：handler 内 f64 二元算术/比较坍缩 int 0/恒假（dbg 二分：参数/state 读取完好，`h-c`→0(int)、`if h>c&&…`→false；普通脚本同式 738.6273 正常）；殃及拖拽 Move 守卫（旧 app.at 现引擎同证，回归非 063 引入）。DEBTS 063 转介行在册。偏差记录：auto-lang 对照构建未做（lang-602 worktree 会话中期被清；回退窗口改以 09-04 vm-smoke 组 4 全绿为锚） | T-01 | 新建最小 .at probe；auto-lang 对照构建 | §10.2/DEBTS 决策记录 | AC-05 | 决策件含可复现命令与两构建读数 |
 | T-03 | ✅ 已完成——commit 57c7f60。vm-smoke 全量 **PASS 20/20**（首次尝试，未动用 049 重试）：组 4 新契约 a–e 全绿（(a)(d) 按 syncFired 引擎健康信号门控降级；反振荡计数冻结 3→3；单向性右滚左不动；幂等复滚无事件风暴）；PARITY #2/#8、README、DEBTS 063 行落稿 | T-01, T-02 | vm-smoke.mjs :343-470；PARITY.md :15/:21；README.md :45-49；DEBTS.md | 新契约 smoke | AC-01..03, AC-07 | `node vm-smoke.mjs --port 9359` 退出码 0 |
-| T-04 | ▶ 进行中（2026-09-11 用户授权 auto-lang 范围）。已完成：**T-04b f64 缺陷根因修复**（auto-lang auto-down-dev abd6aeca8——_D 族 pop_f64_operand 标签驱动弹栈，plan063_handler_float_tests 3 红转绿，全量 lib 200 红 ⊆ master 基线 210）+ **T-04c 引号 emit 路由修复**（1a828a2cf——空体引号 handler 合成 __emit 桥写对 + msg 名剥前导点；语料 test/ui/plan063_child_scrollbar；全量 lib 名集差集仅 osconfig_daemon 环境抖动族）。实机复归：vm-smoke 20/20 全量臂（同步 offset_y=240.9 + 拖拽 968.7 + 零振荡），DEBTS 063 销号。后续 T-04e ✅ 已落地（a6bc7a4——app.at timer{SettleSync (every_ms:100)}，OnLeftScroll 只置 due、SettleSync handler 消费并一次同步；regen + e2e 108/108 + vm-smoke 20/20）。余 T-04d-2 块锚定目标（用户实机确认 v1 比例偏差后定稿：AnchorSlot 变体 + 布局期坐标注册表 + SettleSync 消费，转介单 §2b——改动面 10-15 编辑点，需一整段专注实现） | T-01；§10.1 授权 | auto-lang renderer.rs/aura_view_builder.rs（独立 worktree）；转介单；smoke AC-06 断言 | 像素级锚定 | AC-06 | `cargo test -p auto-lang` 相关模块绿；vm-smoke 全组含 AC-06 |
+| T-04 | ▶ 进行中（2026-09-11 用户授权 auto-lang 范围）。已完成：**T-04b f64 缺陷根因修复**（auto-lang auto-down-dev abd6aeca8——_D 族 pop_f64_operand 标签驱动弹栈，plan063_handler_float_tests 3 红转绿，全量 lib 200 红 ⊆ master 基线 210）+ **T-04c 引号 emit 路由修复**（1a828a2cf——空体引号 handler 合成 __emit 桥写对 + msg 名剥前导点；语料 test/ui/plan063_child_scrollbar；全量 lib 名集差集仅 osconfig_daemon 环境抖动族）。实机复归：vm-smoke 20/20 全量臂（同步 offset_y=240.9 + 拖拽 968.7 + 零振荡），DEBTS 063 销号。后续 T-04e ✅ 已落地（a6bc7a4——app.at timer{SettleSync (every_ms:100)}，OnLeftScroll 只置 due、SettleSync handler 消费并一次同步；regen + e2e 108/108 + vm-smoke 20/20）。T-04d-2 ✅ 已落地（2026-09-13，auto-lang 334d44e53/6d3cd294e/57d3ae105 + auto-down d85056a）：树委托根因修复（update/mouse_interaction 须传 tree.children[0]——iced 0.14 透明 container 链实证）+ VNode 检视层透传 + sink 注册与 sync_anchor 解耦 + ANCHOR_SLOTS_ENABLED 启用 + 组 4 AC-06 四腿断言；vm-smoke 21/21 两连绿 + e2e 108/108 | T-01；§10.1 授权 | auto-lang renderer.rs/aura_view_builder.rs（独立 worktree）；转介单；smoke AC-06 断言 | 像素级锚定 | AC-06 | `cargo test -p auto-lang` 相关模块绿；vm-smoke 全组含 AC-06 |
 | T-05 | ✅ 已完成——裁定=**可用**：051 C7 已落 VM 轨 `timer {every_ms, when}` 动态 timer 面（parser.rs:14727、dynamic.rs:407、renderer.rs:15416/13229，062 F1 修空转拍置脏）；DEBTS 059 前提部分过时（注记入 063 行）。停稳去抖实装折叠进 T-04（同步写本身受 T-02 门控，先去抖无对象） | T-01 | renderer.rs:20365/:19578 对照；app.at | 决策件（+可选实装） | AC-08 | 决策件 + （若实装）smoke 时序断言 |
 | T-06 | ✅ 已完成——worktree e2e 全量 **108/108**（E2E_PORT=5199，1.8m），含 scroll-sync.spec.ts 原样通过与生成器 PLAN-601 主题漂移验证（App.vue 再生随行折入，e2e 判绿）；engine build 三 assert + gen 树 vue-tsc 门禁随 regen 通过 | T-01 | autodown/demo/src/App.vue；e2e | 回归报告 | AC-04 | `pnpm -C autodown/demo exec playwright test` 108/108 |
 | T-07 | ✅ 已完成——§5.2 白名单 grep 零违例（cmd 写者仅 :343 SetScrollTop / :367 同步臂）；specs 六节=§5 规范增量表（SD-01..05，merge 时落账）；work 交接记录见 §9 | T-01..T-03, T-05, T-06 | .autoos/specs.json；app.at | 交接记录 | AC-07 | grep 断言零违例；review 交接 |
@@ -425,13 +425,37 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
   锚块高亮 + 零振荡 + 拖拽。偏差（比例近似）待 T-04d-2 启用后归零。
 - vm-smoke 20/20（re-run 群组 7 需新窗，属操作项非缺陷）。
 
+### work 阶段记录 3（T-04d-2 调通收口，2026-09-13）
+
+- **panic 根因定位并修复**（auto-lang 334d44e53）：iced 0.14 的 container 是
+  树透明委托（tag/state/children/diff 全转发 content，update 原树透传）——
+  AnchorSlot::update/mouse_interaction 误传自身 tree 而非 tree.children[0]，
+  经透明 container 链把无状态树错配给 column 首个孙件（mouse_area downcast
+  崩）。此前"layout 未调用"的结论是 slots 关闭态+陈旧 exe 的观察假象（上会
+  话 err.log 复核：无 SLOT 打印但也无 panic，slots 实际未启用）。补齐
+  operate/overlay/size_hint 委托（hover_area 范式全对齐）。
+- **两个次生修复**（6d3cd294e）：VNode 检视层对 AnchorSlot 透传（曾降级空
+  Text → MCP 快照块内容消失，smoke 面板寻址断）；sink 注册与 sync_anchor
+  解耦（target prop 属右栏自身）。测试面 57d3ae105：doc_children 剥层辅助
+  适配 21 个结构断言。
+- **auto-down 侧**（d85056a）：app.at 声明 sync_anchor_target + 摘除 v1
+  比例臂（块锚定 rust 直写为唯一同步源）；vm-smoke 组 4 四腿扩断言（(a)
+  sync 臂必燃+锚索引、(c) 右滚不动锚、(d) 拖拽右栏跟随收敛、(f) AC-06
+  确定性 ==0）+ 053 漂移族 reissue 补强。
+- **门禁**：vm-smoke 21/21 净窗两连绿；vue e2e 108/108；auto-lang lib
+  default 3505/0 全绿、--features autodown 残差 203-206 全为既有环境抖动
+  族（osconfig_daemon resolve 等，run-to-run ±3 翻转，与 slots-off 基线
+  差集仅 6 名同族翻转）。
+- 余项：无执行面余项；进入 review → merge（auto-lang auto-down-dev 回折
+  由 merge 收口）。
+
 ## 10. 待澄清事项
 
-1. **T-04 授权与仓址（阻塞 AC-06）**：auto-lang 改动在独立新 worktree 进行，
-   还是以转介单形式并入彼仓计划队列？lang-602 worktree 当前由另一会话占用，
-   本计划默认禁止就地改动。**决定人：用户。**
-2. **v2 右栏几何来源三选一**（§5.4）：渲染臂 bounds / 块高累计 / 序号占比
-   兜底——T-04 调查后定，影响 AC-06 精度口径。
+1. ✅ 已裁定：独立 worktree（.wt/auto-down-063/auto-lang，分支 auto-down-dev）
+   授权执行，T-04b/c/d/e 全部落地（见 work 阶段记录 1-3）。
+2. ✅ 已裁定（T-04d-2）：**块高累计**方案——AnchorSlot layout 期记录块高，
+   消费侧 content_y = 前块高累计 + 列间距 8（屏内外均有效，零注册表坐标
+   依赖）。
 3. **反向同步需求确认**：默认永不做右→左；若未来需要，必须带"程序性滚动源"
    标记并重新过振荡审查。**决定人：用户（默认否）。**
 4. ✅ 已裁定（T-03 执行）：旧名无外部消费者，vm-smoke 已随组 4 重写消费新名；

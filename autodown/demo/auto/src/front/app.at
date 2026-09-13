@@ -286,6 +286,11 @@ widget App {
                             scroll_sync: true,
                             scroll_top: .right_top_cmd,
                             onscroll: .OnRightScroll,
+                            // PLAN-063 T-04d-2: 块锚定目标字段（字符串字面量，
+                            // 非状态引用——注册的是字段名）。rust 消费侧把锚块
+                            // content_y 直写进该字段，本元素 scroll_top 写臂
+                            // 既有通路滚动到目标。
+                            sync_anchor_target: ".right_top_cmd",
                             // PLAN-043 T4: Details 折叠回路——summary 点击
                             // → 消息（键 = 块结构键）→ handler 翻转 content
                             // 内 open attr → 重渲染（vue 轨 @detailsclick 不
@@ -358,21 +363,9 @@ widget App {
             .left_height = h
             .left_client = c
             .left_scroll_events = .left_scroll_events + 1
-            // PLAN-063: v1 比例同步臂——每次滚动同步一次（单向无写回无环；
-            // T-02 f64 修复后公式可正确计算；钳制 [0, max_r]）。T-04d-2
-            // 落地后此处换块锚定目标。
-            if .left_height > .left_client && .right_height > .right_client {
-                let max_l = .left_height - .left_client
-                let max_r = .right_height - .right_client
-                var t = .left_top_view / max_l * max_r
-                if t < 0 {
-                    t = 0
-                }
-                if t > max_r {
-                    t = max_r
-                }
-                .right_top_cmd = t
-            }
+            // PLAN-063 T-04d-2: v1 比例同步臂已摘除——块锚定目标由 rust
+            // 消费侧直写（编辑壳锚块判定 → 锚槽注册表 content_y →
+            // right_top_cmd 写臂；本 handler 只留测量回显与事件计数）。
         }
         .OnRightScroll(h, c, sy) -> {
             .right_top_view = sy

@@ -419,7 +419,7 @@ async function runOnce(attempt) {
     let stateScroll = ''
     let lastReissue = Date.now()
     for (const deadline = Date.now() + 12000; ; ) {
-      stateScroll = await callTool('autoui_state', { fields: ['left_top_view', 'left_height', 'left_client', 'left_scroll_events', 'right_top_cmd', 'right_top_view'] })
+      stateScroll = await callTool('autoui_state', { fields: ['left_top_view', 'left_height', 'left_client', 'left_scroll_events', 'right_top_cmd', 'right_top_view', 'sync_anchor_block'] })
       const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
       if (num('left_top_view') > 100 && num('left_height') > num('left_client')) break
       if (Date.now() > deadline) throw new Error(`scroll-sync state did not converge: ${stateScroll.trim()}`)
@@ -439,17 +439,51 @@ async function runOnce(attempt) {
     }
     checks.push('CustomScrollbar data non-zero (left_height > left_client > 0)')
 
-    // sync arm (T-02 gate): the v1 proportional expression evaluates to 0 on
-    // the current engine (handler-context float binary ops collapse to
-    // int 0 / false — PLAN-063 §4.2/T-02), so right_top_cmd stays 0 and the
-    // right pane must NOT move (degraded branch = AC-02 downgrade; no
-    // write-back). When the engine defect is fixed or T-04's rust
-    // direct-write lands, right_top_cmd > 0 re-arms the offset_y assertion.
+    // sync arm (PLAN-063 T-04d-2, block-anchor rust direct-write): the left
+    // scroll's anchor detection (first fully-visible block) registers a
+    // pending anchor; the renderer's update-tail consumer maps it through
+    // the per-block slot registry (content_y) and writes right_top_cmd —
+    // so right_top_cmd > 0 arms the offset_y follow assertion AND the
+    // AC-06 anchor-index assertions (sync_anchor_block = that block index,
+    // ≥ 1 at scroll 240 since block 0 can't be the first FULLY visible one
+    // that deep; the deterministic == 0 case is asserted in leg (f)).
+    // The legacy degraded branch (v1 handler proportional arm) stays as a
+    // safety net for engine-side regressions.
     {
       const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
-      const syncCmd = num('right_top_cmd')
+      let anchorAt240 = Math.round(num('sync_anchor_block'))
+      let syncCmd = num('right_top_cmd')
       syncFired = syncCmd > 0
+      if (!syncFired) {
+        // anchor-arm grace: after a fresh type, editor block_rects fill
+        // asynchronously (cosmic-text layout); the first echo can race them
+        // and set_anchor_from_scroll returns None (no pending → no cmd).
+        // Jiggled reissue (±1px defeats same-position scroll_to debounce)
+        // forces fresh echoes until the chain arms — a real engine regression
+        // still times out into the degraded branch below.
+        let reissue = Date.now()
+        let jig = 0
+        for (const deadline = Date.now() + 6000; ; ) {
+          if (Date.now() - reissue > 1200) {
+            jig = 1 - jig
+            await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 240 + jig })
+            reissue = Date.now()
+          }
+          const st = await callTool('autoui_state', { fields: ['right_top_cmd', 'sync_anchor_block'] })
+          syncCmd = Number(st.match(/right_top_cmd:\s*([\d.]+)/)?.[1] ?? 0)
+          if (syncCmd > 0) {
+            anchorAt240 = Math.round(Number(st.match(/sync_anchor_block:\s*([\d.]+)/)?.[1] ?? NaN))
+            syncFired = true
+            break
+          }
+          if (Date.now() > deadline) break
+          await new Promise((r) => setTimeout(r, 100))
+        }
+      }
       if (syncCmd > 0) {
+        // AC-06: anchor index is a real non-zero block (rust direct-write
+        // through the slot registry — not the disabled v1 handler arm).
+        if (!(anchorAt240 >= 1)) throw new Error(`AC-06 anchor index: expected ≥ 1 at scroll 240, got ${anchorAt240}`)
         let rightOffsetY = 0
         for (const deadline = Date.now() + 6000; ; ) {
           const snapR = parseAura(await callTool('autoui_snapshot', {}))
@@ -485,26 +519,49 @@ async function runOnce(attempt) {
 
     // (c) scroll RIGHT to y=600 → right_top_view follows; LEFT untouched
     // (one-way contract: OnRightScroll writes view/measurements only).
+    // AC-06 (anchor one-way): the anchor index is LEFT-driven only — a
+    // right-pane scroll must not re-anchor (sync_anchor_block and
+    // right_top_cmd both hold).
     {
+      // fresh read — the stale `stateScroll` from leg (b) doesn't carry
+      // the anchor/cmd fields (its fields list is intentionally narrow).
+      const preC = await callTool('autoui_state', { fields: ['sync_anchor_block', 'right_top_cmd'] })
+      const anchorBeforeC = Math.round(Number(preC.match(/sync_anchor_block:\s*([\d.]+)/)?.[1] ?? NaN))
+      const cmdBeforeC = Number(preC.match(/right_top_cmd:\s*([\d.]+)/)?.[1] ?? NaN)
       const scrollRight = await callTool('autoui_action', { element_id: rightScId, action: 'scroll', value: 600 })
       if (!/status: ok/.test(scrollRight)) throw new Error(`scroll-right action not ok: ${scrollRight}`)
+      let lastReissueC = Date.now()
       for (const deadline = Date.now() + 6000; ; ) {
         stateScroll = await callTool('autoui_state', { fields: ['right_top_view', 'left_top_view', 'left_scroll_events'] })
         const rtv = Number(stateScroll.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
         if (rtv > 500) break
         if (Date.now() > deadline) throw new Error(`right pane did not scroll: ${stateScroll.trim()}`)
+        // 053 回读漂移族同款补发（scroll-240 reissue 先例）：右栏 scroll_to
+        // 偶发滞留，每 800ms 重发直至回读收敛。
+        if (Date.now() - lastReissueC > 800) {
+          lastReissueC = Date.now()
+          await callTool('autoui_action', { element_id: rightScId, action: 'scroll', value: 600 })
+        }
         await new Promise((r) => setTimeout(r, 100))
       }
       const num = (f) => Number(stateScroll.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
       const evC = num('left_scroll_events')
       await new Promise((r) => setTimeout(r, 1200))
-      stateScroll = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events'] })
+      stateScroll = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events', 'sync_anchor_block', 'right_top_cmd'] })
       const ltv = Number(stateScroll.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
       const evC2 = Number(stateScroll.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
       if (ltv > 245 || evC2 !== evC) {
         throw new Error(`one-way violation: right scroll leaked into left (left_top_view=${ltv}, events ${evC} → ${evC2})`)
       }
-      checks.push(`scroll right → right_top_view follows, left untouched (one-way; left_top_view=${ltv})`)
+      const anchorAfterC = Math.round(Number(stateScroll.match(/sync_anchor_block:\s*([\d.]+)/)?.[1] ?? NaN))
+      if (anchorAfterC !== anchorBeforeC) {
+        throw new Error(`AC-06 anchor one-way violation: right scroll re-anchored (${anchorBeforeC} → ${anchorAfterC})`)
+      }
+      const cmdAfterC = Number(stateScroll.match(/right_top_cmd:\s*([\d.]+)/)?.[1] ?? NaN)
+      if (Math.abs(cmdAfterC - cmdBeforeC) > 0.01) {
+        throw new Error(`cmd invariant violation: right scroll wrote right_top_cmd (${cmdBeforeC} → ${cmdAfterC})`)
+      }
+      checks.push(`scroll right → right_top_view follows, left untouched, anchor holds (${anchorAfterC}) (one-way; left_top_view=${ltv})`)
     }
 
     // (d) (plan 043 T10 surface, kept by PARITY #8) drag emission: MCP drag
@@ -551,20 +608,48 @@ async function runOnce(attempt) {
         await new Promise((r) => setTimeout(r, 100))
       }
       const num = (f) => Number(dragState.match(new RegExp(`${f}:\\s*([\\d.]+)`))?.[1] ?? NaN)
-      const evD = num('left_scroll_events')
-      const rtvD = num('right_top_view')
+      // T-04d-2: the drag moves the LEFT pane → left scroll events → the
+      // block-anchor chain writes right_top_cmd → the right pane FOLLOWS
+      // (that IS the feature). The old "right untouched" assertion encoded
+      // the T-02 degraded reality. Live contract: after the drag's Move
+      // echo trail settles (event quiet + right echo converged to cmd),
+      // positions hold and no event storm grows (043's loop signature was
+      // unbounded event growth; a trailing echo adds a bounded couple).
+      let evD = 0
+      let ltvD = 0
+      let rcD = 0
+      {
+        let lastSeen = -1
+        let quietStart = Date.now()
+        for (const deadline = Date.now() + 15000; ; ) {
+          const dRT = await callTool('autoui_state', { fields: ['left_scroll_events', 'left_top_view', 'right_top_cmd', 'right_top_view'] })
+          const ev = Number(dRT.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
+          if (ev !== lastSeen) { lastSeen = ev; quietStart = Date.now() }
+          const rc = Number(dRT.match(/right_top_cmd:\s*([\d.]+)/)?.[1] ?? NaN)
+          const rv = Number(dRT.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+          if (Date.now() - quietStart > 1000 && Math.abs(rc - rv) < 2) {
+            evD = ev
+            ltvD = Number(dRT.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+            rcD = rc
+            break
+          }
+          if (Date.now() > deadline) throw new Error(`post-drag settle failed (events=${ev}, right cmd=${rc} view=${rv})`)
+          await new Promise((r) => setTimeout(r, 100))
+        }
+      }
       await new Promise((r) => setTimeout(r, 1500))
-      dragState = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events', 'right_top_view'] })
+      dragState = await callTool('autoui_state', { fields: ['left_top_view', 'left_scroll_events', 'right_top_cmd', 'right_top_view'] })
       const evD2 = Number(dragState.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
       const ltvD2 = Number(dragState.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+      const rcD2 = Number(dragState.match(/right_top_cmd:\s*([\d.]+)/)?.[1] ?? NaN)
       const rtvD2 = Number(dragState.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
-      if (evD2 !== evD || Math.abs(ltvD2 - num('left_top_view')) > 1) {
-        throw new Error(`post-drag oscillation: events ${evD} → ${evD2}, left_top_view → ${ltvD2}`)
+      if (evD2 - evD > 2 || Math.abs(ltvD2 - ltvD) > 1) {
+        throw new Error(`post-drag oscillation: events ${evD} → ${evD2}, left_top_view ${ltvD} → ${ltvD2}`)
       }
-      if (Math.abs(rtvD2 - rtvD) > 5) {
-        throw new Error(`one-way violation: drag moved the right pane (${rtvD} → ${rtvD2})`)
+      if (Math.abs(rtvD2 - rcD2) > 2 || Math.abs(rcD2 - rcD) > 2) {
+        throw new Error(`post-drag right drift: cmd ${rcD} → ${rcD2}, view ${rtvD2} vs cmd ${rcD2}`)
       }
-      checks.push(`drag CustomScrollbar → left_top_cmd jump + left offset_y follows (${dragOffsetL.toFixed(1)}); right untouched, no oscillation`)
+      checks.push(`drag CustomScrollbar → left_top_cmd jump + left offset_y follows (${dragOffsetL.toFixed(1)}); right anchor-follows to cmd ${rcD2.toFixed(1)}, no oscillation`)
       }
     }
 
@@ -586,6 +671,45 @@ async function runOnce(attempt) {
       const evE2 = Number(idle.match(/left_scroll_events:\s*([\d.]+)/)?.[1] ?? NaN)
       if (evE2 !== evE) throw new Error(`re-scroll event storm: left_scroll_events ${evE} → ${evE2}`)
       checks.push('re-scroll same position → settles, no event storm (idempotent)')
+    }
+
+    // (f) (PLAN-063 T-04d-2, AC-06 deterministic) scroll LEFT back to 0 →
+    //     the first fully-visible block IS block 0 → sync_anchor_block must
+    //     be exactly 0 and the anchor-driven right write must bring the
+    //     right pane back to the top (content_y(0) = 0 → right_top_cmd 0 →
+    //     echo converges). This is the exact-index anchor assertion; the
+    //     layout-dependent ≥ 1 case lives in leg (a).
+    {
+      const back = await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: 0 })
+      if (!/status: ok/.test(back)) throw new Error(`anchor-reset scroll not ok: ${back}`)
+      let anchorState = ''
+      let reissueF = Date.now()
+      let jigF = 0
+      for (const deadline = Date.now() + 8000; ; ) {
+        anchorState = await callTool('autoui_state', { fields: ['left_top_view', 'sync_anchor_block', 'right_top_cmd', 'right_top_view'] })
+        const ltv = Number(anchorState.match(/left_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+        const anchor = Math.round(Number(anchorState.match(/sync_anchor_block:\s*([\d.]+)/)?.[1] ?? NaN))
+        if (ltv < 5 && anchor === 0) break
+        if (Date.now() > deadline) throw new Error(`AC-06 anchor reset did not settle: ${anchorState.trim()}`)
+        // same-position scroll_to debounce can eat the echo — jiggle (±1px)
+        // reissue so the anchor chain gets a fresh echo to arm from.
+        if (Date.now() - reissueF > 1200) {
+          jigF = 1 - jigF
+          await callTool('autoui_action', { element_id: leftScId, action: 'scroll', value: jigF })
+          reissueF = Date.now()
+        }
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      // right pane follows the anchor back to 0 (echo catches the cmd)
+      for (const deadline = Date.now() + 8000; ; ) {
+        anchorState = await callTool('autoui_state', { fields: ['right_top_cmd', 'right_top_view'] })
+        const rc = Number(anchorState.match(/right_top_cmd:\s*([\d.]+)/)?.[1] ?? NaN)
+        const rv = Number(anchorState.match(/right_top_view:\s*([\d.]+)/)?.[1] ?? NaN)
+        if (rc < 2 && rv < 2) break
+        if (Date.now() > deadline) throw new Error(`AC-06 right follow-back to 0 failed: ${anchorState.trim()}`)
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      checks.push('AC-06: scroll left to 0 → sync_anchor_block == 0 exactly, right pane follows back to top (block-anchor direct-write)')
     }
 
 

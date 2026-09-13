@@ -1,0 +1,184 @@
+// iced 结构基线（PLAN-064 T-05）—— AutoUI @ 满状态：工作区已开 + Hello World / CAP 定理 双 tab + due 卡 + 图谱 + 页搜索 "CAP"。
+// 再生成：node vm-smoke.mjs --save-baseline baseline/iced-tabs-structure.txt
+// slice 5 基线（baseline/iced-slice5-structure.txt）为单活动文档期前身。
+## state
+State:
+  __emit_msg: "" (str)
+  __emit_payload: nil (unknown)
+  __toast: "" (str)
+  active_body: "# CAP 定理 ^cap\n\nCAP 定理指出，分布式系统最多只能同时满足以下三项中的两项：\n\n## 一致性（Consistency） {#block-consistency} ^consistency-block-consistency\n\n所有节点在同一时间看到的数据是一致的。\n\n## 可用性（Availability） {#block-availability} ^availability-block-availability\n\n每个请求都能在有限时间内收到非错误的响应。\n\n## 分区容错性（Partition Tolerance） {#block-partition} ^partition-tolerance-block-partition\n\n系统在遇到网络分区时仍能继续运行。\n\n## 士大夫相关链接 ^heading\n\n- [[Hello World]]\n- [[Projects]]\n\n受到法律\n\n# 士大夫 ^heading-1\n\n| sdf | sdf |  |\n| :--- | :--- | :--- |\n| sdf |  | sdf |\n| sdf | ffdsds |  |\n\n&nbsp;\n" (str)
+  active_dirty: false (bool)
+  active_path: "CAP 定理.ad" (str)
+  active_title: "CAP 定理" (str)
+  backlinks: [<vmref>, <vmref>, <vmref>] (list)
+  bl_count: 3 (int)
+  cards: [] (list)
+  files: [<vmref>, <vmref>, <vmref>, <vmref>, <vmref>, <vmref>, <vmref>, <vmref>] (list)
+  graph_edges: 8 (int)
+  graph_rows: [<vmref>, <vmref>, <vmref>, <vmref>, <vmref>, <vmref>, <vmref>, <vmref>] (list)
+  hit_count: 1 (int)
+  io_note: "" (str)
+  ol_count: 2 (int)
+  open_maps: [<vmref>, <vmref>] (list)
+  outlinks: [<vmref>, <vmref>] (list)
+  review_note: "" (str)
+  root: "\\\\?\\D:\\autostack\\auto-down\\tmp\\wiki-demo" (str)
+  save_note: "" (str)
+  search_q: "CAP" (str)
+  search_rows: [<vmref>] (list)
+  status: "searched" (str)
+
+## snapshot
+AURA Snapshot v2 (rendered)
+widget: "App"
+
+tree:
+col #vnode_14695981039346656037 {
+  style: "flex h-full flex-col gap-2 p-3 bg-background text-foreground"
+  row #vnode_12642422519345821663 {
+    style: "flex items-center gap-2"
+    button #vnode_4305065243889594349 "open-ws" {
+      onclick: .OpenWs
+    }
+    button #vnode_4305047651703549498 "reload-files" {
+      onclick: .LoadFiles
+    }
+    button #vnode_4305030059517504647 "save" {
+      onclick: .Save
+    }
+    button #vnode_4305012467331459796 "close-tab" {
+      onclick: .CloseTab
+    }
+    button #vnode_4304994875145414945 "cards" {
+      onclick: .LoadCards
+    }
+    button #vnode_4304977282959370094 "graph" {
+      onclick: .LoadGraph
+    }
+    button #vnode_4304959690773325243 "export-ws" {
+      onclick: .ExportWs
+    }
+    button #vnode_4304942098587280392 "import-zip" {
+      onclick: .ImportZip
+    }
+    text #vnode_4304924506401235541 "searched"
+  }
+  row #vnode_12642404927159776812 {
+    style: "flex flex-1 gap-3 overflow-hidden"
+    scrollable #vnode_4289760042030763204 {
+      style: "w-44 shrink-0 gap-1 overflow-auto border-r pr-2"
+      col #vnode_12781790891868631308 {
+        col #vnode_15900409796501198692 {
+          onclick: .OpenFile(f.path)
+          button #vnode_8766178259980025580 "journals"
+          button #vnode_8766195852166070431 "CAP 定理.ad"
+          button #vnode_8766213444352115282 "Cards Probe.ad"
+          button #vnode_8766231036538160133 "Hello World.ad"
+          button #vnode_8766107891235846176 "Projects.ad"
+          button #vnode_8766125483421891027 "Tasks.ad"
+          button #vnode_8766143075607935878 "index.ad"
+          button #vnode_8766160667793980729 "jade-garden-srs-of-matrix.edn"
+        }
+      }
+    }
+    col #vnode_4289777634216808055 {
+      style: "flex flex-1 flex-col gap-2"
+      row #vnode_12797096093727462453 {
+        style: "flex flex-wrap gap-1"
+        button #vnode_7440309935637812751 "Hello World"
+        button #vnode_7440292343451767900 "CAP 定理"
+      }
+      textarea #vnode_12797078501541417602 {
+        value: "# CAP 定理 ^cap
+
+CAP 定理指出，分布式系统最多只能同时满足以下三项中的两项：
+
+## 一致性（Consistency） {#block-consistency} ^consistency-block-consistency
+
+所有节点在同一时间看到的数据是一致的。
+
+## 可用性（Availability） {#block-availability} ^availability-block-availability
+
+每个请求都能在有限时间内收到非错误的响应。
+
+## 分区容错性（Partition Tolerance） {#block-partition} ^partition-tolerance-block-partition
+
+系统在遇到网络分区时仍能继续运行。
+
+## 士大夫相关链接 ^heading
+
+- [[Hello World]]
+- [[Projects]]
+
+受到法律
+
+# 士大夫 ^heading-1
+
+| sdf | sdf |  |
+| :--- | :--- | :--- |
+| sdf |  | sdf |
+| sdf | ffdsds |  |
+
+&nbsp;
+"
+        placeholder: "edit markdown here"
+        oninput: .Edit
+      }
+    }
+    scrollable #vnode_4289795226402852906 {
+      style: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2"
+      col #vnode_12812401295586293598 {
+        style: "gap-1"
+        row #vnode_17426954148483978426 {
+          text #vnode_8718186848063059982 "backlinks"
+          text #vnode_8718204440249104833 "3"
+        }
+        col #vnode_17426971740670023277 {
+          button #vnode_8733492049921891127 "Hello World.ad"
+          button #vnode_8733474457735846276 "Tasks.ad"
+          button #vnode_8733527234293980829 "index.ad"
+        }
+        row #vnode_17426918964111888724 {
+          text #vnode_8687576444345397692 "outlinks"
+          text #vnode_8687594036531442543 "2"
+        }
+        col #vnode_17426936556297933575 {
+          col #vnode_8702881646204228837 {
+            button #vnode_10029689114567278879 "Hello World"
+          }
+          col #vnode_8702864054018183986 {
+            button #vnode_10014383912708447734 "Projects"
+          }
+        }
+        text #vnode_17426883779739799022 "due cards"
+        col #vnode_17426901371925843873
+      }
+    }
+  }
+  row #vnode_12642457703717911365 {
+    style: "flex items-center gap-2 border-t pt-2"
+    input #vnode_4335675647607256639 {
+      placeholder: "search"
+      value: "CAP"
+      oninput: .QChanged
+    }
+    button #vnode_4335658055421211788 "search" {
+      onclick: .DoSearch
+    }
+    text #vnode_4335710831979346341 "1"
+    text #vnode_4335693239793301490 "graph-edges"
+    text #vnode_4335605278863077235 "8"
+  }
+  row #vnode_12642440111531866514 {
+    style: "flex flex-wrap gap-1 overflow-auto"
+    button #vnode_4320370445748425494 "CAP 定理"
+    button #vnode_4320388037934470345 "CAP 定理"
+    button #vnode_4320335261376335792 "Cards Probe"
+    button #vnode_4320352853562380643 "D4 Import Probe"
+    button #vnode_4320440814492604898 "Hello World"
+    button #vnode_4320458406678649749 "Projects"
+    button #vnode_4320405630120515196 "Tasks"
+    button #vnode_4320423222306560047 "index"
+    button #vnode_4320511183236784302 "2026_07_24"
+  }
+}

@@ -303,6 +303,7 @@ async function ensureBackend() {
 
 // ---------------- arms ----------------
 const arms = {}
+let saveMarker = '' // run-scoped: the save arm's disk marker (Hello's tab body afterwards)
 const arm = (name, fn) => (arms[name] = fn)
 
 const nonce = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
@@ -361,6 +362,7 @@ arm('save', async (checks) => {
     if (Date.now() > deadline) throw new Error(`save: marker never hit the disk: ${marker}`)
     await sleep(150)
   }
+  saveMarker = marker
   checks.push(`save: type_text → dirty=● → save → dirty cleared + disk write verified (${marker})`)
 })
 
@@ -453,10 +455,141 @@ arm('search', async (checks) => {
   checks.push('search: search_pages("CAP") → hit_count=1 + 命中按钮呈现')
 })
 
+// tabs 臂（PLAN-064 T-05，§5.4 五断言，tabs_store 驱动的多 tab 编辑器流）：
+//   ① 双 tab 打开且 tab 条在场
+//   ② 切换回读正文不串页
+//   ③ 脏态关闭（confirmClose deviation：VM 默认确认即弃）+ 状态行登记
+//   ④ Save 清脏 + 磁盘落盘（经 store Save msg）
+//   ⑤ 同路径重复 Open 不覆盖已 loaded tab（双读竞争防护，022 Phase 3 e2e
+//      11-properties 同款断言语义）
+/** Read the editor textarea's bound value from the snapshot (the value
+ *  prop rides the AURA tree like offset_y/col_widths do). Poll until the
+ *  predicate holds; returns the last seen value. */
+async function textareaValue(until = null, timeoutMs = 6000) {
+  let last = null
+  for (const deadline = Date.now() + timeoutMs; ;) {
+    const tree = await snapshot()
+    const ta = findFirst(tree, (n) => n.head.startsWith('textarea '))
+    if (ta) {
+      const prop = findFirst(ta, (n) => n !== ta && n.head.startsWith('value:'))
+      const child = prop ? subtreeText(prop) : ''
+      const own = ownText(prop ?? { head: '' })
+      last = own || child
+      if (until === null || (last && last.includes(until))) return last ?? ''
+    }
+    if (Date.now() > deadline) return last ?? ''
+    await sleep(150)
+  }
+}
+
+arm('tabs', async (checks) => {
+  // ① 打开 CAP 定理为第二 tab（Hello World 已由 read/save 臂打开——臂间
+  //    状态延续正是多 tab 流）；strip 两个 tab 按钮在场
+  const tree0 = await snapshot()
+  const capBtn = findFirst(tree0, (n) => n.head.startsWith('button ') && ownText(n) === 'CAP 定理.ad')
+  if (!capBtn) throw new Error('tabs: "CAP 定理.ad" file button not found')
+  await callTool('autoui_action', { element_id: elementIdOf(capBtn), action: 'press' })
+  await stateIs('status', 'opened')
+  // Hello World 已由 read/links 臂打开（全量跑）——此处只验 strip 双 tab 在场
+  const strip1 = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'CAP 定理')
+  const strip2 = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World')
+  if (!strip1 || !strip2) throw new Error('tabs①: tab strip lacks both titles')
+  checks.push('tabs①: 双 tab 打开且 tab 条在场（strip: Hello World + CAP 定理）')
+
+  // ② 切换回读正文不串页：strip 切 CAP → 正文 CAP 标记；切回 Hello → 正文
+  //    Hello 标记（正文经 SwitchTab 从 tab 状态回读，不重读磁盘）
+  await pressButton('CAP 定理')
+  await stateIs('status', 'switched')
+  await stateHas('active_body', '分布式系统')
+  await pressButton('Hello World')
+  await stateIs('status', 'switched')
+  // 全量跑时 Hello 的 tab 正文 = save 臂写入的 marker（整文替换语义）；
+  // 单臂跑（--arms tabs）经 ③ 重开后的磁盘正文断言兜底。
+  const hwNeedle = saveMarker || 'Hello, Jade Garden!'
+  const hwBody = await stateText('active_body')
+  if (!hwBody.includes(hwNeedle)) {
+    const more = await callTool('autoui_state', { fields: ['active_title', 'active_path', 'active_dirty', 'status'] })
+    const flat = more.trim().split('\n').join(' | ')
+    throw new Error('tabs(2): Hello body missing after switch: needle=' + hwNeedle + ' body=' + hwBody.slice(0, 160) + '; more=' + flat)
+  }
+  if (hwBody.includes('分布式系统')) throw new Error('tabs②: body 串页 (CAP content under Hello tab)')
+  checks.push('tabs②: 切换回读正文不串页（CAP/Hello 正文各归其 tab）')
+
+  // ③ 脏态关闭（confirmClose deviation：VM 默认确认即弃）+ 状态行登记：
+  //    键入置脏 → close-tab → status discarded-dirty:Hello World → 重开回
+  //    到磁盘原貌
+  const marker2 = `tabs-dirty ${nonce()}`
+  await typeInto((n) => n.head.startsWith('textarea '), marker2, 'editor textarea')
+  await stateIs('active_dirty', 'true')
+  await pressButton('close-tab')
+  await stateIs('status', 'discarded-dirty:Hello World')
+  const hwFile = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
+  await callTool('autoui_action', { element_id: elementIdOf(hwFile), action: 'press' })
+  await stateIs('status', 'opened')
+  // 重开正文 = 磁盘现内容（全量跑时 = save 臂写过的正文，故与后端读回的
+  // body 比对而非固定串）；负向断言：弃置的键入不在场
+  const diskDoc = await fetch(`${BACKEND}/api/wiki/${encodeURIComponent('Hello World.ad')}`).then((r) => r.json())
+  const diskBody = String(diskDoc.body ?? '')
+  const restored = await stateText('active_body')
+  if (!restored.includes(diskBody.trim().slice(0, 40))) {
+    throw new Error('tabs(3): reopened body does not match disk content: ' + restored.slice(0, 120))
+  }
+  if (restored.includes(marker2)) throw new Error('tabs③: dirty edits survived a discarded close')
+  checks.push('tabs③: 脏态关闭降级语义（关闭即弃）+ 状态行 discarded-dirty:Hello World 登记')
+
+  // ⑤ 同路径重复 Open 不覆盖已 loaded tab：键入置脏（未保存）→ 再按文件
+  //    按钮（重复 Open）→ 在途编辑仍在正文里；随后保存落盘实证
+  const marker3 = `tabs-race ${nonce()}`
+  await typeInto((n) => n.head.startsWith('textarea '), marker3, 'editor textarea')
+  await stateIs('active_dirty', 'true')
+  const hwFile2 = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
+  await callTool('autoui_action', { element_id: elementIdOf(hwFile2), action: 'press' })
+  await stateIs('status', 'opened')
+  await stateHas('active_body', marker3)
+  await pressButton('save')
+  await stateIs('active_dirty', 'false')
+  for (const deadline = Date.now() + 8000; ;) {
+    const body = fs.readFileSync(path.join(FIXTURE, 'wiki', 'Hello World.ad'), 'utf8')
+    if (body.includes(marker3)) break
+    if (Date.now() > deadline) throw new Error(`tabs⑤: in-flight edit lost after repeat Open (marker ${marker3} never saved)`)
+    await sleep(150)
+  }
+  checks.push('tabs⑤: 同路径重复 Open → 已 loaded tab 在途编辑存活（落盘实证，双读竞争防护）')
+
+  // ④ 保存：清脏 + 磁盘落盘
+  const marker4 = `tabs-save ${nonce()}`
+  await typeInto((n) => n.head.startsWith('textarea '), marker4, 'editor textarea')
+  await pressButton('save')
+  await stateIs('status', 'saved')
+  await stateIs('active_dirty', 'false')
+  for (const deadline = Date.now() + 8000; ;) {
+    const body = fs.readFileSync(path.join(FIXTURE, 'wiki', 'Hello World.ad'), 'utf8')
+    if (body.includes(marker4)) break
+    if (Date.now() > deadline) throw new Error(`tabs④: marker never hit the disk: ${marker4}`)
+    await sleep(150)
+  }
+  checks.push(`tabs④: 保存 → 清脏 + 磁盘落盘 (${marker4})`)
+})
+
+/** Raw state read (no waiting) — for negative assertions. */
+async function stateText(field) {
+  return callTool('autoui_state', { fields: [field] })
+}
+
 // ---------------- run ----------------
 function parseArgsForRun(argv) {
   const runArgs = ['run', '-r', 'vm']
   return runArgs
+}
+
+// arm dependency graph — --arms selections are expanded with their
+// prerequisites (tabs reads the file tree, which open-ws/files populate)
+const ARM_DEPS = {
+  tabs: ['open-ws', 'files'],
+  read: ['open-ws', 'files'],
+  save: ['open-ws', 'files'],
+  links: ['open-ws', 'files'],
+  search: ['open-ws'],
 }
 
 async function runOnce(attempt) {
@@ -496,18 +629,16 @@ async function runOnce(attempt) {
   }
   checks.push(`vm window: auto.exe run -r vm (cwd=desktop, ${MERGED ? 'merged' : 'split'}, MCP :${port})`)
 
-  const names = Object.keys(arms).filter((n) => !ONLY_ARMS || ONLY_ARMS.includes(n))
+  const wanted = ONLY_ARMS ?? Object.keys(arms)
+  const names = []
+  for (const n of wanted) {
+    for (const dep of ARM_DEPS[n] ?? []) {
+      if (!names.includes(dep) && (ONLY_ARMS ? !ONLY_ARMS.includes(dep) : false)) names.push(dep)
+    }
+    if (!names.includes(n)) names.push(n)
+  }
   for (const name of names) {
     await arms[name](checks)
-  }
-
-  // tabs 臂占位：T-05 落地后启用（§5.4 五断言）
-  if (!ONLY_ARMS || ONLY_ARMS.includes('tabs')) {
-    const tree = await snapshot()
-    if (subtreeText(tree).includes('tab:')) {
-      throw new Error('tabs arm not implemented yet — T-05')
-    }
-    if (ONLY_ARMS?.includes('tabs')) throw new Error('tabs arm not implemented yet — T-05')
   }
 
   restoreFixture()
@@ -518,7 +649,69 @@ async function runOnce(attempt) {
   return checks
 }
 
+// --save-baseline <file>: drive a deterministic full state (workspace +
+// Hello World + CAP 定理 tabs + due cards + graph + page search "CAP"),
+// dump state + AURA snapshot to <file> (PLAN-064 AC-06 结构基线).
+async function saveBaseline(outFile) {
+  const baseline = logBaseline()
+  await restoreFixture()
+  await ensureBackend()
+  port = 0
+  for (let p2 = BASE_PORT; p2 < BASE_PORT + 16; p2++) {
+    if (await portFree(p2)) {
+      port = p2
+      break
+    }
+  }
+  if (!port) throw new Error('no free MCP port')
+  const env = { ...process.env, AUTOUI_MCP_PORT: String(port), AUTO_BACKEND: BACKEND, AUTO_VM_MERGE: '0' }
+  spawnTracked('vm-window', AUTO_EXE, ['run', '-r', 'vm'], { cwd: here, env })
+  await waitForServer(45000)
+  for (const deadline = Date.now() + 30000; ;) {
+    try {
+      const snap = await callTool('autoui_snapshot', {})
+      if (snap.includes('button')) break
+    } catch {}
+    if (Date.now() > deadline) throw new Error('vm window rendered no UI within 30s')
+    await sleep(500)
+  }
+  await pressButton('open-ws')
+  await stateIs('status', 'ws-open')
+  for (const name of ['Hello World.ad', 'CAP 定理.ad']) {
+    const tree = await snapshot()
+    const btn = findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === name)
+    if (!btn) throw new Error(`baseline: file button ${name} missing`)
+    await callTool('autoui_action', { element_id: elementIdOf(btn), action: 'press' })
+    await stateIs('status', 'opened')
+  }
+  await pressButton('cards')
+  await stateIs('status', 'cards-loaded')
+  await pressButton('graph')
+  await stateIs('status', 'graph-loaded')
+  await typeInto((n) => n.head.startsWith('input '), 'CAP', 'search input')
+  await pressButton('search')
+  await stateIs('status', 'searched')
+  const state = await callTool('autoui_state', {})
+  const snapTree = await callTool('autoui_snapshot', {})
+  const NL = String.fromCharCode(10)
+  const header =
+    '// iced 结构基线（PLAN-064 T-05）—— AutoUI @ 满状态：工作区已开 + ' +
+    'Hello World / CAP 定理 双 tab + due 卡 + 图谱 + 页搜索 "CAP"。' + NL +
+    '// 再生成：node vm-smoke.mjs --save-baseline baseline/iced-tabs-structure.txt' + NL +
+    '// slice 5 基线（baseline/iced-slice5-structure.txt）为单活动文档期前身。' + NL
+  fs.writeFileSync(outFile, header + '## state' + NL + state.trim() + NL + NL + '## snapshot' + NL + snapTree.trim() + NL)
+  console.log(`jade vm-smoke: baseline written → ${outFile}`)
+  await killTracked()
+  restoreFixture()
+}
+
 async function main() {
+  const outFile = argOf('--save-baseline')
+  if (outFile) {
+    await saveBaseline(outFile)
+    process.exitCode = 0
+    return
+  }
   const baseline = logBaseline()
   if (!fs.existsSync(BACKEND_EXE)) throw new Error(`backend exe missing: ${BACKEND_EXE}`)
   let lastErr

@@ -77,6 +77,9 @@ async fn main() {
     }
 
     let app = Router::new()
+        // PLAN-013 T5（auto-os 桌面 daemon 链）：健康探针——桌面 launch 前置
+        // ensure 的 ping 契约固定 `GET /api/health`（osconfig 同约定）。
+        .route("/api/health", get(|| async { "ok" }))
         // Workspace
         .route("/api/workspace", get(workspace::get_workspace))
         .route("/api/workspace/open", post(workspace::open_workspace))

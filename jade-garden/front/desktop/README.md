@@ -252,3 +252,18 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
   路径为探针常量（workspace_opener 同款先例）；②返回列表在 CALL_SPEC
   拦截返回值上缺 RC 接线（Plan 432 D26 对偶）——`.length` 恒 0，改用
   body_to_file 直落盘规避，RC 工作项登记 auto-lang 侧。
+
+## 8. auto-lang 提案清单（PLAN-064 T-06，2026-09-14 入档；彼仓裁定，本仓不跨仓改码）
+
+| # | 提案 | 实证引用（本仓在案） |
+| --- | --- | --- |
+| ① | **目录/文件选择器宿主能力**（rfd 一类）：解除 app.at 工作区根硬编码与导入导出探针常量（tmp/jade-probe），workspace_opener 降级分支同步升级 | desktop/README §7.1/§7.3 遗留登记；app.at ExportWs/ImportZip 常量 |
+| ② | **confirm 模态语义**：脏态关闭守卫从"默认确认即弃"偏差升级为真确认；outgoing 虚链建页确认同族 | tabs_store §5.2 处置表（confirmClose=deviation）；ext-registry.json tabs 行；P022-6 已登记延后项 |
+| ③ | **CALL_SPEC 返回列表 RC 接线**（`.length` 恒 0，Plan 432 D26 对偶）：导入导出返回计数面 | desktop/README §7.3 遗留①；plan-022 slice 3 D4 |
+| ④ | **tick/timer 原语**：hover/滚动延迟类交互在 VM 轨的等价物（DynamicComponent tick_interval 面） | DEBTS 059；desktop/README §2 timers 裁定 |
+| ⑤ | 交叉引用 P063 在案两项（不重复立项）：scroll_to 仅绝对偏移限制；AnchorSlot 委托层 downcast panic | docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md §0/§4.2 |
+| ⑥ | **store facade VM 缺口簇（T-05 执行期实证，tabs_store 迁移前置）**：a) widget handler 内读 store 字段失效（0/"" 哨兵，442 corpus 只证 model-var 读）；b) 视图对 store 字段不响应式回读（初值后冻结，notice/active_body 文本节点不更新）；c) store 模块内 `#[api]` 调用未走 340 HTTP 改写（静默执行契约 stub `return None`，read/write 均不落盘）；d) widget 模型数组 `.splice` 静默失效；e) lambda 捕获 handler 本地变量 = "undefined variable" 编译错（msg 参数捕获可用），lambda 比较表达式内读 self 字段运行时静默失效 | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录 |
+
+> 提案⑥修复后：desktop/src/front/tabs_store.at 回归（git 历史 plan-064-dev
+> 5eb0279 前后可考），app.at 切 `use store: Tabs` facade 形态，vm-smoke
+> tabs 臂断言面不变。

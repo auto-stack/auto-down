@@ -48,8 +48,9 @@ VM track status (see DEBTS.md 040/043 rows and `PARITY.md`):
   View::Scrollable, but the two arms live on SPLIT state — `scroll_top`
   binds `*_top_cmd` (written only by user intent: CustomScrollbar drag, or
   the one-shot sync jump), and the `onscroll` echo writes `*_top_view`
-  (thumb display + sync input). Sync is left→right only (v1 proportional,
-  v2 block-anchored via rust direct-write — PLAN-063 T-04, in progress); the
+  (thumb display + sync input). Sync is left→right only (block-anchored via
+  rust direct-write — the v1 proportional arm was removed when T-04d-2
+  landed; PLAN-063 T-04d-2); the
   right pane scrolls freely and never writes back. The two engine defects
   that gated sync/drag (f64 arithmetic + quoted-emit route) are FIXED on
   auto-lang auto-down-dev (abd6aeca8 + 1a828a2cf) — vm-smoke runs the full

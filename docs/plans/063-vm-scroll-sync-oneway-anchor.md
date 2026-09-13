@@ -6,7 +6,7 @@ author: zcode
 created_at: 2026-09-11T18:15:00+08:00
 updated_at: 2026-09-13T21:30:00+08:00
 plan_revision: 1
-current_step: 7
+current_step: 6
 total_steps: 7
 supersedes_spec_components: []
 new_spec_components:
@@ -390,6 +390,62 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 
 ## 9. 复审记录
 
+### review（2026-09-13，T-04 全段收口后复审）
+
+- `stage: review` | plan_id: PLAN-063 | plan_revision: 1 | **outcome: needs_fix** |
+  reviewed_commit: auto-lang auto-down-dev 57d3ae105 + auto-down plan-063-dev
+  d85056a（主检出文档 650d404）| base_commit: auto-lang a3d53cbfc；
+  auto-down worktree 分支基 77e8fde 系 | dependency_revisions: autodown-core
+  路径依赖解析至同组 auto-down worktree（plan-063-dev），exe 由两 worktree
+  联合构建 | spec_inputs: .autoos/specs.json P063 六节（SD-01..05，merge 时
+  落账）；docs/specs 既有滚动/编辑器契约无冲突
+- 复核限制声明：本复核在实现会话内进行，结论由工件重建（git 链、err.log
+  复核、四轮实测门禁），不依赖执行摘要。
+- **达标面（证据充分）**：
+  - AC-01 pass——smoke (b) 反振荡计数冻结（3→3，两连净窗）+ T-01 原生滚轮
+    A/B（340 事件→6 事件）。
+  - AC-02 pass（v2 达成，超额于降级口径）——smoke (a) sync 臂必燃
+    offset_y=247.3 跟随；(f) sync_anchor_block==0 精确断言；数字链
+    700→锚块 9→y=846.79→右栏 echo 846.79（顶差≈0）。
+  - AC-03 pass——smoke (c) 右滚左不动 + 锚保持 + cmd 不被右滚写；(d) 拖拽
+    left_top_cmd 跳变 968.7 + offset_y 跟随。
+  - AC-04 pass——vue e2e 108/108（本会话实跑 1.7m）。
+  - AC-05 pass——T-02 决策件 + DEBTS 063 已销号（abd6aeca8/1a828a2cf）。
+  - AC-06 pass——见阶段记录 3 数字链 + 锚块描边/右栏顶对齐截图（worktree
+    demo/auto/src/front/tmp/，merge 清理后以本记录文字为准）。
+- **证据新鲜度**：行为门禁（smoke 21/21 两连净窗、e2e 108/108）运行于
+  6d3cd294e 构建；57d3ae105 仅动 #[cfg(test)]，二进制行为不变——复用该
+  证据的理由成立。cargo tf 3516/3516（57d3ae105 树实跑 34.5s）；lib
+  default 3505/0；--features autodown 残差 203-206 名经三运行交叉核对
+  全为环境抖动/既有族（osconfig resolve 翻转、plan370 既有失败、ffi_dual
+  抖动；master 208 名同规模），零新增失败。
+- **findings（全部文档/生成物层，核心实现面零缺陷）**：
+  - **F1（AC-07，low）**：PARITY.md #2 行（:15）与 README :45-52 契约措辞
+    过时——仍写「v1 比例臂」「v2 走 rust 直写转介」「T-04 in progress」；
+    实际 v1 比例臂已摘除、v2 rust 直写已落地（d85056a）。证据列止于
+    abd6aeca8/1a828a2cf 时代。改法：两处补 T-04d-2 收口句（v2-only 直写）。
+  - **F2（AC-08 + 计划真实性，medium）**：T-04 行「T-04e ✅ 已落地
+    （a6bc7a4）」与 1258624（SettleSync/timer 死代码移除，实测
+    fire_timer=0——App 级接线未通）矛盾；AC-08 结论未连贯成文，「timer 面
+    App 级不触发」未按裁定路由做 DEBTS 059 同族补记。改法：T-04 行改写
+    T-04e 为「实装尝试后撤除（App 级 timer 不触发）」+ 去抖结论（单向
+    逐事件同步已安全，§0.3 预授权非必需）+ DEBTS 补行。
+  - **F3（AC-04 卫生面，medium）**：生成物 App.vue 陈旧——仍含
+    SettleSync/left_settle_due 死代码 9 处（app.at 已于 1258624+d85056a
+    两度变更，regen 未随行）。改法：`autodown/demo/auto/gen/regen.sh`
+    再生 + 提交 + e2e 复绿确认（死代码摘除应零行为变化）。
+  - **F4（housekeeping，low）**：被跟踪 e2e 基线截图
+    container-edit-faces.png 有 4 字节像素噪声脏改动（本会话 e2e 重跑
+    副作用）——还原或裁定更新，reviewed 树须干净。
+- **acceptance_results**: AC-01 pass / AC-02 pass / AC-03 pass / AC-04
+  pass / AC-05 pass / AC-06 pass / AC-07 **partial（F1）** / AC-08
+  **partial（F2）**。
+- **evidence**：本记录 + 阶段记录 3（数字链在案）；worktree
+  auto-down/autodown/demo/auto/vm-demo-live.{log,err.log}（会话产物，
+  merge 清理后以记录摘录为准）；tmp/t04d2-verify.mjs（复跑探针）。
+- **next**：回 work 修 F1..F4（预计纯文档/regen 面，半小时级）→
+  复审（re-review 仅核四发现 + 树干净，行为门禁可引用本记录证据——
+  代码不变前提）→ pass 后 merge。
 ### 立项 handoff（2026-09-11，draft）
 
 - `stage: new`，PLAN-063 rev 1。

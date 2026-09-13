@@ -125,16 +125,17 @@ widget App {
 
         // 导入导出（D4 裁定：原生直连，不经 #[api] JSON 改写）。v1 导出/
         // 导入路径为探针常量——目录/文件选择器宿主能力就位后替换（README §7.1）。
+        // （PLAN-064 T-03：旧 .worktree/plan-022 路径随归档失效，改 tmp/jade-probe。）
         .ExportWs -> {
             let res = http.request("GET", "http://127.0.0.1:8199/api/export/markdown").send()
-            let n = res.body_to_file("D:/autostack/auto-down/.worktree/plan-022/tmp/core-probe/desktop-export.zip")
+            let n = res.body_to_file("D:/autostack/auto-down/tmp/jade-probe/desktop-export.zip")
             .io_note = "exported"
             .status = "exported"
         }
 
         .ImportZip -> {
             let rb0 = http.request("POST", "http://127.0.0.1:8199/api/import/markdown")
-            let rb = rb0.multipart_file("archive", "D:/autostack/auto-down/.worktree/plan-022/tmp/core-probe/desktop-import.zip")
+            let rb = rb0.multipart_file("archive", "D:/autostack/auto-down/tmp/jade-probe/desktop-import.zip")
             let res = rb.send()
             .io_note = res.body()
             .status = "imported"

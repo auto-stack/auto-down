@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-063
-status: reviewed
+status: archived
 feature_name: VM 轨滚动同步改造——命令/显示状态分离消振 + 单向块锚定同步（撤销双向实时比例联动）
 author: zcode
 created_at: 2026-09-11T18:15:00+08:00
@@ -389,6 +389,24 @@ handler 体）→ e2e 全量。`useSyncedScroll.ts` 零改动。
 （T-03 之后即可独立进行）。每步随行跑目标 smoke/探针；收口跑 vue e2e 全量。
 
 ## 9. 复审记录
+
+### merge 收据（PLAN-063:r1，2026-09-13）
+
+- **prepared**：reviewed 基线 = auto-lang 57d3ae105（erratum 5f128faf5 恢复
+  ANCHOR_SLOTS_ENABLED=true——探针期翻转误入 commit，合并 gate 拦截）+
+  auto-down 049657e；冻结 delta = SD-01..05；projection 目标 =
+  .autoos/specs.json#P063-1..6。worktree 分支先并入 master（458bf90）对齐
+  文档面，delivery commit = ccaeb26（specs 落账）。
+- **landed**：auto-lang master 6ffda20cd（merge auto-down-dev@5f128faf5；
+  合并树冲突 1 处 = AnchorSlot 臂 × PLAN-013 W2 MouseArea 臂同位，双臂
+  保留；cargo tf 3534/3534 + vm-smoke 21/21 于合并树、折回后 master exe
+  复跑 vm-smoke PASS）；auto-down master ccaeb26（ff；主检出 e2e
+  108/108 known-good 实跑 2.2m）。
+- **ledger_refreshed**：.autoos/specs.json P063-1..6 六节落账，落账后
+  主检出读回验证通过（6 id 在案）；file 溯源指本文件归档路径。
+- **archived**：docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md，
+  status: archived，completion_kind: delivered。
+- **cleaned**：（清理后补记——见下）
 
 ### re-review（2026-09-13，四发现修复后终审）
 

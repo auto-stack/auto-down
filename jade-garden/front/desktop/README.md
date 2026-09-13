@@ -67,6 +67,22 @@ ext）。每文件命中类别（脚本判定，同文件可多类别）：
 | timers | hover/滚动延迟在 iced 下大半失去必要性（无 DOM 传播时序）；确需延迟用 VM tick 原语（DynamicComponent tick_interval 已有） | — |
 | matchMedia | 桌面形态无系统主题跟随需求 → 登记偏差：初值恒 dark（或读 AUTO_UI_THEME），不阻塞 | — |
 
+### 2.1 复扫与注册表建账（PLAN-064 T-01，2026-09-14）
+
+- **机扫复跑**：37 文件与基线数量一致（29 widget ext + 8 store ext），
+  文件级漂移为零；内容级漂移两笔，均 P022 Phase 5 已收口项：
+  ① blocks_store_ext 读路径改接 engine parser 单源（blockParser.ts 已
+  删除，DEBTS 020 已清偿行）；② tabs_store_ext 的 ensureBlockAnchors
+  改接 parser_gen（`front/src/lib/parser_gen.ts`，gen.mjs 部署副本）。
+- **逐导出 fn 三分类注册表落盘**：`desktop/ext-registry.json`
+  （302 导出：sink 245 / bridge 36 / deviation 21；schema 与三分类语义
+  见该文件 `schema` 字段）。sink 含 web-codegen shim（图标/组件/facade
+  再导出——widget .at 化即原生语法取代，无独立迁移动作）。
+- **门检**：`desktop/scripts/ext-registry-gate.mjs`（T-02）双表对拍：
+  导出面 ↔ 注册表逐 (file, fn) 精确匹配（未登记=红；死账=红）；
+  store `use back.api:` 名单 ⊆ 对应 `<stem>_ext.ts` 导出面（sed 契约）；
+  .at 源 `use { … from "…_ext.ts" }` 引用必须已登记。
+
 ## 3. 图谱视图（cytoscape）裁定
 
 **裁定：iced 形态 v1 = 列表/树状图谱视图（数据面全量可达），力导向画布

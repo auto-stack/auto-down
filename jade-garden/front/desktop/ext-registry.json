@@ -1,0 +1,2429 @@
+{
+  "plan": "PLAN-064 T-01",
+  "updated": "2026-09-14",
+  "baseline": "desktop/README §2（2026-08-29 机扫 37 文件）；2026-09-14 复扫：文件数 37 不变（29 widget ext + 8 store ext）；内容漂移=blocks_store_ext 读路径已接 engine parser、tabs_store_ext ensureBlockAnchors 已接 parser_gen（DEBTS 020 已清偿行）、blockParser.ts 已删除",
+  "schema": "{file, fn, class: sink|bridge|deviation, target, evidence, gate}；class 三分类（PLAN-064 §0/§5.1）：sink=下沉 .at（含 web-codegen shim——widget .at 化即原生取代）/ bridge=VM 原生·宿主桥 / deviation=登记偏差（平台缺口走 auto-lang 提案，禁止第四类 jade 侧绕过）",
+  "counts": {
+    "sink": 245,
+    "bridge": 36,
+    "deviation": 21
+  },
+  "entries": [
+    {
+      "file": "agenda_panel_ext.ts",
+      "fn": "tabPath",
+      "class": "sink",
+      "target": "迁移时下沉 .at：tab 路径派生纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "agenda 迁移"
+    },
+    {
+      "file": "agenda_panel_ext.ts",
+      "fn": "fetchAgendaSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_agenda + try/catch 吞错映射（gap 13 惯例）→ #[api] get_agenda + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "agenda 迁移"
+    },
+    {
+      "file": "agenda_panel_ext.ts",
+      "fn": "agendaDisplay",
+      "class": "sink",
+      "target": "迁移时下沉 .at：日程展示行装配纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "agenda 迁移"
+    },
+    {
+      "file": "agenda_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "agenda_panel_ext.ts",
+      "fn": "CalendarClock",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "initAppShell",
+      "class": "sink",
+      "target": "迁移时下沉 .at：启动引导编排 → widget .Init 生命周期（5.3a 先例）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "app_shell 迁移"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "listenOpenFlashcards",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：window CustomEvent → VM msg 直派（README §2：总线更直接）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "app_shell 迁移"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "unlistenOpenFlashcards",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（注销臂；VM 无监听泄漏面）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "app_shell 迁移"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "hasWorkspaceRoot",
+      "class": "sink",
+      "target": "迁移时下沉 .at：空值判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "app_shell 迁移"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "noWorkspaceRoot",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上（互补分支）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "app_shell 迁移"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "useWorkspaceStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "useThemeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "Ribbon",
+      "class": "sink",
+      "target": "web-codegen shim：组件再导出 → 兄弟 widget .at 直引（5.3d WhiteboardPage 先例）；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "LeftSidebar",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "MainArea",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "RightSidebar",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "StatusBar",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "QuickSwitcher",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "CommandPalette",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "FlashcardModal",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "app_shell_ext.ts",
+      "fn": "WorkspaceOpener",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "backlinks_panel_ext.ts",
+      "fn": "tabFileStem",
+      "class": "sink",
+      "target": "迁移时下沉 .at：\".ad\" 前缀剥离纯函数（split 先例）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "backlinks 迁移"
+    },
+    {
+      "file": "backlinks_panel_ext.ts",
+      "fn": "fetchBacklinksSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_backlinks + try/catch 吞错映射 → #[api] + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "backlinks 迁移"
+    },
+    {
+      "file": "backlinks_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "blocks_store_ext.ts",
+      "fn": "parseBlocks",
+      "class": "sink",
+      "target": "迁移时下沉 .at：BlockNode 树→扁平行模型视图装配（读路径已接 engine parser 单源）；VM 侧 blocks_store 迁移时直接消费 back .at engine 面",
+      "evidence": "engine parser 单源（P022 Phase 5 读路径已切，DEBTS 020 已清偿行）",
+      "gate": "blocks_store 迁移"
+    },
+    {
+      "file": "blocks_store_ext.ts",
+      "fn": "parseIntoCache",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上（缓存装配）",
+      "evidence": "engine parser 单源（P022 Phase 5 读路径已切，DEBTS 020 已清偿行）",
+      "gate": "blocks_store 迁移"
+    },
+    {
+      "file": "blocks_store_ext.ts",
+      "fn": "cacheClear",
+      "class": "sink",
+      "target": "迁移时下沉 .at：缓存清空纯逻辑",
+      "evidence": "engine parser 单源（P022 Phase 5 读路径已切，DEBTS 020 已清偿行）",
+      "gate": "blocks_store 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "buildCommands",
+      "class": "sink",
+      "target": "迁移时下沉 .at：命令表装配纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "recentFileItems",
+      "class": "sink",
+      "target": "迁移时下沉 .at：最近文件项装配",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "allPaletteItems",
+      "class": "sink",
+      "target": "迁移时下沉 .at：条目联合装配",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "filterPalette",
+      "class": "sink",
+      "target": "迁移时下沉 .at：过滤纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "runPaletteItem",
+      "class": "sink",
+      "target": "迁移时下沉 .at：条目分派编排（→ store msg）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "nextIndex",
+      "class": "sink",
+      "target": "迁移时下沉 .at：索引推进纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "prevIndex",
+      "class": "sink",
+      "target": "迁移时下沉 .at：索引回退纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "listenPaletteHotkeys",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：全局热键 → 462-472 热键体系",
+      "evidence": "462-472 桌面壳热键/虚拟窗口体系（MCP 实机验收）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "unlistenPaletteHotkeys",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（注销臂）",
+      "evidence": "462-472 桌面壳热键/虚拟窗口体系（MCP 实机验收）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "focusPaletteInput",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：DOM focus → operation::focus（464 先例）",
+      "evidence": "iced 机制先例（popover/layout_collector/operation::focus，446/464）",
+      "gate": "palette 迁移"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "PaletteIcon",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "useSidebarStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "useThemeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "useRecentFilesStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "command_palette_ext.ts",
+      "fn": "useWorkspaceStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "create_page_prompt_ext.ts",
+      "fn": "CodeTag",
+      "class": "sink",
+      "target": "web-codegen shim：函数式组件（gap 31 真 code 标签替身）——VM 渲染无此缺口；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "create_page_prompt_ext.ts",
+      "fn": "wikiTitleToPath",
+      "class": "sink",
+      "target": "迁移时下沉 .at：标题→路径纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "create_page 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "findTab",
+      "class": "sink",
+      "target": "迁移时下沉 .at：tab 查找纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "tabBody",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字段读取纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "tabTitle",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "overlayDisplay",
+      "class": "sink",
+      "target": "迁移时下沉 .at：v-show display 值派生（gap 52）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "saveTabIfDirty",
+      "class": "sink",
+      "target": "迁移时下沉 .at：脏守卫保存编排 → store Save msg + confirmClose 偏差同源",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "loadTabIfNeeded",
+      "class": "sink",
+      "target": "迁移时下沉 .at：懒加载编排 → store Load msg",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "loadBlockFn",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：编辑器 fn prop → autodown_editor VM 面",
+      "evidence": "autodown_editor(cosmic-text) 替换 textarea = S3 登记项（P064 非目标）",
+      "gate": "S3 前置"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "assetUploadFn",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（上传通道 D4 原生直连）",
+      "evidence": "autodown_editor(cosmic-text) 替换 textarea = S3 登记项（P064 非目标）",
+      "gate": "S3 前置"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "runQueryFn",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（query 面）",
+      "evidence": "autodown_editor(cosmic-text) 替换 textarea = S3 登记项（P064 非目标）",
+      "gate": "S3 前置"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "extraSlashItemsFn",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（slash 菜单）",
+      "evidence": "autodown_editor(cosmic-text) 替换 textarea = S3 登记项（P064 非目标）",
+      "gate": "S3 前置"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "openWikiLink",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：wiki 导航 → store Open msg 直派",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "listenEditorHover",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：hover 定位 → iced widget bounds + popover（464 先例）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "unlistenEditorHover",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（注销臂）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "copyBlockLinkSafe",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：clipboard → arboard（ui-iced 内建，411 先例）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "scrollToBlockFromEvent",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：scrollToBlock → iced scroll_to + CustomEvent→msg；P063 scroll_to 绝对偏移限制在案",
+      "evidence": "PLAN-063 scroll_to 绝对偏移限制在案（§0/§4.2）",
+      "gate": "editor 迁移"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "EditorShell",
+      "class": "sink",
+      "target": "web-codegen shim：on* 改名 wrapper 组件（gap 51）——VM 无此缺口；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "HoverLinkBtn",
+      "class": "sink",
+      "target": "web-codegen shim：函数式组件；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "editor_tab_ext.ts",
+      "fn": "useDebounceFn",
+      "class": "sink",
+      "target": "web-codegen shim：@vueuse/core 再导出——VM 无 DOM 时序，无 debounce 需求；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "fileTree_store_ext.ts",
+      "fn": "listFilesResult",
+      "class": "sink",
+      "target": "迁移时下沉 .at：list_files 结果规整（#[api] 通道原生）",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "fileTree store 迁移"
+    },
+    {
+      "file": "fileTree_store_ext.ts",
+      "fn": "createFileRaw",
+      "class": "sink",
+      "target": "迁移时下沉 .at：RAW api 包装（rejection 传播语义，gap 13）→ #[api] 直调",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "fileTree store 迁移"
+    },
+    {
+      "file": "fileTree_store_ext.ts",
+      "fn": "duplicateFileRaw",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "fileTree store 迁移"
+    },
+    {
+      "file": "fileTree_store_ext.ts",
+      "fn": "renameFileRaw",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "fileTree store 迁移"
+    },
+    {
+      "file": "fileTree_store_ext.ts",
+      "fn": "deleteFileRaw",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "fileTree store 迁移"
+    },
+    {
+      "file": "fileTree_store_ext.ts",
+      "fn": "toggleExpanded",
+      "class": "sink",
+      "target": "迁移时下沉 .at：展开态切换纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "fileTree store 迁移"
+    },
+    {
+      "file": "file_tree_ext.ts",
+      "fn": "promptNewFile",
+      "class": "deviation",
+      "target": "登记偏差：window.prompt 阻塞对话框无 iced 等价；v1 登记偏差，输入模态走 auto-lang 提案（P022-6 同族）",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree 迁移"
+    },
+    {
+      "file": "file_tree_ext.ts",
+      "fn": "promptNewFolder",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree 迁移"
+    },
+    {
+      "file": "file_tree_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_ext.ts",
+      "fn": "Plus",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_ext.ts",
+      "fn": "FolderPlus",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "isNodeExpanded",
+      "class": "sink",
+      "target": "迁移时下沉 .at：展开态纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "px",
+      "class": "sink",
+      "target": "迁移时下沉 .at：数值→px 字符串纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "nodeIndent",
+      "class": "sink",
+      "target": "迁移时下沉 .at：缩进计算纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "openNodeFile",
+      "class": "sink",
+      "target": "迁移时下沉 .at：打开分派（→ store Open msg）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ctxNewFile",
+      "class": "deviation",
+      "target": "登记偏差：上下文菜单建项 = prompt/confirm 族 + api；输入/确认模态走 auto-lang 提案",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ctxNewFolder",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ctxRename",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ctxDuplicate",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ctxDelete",
+      "class": "deviation",
+      "target": "登记偏差：confirm 族（README §2 confirm 4 处之一）；v1 默认确认 + 登记",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "listenFirstClickOutside",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：outside-click → iced 指针事件/focus 链",
+      "evidence": "iced 机制先例（popover/layout_collector/operation::focus，446/464）",
+      "gate": "file_tree_node 迁移"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "NodeIcon",
+      "class": "sink",
+      "target": "web-codegen shim：dyn 组件（gap 27 族）——VM 渲染无此缺口；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ChevronRight",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "file_tree_node_ext.ts",
+      "fn": "ChevronDown",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "getDueCardsSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_due_cards + try/catch 吞错映射 → #[api] + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "flashcard 迁移"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "reviewCardSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：review_card 同上",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "flashcard 迁移"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "cardAt",
+      "class": "sink",
+      "target": "迁移时下沉 .at：卡片取值纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "flashcard 迁移"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "cardQuestion",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字段读取纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "flashcard 迁移"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "cardAnswer",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "flashcard 迁移"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "counterText",
+      "class": "sink",
+      "target": "迁移时下沉 .at：计数文案纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "flashcard 迁移"
+    },
+    {
+      "file": "flashcard_modal_ext.ts",
+      "fn": "Brain",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "centerLabel",
+      "class": "sink",
+      "target": "迁移时下沉 .at：标签文案纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "opacityLabel",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "eventNumber",
+      "class": "sink",
+      "target": "迁移时下沉 .at：DOM 事件值提取 → VM 事件参数直读",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "eventValue",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "eventChecked",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "setGraphNumber",
+      "class": "sink",
+      "target": "迁移时下沉 .at：store 写入编排",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "setGraphFlag",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "resetGraphSettings",
+      "class": "sink",
+      "target": "迁移时下沉 .at：重置编排（$patch 仿真 gap 14 同域）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "graph_controls 迁移"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "RangeInput",
+      "class": "sink",
+      "target": "web-codegen shim：函数式组件（gap 38 替身）——VM 原生 slider/无此缺口；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "useGraphStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "Search",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "SlidersHorizontal",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "Palette",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "Magnet",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_controls_ext.ts",
+      "fn": "Focus",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "visibleGraphNodes",
+      "class": "sink",
+      "target": "迁移时下沉 .at：节点可见性纯逻辑（列表形态 v1 复用）",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_page 迁移"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "visibleGraphEdges",
+      "class": "sink",
+      "target": "迁移时下沉 .at：边可见性纯逻辑（同上）",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_page 迁移"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "centerTitle",
+      "class": "sink",
+      "target": "迁移时下沉 .at：中心标题纯函数",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_page 迁移"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "fitGraphView",
+      "class": "deviation",
+      "target": "登记偏差：cytoscape fit → 画布无 iced 等价；README §3 列表形态替代",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_page 迁移"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "relayoutGraphView",
+      "class": "deviation",
+      "target": "登记偏差：力导向重排同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_page 迁移"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "useGraphStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "Globe",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "Maximize",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_page_ext.ts",
+      "fn": "RefreshCw",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_sidebar_ext.ts",
+      "fn": "graphStats",
+      "class": "sink",
+      "target": "迁移时下沉 .at：统计装配纯逻辑",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_sidebar 迁移"
+    },
+    {
+      "file": "graph_sidebar_ext.ts",
+      "fn": "topDegreeNodes",
+      "class": "sink",
+      "target": "迁移时下沉 .at：度数排序纯逻辑（display 字段先例 gap 46）",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_sidebar 迁移"
+    },
+    {
+      "file": "graph_sidebar_ext.ts",
+      "fn": "useGraphStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_sidebar_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_sidebar_ext.ts",
+      "fn": "Network",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "graph_store_ext.ts",
+      "fn": "loadGraphSettings",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：localStorage 持久化 → 401 session KV 桥（442 webcompat 实证，零改动语义）",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "graph_store 迁移"
+    },
+    {
+      "file": "graph_store_ext.ts",
+      "fn": "saveGraphSettings",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "graph_store 迁移"
+    },
+    {
+      "file": "graph_store_ext.ts",
+      "fn": "getGraphResult",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_graph 结果规整（#[api] 通道原生）",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "graph_store 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "buildElements",
+      "class": "sink",
+      "target": "迁移时下沉 .at：节点/边数据装配纯逻辑（列表形态 v1 复用）",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "initGraph",
+      "class": "deviation",
+      "target": "登记偏差：cytoscape 实例生命周期 → 画布无 iced 等价；README §3 v1 列表形态替代，画布路线 Phase 5 后再议",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "updateGraphElements",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "applyGraphSettings",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "applyGraphHighlight",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "destroyGraph",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "graphFit",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "graph_view_ext.ts",
+      "fn": "graphRelayout",
+      "class": "deviation",
+      "target": "登记偏差：同上",
+      "evidence": "desktop/README §3 cytoscape 裁定（v1 列表形态，画布不交付）",
+      "gate": "graph_view 迁移"
+    },
+    {
+      "file": "left_sidebar_ext.ts",
+      "fn": "sidebarLeftWidth",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：拖拽宽度 → iced layout_collector / widget bounds",
+      "evidence": "iced 机制先例（popover/layout_collector/operation::focus，446/464）",
+      "gate": "left_sidebar 迁移"
+    },
+    {
+      "file": "left_sidebar_ext.ts",
+      "fn": "useSidebarStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "left_sidebar_ext.ts",
+      "fn": "FileTree",
+      "class": "sink",
+      "target": "web-codegen shim：组件再导出 → 兄弟 widget 直引；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "left_sidebar_ext.ts",
+      "fn": "SearchPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "left_sidebar_ext.ts",
+      "fn": "RecentFilesPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "editorTabs",
+      "class": "sink",
+      "target": "迁移时下沉 .at：编辑 tab 视图模型装配",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "hasGraphTab",
+      "class": "sink",
+      "target": "迁移时下沉 .at：判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "graphTabPath",
+      "class": "sink",
+      "target": "迁移时下沉 .at：路径派生纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "graphCenter",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字段读取",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "graphDepth",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字段读取",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "hasWhiteboardTab",
+      "class": "sink",
+      "target": "迁移时下沉 .at：判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "whiteboardPath",
+      "class": "sink",
+      "target": "迁移时下沉 .at：路径派生",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "noTabs",
+      "class": "sink",
+      "target": "迁移时下沉 .at：空态判定",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "main_area 迁移"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "EmptyFileIcon",
+      "class": "sink",
+      "target": "web-codegen shim：函数式图标组件；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "main_area_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "outgoing_links_panel_ext.ts",
+      "fn": "tabFileStem",
+      "class": "sink",
+      "target": "迁移时下沉 .at：\".ad\" 前缀剥离纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "outlinks 迁移"
+    },
+    {
+      "file": "outgoing_links_panel_ext.ts",
+      "fn": "fetchOutlinksSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_outlinks + try/catch → #[api] + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "outlinks 迁移"
+    },
+    {
+      "file": "outgoing_links_panel_ext.ts",
+      "fn": "openOutlinkTarget",
+      "class": "deviation",
+      "target": "登记偏差：虚链跳转 confirm 建页（README §2 confirm 4 处之一）；v1 默认确认/登记 + store Open msg",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "outlinks 迁移"
+    },
+    {
+      "file": "outgoing_links_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "outline_panel_ext.ts",
+      "fn": "outlineHeadings",
+      "class": "sink",
+      "target": "迁移时下沉 .at：标题提取纯逻辑（blocks 视图装配同域）",
+      "evidence": "engine parser 单源（P022 Phase 5 读路径已切，DEBTS 020 已清偿行）",
+      "gate": "outline 迁移"
+    },
+    {
+      "file": "outline_panel_ext.ts",
+      "fn": "dispatchScrollToHeading",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：CustomEvent 总线 → VM msg 直派（README §2：更直接无需延迟）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "outline 迁移"
+    },
+    {
+      "file": "outline_panel_ext.ts",
+      "fn": "useBlocksStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "outline_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "plugins_store_ext.ts",
+      "fn": "loadPluginsResult",
+      "class": "sink",
+      "target": "迁移时下沉 .at：载入结果规整（error map 语义 gap 13）",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "plugins store 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "syncEntries",
+      "class": "sink",
+      "target": "迁移时下沉 .at：frontmatter↔条目同步纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "fmJson",
+      "class": "sink",
+      "target": "迁移时下沉 .at：JSON 序列化纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "propsDirty",
+      "class": "sink",
+      "target": "迁移时下沉 .at：脏判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "commitFrontmatter",
+      "class": "sink",
+      "target": "迁移时下沉 .at：提交回写编排（CAS 语义 adoptSaveResult 同族）",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "setEntryType",
+      "class": "sink",
+      "target": "迁移时下沉 .at：条目类型写入纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "tryAddProperty",
+      "class": "sink",
+      "target": "迁移时下沉 .at：新增条目守卫逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "withPropDisplay",
+      "class": "sink",
+      "target": "迁移时下沉 .at：展示字段装配",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "eventValue",
+      "class": "sink",
+      "target": "迁移时下沉 .at：事件值提取 → VM 事件参数直读",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "properties 迁移"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "tabsActiveTab",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 字段再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "useDebounceFn",
+      "class": "sink",
+      "target": "web-codegen shim：@vueuse/core 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "Plus",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "Trash2",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "Check",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "properties_panel_ext.ts",
+      "fn": "X",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "collectFiles",
+      "class": "sink",
+      "target": "迁移时下沉 .at：文件清单装配纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "filterFiles",
+      "class": "sink",
+      "target": "迁移时下沉 .at：过滤纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "nextIndex",
+      "class": "sink",
+      "target": "迁移时下沉 .at：索引推进纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "prevIndex",
+      "class": "sink",
+      "target": "迁移时下沉 .at：索引回退纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "listenSwitcherHotkeys",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：全局热键 → 462-472 热键体系",
+      "evidence": "462-472 桌面壳热键/虚拟窗口体系（MCP 实机验收）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "unlistenSwitcherHotkeys",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上（注销臂）",
+      "evidence": "462-472 桌面壳热键/虚拟窗口体系（MCP 实机验收）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "focusSwitcherInput",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：DOM focus → operation::focus",
+      "evidence": "iced 机制先例（popover/layout_collector/operation::focus，446/464）",
+      "gate": "switcher 迁移"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "quick_switcher_ext.ts",
+      "fn": "Search",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "recentFiles_store_ext.ts",
+      "fn": "loadRecentFiles",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：localStorage → 401 session KV 桥（零改动语义）",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "recentFiles store 迁移"
+    },
+    {
+      "file": "recentFiles_store_ext.ts",
+      "fn": "recordRecentFile",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "recentFiles store 迁移"
+    },
+    {
+      "file": "recentFiles_store_ext.ts",
+      "fn": "removeRecentFile",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "recentFiles store 迁移"
+    },
+    {
+      "file": "recentFiles_store_ext.ts",
+      "fn": "clearRecentFiles",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：同上",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "recentFiles store 迁移"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "recentFilesWithTime",
+      "class": "sink",
+      "target": "迁移时下沉 .at：时间戳装配纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "recent panel 迁移"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "removeRecent",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 方法转发；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "useRecentFilesStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "Clock",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "X",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "recent_files_panel_ext.ts",
+      "fn": "Trash2",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "ribbonItems",
+      "class": "sink",
+      "target": "迁移时下沉 .at：按钮项装配纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "ribbon 迁移"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "graphActive",
+      "class": "sink",
+      "target": "迁移时下沉 .at：图谱态判定",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "ribbon 迁移"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "openTodayNote",
+      "class": "sink",
+      "target": "迁移时下沉 .at：今日笔记导航编排（→ store msg）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "ribbon 迁移"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "useSidebarStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "ThemePopover",
+      "class": "sink",
+      "target": "web-codegen shim：组件再导出 → 兄弟 widget 直引；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "Palette",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "Network",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "ribbon_ext.ts",
+      "fn": "CalendarDays",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "tabIsGraph",
+      "class": "sink",
+      "target": "迁移时下沉 .at：图谱 tab 判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "right_sidebar 迁移"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "GraphSidebar",
+      "class": "sink",
+      "target": "web-codegen shim：组件再导出 → 兄弟 widget 直引；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "AgendaPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "OutlinePanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "BacklinksPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "OutgoingLinksPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "UnlinkedReferencesPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "right_sidebar_ext.ts",
+      "fn": "PropertiesPanel",
+      "class": "sink",
+      "target": "web-codegen shim：同上；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "searchSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：search/search_pages + try/catch → #[api] + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "search 迁移"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "snippetHtml",
+      "class": "sink",
+      "target": "web-codegen shim：v-html 高亮片段（web-only）；VM 渲染走 autodown-core 单源；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "withSearchDisplay",
+      "class": "sink",
+      "target": "迁移时下沉 .at：结果展示装配纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "search 迁移"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "scheduleScrollToBlock",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：150ms 延迟滚动 → iced scroll_to 直派（README §2：无需延迟 hack）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "search 迁移"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "useDebounceFn",
+      "class": "sink",
+      "target": "web-codegen shim：@vueuse/core 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "Search",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "FileText",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "search_panel_ext.ts",
+      "fn": "Box",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "workspaceName",
+      "class": "sink",
+      "target": "迁移时下沉 .at：路径→名称纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "rootTitle",
+      "class": "sink",
+      "target": "迁移时下沉 .at：根标题纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "tabBody",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字段读取纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "tabPath",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "tabSaving",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "tabDirty",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "wordCount",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字数统计纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "charCount",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字符统计纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "linkCount",
+      "class": "sink",
+      "target": "迁移时下沉 .at：链接统计纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "saveLabel",
+      "class": "sink",
+      "target": "迁移时下沉 .at：保存态文案纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "plural",
+      "class": "sink",
+      "target": "迁移时下沉 .at：复数文案纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "fetchBacklinkCountSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_backlinks + try/catch → #[api] + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "status_bar 迁移"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "useWorkspaceStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "status_bar_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "stripTabs",
+      "class": "sink",
+      "target": "迁移时下沉 .at：strip 视图模型装配",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "hasStripTabs",
+      "class": "sink",
+      "target": "迁移时下沉 .at：空态判定",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "canOpenLocalGraph",
+      "class": "sink",
+      "target": "迁移时下沉 .at：判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "switchTab",
+      "class": "sink",
+      "target": "迁移时下沉 .at：切换编排（→ store active_path）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "closeTab",
+      "class": "sink",
+      "target": "迁移时下沉 .at：关闭编排（→ store Close msg + confirmClose 偏差同源）",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "openLocalGraphTab",
+      "class": "sink",
+      "target": "迁移时下沉 .at：局部图谱 tab 编排（→ OpenGraph msg）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "openTodayNote",
+      "class": "sink",
+      "target": "迁移时下沉 .at：今日笔记编排",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "navigateDailyNote",
+      "class": "sink",
+      "target": "迁移时下沉 .at：日记导航编排",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "hasStripDaily",
+      "class": "sink",
+      "target": "迁移时下沉 .at：判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "stripDailyTitle",
+      "class": "sink",
+      "target": "迁移时下沉 .at：标题纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "tab_strip 迁移"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "X",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "Focus",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "Network",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "ChevronLeft",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "ChevronRight",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tab_strip_ext.ts",
+      "fn": "CalendarDays",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "rethrow",
+      "class": "sink",
+      "target": "迁移时下沉 .at：catch(e){rethrow(e)} 语义 = 删除 catch 后天然传播（DSL 无 throw；try/finally 保留）",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "ensureBlockAnchors",
+      "class": "deviation",
+      "target": "登记偏差：VM v1 保存不注入 ^锚点（与骨架 app.at 现行为一致，P022 slice 4 实证）；web 侧保留全量（parser_gen 行号面）。升级 sink 前置=VM parser 原生行号面可消费",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "readWikiSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：read_wiki + try/catch null 映射内联到 store 调用点（原 load catch 忠实翻译）；VM/PC 双轨同语义",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "recordRecent",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：web 侧 Pinia recentFiles 桥（语义不动）；VM 侧 401 session KV（localStorage 桥）",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "adoptSaveResult",
+      "class": "sink",
+      "target": "迁移时下沉 .at：保存回写 CAS 纯状态逻辑 → store handler 内联/纯值 helper（022 Phase 3 双读竞争防护同域）",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "stripExt",
+      "class": "sink",
+      "target": "迁移时下沉 .at：后缀剥离 → .at 纯函数（split 先例；DSL 无 regex 字面量）",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "T-04"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "confirmClose",
+      "class": "deviation",
+      "target": "登记偏差：VM 轨默认确认（关闭即弃）；web 侧 window.confirm 保留。confirm 模态到位升级 bridge（P022-6 既定语义保形）",
+      "evidence": "PLAN-064 §5.2 六助手处置表",
+      "gate": "T-04/T-05"
+    },
+    {
+      "file": "tabs_store_ext.ts",
+      "fn": "writeWiki",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：RAW writeWiki → #[api] write_wiki 通道别名（web 侧 TS client 面；VM 侧 340 改写）",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "T-04"
+    },
+    {
+      "file": "theme_popover_ext.ts",
+      "fn": "themeAccents",
+      "class": "sink",
+      "target": "迁移时下沉 .at：主题色表常量/纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "theme_popover 迁移"
+    },
+    {
+      "file": "theme_popover_ext.ts",
+      "fn": "isOutsideThemePopover",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：outside 判定 → iced popover 原生机制",
+      "evidence": "iced 机制先例（popover/layout_collector/operation::focus，446/464）",
+      "gate": "theme_popover 迁移"
+    },
+    {
+      "file": "theme_popover_ext.ts",
+      "fn": "useThemeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "theme_popover_ext.ts",
+      "fn": "Sun",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "theme_popover_ext.ts",
+      "fn": "Moon",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "theme_store_ext.ts",
+      "fn": "getInitialThemeMode",
+      "class": "deviation",
+      "target": "登记偏差：matchMedia prefers-color-scheme → 桌面无系统主题跟随需求，初值恒 dark（README §2 登记偏差）；升级 bridge 前置=VM 读系统档",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "theme_store 迁移"
+    },
+    {
+      "file": "theme_store_ext.ts",
+      "fn": "getInitialThemeAccent",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：localStorage → 401 session KV 桥",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "theme_store 迁移"
+    },
+    {
+      "file": "theme_store_ext.ts",
+      "fn": "applyThemeClasses",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：documentElement.classList → AUTO_UI_THEME env + VM 主题态（渲染器已有链路）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "theme_store 迁移"
+    },
+    {
+      "file": "theme_store_ext.ts",
+      "fn": "persistTheme",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：localStorage → 401 session KV 桥",
+      "evidence": "Plan 401 session KV；442 webcompat localStorage 桥（None-on-miss）",
+      "gate": "theme_store 迁移"
+    },
+    {
+      "file": "unlinked_references_panel_ext.ts",
+      "fn": "tabTitle",
+      "class": "sink",
+      "target": "迁移时下沉 .at：字段读取纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "unlinked 迁移"
+    },
+    {
+      "file": "unlinked_references_panel_ext.ts",
+      "fn": "tabPath",
+      "class": "sink",
+      "target": "迁移时下沉 .at：同上",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "unlinked 迁移"
+    },
+    {
+      "file": "unlinked_references_panel_ext.ts",
+      "fn": "fetchUnlinkedSafe",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_unlinked_refs + try/catch → #[api] + .at try/catch",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "unlinked 迁移"
+    },
+    {
+      "file": "unlinked_references_panel_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "loadWhiteboard",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：read_whiteboard #[api] 通道（多回调编排 → .at try/catch）",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "saveWhiteboard",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：write_whiteboard #[api] 通道",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "addNoteShape",
+      "class": "sink",
+      "target": "迁移时下沉 .at：shape 追加纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "shapeList",
+      "class": "sink",
+      "target": "迁移时下沉 .at：shape 列表装配",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "readLabel",
+      "class": "sink",
+      "target": "迁移时下沉 .at：标签读取纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "openShapeTarget",
+      "class": "sink",
+      "target": "迁移时下沉 .at：目标导航编排",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "showError",
+      "class": "sink",
+      "target": "迁移时下沉 .at：错误态判定纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "showCanvas",
+      "class": "sink",
+      "target": "迁移时下沉 .at：画布态判定纯逻辑（gap 54 互斥三分支）",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "whiteboard 迁移"
+    },
+    {
+      "file": "whiteboard_page_ext.ts",
+      "fn": "useTabsStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "openWorkspaceFlow",
+      "class": "bridge",
+      "target": "VM 原生/宿主桥：open_workspace #[api] 通道编排",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "workspace_opener 迁移"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "clearWorkspaceError",
+      "class": "sink",
+      "target": "迁移时下沉 .at：错误态清理纯逻辑",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "workspace_opener 迁移"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "workspaceErrorText",
+      "class": "sink",
+      "target": "迁移时下沉 .at：错误文案纯函数",
+      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
+      "gate": "workspace_opener 迁移"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "chooseWorkspaceDir",
+      "class": "deviation",
+      "target": "登记偏差：showDirectoryPicker 宿主能力 → rfd 提案（README §7.1/§2；P022-6 在案）；v1 保留手动输入路径降级分支",
+      "evidence": "P022-6 已登记延后项（confirm 模态/dir-picker 宿主能力）",
+      "gate": "workspace_opener 迁移"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "WorkspaceLogo",
+      "class": "sink",
+      "target": "web-codegen shim：组件再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "useWorkspaceStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "useFileTreeStore",
+      "class": "sink",
+      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "FolderOpen",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "workspace_opener_ext.ts",
+      "fn": "Info",
+      "class": "sink",
+      "target": "web-codegen shim：lucide 图标再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
+      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
+      "gate": "-"
+    },
+    {
+      "file": "workspace_store_ext.ts",
+      "fn": "getWorkspaceResult",
+      "class": "sink",
+      "target": "迁移时下沉 .at：get_workspace 结果规整（#[api] 通道原生）",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "workspace store 迁移"
+    },
+    {
+      "file": "workspace_store_ext.ts",
+      "fn": "openWorkspaceResult",
+      "class": "sink",
+      "target": "迁移时下沉 .at：open_workspace 结果规整",
+      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
+      "gate": "workspace store 迁移"
+    }
+  ]
+}

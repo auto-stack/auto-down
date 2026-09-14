@@ -878,6 +878,17 @@
         "related": [
           "PLAN-064"
         ]
+      },
+      {
+        "id": "P066-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "auto-lang 原生组件外部注册 SPI — NativeWidgetRegistry + View::Custom",
+        "content": "- **注册表**（auto-lang src/ui/native_widget.rs）：View/Element 双入口——View factory 派发期产 View（案 a sugar：组件用既有 View 词汇表达，autodown_editor 首迁即此形态）；Element 入口派发产 View::Custom { name, props, events, style }，iced lowering 期查表（首个后端原生件落地时建 Element factory 表，现防御臂=零高 Space）。同名注册拒绝记 violation；折叠查找（P435 P8-6 同规）；dump() 门检面。\n- **派发序**（aura_view_builder 两站点 fallback）：内置硬编码臂 → NativeWidgetRegistry（builder 字段缺省=进程级 global，feature 门控注册；测试经 with_native_registry 注入）→ .at AuraWidget → 折叠兜底 → 未知 tag 兜底。未注册名行为与迁移前一致（保形）。\n- **View::Custom**：name+props 明文透传（快照 kind=注册名、props 在场——MCP 断言面保明，不用 Box<dyn>）；事件→消息派发期解析、按键排序保快照确定性；iced/gpui/vnode 三面配套臂。\n- **治理**：schema 漂移围栏（P435 P0）扩面——scan_native_registrations 把注册名并入 vb 并集（mod tests 截断免夹具混入），外部组件天然受围栏覆盖，臂式/注册表式注册同权。\n- **首迁 autodown_editor**：双拼写直接键注册（autodown_editor+autodowneditor）+无 feature textarea 降级注册（D-GAP-3 链保持），臂体提取 convert_autodown_editor_native（pub(crate)）。\n- **stream 渐进（编辑臂）**：core 流式位 readonly=streaming（TS stream→edit v1 裁定）+ handle_input 全门控 + 尾部状态条（高度计入 DocFrame.height）+ rebuild_with parse flag 直通单源三态（P032）；「恒按 final」豁免摘除。",
+        "file": "docs/plans/archived/066-auto-lang-native-widget-spi.md",
+        "related": [
+          "PLAN-066"
+        ]
       }
     ],
     "designs": [
@@ -1729,6 +1740,17 @@
         "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
         "related": [
           "PLAN-064"
+        ]
+      },
+      {
+        "id": "P066-2",
+        "section": "tests",
+        "status": "verified",
+        "title": "auto-lang 原生组件外部注册 SPI — 四门验收",
+        "content": "- **等价门**：plan066_editor_tag_dispatches_via_native_registry（key/value/final/on_change/placeholder 逐字段）+ 红相实证（注册缺席→等价红→恢复转绿）。\n- **保形门**：plan066_unknown_tag_bypasses_native_registry + schema_drift_fence 2/2（围栏扩面后）+ 折叠别名（autodown-editor/AutodownEditor 命中）。\n- **三态门**：core 4 测——flag 往返（同内容翻 final 也解锁）/流式输入门（哑→解锁入核）/parse flag 直通（悬空列表标记流式剥离→final 产出，emit 观测）/状态条在册+高度计入。\n- **实机门**：jade desktop vm-smoke 16 臂 ×4（port 9264/9266/9268/9270，两代 exe，fixture 恢复协议每轮 hash 一致）；tf 3556/3556 + tv 3702/3702。\n- **单测**：native_widget 7/7（注册/查得/重名 violation/折叠/miss/dump 排序/global 注册）。",
+        "file": "docs/plans/archived/066-auto-lang-native-widget-spi.md",
+        "related": [
+          "PLAN-066"
         ]
       }
     ],

@@ -1,4 +1,6 @@
 name: "jade-garden-front-auto"
+title: "Jade Garden"
+title_zh: "玉圃"
 version: "0.1.0"
 scene: "ui"
 render: "vue"

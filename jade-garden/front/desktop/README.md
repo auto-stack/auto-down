@@ -262,8 +262,15 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
 | ③ | **CALL_SPEC 返回列表 RC 接线**（`.length` 恒 0，Plan 432 D26 对偶）：导入导出返回计数面 | desktop/README §7.3 遗留①；plan-022 slice 3 D4 |
 | ④ | **tick/timer 原语**：hover/滚动延迟类交互在 VM 轨的等价物（DynamicComponent tick_interval 面） | DEBTS 059；desktop/README §2 timers 裁定 |
 | ⑤ | 交叉引用 P063 在案两项（不重复立项）：scroll_to 仅绝对偏移限制；AnchorSlot 委托层 downcast panic | docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md §0/§4.2 |
-| ⑥ | **store facade VM 缺口簇（T-05 执行期实证，tabs_store 迁移前置）**：a) widget handler 内读 store 字段失效（0/"" 哨兵，442 corpus 只证 model-var 读）；b) 视图对 store 字段不响应式回读（初值后冻结，notice/active_body 文本节点不更新）；c) store 模块内 `#[api]` 调用未走 340 HTTP 改写（静默执行契约 stub `return None`，read/write 均不落盘）；d) widget 模型数组 `.splice` 静默失效；e) lambda 捕获 handler 本地变量 = "undefined variable" 编译错（msg 参数捕获可用），lambda 比较表达式内读 self 字段运行时静默失效 | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录 |
+| ⑥ | **store facade VM 缺口簇**（2026-09-14 PLAN-622 精化：a/b/c 经最小语料实证当前 master 已健康，守卫语料 `plan622_store_facade_gap_tests` 钉死；**d 已修** auto.list.splice 2071；**e 已修** 捕获槽位编址 + self 特判捕获 __state）；**残余接缝（facade 切换实机新发现）**：合并单态路径 widget handler 读 store 字段解析 App_State 报 Field not found（repro：本目录 app.at facade 形态 `.tabs.find` 实机崩），伴生 `?str` 跨状态读 Invalid object ID、`&&/||` 为 VM 布尔逻辑、findIndex 静默失效——jade 侧规避形态已备（plain str 哨兵/显式空值守卫/显式索引狩猎，tabs_store.at 预备副本见 git 历史） | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录 |
 
 > 提案⑥修复后：desktop/src/front/tabs_store.at 回归（git 历史 plan-064-dev
 > 5eb0279 前后可考），app.at 切 `use store: Tabs` facade 形态，vm-smoke
 > tabs 臂断言面不变。
+>
+> **2026-09-14 facade 切换实机结果**：切换已实装并实测——a/b/c 语义健康面
+> 确认（title/read 臂过），d/e 修复生效面确认，但残余接缝（合并单态跨状态
+> 字段读 Field not found on App_State）使 Save/Edit 臂崩，已按门纪律回退
+> workaround 形态（smoke 复验 16 ✓）。tabs_store.at 预备副本（含三处 VM
+> delta：findIndex 索引狩猎、&&/|| 显式守卫、active_path str 哨兵）在
+> commit 历史；残余接缝转介 auto-lang（repro = 本次切换 diff）。

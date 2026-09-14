@@ -1,13 +1,13 @@
 ---
 plan_id: PLAN-066
-status: execution_done
+status: reviewed
 feature_name: auto-lang 原生组件外部注册 SPI——NativeWidgetRegistry + View::Custom + autodown_editor 首迁 + stream 渐进臂
 author: zcode
 created_at: 2026-09-14T15:30:00+08:00
-updated_at: 2026-09-14T23:59:00+08:00
+updated_at: 2026-09-15T00:30:00+08:00
 plan_revision: 1
-current_step: 5
-total_steps: 5
+current_step: 6
+total_steps: 6
 supersedes_spec_components: []
 new_spec_components:
   - ".autoos/specs.json#P066-1"
@@ -187,6 +187,18 @@ auto-down 兄弟；主检出 engine 无改动，符合只读消费）。
       （72fd9d70c T1/T2、31a2a1035 T3，TDD 痕迹+红相注记在案）；本仓四处文
       档同步落账（提案状态行 / README §8⑦ / DEBTS 066 / 本节）；§9 复审记
       录落款。
+- [x] **T6（评审 F1 修复，2026-09-15）**：schema 漂移围栏扩面——
+      NativeWidgetRegistry 注册面并入 vb 并集。评审 tf 门禁抓获真回归：
+      围栏词表原只认 aura_view_builder 臂式注册（`match tag` 两表并集），
+      autodown_editor 迁注册表后 P0 围栏报 `render/rs_not_in_vb` 孤儿。
+      正解=**围栏认识新注册通道**（`scan_native_registrations`：剥行注释
+      扫 `register_view/element` 首参——不走 `skeleton` 免字符串内容被掏
+      空；`mod tests` 截断免单测夹具混入）而非 baseline 白名单——后续外部
+      组件天然受同一围栏覆盖；探针名改 `test_register_element` 进程内登记
+      （生产源面/P1 双清）。commit e39e581d5。
+      **[✅ 已完成 2026-09-15]** 复验：schema_drift 2/2 + tf 3556/3556 +
+      tv 3702/3702 + 特征档 103/104（唯一红=§9F2 预存隔离怪象）+
+      smoke 第 3 轮绿。
 
 依赖序：T1 → T2 → T3 → T4 → T5（T3 独立于 T2 可并行，但同文件区域冲突风险
 高，按序执行）。
@@ -238,6 +250,45 @@ jade vm-smoke 16 臂 ×2 全绿（worktree exe，port 9264/9266，fixture 恢复
 两轮 hash 一致）|
 blockers: 无 |
 next: review（auto-plan-review；彼仓分支折 master 随 merge 通道）
+```
+
+```
+stage: review | plan_id: PLAN-066 | plan_revision: 1 | outcome: needs_fix →
+pass（修复后重评）|
+reviewed_commit: e39e581d5（T6 修复后终态；首轮评审对象 31a2a1035）|
+base_commit: 8aeb8150e9 | dependency_revisions: autodown-core =
+auto-down 主检出 9c6f3bf（实现期间零改动，worktree 干净）|
+spec_inputs: 本计划 §8 proposed delta（P066-1/P066-2，随 merge 落账，评审期
+未发布）|
+acceptance_results:
+- AC-1/AC-2（SPI 基建：注册表语义/派发序/快照配套）pass——native_widget 单测
+  7/7 + 语料 Element 通道/未知名保形（复跑绿）；
+- AC-3（首迁等价）pass——等价语料逐字段绿 + 红相在案 + 评审 diff 确认臂体逐
+  字节搬移；证据形态注记：逐字段断言 + 搬移构造保形替代字面"快照逐字节
+  diff"（vm-smoke 16 臂为行为级字节门）；
+- AC-4（stream 三态）pass——4 测绿（flag 往返/输入门/parse 直通/状态条）；
+  语义注记：编辑面形态=TS stream→edit v1 裁定（readonly=streaming+状态条，
+  ADR 为准），032 未闭合降级经 parse flag 单源生效，开放 fence 的 032
+  loading 骨架视觉属只读轨（只读臂已有）；
+- AC-5（实机）pass——vm-smoke 16 臂 ×3（9264/9268 两 exe 代次，fixture 恢复
+  协议每轮 hash 一致）。
+findings:
+- F1（已修复，T6）：tf 门禁抓获 schema_drift_fence 红——围栏词表不识注册表
+  注册通道，autodown_editor 迁出臂表后报 render/rs_not_in_vb 孤儿。修复=
+  围栏扩面认识注册面（非 baseline 白名单），commit e39e581d5；复验 schema_
+  drift 2/2 + tf 3556/3556 绿；
+- F2（预存，非本计划，不阻塞）：editor_text_public_api_roundtrip 滤串运行
+  报字体回调未安装、全量运行绿（base stash 复现，实施会话已记）；
+- F3（预存环境抖动族，不阻塞）：ffi_dual_019 tf 首轮并发红、单跑绿、tf
+  复跑全绿——063 文档同类环境抖动族先例。
+evidence: review-gates.log / reverify.log（worktree 根，随 merge 归档摘录）；
+AC 映射 §1↔§4 本文件 |
+spec delta 复核: P066-1/P066-2 文本与实现一致、无废案残留；touched_goals=[]
+（无 goals 面变更——纯组件注册架构新增，不动既有目标）|
+limitations: 评审在实施会话内进行（独立会话不可用）——结论经工件重建 + 门禁
+重跑（tf/tv/schema_drift/特征档/smoke 全部评审基线新鲜复跑）而非执行摘要 |
+next: merge（彼仓 auto-down-dev 四 commit 折 master + worktree 守卫清理随
+merge 通道）
 ```
 
 **执行期发现（转介/登记）**：

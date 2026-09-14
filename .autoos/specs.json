@@ -420,6 +420,17 @@
         "related": [
           "PLAN-063"
         ]
+      },
+      {
+        "id": "P064-2",
+        "section": "goals",
+        "status": "proposed",
+        "title": "jade-garden VM 轨第一刀 — 目标",
+        "content": "1. **G1 注册表建账**：37 个 *_ext.ts 全量复扫，逐导出 fn 三分类登记，\n   门检可重跑、未登记即红。\n2. **G2 harness 可重复**：jade vm-smoke 六流臂一键跑通，内建 fixture\n   恢复协议（跑前后内容一致），日志含 auto-lang 构建基线。\n3. **G3 tabs 编辑器流 VM 通**：多 tab 打开/切换/脏守卫（降级语义）/\n   保存落盘/双读竞争防护五断言经 MCP 驱动全过。\n4. **G4 web 零回归**：十套 node 门 + 契约门 + cargo + vue-tsc/vite +\n   e2e 全绿。\n5. **G5 提案清单入档**：auto-lang 侧阻塞项各含实证引用（DEBTS 064 +\n   desktop/README §8）。\n非目标：其余 28 widget 批量迁移；autodown_editor（cosmic-text）替换\ntextarea（S3，前置 P063 T-04d 块锚定落地）；图谱力导向画布；Tauri 路线\n（P022 §7.1 已否决）；auto-lang 仓内任何代码改动。",
+        "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
+        "related": [
+          "PLAN-064"
+        ]
       }
     ],
     "architecture": [
@@ -856,6 +867,17 @@
         "related": [
           "PLAN-063"
         ]
+      },
+      {
+        "id": "P064-3",
+        "section": "architecture",
+        "status": "stable",
+        "title": "jade-garden VM 轨第一刀 — ext 注册表 + 门检 + harness 架构",
+        "content": "- **三分类注册表**（desktop/ext-registry.json）：sink=下沉 .at（含\n  web-codegen shim——图标/组件/facade 再导出，widget .at 化即原生取代）；\n  bridge=VM 原生·宿主桥（clipboard=arboard、localStorage=401 session\n  KV、#[api] 通道）；deviation=登记偏差（confirm/matchMedia/dir-picker/\n  ensureBlockAnchors）。禁止第四类 \"jade 侧绕过\"——平台能力缺口走\n  auto-lang 提案（P022 §7.1 裁定延续）。\n- **双表对拍门检**（desktop/scripts/ext-registry-gate.mjs）：导出面 ↔\n  注册表逐 (file, fn) 精确匹配（未登记=红/死账=红）；store `use back.api:`\n  名单 ⊆ 对应 <stem>_ext.ts 导出面（sed 契约）；.at 源 `use {…from}` 引用\n  必须已登记。接入点=独立 node 脚本，不改 gen.mjs（避免发射器面扩大）。\n- **vm-smoke harness 模式**（desktop/vm-smoke.mjs）：AUTOUI_MCP_PORT +\n  `auto run -r vm`（split：AUTO_VM_MERGE=0 + AUTO_BACKEND；AUTO_BACKEND\n  驱动 340 HTTP 改写，模式横幅措辞与实际通路无关）；断言全走 MCP 合成\n  通道（autoui_state/snapshot/action——物理点击通道不稳，P022 slice 3\n  登记项②）；fixture git 语义恢复协议（hash 契约=wiki/**/*.ad 文档面，\n  后端索引 sqlite/edn 非契约；scoped checkout+clean）；MCP initialize ≠\n  UI 已渲染（臂前须轮询首帧快照）；仅杀自 spawn PID（PLAN-049 卫生）；\n  窗口偶发自退重试一次。",
+        "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
+        "related": [
+          "PLAN-064"
+        ]
       }
     ],
     "designs": [
@@ -1282,6 +1304,17 @@
         "related": [
           "PLAN-063"
         ]
+      },
+      {
+        "id": "P064-4",
+        "section": "designs",
+        "status": "stable",
+        "title": "jade-garden VM 轨第一刀 — tabs_store 六助手处置终态 + tabs 流形态",
+        "content": "- **六助手处置终态**（use back.api 契约 fn 名化：read_wiki, write_wiki,\n  ensureBlockAnchors, recordRecent, confirmClose, rethrow）：\n  rethrow=deviation（web ext 再抛保 facade rejection 传播/VM plain fn\n  吞错——DSL 无 throw 且 catch 强制必填，编译器实证）；\n  stripExt/adoptSaveResult=sunk（store 文件 module fn，Plan 367 P2-4，\n  纯值 CAS 双树可用）；readWikiSafe=内联 try/catch null 映射（3 调用点）；\n  ensureBlockAnchors=deviation（web 全量 parser_gen/VM identity——与骨架\n  save 现行为一致）；recordRecent=bridge（web Pinia/VM 401 session KV）；\n  confirmClose=deviation（web window.confirm/VM 默认确认即弃）。\n  ext 收缩为 web shim 面（6 导出）；api.at 增 VM 助手层 4 plain fn（无\n  #[api]，契约门不计）随 gen.mjs 部署 desktop 副本。\n- **tabs 流 v1 形态裁定**：widget 状态机等价实现（022 Phase 3 双读竞争\n  防护语义保形：已 loaded 重复 Open 只激活不重读、CAS 回声采纳；closed\n  标记删除——VM 模型数组 splice 静默失效绕行；反链 source_path 为页标题\n  需 .ad 后缀归一）。tabs_store facade 迁移前置 = auto-lang 提案⑥\n  （store facade VM 缺口簇：handler 读 store 字段失效/视图不响应式回读/\n  store 内 #[api] 不走 340 改写/splice 失效/lambda 本地捕获编译错），\n  修复后 desktop 回归 `use store: Tabs` 形态（desktop/README §8）。",
+        "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
+        "related": [
+          "PLAN-064"
+        ]
       }
     ],
     "tests": [
@@ -1685,6 +1718,17 @@
         "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
         "related": [
           "PLAN-063"
+        ]
+      },
+      {
+        "id": "P064-5",
+        "section": "tests",
+        "status": "verified",
+        "title": "jade-garden VM 轨第一刀 — 测试设计",
+        "content": "- **web 门（全部既有）**：十套 node parity 门 + 契约门\n  （api-contract-routes：29/29 路由 ↔ 契约节对拍；GET /api/health 为\n  daemon ping，经 VM_ENVELOPE_EXEMPT 豁免 #[api] fn 层）+ cargo test\n  （jade server）+ vue-tsc/vite + playwright e2e 23/23。\n- **桌面门**：desktop/vm-smoke.mjs 全臂 ×2 连续（open-ws/files/read/\n  save/links/cards/d4/search + tabs），断言全走 MCP 合成通道；\n  fixture hash 前后一致（恢复协议生效）。\n- **tabs 五断言**：①双 tab 打开且 strip 在场 ②切换回读正文不串页\n  ③脏态关闭降级语义 + 状态行 discarded-dirty 登记 ④保存清脏 + 磁盘\n  落盘 ⑤同路径重复 Open 在途编辑存活（落盘实证，022 Phase 3 e2e\n  11-properties 同款语义）。\n- **注册表门**：desktop/scripts/ext-registry-gate.mjs exit 0\n  （红测：删登记行/插死账/悬空引用均红）。\n- **结构基线**：baseline/iced-tabs-structure.txt（--save-baseline\n  再生 diff 空；slice 5 基线为单活动文档期前身）。",
+        "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
+        "related": [
+          "PLAN-064"
         ]
       }
     ],
@@ -2095,6 +2139,17 @@
         "related": [
           "PLAN-063"
         ]
+      },
+      {
+        "id": "P064-6",
+        "section": "reviews",
+        "status": "published",
+        "title": "jade-garden VM 轨第一刀 — 验收标准 / 复审记录",
+        "content": "- **验收（2026-09-14 review pass，独立重跑）**：AC-01 注册表 300/300\n  门检绿 + §5.2 处置逐行核对；AC-02 vm-smoke 全臂 PASS×2 + fixture\n  hash 一致；AC-03 tabs 五断言×2；AC-04 十 node 门 + stub-sync + cargo\n  45/45 + vue-tsc/vite + e2e 23/23；AC-05 README §8 六件 + DEBTS 064\n  行；AC-06 基线再生 diff 空。\n- **实现形态裁定（review F1 补记）**：§5.4 预定 tabs_store facade 形态\n  经执行期实证不可行（store facade VM 缺口簇），改 widget 状态机等价\n  实现，语义保形；facade 迁移挂 auto-lang 提案⑥。\n- **遗留转介**：cargo EDR 环境病（rustc 写 deps/*.d 拒绝访问，本轮\n  消退）；e2e journals 未跟踪 debris 依赖已由 e2e-prepare 合成消解；\n  master 预存红两笔（health 契约节缺失、journals 依赖）随本计划修复。\n- 复审/工作全记录见 archived plan §9（PLAN-064:r1 收据在此）。",
+        "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
+        "related": [
+          "PLAN-064"
+        ]
       }
     ],
     "reports": [
@@ -2503,6 +2558,17 @@
         "file": "docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md",
         "related": [
           "PLAN-063"
+        ]
+      },
+      {
+        "id": "P064-1",
+        "section": "reports",
+        "status": "published",
+        "title": "jade-garden VM 轨第一刀：ext 审计建账 + vm-smoke harness + tabs 编辑器流 — 变更摘要",
+        "content": "jade VM 轨第一刀（29-widget 迁移的模板刀，plan-022 收口后的续篇）三件事：\n1. ext 层复扫建账 + 三分类能力桥注册表（302 导出 sink/bridge/deviation）\n   + 双表对拍门检——未登记/死账/引用悬空一律红。\n2. jade 版 vm-smoke harness（AutoUI-MCP 驱动；probe 驱动重建于 master；\n   fixture git 语义恢复协议清偿 P022-6 探针卫生债）。\n3. tabs 编辑器流 VM 化：五断言（双 tab/切换不串页/脏关降级+状态行登记/\n   保存落盘/重复 Open 双读竞争防护）全绿×2。\n硬约束守恒：vue 轨 app 源零改动（gen 再生确定性对拍），web 门原样绿\n（e2e 23/23）；auto-lang 侧零改动，只产提案（desktop/README §8 六件）。",
+        "file": "docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md",
+        "related": [
+          "PLAN-064"
         ]
       }
     ]

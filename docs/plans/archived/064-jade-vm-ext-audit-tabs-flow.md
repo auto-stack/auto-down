@@ -413,13 +413,13 @@ recordRecent 的 VM 侧 KV 确切 API 名（Plan 401/442 corpus 面）在 T-04 �
     本仓 ledger 与 canonical Specs 同体（六节 store），无独立运行时投影。
   - `archived`：本文件 docs/plans/archived/064-jade-vm-ext-audit-tabs-flow.md，
     status: archived，completion_kind: delivered。
-  - `cleaned`：**主体完成，目录残壳待补删**——git worktree remove 已注销
+  - `cleaned`：**✅ 完成（2026-09-14 补记）**——git worktree remove 已注销
     （worktree list 无 auto-down-064 项）、分支 plan-064-dev 已删（was
     e5eb595，ancestry 全落 master）、删除时点 wt-guard clean（pnpm junction
-    已按 guard 指引 rmdir 链接本身清理）；jade-garden/front/desktop 3 文件
-    残壳被会话 bash CWD 占用（Device or resource busy，含并行会话 shell，
-    不强杀）——会话释放后 `rm -rf D:/autostack/.wt/auto-down-064` 补删并
-    在此补记。
+    已按 guard 指引 rmdir 链接本身清理）；desktop 残壳锁因残留探针进程
+    （vm 窗口/jade-garden-back）释放后 `rm -rf D:/autostack/.wt/auto-down-064`
+    完成，组目录已移除（.wt 无 auto-down-064）。同轮清扫：lang-618 与
+    os-012 组的 auto-down worktree 均已移除（clean+merged 核实）。
 
 新路径标记：ext-registry.json、ext-registry-gate.mjs、vm-smoke.mjs、
 restore-fixture.mjs 均为新增；其余为既有文件修改。

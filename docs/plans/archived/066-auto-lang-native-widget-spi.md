@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-066
-status: reviewed
+status: archived
 feature_name: auto-lang 原生组件外部注册 SPI——NativeWidgetRegistry + View::Custom + autodown_editor 首迁 + stream 渐进臂
 author: zcode
 created_at: 2026-09-14T15:30:00+08:00
@@ -307,3 +307,22 @@ merge 通道）
 ## 10. 待澄清事项
 
 （无阻塞；§9 执行期发现 1 的处置权在 plan622 会话/用户。）
+
+## 11. 合并收据（PLAN-066:r1）
+
+```
+stage: merge | plan_id: PLAN-066 | plan_revision: 1 | completion_kind: delivered |
+prepared: 评审基线 8aeb8150e9+plan066 三 commit；canonical delta=§8 两节
+（P066-1/P066-2）；投影目标=.autoos/specs.json sections.architecture/tests |
+landed: auto-lang master 合并提交 bf5eaae7c（ancestor of origin/master，
+已推送 71ed7ea90..ed7f92e31 窗口；落地前 reconcile=master 并入分支
+7f91913cf 无冲突，合并树刷新验证 tf 3556/3556+schema_drift 2/2+plan066
+15/15+smoke 第 4 轮 9270 绿；落地后 master 新增增量核实 docs-only）|
+ledger_refreshed: .autoos/specs.json sections.architecture+=P066-1(stable)/
+sections.tests+=P066-2(verified)，file=docs/plans/archived/
+066-auto-lang-native-widget-spi.md，related=[PLAN-066]，回读验证过 |
+archived: docs/plans/archived/066-auto-lang-native-widget-spi.md
+（status: archived）|
+cleaned: 待清理后补记（auto-lang worktree+auto-down-dev 分支、auto-down
+worktree+plan-066-dev 分支，wt-guard 前置）
+```

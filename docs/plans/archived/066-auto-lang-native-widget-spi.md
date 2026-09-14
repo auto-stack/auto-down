@@ -323,6 +323,8 @@ sections.tests+=P066-2(verified)，file=docs/plans/archived/
 066-auto-lang-native-widget-spi.md，related=[PLAN-066]，回读验证过 |
 archived: docs/plans/archived/066-auto-lang-native-widget-spi.md
 （status: archived）|
-cleaned: 待清理后补记（auto-lang worktree+auto-down-dev 分支、auto-down
-worktree+plan-066-dev 分支，wt-guard 前置）
+cleaned: ✅ 双 worktree 移除（auto-lang：wt-guard clean 后 git worktree
+remove+分支 auto-down-dev 删（was 7f91913cf）；auto-down：wt-guard clean
+后 remove+分支 plan-066-dev 删（was 140775f））；组目录
+.wt/auto-down-066 移除（仅会话日志）；双仓 worktree list 复核零匹配
 ```

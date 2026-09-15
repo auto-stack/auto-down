@@ -570,7 +570,18 @@ arm('tabs', async (checks) => {
   const marker2 = `tabs-dirty ${nonce()}`
   await typeInto(isEditorNode, marker2, 'editor')
   await stateIs('active_dirty', 'true')
-  await pressAction('.CloseTab')
+  // PLAN-068 T-01: 激活 tab x 钮接线断言——icon 在快照中渲染为 "[Image]"
+  // 文本节点（name prop 不可见，T-01 实机），定位锚 = 空文本 button
+  // （`button #id ""`，全视图唯一：toolbar/menubar/FileTree 按钮均带标签）。
+  // press 其 element_id 与零参 .CloseTab（活动 tab 语义）等价。
+  const xBtns = findAll(
+    await snapshot(),
+    (n) => n.head.startsWith('button ') && elementIdOf(n) && ownText(n) === '',
+  )
+  if (xBtns.length !== 1) {
+    throw new Error(`tabs③a: expected exactly 1 textless (x) button, saw ${xBtns.length}`)
+  }
+  await callTool('autoui_action', { element_id: elementIdOf(xBtns[0]), action: 'press' })
   await stateIs('status', 'discarded-dirty:Hello World')
   const hwFile = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
   await callTool('autoui_action', { element_id: elementIdOf(hwFile), action: 'press' })

@@ -399,14 +399,48 @@ widget App {
                 }
                 col {
                     class: "flex flex-1 flex-col gap-2",
+                    // PLAN-068 T-01: tab 条 041 化（041 app.at 同款双分支——
+                    // Plan 449：view fn 片段参数化条件不求值，激活/非激活须
+                    // 双分支）。x 钮 = 零参 .CloseTab（活动 tab 语义，x 只在
+                    // 激活行在场）；041 的 "+" 新建钮不移植（六流无新建流，
+                    // PLAN-068 §5.1 裁定）。smoke 定位锚不变：tab 按钮仍
+                    // ownText = title（x 为 icon 钮无文本）。
                     row {
-                        class: "flex flex-wrap gap-1",
+                        class: "h-8 items-center bg-muted/30 shrink-0 w-full gap-0",
                         for t in .tabs {
-                            button (text: t.title) {
-                                onclick: .SwitchTab(t.path)
+                            if t.path == .active_path {
+                                // 括号 style: 形式（041 同款）——class 括号形
+                                // 式遇 bg-[#1C1D24] 任意值会整串丢弃（T-01
+                                // 实机快照实证），故内层行走 style:。
+                                row (style: "items-center bg-[#1C1D24]") {
+                                    button (text: t.title, variant: "text") {
+                                        onclick: .SwitchTab(t.path)
+                                        style: "h-8 px-3 text-[12px] text-zinc-200 font-medium"
+                                    }
+                                    if t.dirty {
+                                        text "*" { style: "text-[12px] text-amber-400 mr-1" }
+                                    }
+                                    button (variant: "text") {
+                                        icon (name: "x", style: "h-3 w-3 text-zinc-500") {}
+                                        onclick: .CloseTab
+                                        style: "h-7 w-6 px-0 py-0 mr-2"
+                                    }
+                                }
+                            }
+                            if t.path != .active_path {
+                                row (style: "items-center") {
+                                    button (text: t.title, variant: "text") {
+                                        onclick: .SwitchTab(t.path)
+                                        style: "h-8 px-3 text-[12px] text-zinc-500"
+                                    }
+                                    if t.dirty {
+                                        text "*" { style: "text-[12px] text-amber-400 mr-1" }
+                                    }
+                                }
                             }
                         }
                     }
+                    col (class: "h-px w-full bg-border shrink-0") {}
                     if .active_title != "" {
                         // PLAN-067 T-04: 正文 = code_editor（CodeMirror6 内核，
                         // key 按 tab path 注册——key 变即重挂载读 content:）。

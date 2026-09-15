@@ -1,26 +1,23 @@
-// app.at — jade-garden 桌面（PLAN-064 T-05：tabs 编辑器流 VM 化）。
+// app.at — jade-garden 桌面（tabs_store facade 回归形态，PLAN-622 清偿后）。
 //
 // 六流面板保持 slice 5 形态（open-ws/文件树/反链出链/闪卡/图谱/搜索/导入
-// 导出）；编辑区升级为多 tab 流：打开/切换/关闭/保存/脏守卫五断言语义
-// （022 Phase 3 双读竞争防护同款）。
+// 导出）；编辑区为 tabs_store facade：tab 状态权威在 store（desktop/src/
+// front/tabs_store.at，与 web 轨逐字共享 + Close 索引狩猎 delta），widget
+// 只持视图投影镜像（view_title/view_body/view_dirty/view_note，每次
+// store 派发后从 store 状态重同步）。vm-smoke tabs 臂五断言面不变。
 //
-// 实现形态裁定（T-05 执行期实证，2026-09-14）：tabs_store.at facade 的
-// VM 面存在缺口簇——①widget handler 内读 store 字段失效（Edit/Save 的
-// 参数表达式得 0/""）；②视图对 store 字段不响应式回读（初始 "" 后冻结）；
-// ③store 模块内 #[api] 调用未走 340 HTTP 改写（静默执行契约 stub
-// return None——read/write 均不落盘）。派发（带字面参数）、two-way 写入、
-// autoui_state 桥反而可用。据此 tabs 流 v1 = widget 状态机等价实现（全部
-// 骨架已证面）；store facade 迁移前置 = auto-lang 修复（README §8 提案⑥），
-// tabs_store.at 仍是 web 轨状态机（T-04 收缩面不变）。
-// 确认语义登记偏差：VM 无 confirm 模态，脏态关闭默认确认即弃（P022-6
-// 既定保形），状态行 discarded-dirty 登记。
-// VM lambda 捕获面（T-05 实测）：捕获 msg 参数可用；捕获 handler 本地
-// 变量 = undefined variable 编译错——归一化值经参数重赋值承载。
+// 形态历史：T-05 曾因 store facade VM 缺口簇（README §8 提案⑥）退绕行
+// 形态（widget 状态机等价实现）；PLAN-622 修复可复现项（splice/闭包捕获）
+// 并实证其余消费位健康后，本文件回归 `use store: Tabs` facade 形态。
 //
-// auto-lang 登记项沿用（slice 3/5）：self 字段链 .field.length 在 handler
-// 中求值异常 → 长度经本地变量取；混合 search 的 .type 撞名 → v1 用
+// 登记偏差（沿 064 处置表，实现在 desktop/src/back/api.at 助手层）：
+// confirm 模态缺席 → confirmClose 默认确认即弃（状态行 discarded-dirty
+// 登记）；ensureBlockAnchors = identity（保存不注入 ^锚点）；recordRecent
+// = no-op；rethrow = 吞错。反链/出链 source_path 归一（补 .ad 后缀）沿用
+// T-05 形态。auto-lang 登记项沿用：混合 search 的 .type 撞名 → v1 用
 // search_pages。
 
+use store: Tabs
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
 use auto.http
 
@@ -31,13 +28,14 @@ widget App {
         var status str = "boot"
         var root str = ""
         var files = []
-        // —— tabs 状态机（widget 本地；022 Phase 3 语义的字段级移植）——
-        var open_maps = []
-        var active_path str = ""
-        var active_title str = ""
-        var active_body str = ""
-        var active_dirty bool = false
-        var save_note str = ""
+        // —— 视图投影镜像（状态权威在 Tabs store，派发后重同步）——
+        // 命名用 view_* 前缀：与 store 模型字段（tabs/active_path）保持
+        // 全局不撞名——跨状态对象同名合并在 VM 侧按位对齐会错读
+        //（首跑实证：active_title 读出 store tab.loaded 的 true）。
+        var view_title str = ""
+        var view_body str = ""
+        var view_dirty bool = false
+        var view_note str = ""
         var cards = []
         var review_note str = ""
         var backlinks = []
@@ -69,174 +67,105 @@ widget App {
             .status = "files-reloaded"
         }
 
-        // 归一化：反链/出链源的 source_path 实为页标题（无 .ad 后缀，
-        // T-05 实测）——补后缀归一到真实文档路径，避免同一文档建出第二个
-        // tab（标题路径 tab 的正文读数会得 nil）。归一值经参数重赋值承载
-        // （lambda 捕获本地变量 = 编译错，见头注）。
+        // 反链/出链源的 source_path 实为页标题（无 .ad 后缀）——补后缀归一
+        // 到真实文档路径。开/激活语义在 store（Open = 激活已载 tab 或新读，
+        // 022 Phase 3 双读竞争防护在 store handler 内）。
         .OpenFile(path) -> {
             var parts = path.split(".ad")
             var seg_count = parts.len()
             if seg_count == 1 {
                 path = f"${path}.ad"
             }
-            // ⑤ 双读竞争防护（022 Phase 3）：已 loaded 且未关闭的 tab 重复
-            // Open 只激活不重读——在途编辑不被磁盘回读覆盖。closed 行视同
-            // 不存在（for+双条件守卫；find 的 lambda 无法表达合取）。
-            var open_path str = ""
-            var open_body str = ""
-            var open_dirty = false
-            for t in .open_maps {
-                if t.path == path && t.closed != true {
-                    open_path = t.path
-                    open_body = t.body
-                    open_dirty = t.dirty
-                }
+            Tabs.Open({ path: path, title: "" })
+            var t = .tabs.find(tt => tt.path == path)
+            if t != null {
+                .view_title = t.title
+                .view_body = t.body
+                .view_dirty = t.dirty
             }
-            if open_path != "" {
-                .active_path = open_path
-                var parts = path.split(".ad")
-                .active_title = parts[0]
-                .active_body = open_body
-                .active_dirty = open_dirty
-            }
-            if open_path == "" {
-                var doc = None
-                try {
-                    doc = read_wiki(path)
-                } catch (e) {
-                    doc = None
-                }
-                var parts = path.split(".ad")
-                .open_maps.push({ path: path, title: parts[0], body: "", original_body: "", frontmatter: {}, dirty: false, loaded: false, closed: false })
-                for t in .open_maps {
-                    if t.path == path && t.closed != true {
-                        if doc != null {
-                            t.body = doc.body
-                            t.original_body = doc.body
-                            t.frontmatter = doc.frontmatter
-                            t.loaded = true
-                        }
-                        if doc == null {
-                            t.loaded = true
-                            t.original_body = t.body
-                        }
-                        open_body = t.body
-                    }
-                }
-                .active_path = path
-                .active_title = parts[0]
-                .active_body = open_body
-                .active_dirty = false
-            }
-            var bl = get_backlinks(.active_title)
+            var bl = get_backlinks(.view_title)
             var blLinks = bl.links
             .backlinks = blLinks
             .bl_count = blLinks.length
-            var ol = get_outlinks(.active_title)
+            var ol = get_outlinks(.view_title)
             var olLinks = ol.links
             .outlinks = olLinks
             .ol_count = olLinks.length
             .status = "opened"
         }
 
-        // ② 切换：从 tab 状态回读正文（不重读磁盘——已 loaded 语义）
+        // 切换 = store Open 的激活臂（已 loaded 不重读磁盘）。
         .SwitchTab(path) -> {
-            var t = .open_maps.find(tt => tt.path == path)
+            Tabs.Open({ path: path, title: "" })
+            var t = .tabs.find(tt => tt.path == path)
             if t != null {
-                .active_path = path
-                var parts = path.split(".ad")
-                .active_title = parts[0]
-                .active_body = t.body
-                .active_dirty = t.dirty
-                .status = "switched"
+                .view_title = t.title
+                .view_body = t.body
+                .view_dirty = t.dirty
             }
+            .status = "switched"
         }
 
-        // ③ 关闭活动 tab：VM 无 confirm 模态（偏差登记）——脏态默认确认
-        // 即弃，状态行登记处置结果。邻居激活规则同 022（Math.min 邻位）。
+        // 关闭：脏态由 store confirmClose 偏差默认确认即弃（P022-6 保形），
+        // 状态行登记处置结果。派发前预读脏/标题供状态行。
         .CloseTab -> {
-            // 标记删除：VM 对 widget 模型数组的 splice 静默失效（T-05 实测），
-            // 改写 closed 标志；视图过滤 closed 行，OpenFile 视已关闭为不存在。
-            var closed_path str = ""
-            var closed_title str = ""
             var was_dirty = false
-            for t in .open_maps {
-                if t.path == .active_path {
-                    t.closed = true
+            var closed_title str = ""
+            var has_active = .active_path != ""
+            if has_active {
+                var t = .tabs.find(tt => tt.path == .active_path)
+                if t != null {
                     was_dirty = t.dirty
-                    closed_path = t.path
                     closed_title = t.title
                 }
+                Tabs.Close(.active_path)
+                var t2 = .tabs.find(tt => tt.path == .active_path)
+                if t2 != null {
+                    .view_title = t2.title
+                    .view_body = t2.body
+                    .view_dirty = t2.dirty
+                }
+                if t2 == null {
+                    .view_title = ""
+                    .view_body = ""
+                    .view_dirty = false
+                }
             }
-            if closed_path != "" {
-                if was_dirty {
-                    .status = f"discarded-dirty:${closed_title}"
-                }
-                if !was_dirty {
+            if was_dirty {
+                .status = f"discarded-dirty:${closed_title}"
+            }
+            if !was_dirty {
+                if has_active {
                     .status = f"closed:${closed_title}"
-                }
-                var last_open str = ""
-                for t in .open_maps {
-                    if t.closed != true {
-                        last_open = t.path
-                    }
-                }
-                if last_open != "" {
-                    .active_path = last_open
-                    var parts = last_open.split(".ad")
-                    .active_title = parts[0]
-                    for t in .open_maps {
-                        if t.path == last_open {
-                            .active_body = t.body
-                            .active_dirty = t.dirty
-                        }
-                    }
-                }
-                if last_open == "" {
-                    .active_path = ""
-                    .active_title = ""
-                    .active_body = ""
-                    .active_dirty = false
                 }
             }
         }
 
-        // 键入：textarea 双向绑定写 .active_body；oninput 同步进 tab 状态
+        // 键入：textarea 双向绑定写 .view_body（视图投影面），oninput
+        // 经 SetBody 落入 store tab（dirty 由 store 按 original_body 判定）。
         .Edit -> {
-            for t in .open_maps {
-                if t.path == .active_path && t.closed != true {
-                    t.body = .active_body
-                    t.dirty = t.body != t.original_body
-                }
+            Tabs.SetBody({ path: .active_path, body: .view_body })
+            var t = .tabs.find(tt => tt.path == .active_path)
+            if t != null {
+                .view_dirty = t.dirty
             }
-            .active_dirty = true
         }
 
         .QChanged -> {
             .status = "typing"
         }
 
-        // ④ 保存：write_wiki 直写（#[api] → 340 HTTP）+ 回声采纳（CAS：
-        // 保存往返期间用户又键入 → 回声不覆盖在途编辑）
+        // 保存：store Save 面（write_wiki 经 #[api] → 340 HTTP；回声
+        // 采纳 adopt_save_result 防在途编辑被回声覆盖——022 Phase 3 语义）。
         .Save -> {
-            for t in .open_maps {
-                if t.path == .active_path && t.closed != true {
-                    var sent_body = .active_body
-                    var saved = write_wiki(.active_path, t.frontmatter, sent_body)
-                    t.original_body = sent_body
-                    t.body = .active_body
-                    if t.body == sent_body {
-                        t.body = saved.body
-                        t.original_body = saved.body
-                        .active_body = saved.body
-                    }
-                    t.frontmatter = saved.frontmatter
-                    t.dirty = false
-                    .active_dirty = false
-                    .save_note = "saved"
-                    .status = "saved"
-                }
+            Tabs.Save(.active_path)
+            var t = .tabs.find(tt => tt.path == .active_path)
+            if t != null {
+                .view_body = t.body
+                .view_dirty = t.dirty
             }
+            .view_note = "saved"
+            .status = "saved"
         }
 
         .LoadCards -> {
@@ -254,9 +183,6 @@ widget App {
         }
 
         .DoSearch -> {
-            // v1 用页搜索（title/path 全字段在场）。混合 search 的扁平联合
-            // 在 VM 侧有两组坑：`.type` 撞 DSL 元属性；缺席字段读出 0 哨兵
-            // 而非 null，存在性分支不可靠——均已登记。
             var res = search_pages(.search_q, 20)
             var hits = res.results
             .hit_count = hits.length
@@ -313,7 +239,7 @@ widget App {
                 button "import-zip" { onclick: .ImportZip }
                 text .status
                 text .io_note
-                if .active_dirty {
+                if .view_dirty {
                     text "● unsaved"
                 }
             }
@@ -331,20 +257,18 @@ widget App {
                     class: "flex flex-1 flex-col gap-2",
                     row {
                         class: "flex flex-wrap gap-1",
-                        for t in .open_maps {
-                            if t.closed != true {
-                                button (text: t.title) {
-                                    onclick: .SwitchTab(t.path)
-                                }
+                        for t in .tabs {
+                            button (text: t.title) {
+                                onclick: .SwitchTab(t.path)
                             }
                         }
                     }
-                    if .active_path != "" {
-                        textarea (value: .active_body, placeholder: "edit markdown here") {
+                    if .view_title != "" {
+                        textarea (value: .view_body, placeholder: "edit markdown here") {
                             oninput: .Edit
                         }
                     }
-                    text .save_note
+                    text .view_note
                 }
                 col {
                     class: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2",

@@ -26,16 +26,49 @@
 // search_pages。
 
 use store: Tabs
+use components.tree_util: flatten_tree, toggle_id
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
 use auto.http
 
+// FileNode（wire：name/path/is_dir/children）→ tree_util 节点 schema
+//（components/tree_util.at 头注形态：id/label/children/kind/icon/is_leaf/
+// badge 全键必填——VM Obj 字面量形状锁定，缺键访问=硬错）。
+// VM 遍历纪律：参数列表一律 while+索引（P614：for-in 对参数列表零次
+// 迭代）；children 递归经 P618 探针验证可用。
+fn to_fs_nodes(nodes List) List {
+    var out List = []
+    var i int = 0
+    while i < nodes.len() {
+        var nd = nodes[i]
+        var kids List = []
+        var kind str = "file"
+        var is_leaf bool = true
+        if nd.is_dir == true {
+            kids = to_fs_nodes(nd.children)
+            kind = "dir"
+            is_leaf = false
+        }
+        out.push({ id: nd.path, label: nd.name, children: kids, kind: kind, icon: "", is_leaf: is_leaf, badge: "" })
+        i = i + 1
+    }
+    return out
+}
+
 widget App {
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit, Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip }
+    // PLAN-618 T-06 同款：package use 必须在 widget 内（顶层 parse 报
+    // LBrace 错）——TreeIcon 树行图标消费。
+    use { package: official from "./components" }
+
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit, Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str) }
 
     model {
         var status str = "boot"
         var root str = ""
-        var files = []
+        // —— FileTree（PLAN-067 T-03）：fs 形态节点 + 展开态 + 选中态，
+        // 行派生 computed ft_rows（flatten_tree 纯函数），树行在根视图渲染。 ——
+        var ft_nodes = []
+        var ft_expanded = []
+        var ft_sel str = ""
         // —— 视图投影镜像（状态权威在 Tabs store，派发后重同步）——
         // 命名裁定见文件头注（store 仅声明 tabs/active_path，active_*
         // 三名无撞名；active_path 保持 store 独有，App 跨状态只读）。
@@ -55,6 +88,12 @@ widget App {
         var graph_rows = []
         var graph_edges int = 0
         var io_note str = ""
+    }
+
+    computed {
+        // 可见行序列（041 FileTree/TreeView 同款纯派生）：fs 树 × 展开态 ×
+        // 选中态；directory=true → 目录/文件图标自动映射。
+        ft_rows => flatten_tree(.ft_nodes, .ft_expanded, true, .ft_sel)
     }
 
     // PLAN-067 T-02: actions 注册表（Plan 451 DSL）——六流 action 化。
@@ -90,13 +129,18 @@ widget App {
         .OpenWs -> {
             var res = open_workspace("D:/autostack/auto-down/tmp/wiki-demo")
             .root = res.root
-            .files = list_files("", false)
+            .ft_nodes = to_fs_nodes(list_files("", true))
             .status = "ws-open"
         }
 
         .LoadFiles -> {
-            .files = list_files("", false)
+            .ft_nodes = to_fs_nodes(list_files("", true))
             .status = "files-reloaded"
+        }
+
+        // 目录展开/折叠（受控展开态，toggle_id 纯函数返回新 List）。
+        .FtToggle(id) -> {
+            .ft_expanded = toggle_id(.ft_expanded, id)
         }
 
         // 反链/出链源的 source_path 实为页标题（无 .ad 后缀）——补后缀归一
@@ -108,6 +152,7 @@ widget App {
             if seg_count == 1 {
                 path = f"${path}.ad"
             }
+            .ft_sel = path
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
             if t != null {
@@ -303,9 +348,40 @@ widget App {
                 class: "flex flex-1 gap-3 overflow-hidden",
                 col {
                     class: "w-44 shrink-0 gap-1 overflow-auto border-r pr-2",
-                    for f in .files {
-                        button (text: f.name) {
-                            onclick: .OpenFile(f.path)
+                    // PLAN-067 T-03: FileTree 树行（041 components/filetree.at
+                    // 同款行结构）在根视图直接渲染——vm 组件子树对 MCP 快照
+                    // 不可见（041 README「vm 组件边界」②）且 MCP press 组件行
+                    // 在 VM 轨静默崩溃（auto-lang P614-C1 在册债务，P618-D4
+                    // 家族），smoke 定位/驱动的文件导航留根（PLAN-067 §2 约束
+                    // ②）；行派生/图标复用移植件 flatten_tree/TreeIcon。
+                    for r in .ft_rows {
+                        row {
+                            class: "items-center",
+                            for g in r.guides {
+                                if g == "l" {
+                                    div (style: "w-4 h-6 flex items-center justify-center") {
+                                        div (style: "w-px h-6 bg-border") {}
+                                    }
+                                } else {
+                                    div (style: "w-4 h-6") {}
+                                }
+                            }
+                            if r.has_kids {
+                                mouse-area (onclick: .FtToggle(r.id), style: "w-5 h-5 shrink-0 items-center justify-center cursor-pointer") {
+                                    if r.open {
+                                        icon (name: "chevron-down", style: "w-3.5 h-3.5 text-muted-foreground") {}
+                                    } else {
+                                        icon (name: "chevron-right", style: "w-3.5 h-3.5 text-muted-foreground") {}
+                                    }
+                                }
+                            } else {
+                                div (style: "w-5 shrink-0") {}
+                            }
+                            TreeIcon (name: r.icon) {}
+                            button (text: r.label, variant: "text") {
+                                onclick: .OpenFile(r.id)
+                                style: "flex-1 px-1 text-left text-sm"
+                            }
                         }
                     }
                 }

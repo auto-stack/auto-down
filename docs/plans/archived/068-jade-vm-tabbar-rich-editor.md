@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-068
-status: reviewed        # drafting → executing → execution_done → reviewed → archived
+status: archived        # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-vm-tabbar-rich-editor
 author: [zhaopuming]
 created_at: 2026-09-15
@@ -330,6 +330,18 @@ autodown_editor (key: .active_path, final: true, style: "flex-1 w-full") {
   被审提交双模重跑、零 diff 审计复跑、证据哈希冻结），未采信执行摘要 |
   evidence: 双模 PASS 输出（复审重跑）+ 冻结哈希如上 + 审计空 diff |
   next: merge。
+- 2026-09-15 merge 收据（PLAN-068:r1）：**prepared**——账本投影提交
+  cbd0fe7（.autoos/specs.json 追加 P068-1 architecture 契约增量 + P068-2
+  reviews 记录，纯增量 +24 行，reviewed_commit 411ec60 的
+  docs/projection-only 后代，实现/依赖零变更）；**landed**——wt-guard
+  clean 前置，merge 提交 57678dc（plan-068-dev → master），祖先链验证
+  411ec60 ∈ master，canonical README §9.6/§9.2/§9.4 与 app.at
+  autodown_editor 在 master 实地确认，主检出 smoke PASS（master
+  known-good）；**ledger_refreshed**——tracked-file 路线，读回验证
+  P068-1/P068-2 在 master specs.json（arch 41 条/reviews 40 条）；
+  **archived**——本文件 git mv 至 docs/plans/archived/ + status: archived
+  （见下方归档提交）；**cleaned**——待清理后补记。completion_kind:
+  delivered。
 
 ## 10. 待澄清事项
 

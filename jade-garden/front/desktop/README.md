@@ -276,11 +276,13 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
 > delta：findIndex 索引狩猎、&&/|| 显式守卫、active_path str 哨兵）在
 > commit 历史；残余接缝转介 auto-lang（repro = 本次切换 diff）。
 
-## 9. 桌面视图标准组件契约（PLAN-067，2026-09-15）
+## 9. 桌面视图标准组件契约（PLAN-067，2026-09-15；PLAN-068 增量）
 
 app.at 视图层已按 auto-lang `examples/ui/041-auto-edit` 结构模板完成标准组件
 重构（actions 注册表 + menubar/toolbar 合成 + FileTree + code_editor +
 StatusBar）。本节为重构后的持久行为契约——后续视图改动以此对账，防再漂移。
+PLAN-068 增量：tab 条 041 化（§9.6）+ 正文编辑器换装 autodown_editor
+（§9.2/§9.4 口径更新）。
 
 ### 9.1 actions 注册表（六流 action 化，Plan 451 DSL）
 
@@ -298,9 +300,9 @@ StatusBar）。本节为重构后的持久行为契约——后续视图改动�
 - 触发三源同源派发（同一 handler）：toolbar 合成（open/save/close/reload
   四高频件）、menubar 三菜单（文件=open/save/close；视图=reload，console
   位预留；卡片=cards/graph/export/import）、MCP 自动化（autoui_action）。
-- 带参/输入事件**不走 action**：FileTree 点击 `.OpenFile(path)`、code_editor
-  `oninput: .Edit(str)`、搜索 `.QChanged/.DoSearch`、评分 `.Grade(...)` 留
-  根视图控件直连。
+- 带参/输入事件**不走 action**：FileTree 点击 `.OpenFile(path)`、正文编辑器
+  `oninput: .Edit(str)`（PLAN-068 起 autodown_editor）、搜索
+  `.QChanged/.DoSearch`、评分 `.Grade(...)` 留根视图控件直连。
 
 ### 9.2 active_* 派生标量口径（widget 侧）
 
@@ -311,14 +313,18 @@ StatusBar）。本节为重构后的持久行为契约——后续视图改动�
   撞名（622 时代 `view_*` 前缀所避让的撞名对象——store 侧同名声明——已不
   复存在）；`active_path` 保持 store 独有（App 跨状态只读）。裁定由
   vm-smoke split+merged 全臂回归背书。
-- **code_editor 播种口径**：`content:` 绑定 = 初值 + 每帧外部 diff 回写；
-  `key: .active_path` 键变即重挂载读 `content:`。显式 `code_editor_set_text`
-  要求编辑器**已注册**（首次打开该 key 未挂载即 RuntimeError "no editor
-  registered"，本仓实机复现）——打开/切换路径不调用；041 约束（该内建编译
-  进 store handler 产坏字节码）继续有效，调用位留根 handler 面。
+- **正文编辑器播种口径（PLAN-068：autodown_editor，原 code_editor）**：
+  `content:` 绑定 = 初值 + 每帧外部 diff 回写；`key: .active_path` 键变即重
+  挂载读 `content:`（口径标签无关——两代编辑器同通道）。显式 `*_set_text`/
+  `autodown_*` 内建要求编辑器**已注册**（首次打开该 key 未挂载即 RuntimeError
+  家族，本仓实机复现）——打开/切换路径不调用；PLAN-068 亦不引入任何
+  autodown 内建调用（读路径由 `.Edit` 全文载荷覆盖）；041 约束（该族内建编
+  译进 store handler 产坏字节码）继续有效，调用位留根 handler 面。
+  `final: true` = 文档恒终态（无流式语义）。
 - `.Edit(str)` 单参通道：真实键盘事件 = 渲染器发布携带全文的 input_value
   （auto-lang PLAN-057/PLAN-013 W2 通道）；MCP type_text = INPUT_TEXT 首参
-  注入（单参 handler + 空实参 + 通道非空三条件）。正文经首参落
+  注入（单参 handler + 空实参 + 通道非空三条件）；INPUT_TEXT 通道约定与
+  code_editor 同（autodown/demo/auto 同 exe 实证）。正文经首参落
   `Tabs.SetBody`（dirty 由 store 按 original_body 判定）。
 
 ### 9.3 FileTree（根视图行渲染）
@@ -341,7 +347,7 @@ StatusBar）。本节为重构后的持久行为契约——后续视图改动�
 | 六流 action（open/save/close/reload） | toolbar 合成按钮的 `onclick:` 绑定（`pressAction('.OpenWs')` 等；auto-lang Plan 418 §8.4①：合成按钮快照携带 onclick） |
 | cards/graph/export/import | menubar 触发器文本（卡片）→ 菜单项文本，`pressMenuItem` 两步（菜单激活后自闭合） |
 | 文件树/反链/命中/tab 条/评分按钮 | 根视图 button ownText（不变） |
-| 正文键入 | `isEditorNode`（textarea/code_editor 双形态节点）+ type_text |
+| 正文键入 | `isEditorNode`（textarea/code_editor/autodown_editor/AutodownEditor 四形态节点）+ type_text。**Q1 冻结（PLAN-068）**：本机 exe 投影 = `textarea` + `value:` 全文——与 autodown/demo/auto 编辑面同 exe 同形；autodown_editor/AutodownEditor 拼写为真块编辑壳 exe 预留，非本机观测面 |
 | 状态断言 | `autoui_state` 字段名不变：active_title/active_body/active_dirty/save_note/status/root/bl_count/ol_count/hit_count/io_note/review_note |
 
 041 VM 约束清单（重构全程有效，见 041 README「vm 组件边界」）：①回调 props
@@ -357,4 +363,22 @@ diff 仅有：头注（副本出处 + VM delta 登记）、`active_path str = ""
 （PLAN-624 修复：622 转写遗失）、`&&/||` 链改显式空值守卫 ×3、Close 的
 findIndex→显式索引狩猎、`active_path = ""` 哨兵赋值——均为头注登记的 VM 面
 适配，业务语义零变更；本计划（PLAN-067）对该文件零改动（T-01a 基线 230dc57
-逐字节携入后未再触碰）。
+逐字节携入后未再触碰）。PLAN-068 同 zero-touch（tab 条换装纯视图消费
+`t.title/t.dirty/t.path`，基线 3adc930 起 diff 审查为空）。
+
+### 9.6 tab 条契约（PLAN-068，041 形态）
+
+- **双分支结构**（Plan 449：view fn 片段参数化条件不求值）：`for t in .tabs`
+  内 `t.path == .active_path` / `!=` 激活/非激活双分支，非风格选择。
+- **激活 tab**：高亮行 `bg-[#1C1D24]` + 标题钮（zinc-200 medium）+ 脏标
+  amber `*`（`t.dirty` 门控）+ x 钮（icon `name: "x"`）。**内层行走括号
+  `style:` 形式（041 同款）**——`class:` 括号式遇 `bg-[#1C1D24]` 任意值整
+  串丢弃（T-01 实机快照实证）；外层条/分隔线的 class 花括号式不受影响。
+- **x 钮 = 零参 `.CloseTab`**（活动 tab 语义，`Tabs.Close(.active_path)`），
+  只出现在激活行；与 041 的带索引 `.CloseTab(i)` 不同，不新增带参 msg
+  （tabs_store 零改动红线）。
+- **无 "+" 新建钮**（041 有）：六流无新建文件流，补流需动 tabs_store/web
+  共享面——登记偏差，另行计划。
+- **smoke 锚**：tab 标题钮 ownText = `t.title` 不变；x 钮 = **唯一空文本
+  button**（icon 在快照渲染为 `[Image]` 文本节点，name prop 不可见——
+  T-01 实机）；tabs③a 以其 press 驱动脏关流（与 `.CloseTab` 等价）。

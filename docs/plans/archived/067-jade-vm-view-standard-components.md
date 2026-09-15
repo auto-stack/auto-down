@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-067
-status: reviewed        # drafting → executing → execution_done → reviewed → archived
+status: archived        # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-vm-view-standard-components
 author: [zhaopuming]
 created_at: 2026-09-15
@@ -312,3 +312,24 @@ title/menubar 结构对应锚；②`autoui_state` 断言字段照旧（active_* 
 无阻断项。两个执行期裁定点已内嵌任务：①vue 轨是否要求同步视图（本计划
 VM 轨为主，web 面仅保 tabs_store 共享——若需 web 视图同步另行计划）；
 ②markdown 预览/graph 组件化的第二档范围（后续档，不在本计划）。
+
+- 2026-09-15 stage: merge | PLAN-067:r1 | outcome: pass | delivery_commit:
+  ee0b63f（master merge commit，双亲 a382e57 + 948496d；874eb22 祖先链
+  `git merge-base --is-ancestor` 通过） | prepared: 948496d（worktree
+  内 delivery commit——reviewed_commit 874eb22 的 docs/projection-only
+  后代，delta 逐项核对：实现/依赖零变化，仅 .autoos/specs.json 纯增量
+  +25/-1[唯一删除行=重定位收尾括号]） | landed: ee0b63f on master，
+  main known-good=落地树双模 smoke PASS（split+merged 全臂+fixture
+  哈希一致，主检出复跑）；canonical 内容核验：README §9 在 master 在
+  库（sha256 ba056aee 与冻结哈希一致） | ledger_refreshed:
+  .autoos/specs.json（tracked，经 worktree+Git 落地）——P067-1
+  architecture（jade/desktop-view-contract 桌面视图标准组件契约，
+  canonical file=jade-garden/front/desktop/README.md §9，related
+  PLAN-067，status stable）+ P067-2 reviews（验收/复审记录，file=
+  docs/plans/archived/067-jade-vm-view-standard-components.md）；
+  回读验证通过（JSON 解析 + id/file/related 逐项在案；architecture
+  40 条/reviews 39 条，既有条目零触碰——diff 仅追加） | archived:
+  docs/plans/archived/067-jade-vm-view-standard-components.md，
+  status: archived，completion_kind: delivered | cleaned: 待清理后
+  补记（worktree D:/autostack/.wt/auto-down-067/auto-down @948496d
+  clean；分支 plan-067-dev 待删）。无阻塞项。

@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-068
-status: execution_done  # drafting → executing → execution_done → reviewed → archived
+status: reviewed        # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-vm-tabbar-rich-editor
 author: [zhaopuming]
 created_at: 2026-09-15
@@ -302,6 +302,34 @@ autodown_editor (key: .active_path, final: true, style: "flex-1 w-full") {
   （master 241ff02b4 时点，R-067-1 处置先例：merge 后若工具链重建重跑双模
   smoke 作消费方核验） | blockers: 无（真键盘/IME 手感 = 人工项，非阻断） |
   next: review。
+- 2026-09-15 review 收口：stage: review | plan_id: PLAN-068 | plan_revision: 1
+  | outcome: pass | reviewed_commit: 411ec6070c8a75e50e2fbc68d21047ed5f29126d
+  | base_commit: 3adc930ca0d714ff386068dc760f93fc35851356（worktree
+  .wt/auto-down-068/auto-down @ plan-068-dev，工作区干净） |
+  dependency_revisions: auto.exe v0.4.2-753-g4e26b3237-dirty（复审期
+  auto-lang master 前进 241ff02b4→de86e1d8e，docs-only，exe 不变，见
+  R-068-1）；jade 后端主检出预构建 | spec_inputs: README.md@411ec60 sha256
+  ea015d29a50ba4a980c661919e7916bc34bea9e60904fd17f5e75f7bf74d651f；
+  app.at@411ec60 sha256
+  a935826067a9058405b620a1008a9d3e43e78ea82ee882e564de419c88068a9c（SD-01/
+  SD-02 冻结文本）；账本派生条目 merge 时由 README §9 增量落 P068-x |
+  acceptance_results: AC-1 pass（tab 条双分支/脏标/x 钮源码对位 + tabs③a
+  唯一空文本钮 press→discarded-dirty 行为断言，双模 PASS）；AC-2 pass
+  （autodown_editor key/final/content/oninput 源码对位 + read 臂全文标记 +
+  Q1 冻结投影 textarea+value）；AC-3 pass（save 臂 type→dirty→save→磁盘
+  marker）；AC-4 pass（tabs①②③⑤：串页负向断言/脏关弃置负向断言/重复
+  Open 在途编辑落盘）；AC-5 pass（复审重跑 split PASS + merged PASS 各
+  16 检查，fixture hash 恢复一致 ×2，被审提交绑定）；AC-6 pass（tabs_store
+  .at 与 web/back 轨 diff 复审复跑为空 + README §9.6/§9.2/§9.4 与代码交叉
+  核对一致） | findings: R-068-1（observation，非阻断）= 工具链漂移：执行/
+  复审期 auto-lang master docs-only 前进（exe 不变），处置同 R-067-1——
+  merge 后若工具链重建，重跑 vm-smoke 双模作消费方核验（非门禁重开）；
+  R-068-2（observation，非阻断）= 真键盘/IME 手感为人工项（MCP 载荷级中文
+  往返已绿，Q2 部分收口在案），留给日常使用观察 | 独立性声明: 复审在实现
+  会话内进行，裁定自工件重建（diff 逐行重读 app.at/vm-smoke.mjs/README、
+  被审提交双模重跑、零 diff 审计复跑、证据哈希冻结），未采信执行摘要 |
+  evidence: 双模 PASS 输出（复审重跑）+ 冻结哈希如上 + 审计空 diff |
+  next: merge。
 
 ## 10. 待澄清事项
 

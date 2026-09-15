@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-068
-status: drafting        # drafting → executing → execution_done → reviewed → archived
+status: execution_done  # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-vm-tabbar-rich-editor
 author: [zhaopuming]
 created_at: 2026-09-15
 updated_at: 2026-09-15
 plan_revision: 1
-current_step: 0
+current_step: 4
 total_steps: 4
 supersedes_spec_components: []
 new_spec_components: []
@@ -257,6 +257,32 @@ autodown_editor (key: .active_path, final: true, style: "flex-1 w-full") {
 
 （T-01/T-02 同文件故串行；总 4 步与 frontmatter `total_steps` 对齐。）
 
+执行进度（work，2026-09-15）：
+
+- [x] T-01 [✅ 已完成] 84679ca：tab 条 041 双分支（激活高亮 + amber 脏标 +
+  x 钮零参 `.CloseTab`）；**两项实机裁定**：①内层行走括号 `style:` 形式
+  （`class:` 括号式遇 `bg-[#1C1D24]` 任意值整串丢弃，快照实证——外层条/
+  分隔线 class 花括号式不受影响）；②smoke x 钮锚 = 唯一空文本 button
+  （icon 快照渲染 `[Image]` 文本节点，name prop 不可见）。tabs③a x 钮接线
+  断言加入。验证：`node vm-smoke.mjs --arms open-ws,files,read,save,tabs`
+  PASS（split 子集，AC-1）。
+- [x] T-02 [✅ 已完成] d62ce52：正文换装 `autodown_editor (key: .active_path,
+  final: true, style: "flex-1 w-full")` + content 播种 + `.Edit` 通道；零内
+  建调用（041④ 红线）。**Q1 冻结**：本机 exe（v0.4.2-753-g4e26b3237-dirty）
+  投影 = `textarea` + `value:` 全文——同 exe demo 编辑面同形（对照实证），
+  真块编辑壳拼写 autodown_editor/AutodownEditor 为未来面预留；isEditorNode
+  四拼写。验证：`node vm-smoke.mjs` split 全臂 PASS（16 检查，AC-2/3/4）。
+- [x] T-03 [✅ 已完成] （验证任务，无新改动）：`VM_MERGED=1 node
+  vm-smoke.mjs` merged 全臂 PASS（16 检查）——AC-5 双模齐；fixture hash
+  恢复一致 ×2。探针核验：连续两次 type_text（含中文载荷）active_body 全文
+  回写 ✓；x 钮关 tab → 空态锚回场 ✓。真键盘/IME 手感 = 人工项（非阻断），
+  已留探针窗口供把玩。
+- [x] T-04 [✅ 已完成] 411ec60：README §9 落账——新增 §9.6 tab 条契约
+  （SD-01）；§9.2 播种口径泛化 + §9.4 四形态绑定表与 Q1 冻结（SD-02）；
+  §9.5 PLAN-068 zero-touch 注记。审计：`git diff 3adc930..HEAD --
+  jade-garden/front/desktop/src/front/tabs_store.at` 与 web/back 轨 diff
+  均为空（AC-6；AC-1..4 断言由双模全臂背书收口）。
+
 ## 9. 复审记录
 
 - 2026-09-15 drafting（起草交接，plan_revision 1）：stage: new，
@@ -265,11 +291,22 @@ autodown_editor (key: .active_path, final: true, style: "flex-1 w-full") {
   现行 master 实地核实。outcome: pass——授权范围内可直接执行，无阻塞决策
   （§5.4 回退与 §10 Q1/Q2 均为执行期有界决策点，owner=work 执行会话）。
   next: work。
+- 2026-09-15 work 收口（work 交接）：stage: work | plan_id: PLAN-068 |
+  plan_revision: 1 | outcome: pass | code_commit: plan-068-dev
+  84679ca(T-01)→d62ce52(T-02)→411ec60(T-04)，base 3adc930，worktree
+  .wt/auto-down-068/auto-down | task_ids: T-01..T-04 全完成（4/4） |
+  evidence: split 全臂 PASS（16 检查，MCP :9264）+ merged 全臂 PASS
+  （VM_MERGED=1，16 检查），fixture hash 恢复一致 ×2；T-03 探针：连续键入
+  （含中文载荷）全文回写 + 空态锚回场；tabs_store.at 与 web/back 轨
+  diff 3adc930..HEAD 为空；工具链 auto.exe v0.4.2-753-g4e26b3237-dirty
+  （master 241ff02b4 时点，R-067-1 处置先例：merge 后若工具链重建重跑双模
+  smoke 作消费方核验） | blockers: 无（真键盘/IME 手感 = 人工项，非阻断） |
+  next: review。
 
 ## 10. 待澄清事项
 
 | # | 事项 | 处置 |
 | --- | --- | --- |
-| Q1 | 原生编辑器 MCP 快照节点拼写（`autodown_editor` vs `AutodownEditor`）与内层输入面形态——源码两臂并存（View::Custom / AutodownEditor 臂） | T-02 实机快照定，冻结进 README §9.4 绑定表（决策工件） |
-| Q2 | `content:` 每帧回写环 × 块编辑器重解析下的光标/IME 连续性 | demo 同环实证绿为强反证；若实机阻断 → §5.4 回退裁定并升级用户 |
+| Q1 | 原生编辑器 MCP 快照节点拼写（`autodown_editor` vs `AutodownEditor`）与内层输入面形态——源码两臂并存（View::Custom / AutodownEditor 臂） | **✅ 已冻结（T-02）**：本机 exe 投影 = `textarea` + `value:` 全文，与 demo 编辑面同 exe 同形；isEditorNode 四拼写防回归；README §9.4 落账 |
+| Q2 | `content:` 每帧回写环 × 块编辑器重解析下的光标/IME 连续性 | **部分收口（T-03）**：MCP 载荷级连续键入 + 中文载荷往返绿（§5.4 回退未触发）；真键盘/IME 手感 = 人工项，已留窗口 |
 | Q3 | 富 props（placeholder/dark_mode 等）VM 臂是否可消费 | 本计划不消费（最小面）；需求出现时另行登记计划 |

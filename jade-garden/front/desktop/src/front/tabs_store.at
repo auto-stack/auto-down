@@ -1,0 +1,330 @@
+// tabs_store.at — TabsStore（桌面副本）：the dirty/save tab state machine.
+// 逐字共享自 front/auto/src/front/tabs_store.at（PLAN-064 T-04 双轨设计），
+// 桌面副本落盘于 PLAN-622 清偿提案⑥之后（原 T-05 因缺口簇退绕行形态）。
+// 与 web 原本的 delta（均为 VM 面适配，语义保形）：
+//   1. Close 用显式索引狩猎替代 findIndex（后者不在 VM 列表原生面，静默
+//      失效）——splice 已由 PLAN-622 修复，关闭 = 真移除；
+//   2. Open/Load 的 title/frontmatter 推导 `&&/||` 链改显式空值守卫
+//      （&&/|| 在 VM 上是布尔逻辑，JS 惯用法会把 title 写成 true）；
+//   3. active_path 用 str + "" 哨兵（web 为 ?str）——?str 跨状态对象读
+//      实测崩 Invalid object ID，plain str 为已证形态。
+//
+// 源文件头注：
+//   - web: front/auto/src/front/ → `auto build` + sed → src/stores/auto/
+//     useTabsStore.ts, whose '@/lib/api' import is sed-rewritten to
+//     utils/tabs_store_ext.ts (the shrunken web shim face)
+//   - VM:  copy at jade-garden/front/desktop/src/front/; `use back.api:`
+//     resolves against the desktop contract copy (src/back/api.at) where
+//     the VM-side helper fns live (plain fns, no #[api])
+//
+// External surface after the six-helper disposal (PLAN-064 §5.2):
+//   - read_wiki / write_wiki: contract fn names (#[api] channel). The old
+//     ext readWikiSafe wrapper is INLINED at the call sites (try/catch →
+//     null mapping, the original load() catch semantics); writeWiki's
+//     {frontmatter, body} doc shape is adapted by the ext alias on web.
+//   - stripExt / adoptSaveResult: SUNK into the module-level fns below
+//     (Plan 367 P2-4 store-file module fns — emitted into the composable
+//     on web, plain fns on VM). save() keeps the ext `rethrow` in its
+//     catch: the DSL has no throw statement and catch is mandatory, so
+//     rejection propagation on web rides the ext; VM-side the helper
+//     swallows (registered deviation, upgrade = auto-lang throw stmt).
+//   - ensureBlockAnchors: web = full parser_gen-backed impl in the ext;
+//     VM = identity (deviation v1: no ^anchor injection, same as the
+//     plan-022 skeleton save; upgrade when VM can consume parser line
+//     ranges).
+//   - recordRecent: web = Pinia recentFiles bridge (semantics unchanged);
+//     VM = Plan 401 session KV via the localStorage bridge.
+//   - confirmClose: web = window.confirm; VM = default-confirm (close
+//     discards dirty edits — P022-6 registered semantics, upgrade when
+//     the auto-lang confirm modal lands).
+use back.api: read_wiki, write_wiki, ensureBlockAnchors, recordRecent, confirmClose, rethrow
+
+// Sunk from the ext stripExt (regex suffix strip) — the a2r-clean idiom
+// (parser.at endsWithStr family): no regex literals in the DSL.
+fn strip_ext(path str, ext str) str {
+    var n = path.length
+    var m = ext.length
+    if n >= m {
+        var tail = path.slice(n - m, n)
+        if tail == ext {
+            return path.slice(0, n - m)
+        }
+    }
+    return path
+}
+
+// Sunk from the ext adoptSaveResult (plan 022 Phase 3 double-writer fix):
+// adopt a save's server echo without clobbering concurrent user edits.
+// Pure-value form — the handler assigns the fields back. An unchanged
+// frontmatter reference means no user edit raced the round-trip and the
+// echo is safe to adopt wholesale; a changed reference keeps the user's
+// map and re-stamps only the server-owned updated_at. The body gets the
+// same guard (an unchanged body adopts the echo; a raced body stands).
+fn adopt_save_result(sent_fm map, cur_fm map, sent_body str, cur_body str, saved map) map {
+    var out_fm = cur_fm
+    if cur_fm == sent_fm {
+        out_fm = saved.frontmatter
+    } else {
+        var upd = saved.frontmatter.updated_at
+        if upd != "" {
+            out_fm.updated_at = upd
+        }
+    }
+    var out = { frontmatter: out_fm, body: cur_body, original_body: cur_body }
+    if cur_body == sent_body {
+        out.body = saved.body
+        out.original_body = saved.body
+    }
+    return out
+}
+
+store Tabs {
+    model {
+        // Tab objects (Array<str> = any; the Tab interface lives in the
+        // hand-written facade front/src/stores/tabs.ts).
+        var tabs Array<str> = []
+        // VM delta：active_path 用 str + "" 哨兵（web 为 ?str）——?str 的跨
+        // 状态对象读实测崩 Invalid object ID，plain str 为已证形态。
+        // （PLAN-624 merge 门修复：声明行在 622 转写时遗失——模型缺声明
+        // 使合并单态实例无此字段，store handler 写 `.active_path` 即
+        // "Field 'active_path' not found on type instance App_State"。）
+        var active_path str = ""
+    }
+
+    // msg payloads are SINGLE-typed only (compiler limitation), so the
+    // multi-arg actions take one map argument: Open({ path, title }).
+    msg Msg { Open(map), OpenGraph(map), OpenWhiteboard(map), Close(str),
+              Load(str), SetBody(map), Save(str) }
+
+    computed {
+        active_tab => .tabs.find(t => t.path == .active_path)
+    }
+
+    on {
+        .Open(args) -> {
+            var path = args.path
+            var title = args.title
+            var existing = .tabs.find(t => t.path == path)
+            if existing != null {
+                .active_path = path
+                if !existing.loaded && !existing.isGraph {
+                    var doc2 = None
+                    try {
+                        doc2 = read_wiki(path)
+                    } catch (e) {
+                        doc2 = None
+                    }
+                    // Post-await re-check: a slow read must not overwrite a
+                    // tab that loaded (or went dirty) meanwhile — Open and
+                    // Load both read the doc on open; on the VM backend the
+                    // two round-trips land in arbitrary order and a late
+                    // disk echo silently reverted user edits (plan 022
+                    // Phase 3, e2e 11-properties).
+                    if doc2 != null && existing.loaded == false {
+                        existing.body = doc2.body
+                        existing.originalBody = doc2.body
+                        if doc2.frontmatter != null {
+                            existing.frontmatter = doc2.frontmatter
+                            var fm_title = doc2.frontmatter.title
+                            if fm_title != null {
+                                if fm_title != "" {
+                                    existing.title = fm_title
+                                }
+                            }
+                        }
+                        existing.dirty = false
+                        existing.loaded = true
+                    }
+                    if doc2 == null {
+                        existing.loaded = true
+                        existing.originalBody = existing.body
+                        existing.dirty = false
+                    }
+                }
+            }
+            if existing == null {
+                var t2 = title
+                if t2 == "" {
+                    t2 = strip_ext(path, ".ad")
+                }
+                .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: false, saving: false })
+                .active_path = path
+                var doc = None
+                try {
+                    doc = read_wiki(path)
+                } catch (e) {
+                    doc = None
+                }
+                var tab = .tabs.find(t => t.path == path)
+                // Post-await re-check (same double-reader race as above):
+                // Load may have populated the tab while this read was in
+                // flight — first response wins, the late one stands down.
+                if tab != null && doc != null && tab.loaded == false {
+                    tab.body = doc.body
+                    tab.originalBody = doc.body
+                    if doc.frontmatter != null {
+                        tab.frontmatter = doc.frontmatter
+                        var fm_title2 = doc.frontmatter.title
+                        if fm_title2 != null {
+                            if fm_title2 != "" {
+                                tab.title = fm_title2
+                            }
+                        }
+                    }
+                    tab.dirty = false
+                    tab.loaded = true
+                }
+                if tab != null && doc == null {
+                    tab.loaded = true
+                    tab.originalBody = tab.body
+                    tab.dirty = false
+                }
+                recordRecent(path, t2)
+            }
+        }
+
+        .OpenGraph(args) -> {
+            // center: "" sentinel = global graph (facade maps null -> "").
+            var center = args.center
+            var depth = args.depth
+            var path = "__graph__"
+            var title = "全局图谱"
+            if center != "" {
+                path = f"__graph__:${center}"
+                title = f"局部图谱：${strip_ext(center, ".ad")}"
+            }
+            var existing = .tabs.find(t => t.path == path)
+            if existing != null {
+                .active_path = path
+            }
+            if existing == null {
+                .tabs.push({ path: path, title: title, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || None, graphDepth: depth })
+                .active_path = path
+            }
+        }
+
+        .OpenWhiteboard(args) -> {
+            var path = args.path
+            var title = args.title
+            var existing = .tabs.find(t => t.path == path)
+            if existing != null {
+                .active_path = path
+            }
+            if existing == null {
+                var t2 = title
+                if t2 == "" {
+                    t2 = strip_ext(path, ".canvas")
+                }
+                .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isWhiteboard: true })
+                .active_path = path
+            }
+        }
+
+        .Load(path) -> {
+            var tab = .tabs.find(t => t.path == path)
+            if tab != null && !tab.loaded {
+                var doc = None
+                try {
+                    doc = read_wiki(path)
+                } catch (e) {
+                    doc = None
+                }
+                // Post-await re-check (double-reader race, plan 022
+                // Phase 3): a concurrent Open/Load that finished first
+                // owns the tab; this late echo must not clobber it.
+                if doc != null && tab.loaded == false {
+                    tab.body = doc.body
+                    tab.originalBody = doc.body
+                    if doc.frontmatter != null {
+                        tab.frontmatter = doc.frontmatter
+                        var fm_title3 = doc.frontmatter.title
+                        if fm_title3 != null {
+                            if fm_title3 != "" {
+                                tab.title = fm_title3
+                            }
+                        }
+                    }
+                    tab.dirty = false
+                    tab.loaded = true
+                }
+                if doc == null {
+                    tab.loaded = true
+                    tab.originalBody = tab.body
+                    tab.dirty = false
+                }
+            }
+        }
+
+        .Close(path) -> {
+            // VM delta：findIndex 不在列表原生面（静默失效）——显式索引狩猎。
+            var idx = -1
+            var i = 0
+            for t in .tabs {
+                if t.path == path && idx == -1 {
+                    idx = i
+                }
+                i = i + 1
+            }
+            if idx != -1 {
+                var tab = .tabs[idx]
+                var ok = true
+                if tab.dirty && !tab.isGraph {
+                    ok = confirmClose(tab.title)
+                }
+                if ok {
+                    .tabs.splice(idx, 1)
+                    if .active_path == path {
+                        if .tabs.len() > 0 {
+                            var idx2 = Math.min(idx, .tabs.len() - 1)
+                            .active_path = .tabs[idx2].path
+                        }
+                        if .tabs.len() == 0 {
+                            .active_path = ""
+                        }
+                    }
+                }
+            }
+        }
+
+        .SetBody(args) -> {
+            var path = args.path
+            var body = args.body
+            var tab = .tabs.find(t => t.path == path)
+            if tab != null && tab.body != body {
+                tab.body = body
+                tab.dirty = tab.body != tab.originalBody
+            }
+        }
+
+        .Save(path) -> {
+            var tab = .tabs.find(t => t.path == path)
+            if tab != null && tab.loaded {
+                tab.saving = true
+                try {
+                    var body2 = ensureBlockAnchors(tab.body, tab.originalBody)
+                    // Capture what we send: adoptSaveResult compares against
+                    // the live tab to keep user edits that committed while
+                    // the save round-tripped (stale-echo revert fix, plan
+                    // 022 Phase 3 — the adopt_save_result module fn above).
+                    var sentFm = tab.frontmatter
+                    var sentBody = tab.body
+                    var saved = write_wiki(path, sentFm, body2)
+                    var r = adopt_save_result(sentFm, tab.frontmatter, sentBody, tab.body, saved)
+                    tab.frontmatter = r.frontmatter
+                    tab.body = r.body
+                    tab.originalBody = r.original_body
+                    tab.dirty = false
+                } catch (e) {
+                    // Original save() had no catch — the rejection propagated
+                    // (after finally). The DSL has no throw statement and
+                    // catch is mandatory (compiler parse rule), so the ext
+                    // `rethrow` helper re-throws on web; VM-side the helper
+                    // swallows (registered deviation, PLAN-064 T-04).
+                    rethrow(e)
+                } finally {
+                    tab.saving = false
+                }
+            }
+        }
+    }
+}

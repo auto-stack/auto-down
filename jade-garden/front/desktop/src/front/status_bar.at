@@ -1,0 +1,22 @@
+// status_bar.at — StatusBar 组件（PLAN-067 T-05）。
+//
+// 041-auto-edit status_bar.at 形态适配：jade 的状态标量在 App widget
+// 模型（非单一 store），经**值 props** 传入（无回调 props——vm 轨回调
+// props 使组件退化，041 README「vm 组件边界」①）。prop 名与 App 模型
+// 字段刻意错开（status_text/root_path/bl/ol）——P320 单态同名跨组件
+// 共享的撞名面不与之相触（PLAN-067 §5.1 撞名裁定同源纪律）。
+// 组件子树对 MCP 快照不可见（041 README「vm 组件边界」②）——smoke 对
+// status/root/计数的断言走 autoui_state 根态字段，无快照定位依赖。
+widget StatusBar (status_text: str = "", root_path: str = "", bl: int = 0, ol: int = 0) {
+    view {
+        col (style: "w-full shrink-0") {
+            col (style: "h-px w-full bg-border")
+            row (style: "h-6 items-center bg-muted/30 shrink-0 w-full gap-3 px-2") {
+                text .status_text { style: "text-[11px] text-zinc-300" }
+                text .root_path { style: "text-[11px] text-zinc-400" }
+                text f"bl:${.bl}" { style: "text-[11px] text-zinc-400 ml-auto" }
+                text f"ol:${.ol}" { style: "text-[11px] text-zinc-400" }
+            }
+        }
+    }
+}

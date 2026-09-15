@@ -1,39 +1,78 @@
-// app.at — jade-garden 桌面（PLAN-064 T-05：tabs 编辑器流 VM 化）。
+// app.at — jade-garden 桌面（tabs_store facade 回归形态，PLAN-622 清偿后；
+// PLAN-067 T-01：投影镜像改名 view_* → active_*，与 vm-smoke 契约字段对齐）。
 //
 // 六流面板保持 slice 5 形态（open-ws/文件树/反链出链/闪卡/图谱/搜索/导入
-// 导出）；编辑区升级为多 tab 流：打开/切换/关闭/保存/脏守卫五断言语义
-// （022 Phase 3 双读竞争防护同款）。
+// 导出）；编辑区为 tabs_store facade：tab 状态权威在 store（desktop/src/
+// front/tabs_store.at，与 web 轨逐字共享 + Close 索引狩猎 delta），widget
+// 只持视图投影镜像（active_title/active_body/active_dirty/save_note，每次
+// store 派发后从 store 状态重同步）。vm-smoke tabs 臂五断言面不变。
 //
-// 实现形态裁定（T-05 执行期实证，2026-09-14）：tabs_store.at facade 的
-// VM 面存在缺口簇——①widget handler 内读 store 字段失效（Edit/Save 的
-// 参数表达式得 0/""）；②视图对 store 字段不响应式回读（初始 "" 后冻结）；
-// ③store 模块内 #[api] 调用未走 340 HTTP 改写（静默执行契约 stub
-// return None——read/write 均不落盘）。派发（带字面参数）、two-way 写入、
-// autoui_state 桥反而可用。据此 tabs 流 v1 = widget 状态机等价实现（全部
-// 骨架已证面）；store facade 迁移前置 = auto-lang 修复（README §8 提案⑥），
-// tabs_store.at 仍是 web 轨状态机（T-04 收缩面不变）。
-// 确认语义登记偏差：VM 无 confirm 模态，脏态关闭默认确认即弃（P022-6
-// 既定保形），状态行 discarded-dirty 登记。
-// VM lambda 捕获面（T-05 实测）：捕获 msg 参数可用；捕获 handler 本地
-// 变量 = undefined variable 编译错——归一化值经参数重赋值承载。
+// 撞名裁定（PLAN-067 T-01，接 622 时代 view_* 改名）：彼次因"跨状态同名
+// 按位对齐错读"退避 view_* 前缀（首跑实证 active_title 读出 store tab
+// 的 loaded）；其撞名对象是 store 侧同名声明——现 store 仅声明 tabs/
+// active_path（tabs_store.at model），active_title/active_body/active_dirty
+// 三名 store 无声明、无撞名，改名安全由 vm-smoke 全臂回归背书。active_path
+// 保持 store 独有（App 不声明，跨状态只读）。
 //
-// auto-lang 登记项沿用（slice 3/5）：self 字段链 .field.length 在 handler
-// 中求值异常 → 长度经本地变量取；混合 search 的 .type 撞名 → v1 用
+// 形态历史：T-05 曾因 store facade VM 缺口簇（README §8 提案⑥）退绕行
+// 形态（widget 状态机等价实现）；PLAN-622 修复可复现项（splice/闭包捕获）
+// 并实证其余消费位健康后，本文件回归 `use store: Tabs` facade 形态。
+//
+// 登记偏差（沿 064 处置表，实现在 desktop/src/back/api.at 助手层）：
+// confirm 模态缺席 → confirmClose 默认确认即弃（状态行 discarded-dirty
+// 登记）；ensureBlockAnchors = identity（保存不注入 ^锚点）；recordRecent
+// = no-op；rethrow = 吞错。反链/出链 source_path 归一（补 .ad 后缀）沿用
+// T-05 形态。auto-lang 登记项沿用：混合 search 的 .type 撞名 → v1 用
 // search_pages。
 
+use store: Tabs
+use status_bar: StatusBar
+use components.tree_util: flatten_tree, toggle_id
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
 use auto.http
 
+// FileNode（wire：name/path/is_dir/children）→ tree_util 节点 schema
+//（components/tree_util.at 头注形态：id/label/children/kind/icon/is_leaf/
+// badge 全键必填——VM Obj 字面量形状锁定，缺键访问=硬错）。
+// VM 遍历纪律：参数列表一律 while+索引（P614：for-in 对参数列表零次
+// 迭代）；children 递归经 P618 探针验证可用。
+fn to_fs_nodes(nodes List) List {
+    var out List = []
+    var i int = 0
+    while i < nodes.len() {
+        var nd = nodes[i]
+        var kids List = []
+        var kind str = "file"
+        var is_leaf bool = true
+        if nd.is_dir == true {
+            kids = to_fs_nodes(nd.children)
+            kind = "dir"
+            is_leaf = false
+        }
+        out.push({ id: nd.path, label: nd.name, children: kids, kind: kind, icon: "", is_leaf: is_leaf, badge: "" })
+        i = i + 1
+    }
+    return out
+}
+
 widget App {
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit, Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip }
+    // PLAN-618 T-06 同款：package use 必须在 widget 内（顶层 parse 报
+    // LBrace 错）——TreeIcon 树行图标消费。
+    use { package: official from "./components" }
+
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str) }
 
     model {
         var status str = "boot"
         var root str = ""
-        var files = []
-        // —— tabs 状态机（widget 本地；022 Phase 3 语义的字段级移植）——
-        var open_maps = []
-        var active_path str = ""
+        // —— FileTree（PLAN-067 T-03）：fs 形态节点 + 展开态 + 选中态，
+        // 行派生 computed ft_rows（flatten_tree 纯函数），树行在根视图渲染。 ——
+        var ft_nodes = []
+        var ft_expanded = []
+        var ft_sel str = ""
+        // —— 视图投影镜像（状态权威在 Tabs store，派发后重同步）——
+        // 命名裁定见文件头注（store 仅声明 tabs/active_path，active_*
+        // 三名无撞名；active_path 保持 store 独有，App 跨状态只读）。
         var active_title str = ""
         var active_body str = ""
         var active_dirty bool = false
@@ -52,6 +91,37 @@ widget App {
         var io_note str = ""
     }
 
+    computed {
+        // 可见行序列（041 FileTree/TreeView 同款纯派生）：fs 树 × 展开态 ×
+        // 选中态；directory=true → 目录/文件图标自动映射。
+        ft_rows => flatten_tree(.ft_nodes, .ft_expanded, true, .ft_sel)
+    }
+
+    // PLAN-067 T-02: actions 注册表（Plan 451 DSL）——六流 action 化。
+    // 三源绑定：shortcut（键盘回退层）/ menubar·toolbar 配置合成 / MCP
+    // 自动化同源派发（041-auto-edit 模板形态）。enabled_if 对合并根 state
+    // 求值（.active_title 无前缀）。handler 在解析期校验命中 on{} 事件。
+    actions {
+        action (id: "ws.open",      handler: .OpenWs,    title: "打开工作区", icon: "folder-open", shortcut: "Ctrl+O")
+        action (id: "files.reload", handler: .LoadFiles, title: "重载文件列表", icon: "refresh-cw", shortcut: "F5")
+        action (id: "file.save",    handler: .Save,      title: "保存",   icon: "save",  shortcut: "Ctrl+S",
+                enabled_if: ".active_title != ''")
+        action (id: "tab.close",    handler: .CloseTab,  title: "关闭标签", icon: "x", shortcut: "Ctrl+W")
+        action (id: "cards.load",   handler: .LoadCards, title: "加载卡片", icon: "layers")
+        action (id: "graph.load",   handler: .LoadGraph, title: "加载图谱", icon: "share-2")
+        action (id: "ws.export",    handler: .ExportWs,  title: "导出工作区", icon: "download")
+        action (id: "ws.import",    handler: .ImportZip, title: "导入归档", icon: "upload")
+
+        // 高频件收编（PLAN-067 §5.2）：open/save/close/reload 进工具栏；
+        // cards/graph/export/import 走菜单。
+        toolbar {
+            item (action: "ws.open")
+            item (action: "file.save")
+            item (action: "tab.close")
+            item (action: "files.reload")
+        }
+    }
+
     on {
         .Init -> {
             .status = "ready"
@@ -60,74 +130,41 @@ widget App {
         .OpenWs -> {
             var res = open_workspace("D:/autostack/auto-down/tmp/wiki-demo")
             .root = res.root
-            .files = list_files("", false)
+            .ft_nodes = to_fs_nodes(list_files("", true))
             .status = "ws-open"
         }
 
         .LoadFiles -> {
-            .files = list_files("", false)
+            .ft_nodes = to_fs_nodes(list_files("", true))
             .status = "files-reloaded"
         }
 
-        // 归一化：反链/出链源的 source_path 实为页标题（无 .ad 后缀，
-        // T-05 实测）——补后缀归一到真实文档路径，避免同一文档建出第二个
-        // tab（标题路径 tab 的正文读数会得 nil）。归一值经参数重赋值承载
-        // （lambda 捕获本地变量 = 编译错，见头注）。
+        // 目录展开/折叠（受控展开态，toggle_id 纯函数返回新 List）。
+        .FtToggle(id) -> {
+            .ft_expanded = toggle_id(.ft_expanded, id)
+        }
+
+        // 反链/出链源的 source_path 实为页标题（无 .ad 后缀）——补后缀归一
+        // 到真实文档路径。开/激活语义在 store（Open = 激活已载 tab 或新读，
+        // 022 Phase 3 双读竞争防护在 store handler 内）。
         .OpenFile(path) -> {
             var parts = path.split(".ad")
             var seg_count = parts.len()
             if seg_count == 1 {
                 path = f"${path}.ad"
             }
-            // ⑤ 双读竞争防护（022 Phase 3）：已 loaded 且未关闭的 tab 重复
-            // Open 只激活不重读——在途编辑不被磁盘回读覆盖。closed 行视同
-            // 不存在（for+双条件守卫；find 的 lambda 无法表达合取）。
-            var open_path str = ""
-            var open_body str = ""
-            var open_dirty = false
-            for t in .open_maps {
-                if t.path == path && t.closed != true {
-                    open_path = t.path
-                    open_body = t.body
-                    open_dirty = t.dirty
-                }
+            .ft_sel = path
+            Tabs.Open({ path: path, title: "" })
+            var t = .tabs.find(tt => tt.path == path)
+            if t != null {
+                .active_title = t.title
+                .active_body = t.body
+                .active_dirty = t.dirty
             }
-            if open_path != "" {
-                .active_path = open_path
-                var parts = path.split(".ad")
-                .active_title = parts[0]
-                .active_body = open_body
-                .active_dirty = open_dirty
-            }
-            if open_path == "" {
-                var doc = None
-                try {
-                    doc = read_wiki(path)
-                } catch (e) {
-                    doc = None
-                }
-                var parts = path.split(".ad")
-                .open_maps.push({ path: path, title: parts[0], body: "", original_body: "", frontmatter: {}, dirty: false, loaded: false, closed: false })
-                for t in .open_maps {
-                    if t.path == path && t.closed != true {
-                        if doc != null {
-                            t.body = doc.body
-                            t.original_body = doc.body
-                            t.frontmatter = doc.frontmatter
-                            t.loaded = true
-                        }
-                        if doc == null {
-                            t.loaded = true
-                            t.original_body = t.body
-                        }
-                        open_body = t.body
-                    }
-                }
-                .active_path = path
-                .active_title = parts[0]
-                .active_body = open_body
-                .active_dirty = false
-            }
+            // 编辑器播种裁定（T-04 实机）：content: 绑定每帧外部 diff 回写
+            // + key 变即重挂载 = 播种通道；显式 code_editor_set_text 需编辑器
+            // 已注册（首次打开该 key 未挂载即 RuntimeError "no editor
+            // registered"，本仓实机复现）——041 仅对已存在 tab 清空时调用。
             var bl = get_backlinks(.active_title)
             var blLinks = bl.links
             .backlinks = blLinks
@@ -139,104 +176,86 @@ widget App {
             .status = "opened"
         }
 
-        // ② 切换：从 tab 状态回读正文（不重读磁盘——已 loaded 语义）
+        // 切换 = store Open 的激活臂（已 loaded 不重读磁盘）。键变重挂载
+        // 读 content:（播种裁定见 .OpenFile 注）。
         .SwitchTab(path) -> {
-            var t = .open_maps.find(tt => tt.path == path)
+            Tabs.Open({ path: path, title: "" })
+            var t = .tabs.find(tt => tt.path == path)
             if t != null {
-                .active_path = path
-                var parts = path.split(".ad")
-                .active_title = parts[0]
+                .active_title = t.title
                 .active_body = t.body
                 .active_dirty = t.dirty
-                .status = "switched"
             }
+            .status = "switched"
         }
 
-        // ③ 关闭活动 tab：VM 无 confirm 模态（偏差登记）——脏态默认确认
-        // 即弃，状态行登记处置结果。邻居激活规则同 022（Math.min 邻位）。
+        // 关闭：脏态由 store confirmClose 偏差默认确认即弃（P022-6 保形），
+        // 状态行登记处置结果。派发前预读脏/标题供状态行。
         .CloseTab -> {
-            // 标记删除：VM 对 widget 模型数组的 splice 静默失效（T-05 实测），
-            // 改写 closed 标志；视图过滤 closed 行，OpenFile 视已关闭为不存在。
-            var closed_path str = ""
-            var closed_title str = ""
             var was_dirty = false
-            for t in .open_maps {
-                if t.path == .active_path {
-                    t.closed = true
+            var closed_title str = ""
+            var has_active = .active_path != ""
+            if has_active {
+                var t = .tabs.find(tt => tt.path == .active_path)
+                if t != null {
                     was_dirty = t.dirty
-                    closed_path = t.path
                     closed_title = t.title
                 }
-            }
-            if closed_path != "" {
-                if was_dirty {
-                    .status = f"discarded-dirty:${closed_title}"
+                Tabs.Close(.active_path)
+                var t2 = .tabs.find(tt => tt.path == .active_path)
+                if t2 != null {
+                    .active_title = t2.title
+                    .active_body = t2.body
+                    .active_dirty = t2.dirty
                 }
-                if !was_dirty {
-                    .status = f"closed:${closed_title}"
-                }
-                var last_open str = ""
-                for t in .open_maps {
-                    if t.closed != true {
-                        last_open = t.path
-                    }
-                }
-                if last_open != "" {
-                    .active_path = last_open
-                    var parts = last_open.split(".ad")
-                    .active_title = parts[0]
-                    for t in .open_maps {
-                        if t.path == last_open {
-                            .active_body = t.body
-                            .active_dirty = t.dirty
-                        }
-                    }
-                }
-                if last_open == "" {
-                    .active_path = ""
+                if t2 == null {
                     .active_title = ""
                     .active_body = ""
                     .active_dirty = false
                 }
             }
-        }
-
-        // 键入：textarea 双向绑定写 .active_body；oninput 同步进 tab 状态
-        .Edit -> {
-            for t in .open_maps {
-                if t.path == .active_path && t.closed != true {
-                    t.body = .active_body
-                    t.dirty = t.body != t.original_body
+            if was_dirty {
+                .status = f"discarded-dirty:${closed_title}"
+            }
+            if !was_dirty {
+                if has_active {
+                    .status = f"closed:${closed_title}"
                 }
             }
-            .active_dirty = true
+        }
+
+        // 键入：code_editor 的 content: 绑定仅作初值/外部 diff 回写（单向，
+        // 041 editor_store 同款），正文经 oninput 首参到达——真实键盘事件由
+        // 渲染器发布携带全文的 input_value（PLAN-057/PLAN-013 W2 通道），
+        // MCP type_text 经 INPUT_TEXT 注入首参（单参 handler + 空实参 +
+        // 通道非空）。oninput 落 store（dirty 由 store 按 original_body
+        // 判定）+ 镜像重同步；无 tab 时空文守卫（SetBody no-op 面）。
+        .Edit(text) -> {
+            if .active_path != "" {
+                .active_body = text
+                Tabs.SetBody({ path: .active_path, body: text })
+                var t = .tabs.find(tt => tt.path == .active_path)
+                if t != null {
+                    .active_dirty = t.dirty
+                }
+            }
         }
 
         .QChanged -> {
             .status = "typing"
         }
 
-        // ④ 保存：write_wiki 直写（#[api] → 340 HTTP）+ 回声采纳（CAS：
-        // 保存往返期间用户又键入 → 回声不覆盖在途编辑）
+        // 保存：store Save 面（write_wiki 经 #[api] → 340 HTTP；回声
+        // 采纳 adopt_save_result 防在途编辑被回声覆盖——022 Phase 3 语义）。
         .Save -> {
-            for t in .open_maps {
-                if t.path == .active_path && t.closed != true {
-                    var sent_body = .active_body
-                    var saved = write_wiki(.active_path, t.frontmatter, sent_body)
-                    t.original_body = sent_body
-                    t.body = .active_body
-                    if t.body == sent_body {
-                        t.body = saved.body
-                        t.original_body = saved.body
-                        .active_body = saved.body
-                    }
-                    t.frontmatter = saved.frontmatter
-                    t.dirty = false
-                    .active_dirty = false
-                    .save_note = "saved"
-                    .status = "saved"
-                }
+            Tabs.Save(.active_path)
+            var t = .tabs.find(tt => tt.path == .active_path)
+            if t != null {
+                .active_body = t.body
+                .active_dirty = t.dirty
             }
+            .save_note = "saved"
+            .status = "saved"
         }
 
         .LoadCards -> {
@@ -254,9 +273,6 @@ widget App {
         }
 
         .DoSearch -> {
-            // v1 用页搜索（title/path 全字段在场）。混合 search 的扁平联合
-            // 在 VM 侧有两组坑：`.type` 撞 DSL 元属性；缺席字段读出 0 哨兵
-            // 而非 null，存在性分支不可靠——均已登记。
             var res = search_pages(.search_q, 20)
             var hits = res.results
             .hit_count = hits.length
@@ -301,17 +317,40 @@ widget App {
     view {
         col {
             class: "flex h-full flex-col gap-2 p-3 bg-background text-foreground",
+            // PLAN-067 T-02: menubar 三菜单（Plan 630 组件族，VM=Popover
+            // lowering）+ toolbar 空标签 = actions DSL 配置合成（041 同款）。
+            // 菜单分面（§5.2）：文件=open/save/close；视图=reload（console
+            // 位预留）；卡片=cards/graph/export/import。状态行/脏标留顶排。
             row {
                 class: "flex items-center gap-2",
-                button "open-ws" { onclick: .OpenWs }
-                button "reload-files" { onclick: .LoadFiles }
-                button "save" { onclick: .Save }
-                button "close-tab" { onclick: .CloseTab }
-                button "cards" { onclick: .LoadCards }
-                button "graph" { onclick: .LoadGraph }
-                button "export-ws" { onclick: .ExportWs }
-                button "import-zip" { onclick: .ImportZip }
-                text .status
+                menubar (class: "items-center") {
+                    menubar-menu (value: "file") {
+                        menubar-trigger "文件"
+                        menubar-content {
+                            menubar-item (title: "打开工作区", icon: "folder-open", shortcut: "Ctrl+O") { onclick: .OpenWs }
+                            menubar-item (title: "保存", icon: "save", shortcut: "Ctrl+S", enabled: .active_title != "") { onclick: .Save }
+                            menubar-item (title: "关闭标签", icon: "x", shortcut: "Ctrl+W") { onclick: .CloseTab }
+                        }
+                    }
+                    menubar-menu (value: "view") {
+                        menubar-trigger "视图"
+                        menubar-content {
+                            menubar-item (title: "重载文件列表", icon: "refresh-cw", shortcut: "F5") { onclick: .LoadFiles }
+                            // console 位预留（041 同款；jade v1 无 console 面板）
+                        }
+                    }
+                    menubar-menu (value: "cards") {
+                        menubar-trigger "卡片"
+                        menubar-content {
+                            menubar-item (title: "加载卡片", icon: "layers") { onclick: .LoadCards }
+                            menubar-item (title: "加载图谱", icon: "share-2") { onclick: .LoadGraph }
+                            menubar-separator
+                            menubar-item (title: "导出工作区", icon: "download") { onclick: .ExportWs }
+                            menubar-item (title: "导入归档", icon: "upload") { onclick: .ImportZip }
+                        }
+                    }
+                }
+                toolbar (class: "ml-auto") {}
                 text .io_note
                 if .active_dirty {
                     text "● unsaved"
@@ -321,9 +360,40 @@ widget App {
                 class: "flex flex-1 gap-3 overflow-hidden",
                 col {
                     class: "w-44 shrink-0 gap-1 overflow-auto border-r pr-2",
-                    for f in .files {
-                        button (text: f.name) {
-                            onclick: .OpenFile(f.path)
+                    // PLAN-067 T-03: FileTree 树行（041 components/filetree.at
+                    // 同款行结构）在根视图直接渲染——vm 组件子树对 MCP 快照
+                    // 不可见（041 README「vm 组件边界」②）且 MCP press 组件行
+                    // 在 VM 轨静默崩溃（auto-lang P614-C1 在册债务，P618-D4
+                    // 家族），smoke 定位/驱动的文件导航留根（PLAN-067 §2 约束
+                    // ②）；行派生/图标复用移植件 flatten_tree/TreeIcon。
+                    for r in .ft_rows {
+                        row {
+                            class: "items-center",
+                            for g in r.guides {
+                                if g == "l" {
+                                    div (style: "w-4 h-6 flex items-center justify-center") {
+                                        div (style: "w-px h-6 bg-border") {}
+                                    }
+                                } else {
+                                    div (style: "w-4 h-6") {}
+                                }
+                            }
+                            if r.has_kids {
+                                mouse-area (onclick: .FtToggle(r.id), style: "w-5 h-5 shrink-0 items-center justify-center cursor-pointer") {
+                                    if r.open {
+                                        icon (name: "chevron-down", style: "w-3.5 h-3.5 text-muted-foreground") {}
+                                    } else {
+                                        icon (name: "chevron-right", style: "w-3.5 h-3.5 text-muted-foreground") {}
+                                    }
+                                }
+                            } else {
+                                div (style: "w-5 shrink-0") {}
+                            }
+                            TreeIcon (name: r.icon) {}
+                            button (text: r.label, variant: "text") {
+                                onclick: .OpenFile(r.id)
+                                style: "flex-1 px-1 text-left text-sm"
+                            }
                         }
                     }
                 }
@@ -331,27 +401,39 @@ widget App {
                     class: "flex flex-1 flex-col gap-2",
                     row {
                         class: "flex flex-wrap gap-1",
-                        for t in .open_maps {
-                            if t.closed != true {
-                                button (text: t.title) {
-                                    onclick: .SwitchTab(t.path)
-                                }
+                        for t in .tabs {
+                            button (text: t.title) {
+                                onclick: .SwitchTab(t.path)
                             }
                         }
                     }
-                    if .active_path != "" {
-                        textarea (value: .active_body, placeholder: "edit markdown here") {
+                    if .active_title != "" {
+                        // PLAN-067 T-04: 正文 = code_editor（CodeMirror6 内核，
+                        // key 按 tab path 注册——key 变即重挂载读 content:）。
+                        // 真实键入经渲染器全文发布回写 state（content: 仅
+                        // 初值/外部 diff 准），编辑面语义见 .Edit 头注。
+                        code_editor (key: .active_path, lang: "markdown", style: "flex-1 w-full") {
+                            content: .active_body
                             oninput: .Edit
+                        }
+                    } else {
+                        // 空态定位锚（041 同款形态；smoke/人工导航锚点）。
+                        col (style: "flex-1 w-full items-center justify-center") {
+                            text "没有打开的文档 — 从左侧文件树打开" {
+                                style: "text-[13px] text-zinc-500"
+                            }
                         }
                     }
                     text .save_note
                 }
                 col {
                     class: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2",
+                    // —— 反链/出链面板（PLAN-067 T-05 整形：结构/handler
+                    // 不动，标准 col/row/class + 计数徽标文本）——
                     row {
-                        class: "gap-1",
-                        text "backlinks"
-                        text .bl_count
+                        class: "gap-1 items-center",
+                        text "backlinks" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .bl_count { style: "text-[11px] text-zinc-500" }
                     }
                     for b in .backlinks {
                         button (text: b.source_title) {
@@ -359,9 +441,9 @@ widget App {
                         }
                     }
                     row {
-                        class: "gap-1",
-                        text "outlinks"
-                        text .ol_count
+                        class: "gap-1 items-center",
+                        text "outlinks" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .ol_count { style: "text-[11px] text-zinc-500" }
                     }
                     for o in .outlinks {
                         if o.exists {
@@ -373,8 +455,11 @@ widget App {
                             text o.target_title
                         }
                     }
-                    text "due cards"
-                    text .review_note
+                    row {
+                        class: "gap-1 items-center",
+                        text "due cards" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .review_note { style: "text-[11px] text-zinc-500" }
+                    }
                     for c in .cards {
                         col {
                             class: "gap-1 border-b pb-1",
@@ -411,6 +496,9 @@ widget App {
                     }
                 }
             }
+            // PLAN-067 T-05: StatusBar 组件（值 props——组件子树快照不可见，
+            // smoke 断言走根态字段；prop 名与模型字段错开防 P320 撞名面）。
+            StatusBar (status_text: .status, root_path: .root, bl: .bl_count, ol: .ol_count) {}
         }
     }
 }

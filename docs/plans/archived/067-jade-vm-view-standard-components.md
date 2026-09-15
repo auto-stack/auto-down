@@ -330,6 +330,7 @@ VM 轨为主，web 面仅保 tabs_store 共享——若需 web 视图同步另�
   回读验证通过（JSON 解析 + id/file/related 逐项在案；architecture
   40 条/reviews 39 条，既有条目零触碰——diff 仅追加） | archived:
   docs/plans/archived/067-jade-vm-view-standard-components.md，
-  status: archived，completion_kind: delivered | cleaned: 待清理后
-  补记（worktree D:/autostack/.wt/auto-down-067/auto-down @948496d
-  clean；分支 plan-067-dev 待删）。无阻塞项。
+  status: archived，completion_kind: delivered | cleaned: ✅ wt-guard clean 前置（fresh 复跑）→ worktree 移除（git
+  worktree list 零 auto-down-067 残留）→ 分支 plan-067-dev 删除（was
+  948496d，已落地祖先链）→ 组目录 .wt/auto-down-067/ 移除（空目录
+  rmdir 验证）。无阻塞项。

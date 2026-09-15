@@ -224,12 +224,14 @@ widget App {
             }
         }
 
-        // 键入：code_editor 的 content: 绑定仅作初值/外部 diff 回写（单向，
-        // 041 editor_store 同款），正文经 oninput 首参到达——真实键盘事件由
-        // 渲染器发布携带全文的 input_value（PLAN-057/PLAN-013 W2 通道），
-        // MCP type_text 经 INPUT_TEXT 注入首参（单参 handler + 空实参 +
-        // 通道非空）。oninput 落 store（dirty 由 store 按 original_body
-        // 判定）+ 镜像重同步；无 tab 时空文守卫（SetBody no-op 面）。
+        // 键入：autodown_editor（PLAN-068 T-02，原 code_editor）的 content:
+        // 绑定仅作初值/外部 diff 回写（单向，041 editor_store 同款），正文经
+        // oninput 首参到达——真实键盘事件由渲染器发布携带全文的 input_value
+        // （PLAN-057/PLAN-013 W2 通道），MCP type_text 经 INPUT_TEXT 注入首
+        // 参（单参 handler + 空实参 + 通道非空；INPUT_TEXT 通道与 code_editor
+        // 同约定，demo vm-smoke 实证）。oninput 落 store（dirty 由 store 按
+        // original_body 判定）+ 镜像重同步；无 tab 时空文守卫（SetBody no-op
+        // 面）。
         .Edit(text) -> {
             if .active_path != "" {
                 .active_body = text
@@ -442,11 +444,16 @@ widget App {
                     }
                     col (class: "h-px w-full bg-border shrink-0") {}
                     if .active_title != "" {
-                        // PLAN-067 T-04: 正文 = code_editor（CodeMirror6 内核，
-                        // key 按 tab path 注册——key 变即重挂载读 content:）。
-                        // 真实键入经渲染器全文发布回写 state（content: 仅
-                        // 初值/外部 diff 准），编辑面语义见 .Edit 头注。
-                        code_editor (key: .active_path, lang: "markdown", style: "flex-1 w-full") {
+                        // PLAN-068 T-02: 正文 = autodown_editor（AutoDown 块
+                        // 编辑器，PLAN-066 NativeWidgetRegistry 原生外部件；
+                        // 形态模板 = autodown/demo/auto 左栏）。key 按 tab
+                        // path 注册——key 变即重挂载读 content:（播种通道，
+                        // README §9.2 口径标签无关平移）；oninput: .Edit 单参
+                        // 全文回写（INPUT_TEXT 通道与 code_editor 同约定，
+                        // demo vm-smoke 实证）。final: true = 文档恒终态（无
+                        // 流式语义）。不调用任何 autodown_* 内建（041④ 坏字
+                        // 节码红线，读路径由 .Edit 载荷覆盖）。
+                        autodown_editor (key: .active_path, final: true, style: "flex-1 w-full") {
                             content: .active_body
                             oninput: .Edit
                         }

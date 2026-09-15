@@ -508,8 +508,15 @@ arm('search', async (checks) => {
 //      11-properties 同款断言语义）
 /** Editor node predicate — PLAN-067 T-04: the body editor is a `code_editor`
  *  (CodeMirror6); rendered snapshots name it `textarea` (041 desktop_mcp.py
- *  T1 先例) or `code_editor` depending on build path — accept both. */
-const isEditorNode = (n) => n.head.startsWith('textarea ') || n.head.startsWith('code_editor ')
+ *  T1 先例) or `code_editor` depending on build path — accept both.
+ *  PLAN-068 T-02: body = `autodown_editor`（PLAN-066 原生外部件）；本机 exe
+ *  投影同为 `textarea`（demo 同 exe 实证同形态，Q1 冻结）——autodown_editor/
+ *  AutodownEditor 拼写为真块编辑壳 exe 的未来面预留。 */
+const isEditorNode = (n) =>
+  n.head.startsWith('textarea ') ||
+  n.head.startsWith('code_editor ') ||
+  n.head.startsWith('autodown_editor ') ||
+  n.head.startsWith('AutodownEditor ')
 
 /** Read the editor textarea's bound value from the snapshot (the value
  *  prop rides the AURA tree like offset_y/col_widths do). Poll until the

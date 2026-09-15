@@ -1,0 +1,245 @@
+---
+plan_id: PLAN-067
+status: drafting                # drafting → executing → execution_done → reviewed → archived
+feature_name: jade-vm-view-standard-components
+author: [zhaopuming]
+created_at: 2026-09-15
+updated_at: 2026-09-15
+plan_revision: 1
+current_step: 0
+total_steps: 6
+supersedes_spec_components: []
+new_spec_components: [jade/desktop-view-contract]
+touched_goals: []
+
+affects: [auto-down/jade-garden]
+---
+
+# [PLAN-067] jade-vm-view-standard-components
+
+## 0. 变更摘要
+
+jade-garden 桌面 VM 轨视图重构：以 auto-lang `examples/ui/041-auto-edit` 为
+结构模板，把 app.at 视图层从 022 骨架期的裸 button/text 词汇整体换装为
+AutoUI 标准组件——`actions {}` 注册表（六流 action 化）+ menubar/toolbar
+合成 + FileTree 文件树 + `code_editor` 正文编辑器 + StatusBar；并第一步并入
+门面 `active_*` 契约对齐（PLAN-624 merge 收据登记的 jade 侧尾巴：facade WIP
+基线落定 + `view_*` 投影字段改名 + tabs_store `active_path` 声明补齐）。
+vm-smoke 锁步更新（六条**流**是不变的行为契约，元素绑定随视图更新）。
+tabs_store 业务语义保持 web 双轨共享不动。
+
+动机：现视图是 plan-022 骨架期形态（满排裸按钮/文件列表是一列 button/正文
+是细 textarea/无菜单无状态栏），而 VM 轨富组件能力（plan 040 双轨真渲染、
+NativeWidgetRegistry、Plan 451 actions DSL、Plan 630 menubar 族、Plan 614
+FileTree）均已落地并有 041-auto-edit 实机验证。624 merge 门已证 facade 形态
+无 VM 缺陷（smoke 双模 PASS），重构时机成熟。
+
+## 1. 目标
+
+- **G1 门面基线落定**：未提交的 facade 形态 WIP（app.at facade 形态 +
+  tabs_store `active_path str = ""` 声明修复）提交为基线；App 投影字段
+  `view_*` → `active_title/active_body/active_dirty`（改名后与 store 字段
+  无撞名——store 仅声明 `tabs`/`active_path`）；现行 vm-smoke 双模绿为
+  重构前基线证据。
+- **G2 动作三源**：六流 action 化进 `actions {}`（Plan 451 DSL）+
+  `menubar{}`（Plan 630 组件族）+ `toolbar` 合成；menubar 点击与 MCP 自动
+  化同源派发。
+- **G3 文件树**：文件列表换 `FileTree`（fs 形态节点、目录/文件图标、展开
+  态），点击文件 → `.OpenFile(path)` 流不变。
+- **G4 正文编辑器**：正文 textarea 换 `code_editor`（按 tab path 注册
+  key）；`code_editor_set_text` 等内建留在 App 根 handler（041 约束：
+  store handler 内产出坏字节码）；编辑 → dirty → save 落盘流不变。
+- **G5 状态栏与面板整形**：StatusBar（status/root/计数行）；backlinks/
+  outlinks/due cards/search 面板保持信息结构、以标准 col/row/class 整形
+  （不引入新组件类型）。
+- **G6 验收门**：更新后的 vm-smoke **split + merged 双模全臂绿**；
+  tabs_store 的 web 共享面零语义变更（diff 仅 `active_path` 声明行 +
+  VM delta 注释）；桌面 README 视图契约节落账。
+
+**非目标**：markdown 预览/渲染与 graph 可视化组件化（后续档）；cards
+review 交互重设计（现状保留）；vue 轨 action 配置支持（auto-lang 编译器
+特性，另行计划）；tabs_store 业务逻辑变更（仅声明行补齐 + 注释）；
+auto-lang 仓任何改动；web 侧视图改动。
+
+## 2. 架构方案
+
+041 模板映射（jade 现状 → 041 模式）：
+
+| jade 现状（facade WIP） | 041-auto-edit 模式 | 落点 |
+| --- | --- | --- |
+| 满排裸按钮（open-ws/save/cards/graph/export/import/close） | `actions {}` 注册表 + `toolbar`/`menubar{}` 配置合成 | app.at actions 块 |
+| 文件列表 = 一列 `button (text: f.name)` | `FileTree`（fs 节点、图标、展开态） | components/filetree.at（自 041 移植适配） |
+| 正文细 `textarea` | `code_editor (key: …)`（CodeMirror6） | app.at 根视图编辑区 |
+| `view_title/view_body/view_dirty` 投影 | 派生标量镜像（041 `title_active` 同款），**落 App widget 侧**（非 store——tabs_store web 共享，见 §5 撞名裁定） | app.at model |
+| `text .status` 裸行 | StatusBar 组件（status/root/计数） | status_bar.at（013 形态） |
+| smoke `elementIdOf(btn)` 按 text 定位 | 锁步更新：toolbar item title/menubar 结构即为定位锚 | vm-smoke.mjs |
+
+VM 约束继承（041 README 实测清单，重构全程有效）：①回调 props 使组件 vm
+模式退化为空 fallback——交互组件不靠回调 props；②组件子树对 MCP 快照不可
+见（`autoui_snapshot` 只走根模板）——smoke 断言/定位的交互留根视图；③
+view fn 片段参数化条件不求值；④`code_editor_*` 内建留在根 handler；⑤
+action 配置 vue 发射器不消费（本计划 VM 轨为主，vue 面仅要求 tabs_store
+共享面不回归）。
+
+## 3. 技术栈
+
+- AutoUI DSL（.at）：`actions{}`/`menubar` 族/`FileTree`/`code_editor`/
+  `col/row/style`（VM 轨 iced 渲染）。
+- 运行/验收：`auto.exe`（auto-lang master 构建，`D:/autostack/auto-lang/
+  target/debug/auto.exe`）；`jade-garden/front/desktop/vm-smoke.mjs`
+  （node，AutoUI MCP 驱动，fixture 前后哈希守卫）。
+- 双轨约束：`tabs_store.at` 与 web（front/auto/src/front/tabs_store.at）
+  共享——本计划仅在桌面副本补 `active_path` 声明行与 VM delta 注释。
+
+## 4. 需求分析与背景调查
+
+**授权记录（2026-09-15，用户会话）**：用户确认"用 041-auto-edit 作框架重
+构 jade，立 auto-down 侧（jade 归它管）"。范围 = 本计划 §1；自动续作预算
+未特别设定（按技能默认上限）。
+
+**证据链**：
+
+| 证据 | 位置 |
+| --- | --- |
+| 624 merge 收据 AC-6 排障：facade WIP 红真因 = tabs_store 缺 `active_path` 声明（622 转写遗失）；smoke split+merged 双模 PASS（workaround 形态，plan 构建） | auto-lang docs/plans/archive/624-…md §9 PLAN-624:r2 |
+| facade WIP（未提交）：app.at facade 形态 + tabs_store.at（含声明修复） | 本仓主检出工作区（T-01 落定） |
+| 041 模板：actions DSL/menubar 族/FileTree/code_editor + VM 约束清单 + MCP 测试矩阵 | auto-lang examples/ui/041-auto-edit（README + src/front） |
+| smoke 契约基线：16 臂（open-ws/files/read/save/links/cards/d4/search/tabs①-⑤）、fixture 恢复协议、MCP 定位法 | jade-garden/front/desktop/vm-smoke.mjs |
+
+**本仓代码锚点（实勘 2026-09-15）**：
+
+| 锚点 | 位置 | 关联 |
+| --- | --- | --- |
+| 视图层（六流面板 + tabs facade） | `jade-garden/front/desktop/src/front/app.at`（WIP 形态 ~200 行） | G1..G5 |
+| store（tabs + active_path + computed active_tab） | `src/front/tabs_store.at`（缺声明的模型 + 模块级 fns strip_ext/adopt_save_result） | G1/G6 |
+| smoke | `jade-garden/front/desktop/vm-smoke.mjs`（arms 注册 + `elementIdOf` 文本定位 + `stateIs/stateHas`） | G6 |
+| 桌面契约/提案面 | `jade-garden/front/desktop/README.md` §6（MCP）/§8（提案清单 ⑥ 行残余接缝——624 已清偿待闭合注记） | G6 落账 |
+
+## 5. 详细设计
+
+### 5.1 门面契约（G1）
+
+- WIP 落定：`git` 提交 facade 形态 app.at + tabs_store.at（含
+  `var active_path str = ""` 声明修复）为基线提交（facade 正式落地前半——
+  后半 active_* 对齐即本计划）。
+- 字段改名：App model `view_title/view_body/view_dirty` →
+  `active_title/active_body/active_dirty`。**撞名裁定**：622 时代改名
+  view_* 因"跨状态同名按位对齐错读"（README §8 注记）；彼次实证的撞名
+  对象是 store 侧同名声明——现 store 仅声明 `tabs`/`active_path`，
+  `active_title/active_body/active_dirty` 三名 store 无声明、无撞名；
+  `active_path` 保持 store 独有（App 不声明，跨状态读）。重构后以 smoke
+  全臂回归验证该裁定。
+- 各 store 派发（Open/SetBody/Save/Close/SwitchTab）后的镜像重同步点
+  逐一对位改名（handler 内 `.view_x` → `.active_x`）。
+
+### 5.2 actions 与菜单（G2）
+
+`actions {}`（app.at widget 内，Plan 451 DSL）——六流映射：
+
+| action id | handler | 来源流 |
+| --- | --- | --- |
+| `ws.open` | .OpenWs | open-ws 臂 |
+| `files.reload` | .LoadFiles | files 臂 |
+| `file.save` | .Save | save 臂（`enabled_if: ".active_title != ''"`） |
+| `tab.close` | .CloseTab | close-tab/tabs③ |
+| `cards.load` | .LoadCards | cards 臂 |
+| `graph.load` | .LoadGraph | graph 臂 |
+| `ws.export` | .ExportWs | d4 臂 |
+| `ws.import` | .ImportZip | d4 臂 |
+
+`toolbar` 收编高频件（open/save/close/reload）；`menubar` 三菜单
+（文件：open/save/close；视图：reload/console 位预留；卡片：cards/graph/
+export/import）。`OpenFile(path)`/`Edit`/`QChanged` 等带参/输入事件不走
+action（FileTree 点击与 code_editor oninput 直连根事件）。
+
+### 5.3 FileTree（G3）
+
+自 041 `components/{filetree,tree_util,tree_icon,package}.at` 移植到
+`src/front/components/`（桌面自包含副本，不跨仓引用）；节点 schema 适配
+`list_files` 结果（name/path → fs 形态 id=path）；选中事件 →
+`.OpenFile(f.path)`。注意 041 注记：v1 直接渲染行（P320 单态同名组件
+播种共享，TreeView 全画廊单实例约束），FileTree 自包含。
+
+### 5.4 code_editor（G4）
+
+`code_editor (key: t.path, lang: "markdown")` 按 tab path 注册；
+打开/切换 tab 时根 handler `code_editor_set_text(key, body)`（**根
+handler 内**，041 坏字节码约束）；`oninput` → `.Edit`（SetBody 派发）
+照旧；dirty 显示走 `active_dirty`。空态（无 tab）保留空态文本定位锚
+（smoke 用）。
+
+### 5.5 StatusBar 与面板（G5）
+
+`status_bar.at`（013 形态组件：读根态标量，无回调 props——状态行
+status/root/bl_count/ol_count）。backlinks/outlinks/due cards/search
+面板保持现有信息结构与 handler，仅以标准 col/row/style 整形 + 计数
+徽标文本（不新增组件类型）。
+
+### 5.6 vm-smoke 锁步（G6）
+
+`vm-smoke.mjs` 更新点：①按钮定位 `elementIdOf` 文本改为 toolbar item
+title/menubar 结构对应锚；②`autoui_state` 断言字段照旧（active_* 合并
+根态可读——041 快照约束下这些字段在根 state，可读性不变）；③臂结构/
+流语义/fixture 协议**不动**。
+
+### 规范增量
+
+| delta | add/modify | 目标 | before/after | rationale | AC |
+| --- | --- | --- | --- | --- | --- |
+| SD-01 | add | jade-garden/front/desktop/README.md 新「桌面视图标准组件契约」节 | before：视图形态散落 §5/§7 注记（裸 button 列表 + view_* 投影，无持久契约）；after：actions 注册表（六流 action id 表）+ active_* 派生标量口径（widget 侧、撞名裁定）+ smoke 元素绑定契约 + 041 VM 约束清单引用 | 重构后的持久行为契约，防再漂移 | AC-02..05 |
+| SD-02 | modify | jade-garden/front/desktop/README.md §8 提案清单 ⑥ 行 | before：残余接缝四面开放登记（facade 实机 Field not found 等）；after：闭合注记——auto-lang PLAN-624 清偿（帧协议/值语义/find_index 2072；smoke 双模 PASS 实证）+ active_path 声明缺失真相（622 转写遗失，非 VM 缺陷） | 知识保鲜：彼仓缺陷证据闭合 | AC-07 |
+
+## 6. 测试设计
+
+- **主门**：`node vm-smoke.mjs`（split）+ `VM_MERGED=1 node vm-smoke.mjs`
+  （merged）——更新后全臂绿，fixture 前后哈希一致；重构前先跑一轮现行
+  smoke 留基线证据。
+- **流等价**：read（打开→active_title/active_body 标记）、save（编辑→
+  dirty→cleared+落盘）、tabs①-⑤ 逐臂对位。
+- **web 共享面**：`tabs_store.at` diff 审查（仅声明行+注释）；web 侧
+  `autodown/demo/auto` 若引用同一文件需同步核对（该副本为独立文件，无
+  构建耦合——diff 审查即可）。
+- **编译门**：`auto run -r vm` 启动无编译诊断；`cargo build -p auto`
+  （如触及发射器则不属于本计划——预期不触及）。
+
+## 7. 验收标准
+
+| ID | 标准 | 验证方法 | 期望 |
+| --- | --- | --- | --- |
+| AC-1 | 门面基线落定且撞名裁定成立 | 基线提交在案 + 现行 smoke 双模绿基线记录 | 基线 commit + smoke PASS×2 |
+| AC-2 | 六流 action 化 + menubar/toolbar 合成 | smoke 经新定位锚驱动 + menubar 渲染在案 | read/save 臂经 action 通道绿 |
+| AC-3 | FileTree 文件导航 | smoke files/read 臂 | 树渲染 6 docs + 点击打开流绿 |
+| AC-4 | code_editor 正文编辑流 | smoke save 臂 | dirty→cleared + 磁盘落盘验证绿 |
+| AC-5 | vm-smoke 双模全臂绿 | split + merged 全量跑 | 全臂 PASS + fixture 哈希一致 |
+| AC-6 | tabs_store web 共享零语义变更 | diff 审查 | 仅 active_path 声明行 + VM delta 注释 |
+| AC-7 | 契约落账 | README「视图契约」节 + §8 ⑥ 闭合注记 | 两处在库 |
+
+## 8. 执行步骤
+
+| 步骤 | 任务 | 文件/操作 | 验证 | AC |
+| --- | --- | --- | --- | --- |
+| T-01 | 门面基线落定：提交 facade WIP + `view_*`→`active_*` 改名（去 `active_path` 撞名）+ 现行 smoke 双模基线 | app.at、tabs_store.at；vm-smoke.mjs（现行） | smoke PASS×2（基线） | 1 |
+| T-02 | `actions {}` + menubar/toolbar：六流 action 化 + 锁步 smoke 定位锚 | app.at；vm-smoke.mjs | smoke 相关臂绿 | 2 |
+| T-03 | FileTree 移植接入（components 四件 + 节点适配 + 点击流） | components/filetree.at 等；app.at；vm-smoke.mjs | files/read 臂绿 | 3 |
+| T-04 | code_editor 正文（key 注册 + set_text 根 handler + 空态锚） | app.at | save 臂绿 | 4 |
+| T-05 | StatusBar + 面板整形 + smoke 全臂更新 + 双模全量 | status_bar.at、app.at、vm-smoke.mjs | smoke PASS×2 全臂 | 5 |
+| T-06 | tabs_store 共享面核对 + README 契约节 + §8 ⑥ 闭合 + 收据 | tabs_store.at diff、README.md | diff 审查 + 文档在库 | 6,7 |
+
+每步完成后在本节追加 `[✅ 已完成]` 一行证据。
+
+## 9. 复审记录
+
+- 2026-09-15 stage:new handoff（/auto-plan:new，rev 1）：PLAN-067 起草。
+  动机与模板实证充分（624 merge 收据 + 041 README 约束清单 + smoke 契约
+  基线均为当轮实勘）；T-01..T-06 覆盖 AC-1..7 与 SD-01/02。设计裁定两枚
+  已内嵌：①active_* 派生标量落 App widget 侧（web 共享约束优先于 041 的
+  store 侧形态，撞名裁定以 smoke 全臂回归验证）；②facade WIP 以 T-01
+  基线提交方式落定（= facade 正式落地前半，用户已定向"jade 归它管"）。
+  `outcome: pass`，`next: work`（worktree `.wt/auto-down-067/auto-down`，
+  分支 `plan-067-dev`，基线 = master 当前 tip）。
+
+## 10. 待澄清事项
+
+无阻断项。两个执行期裁定点已内嵌任务：①vue 轨是否要求同步视图（本计划
+VM 轨为主，web 面仅保 tabs_store 共享——若需 web 视图同步另行计划）；
+②markdown 预览/graph 组件化的第二档范围（后续档，不在本计划）。

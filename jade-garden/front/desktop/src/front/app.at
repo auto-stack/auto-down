@@ -1,10 +1,18 @@
-// app.at — jade-garden 桌面（tabs_store facade 回归形态，PLAN-622 清偿后）。
+// app.at — jade-garden 桌面（tabs_store facade 回归形态，PLAN-622 清偿后；
+// PLAN-067 T-01：投影镜像改名 view_* → active_*，与 vm-smoke 契约字段对齐）。
 //
 // 六流面板保持 slice 5 形态（open-ws/文件树/反链出链/闪卡/图谱/搜索/导入
 // 导出）；编辑区为 tabs_store facade：tab 状态权威在 store（desktop/src/
 // front/tabs_store.at，与 web 轨逐字共享 + Close 索引狩猎 delta），widget
-// 只持视图投影镜像（view_title/view_body/view_dirty/view_note，每次
+// 只持视图投影镜像（active_title/active_body/active_dirty/save_note，每次
 // store 派发后从 store 状态重同步）。vm-smoke tabs 臂五断言面不变。
+//
+// 撞名裁定（PLAN-067 T-01，接 622 时代 view_* 改名）：彼次因"跨状态同名
+// 按位对齐错读"退避 view_* 前缀（首跑实证 active_title 读出 store tab
+// 的 loaded）；其撞名对象是 store 侧同名声明——现 store 仅声明 tabs/
+// active_path（tabs_store.at model），active_title/active_body/active_dirty
+// 三名 store 无声明、无撞名，改名安全由 vm-smoke 全臂回归背书。active_path
+// 保持 store 独有（App 不声明，跨状态只读）。
 //
 // 形态历史：T-05 曾因 store facade VM 缺口簇（README §8 提案⑥）退绕行
 // 形态（widget 状态机等价实现）；PLAN-622 修复可复现项（splice/闭包捕获）
@@ -29,13 +37,12 @@ widget App {
         var root str = ""
         var files = []
         // —— 视图投影镜像（状态权威在 Tabs store，派发后重同步）——
-        // 命名用 view_* 前缀：与 store 模型字段（tabs/active_path）保持
-        // 全局不撞名——跨状态对象同名合并在 VM 侧按位对齐会错读
-        //（首跑实证：active_title 读出 store tab.loaded 的 true）。
-        var view_title str = ""
-        var view_body str = ""
-        var view_dirty bool = false
-        var view_note str = ""
+        // 命名裁定见文件头注（store 仅声明 tabs/active_path，active_*
+        // 三名无撞名；active_path 保持 store 独有，App 跨状态只读）。
+        var active_title str = ""
+        var active_body str = ""
+        var active_dirty bool = false
+        var save_note str = ""
         var cards = []
         var review_note str = ""
         var backlinks = []
@@ -79,15 +86,15 @@ widget App {
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
             if t != null {
-                .view_title = t.title
-                .view_body = t.body
-                .view_dirty = t.dirty
+                .active_title = t.title
+                .active_body = t.body
+                .active_dirty = t.dirty
             }
-            var bl = get_backlinks(.view_title)
+            var bl = get_backlinks(.active_title)
             var blLinks = bl.links
             .backlinks = blLinks
             .bl_count = blLinks.length
-            var ol = get_outlinks(.view_title)
+            var ol = get_outlinks(.active_title)
             var olLinks = ol.links
             .outlinks = olLinks
             .ol_count = olLinks.length
@@ -99,9 +106,9 @@ widget App {
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
             if t != null {
-                .view_title = t.title
-                .view_body = t.body
-                .view_dirty = t.dirty
+                .active_title = t.title
+                .active_body = t.body
+                .active_dirty = t.dirty
             }
             .status = "switched"
         }
@@ -121,14 +128,14 @@ widget App {
                 Tabs.Close(.active_path)
                 var t2 = .tabs.find(tt => tt.path == .active_path)
                 if t2 != null {
-                    .view_title = t2.title
-                    .view_body = t2.body
-                    .view_dirty = t2.dirty
+                    .active_title = t2.title
+                    .active_body = t2.body
+                    .active_dirty = t2.dirty
                 }
                 if t2 == null {
-                    .view_title = ""
-                    .view_body = ""
-                    .view_dirty = false
+                    .active_title = ""
+                    .active_body = ""
+                    .active_dirty = false
                 }
             }
             if was_dirty {
@@ -141,13 +148,13 @@ widget App {
             }
         }
 
-        // 键入：textarea 双向绑定写 .view_body（视图投影面），oninput
+        // 键入：textarea 双向绑定写 .active_body（视图投影面），oninput
         // 经 SetBody 落入 store tab（dirty 由 store 按 original_body 判定）。
         .Edit -> {
-            Tabs.SetBody({ path: .active_path, body: .view_body })
+            Tabs.SetBody({ path: .active_path, body: .active_body })
             var t = .tabs.find(tt => tt.path == .active_path)
             if t != null {
-                .view_dirty = t.dirty
+                .active_dirty = t.dirty
             }
         }
 
@@ -161,10 +168,10 @@ widget App {
             Tabs.Save(.active_path)
             var t = .tabs.find(tt => tt.path == .active_path)
             if t != null {
-                .view_body = t.body
-                .view_dirty = t.dirty
+                .active_body = t.body
+                .active_dirty = t.dirty
             }
-            .view_note = "saved"
+            .save_note = "saved"
             .status = "saved"
         }
 
@@ -239,7 +246,7 @@ widget App {
                 button "import-zip" { onclick: .ImportZip }
                 text .status
                 text .io_note
-                if .view_dirty {
+                if .active_dirty {
                     text "● unsaved"
                 }
             }
@@ -263,12 +270,12 @@ widget App {
                             }
                         }
                     }
-                    if .view_title != "" {
-                        textarea (value: .view_body, placeholder: "edit markdown here") {
+                    if .active_title != "" {
+                        textarea (value: .active_body, placeholder: "edit markdown here") {
                             oninput: .Edit
                         }
                     }
-                    text .view_note
+                    text .save_note
                 }
                 col {
                     class: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2",

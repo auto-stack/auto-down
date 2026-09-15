@@ -193,6 +193,50 @@ async function pressButton(label) {
   return elementIdOf(btn)
 }
 
+/** Press the first button whose subtree binds `onclick: <handler>` — the
+ *  actions-DSL channel (PLAN-067 T-02: six-flow actions synthesized into
+ *  the toolbar; auto-lang Plan 418 §8.4① — synthesized buttons carry their
+ *  onclick in snapshots, so the handler IS the stable locator, not text). */
+async function pressAction(handler, timeoutMs = 6000) {
+  const needle = `onclick: ${handler}`
+  for (const deadline = Date.now() + timeoutMs; ;) {
+    const tree = await snapshot()
+    const btn = findFirst(
+      tree,
+      (n) =>
+        n.head.startsWith('button ') &&
+        elementIdOf(n) &&
+        findFirst(n, (c) => c !== n && c.head.trim() === needle),
+    )
+    if (btn) {
+      const res = await callTool('autoui_action', { element_id: elementIdOf(btn), action: 'press' })
+      if (!/status: ok/.test(res)) throw new Error(`press ${handler} not ok: ${res}`)
+      return elementIdOf(btn)
+    }
+    if (Date.now() > deadline) throw new Error(`button with "${needle}" not found in the snapshot`)
+    await sleep(150)
+  }
+}
+
+/** Open the menubar menu `trigger` (文件/视图/卡片) then press the item
+ *  whose own label equals `item` (PLAN-067 T-02: cards/graph/export/import
+ *  live in the 卡片 menu; menus auto-close after item activation — 041
+ *  desktop_mcp.py open_menu 先例). */
+async function pressMenuItem(trigger, item) {
+  await pressButton(trigger)
+  for (const deadline = Date.now() + 6000; ;) {
+    const tree = await snapshot()
+    const it = findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === item && elementIdOf(n))
+    if (it) {
+      const res = await callTool('autoui_action', { element_id: elementIdOf(it), action: 'press' })
+      if (!/status: ok/.test(res)) throw new Error(`menu item "${item}" not ok: ${res}`)
+      return elementIdOf(it)
+    }
+    if (Date.now() > deadline) throw new Error(`menu "${trigger}" lacks item "${item}"`)
+    await sleep(150)
+  }
+}
+
 /** Poll autoui_state until `field` matches `want` (string compare; the
  *  state printer appends a type annotation like `true (bool)` / `3 (int)`). */
 async function stateIs(field, want, timeoutMs = 6000) {
@@ -309,7 +353,7 @@ const arm = (name, fn) => (arms[name] = fn)
 const nonce = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
 arm('open-ws', async (checks) => {
-  await pressButton('open-ws')
+  await pressAction('.OpenWs')
   const st = await stateIs('status', 'ws-open')
   const root = await callTool('autoui_state', { fields: ['root'] })
   if (!/wiki-demo/.test(root)) throw new Error(`open-ws: root not backfilled: ${root.trim()}`)
@@ -317,7 +361,7 @@ arm('open-ws', async (checks) => {
 })
 
 arm('files', async (checks) => {
-  await pressButton('reload-files')
+  await pressAction('.LoadFiles')
   await stateIs('status', 'files-reloaded')
   // 文件树按钮计数（.ad 后缀标签）——fixture 5 文档全数呈现
   for (const deadline = Date.now() + 6000; ;) {
@@ -351,7 +395,7 @@ arm('save', async (checks) => {
   const marker = `vm-smoke save ${nonce()}`
   await typeInto((n) => n.head.startsWith('textarea '), marker, 'editor textarea')
   await stateIs('active_dirty', 'true')
-  await pressButton('save')
+  await pressAction('.Save')
   await stateIs('status', 'saved')
   await stateIs('active_dirty', 'false')
   await stateIs('save_note', 'saved')
@@ -401,7 +445,7 @@ arm('cards', async (checks) => {
     body: doc.body + '\n' + seedBody,
   })
   if (!put.ok) throw new Error(`cards: seed write failed: ${put.status}`)
-  await pressButton('cards')
+  await pressMenuItem('卡片', '加载卡片')
   await stateIs('status', 'cards-loaded')
   // due 列表呈现（问题文本进右栏快照）
   for (const deadline = Date.now() + 6000; ;) {
@@ -423,7 +467,7 @@ arm('cards', async (checks) => {
 })
 
 arm('d4', async (checks) => {
-  await pressButton('export-ws')
+  await pressMenuItem('卡片', '导出工作区')
   await stateIs('status', 'exported')
   const zip = 'D:/autostack/auto-down/tmp/jade-probe/desktop-export.zip'
   for (const deadline = Date.now() + 6000; ;) {
@@ -437,7 +481,7 @@ arm('d4', async (checks) => {
     if (Date.now() > deadline) throw new Error('d4: export zip never landed with PK magic')
     await sleep(150)
   }
-  await pressButton('import-zip')
+  await pressMenuItem('卡片', '导入归档')
   await stateIs('status', 'imported')
   const io = await callTool('autoui_state', { fields: ['io_note'] })
   if (!/imported/i.test(io)) throw new Error(`d4: import io_note: ${io.trim().slice(0, 200)}`)
@@ -521,7 +565,7 @@ arm('tabs', async (checks) => {
   const marker2 = `tabs-dirty ${nonce()}`
   await typeInto((n) => n.head.startsWith('textarea '), marker2, 'editor textarea')
   await stateIs('active_dirty', 'true')
-  await pressButton('close-tab')
+  await pressAction('.CloseTab')
   await stateIs('status', 'discarded-dirty:Hello World')
   const hwFile = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
   await callTool('autoui_action', { element_id: elementIdOf(hwFile), action: 'press' })
@@ -546,7 +590,7 @@ arm('tabs', async (checks) => {
   await callTool('autoui_action', { element_id: elementIdOf(hwFile2), action: 'press' })
   await stateIs('status', 'opened')
   await stateHas('active_body', marker3)
-  await pressButton('save')
+  await pressAction('.Save')
   await stateIs('active_dirty', 'false')
   for (const deadline = Date.now() + 8000; ;) {
     const body = fs.readFileSync(path.join(FIXTURE, 'wiki', 'Hello World.ad'), 'utf8')
@@ -559,7 +603,7 @@ arm('tabs', async (checks) => {
   // ④ 保存：清脏 + 磁盘落盘
   const marker4 = `tabs-save ${nonce()}`
   await typeInto((n) => n.head.startsWith('textarea '), marker4, 'editor textarea')
-  await pressButton('save')
+  await pressAction('.Save')
   await stateIs('status', 'saved')
   await stateIs('active_dirty', 'false')
   for (const deadline = Date.now() + 8000; ;) {
@@ -675,7 +719,7 @@ async function saveBaseline(outFile) {
     if (Date.now() > deadline) throw new Error('vm window rendered no UI within 30s')
     await sleep(500)
   }
-  await pressButton('open-ws')
+  await pressAction('.OpenWs')
   await stateIs('status', 'ws-open')
   for (const name of ['Hello World.ad', 'CAP 定理.ad']) {
     const tree = await snapshot()
@@ -684,9 +728,9 @@ async function saveBaseline(outFile) {
     await callTool('autoui_action', { element_id: elementIdOf(btn), action: 'press' })
     await stateIs('status', 'opened')
   }
-  await pressButton('cards')
+  await pressMenuItem('卡片', '加载卡片')
   await stateIs('status', 'cards-loaded')
-  await pressButton('graph')
+  await pressMenuItem('卡片', '加载图谱')
   await stateIs('status', 'graph-loaded')
   await typeInto((n) => n.head.startsWith('input '), 'CAP', 'search input')
   await pressButton('search')

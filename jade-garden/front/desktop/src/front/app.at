@@ -57,6 +57,31 @@ widget App {
         var io_note str = ""
     }
 
+    // PLAN-067 T-02: actions 注册表（Plan 451 DSL）——六流 action 化。
+    // 三源绑定：shortcut（键盘回退层）/ menubar·toolbar 配置合成 / MCP
+    // 自动化同源派发（041-auto-edit 模板形态）。enabled_if 对合并根 state
+    // 求值（.active_title 无前缀）。handler 在解析期校验命中 on{} 事件。
+    actions {
+        action (id: "ws.open",      handler: .OpenWs,    title: "打开工作区", icon: "folder-open", shortcut: "Ctrl+O")
+        action (id: "files.reload", handler: .LoadFiles, title: "重载文件列表", icon: "refresh-cw", shortcut: "F5")
+        action (id: "file.save",    handler: .Save,      title: "保存",   icon: "save",  shortcut: "Ctrl+S",
+                enabled_if: ".active_title != ''")
+        action (id: "tab.close",    handler: .CloseTab,  title: "关闭标签", icon: "x", shortcut: "Ctrl+W")
+        action (id: "cards.load",   handler: .LoadCards, title: "加载卡片", icon: "layers")
+        action (id: "graph.load",   handler: .LoadGraph, title: "加载图谱", icon: "share-2")
+        action (id: "ws.export",    handler: .ExportWs,  title: "导出工作区", icon: "download")
+        action (id: "ws.import",    handler: .ImportZip, title: "导入归档", icon: "upload")
+
+        // 高频件收编（PLAN-067 §5.2）：open/save/close/reload 进工具栏；
+        // cards/graph/export/import 走菜单。
+        toolbar {
+            item (action: "ws.open")
+            item (action: "file.save")
+            item (action: "tab.close")
+            item (action: "files.reload")
+        }
+    }
+
     on {
         .Init -> {
             .status = "ready"
@@ -234,16 +259,40 @@ widget App {
     view {
         col {
             class: "flex h-full flex-col gap-2 p-3 bg-background text-foreground",
+            // PLAN-067 T-02: menubar 三菜单（Plan 630 组件族，VM=Popover
+            // lowering）+ toolbar 空标签 = actions DSL 配置合成（041 同款）。
+            // 菜单分面（§5.2）：文件=open/save/close；视图=reload（console
+            // 位预留）；卡片=cards/graph/export/import。状态行/脏标留顶排。
             row {
                 class: "flex items-center gap-2",
-                button "open-ws" { onclick: .OpenWs }
-                button "reload-files" { onclick: .LoadFiles }
-                button "save" { onclick: .Save }
-                button "close-tab" { onclick: .CloseTab }
-                button "cards" { onclick: .LoadCards }
-                button "graph" { onclick: .LoadGraph }
-                button "export-ws" { onclick: .ExportWs }
-                button "import-zip" { onclick: .ImportZip }
+                menubar (class: "items-center") {
+                    menubar-menu (value: "file") {
+                        menubar-trigger "文件"
+                        menubar-content {
+                            menubar-item (title: "打开工作区", icon: "folder-open", shortcut: "Ctrl+O") { onclick: .OpenWs }
+                            menubar-item (title: "保存", icon: "save", shortcut: "Ctrl+S", enabled: .active_title != "") { onclick: .Save }
+                            menubar-item (title: "关闭标签", icon: "x", shortcut: "Ctrl+W") { onclick: .CloseTab }
+                        }
+                    }
+                    menubar-menu (value: "view") {
+                        menubar-trigger "视图"
+                        menubar-content {
+                            menubar-item (title: "重载文件列表", icon: "refresh-cw", shortcut: "F5") { onclick: .LoadFiles }
+                            // console 位预留（041 同款；jade v1 无 console 面板）
+                        }
+                    }
+                    menubar-menu (value: "cards") {
+                        menubar-trigger "卡片"
+                        menubar-content {
+                            menubar-item (title: "加载卡片", icon: "layers") { onclick: .LoadCards }
+                            menubar-item (title: "加载图谱", icon: "share-2") { onclick: .LoadGraph }
+                            menubar-separator
+                            menubar-item (title: "导出工作区", icon: "download") { onclick: .ExportWs }
+                            menubar-item (title: "导入归档", icon: "upload") { onclick: .ImportZip }
+                        }
+                    }
+                }
+                toolbar (class: "ml-auto") {}
                 text .status
                 text .io_note
                 if .active_dirty {

@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-067
-status: drafting                # drafting → executing → execution_done → reviewed → archived
+status: execution_done        # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-vm-view-standard-components
 author: [zhaopuming]
 created_at: 2026-09-15
 updated_at: 2026-09-15
 plan_revision: 1
-current_step: 0
+current_step: 6
 total_steps: 6
 supersedes_spec_components: []
 new_spec_components: [jade/desktop-view-contract]
@@ -227,6 +227,14 @@ title/menubar 结构对应锚；②`autoui_state` 断言字段照旧（active_* 
 
 每步完成后在本节追加 `[✅ 已完成]` 一行证据。
 
+- [x] T-01 [✅ 已完成] worktree `.wt/auto-down-067/auto-down`（分支 plan-067-dev，基线 0246ba4）；主检出 WIP 逐字节携入（sha256 双侧一致留痕）提交 230dc57（app.at facade 形态 + tabs_store.at 首次入库含 `active_path str` 声明修复）；改名 fc0ed9f（view_title/body/dirty→active_*，view_note→save_note 对齐 smoke 契约字段；撞名裁定落注 app.at 头注）；现行 smoke split+merged 双模全臂 PASS（auto.exe v0.4.2-729，16 臂全绿 + fixture 哈希一致）。
+- [x] T-02 [✅ 已完成] 4930a81：`actions{}` 8 action（含 `file.save` enabled_if `.active_title != ''`）+ toolbar 4 项合成 + menubar 三菜单（文件/视图[console 位预留]/卡片=cards+graph+export+import）；smoke 增 `pressAction(onclick 锚)`+`pressMenuItem(菜单两步)` 驱动，open-ws/files/save/close 臂经 toolbar action 通道、cards/d4 臂经卡片菜单通道，双模全臂 PASS——AC-2 达成（menubar 渲染+驱动在案）。
+- [x] T-03 [✅ 已完成] aae5d86：041 tree 四件移植（components/{filetree,tree_util,tree_icon,package}.at）+ `to_fs_nodes`（list_files("", true) 递归→fs 形态 id=path，while+索引纪律）+ `computed ft_rows => flatten_tree(...)` + `.FtToggle`/toggle_id 受控展开态 + `.ft_sel` 选中；**树行根视图渲染裁定**（P614-C1 MCP press 组件行崩溃在册 + 约束②快照不可见→smoke 驱动行留根，041 行结构 TreeIcon+行按钮，点击 .OpenFile 流不变）——files 臂 6 docs 渲染、read/links/tabs 点击流绿（split 全臂 PASS）。AC-3 达成。
+- [x] T-04 [✅ 已完成] 52f94dc：`code_editor (key: .active_path, lang: "markdown")` + `.Edit(str)` 单参通道（真实键盘=PLAN-057 全文发布 / MCP type_text=INPUT_TEXT 注入，渲染器源码双通道实证）+ 空态锚文本；**播种裁定**（content: 每帧外部 diff 回写+键变重挂载=播种通道；显式 set_text 需编辑器已注册——首开 RuntimeError "no editor registered" 实机复现，故打开/切换不调用；041 store-handler 坏字节码约束不受影响，调用位留根）——save 臂 type→dirty→save→清脏+磁盘落盘绿，tabs①-⑤ 全绿（split 全臂 PASS）。AC-4 达成。
+- [x] T-05 [✅ 已完成] f5c8f36：`status_bar.at` StatusBar 组件（值 props：status_text/root_path/bl/ol；prop 名与模型字段错开防 P320 撞名面；状态行自顶排移至底栏）+ backlinks/outlinks/due cards 面板整形（11px tracking-wider 头 + 计数徽标，结构/handler 不动，search/graph_rows 面保留）——**split+merged 双模全臂 PASS**（AC-5 达成）。
+- [x] T-06 [✅ 已完成] 874eb22：tabs_store 共享面 diff 审查（桌面副本 vs web 孪生 jade-garden/front/auto/src/front/tabs_store.at：仅头注 + `active_path str` 声明行[624 修复] + `&&/||` 显式守卫×3 + Close 索引狩猎 + `""` 哨兵——均头注登记的 VM delta，业务语义零变更；本计划对 tabs_store.at 零改动）；README 新增 §9「桌面视图标准组件契约」节（SD-01：actions 注册表/active_* 口径/code_editor 播种口径/FileTree 根渲染裁定/smoke 元素绑定契约/041 约束清单引用/§9.5 共享面口径）+ §8 提案⑥ ✅ 闭合注记（SD-02）。AC-6/AC-7 达成。
+- [x] 终门 [✅ 已完成] HEAD 874eb22 上双模复跑：split PASS + merged PASS（全臂 + fixture 哈希一致）。
+
 ## 9. 复审记录
 
 - 2026-09-15 stage:new handoff（/auto-plan:new，rev 1）：PLAN-067 起草。
@@ -237,6 +245,25 @@ title/menubar 结构对应锚；②`autoui_state` 断言字段照旧（active_* 
   基线提交方式落定（= facade 正式落地前半，用户已定向"jade 归它管"）。
   `outcome: pass`，`next: work`（worktree `.wt/auto-down-067/auto-down`，
   分支 `plan-067-dev`，基线 = master 当前 tip）。
+
+- 2026-09-15 stage: work | PLAN-067 | rev 1 | outcome: pass |
+  code_commit: 874eb22（plan-067-dev；基线链 230dc57→fc0ed9f→4930a81→
+  aae5d86→52f94dc→f5c8f36→874eb22） | task_ids: T-01..T-06 全完成
+  （current_step 6/6） | evidence: ①AC-1 基线 230dc57+fc0ed9f + 现行
+  smoke 双模 PASS×2（改名后撞名裁定成立）；②AC-2 4930a81 六流
+  action 通道（toolbar onclick 锚 + 卡片菜单两步）双模全臂绿；③AC-3
+  aae5d86 FileTree 6 docs 渲染 + 点击流绿；④AC-4 52f94dc code_editor
+  type→dirty→save→磁盘落盘绿 + tabs①-⑤ 绿；⑤AC-5 f5c8f36 与终门
+  874eb22 各跑 split+merged 双模全臂 PASS + fixture 哈希一致；
+  ⑥AC-6 tabs_store diff 审查（仅登记 VM delta，零业务语义）；⑦AC-7
+  README §9 契约节 + §8 ⑥ 闭合在库。执行期裁定三枚（证据均在案）：
+  FileTree 行根视图渲染（P614-C1 崩溃在册 + 约束②）；code_editor 播种
+  走 content: 外部 diff 回写（显式 set_text 首开未注册实机崩，
+  RuntimeError "no editor registered"）；.Edit(str) 单参通道（真实键盘
+  PLAN-057 全文发布 / MCP INPUT_TEXT 注入双实证）。SM-注：主检出工作区
+  WIP 已按 T-01 携入并清理（sha256 验证留痕），主检出恢复干净。
+  blockers: 无 | next: review（/auto-plan:review；worktree 留存待复审
+  与 merge）。
 
 ## 10. 待澄清事项
 

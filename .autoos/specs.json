@@ -889,6 +889,18 @@
         "related": [
           "PLAN-066"
         ]
+      },
+      {
+        "id": "P067-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "jade 桌面视图标准组件契约 — actions/menubar/FileTree/code_editor/StatusBar（jade/desktop-view-contract）",
+        "content": "- **actions 注册表**（Plan 451 DSL，app.at）：八 action——ws.open/.OpenWs、files.reload/.LoadFiles、file.save/.Save（enabled_if .active_title != ''）、tab.close/.CloseTab、cards.load/.LoadCards、graph.load/.LoadGraph、ws.export/.ExportWs、ws.import/.ImportZip。触发三源同源派发：toolbar 合成（open/save/close/reload 四高频件）、menubar 三菜单（文件=open/save/close；视图=reload，console 位预留；卡片=cards/graph/export/import）、MCP autoui_action 与物理点击同 handler。带参/输入事件不走 action：FileTree 点击 .OpenFile(path)、code_editor oninput .Edit(str)、搜索 .QChanged/.DoSearch、评分 .Grade(...) 留根视图控件直连。\n- **active_* 投影口径**：tab 状态权威在 Tabs store（desktop/src/front/tabs_store.at，与 web 轨逐字共享 + 已登记 VM delta）；App widget 只持投影镜像 active_title/active_body/active_dirty/save_note，每次 store 派发（Open/SetBody/Save/Close/SwitchTab）后重同步。撞名裁定：store 仅声明 tabs/active_path，active_* 三名无撞名（622 时代 view_* 前缀所避让的 store 侧同名声明已不存在），smoke split+merged 全臂回归背书；active_path 保持 store 独有（App 跨状态只读）。\n- **code_editor 播种口径**：content: 绑定=初值+每帧外部 diff 回写；key=.active_path 键变即重挂载读 content:。显式 code_editor_set_text 需编辑器已注册（首开未挂载即 RuntimeError no editor registered，实机复现）——打开/切换路径不调用；该内建编译进 store handler 产坏字节码（auto-lang 041 约束）仍有效，调用位留根 handler 面。正文键入 .Edit(str) 单参通道：真实键盘=渲染器全文发布（PLAN-057/PLAN-013 W2），MCP type_text=INPUT_TEXT 首参注入。\n- **FileTree 根视图行渲染**：tree 组件四件自 auto-lang 041 移植为自包含副本（components/{filetree,tree_util,tree_icon,package}.at）；数据=list_files(\"\", true) 递归树→to_fs_nodes 装配 fs 形态节点（id=path，while+索引遍历纪律）；行序列=computed ft_rows=>flatten_tree 纯派生；受控展开 .FtToggle+toggle_id、选中态 .ft_sel。行渲染留根视图（裁定）：vm 组件子树对 MCP 快照不可见 + MCP press 组件行 VM 轨静默崩溃（auto-lang P614-C1 在册债务，P618-D4 家族）——smoke 驱动文件导航按 041 行结构（TreeIcon+行按钮）在根视图渲染，点击 .OpenFile(path) 流不变。\n- **StatusBar**：值 props 组件（status_text/root_path/bl/ol），无回调 props；prop 名与 App 模型字段刻意错开（P320 单态同名跨组件共享的撞名面纪律）。\n- **smoke 元素绑定契约**：六流 action=toolbar 合成按钮 onclick 锚（pressAction）；cards/graph/export/import=menubar 触发器文本→菜单项文本两步（pressMenuItem）；文件树/反链/命中/tab 条/评分=根视图 button ownText；正文键入=textarea/code_editor 双形态节点；状态断言=autoui_state 字段名面（active_title/active_body/active_dirty/save_note/status/root/bl_count/ol_count/hit_count/io_note）。持久契约全文：jade-garden/front/desktop/README.md §9（桌面视图标准组件契约）。",
+        "file": "jade-garden/front/desktop/README.md",
+        "related": [
+          "PLAN-067"
+        ],
+        "superseded_by": null
       }
     ],
     "designs": [
@@ -2172,6 +2184,18 @@
         "related": [
           "PLAN-064"
         ]
+      },
+      {
+        "id": "P067-2",
+        "section": "reviews",
+        "status": "stable",
+        "title": "jade 桌面 VM 视图标准组件重构 — 验收/复审记录（PLAN-067）",
+        "content": "PLAN-067 rev1 交付：jade 桌面 app.at 按 041-auto-edit 模板重构为标准组件形态（actions/menubar/toolbar+FileTree+code_editor+StatusBar）+ 门面 active_* 契约对齐（624 收据尾巴）+ vm-smoke 锁步。AC-1..7 全 pass；work 复审 pass（874eb221 双模全臂复现 + 组件字节级对拍 + 文档-代码交叉核对）；findings R-067-1/R-067-2 双 observation 非阻断（工具链漂移登记/基线工具未驱动）；交付提交链 230dc57..874eb22（plan-067-dev），冻结证据哈希 README ba056aee/app.at 3cc3c55f。merge 收据 PLAN-067:r1。",
+        "file": "docs/plans/archived/067-jade-vm-view-standard-components.md",
+        "related": [
+          "PLAN-067"
+        ],
+        "superseded_by": null
       }
     ],
     "reports": [

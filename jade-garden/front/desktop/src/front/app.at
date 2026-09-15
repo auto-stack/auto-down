@@ -26,6 +26,7 @@
 // search_pages。
 
 use store: Tabs
+use status_bar: StatusBar
 use components.tree_util: flatten_tree, toggle_id
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
 use auto.http
@@ -350,7 +351,6 @@ widget App {
                     }
                 }
                 toolbar (class: "ml-auto") {}
-                text .status
                 text .io_note
                 if .active_dirty {
                     text "● unsaved"
@@ -428,10 +428,12 @@ widget App {
                 }
                 col {
                     class: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2",
+                    // —— 反链/出链面板（PLAN-067 T-05 整形：结构/handler
+                    // 不动，标准 col/row/class + 计数徽标文本）——
                     row {
-                        class: "gap-1",
-                        text "backlinks"
-                        text .bl_count
+                        class: "gap-1 items-center",
+                        text "backlinks" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .bl_count { style: "text-[11px] text-zinc-500" }
                     }
                     for b in .backlinks {
                         button (text: b.source_title) {
@@ -439,9 +441,9 @@ widget App {
                         }
                     }
                     row {
-                        class: "gap-1",
-                        text "outlinks"
-                        text .ol_count
+                        class: "gap-1 items-center",
+                        text "outlinks" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .ol_count { style: "text-[11px] text-zinc-500" }
                     }
                     for o in .outlinks {
                         if o.exists {
@@ -453,8 +455,11 @@ widget App {
                             text o.target_title
                         }
                     }
-                    text "due cards"
-                    text .review_note
+                    row {
+                        class: "gap-1 items-center",
+                        text "due cards" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .review_note { style: "text-[11px] text-zinc-500" }
+                    }
                     for c in .cards {
                         col {
                             class: "gap-1 border-b pb-1",
@@ -491,6 +496,9 @@ widget App {
                     }
                 }
             }
+            // PLAN-067 T-05: StatusBar 组件（值 props——组件子树快照不可见，
+            // smoke 断言走根态字段；prop 名与模型字段错开防 P320 撞名面）。
+            StatusBar (status_text: .status, root_path: .root, bl: .bl_count, ol: .ol_count) {}
         }
     }
 }

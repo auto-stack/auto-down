@@ -901,6 +901,18 @@
           "PLAN-067"
         ],
         "superseded_by": null
+      },
+      {
+        "id": "P068-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "jade 桌面视图契约增量 — tab 条 041 化契约（§9.6）+ 正文编辑器换装 autodown_editor（§9.2/§9.4）",
+        "content": "- **tab 条契约（README §9.6，SD-01）**：041 双分支结构（Plan 449：view fn 片段参数化条件不求值，激活/非激活须双分支，t.path 与 .active_path 比较）；激活 tab=高亮行 bg-[#1C1D24]（括号 style: 形式——class: 括号式遇任意值整串丢弃，实机快照实证；外层条/分隔线 class 花括号式不受影响）+ amber * 脏标（t.dirty 门控）+ x 钮（icon name:\"x\"）；x 钮=零参 .CloseTab（活动 tab 语义，Tabs.Close(.active_path)），只出现在激活行，不新增带参 msg（tabs_store 零改动红线）；无 + 新建钮（六流无新建流，登记偏差另行计划）。smoke 锚：tab 标题钮 ownText=t.title 不变；x 钮=唯一空文本 button（icon 快照渲染 [Image] 文本节点，name prop 不可见）。\n- **正文编辑器换装 autodown_editor（SD-02）**：autodown_editor (key: .active_path, final: true) { content: .active_body, oninput: .Edit }——播种口径标签无关（content:=初值+每帧外部 diff 回写，键变重挂载）；.Edit(str) 单参通道不变（INPUT_TEXT 注入与 code_editor 同约定，demo 同 exe 实证）；零内建调用（041④ 坏字节码红线，读路径由 .Edit 全文载荷覆盖）；final:true=文档恒终态。消费 PLAN-066 NativeWidgetRegistry（auto-lang master 72fd9d70c）。\n- **isEditorNode 四形态（Q1 冻结）**：textarea/code_editor/autodown_editor/AutodownEditor；本机 exe 投影=textarea+value 全文（与 autodown/demo/auto 编辑面同 exe 同形），后两拼写为真块编辑壳 exe 预留。\n- 持久契约全文：jade-garden/front/desktop/README.md §9（§9.6 新增+§9.2/§9.4 更新，PLAN-068 增量）。",
+        "file": "jade-garden/front/desktop/README.md",
+        "related": [
+          "PLAN-068"
+        ],
+        "superseded_by": null
       }
     ],
     "designs": [
@@ -2194,6 +2206,18 @@
         "file": "docs/plans/archived/067-jade-vm-view-standard-components.md",
         "related": [
           "PLAN-067"
+        ],
+        "superseded_by": null
+      },
+      {
+        "id": "P068-2",
+        "section": "reviews",
+        "status": "stable",
+        "title": "jade 桌面 tab 条 041 化 + 正文换装 autodown_editor — 验收/复审记录（PLAN-068）",
+        "content": "PLAN-068 rev1 交付：jade 桌面 tab 条 041 化（双分支高亮/脏标/x 钮）+ 正文编辑器 code_editor→autodown_editor（消费 PLAN-066 SPI）+ vm-smoke 锁步（tabs③a x 钮接线断言 + isEditorNode 四拼写）。AC-1..6 全 pass；review 收口 pass（被审提交 411ec60 复审重跑双模全臂 PASS——split+merged 各 16 检查，fixture hash 恢复一致×2；tabs_store.at 与 web/back 轨零 diff；diff 逐行重读+文档-代码交叉核对）。findings R-068-1/R-068-2 双 observation 非阻断（工具链 docs-only 漂移登记/真键盘 IME 人工项）。交付提交链 84679ca→d62ce52→411ec60（plan-068-dev），冻结证据哈希 README ea015d29/app.at a9358260。merge 收据 PLAN-068:r1。",
+        "file": "jade-garden/front/desktop/README.md",
+        "related": [
+          "PLAN-068"
         ],
         "superseded_by": null
       }

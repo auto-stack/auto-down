@@ -340,8 +340,9 @@ autodown_editor (key: .active_path, final: true, style: "flex-1 w-full") {
   known-good）；**ledger_refreshed**——tracked-file 路线，读回验证
   P068-1/P068-2 在 master specs.json（arch 41 条/reviews 40 条）；
   **archived**——本文件 git mv 至 docs/plans/archived/ + status: archived
-  （见下方归档提交）；**cleaned**——待清理后补记。completion_kind:
-  delivered。
+  （见下方归档提交）；**cleaned** ✅——wt-guard clean 前置后
+  worktree/分支 plan-068-dev(was cbd0fe7)/组目录 .wt/auto-down-068 全数
+  移除验证完毕。completion_kind: delivered。
 
 ## 10. 待澄清事项
 

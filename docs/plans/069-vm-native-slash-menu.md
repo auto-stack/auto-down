@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-069
-status: executing       # drafting → executing → execution_done → reviewed → archived
+status: execution_done  # drafting → executing → execution_done → reviewed → archived
 feature_name: vm-native-slash-menu
 author: [zhaopuming]
 created_at: 2026-09-15
 updated_at: 2026-09-15
 plan_revision: 2
-current_step: 5
+current_step: 6
 total_steps: 6
 supersedes_spec_components: []
 new_spec_components: []
@@ -280,7 +280,7 @@ auto-lang 仓侧文档（模块头注/测试名即契约，无独立 spec 文件
 | AC-03 | 候选项可点击插入；点击层外关闭且该 press 不作用于文档 | core 单测 + 实机臂 3 |
 | AC-04 | 冻结 manifest 23 项逐项：命令后 emit_document 为同构 markdown（对照 §5.3），结构操作不入 undo（与 enter_split/输入规则同口径，PLAN-048 T6 裁定——rev2 依证据修正，原「一步 undo 回原状」与编辑壳既有结构变换语义不符），kind 迁移族光标驻原字节位 | core 单测逐项 |
 | AC-05 | MCP 观测面读数与 core 弹层状态一致：VM 轨经 `autoui_editor_state` 探针 `.slash`（visible/query/selected/count，null=关）；bridge 轨经快照臂 slash_visible 等四 props | 实机探针五臂 + snapshot_builder 单测面 |
-| AC-06 | 实机全臂新臂 PASS 且既有臂零回归；web 轨 playwright suite 绿、引擎 src 零 diff | smoke 退出码 0（**当前 blocked-on-external**：group 4(d) 拖拽臂 pristine master 复现红，DEBTS 069 转介行——修复折回后全臂重跑取收据）；playwright 107 绿 + 1 时序 flake 复跑绿；git diff 审查 |
+| AC-06 | 实机全臂新臂 PASS 且既有臂零回归；web 轨 playwright suite 绿、引擎 src 零 diff | ✅ smoke 退出码 0（净窗全臂 25 检查 PASS，收口轮读数在 §9）；playwright 107 绿 + 1 时序 flake 复跑绿；git diff 审查 |
 | AC-07 | PARITY #12 行更新、README 契约节、DEBTS 差额行三处落账且与代码交叉一致 | 文档审查 + 与单测/臂断言交叉对读 |
 
 ## 8. 执行步骤
@@ -314,17 +314,14 @@ PLAN-048 T6 裁定、manifest 计数 22→23 纠笔误、AC-06 双模改 demo �
 - [x] **T-04** [✅ 已完成]（同 commit）C 层骨架：Divider/表格 3×3（9 cell
   +焦点迁表头首 cell+reparse 往返）/Callout/Details attr 形态 + 结构操作
   不入 undo 断言；单测 21 例 + 编辑器套件 105 例全绿。
-- [x] **T-05** [✅ 主体完成，全臂收口 blocked-on-external] auto-lang
-  b8c16479d 探针臂（mcp_server editor_state `.slash` 读数）+
-  auto-down 2a074c5——vm-smoke [slash] 组五臂 + vm-069-probe.mjs 独立探针
-  五臂实机 ALL PASS（vm-069-slash-menu.png 视觉证据）；worktree exe 构建
-  （features 全开）；web playwright 107 绿 + 1 时序 flake 单跑复绿（主检出
-  跑法，web 代码两检出零 diff）；引擎 src 零 diff 核实。
-  **阻塞**：vm-smoke 全臂 PASS 无法取得——group 4(d) CustomScrollbar 拖拽臂
-  `left_top_cmd` 恒 0，pristine master（de86e1d8e 摘除 069 全部改动）同法
-  复现红 → auto-lang 侧回归（嫌疑面 PLAN-631 F-5 mouse-area hover /
-  7434ab62d 子件 Init key 语义，未 bisect），DEBTS 069 转介行在案；
-  unblock = 该回归修复折回 master 后重跑 `node vm-smoke.mjs` 全臂。
+- [x] **T-05** [✅ 已完成（含全臂收口）] auto-lang b8c16479d 探针臂
+  （mcp_server editor_state `.slash` 读数）+ auto-down 2a074c5——vm-smoke
+  [slash] 组五臂 + vm-069-probe.mjs 独立探针五臂实机 ALL PASS
+  （vm-069-slash-menu.png 视觉证据）；worktree exe 构建（features 全开）；
+  web playwright 107 绿 + 1 时序 flake 单跑复绿（主检出跑法，web 代码两
+  检出零 diff）；引擎 src 零 diff 核实。**全臂收据（收口轮）**：转介回归
+  收回自修后净窗重跑 `node vm-smoke.mjs --port 9369` 全臂 25 检查 PASS
+  （拖拽臂读数 968.7 与 063 收口基准一字不差 + [slash] 组四臂全过）。
 - [x] **T-06** [✅ 已完成] PARITY #12 行（斜杠分项收口注记）、README
   「VM 轨 slash 菜单契约」节（触发七门/键位路由/manifest 冻结表/观测面/
   实机臂/五差异）、DEBTS 069 两行（差额+差异；拖拽回归转介）三处落账，
@@ -353,6 +350,24 @@ PLAN-048 T6 裁定、manifest 计数 22→23 纠笔误、AC-06 双模改 demo �
   flake 复绿；PARITY/README/DEBTS 三处落账。blockers: auto-lang 拖拽回归
   （DEBTS 069 行二）。next: 该回归修复折回后重跑全臂 smoke 取收据 →
   状态 execution_done → /auto-plan:review。
+
+- 2026-09-15 work（收口轮，plan_revision 2 不变——契约未再动）：stage:
+  work，PLAN-069 rev2。**转介收回自修（052/053 先例）**：EXPORTS-DUMP
+  插桩判读钉死真根因非 scroll 通道，而是 PLAN-545"bare use=命名空间"收紧
+  连带删除 lib.rs build_dynamic_component 子件/store/孙件三处收集条件的
+  `items.is_empty()` 臂 → 裸 `use custom_scrollbar` 的子件 WidgetDecl 不进
+  合成 → `handler_<Child>_*` 导出整体缺席（exports 25 项全为
+  handler_App_*）→ 运行时派发全灭；嫌疑面 PLAN-631/7434ab62d 排除。
+  修复=三处条件补回 bare 臂（组件发现语义恢复；545 的 fn 符号语义不破，
+  use_semantics 7/7 绿；ffi_dual 偶发红经基线同分布判别为预存共享 pack
+  缓存竞态）。outcome: **pass**——code_commit: auto-lang auto-down-dev
+  de484d7c1 折回 master 62336eaea（cherry-pick 干净落位）+ T-01..T-05
+  四 commit；auto-down plan-069-dev 2a074c5/e6e96ff/29cfe72。
+  task_ids: T-01..T-06 全完成。evidence: **vm-smoke 净窗全臂 25 检查
+  PASS**（拖拽臂 968.7 与 063 基准一字不差 + [slash] 四臂全过）；单测
+  21+105+3559 全绿（ffi_dual 预存 flake 判别在案）；playwright 107+1
+  flake 复绿；PARITY/README/DEBTS（转介行销号）三处落账更新。
+  blockers: 无。next: /auto-plan:review。
 
 ## 10. 待澄清事项
 

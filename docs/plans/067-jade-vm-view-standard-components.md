@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-067
-status: execution_done        # drafting → executing → execution_done → reviewed → archived
+status: reviewed        # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-vm-view-standard-components
 author: [zhaopuming]
 created_at: 2026-09-15
@@ -264,6 +264,48 @@ title/menubar 结构对应锚；②`autoui_state` 断言字段照旧（active_* 
   WIP 已按 T-01 携入并清理（sha256 验证留痕），主检出恢复干净。
   blockers: 无 | next: review（/auto-plan:review；worktree 留存待复审
   与 merge）。
+
+- 2026-09-15 stage: review | PLAN-067 | rev 1 | outcome: pass |
+  reviewed_commit: 874eb221e48bb7f1d355aa91c70d96ab70ebcfcd
+  （plan-067-dev @ worktree `.wt/auto-down-067/auto-down`，tree clean） |
+  base_commit: 0246ba48e8b56ae5ad8f99e0351e4c33e5049e82（master tip，
+  分支切出点；diff 范围仅 jade-garden/front/desktop/** 9 文件，web 与
+  auto-lang 零触碰） | dependency_revisions: auto.exe
+  v0.4.2-731-g293344717-dirty（auto-lang master 于复审时点已前进至
+  c65b176a5——含 PLAN-545 use 语义落地，见 R-067-1）；jade 后端
+  jade-garden-back.exe 主检出预构建 | spec_inputs: README.md@874eb22
+  sha256 ba056aee48ad59d1f6d70e66dc6e0af6c1a07fd2c8f791de66fabb4c000b1b00
+  （SD-01/SD-02 冻结文本；app.at@874eb22 sha256
+  3cc3c55f3eb9ed30255b3bc4e3ff3244a5a8a6902bf1220e01f37d351014d180）；
+  账本 .autoos/specs.json（architecture 无 jade 条目——merge 时由
+  README §9 派生 jade/desktop-view-contract 新条目） |
+  acceptance_results: AC-1 pass（基线提交 230dc57+fc0ed9f 在祖先链；
+  改名后双模基线绿在案）；AC-2 pass（8 action 注册与 msg 块逐一对位；
+  toolbar 4 项/menubar 3 菜单；复审复现：open-ws/files/save/close 经
+  toolbar onclick 锚、cards/d4 经卡片菜单两步，双模绿）；AC-3 pass
+  （files 臂 6 docs 树行渲染 + read/links/tabs 点击流绿；组件四件与
+  041 源 sha256 逐字节一致）；AC-4 pass（save 臂 type→dirty→清脏+磁盘
+  marker 双模绿；tabs①-⑤ 全绿）；AC-5 pass（**复审复现** on 874eb22：
+  split PASS + merged PASS 各 16 检查项 + fixture 哈希前后一致）；
+  AC-6 pass（桌面副本 vs web 孪生 diff = 头注+active_path 声明行+空值
+  守卫×3+索引狩猎+哨兵，零业务语义；web 孪生在 diff 范围外零改动；
+  autodown/demo 无 tabs_store 引用）；AC-7 pass（README §9 五小节 +
+  §8 ⑥ 闭合在被审树，内容与代码交叉核对——actions 表↔注册表、锚表↔
+  smoke、set_text "无调用位"↔源码仅注释 165 行） | findings:
+  R-067-1（observation，非阻断）= auto-lang 工具链漂移：本计划执行期
+  master 三度前进（15654a7f8→293344717→4ac9cff03→c65b176a5，含
+  PLAN-545 use 命名空间语义落地——app.at 的 `use` 导入面正属该域），
+  复审证据绑定 exe v0.4.2-731-dirty 构建；处置：merge 前后若工具链
+  重建，重跑 vm-smoke 双模作消费方核验（约 3 分钟，非门禁重开）。
+  R-067-2（observation，非阻断）= `--save-baseline` 工具路径已锁步
+  更新但复审未驱动（非臂、非验收项）。复审独立性声明：复审在实现
+  会话内进行，裁定自工件重建（diff 重读/组件字节级对拍/双模重跑/
+  文档-代码交叉核对），未采信执行摘要 | evidence: 双模 PASS 输出
+  （本轮复审复现，命令 `node vm-smoke.mjs` / `VM_MERGED=1 node
+  vm-smoke.mjs`，cwd jade-garden/front/desktop@874eb22）；组件对拍
+  `sha256sum components/*.at` vs auto-lang examples/ui/041-auto-edit
+  同名文件全 IDENTICAL；README §9/§8⑥ 在被审提交可解析可复读 |
+  next: merge（/auto-plan:merge；worktree 留存）。
 
 ## 10. 待澄清事项
 

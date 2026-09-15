@@ -59,7 +59,7 @@ widget App {
     // LBrace 错）——TreeIcon 树行图标消费。
     use { package: official from "./components" }
 
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit, Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str) }
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str) }
 
     model {
         var status str = "boot"
@@ -160,6 +160,10 @@ widget App {
                 .active_body = t.body
                 .active_dirty = t.dirty
             }
+            // 编辑器播种裁定（T-04 实机）：content: 绑定每帧外部 diff 回写
+            // + key 变即重挂载 = 播种通道；显式 code_editor_set_text 需编辑器
+            // 已注册（首次打开该 key 未挂载即 RuntimeError "no editor
+            // registered"，本仓实机复现）——041 仅对已存在 tab 清空时调用。
             var bl = get_backlinks(.active_title)
             var blLinks = bl.links
             .backlinks = blLinks
@@ -171,7 +175,8 @@ widget App {
             .status = "opened"
         }
 
-        // 切换 = store Open 的激活臂（已 loaded 不重读磁盘）。
+        // 切换 = store Open 的激活臂（已 loaded 不重读磁盘）。键变重挂载
+        // 读 content:（播种裁定见 .OpenFile 注）。
         .SwitchTab(path) -> {
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
@@ -218,13 +223,20 @@ widget App {
             }
         }
 
-        // 键入：textarea 双向绑定写 .active_body（视图投影面），oninput
-        // 经 SetBody 落入 store tab（dirty 由 store 按 original_body 判定）。
-        .Edit -> {
-            Tabs.SetBody({ path: .active_path, body: .active_body })
-            var t = .tabs.find(tt => tt.path == .active_path)
-            if t != null {
-                .active_dirty = t.dirty
+        // 键入：code_editor 的 content: 绑定仅作初值/外部 diff 回写（单向，
+        // 041 editor_store 同款），正文经 oninput 首参到达——真实键盘事件由
+        // 渲染器发布携带全文的 input_value（PLAN-057/PLAN-013 W2 通道），
+        // MCP type_text 经 INPUT_TEXT 注入首参（单参 handler + 空实参 +
+        // 通道非空）。oninput 落 store（dirty 由 store 按 original_body
+        // 判定）+ 镜像重同步；无 tab 时空文守卫（SetBody no-op 面）。
+        .Edit(text) -> {
+            if .active_path != "" {
+                .active_body = text
+                Tabs.SetBody({ path: .active_path, body: text })
+                var t = .tabs.find(tt => tt.path == .active_path)
+                if t != null {
+                    .active_dirty = t.dirty
+                }
             }
         }
 
@@ -396,8 +408,20 @@ widget App {
                         }
                     }
                     if .active_title != "" {
-                        textarea (value: .active_body, placeholder: "edit markdown here") {
+                        // PLAN-067 T-04: 正文 = code_editor（CodeMirror6 内核，
+                        // key 按 tab path 注册——key 变即重挂载读 content:）。
+                        // 真实键入经渲染器全文发布回写 state（content: 仅
+                        // 初值/外部 diff 准），编辑面语义见 .Edit 头注。
+                        code_editor (key: .active_path, lang: "markdown", style: "flex-1 w-full") {
+                            content: .active_body
                             oninput: .Edit
+                        }
+                    } else {
+                        // 空态定位锚（041 同款形态；smoke/人工导航锚点）。
+                        col (style: "flex-1 w-full items-center justify-center") {
+                            text "没有打开的文档 — 从左侧文件树打开" {
+                                style: "text-[13px] text-zinc-500"
+                            }
                         }
                     }
                     text .save_note

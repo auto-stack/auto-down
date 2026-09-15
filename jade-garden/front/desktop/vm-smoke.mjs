@@ -393,7 +393,7 @@ arm('read', async (checks) => {
 
 arm('save', async (checks) => {
   const marker = `vm-smoke save ${nonce()}`
-  await typeInto((n) => n.head.startsWith('textarea '), marker, 'editor textarea')
+  await typeInto(isEditorNode, marker, 'editor')
   await stateIs('active_dirty', 'true')
   await pressAction('.Save')
   await stateIs('status', 'saved')
@@ -506,6 +506,11 @@ arm('search', async (checks) => {
 //   ④ Save 清脏 + 磁盘落盘（经 store Save msg）
 //   ⑤ 同路径重复 Open 不覆盖已 loaded tab（双读竞争防护，022 Phase 3 e2e
 //      11-properties 同款断言语义）
+/** Editor node predicate — PLAN-067 T-04: the body editor is a `code_editor`
+ *  (CodeMirror6); rendered snapshots name it `textarea` (041 desktop_mcp.py
+ *  T1 先例) or `code_editor` depending on build path — accept both. */
+const isEditorNode = (n) => n.head.startsWith('textarea ') || n.head.startsWith('code_editor ')
+
 /** Read the editor textarea's bound value from the snapshot (the value
  *  prop rides the AURA tree like offset_y/col_widths do). Poll until the
  *  predicate holds; returns the last seen value. */
@@ -513,9 +518,9 @@ async function textareaValue(until = null, timeoutMs = 6000) {
   let last = null
   for (const deadline = Date.now() + timeoutMs; ;) {
     const tree = await snapshot()
-    const ta = findFirst(tree, (n) => n.head.startsWith('textarea '))
+    const ta = findFirst(tree, isEditorNode)
     if (ta) {
-      const prop = findFirst(ta, (n) => n !== ta && n.head.startsWith('value:'))
+      const prop = findFirst(ta, (n) => n !== ta && (n.head.startsWith('value:') || n.head.startsWith('content:')))
       const child = prop ? subtreeText(prop) : ''
       const own = ownText(prop ?? { head: '' })
       last = own || child
@@ -563,7 +568,7 @@ arm('tabs', async (checks) => {
   //    键入置脏 → close-tab → status discarded-dirty:Hello World → 重开回
   //    到磁盘原貌
   const marker2 = `tabs-dirty ${nonce()}`
-  await typeInto((n) => n.head.startsWith('textarea '), marker2, 'editor textarea')
+  await typeInto(isEditorNode, marker2, 'editor')
   await stateIs('active_dirty', 'true')
   await pressAction('.CloseTab')
   await stateIs('status', 'discarded-dirty:Hello World')
@@ -584,7 +589,7 @@ arm('tabs', async (checks) => {
   // ⑤ 同路径重复 Open 不覆盖已 loaded tab：键入置脏（未保存）→ 再按文件
   //    按钮（重复 Open）→ 在途编辑仍在正文里；随后保存落盘实证
   const marker3 = `tabs-race ${nonce()}`
-  await typeInto((n) => n.head.startsWith('textarea '), marker3, 'editor textarea')
+  await typeInto(isEditorNode, marker3, 'editor')
   await stateIs('active_dirty', 'true')
   const hwFile2 = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
   await callTool('autoui_action', { element_id: elementIdOf(hwFile2), action: 'press' })
@@ -602,7 +607,7 @@ arm('tabs', async (checks) => {
 
   // ④ 保存：清脏 + 磁盘落盘
   const marker4 = `tabs-save ${nonce()}`
-  await typeInto((n) => n.head.startsWith('textarea '), marker4, 'editor textarea')
+  await typeInto(isEditorNode, marker4, 'editor')
   await pressAction('.Save')
   await stateIs('status', 'saved')
   await stateIs('active_dirty', 'false')

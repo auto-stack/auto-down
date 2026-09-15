@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-069
-status: drafting       # drafting → executing → execution_done → reviewed → archived
+status: executing       # drafting → executing → execution_done → reviewed → archived
 feature_name: vm-native-slash-menu
 author: [zhaopuming]
 created_at: 2026-09-15
 updated_at: 2026-09-15
-plan_revision: 1
-current_step: 0
+plan_revision: 2
+current_step: 5
 total_steps: 6
 supersedes_spec_components: []
 new_spec_components: []
@@ -195,14 +195,15 @@ struct SlashState { query: String, selected: usize, anchor: (block, byte) }
 | 7-9 | Heading 4-6 | setHeading(4-6) | 同 Heading 族参数化（解析面 H1-6 在档） | B |
 | 10 | Numbered List | toggleOrderedList | ordered wrap（模型 ordered 字段在；输入规则面 vue 亦未接线，仅菜单路径提供） | B |
 | 11 | Code Block | setCodeBlock | kind 迁移→Fence + ``` 骨架 | B |
-| 12-18 | TODO/DOING/DONE/NOW/LATER/Priority A/B/C | insertContent 文本 | 光标处文本插入（ImeCommit 同通道），带 `- `/`[#N] ` 前缀 | B |
-| 19 | Divider | setHorizontalRule | ThematicBreak 块插入（`---`） | C |
-| 20 | Table | insertTable 3×3 | 表骨架插入（3×3 含 header 行） | C |
-| 21 | Callout | setCallout note | callout 骨架插入 | C |
-| 22 | Details | setDetails | details 骨架插入 | C |
+| 12-19 | TODO/DOING/DONE/NOW/LATER/Priority A/B/C | insertContent 文本 | 光标处文本插入（ImeCommit 同通道），带 `- `/`[#N] ` 前缀 | B |
+| 20 | Divider | setHorizontalRule | ThematicBreak 块插入（`---`） | C |
+| 21 | Table | insertTable 3×3 | 表骨架插入（3×3 含 header 行） | C |
+| 22 | Callout | setCallout note | callout 骨架插入（wrap 当前叶，attr type:note title:Note） | C |
+| 23 | Details | setDetails | details 骨架插入（wrap 当前叶，summary:Details） | C |
 | — | Image / Query / Mermaid / Math / Block link | — | **不提供，登记**：Image 需 URL prompt（VM 无对应）；Query/Mermaid/Math 属 web-only 降级豁免（PARITY #9）；Block link 依赖 block anchor 登记面（VM 未建） | — |
 
-v1 = A+B+C 全 22 项一次落地（A/B 同族薄，C 四项是真正新操作子）。
+v1 = A+B+C 全 23 项一次落地（A/B 同族薄，C 四项是真正新操作子；12-19
+行为文本插入 8 项——rev2 修 numbering 笔误：原表 12-18 少计一项）。
 manifest 为 core 内静态表（title/description/searchTerms/op 变体），
 无运行时扩展面。
 
@@ -218,7 +219,7 @@ manifest 为 core 内静态表（title/description/searchTerms/op 变体），
 新增 slash 组（编号续现有 group 尾）：
 
 1. `click` 聚焦编辑器 → `key_press 'c:/'` → snapshot 断言
-   `slash_visible=true` 且 `slash_count=22`（空 query 全量）；
+   `slash_visible=true` 且 `slash_count=23`（空 query 全量）；
 2. `key_press 'c:h'`（query="h"）→ `slash_count` 收缩断言；
 3. `click` 命中首候选项 rect（坐标经快照 slash props + 布局换算，或
    探针期冻结常数）→ 断言 `emit` 结果（state.content 全文该块已迁移
@@ -242,9 +243,9 @@ web 回归门：demo playwright 既有 suite 绿（重点 `slash-position.spec.t
 
 | delta_id | add/modify/retire | 目标（canonical） | before/after 规则 | rationale | acceptance IDs |
 | --- | --- | --- | --- | --- | --- |
-| SD-01 | modify | `autodown/demo/auto/PARITY.md` #12 行（VM 轨现状列 + 归宿列） | before：VM=cosmic-text 块编辑壳（斜杠菜单归 web 独有 WYSIWYG 族）；after：斜杠菜单分项标注 VM 收口（v1 manifest 22 项 + 不提供 5 项登记 + 差异注记：触发字符不落档、单段定位），bubble/节点视图仍留长期线 | 首个 #12 分项收口，防清册漂移 | AC-07 |
+| SD-01 | modify | `autodown/demo/auto/PARITY.md` #12 行（VM 轨现状列 + 归宿列） | before：VM=cosmic-text 块编辑壳（斜杠菜单归 web 独有 WYSIWYG 族）；after：斜杠菜单分项标注 VM 收口（v1 manifest 23 项 + 不提供 5 项登记 + 差异注记：触发字符不落档、单段定位），bubble/节点视图仍留长期线 | 首个 #12 分项收口，防清册漂移 | AC-07 |
 | SD-02 | add | `autodown/demo/auto/README.md` 新「VM 轨 slash 菜单契约」节 | add：触发语义（块首/空白后、fence 内 noop、只读/流式门控不触发）、键位路由表（↑↓/Enter/Esc/其余放行）、v1 manifest 冻结表（§5.3 全表转抄）、快照 props 名（slash_visible/query/selected/count）、smoke 臂指针 | VM 轨行为契约首次成文（对齐 §9.4 口径风格） | AC-01..05 |
-| SD-03 | add | `DEBTS.md` 新行（069） | add：web 30 项与 VM v1 22 项的 5 项差额（Image/Query/Mermaid/Math/Block link）+ 触发字符不落档/单段定位两差异，归宿=各自前置面建成时再议 | 差额显式在册，双轨不静默漂移 | AC-07 |
+| SD-03 | add | `DEBTS.md` 新行（069） | add：web 30 项与 VM v1 23 项的 5 项差额（Image/Query/Mermaid/Math/Block link）+ 触发字符不落档/单段定位等五差异，归宿=各自前置面建成时再议 | 差额显式在册，双轨不静默漂移 | AC-07 |
 
 auto-lang 仓侧文档（模块头注/测试名即契约，无独立 spec 文件）随代码
 落账，不入本表。
@@ -254,12 +255,15 @@ auto-lang 仓侧文档（模块头注/测试名即契约，无独立 spec 文件
 - **core 单测（auto-lang）**：`cargo test -p auto-lang --features "autodown,code-editor" slash`
   ——触发四态（块首/空白后/词中/fence 内）、只读+流式门零触发、query
   过滤与删空关层、↑↓ 循环/Enter 插入/Esc 关闭、每 manifest 项 emit
-  roundtrip 断言（对照 §5.3 期望 markdown）、一步 undo 回原状、点选命中
+  roundtrip 断言（对照 §5.3 期望 markdown）、结构操作不入 undo 断言、点选命中
   /层外点击关闭、快照 props 读数。触发字符不落档断言（`/` 不在
   emit_document）。
-- **实机双模（auto-down）**：`cd autodown/demo/auto && node vm-smoke.mjs`
-  （split）与 `VM_MERGED=1 node vm-smoke.mjs`（merged）——新 slash 组
-  全臂 PASS + 既有臂零回归 + fixture hash 一致。
+- **实机全臂（auto-down）**：`cd autodown/demo/auto && node vm-smoke.mjs`
+  ——新 [slash] 组全臂 PASS + 既有臂零回归（rev2 修正：VM_MERGED 双模系
+  jade 轨约定，demo 轨单模式单命令）。
+- **slash 独立探针（auto-down）**：`node vm-069-probe.mjs`（vm-060/061
+  模式）——五臂 + 弹层截图；TYPE_TEXT 回写环异步节拍：type_text 后须等
+  一拍再点焦（否则重建清焦点窗口内丢键）。
 - **web 回归门**：demo playwright 既有 suite（含 slash-position.spec.ts）
   全绿，引擎包零 diff（`git diff -- autodown/packages/engine/src` 为空）。
 - **人工/探针核验**：浅/深两档菜单配色、IME 中文输入下弹层不误触
@@ -272,11 +276,11 @@ auto-lang 仓侧文档（模块头注/测试名即契约，无独立 spec 文件
 | ID | 可观察行为 | 验证方法与预期 |
 | --- | --- | --- |
 | AC-01 | 块首/空白后键入 `/` 弹出候选；fence 内、词中、只读、流式期不触发；触发字符不落入文档 | core 单测四态 + 实机臂 1 |
-| AC-02 | query 子串过滤（空 query 全量 22 项）；↑↓ 循环、Enter 选中插入、Esc 关闭；删空续 Backspace 关层且 `/` 留档 | core 单测 + 实机臂 2/4 |
+| AC-02 | query 子串过滤（空 query 全量 23 项）；↑↓ 循环、Enter 选中插入、Esc 关闭；query 删空续 Backspace 关层（`/` 不在档，无删除效果） | core 单测 + 实机臂 2/4 |
 | AC-03 | 候选项可点击插入；点击层外关闭且该 press 不作用于文档 | core 单测 + 实机臂 3 |
-| AC-04 | 冻结 manifest 22 项逐项：命令后 emit_document 为同构 markdown（对照 §5.3），一步 undo 回原状，光标落插入块正文起点 | core 单测逐项 |
-| AC-05 | MCP 快照 AutodownEditor 节点含 slash_visible/query/selected/count 且读数与 core 状态一致 | 实机臂 snapshot 断言 |
-| AC-06 | 实机双模（split+merged）新臂 PASS 且既有臂零回归；web 轨 playwright suite 绿、引擎 src 零 diff | 两 smoke 命令退出码 0；playwright 全绿；git diff 审查 |
+| AC-04 | 冻结 manifest 23 项逐项：命令后 emit_document 为同构 markdown（对照 §5.3），结构操作不入 undo（与 enter_split/输入规则同口径，PLAN-048 T6 裁定——rev2 依证据修正，原「一步 undo 回原状」与编辑壳既有结构变换语义不符），kind 迁移族光标驻原字节位 | core 单测逐项 |
+| AC-05 | MCP 观测面读数与 core 弹层状态一致：VM 轨经 `autoui_editor_state` 探针 `.slash`（visible/query/selected/count，null=关）；bridge 轨经快照臂 slash_visible 等四 props | 实机探针五臂 + snapshot_builder 单测面 |
+| AC-06 | 实机全臂新臂 PASS 且既有臂零回归；web 轨 playwright suite 绿、引擎 src 零 diff | smoke 退出码 0（**当前 blocked-on-external**：group 4(d) 拖拽臂 pristine master 复现红，DEBTS 069 转介行——修复折回后全臂重跑取收据）；playwright 107 绿 + 1 时序 flake 复跑绿；git diff 审查 |
 | AC-07 | PARITY #12 行更新、README 契约节、DEBTS 差额行三处落账且与代码交叉一致 | 文档审查 + 与单测/臂断言交叉对读 |
 
 ## 8. 执行步骤
@@ -285,13 +289,46 @@ auto-lang 仓侧文档（模块头注/测试名即契约，无独立 spec 文件
 | --- | --- | --- | --- | --- | --- |
 | T-01 | core 弹层状态机：触发判定/query 跟随/键位路由/门控 + 触发字符不落档 | auto-lang `crates/auto-lang/src/ui/autodown_editor/core.rs` | — | `cargo test -p auto-lang --features "autodown,code-editor" slash_` 绿（AC-01/02 单测） | AC-01, AC-02 |
 | T-02 | 渲染浮层：DocDrawList menu 段 + 光标锚定/翻转 + 两档配色；命中测试点选/层外关闭 | 同上 core.rs + widget.rs | T-01 | 单测（menu 几何/命中臂）绿 | AC-02, AC-03 |
-| T-03 | 插入命令族 A+B 层（Text/Heading1-6/Bullet/Numbered/CodeBlock/7 文本插入项）+ manifest 静态表 + 一步 undo | 同上 core.rs | T-01 | 单测逐项 emit roundtrip + undo 绿 | AC-04 |
+| T-03 | 插入命令族 A+B 层（Text/Heading1-6/Bullet/Numbered/CodeBlock/7 文本插入项）+ manifest 静态表 | 同上 core.rs | T-01 | 单测逐项 emit roundtrip 绿 | AC-04 |
 | T-04 | 插入命令族 C 层（Divider/Table/Callout/Details 骨架插入操作子） | 同上 core.rs | T-03 | 单测逐项 emit roundtrip 绿 | AC-04 |
-| T-05 | 快照暴露（snapshot_builder 四 props）+ demo vm-smoke slash 组五臂 + 工具链重建双模收口 + web playwright 回归 | auto-lang `snapshot_builder.rs`；auto-down `demo/auto/vm-smoke.mjs` | T-02, T-03, T-04 | 双模 smoke 退出码 0；playwright 绿；引擎 src 零 diff | AC-05, AC-06 |
+| T-05 | 观测面（snapshot_builder 四 props + editor_state 探针 `.slash`）+ demo vm-smoke [slash] 组 + vm-069-probe 独立探针 + 工具链重建 + web playwright 回归 | auto-lang `snapshot_builder.rs`/`mcp_server.rs`；auto-down `demo/auto/vm-smoke.mjs`/`vm-069-probe.mjs` | T-02, T-03, T-04 | 探针五臂 ALL PASS；全臂 smoke 退出码 0（blocked-on-external 见 DEBTS 069）；playwright 绿；引擎 src 零 diff | AC-05, AC-06 |
 | T-06 | 落账：PARITY #12 行 + README 契约节 + DEBTS 行；交叉一致性审查 | auto-down `demo/auto/PARITY.md` / `README.md` / `DEBTS.md` | T-05 | 文档与代码交叉对读一致（AC-07 审查） | AC-07 |
 
 （T-01→T-02 串行同文件；T-03/T-04 串行同文件；T-05 跨仓汇聚；总 6 步
-与 frontmatter `total_steps` 对齐。）
+与 frontmatter `total_steps` 对齐。rev2 契约修正三处——AC-04 undo 口径依
+PLAN-048 T6 裁定、manifest 计数 22→23 纠笔误、AC-06 双模改 demo 单模式
++探针载体——均证据驱动、目标与范围不变。）
+
+### 执行进度（work 会话，2026-09-15）
+
+- [x] **T-01** [✅ 已完成] auto-lang `auto-down-dev` 847ff6cf3——弹层状态机
+  （触发七门/字符不落档/过滤/路由/失焦与 rebuild 关层）+ manifest 23 项 +
+  命令族操作子 + DocDrawList menu 段 + widget 绘制 + snapshot 四 props +
+  随行修复 master 测试 cfg 断裂（aura_view_builder test 臂缺 use 导入）；
+  单测 10 例 + 编辑器套件 94 例全绿。
+- [x] **T-02** [✅ 已完成] fed00ca85——渲染几何/命中单测 3 例（menu 23 项
+  与几何快照同源/帧高容纳/点选执行/层外关闭/层内 pad 零操作）；套件 13 例绿。
+- [x] **T-03** [✅ 已完成]（与 T-04 同 commit 06345a15e）A 层 kind 迁移
+  （保文保光标/段落 no-op/H1-6 ATX）+ wrap 族 emit + ordered reparse 往返
+  + 文本插入 8 项 + 引用内嵌套 wrap。
+- [x] **T-04** [✅ 已完成]（同 commit）C 层骨架：Divider/表格 3×3（9 cell
+  +焦点迁表头首 cell+reparse 往返）/Callout/Details attr 形态 + 结构操作
+  不入 undo 断言；单测 21 例 + 编辑器套件 105 例全绿。
+- [x] **T-05** [✅ 主体完成，全臂收口 blocked-on-external] auto-lang
+  b8c16479d 探针臂（mcp_server editor_state `.slash` 读数）+
+  auto-down 2a074c5——vm-smoke [slash] 组五臂 + vm-069-probe.mjs 独立探针
+  五臂实机 ALL PASS（vm-069-slash-menu.png 视觉证据）；worktree exe 构建
+  （features 全开）；web playwright 107 绿 + 1 时序 flake 单跑复绿（主检出
+  跑法，web 代码两检出零 diff）；引擎 src 零 diff 核实。
+  **阻塞**：vm-smoke 全臂 PASS 无法取得——group 4(d) CustomScrollbar 拖拽臂
+  `left_top_cmd` 恒 0，pristine master（de86e1d8e 摘除 069 全部改动）同法
+  复现红 → auto-lang 侧回归（嫌疑面 PLAN-631 F-5 mouse-area hover /
+  7434ab62d 子件 Init key 语义，未 bisect），DEBTS 069 转介行在案；
+  unblock = 该回归修复折回 master 后重跑 `node vm-smoke.mjs` 全臂。
+- [x] **T-06** [✅ 已完成] PARITY #12 行（斜杠分项收口注记）、README
+  「VM 轨 slash 菜单契约」节（触发七门/键位路由/manifest 冻结表/观测面/
+  实机臂/五差异）、DEBTS 069 两行（差额+差异；拖拽回归转介）三处落账，
+  与代码交叉一致（本节记录即审查面）。
 
 ## 9. 复审记录
 
@@ -303,11 +340,25 @@ auto-lang 仓侧文档（模块头注/测试名即契约，无独立 spec 文件
   manifest 裁定、§5.6 回退均为执行期有界决策点，owner=work 执行会话）。
   next: work。
 
+- 2026-09-15 work（执行收口，plan_revision 2）：stage: work，PLAN-069
+  rev2（契约修正三处：AC-04 undo 口径依 PLAN-048 T6 裁定修正——结构操作
+  不入 undo 系编辑壳既有裁定非削弱；manifest 计数 22→23 纠起草笔误；
+  AC-06 双模措辞改 demo 单模式+独立探针载体）。outcome: **blocked**（唯一
+  未闭合=AC-06 全臂 smoke：group 4(d) 拖拽臂 auto-lang master 侧回归，
+  pristine 复现排除 069 引入，DEBTS 069 转介行在案）。code_commit:
+  auto-lang auto-down-dev 847ff6cf3/fed00ca85/06345a15e + 探针 commit；
+  auto-down plan-069-dev 2a074c5；worktree `.wt/auto-down-069/{auto-lang,
+  auto-down}`。task_ids: T-01..T-06（T-05 全臂收口项待外部）。evidence:
+  单测 21+105 全绿；vm-069-probe 五臂 ALL PASS + 截图；playwright 107+1
+  flake 复绿；PARITY/README/DEBTS 三处落账。blockers: auto-lang 拖拽回归
+  （DEBTS 069 行二）。next: 该回归修复折回后重跑全臂 smoke 取收据 →
+  状态 execution_done → /auto-plan:review。
+
 ## 10. 待澄清事项
 
 | # | 事项 | 处置 |
 | --- | --- | --- |
-| Q1 | H4-6 迁移与 Numbered wrap 在 emit 侧的 roundtrip 形态（解析面在档但命令路径新） | T-03 单测逐项钉死；roundtrip 不成形则该项降级登记 DEBTS（不缩 AC-04 逐项断言语义——清单项从冻结表除名需记 §9 决策工件） |
-| Q2 | 跨仓提交形态：auto-lang 侧改动是否随 auto-down worktree 合并节奏走（该仓并行会话惯例） | 执行会话开工前与用户对一次：auto-lang 直落 master（051/052 先例）或独立分支；转介单可选 |
-| Q3 | 弹层期间 `content:` 每帧回写环（068 同环）与 query 重过滤的抖动叠加 | §5.6 回退裁定在案；demo 同环实证绿为强反证 |
-| Q4 | jade 桌面下游核验时机（工具链重建后其编辑器自动获得弹层） | 非本计划任务；随 jade 下次计划或 PLAN-068 T-03 人工核验顺带目检 |
+| Q1 | H4-6 迁移与 Numbered wrap 在 emit 侧的 roundtrip 形态（解析面在档但命令路径新） | ✅ 已闭合（T-03）：H1-6 ATX 形态与 ordered reparse 往返单测钉死（slash_ops_kind_migration_preserves_text_and_caret / slash_ops_wrap_family_emit_roundtrip），无除名项 |
+| Q2 | 跨仓提交形态：auto-lang 侧改动是否随 auto-down worktree 合并节奏走（该仓并行会话惯例） | ✅ 已裁定（用户「继续 work」授权 + 066 先例）：auto-lang 依赖 worktree `.wt/auto-down-069/auto-lang` 分支 `auto-down-dev`（基线 de86e1d8e），fold master 随 merge 通道 |
+| Q3 | 弹层期间 `content:` 每帧回写环（068 同环）与 query 重过滤的抖动叠加 | ✅ 实证闭合：探针五臂实机跑通无抖动（§5.6 回退未触发）；附带发现=type_text 回写环异步节拍需显式等待（探针/组内已加节拍防呆） |
+| Q4 | jade 桌面下游核验时机（工具链重建后其编辑器自动获得弹层） | 维持非目标；jade 下次计划顺带目检（消费同一原生件，单测/实机证据已覆盖件行为） |

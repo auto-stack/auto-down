@@ -262,7 +262,7 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
 | ③ | **CALL_SPEC 返回列表 RC 接线**（`.length` 恒 0，Plan 432 D26 对偶）：导入导出返回计数面 | desktop/README §7.3 遗留①；plan-022 slice 3 D4 |
 | ④ | **tick/timer 原语**：hover/滚动延迟类交互在 VM 轨的等价物（DynamicComponent tick_interval 面） | DEBTS 059；desktop/README §2 timers 裁定 |
 | ⑤ | 交叉引用 P063 在案两项（不重复立项）：scroll_to 仅绝对偏移限制；AnchorSlot 委托层 downcast panic | docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md §0/§4.2 |
-| ⑥ | **store facade VM 缺口簇**（2026-09-14 PLAN-622 精化：a/b/c 经最小语料实证当前 master 已健康，守卫语料 `plan622_store_facade_gap_tests` 钉死；**d 已修** auto.list.splice 2071；**e 已修** 捕获槽位编址 + self 特判捕获 __state）；**残余接缝（facade 切换实机新发现）**：合并单态路径 widget handler 读 store 字段解析 App_State 报 Field not found（repro：本目录 app.at facade 形态 `.tabs.find` 实机崩），伴生 `?str` 跨状态读 Invalid object ID、`&&/||` 为 VM 布尔逻辑、findIndex 静默失效——jade 侧规避形态已备（plain str 哨兵/显式空值守卫/显式索引狩猎，tabs_store.at 预备副本见 git 历史） | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录 |
+| ⑥ | **store facade VM 缺口簇**（2026-09-14 PLAN-622 精化：a/b/c 经最小语料实证当前 master 已健康，守卫语料 `plan622_store_facade_gap_tests` 钉死；**d 已修** auto.list.splice 2071；**e 已修** 捕获槽位编址 + self 特判捕获 __state）；**残余接缝（facade 切换实机新发现）**：合并单态路径 widget handler 读 store 字段解析 App_State 报 Field not found（repro：本目录 app.at facade 形态 `.tabs.find` 实机崩），伴生 `?str` 跨状态读 Invalid object ID、`&&/||` 为 VM 布尔逻辑、findIndex 静默失效——jade 侧规避形态已备（plain str 哨兵/显式空值守卫/显式索引狩猎，tabs_store.at 预备副本见 git 历史）。**✅ 闭合（2026-09-15，PLAN-067 落账）**：残余接缝经 auto-lang PLAN-624 清偿（跨状态字段解析的帧协议/值语义修复 + auto.list.splice/find_index 2071/2072；624 merge 门 smoke split+merged 双模 PASS 实证 facade 形态无 VM 缺陷）；"Field not found" 真相 = tabs_store.at 转写遗失 `active_path` 声明行（622 时代），**非 VM 缺陷**——桌面副本已补声明（PLAN-067 T-01a 基线 230dc57），app.at facade 形态 + `view_*`→`active_*` 投影对齐正式落地（§9 契约节），smoke 双模全臂绿背书 | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录；PLAN-067 §9 复审记录 |
 | ⑦ | **原生组件外部注册 SPI**（2026-09-14 入档，同日实施）：VM/iced 富组件现为编译期闭集（aura_view_builder 硬编码臂 ×38 + View 闭集枚举 + 快照穷尽 match），无外部组件类型注册通道；提案立 `View::Custom` 透传变体 + name→factory NativeWidgetRegistry + 快照/事件配套，**autodown_editor 首迁外部件** + stream 渐进臂（对齐 engine 032 三态/TS stream→edit v1 裁定——现状 streaming 恒按 final 豁免已摘除）；terminal/code_editor/video 同款受益。**✅ 已实施（PLAN-066）**：auto-lang `auto-down-dev` 分支 72fd9d70c+31a2a1035（NativeWidgetRegistry 双入口/派发序接线/快照配套/编辑器臂迁出/流式只读门+状态条），全量新红=0，vm-smoke 16 臂 ×2 绿（worktree exe）；折 master 随 merge 通道 | docs/plans/attachments/066-auto-lang-native-widget-spi.md（提案全文+证据索引）+ docs/plans/066-auto-lang-native-widget-spi.md（实施记录 §4/§9）；aura_view_builder.rs:1727-1887/3375-3525；widget_registry.rs（.at 件注册表，原生件无通道）；Cargo.toml:132 autodown-core 跨仓 path 依赖先例 |
 
 > 提案⑥修复后：desktop/src/front/tabs_store.at 回归（git 历史 plan-064-dev
@@ -275,3 +275,86 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
 > workaround 形态（smoke 复验 16 ✓）。tabs_store.at 预备副本（含三处 VM
 > delta：findIndex 索引狩猎、&&/|| 显式守卫、active_path str 哨兵）在
 > commit 历史；残余接缝转介 auto-lang（repro = 本次切换 diff）。
+
+## 9. 桌面视图标准组件契约（PLAN-067，2026-09-15）
+
+app.at 视图层已按 auto-lang `examples/ui/041-auto-edit` 结构模板完成标准组件
+重构（actions 注册表 + menubar/toolbar 合成 + FileTree + code_editor +
+StatusBar）。本节为重构后的持久行为契约——后续视图改动以此对账，防再漂移。
+
+### 9.1 actions 注册表（六流 action 化，Plan 451 DSL）
+
+| action id | handler | 流 |
+| --- | --- | --- |
+| ws.open | .OpenWs | 打开工作区 |
+| files.reload | .LoadFiles | 文件重载 |
+| file.save | .Save（`enabled_if: ".active_title != ''"`） | 保存落盘 |
+| tab.close | .CloseTab | 关闭标签（脏态默认确认即弃，P022-6 保形） |
+| cards.load | .LoadCards | 闪卡 due |
+| graph.load | .LoadGraph | 图谱 |
+| ws.export | .ExportWs | 导出 zip |
+| ws.import | .ImportZip | 导入归档 |
+
+- 触发三源同源派发（同一 handler）：toolbar 合成（open/save/close/reload
+  四高频件）、menubar 三菜单（文件=open/save/close；视图=reload，console
+  位预留；卡片=cards/graph/export/import）、MCP 自动化（autoui_action）。
+- 带参/输入事件**不走 action**：FileTree 点击 `.OpenFile(path)`、code_editor
+  `oninput: .Edit(str)`、搜索 `.QChanged/.DoSearch`、评分 `.Grade(...)` 留
+  根视图控件直连。
+
+### 9.2 active_* 派生标量口径（widget 侧）
+
+- tab 状态权威在 `Tabs` store（`src/front/tabs_store.at`，web 双轨共享）；
+  App widget 只持投影镜像 `active_title/active_body/active_dirty/save_note`，
+  每次 store 派发（Open/SetBody/Save/Close/SwitchTab）后重同步。
+- **撞名裁定**：store 仅声明 `tabs/active_path`，`active_*` 三名与 store 无
+  撞名（622 时代 `view_*` 前缀所避让的撞名对象——store 侧同名声明——已不
+  复存在）；`active_path` 保持 store 独有（App 跨状态只读）。裁定由
+  vm-smoke split+merged 全臂回归背书。
+- **code_editor 播种口径**：`content:` 绑定 = 初值 + 每帧外部 diff 回写；
+  `key: .active_path` 键变即重挂载读 `content:`。显式 `code_editor_set_text`
+  要求编辑器**已注册**（首次打开该 key 未挂载即 RuntimeError "no editor
+  registered"，本仓实机复现）——打开/切换路径不调用；041 约束（该内建编译
+  进 store handler 产坏字节码）继续有效，调用位留根 handler 面。
+- `.Edit(str)` 单参通道：真实键盘事件 = 渲染器发布携带全文的 input_value
+  （auto-lang PLAN-057/PLAN-013 W2 通道）；MCP type_text = INPUT_TEXT 首参
+  注入（单参 handler + 空实参 + 通道非空三条件）。正文经首参落
+  `Tabs.SetBody`（dirty 由 store 按 original_body 判定）。
+
+### 9.3 FileTree（根视图行渲染）
+
+- tree 组件四件自 041 移植为自包含副本（`components/{filetree,tree_util,
+  tree_icon,package}.at`）；数据 = `list_files("", true)` 递归树 →
+  `to_fs_nodes` 装配 fs 形态节点（id=path，while+索引遍历纪律）；行序列 =
+  `computed ft_rows => flatten_tree(.ft_nodes, .ft_expanded, true, .ft_sel)`
+  纯派生；目录展开受控（`.FtToggle` + `toggle_id`），选中态 `.ft_sel`。
+- **行渲染留根视图**（裁定）：vm 组件子树对 MCP 快照不可见（041 README
+  「vm 组件边界」②）且 MCP press 组件行在 VM 轨静默崩溃（auto-lang
+  P614-C1 在册债务，P618-D4 家族）——smoke 定位/驱动的文件导航按 041 行
+  结构（guides 缩进 + chevron mouse-area + TreeIcon + 行按钮）在 App 根
+  视图渲染，点击 → `.OpenFile(path)` 流不变。
+
+### 9.4 vm-smoke 元素绑定契约（锁步面）
+
+| 臂交互 | 定位锚 |
+| --- | --- |
+| 六流 action（open/save/close/reload） | toolbar 合成按钮的 `onclick:` 绑定（`pressAction('.OpenWs')` 等；auto-lang Plan 418 §8.4①：合成按钮快照携带 onclick） |
+| cards/graph/export/import | menubar 触发器文本（卡片）→ 菜单项文本，`pressMenuItem` 两步（菜单激活后自闭合） |
+| 文件树/反链/命中/tab 条/评分按钮 | 根视图 button ownText（不变） |
+| 正文键入 | `isEditorNode`（textarea/code_editor 双形态节点）+ type_text |
+| 状态断言 | `autoui_state` 字段名不变：active_title/active_body/active_dirty/save_note/status/root/bl_count/ol_count/hit_count/io_note/review_note |
+
+041 VM 约束清单（重构全程有效，见 041 README「vm 组件边界」）：①回调 props
+使组件 vm 模式退化为空 fallback；②组件子树对 MCP 快照不可见；③view fn 片
+段参数化条件不求值；④code_editor_set_text 进 store handler 产坏字节码；
+⑤action 配置 vue 发射器不消费（本桌面以 VM 轨为主，web 面仅保 tabs_store
+共享，视图同步另行计划）。
+
+### 9.5 tabs_store 共享面口径（AC-6）
+
+桌面副本与 web 孪生（`jade-garden/front/auto/src/front/tabs_store.at`）的
+diff 仅有：头注（副本出处 + VM delta 登记）、`active_path str = ""` 声明行
+（PLAN-624 修复：622 转写遗失）、`&&/||` 链改显式空值守卫 ×3、Close 的
+findIndex→显式索引狩猎、`active_path = ""` 哨兵赋值——均为头注登记的 VM 面
+适配，业务语义零变更；本计划（PLAN-067）对该文件零改动（T-01a 基线 230dc57
+逐字节携入后未再触碰）。

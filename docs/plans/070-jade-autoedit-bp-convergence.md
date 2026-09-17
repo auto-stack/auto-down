@@ -161,6 +161,20 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   master）。blueprints/ master 观察：README+四 kind+pac.at 在案。
 - **T-01** [改+新] filetree bp 包（auto-lang 仓）+ 三消费面切换 import + 删副本
   + chevron 参数化双端断言。依赖：T-00；639 T-04。→ AC-01
+  [🔶 VM 轨切片完成 2026-09-18；web 切片待裁定 Q-7] 实勘修正前提：filetree
+  家族的活消费只有 tree_util+TreeIcon（desktop app.at 内联树行——067 VM 组件
+  边界裁定；041 全家死代码、左栏实为 TreeView）；web 谱系=同名不同物（store
+  驱动 vue 专属），无副本可删。已交付：bp 包 navigation/filetree（reference/
+  default=FileTree 组合形态 + 包根支撑件 tree_util/tree_icon——包格式扩展：
+  支撑件不占 variant 位，单文件单 widget 纪律所需）+ desktop 消费切换
+  （pac.at dep bps + app.at use bps...{tree_util,tree_icon}，四副本删除）+
+  041 消费切换（treeview/editor_store 导入 bps，死副本三件删除）。chevron
+  参数化注销（无活消费方）。验证：负测（flatten_tree_MISSING → ft_rows
+  computed 断裂）证明 bps 导入承载；vm-smoke split+merged 全臂 PASS（files
+  臂 6 docs=bp flatten_tree 端到端）；041 boot 零解析错误。提交：auto-lang
+  af8c72a84 / auto-down 9ace132。发现登记：BlueprintRegistry::with_defaults
+  用编译期 CARGO_MANIFEST_DIR 定扫描根——`auto bp list` 看不到非构建期路径的
+  包（worktree/外部检出），消费方 dep 解析不受影响；待登记 auto-lang DEBTS。
 - **T-02** [改] tabs_store 收敛：desktop 副本删除、增量裁定上提、§9.5 退役改写
   （SD-02）。依赖：T-00；639 T-04。→ AC-02
 - **T-03** [改] status_bar/ctx_menu/actions 骨架 bp 化 + jade web 命令系统接入。
@@ -181,6 +195,14 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   包库结构已见 master） | next: 639 收口后 T-01 开工；开工时先建组内 auto-lang
   兄弟 worktree（分支基须含 639 落地提交）`。worktree：
   `D:/autostack/.wt/down-070/auto-down`（plan-070-dev，基 3a05255）。
+- 2026-09-18 work handoff #2：`stage: work | plan_id: PLAN-070 | plan_revision: 1 |
+  outcome: pass(T-01 VM 轨切片)/blocked(T-01 web 切片——Q-7 用户裁定) |
+  code_commit: auto-lang af8c72a84（auto-down-dev）+ auto-down 9ace132
+  （plan-070-dev） | task_ids: T-01（部分） | evidence: 本计划 T-01 证据注记 +
+  vm-smoke split+merged 双模全臂 PASS + 负测 ft_rows 断裂实证 | blockers:
+  Q-7（web 谱系：方案 A 不收敛登记 DEBTS【推荐】/方案 B bp v2 收敛设计） |
+  next: Q-7 裁定后——A 则 T-01 勾记+AC-01 措辞修订（plan_revision 2）进 T-02；
+  B 则 T-01 续做 bp v2 设计切片`。
 
 ## 9. 待澄清事项
 
@@ -192,3 +214,4 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
 | Q-4 | auto-edit 空仓启用（宿主产品化）时机与立项拆分 | 本计划范围边界 | 用户裁定（本计划不含） |
 | Q-5 | **T-00 新增**：package.at 两版择一（b6ff9789 vs gallery 93543315）与 treeview.at 归属（R-5） | T-01 | T-01 内裁定 |
 | Q-6 | **T-00 新增**：filetree web 谱系 C 的数据注入面改造量（fileTree_store fs 读取按 639 datasource 契约） | T-01 工作量 | T-01 设计细分 |
+| Q-7 | **T-01 新增（阻塞 AC-01 收口）**：jade web FileTree 谱系裁定——实勘证明其为 store 驱动 vue 专属形态（composable 直绑+dyn lucide+FileTreeNode 递归+ext prompt），与本 bp 是同名不同物、无副本漂移可删。方案 A：不收敛，登记 DEBTS+spec gotcha#2（web 谱系=独立组件；AC-01 措辞修订为"VM 轨消费面 bps 导入+三方副本归零"）；方案 B：立 bp v2 设计任务（header slot+store dataSource 注入+递归/派生双形态裁定）真收敛三面 | AC-01 措辞与 T-01 完成判定 | **用户裁定**（推荐 A：无漂移可杀，B 是为收敛而收敛的设计成本） |

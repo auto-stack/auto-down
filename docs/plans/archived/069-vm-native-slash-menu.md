@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-069
-status: reviewed        # drafting → executing → execution_done → reviewed → archived
+status: archived        # drafting → executing → execution_done → reviewed → archived
 feature_name: vm-native-slash-menu
 author: [zhaopuming]
 created_at: 2026-09-15
@@ -13,6 +13,7 @@ new_spec_components: []
 touched_goals: []
 
 affects: [auto-down, auto-lang]
+completion_kind: delivered
 ---
 
 # [PLAN-069] vm-native-slash-menu
@@ -368,6 +369,20 @@ PLAN-048 T6 裁定、manifest 计数 22→23 纠笔误、AC-06 双模改 demo �
   21+105+3559 全绿（ffi_dual 预存 flake 判别在案）；playwright 107+1
   flake 复绿；PARITY/README/DEBTS（转介行销号）三处落账更新。
   blockers: 无。next: /auto-plan:review。
+
+- 2026-09-15 merge（收敛收据 PLAN-069:r2）：prepared=58d8f19（worktree
+  projection-only 后代：账本 P069-1 architecture/P069-2 reviews 纯增量 24
+  行，reviewed_commit 29cfe72 后代）；landed=5e974a8（plan-069-dev → master
+  --no-ff；ancestry 在案：含 T-01..T-06 实现/PARITY/README/DEBTS/探针/脚本；
+  merge 后清理 R-069-1 截图临时产物提交）；ledger_refreshed=.autoos/
+  specs.json master 读回核验 P069-1∈architecture/P069-2∈reviews（tests 段
+  未触动）；archived=本件 git mv docs/plans/archived/ + status archived +
+  completion_kind: delivered；cleaned=双 worktree（auto-down/auto-lang）
+  wt-guard clean 后移除 + 分支 plan-069-dev/auto-down-dev 删除 + 组目录
+  .wt/auto-down-069 移除（cleaned 补记见后续 commit）。canonical: PARITY
+  #12 行/demo README「VM 轨 slash 菜单契约」节/DEBTS 069 两行；跨仓:
+  auto-lang master 62336eaea（bare use 子件装载语义恢复，PLAN-545 连带
+  断裂收回自修）。outcome: pass。
 
 - 2026-09-15 review（复审，实现会话内自复审——按技能要求从工件独立重放，
   不信赖执行摘要）：stage: review，PLAN-069 rev2，outcome: **pass**。

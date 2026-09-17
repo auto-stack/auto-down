@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-069
-status: execution_done  # drafting → executing → execution_done → reviewed → archived
+status: reviewed        # drafting → executing → execution_done → reviewed → archived
 feature_name: vm-native-slash-menu
 author: [zhaopuming]
 created_at: 2026-09-15
@@ -368,6 +368,36 @@ PLAN-048 T6 裁定、manifest 计数 22→23 纠笔误、AC-06 双模改 demo �
   21+105+3559 全绿（ffi_dual 预存 flake 判别在案）；playwright 107+1
   flake 复绿；PARITY/README/DEBTS（转介行销号）三处落账更新。
   blockers: 无。next: /auto-plan:review。
+
+- 2026-09-15 review（复审，实现会话内自复审——按技能要求从工件独立重放，
+  不信赖执行摘要）：stage: review，PLAN-069 rev2，outcome: **pass**。
+  reviewed_commit: auto-lang auto-down-dev de484d7c1（src==HEAD 核实，5
+  commit 于基线 de86e1d8e）+ auto-down plan-069-dev 29cfe72；base_commit:
+  auto-down 847b4f2（起草）/auto-lang de86e1d8e；dependency_revisions:
+  auto-lang master 折回 62336eaea（cherry-pick 干净）。spec_inputs:
+  PARITY.md #12 行、demo/auto/README.md「VM 轨 slash 菜单契约」节、
+  DEBTS.md 069 两行（均在 worktree 副本，随 merge 落主检出）。
+  acceptance_results（全部独立重放）：**AC-01/02/04 pass**——slash 单测
+  21/21（触发七门/路由环形/过滤 7 项/23 项逐项 emit roundtrip/结构操作不
+  入 undo 断言）；**AC-02/03 pass（实机）**——vm-smoke [slash] 四臂 +
+  vm-069-probe 五臂 ALL PASS（含点选与层外关闭臂在 smoke/单测双覆盖）；
+  **AC-05 pass**——探针 `.slash` 读数四字段实机核验（23/7/导航/Esc 读数
+  逐臂断言）；**AC-06 pass**——净窗全臂 **25 检查 PASS**（复审轮重放，
+  拖拽臂 968.7 基准一致；web playwright 107 绿 + 1 时序 flake 单跑复绿，
+  引擎 src 零 diff 核实）；**AC-07 pass**——文档↔代码交叉一致（代码
+  SLASH_ITEMS 23 项 = README 冻结表 23 项；快照/探针 props 名两侧一致；
+  PARITY #12 收口注记 + DEBTS 两行在案）。负例核验：触发不落档、词中/
+  fence/选区/只读/流式不触发、层外点击不落文档、Esc 零文档效果均断言
+  在测。findings（三枚 observation 均非阻断）：R-069-1 worktree 遗留
+  探针截图临时产物（demo/auto/src/front/tmp/autoui-screenshot-*.png，
+  非实现文件，merge 清理）；R-069-2 ffi_dual 家族预存共享 pack 缓存竞态
+  （基线同分布判别在案，DEBTS 069 行注记，auto-lang 侧余量）；R-069-3
+  545 门禁盲区（裸 use UI 子件项目缺门，DEBTS 069 行已注记，建议该仓
+  后续计划扫圈）。evidence: 单测 21+105+7 全绿（复审轮重放）；smoke/
+  probe 重放输出在案（本记录）；git diff --quiet HEAD 双仓核实。
+  spec delta 审定：SD-01/02/03 三处文本与实现交叉一致、描述现行行为，
+  supersedes/new/touched 空表维持（本计划无 docs/specs 正典面，增量落
+  PARITY/README/DEBTS 三处已在册）。next: /auto-plan:merge。
 
 ## 10. 待澄清事项
 

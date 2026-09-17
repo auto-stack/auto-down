@@ -191,8 +191,22 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   build（vue-tsc+vite）门绿。提交：auto-down 69f69d2。方法论注：--arms
   tabs 单臂模式存在既有 flake（tabs② stateIs 对非迁移值即时匹配旧值，
   对照实验旧副本同失败），全量跑为有效验证面。
-- **T-03** [改] status_bar/ctx_menu/actions 骨架 bp 化 + jade web 命令系统接入。
+- **T-03** [🔶 部分：两项不收敛注记 + web 切片 blocked（工具链前置）] 
+  status_bar/ctx_menu/actions 骨架 bp 化 + jade web 命令系统接入。
   依赖：T-00；639 T-05。→ AC-03
+  [🔶 处置注记 2026-09-18] ①status_bar **不收敛**（Q-7 同款实证：三版同名
+  不同物——desktop=值 props 纯展示反链/出链、041=store 直读 line:col+terminal
+  按钮、web=ext/composable 字数+watch 反链抓取；内容零重叠仅视觉骨架同，
+  并集 bp=过度设计）；②ctx_menu **不迁移**（唯一消费方 041，搬家非复用，
+  留 041 侧）；③web 命令系统 **blocked**：639 的 ui_config→ActionsBlock
+  合成为 app.at 壳专属（crates/auto-lang/src/ui_gen/api.rs:390 "App-level
+  config: only the app shell (app.at) inherits"，设计如此防动作泄漏；
+  046 生成 App.vue 实证 menubar=shadcn 族+handler refs+快捷键 keymap），
+  而 jade web 无 app 根（app.at 永不部署的占位、组件级部署+手写壳）。
+  解阻选项：**(a)** auto-lang 扩 ui_config 合成面至非 app 组件（新计划）；
+  **(b)** jade web 采用 app 根部署（架构大改）；**(c)** AC-03 web 切片
+  修订——web 命令面以既有 ribbon/command_palette 手写面为准，DSL 命令
+  系统 web 接入挂前置。→ Q-8 用户裁定。零代码改动（纯调查/裁定切片）。
 - **T-04** [改] 门禁收口：§5 全量基线复跑 + §4.4 新门落地 + DEBTS/ARCHITECTURE
   落笔（SD-01）。依赖：T-01..T-03。→ AC-04/05
 
@@ -217,6 +231,14 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   blockers: 无（Q-7 用户已裁 A） | next: T-03（status_bar/ctx_menu bp 化 +
   jade web 命令系统接入）`。契约变更：plan_revision 2（AC-01 措辞修订 +
   T-01/T-02 形态裁定变更，证据在案；授权范围未扩）。
+- 2026-09-18 work handoff #4：`stage: work | plan_id: PLAN-070 |
+  plan_revision: 2 | outcome: pass(T-01 前置修正 f3d79c18f)/blocked(T-03
+  web 切片——Q-8) | code_commit: auto-lang f3d79c18f | task_ids: T-03（处置
+  注记） | evidence: 三版 status_bar 对读 + api.rs:390 + 046 gen App.vue |
+  blockers: Q-8 用户裁定 | next: 裁定后——c 则 AC-03 rev3 修订+T-03 勾记
+  进 T-04；a 则拆 auto-lang 新计划后回本计划`。附带修正：filetree bp 收缩
+  support-files-only（vue bps 扫描 fn 转译缺口实证，046 断裂解除——该缺口
+  若不修会炸任何声明 dep bps 的 vue 构建，T-01 引入 T-03 前置解除）。
 - 2026-09-18 work handoff #2：`stage: work | plan_id: PLAN-070 | plan_revision: 2 |
   outcome: pass(T-01 VM 轨切片)/blocked(T-01 web 切片——Q-7 用户裁定) |
   code_commit: auto-lang af8c72a84（auto-down-dev）+ auto-down 9ace132
@@ -237,3 +259,4 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
 | Q-5 | ~~package.at/treeview 归属~~ **已闭环（T-01 实勘）**：package.at=目录清单文件（两版仅头注/description 异），bp 包自带清单；treeview=041 活组件（非 filetree 家族），留 041 侧 | 已闭环 |
 | Q-6 | **T-00 新增**：filetree web 谱系 C 的数据注入面改造量（fileTree_store fs 读取按 639 datasource 契约） | T-01 工作量 | T-01 设计细分 |
 | Q-7 | ~~web FileTree 谱系裁定~~ **已裁定（2026-09-18 用户：方案 A 不收敛）**：web 谱系=独立组件，DEBTS 070 登记 + bp spec gotcha#2 在案；AC-01 rev2 修订 | 已闭环（rev2） |
+| Q-8 | **T-03 新增（阻塞 AC-03 web 切片）**：web 命令系统处置——(a) auto-lang 扩 ui_config 合成面至非 app 组件；(b) jade web app 根部署；(c) AC-03 web 切片修订（web 命令面=既有手写 ribbon/command_palette，DSL 命令系统挂前置） | AC-03 完成判定 | **用户裁定**（倾向 c：web UX 已有命令面，(a) 可作 auto-lang 独立计划后续） |

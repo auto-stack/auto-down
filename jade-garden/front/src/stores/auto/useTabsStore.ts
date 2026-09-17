@@ -2,17 +2,24 @@ import { ref } from 'vue'
 import { read_wiki, write_wiki, ensureBlockAnchors, recordRecent, confirmClose, rethrow } from '../../../auto/src/front/utils/tabs_store_ext'
 
 const tabs = ref<any>([])
-const active_path = ref<string | null>(null)
+const active_path = ref<string>('')
 
 export function useTabsStore(): any {
-    const Close = async (path: string) => { let idx = tabs.value.findIndex((t: any) => t.path == path);
+    const Close = async (path: string) => { 
+
+
+let idx: number = -1;
+let i: number = 0;
+for (const t of tabs.value) {if (t.path == path && idx == -1) {idx = i;
+}i = i + 1;
+}
 if (idx != -1) {let tab = tabs.value[idx];
 let ok: boolean = true;
 if (tab.dirty && !tab.isGraph) {ok = await confirmClose(tab.title);
 }if (ok) {tabs.value.splice(idx, 1);
 if (active_path.value == path) {if (tabs.value.length > 0) {let idx2 = Math.min(idx, tabs.value.length - 1);
 active_path.value = tabs.value[idx2].path;
-}if (tabs.value.length == 0) {active_path.value = null;
+}if (tabs.value.length == 0) {active_path.value = '';
 }}}}
  }
     const Load = async (path: string) => { let tab = tabs.value.find((t: any) => t.path == path);
@@ -25,9 +32,11 @@ try {doc = await read_wiki(path);
 
 if (doc != null && tab.loaded == false) {tab.body = doc.body;
 tab.originalBody = doc.body;
-tab.frontmatter = doc.frontmatter || {  };
-tab.title = doc.frontmatter && doc.frontmatter.title || tab.title;
-tab.dirty = false;
+
+if (doc.frontmatter != null) {tab.frontmatter = doc.frontmatter;
+let fm_title3 = doc.frontmatter.title;
+if (fm_title3 != null) {if (fm_title3 != '') {tab.title = fm_title3;
+}}}tab.dirty = false;
 tab.loaded = true;
 }if (doc == null) {tab.loaded = true;
 tab.originalBody = tab.body;
@@ -50,9 +59,12 @@ try {doc2 = await read_wiki(path);
 
 if (doc2 != null && existing.loaded == false) {existing.body = doc2.body;
 existing.originalBody = doc2.body;
-existing.frontmatter = doc2.frontmatter || {  };
-existing.title = doc2.frontmatter && doc2.frontmatter.title || existing.title;
-existing.dirty = false;
+
+
+if (doc2.frontmatter != null) {existing.frontmatter = doc2.frontmatter;
+let fm_title = doc2.frontmatter.title;
+if (fm_title != null) {if (fm_title != '') {existing.title = fm_title;
+}}}existing.dirty = false;
 existing.loaded = true;
 }if (doc2 == null) {existing.loaded = true;
 existing.originalBody = existing.body;
@@ -72,9 +84,11 @@ let tab = tabs.value.find((t: any) => t.path == path);
 
 if (tab != null && doc != null && tab.loaded == false) {tab.body = doc.body;
 tab.originalBody = doc.body;
-tab.frontmatter = doc.frontmatter || {  };
-tab.title = doc.frontmatter && doc.frontmatter.title || tab.title;
-tab.dirty = false;
+
+if (doc.frontmatter != null) {tab.frontmatter = doc.frontmatter;
+let fm_title2 = doc.frontmatter.title;
+if (fm_title2 != null) {if (fm_title2 != '') {tab.title = fm_title2;
+}}}tab.dirty = false;
 tab.loaded = true;
 }if (tab != null && doc == null) {tab.loaded = true;
 tab.originalBody = tab.body;

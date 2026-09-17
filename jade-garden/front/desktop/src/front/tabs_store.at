@@ -1,21 +1,24 @@
-// tabs_store.at — TabsStore（桌面副本）：the dirty/save tab state machine.
-// 逐字共享自 front/auto/src/front/tabs_store.at（PLAN-064 T-04 双轨设计），
-// 桌面副本落盘于 PLAN-622 清偿提案⑥之后（原 T-05 因缺口簇退绕行形态）。
-// 与 web 原本的 delta（均为 VM 面适配，语义保形）：
-//   1. Close 用显式索引狩猎替代 findIndex（后者不在 VM 列表原生面，静默
-//      失效）——splice 已由 PLAN-622 修复，关闭 = 真移除；
-//   2. Open/Load 的 title/frontmatter 推导 `&&/||` 链改显式空值守卫
-//      （&&/|| 在 VM 上是布尔逻辑，JS 惯用法会把 title 写成 true）；
-//   3. active_path 用 str + "" 哨兵（web 为 ?str）——?str 跨状态对象读
-//      实测崩 Invalid object ID，plain str 为已证形态。
+// tabs_store.at — TabsStore: the dirty/save tab state machine.
+// Pinia → Auto store pilot (plan 011 Phase 5.1), port of the original
+// hand-written front/src/stores/tabs.ts.
 //
-// 源文件头注：
-//   - web: front/auto/src/front/ → `auto build` + sed → src/stores/auto/
-//     useTabsStore.ts, whose '@/lib/api' import is sed-rewritten to
-//     utils/tabs_store_ext.ts (the shrunken web shim face)
-//   - VM:  copy at jade-garden/front/desktop/src/front/; `use back.api:`
-//     resolves against the desktop contract copy (src/back/api.at) where
-//     the VM-side helper fns live (plain fns, no #[api])
+// 单源（PLAN-070 T-02）：本文件是 tabs_store 的唯一源。desktop 副本由
+// `node scripts/tabs-store-sync.mjs` 从本文件字节部署（GENERATED 纪律：
+// 禁止手改副本，改动只落本文件后重新部署）——PLAN-064 时代的手维护孪生
+// 取消，front/README §9.5 登记册退役。不跨包导入的原因：`use back.api:`
+// 按文件位置解析（desktop 副本须留在 desktop/src/front/ 才能解析到带 VM
+// 助手 fn 的契约副本），位置即绑定，见 T-02 证据。
+// 布线不变：
+//   - web: `auto build` + sed → src/stores/auto/useTabsStore.ts（'@/lib/api'
+//     import 被 sed 改写为 utils/tabs_store_ext.ts 薄垫面）
+//   - VM: `use back.api:` 解析到 desktop 契约副本（src/back/api.at，VM 助手
+//     fn 为普通 fn 无 #[api]）
+// 原孪生三 delta 处置（PLAN-070 T-02）：①findIndex——
+// VM 轨静默失效实机复现（tabs(3) idx 恒 -1 → 关闭失效重开见脏文；§9.5⑥
+// "624 已修"以实证推翻），单源取显式索引狩猎（web 语义等价）；②&&/|| 值传播链——
+// 三处改显式空值守卫（VM 上 &&/|| 是布尔逻辑；web 语义等价）；③?str——
+// 单源取 str+"" 哨兵（VM 已证形态；"" 即无活动 tab，web 消费方
+// falsy/等值判断兼容）。
 //
 // External surface after the six-helper disposal (PLAN-064 §5.2):
 //   - read_wiki / write_wiki: contract fn names (#[api] channel). The old
@@ -83,11 +86,10 @@ store Tabs {
         // Tab objects (Array<str> = any; the Tab interface lives in the
         // hand-written facade front/src/stores/tabs.ts).
         var tabs Array<str> = []
-        // VM delta：active_path 用 str + "" 哨兵（web 为 ?str）——?str 的跨
-        // 状态对象读实测崩 Invalid object ID，plain str 为已证形态。
-        // （PLAN-624 merge 门修复：声明行在 622 转写时遗失——模型缺声明
-        // 使合并单态实例无此字段，store handler 写 `.active_path` 即
-        // "Field 'active_path' not found on type instance App_State"。）
+        // PLAN-070 T-02：str + "" 哨兵替代 web 原 ?str/None——?str 跨状态
+        // 对象读在 624 后仍不安全（vm-smoke tabs(2) 实证：.find 的
+        // t.path == .active_path 匹配失效），plain str 为双轨已证形态；
+        // "" 即"无活动 tab"（web 侧消费方均为 falsy/等值判断，兼容）。
         var active_path str = ""
     }
 
@@ -123,6 +125,8 @@ store Tabs {
                     if doc2 != null && existing.loaded == false {
                         existing.body = doc2.body
                         existing.originalBody = doc2.body
+                        // PLAN-070 T-02 单源：显式空值守卫（VM 上 &&/|| 是
+                        // 布尔逻辑；web 语义等价——null/"" 时保持原值）。
                         if doc2.frontmatter != null {
                             existing.frontmatter = doc2.frontmatter
                             var fm_title = doc2.frontmatter.title
@@ -162,6 +166,7 @@ store Tabs {
                 if tab != null && doc != null && tab.loaded == false {
                     tab.body = doc.body
                     tab.originalBody = doc.body
+                    // PLAN-070 T-02 单源：显式空值守卫（同上）。
                     if doc.frontmatter != null {
                         tab.frontmatter = doc.frontmatter
                         var fm_title2 = doc.frontmatter.title
@@ -235,6 +240,7 @@ store Tabs {
                 if doc != null && tab.loaded == false {
                     tab.body = doc.body
                     tab.originalBody = doc.body
+                    // PLAN-070 T-02 单源：显式空值守卫（同上）。
                     if doc.frontmatter != null {
                         tab.frontmatter = doc.frontmatter
                         var fm_title3 = doc.frontmatter.title
@@ -256,7 +262,9 @@ store Tabs {
         }
 
         .Close(path) -> {
-            // VM delta：findIndex 不在列表原生面（静默失效）——显式索引狩猎。
+            // PLAN-070 T-02：显式索引狩猎——findIndex 在 VM 轨静默失效
+            // （tabs(3) 实证：关闭后重开仍在脏内容，idx 恒 -1；README §9.5
+            // ⑥"624 已修"与实机不符，以实证为准）。web 语义等价。
             var idx = -1
             var i = 0
             for t in .tabs {

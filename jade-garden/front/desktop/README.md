@@ -356,15 +356,28 @@ PLAN-068 增量：tab 条 041 化（§9.6）+ 正文编辑器换装 autodown_edi
 ⑤action 配置 vue 发射器不消费（本桌面以 VM 轨为主，web 面仅保 tabs_store
 共享，视图同步另行计划）。
 
-### 9.5 tabs_store 共享面口径（AC-6）
+### 9.5 tabs_store 共享面口径（PLAN-070 T-02 起退役为历史注记）
 
-桌面副本与 web 孪生（`jade-garden/front/auto/src/front/tabs_store.at`）的
-diff 仅有：头注（副本出处 + VM delta 登记）、`active_path str = ""` 声明行
-（PLAN-624 修复：622 转写遗失）、`&&/||` 链改显式空值守卫 ×3、Close 的
-findIndex→显式索引狩猎、`active_path = ""` 哨兵赋值——均为头注登记的 VM 面
-适配，业务语义零变更；本计划（PLAN-067）对该文件零改动（T-01a 基线 230dc57
-逐字节携入后未再触碰）。PLAN-068 同 zero-touch（tab 条换装纯视图消费
-`t.title/t.dirty/t.path`，基线 3adc930 起 diff 审查为空）。
+**孪生已死（2026-09-18，PLAN-070 T-02）**：tabs_store 收敛为单源 +
+字节部署——唯一源 = `jade-garden/front/auto/src/front/tabs_store.at`，
+desktop 副本由 `node scripts/tabs-store-sync.mjs` 字节部署（产物非资产，
+禁止手改副本；`--check` 门检非等价即红）。原"逐字共享 + diff 登记册"的
+手工孪生维护就此取消。
+
+历史 diff 登记册（PLAN-064/067 时代）的三处 VM 适配，处置如下：
+1. `&&/||` 值传播链 → 单源已改显式空值守卫 ×3（web 语义等价）；
+2. `active_path ?str` → 单源取 `str + ""` 哨兵（VM 已证形态；web 消费方
+   falsy/等值判断兼容，`pnpm build` 门绿）；
+3. Close `findIndex` → 单源取显式索引狩猎（**实机实证 findIndex 在 VM 轨
+   仍静默失效**：tabs(3) idx 恒 -1 → 关闭失效、重开见脏文；desktop README
+   §9 表 ⑥"624 已修 find_index 2072"的记载以本次实证推翻/修正——修复
+   覆盖面不含 lambda findIndex 于 store 状态路径）。
+
+不跨包导入（True single-file）的原因：store 内 `use back.api:` 按文件
+位置解析——desktop 副本必须留在 `desktop/src/front/` 才能命中带 VM 助手
+fn 的 `src/back/api.at` 契约副本；跨包导入实证 read_wiki 等符号调用期
+失联（status 停在 files-reloaded，PLAN-070 T-02）。位置即绑定，字节部署
+是该缝现工具链下的正确单源形态。
 
 ### 9.6 tab 条契约（PLAN-068，041 形态）
 

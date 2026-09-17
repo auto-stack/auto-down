@@ -48,6 +48,11 @@
 //      calibrated from the flip-probe doc's real readings (待澄清④).
 //      PLAN-053 T10: gate retired — hard assertions on both flips;
 //      [group8] errors stay deterministic failures (no PLAN-049 retry).
+//  11. (PLAN-069) native slash menu: key_press 'c:/' at block start opens
+//      the candidate menu (observed via autoui_editor_state probe `.slash`
+//      — visible/query/selected/count), 'c:h' filters (23→7), Enter
+//      executes Heading 1 migration, Escape closes clean; the '/' char
+//      never lands in the document (web trigger-range semantics).
 //
 // Protocol (same channel the jade desktop flows ride, see
 // jade-garden/front/desktop/README.md:114-132): AutoUI MCP over Streamable
@@ -1006,6 +1011,92 @@ async function runOnce(attempt) {
       throw new Error(`[group10] core table_widths did not take the drag (want col0 ≈ ${wantW0.toFixed(1)} on key ${table.key}): ${widthsLine}`)
     }
     checks.push(`editor drag: col boundary ${pts} -> editor_col_widths[col0] = ${wantW0.toFixed(1)} (core col_drag → table_widths settle)`)
+  }
+
+  // 11. (PLAN-069) native slash menu — key_press 'c:/' at block start opens
+  //     the candidate menu; the menu state is observed through the
+  //     autoui_editor_state probe (`.slash`: visible/query/selected/count,
+  //     null = closed — the snapshot face carries no menu props, the VM
+  //     vnode tree projects the editor shell as its textarea input face).
+  //     Arms: ① trigger (visible × 23 items, the '/' char itself never
+  //     lands in the doc — web trigger-range semantics), ② query filter
+  //     ("h" → 7 = Heading 1-6 + Divider, selected reset), ③ Enter executes
+  //     the selected item (Heading 1 migration + close), ④ reopen on the
+  //     migrated block → Escape closes with zero doc effect.
+  {
+    const snapS = parseAura(await callTool('autoui_snapshot', {}))
+    const taS = findFirst(snapS, (n) => n.head.startsWith('textarea '))
+    if (!taS) throw new Error('[slash] no textarea — editor face missing')
+    const editorS = elementIdOf(taS)
+    const probeS = () => editorProbe(editorS)
+    const key = async (spec) => {
+      const kp = await callTool('autoui_action', { element_id: editorS, action: 'key_press', value: spec })
+      if (!/status: ok/.test(kp)) throw new Error(`[slash] key_press ${spec} not ok: ${kp}`)
+    }
+
+    const seedS = await callTool('autoui_action', { element_id: editorS, action: 'type_text', value: '甲段乙段\n' })
+    if (!/status: ok/.test(seedS)) throw new Error(`[slash] seed type_text not ok: ${seedS}`)
+    // type_text 的外部回写环（on_change → state → content 重绑）异步落地：
+    // 等一拍再点，焦点核验轮询至 core 报出焦点块（重建清焦点防呆）。
+    await new Promise((r) => setTimeout(r, 800))
+    let focusOk = false
+    for (let i = 0; i < 10 && !focusOk; i++) {
+      const fc = await callTool('autoui_action', { element_id: editorS, action: 'click', value: '40,12' })
+      if (!/status: ok/.test(fc)) throw new Error(`[slash] focus click not ok: ${fc}`)
+      await new Promise((r) => setTimeout(r, 300))
+      focusOk = (await probeS()).focus !== null
+    }
+    if (!focusOk) throw new Error('[slash] click did not establish block focus')
+    await key('home')
+    await new Promise((r) => setTimeout(r, 200))
+
+    // ① trigger: '/' at block start → visible × 23, char not in doc.
+    await key('c:/')
+    await new Promise((r) => setTimeout(r, 300))
+    let st = await probeS()
+    if (!st.slash || st.slash.visible !== true || st.slash.count !== 23 || st.slash.query !== '' || st.slash.selected !== 0) {
+      throw new Error(`[slash] trigger failed: ${JSON.stringify(st.slash)}`)
+    }
+    if (st.text.includes('/')) {
+      throw new Error(`[slash] trigger char leaked into doc: ${JSON.stringify(st.text.slice(0, 40))}`)
+    }
+    checks.push('slash trigger: c:/ at block start → visible × 23 items (query "" selected 0), char not in doc')
+
+    // ② filter: query "h" → 7 (Heading 1-6 + Divider "Horizontal rule"), selected reset.
+    await key('c:h')
+    await new Promise((r) => setTimeout(r, 200))
+    st = await probeS()
+    if (!st.slash || st.slash.query !== 'h' || st.slash.count !== 7 || st.slash.selected !== 0) {
+      throw new Error(`[slash] filter failed: ${JSON.stringify(st.slash)}`)
+    }
+    checks.push('slash filter: query "h" → count 7, selected reset to 0')
+
+    // ③ Enter executes the selected item (Heading 1) → block migrated, closed.
+    await key('enter')
+    await new Promise((r) => setTimeout(r, 300))
+    st = await probeS()
+    if (st.slash !== null) throw new Error(`[slash] menu not closed after Enter: ${JSON.stringify(st.slash)}`)
+    if (!st.text.startsWith('# ')) {
+      throw new Error(`[slash] Heading 1 not applied: ${JSON.stringify(st.text.slice(0, 40))}`)
+    }
+    checks.push('slash execute: Enter → Heading 1 migration ("# 甲段乙段"), menu closed')
+
+    // ④ reopen on the migrated block (block-start '/' still triggers) →
+    //    Escape closes with zero doc effect.
+    await key('home')
+    await new Promise((r) => setTimeout(r, 200))
+    await key('c:/')
+    await new Promise((r) => setTimeout(r, 300))
+    st = await probeS()
+    if (!st.slash || st.slash.visible !== true) throw new Error('[slash] reopen after migration failed')
+    await key('escape')
+    await new Promise((r) => setTimeout(r, 200))
+    st = await probeS()
+    if (st.slash !== null) throw new Error(`[slash] Escape did not close: ${JSON.stringify(st.slash)}`)
+    if (st.text !== '# 甲段乙段') {
+      throw new Error(`[slash] doc drifted after Escape: ${JSON.stringify(st.text)}`)
+    }
+    checks.push('slash escape: reopen on migrated block → Escape closes with zero doc effect')
   }
 
   // 8. (plan 053 T7 / D5) theme flip group — runs LAST (dark detour stays

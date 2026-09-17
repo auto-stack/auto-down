@@ -356,3 +356,51 @@ minutes), and MCP client state is uncorrelated. If a demo/soak window
 vanishes, restart it; for long soaks, launch the process detached from any
 agent session tree (e.g. PowerShell `Start-Process`) — a detached instance
 survived the full probe window in PLAN-049.
+
+## VM 轨 slash 菜单契约（PLAN-069）
+
+原生 `autodown_editor` 编辑壳的 `/` 弹出候选 block（web 轨 SlashMenu 同源
+语义的原生实现；PARITY #12「编辑面能力差」斜杠菜单分项收口）。实现在
+auto-lang `crates/auto-lang/src/ui/autodown_editor/`（core 状态机 +
+DocDrawList menu 段 + widget 顶层绘制），本节冻结 VM 轨行为契约。
+
+**触发语义**：焦点块内光标位于**块首或前一字符为空白**时键入 `/` 弹出
+候选浮层；触发字符**不落入文档**（web 触发 range 被命令消费的同端语义）。
+不触发面（七门）：fence 块内、表格 cell 内、跨块选区态、只读视图实例
+（view_fence_*）、流式只读期、IME 组合期（开层即关）、焦点丢失（关层）。
+
+**键位路由**（弹层开启期优先于编辑路径）：
+
+| 键 | 行为 |
+| --- | --- |
+| ↑ / ↓ | 过滤集内环形步进选中项 |
+| Enter | 执行选中项命令并关层（过滤空集则无目标仅消键） |
+| Escape | 关层，零文档效果 |
+| 可打印字符 | 追加 query 并复位 selected（子串过滤：title/description/searchTerms 小写 contains） |
+| Backspace | 删 query 尾；query 已空则关层（`/` 不在档，无删除效果） |
+| 其余（组合键/水平 motion 等） | 关层放行到编辑路径（web OnKeydown 仅拦截四键同形） |
+
+**v1 manifest 冻结表**（23 项；web slash-manifest 30 项的子集，差额 5 项
+登记 DEBTS）：Text / Heading 1-6 / Bullet List / Numbered List / Quote /
+Code Block / TODO / DOING / DONE / NOW / LATER / Priority A / Priority B /
+Priority C / Divider / Table / Callout / Details。执行语义：kind 迁移族
+（Text/Heading×6/Code Block）保文保光标；wrap 族（Bullet/Numbered/Quote/
+Callout/Details）原位包裹；文本插入族（TODO…Priority）光标处前缀插入；
+骨架插入族（Divider/Table 3×3/焦点迁表头首 cell）。结构操作**不入 undo**
+（PLAN-048 T6 裁定口径，与 enter_split/输入规则同）。
+
+**观测面**：MCP `autoui_editor_state` 探针 `.slash` 读数 =
+`{visible, query, selected, count}`（null=关；VM MCP 快照走渲染后 VTree，
+编辑壳投影 textarea 输入面，快照节点无弹层 props——快照侧
+`slash_visible` 等四 props 只在 View::AutodownEditor 快照臂（bridge 轨）
+存在）。驱动：`autoui_action key_press`（`c:/`、`c:h`、`enter`、
+`escape`、`home`）。
+
+**实机臂**：`vm-smoke.mjs` [slash] 组四断言 + `vm-069-probe.mjs` 五臂
+（含弹层截图 `vm-069-slash-menu.png`；探针含 type_text 回写环节拍等待与
+焦点核验轮询——直接驱动时序过快会在重建清焦点窗口内丢键）。
+
+**登记差异**（对 web 轨）：触发字符不落档（web deleteRange 等价收口）；
+单段翻转定位（web 两段式系 DOM 测量产物）；过滤空集层不画不关（web 有
+"No results" 空态文案）；IME 组合期不滤 query（关层）；清单无滚动上限
+（全量展开，web 有 max-height 滚动）。

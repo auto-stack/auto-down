@@ -379,7 +379,16 @@ PLAN-048 T6 裁定、manifest 计数 22→23 纠笔误、AC-06 双模改 demo �
   未触动）；archived=本件 git mv docs/plans/archived/ + status archived +
   completion_kind: delivered；cleaned=双 worktree（auto-down/auto-lang）
   wt-guard clean 后移除 + 分支 plan-069-dev/auto-down-dev 删除 + 组目录
-  .wt/auto-down-069 移除（cleaned 补记见后续 commit）。canonical: PARITY
+  .wt/auto-down-069 移除。**cleaned 补记（同日）**：清障=诊断构建遗留
+  310 个 pnpm junction 逐个移除后 wt-guard clean 双绿；**依赖分支折回补
+  完整性修正**——收口轮仅 cherry-pick 了 lib.rs 修复（62336eaea），slash
+  功能主体四 commit（847ff6cf3..b8c16479d）仍在 auto-down-dev 分支未进
+  master，git cherry 判别后补真 merge **265aa4191**（与 62336eaea 同内容
+  双臂自洽）+ osconfig_integration LaunchSpec `opens` 字段随行补齐
+  （PLAN-016 T-07 漏改 tests/ 家族，tf 档门禁盲区）+ master 复验 slash
+  21/editor 105/use_semantics 7 全绿；随后 auto-down-dev/plan-069-dev
+  双分支删除、双 worktree 移除、组目录移除，两仓 worktree list 零 069
+  残留。canonical: PARITY
   #12 行/demo README「VM 轨 slash 菜单契约」节/DEBTS 069 两行；跨仓:
   auto-lang master 62336eaea（bare use 子件装载语义恢复，PLAN-545 连带
   断裂收回自修）。outcome: pass。

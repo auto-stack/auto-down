@@ -913,6 +913,18 @@
           "PLAN-068"
         ],
         "superseded_by": null
+      },
+      {
+        "id": "P069-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "VM 轨原生 slash 弹层契约 — 触发七门/键位路由/manifest 23 项冻结/观测面（vm-native-slash-menu）+ bare use 子件装载语义恢复",
+        "content": "- **触发语义（SD-02）**：焦点块内光标块首/空白后键入 `/` 弹出候选浮层；触发字符**不落入文档**（web 触发 range 被命令消费同端语义）。七门不触发：fence 块内、表格 cell 内、跨块选区态、只读视图实例（view_fence_*）、流式只读期、IME 组合期（开层即关）、焦点丢失（关层）。\n- **键位路由**（开层期优先于编辑路径）：↑↓ 过滤集环形步进 / Enter 执行选中并关层（空集仅消键）/ Escape 关层零文档效果 / 可打印字符追加 query+selected 复位（title/description/searchTerms 小写 contains）/ Backspace 删尾、query 空则关层（'/' 不在档无删除）/ 其余键（组合键/水平 motion）关层放行（web OnKeydown 仅拦截四键同形）。\n- **v1 manifest 冻结 23 项**（web 30 项子集，差额 5 项 Image/Query/Mermaid/Math/Block link 登记 DEBTS）：Text/Heading 1-6/Bullet List/Numbered List/Quote/Code Block/TODO/DOING/DONE/NOW/LATER/Priority A-C/Divider/Table/Callout/Details。命令语义四族：kind 迁移（Text/Heading×6/CodeBlock）保文保光标；wrap（Bullet/Numbered/Quote/Callout/Details）原位包裹；文本插入（TODO…Priority）光标处前缀；骨架插入（Divider/Table 3×3 焦点迁表头首 cell/Callout/Details）。结构操作**不入 undo**（PLAN-048 T6 裁定口径）。\n- **观测面**：VM 轨 MCP `autoui_editor_state` 探针 `.slash` = {visible,query,selected,count}（null=关）；快照侧 slash_visible 等四 props 仅 View::AutodownEditor 快照臂（bridge 轨）——VM MCP 快照走渲染后 VTree，编辑壳投影 textarea 输入面。实机臂：vm-smoke [slash] 组四断言 + vm-069-probe.mjs 五臂（type_text 回写环节拍等待+焦点核验轮询）。\n- **bare use 子件装载语义（收口轮转介收回自修，auto-lang master 62336eaea）**：lib.rs build_dynamic_component 子件/store/孙件三处收集条件的 `items.is_empty()` 臂为 UI 组件发现码道——裸 `use custom_scrollbar` 装载子件（PLAN-545 的 bare=命名空间裁定针对 fn 符号冲突面，不覆盖此码道；收紧曾致 handler_<Child>_* 导出缺席运行时全灭）。\n- 持久契约全文：autodown/demo/auto/README.md「VM 轨 slash 菜单契约」节（PLAN-069 增量）。",
+        "file": "autodown/demo/auto/README.md",
+        "related": [
+          "PLAN-069"
+        ],
+        "superseded_by": null
       }
     ],
     "designs": [
@@ -2218,6 +2230,18 @@
         "file": "jade-garden/front/desktop/README.md",
         "related": [
           "PLAN-068"
+        ],
+        "superseded_by": null
+      },
+      {
+        "id": "P069-2",
+        "section": "reviews",
+        "status": "stable",
+        "title": "VM 原生 slash 弹层 + PARITY #12 斜杠分项收口 — 验收/复审记录（PLAN-069）",
+        "content": "PLAN-069 rev2 交付：VM 原生 autodown_editor `/` 弹出候选 block（core 状态机+DocDrawList menu 段+widget 顶层绘制+23 项命令族+探针/快照观测面）对齐 web 轨 SlashMenu（PARITY #12 斜杠分项收口）。AC-01..07 全 pass；review pass（实现会话内自复审按工件独立重放——单测 21+105+use_semantics 7 全绿、净窗全臂 smoke 25 检查 PASS 拖拽臂 968.7 与 063 基准一致、探针五臂 ALL PASS、AC-07 文档代码交叉一致）。收口轮转介收回自修：全臂初跑 blocked→EXPORTS-DUMP 插桩钉死真根因=PLAN-545 bare use 收紧连带删 UI 子件收集 bare 臂（非 scroll 通道；嫌疑面 PLAN-631/7434ab62d 排除），三处条件补回折回 auto-lang master 62336eaea。findings R-069-1/R-069-2/R-069-3 三枚 observation 非阻断（截图临时产物 merge 清理/ffi_dual 预存共享 pack 缓存竞态基线判别在册/545 门禁盲区在册）。交付提交链 auto-lang 847ff6cf3→fed00ca85→06345a15e→b8c16479d→de484d7c1（auto-down-dev，折回 master 62336eaea）+ auto-down 2a074c5→e6e96ff→29cfe72（plan-069-dev）；冻结证据 vm-069-slash-menu.png。merge 收据 PLAN-069:r2。",
+        "file": "autodown/demo/auto/README.md",
+        "related": [
+          "PLAN-069"
         ],
         "superseded_by": null
       }

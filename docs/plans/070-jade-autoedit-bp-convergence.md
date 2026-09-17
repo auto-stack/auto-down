@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-070
-status: drafting               # drafting → executing → execution_done → reviewed → archived
+status: executing              # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-autoedit-bp-convergence（auto-edit/jade-garden 源码级组件平台化）
 author: [zhaopuming]
 created_at: 2026-09-17
@@ -13,7 +13,7 @@ new_spec_components: []        # 本仓无 docs/specs/（见 §3 Specs 状况）
 touched_goals: []              # 本仓无 goals.md
 
 affects: [jade-garden/front, auto-lang/examples/ui/041-auto-edit]
-current_step: 0
+current_step: 1
 total_steps: 5
 ---
 
@@ -150,10 +150,15 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
 > `D:/autostack/.wt/down-070/{auto-down, auto-lang}` 双兄弟 worktree
 > （041 文件改动在 auto-lang 仓内进行，遵该仓流程）；移除前过 wt-guard.sh。
 
-- **T-00** [调查/裁定] ①三消费面×共享件矩阵清单化（含 tab 条 UI 与 tabs_store
+- **T-00** [x] [调查/裁定] ①三消费面×共享件矩阵清单化（含 tab 条 UI 与 tabs_store
   分层归属、jade web actions 接入形态两裁定）；②共享 bp 宿主落点裁定（默认
   auto-lang `blueprints/`；widgets-gallery 保持 widget 层身份不变）。
   产物：`docs/plans/attachments/070-consumption-matrix.md`。依赖：无。→ 全体
+  [✅ 已完成 2026-09-18] 矩阵+五裁定（R-1..R-5）落附件；sha256 实勘修正起草
+  假设（filetree=三谱系、gallery package.at 已漂移 93543315、041 独有
+  treeview）；tabs_store 三 delta 定性=双轨公共子集问题（无需变体机制）；
+  R-1/R-2 provisional 待 639 merge 收口复核，R-3 转正（blueprints/ 已见
+  master）。blueprints/ master 观察：README+四 kind+pac.at 在案。
 - **T-01** [改+新] filetree bp 包（auto-lang 仓）+ 三消费面切换 import + 删副本
   + chevron 参数化双端断言。依赖：T-00；639 T-04。→ AC-01
 - **T-02** [改] tabs_store 收敛：desktop 副本删除、增量裁定上提、§9.5 退役改写
@@ -169,12 +174,21 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   （blocked on：依赖 PLAN-639 T-04/T-05 未落地；639 与本计划 review 未跑）。
   `next: 639 先行 review+work；本计划 review 可先跑，T-00 即可开工（不依赖 639），
   T-01+ 等 639 双轨解析就绪`。
+- 2026-09-18 work handoff：`stage: work | plan_id: PLAN-070 | plan_revision: 1 |
+  outcome: pass(T-00)/blocked(T-01+) | code_commit: 无（T-00 零代码改动，簿记
+  3a05255 线上） | task_ids: T-00 | evidence: attachments/070-consumption-matrix.md |
+  blockers: T-01+ 待 PLAN-639 merge 收口（当前 reviewed、合并中；blueprints/
+  包库结构已见 master） | next: 639 收口后 T-01 开工；开工时先建组内 auto-lang
+  兄弟 worktree（分支基须含 639 落地提交）`。worktree：
+  `D:/autostack/.wt/down-070/auto-down`（plan-070-dev，基 3a05255）。
 
 ## 9. 待澄清事项
 
 | # | 事项 | 影响 | owner/下一步 |
 | --- | --- | --- | --- |
-| Q-1 | 共享 bp 宿主最终落点（默认 auto-lang blueprints/） | T-01 包位置 | T-00 裁定工件 + review |
-| Q-2 | jade web actions 接入形态（.at 直声明 vs facade 转接） | T-03 | T-00 裁定 |
-| Q-3 | 041 改动的仓归属流程（auto-lang examples 内文件，是否随 639 组 worktree 顺带） | T-01/T-03 执行布局 | work 启动时与 639 对齐 |
+| Q-1 | ~~共享 bp 宿主最终落点~~ **已裁定（R-3 转正）**：auto-lang blueprints/ | T-01 包位置 | 已闭环 |
+| Q-2 | jade web actions 接入形态：R-2 provisional（.at 直声明优先） | T-03 | 639 merge 收口后按实际发射面定稿 |
+| Q-3 | 041 改动的仓归属流程（auto-lang examples 内文件，是否随 639 组 worktree 顺带） | T-01/T-03 执行布局 | T-01 开工时与 639 组对齐 |
 | Q-4 | auto-edit 空仓启用（宿主产品化）时机与立项拆分 | 本计划范围边界 | 用户裁定（本计划不含） |
+| Q-5 | **T-00 新增**：package.at 两版择一（b6ff9789 vs gallery 93543315）与 treeview.at 归属（R-5） | T-01 | T-01 内裁定 |
+| Q-6 | **T-00 新增**：filetree web 谱系 C 的数据注入面改造量（fileTree_store fs 读取按 639 datasource 契约） | T-01 工作量 | T-01 设计细分 |

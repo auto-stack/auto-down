@@ -12,7 +12,7 @@ new_spec_components: []        # 账本 P073-x 由 merge 落账
 touched_goals: []
 
 affects: [jade-garden/front]
-current_step: 1
+current_step: 2
 total_steps: 5
 ---
 
@@ -114,6 +114,13 @@ gallery 基建（units.mjs/gate.mjs/e2e baselines，5 样板含 status_bar/tabs
     gen 路径勘误（部署件在 front/src/components/）。证据：探针项目
     tmp/p073-styleprobe build+VM run 双绿。
 - **T-01** [改] ①-1 status_bar：配方化 + 双端对照修复 + gate 锁。依赖：T-00。→ AC-01/02
+  - [x] T-01 ✅ 已完成（2026-09-18，down-073 @030fe7b）：web `sb_footer`
+    recipe + text-xs（部署 SFC 再生成，recipe 脱糖零漂移）；desktop zinc→
+    text-foreground/text-muted-foreground + sb_meta/sb_dim 双配方；twin 镜像
+    同步。AC-02 达成：status_bar 三面（web .at/部署 SFC/desktop .at）grep
+    `11px|zinc` 零命中。gate 双臂绿 @030fe7b（--update-snapshots 后基线
+    字节零变化——maxDiffPixelRatio 0.02 容差内，锁原版即有效，无需重刷）。
+    amber-500/400 差异记债（主题 warning token 缺，清单 §4.3）。
 - **T-02** [改] ①-2 tab 条 + ①-3 menubar：结构对照修复 + gate 锁（含 VM
   语言语义复核结论落档）。依赖：T-00。→ AC-01
 - **T-03** [改] ①-5 filetree 行家族：行形态/icon/展开交互对照修复 + gate 锁。

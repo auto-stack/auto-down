@@ -191,15 +191,21 @@ export function listItemsOfPanel(ctx: PanelRenderCtx): unknown[] {
   }))
 }
 
-// -- table family (plan 037 T3) ----------------------------------------------------
+// -- table family (plan 037 T3; cells inline since musk plan 072) -------------------
 //
 // The table panel adapter: WNode header/rows flattened to the widget's flat
 // cell data ({id, cls, children_slot}) — the retired tablePanel's reads,
-// cell for cell (dir/align class/embedded body). The edit adapter's cell
+// cell for cell (dir/align class/inline body). The edit adapter's cell
 // shape is {id, text, cls} over the model — same flat boundary, the fields
 // each face reads (view never reads text; edit owns it). The children hole
 // carries the captured panel decorator (the 035 T6 idiom — the outer
 // decorateWikilinks walker cannot descend into component props).
+//
+// Cell bodies ride renderInlineChildren, NOT renderEmbedded: the parser
+// builds cells with parseInline, so every child is an inline node — block
+// dispatch wrapped them in node-slot divs (vertical stacking) and the
+// unknown-node fallback printed the bare type name (`inline_code`) for
+// kinds with no panel.
 
 /** The retired tablePanel's alignClass, verbatim. */
 function tableAlignClass(cell: any): string {
@@ -214,7 +220,7 @@ function tableCellsOfPanel(ctx: PanelRenderCtx, cells: unknown[]): unknown[] {
   return (cells ?? []).map((cell: any, i: number) => ({
     id: `cell-${i}`,
     cls: tableAlignClass(cell),
-    children_slot: decorateBody(dec, () => ctx.renderEmbedded(cell.children ?? [], final, ctx.budget)),
+    children_slot: decorateBody(dec, () => ctx.renderInlineChildren(cell.children ?? [], final, ctx.budget)),
   }))
 }
 

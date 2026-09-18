@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-074
-status: execution_done         # drafting → executing → execution_done → reviewed → archived
+status: executing              # drafting → executing → execution_done → reviewed → archived
 feature_name: rcd-panels-batch1（面板家族批次 1：纯逻辑下沉 .at + VM 渲染臂）
 author: [zhaopuming]
 created_at: 2026-09-18
@@ -12,7 +12,7 @@ new_spec_components: []        # 账本 P074-x 由 merge 落账
 touched_goals: []
 
 affects: [jade-garden/front]
-current_step: 5
+current_step: 4
 total_steps: 5
 ---
 
@@ -155,9 +155,9 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
     gallery 双单元上线（vue 真件页 ×2 + shim 路由 ×2 + VM twin 行 ×2 +
     units.mjs 登记），基线 2 张新增/旧 4 张零漂移，gate 双臂全绿 6 单元
     （command_palette 预期红占位不变）。
-- **T-04** [x] [改] 模式文档定稿（判定规则/步骤/坑清单）+ desktop 消费结论登记
+- **T-04** [ ] [改] 模式文档定稿（判定规则/步骤/坑清单）+ desktop 消费结论登记
   + 回归收口（pnpm build/05-panels 抽验/双模 smoke 快验）+ §8.6 勾记。
-  依赖：T-01..T-03。→ AC-03/04
+  依赖：T-01..T-03。→ AC-03/04（F-R1 重开：§8.6 计数修复）
   - [x] T-04 ✅ 已完成（2026-09-18，down-074 @80fef4a）：模式文档定稿
     （步骤六步 + 坑清单 G-1..G-8 + desktop 消费裁定登记表 §4——backlinks/
     outgoing 组件挂载首选、unlinked/outline 组件唯一路径，装配归 L3）；
@@ -172,6 +172,32 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
 
 - 2026-09-18 draft handoff：`stage: new | plan_id: PLAN-074 | plan_revision: 1 |
   outcome: pass（起草完成；执行未授权） | next: review → work`。
+- 2026-09-18 review：`stage: review | plan_id: PLAN-074 | plan_revision: 1 |
+  outcome: needs_fix | reviewed_commit: 80fef4a2a89a3431fa83af6c80c35cffd4a0f049
+  （plan-074-dev @down-074/auto-down，5 commits，树净） | base_commit: b92f7f6
+  （master 已前移至 ed100dd——执行期并发，漂移注记在案） |
+  dependency_revisions: down-074/auto-lang @899aa2e9c（分支 plan-074-dev，
+  编译器补丁 ×2，built exe v0.4.2-1173；仍 detached 无） |
+  spec_inputs: jade-garden/ARCHITECTURE.md §8.6（SD-01 bullet，HEAD:191）+
+  072-inventory 四行勾记 + 074-sink-mode.md（全 delta 冻结于 reviewed commit）；
+  本仓无 docs/specs/（072 实证沿用），账本 P074=0 未发布 ✓ 归 merge |
+  acceptance_results: AC-01 **pass**（ext 导出面 grep 重放=分类表逐一对应：
+  outline 2 项/backlinks 2/outgoing 3/unlinked 3，零 sink 残留；.at 模块 fn
+  3+3+2+1 在位；部署 SFC 内联发射实证） | AC-02 **pass**（gate 双臂 fresh
+  复跑绿：vue build+playwright 6 单元 + vm boot 19 断言，四单元 state/
+  snapshot 投影在案，command_palette 预期红占位=负例证据；基线 6 张
+  git ls-files 在库） | AC-03 **pass**（模式文档四节齐备：分类表/P-1..P-6
+  实测/步骤+G-1..G-8/desktop 登记表） | AC-04 **fail**（F-R1 计数错） |
+  findings: F-R1（AC-04/T-04，severity=L）——账面计数错：§8.6 bullet
+  "基线 8 张"（分支态实测 6=4 旧+2 新；8 系误并入 073 分支的 6 张口径，
+  073 于本 base 之后才落地）；计划 T-00 记录 "13 fn：7 sink/6 必留"
+  （模式文档实为 14 行=7 sink+7 必留，tabTitle/tabPath 合行、再导出合行）；
+  §8 work 记录同源 "8 张"。代码零影响，纯文档准确性 |
+  evidence: 全套件重放——pnpm build 绿（9.58s）；e2e 24/24（25.8s，端口
+  sed 已还原）；vm-smoke 双模 PASS（split+merged）；gate 双臂绿输出在案；
+  独立性声明：实现会话内复审，全部证据自工件与命令重放重构，未采信
+  执行期摘要 | next: work（F-R1 文档级修复：§8.6 bullet 8→6 + 计划记录
+  两处同源行；完成后重审 AC-04）`。
 - 2026-09-18 work：`stage: work | plan_id: PLAN-074 | plan_revision: 1 |
   outcome: pass | code_commit: 80fef4a（plan-074-dev @down-074/auto-down，
   base b92f7f6；T-00 a22d293→T-01 4e07f74→T-02 ff09f7c→T-03 25f269e→T-04

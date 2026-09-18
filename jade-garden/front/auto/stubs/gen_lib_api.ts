@@ -289,3 +289,21 @@ export async function writeWhiteboard(
 ): Promise<WhiteboardDoc> {
   return doc
 }
+
+// PLAN-074 T-02/T-03: the panel widgets call the backlinks/outlinks/unlinked
+// contract fns from their .at watch blocks (`use back.api:`), so the
+// generated SFCs emit `import { get_* } from '@/lib/api'`. Gen-side the
+// names resolve here; in the deployed front tree the sed-rewritten import
+// lands on the per-panel ext shim (contract-name aliases of the hand-written
+// client face).
+export async function get_backlinks(_title: string): Promise<any> {
+  return { title: '', links: [] }
+}
+
+export async function get_outlinks(_title: string): Promise<any> {
+  return { title: '', links: [] }
+}
+
+export async function get_unlinked_refs(_title: string): Promise<any> {
+  return { title: '', refs: [] }
+}

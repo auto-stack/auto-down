@@ -43,7 +43,7 @@ const routes: Route[] = [
     reply: (m) => ({
       title: decodeURIComponent(m[1]),
       links: [
-        { source: '另页', source_path: 'wiki/另页.ad', snippet: '链接到 fixture 页' },
+        { source_title: '另页', source_path: 'wiki/另页.ad', context: '链接到 fixture 页' },
       ],
     }),
   },

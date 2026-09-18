@@ -42,6 +42,13 @@ if (ARM === 'all' || ARM === 'vm') {
   results['vm'] = run('node', ['scripts/vm-probe.mjs'], 'vm:mcp')
 }
 
+// 缺件红占位账（不判红，只可见化）：missing 单元数 = 桶② 待办可见面。
+const { UNITS } = await import('./units.mjs')
+const missing = UNITS.filter((u) => u.missing)
+if (missing.length) {
+  console.log(`  ⓘ missing(expected-red 占位): ${missing.map((u) => u.id).join(', ')}`)
+}
+
 console.log('\n=== gallery gate summary ===')
 let failed = false
 for (const [arm, ok] of Object.entries(results)) {

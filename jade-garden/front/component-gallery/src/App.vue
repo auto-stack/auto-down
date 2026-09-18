@@ -4,6 +4,8 @@
 import { ref } from 'vue'
 import StatusBarPage from './pages/StatusBarPage.vue'
 import OutlinePage from './pages/OutlinePage.vue'
+import TabStripPage from './pages/TabStripPage.vue'
+import BacklinksPage from './pages/BacklinksPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -33,9 +35,27 @@ function select(u: string) {
       >
         outline
       </button>
+      <button
+        data-unit-tab="tab_strip"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'tab_strip' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('tab_strip')"
+      >
+        tab_strip
+      </button>
+      <button
+        data-unit-tab="backlinks"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'backlinks' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('backlinks')"
+      >
+        backlinks
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
     <OutlinePage v-else-if="unit === 'outline'" />
+    <TabStripPage v-else-if="unit === 'tab_strip'" />
+    <BacklinksPage v-else-if="unit === 'backlinks'" />
   </div>
 </template>

@@ -23,6 +23,7 @@ test.afterAll(async () => {
 })
 
 for (const u of UNITS) {
+  if (u.missing) continue
   test(`vue gate: ${u.id}（${u.title}）`, async ({ page }) => {
     await page.goto(`${BASE}${u.vue.url}`)
     await page.waitForSelector(u.vue.ready, { timeout: 15_000 })
@@ -31,6 +32,17 @@ for (const u of UNITS) {
       const text = await page.$$eval(sel, (els) => els.map((e) => e.textContent ?? '').join('\n'))
       if (!text.includes(needle)) {
         throw new Error(`${u.id}: ${sel} 缺 "${needle}"（got: ${text.slice(0, 200)}）`)
+      }
+    }
+    if (u.vue.click) {
+      await page.click(u.vue.click.selector)
+      await page.waitForSelector(u.vue.click.ready, { timeout: 15_000 })
+      for (const needle of u.vue.click.needles ?? []) {
+        const sel = u.vue.click.needleSelector ?? '[data-unit]'
+        const text = await page.$$eval(sel, (els) => els.map((e) => e.textContent ?? '').join('\n'))
+        if (!text.includes(needle)) {
+          throw new Error(`${u.id}: click 后 ${sel} 缺 "${needle}"（got: ${text.slice(0, 200)}）`)
+        }
       }
     }
     await expect(page).toHaveScreenshot(`${u.id}.png`)

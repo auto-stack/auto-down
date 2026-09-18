@@ -178,10 +178,15 @@ try {
   checks.push(`vm boot: auto.exe run -r vm (cwd=vm, MCP :${port})`)
 
   for (const u of UNITS_RUN) {
+    if (u.missing) {
+      if (!u.missingReason) throw new Error(`${u.id}: missing 单元缺 missingReason（缺件红必须留因）`)
+      console.log(`  ⚠ ${u.id}: RED(expected，缺件占位) — ${u.missingReason}`)
+      continue
+    }
     const vm = u.vm
-    if (vm.action?.button) {
-      await pressButton(vm.action.button)
-      checks.push(`${u.id}: 切换按钮 "${vm.action.button}"`)
+    for (const step of vm.actions ?? []) {
+      await pressButton(step.button)
+      checks.push(`${u.id}: 切换按钮 "${step.button}"`)
     }
     for (const [field, want] of Object.entries(vm.state ?? {})) {
       await stateIs(field, want)

@@ -1,23 +1,17 @@
-// app.at — component gallery 根（PLAN-072 T-01 骨架）。
+// app.at — component gallery VM 臂根（PLAN-072 T-01 骨架 / T-03 四单元）。
 //
 // 隔离面原则：无 jade app 全局态、无后端依赖；数据 = root model 内
 // fixture（.Init 播种，双轨同构：VM boot 自动派发 Init / vue onMounted，
 // flashcard_modal.at 头注同款语义）。
 //
-// 单元形态双规（T-02 对 Q-3「单元粒度」的实测载体）：
-//   - status_bar：**子件挂载形态**（StatusBarPage 值 props——desktop
-//     StatusBar 先例）。已知约束：组件子树对 MCP 快照不可见（041 README
-//     「vm 组件边界」②，T-02 在当前 master 复测）→ VM 结构断言走 root
-//     投影字段（sb_marker/sb_* state），视觉断言走 vue 截图。
-//   - outline：**root 内联行形态**（dyn ul/li 行结构对快照可见性待
-//     T-02 实测定），view 块镜像 outline_panel.at（fixture 解锁其
-//     pinned-empty 的列表路径）。
-// 两形态的 fixture 权威都在 root（autoui_state 只读 root 态——desktop
-// vm-smoke 同款断言口径）。
+// 单元形态（Q-3 已答——T-01/T-02 实测，README F-1..F-4）：VM 断言走
+// root 投影字段 + root 内联/行结构（子件子树对 MCP 快照不可见）。
+// status_bar 为子件挂载形态样版（视觉归 vue 臂截图）；outline/
+// tab_strip/backlinks 为 root 内联 twin（derived 探针工件，非生产件）。
 use pages.status_bar_page: StatusBarPage
 
 widget App {
-    msg Msg { Select(str) }
+    msg Msg { Select(str), TsSwitch(str) }
 
     model {
         var unit str = "status_bar"
@@ -36,13 +30,23 @@ widget App {
         // VM 实测（T-01）：computed 数值比较（>）作 if 条件不进入分支
         // （== 计算字段正常）——行分支开关用 bool model 字段。
         var ol_has bool = false
+        // —— fixture：tab_strip 面（交互样板：行按钮 = 标签，按下即切换）——
+        var ts_tabs = []
+        var ts_active str = ""
+        // —— fixture：backlinks 面（数据绑定样板：行 + 计数投影）——
+        var bl_rows = []
+        var bl_count int = 0
     }
 
     computed {
         show_status_bar => .unit == "status_bar"
         show_outline => .unit == "outline"
+        show_tab_strip => .unit == "tab_strip"
+        show_backlinks => .unit == "backlinks"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
+        ts_marker => f"unit=tab_strip active:${.ts_active}"
+        bl_marker => f"unit=backlinks count:${.bl_count}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -59,6 +63,14 @@ widget App {
                 }
                 button (text: "outline", variant: "text") {
                     onclick: .Select("outline")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "tab_strip", variant: "text") {
+                    onclick: .Select("tab_strip")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "backlinks", variant: "text") {
+                    onclick: .Select("backlinks")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -90,6 +102,38 @@ widget App {
                     }
                 }
             }
+            if .show_tab_strip {
+                col (class: "flex-col p-3") {
+                    row (class: "items-center gap-1 border-b border-zinc-200 px-2") {
+                        for t in .ts_tabs {
+                            button (text: t.title, variant: "text") {
+                                onclick: .TsSwitch(t.path)
+                                class: "rounded px-2 text-xs text-zinc-600"
+                            }
+                        }
+                    }
+                    text .ts_marker { class: "px-3 pt-2 text-[11px] text-zinc-400" }
+                }
+            }
+            if .show_backlinks {
+                col (class: "flex-col p-3") {
+                    col (class: "w-72 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Backlinks" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        dyn (.ul_tag) {
+                            class: "space-y-0.5",
+                            for b in .bl_rows {
+                                dyn (.li_tag) {
+                                    key: b.source_path,
+                                    class: "cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-zinc-800",
+                                    title: b.context,
+                                    text b.source_title
+                                }
+                            }
+                        }
+                        text .bl_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -100,10 +144,19 @@ widget App {
             .ol_rows.push({ content: "方法 > 探针", pad: "24px" })
             .ol_count = 3
             .ol_has = true
+            .ts_tabs.push({ title: "引言", path: "wiki/引言.ad" })
+            .ts_tabs.push({ title: "方法", path: "wiki/方法.ad" })
+            .ts_active = "wiki/引言.ad"
+            .bl_rows.push({ source_title: "另页", source_path: "wiki/另页.ad", context: "链接到 fixture 页" })
+            .bl_count = 1
         }
 
         .Select(u) -> {
             .unit = u
+        }
+
+        .TsSwitch(path) -> {
+            .ts_active = path
         }
     }
 }

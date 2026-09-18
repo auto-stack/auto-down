@@ -162,9 +162,29 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
 
 | 计划 | 仓 | 内容 | 状态 |
 | --- | --- | --- | --- |
-| PLAN-071 | auto-down | 瘦身（§8.3 六项） | executing |
-| PLAN-072 | auto-down | 盘点分类 + L1 组件 gallery 基建（三桶/双端 gate 骨架） | drafting |
+| PLAN-071 | auto-down | 瘦身（§8.3 六项） | delivered（archived 2026-09-18） |
+| PLAN-072 | auto-down | 盘点分类 + L1 组件 gallery 基建（三桶/双端 gate 骨架，§8.6） | executing |
 | PLAN-645 | auto-lang | 工具链债（bps fn 转译 + with_defaults 扫描根，L2 前置） | drafting |
 | L2 抽取+gallery | 双仓 | bp 抽取（判定规则）+蓝图级 parity（依赖 072 清单+645） | 待起草 |
 | L1 修复滚动 | auto-down | 逐批 parity 修复（依赖 072，分批立项） | 待起草 |
 | L3 收口 | auto-down | app 级 parity 收口（依赖 L1/L2） | 待起草 |
+
+### 8.6 三桶清单与 L1 gallery（PLAN-072，2026-09-18）
+
+三层统一（§8.4）的 Step 0 + L1 基建落地（SD-01）：
+
+- **三桶清单（单元台账）**：`docs/plans/attachments/072-inventory.md`——
+  29 web widget（↔29 部署 SFC 对拍）×desktop 3 件实勘。桶①双端都有 5 面
+  （status_bar/tab 条/menubar/toolbar/filetree 行家族）；桶②只有 vue 有
+  22 件（RC-D VM 缺件 15 / RC-C 组装级 5 / RC-E 引擎对拍 1 / RC-F 第三方
+  边界 1）；桶③只有 vm 有 **空桶**。修复类预估 RC-A..F 定义在册。
+- **L1 gallery**：`jade-garden/front/component-gallery/`——双臂隔离面：
+  vue 臂挂真件部署 SFC（fixture API shim，截图基线 e2e/baselines/）+
+  VM 臂自包含 twin 项目（MCP autoui_state/snapshot 断言）；gate =
+  `scripts/gate.mjs`（单元配置 `scripts/units.mjs`）。
+- **样板 gate 绿**：status_bar（纯展示）/tab_strip（交互）/backlinks
+  （数据绑定）+outline 列表，双臂全绿；command_palette 缺件红占位在册。
+- **实测发现（F-1..F-6，详见 gallery README）**：子件子树 MCP 快照不可见
+  （当前 master 复测）；computed `>` 作 if 条件不进分支；f-string 内插
+  computed 不解析；`dyn` 双轨可用；blocks.ts activeTab watch 原地改引用
+  失活（候选 DEBTS）；缺件即红 = ext no-op stub 静默降级（非崩溃）。

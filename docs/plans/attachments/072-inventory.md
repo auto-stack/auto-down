@@ -101,27 +101,36 @@ web 渲染件落点复核（已在桶①注记，不构成独立反向补 vue �
 | RC-E | 引擎对拍：autodown lighthouse 流 | 1 |
 | RC-F | 第三方边界：内核不比，宿主面单列 | 1 |
 
-## 7. T-03 样板单元选点（提案，T-02 实测定细化）
+## 7. T-03 样板单元选点（T-04 回填：gate 结果已落）
 
-| 类型 | 单元 | vue 臂 | VM 臂形态 |
-| --- | --- | --- | --- |
-| 纯展示 | **outline 行**（outline_panel） | 真件 OutlinePanel.vue（fixture 解锁 pinned-empty 的列表路径） | harness twin（值 props/fixture store 重表达，041/desktop status_bar 同款先例）；真件 ext 耦合→VM 直挂预期红 = 缺件即红对象之一 |
-| 交互 | **tab strip**（tab_strip 面） | 真件 TabStrip.vue（fixture tabs） | harness twin（tabs fixture + switch/close 动作，autoui_state 断言） |
-| 数据绑定 | **backlinks 行**（backlinks_panel） | 真件 BacklinksPanel.vue（fixture 行） | harness twin（fixture 行 + 计数投影） |
-| 缺件即红 | 任选桶② RC-D（如 command_palette） | vue 臂绿 | VM 臂缺席/直挂编译拒 → gate 判红且**红因可读**（预期红断言） |
+| 类型 | 单元 | vue 臂（真件） | VM 臂（twin/投影） | gate 结果 |
+| --- | --- | --- | --- | --- |
+| 纯展示 | status_bar 面 | StatusBar.vue + facade 播种/footer 断言 | StatusBarPage 值 props 子件 + root 投影 | ✅ 双绿 |
+| 列表/展示 | outline 行 | OutlinePanel.vue + 显式 parse 播种（F-5）列表路径解锁 | root 内联 dyn ul/li 行 | ✅ 双绿 |
+| 交互 | tab strip 面 | TabStrip.vue + 点击切换断言（data-active-path 投影） | root 行按钮 + TsSwitch state/marker | ✅ 双绿 |
+| 数据绑定 | backlinks 行 | BacklinksPanel.vue + shim 拉取渲染行 | root 行 + bl_count 投影 | ✅ 双绿 |
+| 缺件即红 | command_palette（RC-D 占位） | — | **RED(expected)**：missing+理由必填，gate 汇总可见化 | ⚠ 预期红在册 |
 
-> harness twin = gallery 隔离面内的**测试探针重表达**（derived 探针工件，
-> 非 生产代码/ bp 抽取；头注标 derived-from），沿 desktop StatusBar 先例。
-> 单元粒度（Q-3：整页 boot vs 按组件挂载）由 T-02 实测定——已识别约束：
-> 子组件子树对 MCP 快照不可见 → VM 断言走 autoui_state 投影或 harness 根视图。
+> gate 基线：e2e/baselines/*.png 4 张；VM 断言 13 项。执行：`node
+> scripts/gate.mjs`（--update-snapshots 刷基线）。
+>
+> **Q-3 已答（T-01/T-02 实测）**：VM 臂单元粒度 = root 投影字段 + root
+> 内联/twin 行（**子件子树对 MCP 快照不可见**，当前 master 复测成立——
+> README F-1）；交互/数据断言经 root state 字段。整页单 boot + 按钮切
+> 单元（配置化序列）。
+>
+> **缺件即红实证（README F-6）**：真件 VM 直挂（dep jadeauto 通道）=
+> ext 全量 no-op stub **静默降级**（数据面空渲染，非崩溃）——红信号 =
+> stub WARN + 投影空；`auto run` 的 dep 走编译器 pac.at 直读、不物化
+> junction。
 
 ## 8. 裁定记录
 
 | Q | 裁定 | 依据 |
 | --- | --- | --- |
-| Q-1 gallery 落点 | **jade 特有件在 jade 仓** `jade-garden/front/component-gallery/`（本计划默认执行）；跨 app 通用件 canonical 家仍为 auto-lang blueprints / widgets-gallery（auto-os），bp 已收敛件（filetree bp 家族）在 jade gallery 只 gate jade 消费侧，包级 gate 归 L2 | 计划 §9 Q-1 默认 + 机制 §8 |
-| Q-2 editor gate 归属 | **引擎对拍归 autodown lighthouse 流**；gallery 挂状态占位（本计划默认执行） | 计划 §9 Q-2 默认 + 机制 §4 |
-| Q-3 单元粒度 | 转 T-02 实测定（已识别约束见 §7 注） | 计划 §9 Q-3 |
+| Q-1 gallery 落点 | **jade 特有件在 jade 仓** `jade-garden/front/component-gallery/`（已按此落地）；跨 app 通用件 canonical 家仍为 auto-lang blueprints / widgets-gallery（auto-os），bp 已收敛件（filetree bp 家族）在 jade gallery 只 gate jade 消费侧，包级 gate 归 L2 | 计划 §9 Q-1 默认 + 机制 §8 |
+| Q-2 editor gate 归属 | **引擎对拍归 autodown lighthouse 流**；gallery 挂状态占位（RC-E，编辑器单元入册不设 gate） | 计划 §9 Q-2 默认 + 机制 §4 |
+| Q-3 单元粒度 | **已答（T-01/T-02 实测）**：VM 臂 = root 投影字段 + root 内联/twin 行（F-1 子件子树快照不可见）；整页单 boot + 配置化按钮序列切单元 | gallery README F-1..F-6 + units.mjs |
 
 ## 9. 交叉校验命令记录
 

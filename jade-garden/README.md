@@ -23,19 +23,18 @@ jade-garden/
 │   │   └── tests/          # parity/contract gates (node)
 │   └── server/             # Rust axum shells over the *_gen modules
 │       └── src/            # (logic lives in the .at sources above)
-├── front/
-│   ├── auto/               # front .at single sources
-│   │   ├── pac.at          # front project config (render: vue)
-│   │   ├── src/front/      # 29 widget .at + 9 store .at + ext helpers
-│   │   └── gen/front/vue/  # generated Vue project (a2ts output)
-│   ├── desktop/            # desktop form: VM-rendered iced app (plan 022)
-│   │   ├── pac.at / src/front/app.at
-│   │   ├── src/back/api.at # contract copy (GENERATED via gen.mjs)
-│   │   ├── baseline/       # structure visual baseline
-│   │   └── README.md       # Phase 4/5 decisions, rulings, slice log
-│   ├── src/                # deployed web app (facade stores + components)
-│   └── e2e/                # playwright specs (23, dual-backend)
-└── legacy-autoui/          # archived plan-011 toolchain (seeds only)
+└── front/
+    ├── auto/               # front .at single sources
+    │   ├── pac.at          # front project config (render: vue)
+    │   ├── src/front/      # 29 widget .at + 9 store .at + ext helpers
+    │   └── gen/front/vue/  # generated Vue project (a2ts output)
+    ├── desktop/            # desktop form: VM-rendered iced app (plan 022)
+    │   ├── pac.at / src/front/app.at
+    │   ├── src/back/api.at # contract copy (GENERATED via gen.mjs)
+    │   ├── baseline/       # structure visual baseline
+    │   └── README.md       # Phase 4/5 decisions, rulings, slice log
+    ├── src/                # deployed web app (facade stores + components)
+    └── e2e/                # playwright specs (23, dual-backend)
 ```
 
 ## The two runtime forms

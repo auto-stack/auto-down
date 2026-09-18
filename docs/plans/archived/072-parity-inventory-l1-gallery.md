@@ -225,5 +225,10 @@ widgets-gallery（跨 app 先例）；vm-smoke/playwright 基建（复用）。
   全账 241 条目零重复；§8.6 与 inventory 主检出文件存在性验证。
 - **archived ✅**：本文件 `git mv` → `docs/plans/archived/072-parity-inventory-l1-gallery.md`
   + status: archived + completion_kind: delivered。
-- **cleaned ⏳**：待执行（摘 pnpm 链接 → wt-guard clean → worktree/分支/
-  组目录移除）后补记。
+- **cleaned ✅**：worktree 摘链 1029 junction（pnpm node_modules 类，2 passes
+  批处理 rmdir 仅删链接）→ wt-guard clean 双目录（auto-down + auto-lang 兄弟）
+  实证 → worktree 移除（注册双仓归零，auto-lang 侧 prune）→ 分支
+  plan-072-dev 删除（was 1b56678，master 含其祖先）→ 组目录
+  D:/autostack/.wt/down-072 移除；附带清杀本会话孤儿进程 3 个（gallery VM
+  窗口 auto.exe PID 19608=窗口标题实核、遗留 vite preview PID 44172、
+  esbuild service PID 42796——均按 PID 定向，无误伤他 session 进程）。

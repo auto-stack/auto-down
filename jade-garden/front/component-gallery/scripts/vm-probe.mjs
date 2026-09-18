@@ -1,24 +1,21 @@
 #!/usr/bin/env node
-// vm-probe.mjs — PLAN-072 T-01: gallery VM 臂 boot + 单元页渲染断言。
+// vm-probe.mjs — gallery VM 臂 gate（PLAN-072 T-02 配置化；T-01 原型）。
 //
 // 模式与协议沿 jade-garden/front/desktop/vm-smoke.mjs（AutoUI MCP over
 // Streamable HTTP；autoui_state / autoui_snapshot / autoui_action）。
-// 断言对象（app.at root 投影——隔离面 fixture 的可断言面）：
-//   - boot 态：unit=status_bar + sb_* fixture 字段
-//   - snapshot 根文本：status_bar 面标记（子件子树快照不可见约束下，
-//     root marker 是 VM 侧结构锚）
-//   - 交互：outline 按钮 → unit 切换 + outline 内联行文本（Q-3 探针：
-//     root 内联行对快照的可见性实测）→ 切回
+// 断言面来自 scripts/units.mjs：单次 boot，逐单元 action（切单元按钮）→
+// state 等值断言 → snapshot needle（root 投影/内联行——F-1：子件子树对
+// 快照不可见，gallery 单元页因此走 twin+root 投影形态）。
 //
-// 卫生（vm-smoke 纪律）：只杀本脚本 spawn 的 PID，绝无名称扫杀；
-// 退出路径保证 kill。
+// 卫生（vm-smoke 纪律）：只杀本脚本 spawn 的 PID；退出路径保证 kill。
 //
-// 用法：node scripts/vm-probe.mjs [--port 9321]
+// 用法：node scripts/vm-probe.mjs [--port 9321] [--unit a,b]
 
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { UNITS } from './units.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const VM_DIR = path.resolve(here, '..', 'vm')
@@ -30,6 +27,8 @@ const argOf = (name) => {
   return i >= 0 ? args[i + 1] : undefined
 }
 const BASE_PORT = Number(argOf('--port') ?? process.env.AUTOUI_MCP_PORT ?? 9321)
+const ONLY = argOf('--unit')?.split(',').map((s) => s.trim()).filter(Boolean)
+const UNITS_RUN = ONLY ? UNITS.filter((u) => ONLY.includes(u.id)) : UNITS
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const freePort = (port) =>
@@ -81,7 +80,7 @@ async function waitForServer(timeoutMs) {
       await rpc('initialize', {
         protocolVersion: '2025-03-26',
         capabilities: {},
-        clientInfo: { name: 'gallery-vm-probe', version: '0.1.0' },
+        clientInfo: { name: 'gallery-vm-gate', version: '0.1.0' },
       })
       await notify('notifications/initialized')
       return
@@ -116,12 +115,6 @@ function findFirst(node, pred) {
     if (hit) return hit
   }
   return null
-}
-
-function findAll(node, pred, out = []) {
-  if (pred(node)) out.push(node)
-  for (const child of node.children) findAll(child, pred, out)
-  return out
 }
 
 function elementIdOf(node) {
@@ -184,42 +177,31 @@ try {
   await waitForServer(30_000)
   checks.push(`vm boot: auto.exe run -r vm (cwd=vm, MCP :${port})`)
 
-  // boot 态：root fixture 投影（隔离面数据面）
-  await stateIs('unit', 'status_bar')
-  await stateIs('sb_status', 'ready')
-  await stateIs('sb_bl', '12')
-  await stateIs('sb_ol', '7')
-  await stateIs('ol_count', '3')
-  checks.push('state: unit/status_bar fixture 字段（sb_status/sb_bl/sb_ol/ol_count）')
-
-  // snapshot 根文本：status_bar 面标记（root marker = VM 结构锚）
-  let tree = await snapshot()
-  const sbMarker = findFirst(tree, (n) => ownText(n).startsWith('unit=status_bar'))
-  if (!sbMarker) {
-    console.log('[probe] snapshot（Q-3 证据：root/子件可见性）:\n' + JSON.stringify(tree, null, 1).slice(0, 3000))
-    throw new Error('snapshot 无 root marker "unit=status_bar"')
+  for (const u of UNITS_RUN) {
+    const vm = u.vm
+    if (vm.action?.button) {
+      await pressButton(vm.action.button)
+      checks.push(`${u.id}: 切换按钮 "${vm.action.button}"`)
+    }
+    for (const [field, want] of Object.entries(vm.state ?? {})) {
+      await stateIs(field, want)
+    }
+    if (Object.keys(vm.state ?? {}).length) checks.push(`${u.id}: state ${JSON.stringify(vm.state)}`)
+    if (vm.snapshot?.length) {
+      const tree = await snapshot()
+      for (const needle of vm.snapshot) {
+        const hit = findFirst(tree, (n) => ownText(n).includes(needle))
+        if (!hit) throw new Error(`${u.id}: snapshot 无 "${needle}"`)
+      }
+      checks.push(`${u.id}: snapshot needles [${vm.snapshot.join(', ')}]`)
+    }
   }
-  checks.push('snapshot: root marker unit=status_bar 可见')
 
-  // 交互：切 outline → unit + 内联行可见性（Q-3 探针）→ 切回
-  await pressButton('outline')
-  await stateIs('unit', 'outline')
-  tree = await snapshot()
-  const olMarker = findFirst(tree, (n) => ownText(n).startsWith('unit=outline'))
-  const olRow = findFirst(tree, (n) => ownText(n) === '引言')
-  checks.push(`outline: marker ${olMarker ? '可见' : '不可见'}；内联行文本 ${olRow ? '可见' : '不可见'}（Q-3 实测）`)
-  if (!olMarker) throw new Error('outline root marker 不可见')
-  if (!olRow) throw new Error('outline 内联行文本（引言）不可见——root 内联结构对快照不可达')
-
-  await pressButton('status_bar')
-  await stateIs('unit', 'status_bar')
-  checks.push('交互: outline→status_bar 往返')
-
-  console.log('=== gallery VM probe PASS ===')
+  console.log('=== gallery VM gate PASS ===')
   for (const c of checks) console.log('  ✓ ' + c)
   process.exit(0)
 } catch (err) {
-  console.error('=== gallery VM probe FAIL ===')
+  console.error('=== gallery VM gate FAIL ===')
   console.error(err.message)
   process.exit(1)
 } finally {

@@ -1,14 +1,14 @@
 <!-- OutlinePanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { outlineHeadings, dispatchScrollToHeading } from '../../auto/src/front/utils/outline_panel_ext'
+import { dispatchScrollToHeading } from '../../auto/src/front/utils/outline_panel_ext'
 import { useBlocksStore, useTabsStore } from '../../auto/src/front/utils/outline_panel_ext'
 
 const blocksStore = useBlocksStore()
 const tabsStore = useTabsStore()
 
 
-const headings = computed<any>(() => outlineHeadings(blocksStore.activeBlocks))
+const headings = computed<any>(() => outline_headings(blocksStore.activeBlocks))
 const show_list = computed<boolean>(() => headings.value.length > 0)
 const show_empty = computed<boolean>(() => headings.value.length === 0)
 const ul_tag = computed<string>(() => 'ul')
@@ -22,6 +22,16 @@ function ScrollTo(content: any): void {
   dispatchScrollToHeading(content);
 
   emit('ScrollTo', content)
+}
+
+function outline_headings(blocks: any): any {
+  let out: any[] = [];
+  for (const b of blocks) {if (b.kind == 'heading') {let level = b.level;
+  if (level == null) {level = 1;
+  }let pad: string = `${(level - 1) * 0.6 + 0.375}rem`;
+  out.push({ content: b.content, pad: pad });
+  }}
+  return out;
 }
 
 

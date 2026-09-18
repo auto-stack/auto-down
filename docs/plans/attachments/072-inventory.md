@@ -44,10 +44,10 @@
 | 件 | 行数 | 耦合事实（ext=TS ext 通道引用数） | 流粒度等价物 |
 | --- | --- | --- | --- |
 | agenda_panel.at | 131 | ext:3 | desktop 闪卡流内联（LoadCards/Grade） |
-| backlinks_panel.at | 117 | ext:4（useTabsStore + fetchBacklinksSafe） | desktop 反链流内联（get_backlinks） |
-| outgoing_links_panel.at | 102 | ext:3 | desktop 出链流内联（get_outlinks） |
-| outline_panel.at | 71 | ext:3（useBlocksStore/useTabsStore）；**F-6 缺件即红实证单元（T-03：VM 直挂=ext no-op stub 静默降级）+ gallery 样板（twin 双绿）** | — |
-| unlinked_references_panel.at | 97 | ext:3 | — |
+| backlinks_panel.at | 117 | ext:4（useTabsStore + fetchBacklinksSafe） | desktop 反链流内联（get_backlinks）——【074】已下沉 .at（模块 fn+watch 编排+契约通道），ext 薄化，VM twin 双绿 |
+| outgoing_links_panel.at | 102 | ext:3 | desktop 出链流内联（get_outlinks）——【074】已下沉 .at 同款，VM twin 双绿 |
+| outline_panel.at | 71 | ext:3（useBlocksStore/useTabsStore）；**F-6 缺件即红实证单元（T-03：VM 直挂=ext no-op stub 静默降级）+ gallery 样板（twin 双绿）**——【074】outline_headings 已下沉 .at（正式化） | — |
+| unlinked_references_panel.at | 97 | ext:3——【074】已下沉 .at（高亮 regex 留 ext 桥），VM twin 双绿 | — |
 | properties_panel.at | 267 | ext:3 | — |
 | recent_files_panel.at | 113 | ext:3 | — |
 | search_panel.at | 177 | ext:3 | desktop 搜索流内联（search_pages，.type 撞名→search_pages 规避在案） |

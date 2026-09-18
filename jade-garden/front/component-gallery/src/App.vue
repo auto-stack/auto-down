@@ -6,6 +6,8 @@ import StatusBarPage from './pages/StatusBarPage.vue'
 import OutlinePage from './pages/OutlinePage.vue'
 import TabStripPage from './pages/TabStripPage.vue'
 import BacklinksPage from './pages/BacklinksPage.vue'
+import OutgoingLinksPage from './pages/OutgoingLinksPage.vue'
+import UnlinkedReferencesPage from './pages/UnlinkedReferencesPage.vue'
 import MenubarPage from './pages/MenubarPage.vue'
 import FiletreePage from './pages/FiletreePage.vue'
 
@@ -54,6 +56,20 @@ function select(u: string) {
         backlinks
       </button>
       <button
+        data-unit-tab="outgoing_links"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'outgoing_links' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('outgoing_links')"
+      >
+        outgoing_links
+      </button>
+      <button
+        data-unit-tab="unlinked_references"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'unlinked_references' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('unlinked_references')"
+      >
+        unlinked_references
         data-unit-tab="menubar"
         class="rounded px-1.5 text-[11px] hover:bg-accent"
         :class="unit === 'menubar' ? 'text-foreground' : 'text-zinc-400'"
@@ -75,6 +91,8 @@ function select(u: string) {
     <OutlinePage v-else-if="unit === 'outline'" />
     <TabStripPage v-else-if="unit === 'tab_strip'" />
     <BacklinksPage v-else-if="unit === 'backlinks'" />
+    <OutgoingLinksPage v-else-if="unit === 'outgoing_links'" />
+    <UnlinkedReferencesPage v-else-if="unit === 'unlinked_references'" />
     <MenubarPage v-else-if="unit === 'menubar'" />
     <FiletreePage v-else-if="unit === 'filetree'" />
   </div>

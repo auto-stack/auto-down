@@ -1,16 +1,16 @@
 <!-- BacklinksPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { tabFileStem, fetchBacklinksSafe } from '../../auto/src/front/utils/backlinks_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/backlinks_panel_ext'
 
 const tabsStore = useTabsStore()
 
+import { get_backlinks } from '../../auto/src/front/utils/backlinks_panel_ext'
 
 const links = ref<any[]>([])
 const loading = ref<boolean>(false)
 
-const current_title = computed<any>(() => tabFileStem(tabsStore.activeTab))
+const current_title = computed<any>(() => tab_file_stem(tabsStore.activeTab))
 const show_loading = computed<boolean>(() => loading.value)
 const show_list = computed<boolean>(() => !loading.value && links.value.length > 0)
 const show_empty = computed<boolean>(() => !loading.value && links.value.length === 0)
@@ -21,19 +21,16 @@ const emit = defineEmits<{
   OpenSource: [any]
 }>()
 
-watch(current_title, () => {
+watch(current_title, async () => {
 
   if (current_title.value == '') {links.value = [];
   }
   if (current_title.value != '') {loading.value = true;
-  let p = fetchBacklinksSafe(current_title.value);
-
-
-
-
-  p.then((res: any) => { links.value = res;
-  loading.value = false;
-   });
+  try {let res = await get_backlinks(current_title.value);
+  links.value = res.links;
+  } catch (e) {links.value = [];
+  } finally {loading.value = false;
+  }
   }
 }, { immediate: true })
 
@@ -41,6 +38,27 @@ function OpenSource(bl: any): void {
   tabsStore.open(bl.source_path, bl.source_title);
 
   emit('OpenSource', bl)
+}
+
+function last_segment(path: any): string {
+  let sep = path.indexOf('/');
+  if (sep == -1) {return path;
+  }
+  return last_segment(path.substring(sep + 1, Number(path.length)));
+}
+
+function stem_of_path(path: any): string {
+  let name = last_segment(path);
+  let dot = name.indexOf('.');
+  if (dot > 0) {return name.substring(0, dot);
+  }
+  return name;
+}
+
+function tab_file_stem(tab: any): string {
+  if (tab == null) {return '';
+  }
+  return stem_of_path(tab.path);
 }
 
 

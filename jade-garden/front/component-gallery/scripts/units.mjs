@@ -79,6 +79,36 @@ export const UNITS = [
     },
   },
   {
+    id: 'outgoing_links',
+    title: '出链行（桶②·RC-D 批次1·PLAN-074 下沉）',
+    vue: {
+      url: '/?unit=outgoing_links',
+      ready: '[data-unit="outgoing_links"] li',
+      needles: ['方法', '缺失页', '#abc1234'],
+      needleSelector: '[data-unit="outgoing_links"] li',
+    },
+    vm: {
+      actions: [{ button: 'outgoing_links' }],
+      state: { olp_count: '2', olp_exists: '1' },
+      snapshot: ['unit=outgoing_links rows:2 exists:1', '方法', '缺失页'],
+    },
+  },
+  {
+    id: 'unlinked_references',
+    title: '未链引用行（桶②·RC-D 批次1·PLAN-074 下沉）',
+    vue: {
+      url: '/?unit=unlinked_references',
+      ready: '[data-unit="unlinked_references"] li',
+      needles: ['wiki/另页.ad', '提到'],
+      needleSelector: '[data-unit="unlinked_references"] li',
+    },
+    vm: {
+      actions: [{ button: 'unlinked_references' }],
+      state: { ul_count: '1' },
+      snapshot: ['unit=unlinked_references rows:1', 'wiki/另页.ad', '从未写成链接'],
+    },
+  },
+  {
     id: 'menubar',
     title: '菜单栏+工具栏（桶①-3/①-4·命令面，PLAN-073 T-02）',
     // toolbar 落点（T-00 复核）：menu_bar.at 第二 view 块 → MenuBar.vue 内

@@ -4,34 +4,70 @@
 // front/src/components/BacklinksPanel.vue (plan 011 Phase 5.1). Regenerate:
 //
 //   cd jade-garden/front/auto
-//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/backlinks_panel_ext|../../auto/src/front/utils/backlinks_panel_ext|g' \
+//   D:/autostack/.wt/down-074/auto-lang/target/debug/auto.exe build -d .
+//   sed -e 's|@/ext/src/front/utils/backlinks_panel_ext|../../auto/src/front/utils/backlinks_panel_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/backlinks_panel_ext|g' \
 //     gen/front/vue/src/components/BacklinksPanel.vue > ../src/components/BacklinksPanel.vue
 //
-// All of the original logic lives here in the DSL except what the
-// extension utils/backlinks_panel_ext.ts keeps (facade re-export,
-// try/catch API wrapper, fileStem — see that file's header).
+// PLAN-074 T-02 sink: the ext's data orchestration moved INTO the DSL —
+// tab_file_stem is a module fn below, and the fetch orchestration is the
+// watch block's own try/catch/finally around the `use back.api:` contract
+// call (compiler ≥ c5b5fecf). The ext keeps only the facade re-export and
+// the get_backlinks contract alias (web deploy: the sed rewrites the
+// emitted '@/lib/api' import onto that shim; VM track: the same name
+// resolves to the #[api] fn in the desktop contract copy). Mode doc:
+// docs/plans/attachments/074-sink-mode.md.
 //
-// Idioms forced by DSL codegen gaps (see autodown editor src/auto/README):
+// Idioms (see autodown editor src/auto/README):
 // - ul/li are not in the DSL element table (they fall back to <div>), so
 //   the list renders via dyn with string tags — <component :is="'ul'">
 //   renders a real <ul>.
 // - The original's v-if / v-else-if / v-else chain becomes three exclusive
 //   named-boolean computeds (same rendered branch in every state).
-// - try/catch/finally as a single-callback .then: the extension's safe
-//   wrapper never rejects, so the resolve callback carries both the try
-//   and catch branches and the finally's loading=false (Mermaid note 3
-//   precedent).
+// - The original's try { } catch { silent-empty } finally { loading=false }
+//   maps 1:1 onto the DSL's try/catch/finally in the watch below.
 // - The original's watch(currentTitle, fetch, { immediate: true }) maps to
 //   the watch block's .immediate modifier on the current_title computed;
 //   computed refs are auto-unwrapped in handler bodies too (compiler ≥
-//   Plan 408 P4, 7bd6d4e3) — the explicit .value form was removed once it
-//   started double-unwrapping.
+//   Plan 408 P4, 7bd6d4e3).
+// - Module fn locals must not shadow widget model/computed names (the
+//   state-ref rewrite would emit `local.value` — PLAN-074 probe P-5).
+
+// Contract channel: web = ext-shim alias of the hand-written client (deploy
+// sed), VM = #[api] get_backlinks (desktop/src/back/api.at, 340 rewrite).
+use back.api: get_backlinks
+
+// Sunk from ext tabFileStem (PLAN-074 T-02). Last path segment via find +
+// recursion (vue track: indexOf/substring; no char-index arithmetic — VM
+// find/slice are byte-based on non-ASCII, PLAN-074 probe P-6), extension
+// strip after. Locals avoid model/computed names (probe P-5).
+fn last_segment(path str) str {
+    let sep = path.find("/")
+    if sep == -1 {
+        return path
+    }
+    return last_segment(path.slice(sep + 1, path.length.to(int)))
+}
+
+fn stem_of_path(path str) str {
+    let name = last_segment(path)
+    let dot = name.find(".")
+    if dot > 0 {
+        return name.slice(0, dot)
+    }
+    return name
+}
+
+fn tab_file_stem(tab) str {
+    if tab == null {
+        return ""
+    }
+    return stem_of_path(tab.path)
+}
 
 widget BacklinksPanel {
     use {
         composable: useTabsStore from "src/front/utils/backlinks_panel_ext.ts"
-        fn: tabFileStem, fetchBacklinksSafe from "src/front/utils/backlinks_panel_ext.ts"
     }
 
     msg Msg { OpenSource }
@@ -43,7 +79,7 @@ widget BacklinksPanel {
 
     computed {
         // Original: computed(() => tabs.activeTab?.path ? fileStem : '').
-        current_title => tabFileStem(.tabsStore.activeTab)
+        current_title => tab_file_stem(.tabsStore.activeTab)
         // The three mutually exclusive view states (the original's
         // v-if / v-else-if / v-else chain). Model vars are auto-unwrapped
         // in computeds.
@@ -88,6 +124,11 @@ widget BacklinksPanel {
 
     watch {
         // Original: watch(currentTitle, fetchBacklinks, { immediate: true }).
+        // PLAN-074 T-02: the fetchBacklinksSafe ext wrapper sank here —
+        // try/catch carries the original's catch branch (silently clear the
+        // list), finally carries loading=false (the wrapper's "never
+        // rejects" single-.then form is obsolete now that the DSL has
+        // try/catch/finally).
         .current_title.immediate -> {
             // Original: if (!currentTitle.value) { backlinks.value = []; return }
             if .current_title == "" {
@@ -95,15 +136,14 @@ widget BacklinksPanel {
             }
             if .current_title != "" {
                 .loading = true
-                let p = fetchBacklinksSafe(.current_title)
-                // try/catch/finally as a one-callback .then: the extension
-                // wrapper never rejects, so this callback carries the try
-                // branch, the catch branch (empty array) comes from the
-                // wrapper, and the finally's loading=false lands here.
-                p.then(res => {
-                    .links = res
+                try {
+                    let res = get_backlinks(.current_title)
+                    .links = res.links
+                } catch (e) {
+                    .links = []
+                } finally {
                     .loading = false
-                })
+                }
             }
         }
     }

@@ -48,8 +48,31 @@ const routes: Route[] = [
     }),
   },
   {
+    // PLAN-074 T-03：两行覆盖 exists 双态（+block_id 后缀）。
     re: /^\/api\/outlinks\/(.+)$/,
-    reply: (m) => ({ title: decodeURIComponent(m[1]), links: [] }),
+    reply: (m) => ({
+      title: decodeURIComponent(m[1]),
+      links: [
+        { target_title: '方法', target_path: 'wiki/方法.ad', exists: true, block_id: 'abc1234' },
+        { target_title: '缺失页', target_path: null, exists: false, block_id: null },
+      ],
+    }),
+  },
+  {
+    // PLAN-074 T-03：未链引用一行（html 由下沉 watch 经 ext
+    // highlight_context 预计算）。
+    re: /^\/api\/unlinked\/(.+)$/,
+    reply: (m) => ({
+      title: decodeURIComponent(m[1]),
+      refs: [
+        {
+          page_path: 'wiki/另页.ad',
+          block_uuid: null,
+          context: '这一段提到 引言 的概念但从未写成链接',
+          matched_text: '引言',
+        },
+      ],
+    }),
   },
 ]
 

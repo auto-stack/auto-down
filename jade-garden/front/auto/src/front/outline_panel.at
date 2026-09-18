@@ -12,17 +12,42 @@
 // "No headings." — the e2e baseline depends on this). The heading-list
 // code path is translated faithfully anyway; it is simply never taken.
 //
+// PLAN-074 T-01 sink: the heading-row construction (filter + pad math)
+// moved OUT of the extension into the module fn below — the ext keeps only
+// the store-facade re-exports and the CustomEvent dispatch (host face;
+// `new CustomEvent` is not expressible). The row shape is {content, pad}:
+// the view consumes exactly these two fields (key/title/text read content,
+// the paddingLeft style reads pad).
+//
 // Idioms forced by DSL codegen gaps (see backlinks_panel.at header):
 // - ul/li render via dyn with string tags (not in the DSL element table).
-// - The per-heading paddingLeft math is precomputed by the extension
-//   (no `??` in view bindings; expression parentheses are dropped).
-// - The scroll-to-heading CustomEvent dispatch lives in the extension
-//   (`new CustomEvent` is not expressible).
+// - `(level ?? 1)` has no `??` in the DSL — explicit null guard (P618
+//   two-step assignment discipline) inside the module fn.
+// - The per-heading paddingLeft is computed here (f-string float math,
+//   PLAN-074 probe P-3) instead of the extension.
+
+// Sunk from ext outlineHeadings (PLAN-074 T-01). Vue track: emitted into
+// the SFC by the module-fn channel (Plan 367 P2-4) and called from the
+// headings computed. Row shape mirrors the gallery outline twin fixture.
+fn outline_headings(blocks) List {
+    var out List = []
+    for b in blocks {
+        if b.kind == "heading" {
+            var level = b.level
+            if level == null {
+                level = 1
+            }
+            let pad = f"${(level - 1) * 0.6 + 0.375}rem"
+            out.push({ content: b.content, pad: pad })
+        }
+    }
+    return out
+}
 
 widget OutlinePanel {
     use {
         composable: useBlocksStore, useTabsStore from "src/front/utils/outline_panel_ext.ts"
-        fn: outlineHeadings, dispatchScrollToHeading from "src/front/utils/outline_panel_ext.ts"
+        fn: dispatchScrollToHeading from "src/front/utils/outline_panel_ext.ts"
     }
 
     msg Msg { ScrollTo }
@@ -30,7 +55,7 @@ widget OutlinePanel {
     computed {
         // Original: computed(() => blocks.activeBlocks.filter(heading)),
         // with the paddingLeft style precomputed per heading.
-        headings => outlineHeadings(.blocksStore.activeBlocks)
+        headings => outline_headings(.blocksStore.activeBlocks)
         show_list => .headings.length > 0
         show_empty => .headings.length == 0
         ul_tag => "ul"

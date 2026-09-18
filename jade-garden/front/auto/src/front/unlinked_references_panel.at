@@ -4,25 +4,52 @@
 // Regenerate:
 //
 //   cd jade-garden/front/auto
-//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/unlinked_references_panel_ext|../../auto/src/front/utils/unlinked_references_panel_ext|g' \
+//   D:/autostack/.wt/down-074/auto-lang/target/debug/auto.exe build -d .
+//   sed -e 's|@/ext/src/front/utils/unlinked_references_panel_ext|../../auto/src/front/utils/unlinked_references_panel_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/unlinked_references_panel_ext|g' \
 //     gen/front/vue/src/components/UnlinkedReferencesPanel.vue > ../src/components/UnlinkedReferencesPanel.vue
 //
-// Idioms forced by DSL codegen gaps (see backlinks_panel.at header):
+// PLAN-074 T-03 sink (backlinks_panel.at T-02 mode): tab_title/tab_path are
+// module fns below and the fetch orchestration is the watch block's
+// try/catch/finally around the `use back.api:` call — with the row
+// construction loop in the watch (html field precomputed per row via the
+// ext highlight_context; regex has no DSL word, mode doc §1.4). The ext
+// keeps the facade re-export, the get_unlinked_refs contract alias, and
+// the regex highlighter.
+//
+// Idioms (see backlinks_panel.at header):
 // - ul/li render via dyn with string tags (not in the DSL element table).
 // - The v-if / v-else-if / v-else chain becomes exclusive boolean computeds.
 // - The original's v-html highlight div uses the DSL's native `html:` prop
 //   on plain elements (compiler c7034bf5, gap 22 closed): `div (class:
-//   "...", html: r.html)` emits v-html; the highlight regex is precomputed
-//   per item by the extension.
+//   "...", html: r.html)` emits v-html; the highlight HTML is precomputed
+//   per row by the watch below (regex stays in the ext).
 // - The original watches tabs.activeTab?.path but loads by
 //   tabs.activeTab?.title — the watch source is the watch_key computed
-//   (ext tabPath), the load title comes from ext tabTitle.
+//   (module fn tab_path), the load title comes from module fn tab_title.
+
+// Contract channel: web = ext-shim alias (deploy sed), VM = #[api] fn.
+use back.api: get_unlinked_refs
+
+// Sunk from ext tabTitle/tabPath (PLAN-074 T-03): trivial null→"" accessors.
+fn tab_title(tab) str {
+    if tab == null {
+        return ""
+    }
+    return tab.title
+}
+
+fn tab_path(tab) str {
+    if tab == null {
+        return ""
+    }
+    return tab.path
+}
 
 widget UnlinkedReferencesPanel {
     use {
         composable: useTabsStore from "src/front/utils/unlinked_references_panel_ext.ts"
-        fn: tabTitle, tabPath, fetchUnlinkedSafe from "src/front/utils/unlinked_references_panel_ext.ts"
+        fn: highlight_context from "src/front/utils/unlinked_references_panel_ext.ts"
     }
 
     msg Msg { OpenRef }
@@ -34,7 +61,7 @@ widget UnlinkedReferencesPanel {
 
     computed {
         // Original watch source: () => tabs.activeTab?.path.
-        watch_key => tabPath(.tabsStore.activeTab)
+        watch_key => tab_path(.tabsStore.activeTab)
         show_loading => .loading
         show_list => !.loading && .refs.length > 0
         show_empty => !.loading && .refs.length == 0
@@ -71,19 +98,28 @@ widget UnlinkedReferencesPanel {
 
     watch {
         // Original: watch(() => tabs.activeTab?.path, load, { immediate: true }).
+        // PLAN-074 T-03: fetchUnlinkedSafe's orchestration + row construction
+        // sank here; the regex highlight stays an ext call (mode doc §1.4).
         .watch_key.immediate -> {
             // Original load(): const title = tabs.activeTab?.title.
-            let title = tabTitle(.tabsStore.activeTab)
+            let title = tab_title(.tabsStore.activeTab)
             if title == "" {
                 .refs = []
             }
             if title != "" {
                 .loading = true
-                let p = fetchUnlinkedSafe(title)
-                p.then(res => {
-                    .refs = res
+                try {
+                    let res = get_unlinked_refs(title)
+                    var rows = []
+                    for r in res.refs {
+                        rows.push({ page_path: r.page_path, html: highlight_context(r.context, r.matched_text) })
+                    }
+                    .refs = rows
+                } catch (e) {
+                    .refs = []
+                } finally {
                     .loading = false
-                })
+                }
             }
         }
     }

@@ -74,14 +74,10 @@ export function nodeIndent(level: number): string {
   return `${level * 12}px`
 }
 
-/** Original toggle()'s non-directory branch: whiteboard for .canvas files,
- *  plain tab otherwise (regex extension strips). */
+/** Original toggle()'s non-directory branch: plain tab (regex extension
+ *  strips). PLAN-071：whiteboard 面移除，.canvas 不再有专属打开流。 */
 export function openNodeFile(tabs: any, node: FileNode): void {
-  if (node.path.toLowerCase().endsWith('.canvas')) {
-    tabs.openWhiteboard(node.path, node.name.replace(/\.canvas$/, ''))
-  } else {
-    tabs.open(node.path, node.name.replace(/\.ad$/, ''))
-  }
+  tabs.open(node.path, node.name.replace(/\.ad$/, ''))
 }
 
 /** Parent directory of a path ('' at the root). */

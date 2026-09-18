@@ -111,17 +111,6 @@ if (existing == null) {tabs.value.push({ path: path, title: title, body: '', ori
 active_path.value = path;
 }
  }
-    const OpenWhiteboard = (args: any) => { let path = args.path;
-let title = args.title;
-let existing = tabs.value.find((t: any) => t.path == path);
-if (existing != null) {active_path.value = path;
-}
-if (existing == null) {let t2 = title;
-if (t2 == '') {t2 = strip_ext(path, '.canvas');
-}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: true, saving: false, isWhiteboard: true });
-active_path.value = path;
-}
- }
     const Save = async (path: string) => { let tab = tabs.value.find((t: any) => t.path == path);
 if (tab != null && tab.loaded) {tab.saving = true;
 try {let body2 = await ensureBlockAnchors(tab.body, tab.originalBody);
@@ -161,7 +150,6 @@ tab.dirty = tab.body != tab.originalBody;
         Load,
         Open,
         OpenGraph,
-        OpenWhiteboard,
         Save,
         SetBody,
         get active_tab() {

@@ -95,7 +95,9 @@ store Tabs {
 
     // msg payloads are SINGLE-typed only (compiler limitation), so the
     // multi-arg actions take one map argument: Open({ path, title }).
-    msg Msg { Open(map), OpenGraph(map), OpenWhiteboard(map), Close(str),
+    // PLAN-071：OpenWhiteboard 摘除（whiteboard 面移除，desktop 副本经
+    // tabs-store-sync 重部署）。
+    msg Msg { Open(map), OpenGraph(map), Close(str),
               Load(str), SetBody(map), Save(str) }
 
     computed {
@@ -204,23 +206,6 @@ store Tabs {
             }
             if existing == null {
                 .tabs.push({ path: path, title: title, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || None, graphDepth: depth })
-                .active_path = path
-            }
-        }
-
-        .OpenWhiteboard(args) -> {
-            var path = args.path
-            var title = args.title
-            var existing = .tabs.find(t => t.path == path)
-            if existing != null {
-                .active_path = path
-            }
-            if existing == null {
-                var t2 = title
-                if t2 == "" {
-                    t2 = strip_ext(path, ".canvas")
-                }
-                .tabs.push({ path: path, title: t2, body: "", originalBody: "", frontmatter: {}, dirty: false, loaded: true, saving: false, isWhiteboard: true })
                 .active_path = path
             }
         }

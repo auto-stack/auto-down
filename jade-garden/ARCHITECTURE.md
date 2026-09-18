@@ -111,3 +111,55 @@ web 侧基线：e2e 08-screenshots specs。
 props / 041 store 直读 / web ext+composable）均为**同名不同物**（数据流/运行时
 惯用/功能面互异），裁定不收敛（DEBTS 070 行 + blueprints spec gotcha#2）；
 收敛重启条件=出现第三消费方或对应谱系需改。
+
+## 8. 功能版图与统一路线（PLAN-070 后续战略，2026-09-18）
+
+### 8.1 现有功能盘点（六环）
+
+| 环节 | 已有 | 成色 |
+| --- | --- | --- |
+| 捕获/编辑 | 富文本 markdown（标题/列表/任务/代码块/粗斜体/wikilink）、每日笔记、whiteboard 雏形 | 编辑器为日常主战场 |
+| 组织 | 文件树、双 tab+keep-alive、properties、recent files | 基本可用 |
+| 链接 | wikilink、块锚、反链/出链/未链接提及三面板、linkgraph、图谱 tab | 对标核心环已立住 |
+| 检索 | search 面板、command palette、quick switcher | query 后端引擎在、前端视图缺 |
+| 消化（差异化） | SRS 闪卡 + agenda | 强于 Obsidian core |
+| 系统 | 主题、菜单栏（070）、zip 导入导出、plugins_store | — |
+
+### 8.2 缺口（P0 补日常刚需 / P1 深化 / P2 明确不做）
+
+- **P0**：标签系统 UI（后端 links.at 已扫描 tag）、wikilink 悬停预览、图片/附件流、文档内查找替换、反链上下文片段。
+- **P1**：query 前端视图（引擎已就绪）、数学公式渲染面、footnote/mark（引擎 DEBTS）、图谱过滤/orphans、日历视图。
+- **P2 不做**：发布、同步服务、多 vault。
+
+### 8.3 瘦身裁定（PLAN-071）
+
+plugins_store+插件面移除；whiteboard 移除/标注实验；legacy-autoui 删除；
+SRS 入口收敛（flashcard modal 唯一复习流）；zip 导入导出降级命令面板；
+query.at 后端引擎**保留**（标注"引擎就绪、无前端"）。
+
+### 8.4 双形态战略（A'：冻结-瘦身-三层统一-解冻）
+
+vue 轨功能冻结；力量转向三层统一（机制详见 auto-lang
+`docs/design/30-autoui-parity-three-layer.md`）：
+
+1. **L1 Widget**：盘点分类（三桶：双端差异/VM 缺件/vue 缺件）→ 组件 gallery
+   → 逐单元配方化+双端 gate+锁基线；
+2. **L2 Blueprint**：可复用组合抽取（判定规则见 design 30 §6）→ bp gallery
+   → 蓝图级 parity（前置：bps fn 转译缺口偿还，auto-lang PLAN-645）；
+3. **L3 App**：流程/布局/数据流 parity 收口（vm-smoke 双模+全量
+   playwright+双端截图基线）。
+
+**解冻条件**：三层 DoD 达成（L1 清单 gate 全绿+L2 gallery 绿+L3 套件绿）→
+新功能双形态同日落地。纪律：行为/逻辑留 `.at` 单源+ui_config，vue 专属仅进
+ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
+
+### 8.5 计划组合
+
+| 计划 | 仓 | 内容 | 状态 |
+| --- | --- | --- | --- |
+| PLAN-071 | auto-down | 瘦身（§8.3 六项） | drafting |
+| PLAN-072 | auto-down | 盘点分类 + L1 组件 gallery 基建（三桶/双端 gate 骨架） | drafting |
+| PLAN-645 | auto-lang | 工具链债（bps fn 转译 + with_defaults 扫描根，L2 前置） | drafting |
+| L2 抽取+gallery | 双仓 | bp 抽取（判定规则）+蓝图级 parity（依赖 072 清单+645） | 待起草 |
+| L1 修复滚动 | auto-down | 逐批 parity 修复（依赖 072，分批立项） | 待起草 |
+| L3 收口 | auto-down | app 级 parity 收口（依赖 L1/L2） | 待起草 |

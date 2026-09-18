@@ -954,11 +954,12 @@
         "id": "P072-1",
         "section": "architecture",
         "status": "stable",
-        "title": "jade-garden L1 三桶盘点与组件 gallery 双臂隔离面（parity-inventory-l1-gallery）",
-        "content": "- **三桶台账**：docs/plans/attachments/072-inventory.md——29 web widget（↔29 部署 SFC 一一对拍）×desktop 3 件实勘。桶①双端都有 5 面（status_bar/tab 条/menubar/toolbar/filetree 行家族，toolbar=声明面有、web 渲染件待复核）；桶②只有 vue 有 24 件（RC-D VM 缺件 16/RC-C 组装级 6/RC-E 引擎对拍 1/RC-F 第三方边界 1）；桶③只有 vm 有=空桶。修复类 RC-A..F 定义在册；编辑器单元引擎对拍归 autodown lighthouse 流（Q-2）。\n- **L1 gallery 双臂**：jade-garden/front/component-gallery/——vue 臂真件部署 SFC 直挂（vite alias @→front/src 零副本 + fixture API shim，playwright 截图基线 e2e/baselines/）；VM 臂自包含 twin 项目（`auto run -r vm` + MCP autoui_state/snapshot 断言）；gate=scripts/gate.mjs（单元配置 scripts/units.mjs）。样板上限四单元双绿：status_bar（纯展示）/tab_strip（交互）/backlinks（数据绑定）/outline（列表）；command_palette 缺件红占位在册。\n- **实测裁定（gallery README F-1..F-6）**：子件子树对 MCP 快照不可见（当前 master 复测成立）；computed `>` 作 if 条件不进分支；f-string 内插 computed 不解析；dyn 双轨可用；blocks.ts activeTab watch 原地改引用失活（DEBTS 候选，归 app 层/修复循环）；缺件即红=ext no-op stub 静默降级（非崩溃，红信号=stub WARN+数据投影空）。\n- **dep 物化裁定**：pac.at 声明 dep 即被构建层急切物化为 junction（wt-guard 违例类）并全量扫描编译；`auto run` 走编译器 pac.at 直读不物化。gallery 因此自包含无 dep；真件零副本消费走 vue 臂 vite alias。\n- 持久裁定全文：jade-garden/ARCHITECTURE.md §8.6 三桶清单与 L1 gallery（PLAN-072 SD-01）。",
+        "title": "jade-garden L1 三桶盘点与组件 gallery 双臂隔离面（parity-inventory-l1-gallery；桶① 5 面基线已锁 073）",
+        "content": "- **三桶台账**：docs/plans/attachments/072-inventory.md——29 web widget（↔29 部署 SFC 一一对拍）×desktop 3 件实勘。桶①双端都有 5 面（status_bar/tab 条/menubar+toolbar/filetree 行家族）**基线已锁（PLAN-073）**；桶②只有 vue 有 24 件（RC-D VM 缺件 16/RC-C 组装级 6/RC-E 引擎对拍 1/RC-F 第三方边界 1，lighthouse 素材）；桶③只有 vm 有=空桶。修复类 RC-A..F 定义在册；编辑器单元引擎对拍归 autodown lighthouse 流（Q-2）。\n- **L1 gallery 双臂**：jade-garden/front/component-gallery/——vue 臂真件部署 SFC 直挂（vite alias @→front/src 零副本 + fixture API shim，playwright 截图基线 e2e/baselines/）；VM 臂自包含 twin 项目（`auto run -r vm` + MCP autoui_state/snapshot 断言）；gate=scripts/gate.mjs（单元配置 scripts/units.mjs）。**6 单元双绿**：status_bar（纯展示，PLAN-073 配方化）/tab_strip（交互）/backlinks（数据绑定）/outline（列表）/menubar+toolbar 双面（PLAN-073）/filetree 行家族（PLAN-073，点击展开交互）；截图基线 6 张在库；command_palette 缺件红占位在册。\n- **status_bar 配方化（PLAN-073 RC-A）**：style recipe sb_footer/sb_meta/sb_dim app 内单源（`class:`/`style:` 双属性位 bare-ident 消费，编译期脱糖双轨同源——aura extract desugar_style_expr）；字面 11px→text-xs、zinc→语义 token（text-foreground/text-muted-foreground），三面 grep 零命中。\n- **复核债表 D-1..D-5（gallery README）**：P622/P624 修复在 master 成立（find 闭包/splice 写回/?: 三元，vm-smoke tabs 臂双模固化）；070 R-1 tab 条两端各持不 bp 化；dirty 琥珀差异=主题 warning token 债；MenuBar 快捷键 zinc=编译器模板（auto-lang ui_gen/vue.rs）归 L2；filetree 缩进 margin（web）vs guides（desktop）各持合法（041 同款）。\n- **toolbar 落点裁定（PLAN-073 T-00）**：toolbar=menu_bar.at 第二 view 块，渲染于 MenuBar.vue 内（ui_config 组件级选择性继承合成），无独立 SFC 系设计使然非缺件；gen 中间产物在 front/auto/gen/，部署件经 sed 拷贝至 front/src/components/。\n- **实测裁定（gallery README F-1..F-6）**：子件子树对 MCP 快照不可见；computed `>` 作 if 条件不进分支；f-string 内插 computed 不解析；dyn 双轨可用；blocks.ts activeTab watch 原地改引用失活（DEBTS 候选）；缺件即红=ext no-op stub 静默降级（非崩溃）。\n- **dep 物化裁定**：pac.at 声明 dep 即被构建层急切物化为 junction（wt-guard 违例类）并全量扫描编译；`auto run` 走编译器 pac.at 直读不物化。gallery 因此自包含无 dep；真件零副本消费走 vue 臂 vite alias。\n- 持久裁定全文：jade-garden/ARCHITECTURE.md §8.6 三桶清单与 L1 gallery（PLAN-072/073 SD-01）。",
         "file": "jade-garden/ARCHITECTURE.md",
         "related": [
-          "PLAN-072"
+          "PLAN-072",
+          "PLAN-073"
         ],
         "superseded_by": null
       }
@@ -2314,6 +2315,18 @@
         "file": "docs/plans/archived/072-parity-inventory-l1-gallery.md",
         "related": [
           "PLAN-072"
+        ],
+        "superseded_by": null
+      },
+      {
+        "id": "P073-1",
+        "section": "reviews",
+        "status": "stable",
+        "title": "PLAN-073 — 验收与复审收据（reviewed pass 504d0a5：桶① 5 面基线锁死 + status_bar 配方化）",
+        "content": "- 验收：AC-01 gallery gate 双臂绿 6 单元+截图基线 6 张 git 在库；AC-02 status_bar 三面（web .at/部署 SFC/desktop .at）grep 11px|zinc 零命中（recipe sb_footer/sb_meta/sb_dim 引用替代）；AC-03 toolbar 落点结论双工件在案（073-literal-style-inventory.md §1 + 072-inventory ①-4 勾记，无缺件免补发射）；AC-04 pnpm build 绿+全量 front e2e 24/24+vm-smoke 双模各 16 项（merged/split）；AC-05 §8.6 勾记（SD-01 冻结于 reviewed commit，账本 P073-1 归本条目）。\n- 复核：实现会话内按工件与命令重放重构证据（独立性受限声明在案），复审口径严于执行期（全量 e2e 24 spec vs 执行期 3 spec）；断言非空性旁证=执行期 vue 臂曾于 dist 损坏时变红恢复。\n- findings：F-R1(info) §8.6 引用的 073 附件在 master 账面，merge 后统一；F-R2(info) e2e 前端端口 13100 落宿主排除段（winnat 瞬态），复跑需本地端口便利。\n- 归档：docs/plans/archived/073-l1-repair-batch1.md。",
+        "file": "docs/plans/archived/073-l1-repair-batch1.md",
+        "related": [
+          "PLAN-073"
         ],
         "superseded_by": null
       }

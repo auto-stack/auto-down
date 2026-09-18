@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-070
-status: execution_done        # drafting → executing → execution_done → reviewed → archived
+status: reviewed              # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-autoedit-bp-convergence（auto-edit/jade-garden 源码级组件平台化）
 author: [zhaopuming]
 created_at: 2026-09-17
@@ -240,7 +240,7 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   + 08-screenshots 两张基线随 MenuBar 入壳更新后复跑绿（刻意见面变更的
   标准基线更新）。后端零改动（back 侧门由 review 按需抽验）。ARCHITECTURE
   §7 三共享面三机制表落笔（SD-01）；§9.5 孪生登记册退役（T-02）。提交：
-  6bb528c + 基线 090060b。
+  6bb528c + 基线 090060b。review F-1/F-2 补账 556f5cb（见 §9）。
 
 ## 8. 复审记录
 
@@ -281,6 +281,28 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   next: review（全量门已在本轮跑毕，review 复核 + 按需抽验后端面）`。
   Q-8 用户裁定（c+本计划 phase）已按 rev3 全额交付：web 命令系统真落地
   而非挂前置。
+- 2026-09-18 review（独立复验轮，实现会话内按工件重建裁定——限制已声明）：
+  `stage: review | plan_id: PLAN-070 | plan_revision: 3 | outcome: pass |
+  reviewed_commit: auto-down plan-070-dev@556f5cb + auto-lang auto-down-dev@1c27ba4ca |
+  base_commit: plan-070-dev 基 16a4bbf（3a05255 起）/ auto-down-dev 基 cfc849f80 |
+  dependency_revisions: auto-lang master cfc849f80（PLAN-639 delivered）、
+  blueprints 包经组 worktree 解析、046-bp-import 语料 |
+  spec_inputs: 本计划 §4 规范增量 SD-01/02（rev2/3 无新增 delta；frontmatter
+  new_spec_components=[] 的书面解释=本仓无 docs/specs/，P070-x 归 merge 落账） |
+  acceptance_results: AC-01..05 全 pass——AC-01 bp-gate 正向+负测（注入假
+  tree_util.at → exit 1 精准点名）+独立 find 断言（三仓消费面零副本）；
+  AC-02 sync --check 字节等价+desktop 副本缺席+§9.5 退役文；AC-03 e2e
+  24-menubar 2/2 复跑+pnpm build 绿+desktop smoke 16 臂无回归；AC-04 门绿
+  +负测红实测+基线复跑（T-04 轮双模 smoke+全量 playwright 基线更新后绿）；
+  AC-05 F-1 补账后 DEBTS 在案（auto-down：Q-7=A+widgets-gallery+musk；
+  auto-lang：with_defaults 根+bps 扫描转译缺口）+SD-01/02 落笔+P070-x 归
+  merge |
+  findings: F-1（AC-05 DEBTS 两行 widgets-gallery/musk 未落，勾记缺失）→
+  needs_fix 回 work 补齐 556f5cb 复验在案；F-2（desktop README §9 表⑥
+  "624 已修 find_index"与 T-02 实证冲突未修正）→ 同补修正注记指向 §9.5；
+  两项均文档账面级，无代码变更 |
+  evidence: 本节复验清单 + 提交 556f5cb（worktree 内可溯） |
+  next: merge（账本 P070-x 落账）`。
 - 2026-09-18 work handoff #2：`stage: work | plan_id: PLAN-070 | plan_revision: 3 |
   outcome: pass(T-01 VM 轨切片)/blocked(T-01 web 切片——Q-7 用户裁定) |
   code_commit: auto-lang af8c72a84（auto-down-dev）+ auto-down 9ace132

@@ -1,0 +1,22 @@
+// PLAN-070 T-06：jade web 命令系统声明（Plan 418/639 ui_config 形态）。
+// 单源命令注册表：VM/桌面轨经 AUTO_VM_ACTION_CONFIG 运行时加载；vue 轨经
+// T-05 组件级选择性继承（menubar/toolbar 组件 + handler 交集门）合成。
+// 动作集 = desktop 067 高频件 + 图谱（cards/import/export web 对应物另接）。
+bp-edit {
+    action { id : "ws.open"      handler : ".ActOpenWs"  title : "打开工作区" icon : "folder-open" shortcut : "Ctrl+O" }
+    action { id : "files.reload" handler : ".ActReload"  title : "重载文件列表" icon : "refresh-cw" shortcut : "F5" }
+    action { id : "file.save"    handler : ".ActSave"    title : "保存" icon : "save" shortcut : "Ctrl+S" }
+    action { id : "tab.close"    handler : ".ActCloseTab" title : "关闭标签" icon : "x" shortcut : "Ctrl+W" }
+    action { id : "graph.open"   handler : ".ActGraph"   title : "打开图谱" icon : "share-2" }
+
+    menubar {
+        menu { id : "file" title : "文件"
+               item { action : "ws.open" } sep {}
+               item { action : "file.save" } item { action : "tab.close" } sep {}
+               item { action : "files.reload" } }
+        menu { id : "view" title : "查看"
+               item { action : "graph.open" } }
+    }
+
+    toolbar { item { action : "file.save" } item { action : "tab.close" } item { action : "files.reload" } }
+}

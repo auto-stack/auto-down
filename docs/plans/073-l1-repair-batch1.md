@@ -12,8 +12,8 @@ new_spec_components: []        # 账本 P073-x 由 merge 落账
 touched_goals: []
 
 affects: [jade-garden/front]
-current_step: 0
-total_steps: 4
+current_step: 1
+total_steps: 5
 ---
 
 # [PLAN-073] l1-repair-batch1——桶① 5 面配方化与双端对齐
@@ -106,6 +106,13 @@ gallery 基建（units.mjs/gate.mjs/e2e baselines，5 样板含 status_bar/tabs
 
 - **T-00** [调查] ①-4 toolbar 渲染落点复核 + 5 单元字面 style 清单（配方化
   范围定价）。产物：清单附件更新。依赖：无。→ AC-03
+  - [x] T-00 ✅ 已完成 [✅]（2026-09-18，down-073 @6dd8bfb）：toolbar 落点
+    =MenuBar.vue L108-118（menu_bar.at 第二 view 块，ui_config 合成，**无缺件
+    无需补发射**，不触发回 new）；5 单元字面清单 + recipe 机制实证（P-1..P-5，
+    `class:`/`style:` 双属性位脱糖双轨可用）落
+    `docs/plans/attachments/073-literal-style-inventory.md` §1-§3；
+    gen 路径勘误（部署件在 front/src/components/）。证据：探针项目
+    tmp/p073-styleprobe build+VM run 双绿。
 - **T-01** [改] ①-1 status_bar：配方化 + 双端对照修复 + gate 锁。依赖：T-00。→ AC-01/02
 - **T-02** [改] ①-2 tab 条 + ①-3 menubar：结构对照修复 + gate 锁（含 VM
   语言语义复核结论落档）。依赖：T-00。→ AC-01
@@ -124,4 +131,4 @@ gallery 基建（units.mjs/gate.mjs/e2e baselines，5 样板含 status_bar/tabs
 | # | 事项 | 影响 | owner/下一步 |
 | --- | --- | --- | --- |
 | Q-1 | ①-2 的 daily-note ext（lucide dyn）在 VM 臂的等价形态 | T-02 修复面 | T-02 实测裁定 |
-| Q-2 | 配方化的 recipe 落点（app 内 style 块 vs blueprints 共享 recipe） | T-01 | T-00 定价后裁（默认 app 内，共享化留给 L2） |
+| ~~Q-2~~ | ~~配方化的 recipe 落点~~ **已答（T-00 裁定）**：各单元 .at 文件内顶层 `style` 声明（app 内单源）；`class:`/`style:` 双属性位 bare-ident 消费均实证脱糖双轨可用（附件 §3 P-1..P-4）；字面任意值→标准 token（text-[11px]→text-xs）、zinc→语义 token；amber/编译器模板 zinc 记债不改 | T-01/T-02/T-03 | 已关闭，见附件 §4 |

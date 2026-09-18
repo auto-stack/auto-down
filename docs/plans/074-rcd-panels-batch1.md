@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-074
-status: executing              # drafting → executing → execution_done → reviewed → archived
+status: reviewed               # drafting → executing → execution_done → reviewed → archived
 feature_name: rcd-panels-batch1（面板家族批次 1：纯逻辑下沉 .at + VM 渲染臂）
 author: [zhaopuming]
 created_at: 2026-09-18
@@ -176,6 +176,17 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
 
 - 2026-09-18 draft handoff：`stage: new | plan_id: PLAN-074 | plan_revision: 1 |
   outcome: pass（起草完成；执行未授权） | next: review → work`。
+- 2026-09-18 review #2（F-R1 重审）：`stage: review | plan_id: PLAN-074 |
+  plan_revision: 1 | outcome: pass | reviewed_commit: a4bd6228f08441beb784f49d18840ab9455e71dc
+  （plan-074-dev @down-074/auto-down，6 commits，树净） | base_commit: b92f7f6 |
+  dependency_revisions: down-074/auto-lang @899aa2e9c（不变） |
+  acceptance_results: AC-04 **pass**（§8.6 bullet 计数已正：基线 6 张分支态
+  +073 并集 8 张括注，git show 实证；账本 P074=0 未发布 ✓）；AC-01/02/03
+  **pass 沿用 review#1**——复用理由：a4bd622 相对 80fef4a 的 diff 仅
+  ARCHITECTURE.md 一文件（+2/-1，git diff --stat 实证），代码/测试/依赖
+  零变化，已验证面不受影响 | findings: F-R1 closed；无新增 |
+  evidence: 本记录命令输出（diff --stat/§8.6 行/ledger grep）+ review#1
+  全套件重放记录 | next: merge`。
 - 2026-09-18 review：`stage: review | plan_id: PLAN-074 | plan_revision: 1 |
   outcome: needs_fix | reviewed_commit: 80fef4a2a89a3431fa83af6c80c35cffd4a0f049
   （plan-074-dev @down-074/auto-down，5 commits，树净） | base_commit: b92f7f6

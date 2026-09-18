@@ -1,7 +1,8 @@
 ---
 plan_id: PLAN-074
-status: reviewed               # drafting → executing → execution_done → reviewed → archived
+status: archived               # drafting → executing → execution_done → reviewed → archived
 feature_name: rcd-panels-batch1（面板家族批次 1：纯逻辑下沉 .at + VM 渲染臂）
+completion_kind: delivered     # PLAN-074:r1 六 checkpoint 全闭环（2026-09-18 merge）
 author: [zhaopuming]
 created_at: 2026-09-18
 updated_at: 2026-09-18
@@ -268,3 +269,22 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
 | Q-1 | 下沉后的 .at store fn 在 vue 轨经 a2ts 的发射完备性（复杂 map/filter 链） | T-02/T-03 | **已答（T-02 实测）**：发射完备但依赖三枚编译器补丁（兄弟臂 fn 池重挂/watch api 扫描/Try 臂，auto-lang plan-074-dev 40d7488/899aa2e9c）——坑全数落模式文档 G-1..G-8 |
 | Q-2 | 四件的 gallery 数据 fixture 形态（静态 JSON vs .at 播种） | T-01..T-03 | **已答（T-01..T-03 落地）**：沿 outline 样板——vue 臂 shim 应答+真件自身 watch 拉取/facade 播种，VM 臂 Init 播种；未走静态 JSON |
 | Q-3 | desktop 挂载裁定（内联行 vs 组件挂载）逐件登记的归属 | 批次边界 | **已答（T-04 落档）**：登记表=模式文档 §4（backlinks/outgoing 组件首选、unlinked/outline 组件唯一路径、P614/F-1/F-5 约束注记）；装配归 L3/后续计划 |
+
+## 10. merge 收据（PLAN-074:r1）
+
+- **prepared ✅**：reviewed 基线 a4bd6228（master 已前移至 ed100dd——执行期
+  073 落地+auto-musk-dev 并入，he session）；merge 前 reconcile：master 并入
+  plan-074-dev（b0eb0aa，冲突面 units.mjs/App.vue/vm app.at/§8.6 全并集解，
+  gallery gate 双臂绿+e2e 24/24 reconcile 态重放）；账本投影 P072-1 原地
+  更新（§8.6 RC-D 批次 1 下沉+8 单元/8 基线+模式文档指针，related
+  +PLAN-074）+ P074-1 新增（reviews 收据+归档路径），交付提交 7bd2ba5
+  （reconcile 后验证 + 投影，JSON 校验过，242→243 条目）。
+- **landed ✅**：master merge commit `f81b452`（--no-ff）；ancestry 断言
+  7bd2ba5 ∈ master；master 侧净变化 25 files（四件 .at+ext、4 部署 SFC、
+  gen stub、gallery 6 文件+基线 2 张、§8.6、两附件、账本）。
+- **ledger_refreshed ✅**：主检出 `.autoos/specs.json` 回读——total 243、
+  P074-1 在 reviews（file=archived 路径、related=[PLAN-074]）、P072-1
+  related=[072,073,074] 且含"8 单元双绿/PLAN-074"内容、无重复 id。
+- **archived ✅**：本文件 `git mv` → `docs/plans/archived/074-rcd-panels-batch1.md`
+  + status: archived + completion_kind: delivered。
+- **cleaned ✅**：见下方补记。

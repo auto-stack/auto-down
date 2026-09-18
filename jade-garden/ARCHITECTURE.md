@@ -188,3 +188,11 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
   （当前 master 复测）；computed `>` 作 if 条件不进分支；f-string 内插
   computed 不解析；`dyn` 双轨可用；blocks.ts activeTab watch 原地改引用
   失活（候选 DEBTS）；缺件即红 = ext no-op stub 静默降级（非崩溃）。
+- **桶① 5 面基线已锁（PLAN-073，2026-09-18）**：status_bar/tab 条/
+  menubar+toolbar/filetree 行家族 5 单元（toolbar 落点=MenuBar.vue 内，
+  无独立 SFC 系设计使然）双端 gate 绿 + 截图基线 6 张在库
+  （`component-gallery/e2e/baselines/`）；status_bar 配方化（style
+  recipe sb_footer/sb_meta/sb_dim，字面 11px/zinc 清零）；复核债表
+  D-1..D-5 落 gallery README（P622/P624 复核成立/070 R-1 tab 条各持/
+  amber 主题债/编译器模板 zinc L2/filetree 缩进各持）。单元台账续册：
+  `docs/plans/attachments/073-literal-style-inventory.md`。

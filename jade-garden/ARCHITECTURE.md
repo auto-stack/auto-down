@@ -164,8 +164,8 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
 | --- | --- | --- | --- |
 | PLAN-071 | auto-down | 瘦身（§8.3 六项） | delivered（archived 2026-09-18） |
 | PLAN-072 | auto-down | 盘点分类 + L1 组件 gallery 基建（三桶/双端 gate 骨架，§8.6） | executing |
-| PLAN-645 | auto-lang | 工具链债（bps fn 转译 + with_defaults 扫描根，L2 前置） | drafting |
-| L2 抽取+gallery | 双仓 | bp 抽取（判定规则）+蓝图级 parity（依赖 072 清单+645） | 待起草 |
+| PLAN-645 | auto-lang | 工具链债（bps fn 转译 + with_defaults 扫描根，L2 前置） | delivered（archived 2026-09-18；075 实勘定案——DEBTS.md 两行漏划销见下 L2 bullet） |
+| PLAN-075 | 双仓 | L2 蓝图抽取首证（判定规则 + 骨架 bp ×2 + 蓝图级双端 gate，§8.6 L2 bullet） | executing |
 | L1 修复滚动 | auto-down | 逐批 parity 修复（依赖 072，分批立项） | 待起草 |
 | L3 收口 | auto-down | app 级 parity 收口（依赖 L1/L2） | 待起草 |
 
@@ -206,3 +206,15 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
   `docs/plans/attachments/074-sink-mode.md`；desktop 挂载裁定登记（内联
   vs 组件，装配归 L3）见其 §4。编译器侧：src/front 兄弟臂 fn 池重挂 +
   watch/Try api 扫描补丁落 auto-lang `plan-074-dev`（40d7488/899aa2e）。
+- **PLAN-075 L2 首证（2026-09-19）**：首批 L1 基线存量 9 单元（073 五面 +
+  074 四件）跑完 design 30 §6 判定——判定记录
+  `docs/plans/attachments/075-bp-extraction-record.md`（U-1 status_bar 骨架+
+  slot / U-2..U-4 不收敛登记[R-1 tab 条/ui_config 单源] / U-5 filetree bp
+  家族归位 / U-6..U-9 row-list 骨架 7 使用位）。**两件骨架 bp 入库**
+  （auto-lang `blueprints/layout/status-bar` + `data-display/row-list`，
+  fn-free 三件套）；**蓝图级双端 gate 首证**（auto-lang
+  `examples/bp-gate/`：vue 臂沙箱构建+playwright 截图基线 × VM 臂 MCP
+  boot 断言，三单元全绿复跑 exit 0——design 30 §2 L2 门首次落地）。
+  编译器侧：DEBTS 070 第二行经 PLAN-645 落地（075 实勘定案，DEBTS.md
+  本体漏划销已补）+ 074-sink-mode G-6 未修面（components//bps 与 dep 臂
+  同文件模块 fn）随 075 收口（048 夹具首个消费方）。jade 代码零改动。

@@ -29,7 +29,7 @@
 | ①-1 | status_bar | status_bar.at→StatusBar.vue（96L，ext:3） | desktop status_bar.at（值 props 版，041 形态适配；**组件子树对 MCP 快照不可见**，断言走 autoui_state） | 同名不同物：web ext-composable 耦合 vs VM 值 props；11px/zinc token 密集 | RC-A 配方先行 + RC-B |
 | ①-2 | tab 条 | tab_strip.at→TabStrip.vue（147L，ext:3；lucide dyn、daily-note ext） | app.at 内联 tabs 区（tabs_store facade 投影镜像 active_*） | 070 R-1：各应用自持不 bp 化；VM 语义债在案（P622 splice 已修、P624 ?str→哨兵规避） | RC-B + VM 语言语义复核 |
 | ①-3 | menubar | menu_bar.at（27L）+ app-config.at bp-edit 合成 MenuBar.vue（AppShell.vue:56 挂载） | app.at actions{} + menubar 配置合成（067） | ui_config 单源已成立（070 T-06/24-menubar e2e）；对照点=渲染结构 | RC-B |
-| ①-4 | toolbar | app-config.at `toolbar{}` 声明在案；**front/src/components 无 Toolbar.vue**——vue 渲染落点待复核 | app.at toolbar 配置合成（041 同款） | web 声明面有、渲染件缺席（近似反向差）；T-04 回填复核结论 | RC-B（落点复核后定） |
+| ①-4 | toolbar | app-config.at `toolbar{}` 声明在案；**front/src/components 无 Toolbar.vue**——vue 渲染落点待复核 | app.at toolbar 配置合成（041 同款） | web 声明面有、渲染件缺席（近似反向差）；T-04 回填复核结论。**【073 T-00 已复核】落点=MenuBar.vue 内（menu_bar.at 第二 view 块，ui_config 合成）——无缺件，非反向差；详见 `073-literal-style-inventory.md` §1** | RC-B（落点复核后定）→【073】已锁（menubar+toolbar 单元） |
 | ①-5 | filetree 行家族 | file_tree.at（81L）+ file_tree_node.at（192L）+ fileTree_store（104L，api:1）——谱系 C（070 Q-7 裁定独立，DEBTS 在案） | app.at 内联 ft_rows（`flatten_tree` 纯函数 + bps.navigation.filetree tree_icon/tree_util 消费，P614/P618 纪律） | bp spec gotcha#2 在案；行形态/icon/展开交互对照 | RC-B |
 
 ## 3. 桶② 只有 vue 有（VM 缺件待办）——24 件

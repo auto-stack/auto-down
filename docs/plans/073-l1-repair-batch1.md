@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-073
-status: drafting               # drafting → executing → execution_done → reviewed → archived
+status: execution_done        # drafting → executing → execution_done → reviewed → archived
 feature_name: l1-repair-batch1（桶① 5 面配方化与双端对齐）
 author: [zhaopuming]
 created_at: 2026-09-18
@@ -12,7 +12,7 @@ new_spec_components: []        # 账本 P073-x 由 merge 落账
 touched_goals: []
 
 affects: [jade-garden/front]
-current_step: 3
+current_step: 5
 total_steps: 5
 ---
 
@@ -123,19 +123,67 @@ gallery 基建（units.mjs/gate.mjs/e2e baselines，5 样板含 status_bar/tabs
     amber-500/400 差异记债（主题 warning token 缺，清单 §4.3）。
 - **T-02** [改] ①-2 tab 条 + ①-3 menubar：结构对照修复 + gate 锁（含 VM
   语言语义复核结论落档）。依赖：T-00。→ AC-01
+  - [x] T-02 ✅ 已完成（2026-09-18，down-073 @bf47c2f）：menubar+toolbar
+    双面单元上线（vue 真件 ui_config 合成面挂载 + VM root 内联结构镜像
+    twin——菜单 web 子集 + toolbar 3 按钮；命令面交互归 24-menubar e2e，
+    gallery 无点击断言）。Q-1 实测裁定：daily-note ext（lucide dyn）属
+    web 特有面（desktop 无 daily 导航流），VM twin 无需等价物（070 R-1
+    各持口径）。VM 语义复核结论落 README 债表 D-1（P622/P624 在 master
+    v0.4.2-1140 成立：find 闭包/splice/?: 形态在案，运行时收据=vm-smoke
+    tabs 臂双模绿见 T-04）+ D-2 tab 条各持/D-3 amber 主题债/D-4 编译器
+    模板 zinc L2。5 基线全量重刷（harness 头部随新单元页演进）。gate 双绿。
 - **T-03** [改] ①-5 filetree 行家族：行形态/icon/展开交互对照修复 + gate 锁。
   依赖：T-00。→ AC-01
+  - [x] T-03 ✅ 已完成（2026-09-18，down-073 @ca42eb4）：filetree 单元
+    上线——vue 真件 FileTree 挂载（store 直播种 wiki fixture 树，点击展开
+    走真件 toggle 路径）+ VM 行解剖 twin（guides/chevron/icon/label 镜像
+    desktop ft_rows；label 钮驱动展开 rows:3→4，子行条件分支=desktop
+    双分支同款，规避 splice 面）。对照结论=README 债表 D-5（行解剖两端
+    对齐，缩进 margin vs guides 各持合法；bps gotcha#2 消费侧 gate 归本
+    twin，包级归 L2）。bp spec gotcha#2 未触发（无 bp 改动）。gate 双绿
+    +6 基线在库。
 - **T-04** [改] ①-4 toolbar 落点结论落地 + 回写面回归收口（pnpm build/
   受影响 e2e/双模 smoke）+ §8.6 勾记。依赖：T-01..T-03。→ AC-03/04/05
+  - [x] T-04 ✅ 已完成（2026-09-18，down-073 @504d0a5）：toolbar 结论落
+    台账（073 附件 §1 + 072-inventory ①-4 行勾记"无缺件，非反向差"）。
+    回归收据：pnpm build 绿（worktree engine dist 缺件=环境项，按预构建
+    工件惯例自主检出复制后过）；受影响 e2e 6 passed（03-tabs/24-menubar/
+    08-screenshots；首跑 right-sidebar 反链 3→6 为 fixture 嵌套 wiki 环境
+    伪影——runtime 重建后排除，非本计划回归）；vm-smoke 双模绿（merged
+    16 项 + split tabs 臂，P622/P624 运行时证据同批固化；组内依赖兄弟
+    down-073/auto-lang @520a96958 就位——dep bps 相对路径解析前提）；
+    §8.6 勾记桶① 5 面基线已锁（SD-01，merge 时随分支发布+账本 P073-x
+    落账）。
 
 ## 8. 复审记录
 
 - 2026-09-18 draft handoff：`stage: new | plan_id: PLAN-073 | plan_revision: 1 |
   outcome: pass（起草完成；执行未授权） | next: review → work`。
+- 2026-09-18 work：`stage: work | plan_id: PLAN-073 | plan_revision: 1 |
+  outcome: pass | code_commit: 504d0a5（plan-073-dev @down-073/auto-down，
+  base 6dd8bfb；依赖兄弟 down-073/auto-lang @520a96958 detached） |
+  task_ids: T-00..T-04 | evidence: gallery gate 双臂绿（6 单元 @504d0a5
+  复跑，基线 6 张在库）；AC-02 三面 grep 零命中；pnpm build 绿；受影响
+  e2e 6 passed（03-tabs/24-menubar/08-screenshots）；vm-smoke 双模绿
+  （merged 16 项+split tabs 臂）；SD-01 §8.6 勾记在分支 | blockers: 无 |
+  next: review`。
+
+### 环境与偏差记录（work 执行期）
+
+- worktree 前置：gallery/front 依赖安装（pnpm 独立工作区）+ engine dist
+  自主检出复制（相对路径 guard 锚定本 checkout 的环境项，非仓库缺陷）；
+  front/node_modules `@autodown/engine` link 重指主检出已构建 dist
+  （mklink /J，072 README 在案惯例）。
+- e2e 端口：FRONTEND_PORT 13100 落 Windows 排除段（13086-13185，主机
+  瞬态），worktree 本地 sed 14100 跑测后还原，未入库。
+- fixture 伪影：首跑 08-screenshots 反链 3→6 为 .runtime 嵌套 wiki 索引
+  双计，runtime 重建排除；主检出 .runtime 有他session 残留（Cards Probe.ad
+  等）与 tmp fixture 漂移（jade-walk 走查/SRS 会话），不影响本仓 tracked
+  面，留主检出 owner 自理。
 
 ## 9. 待澄清事项
 
 | # | 事项 | 影响 | owner/下一步 |
 | --- | --- | --- | --- |
-| Q-1 | ①-2 的 daily-note ext（lucide dyn）在 VM 臂的等价形态 | T-02 修复面 | T-02 实测裁定 |
+| Q-1 | ①-2 的 daily-note ext（lucide dyn）在 VM 臂的等价形态 | T-02 修复面 | **已答（T-02 实测）**：daily-note 面为 web 特有（desktop 无该流），VM twin 无需等价物——结论落 README 债表 D-2 |
 | ~~Q-2~~ | ~~配方化的 recipe 落点~~ **已答（T-00 裁定）**：各单元 .at 文件内顶层 `style` 声明（app 内单源）；`class:`/`style:` 双属性位 bare-ident 消费均实证脱糖双轨可用（附件 §3 P-1..P-4）；字面任意值→标准 token（text-[11px]→text-xs）、zinc→语义 token；amber/编译器模板 zinc 记债不改 | T-01/T-02/T-03 | 已关闭，见附件 §4 |

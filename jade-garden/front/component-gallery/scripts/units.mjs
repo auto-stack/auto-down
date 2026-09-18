@@ -97,6 +97,29 @@ export const UNITS = [
     },
   },
   {
+    id: 'filetree',
+    title: '文件树行家族（桶①-5·列表交互，PLAN-073 T-03）',
+    // 行解剖 twin：guides/chevron/icon/label 镜像 desktop ft_rows；展开交互
+    // 走 label 钮（web 行点击同款语义，desktop mouse-area 的 gate 可驱动
+    // 等价），子行条件分支渲染（desktop `if r.open` 双分支同款）。
+    vue: {
+      url: '/?unit=filetree',
+      ready: '[data-unit="filetree"] span.truncate',
+      needles: ['引言.ad', '方法', '另页.ad'],
+      needleSelector: '[data-unit="filetree"]',
+      click: {
+        selector: '[data-unit="filetree"] span.truncate:has-text("方法")',
+        ready: '[data-unit="filetree"] span.truncate:has-text("探针.ad")',
+        needles: ['探针.ad'],
+      },
+    },
+    vm: {
+      actions: [{ button: 'filetree' }, { button: '方法' }],
+      state: { unit: 'filetree', ft_count: '4', ft_open_dir: 'wiki/方法' },
+      snapshot: ['unit=filetree rows:4', '方法', '探针.ad'],
+    },
+  },
+  {
     id: 'command_palette',
     title: '命令面板（桶②·RC-D 缺件红占位）',
     missing: true,

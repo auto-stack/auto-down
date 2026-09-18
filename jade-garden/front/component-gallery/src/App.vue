@@ -7,6 +7,7 @@ import OutlinePage from './pages/OutlinePage.vue'
 import TabStripPage from './pages/TabStripPage.vue'
 import BacklinksPage from './pages/BacklinksPage.vue'
 import MenubarPage from './pages/MenubarPage.vue'
+import FiletreePage from './pages/FiletreePage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -60,6 +61,14 @@ function select(u: string) {
       >
         menubar
       </button>
+      <button
+        data-unit-tab="filetree"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'filetree' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('filetree')"
+      >
+        filetree
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -67,5 +76,6 @@ function select(u: string) {
     <TabStripPage v-else-if="unit === 'tab_strip'" />
     <BacklinksPage v-else-if="unit === 'backlinks'" />
     <MenubarPage v-else-if="unit === 'menubar'" />
+    <FiletreePage v-else-if="unit === 'filetree'" />
   </div>
 </template>

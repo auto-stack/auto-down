@@ -8,6 +8,8 @@ import TabStripPage from './pages/TabStripPage.vue'
 import BacklinksPage from './pages/BacklinksPage.vue'
 import OutgoingLinksPage from './pages/OutgoingLinksPage.vue'
 import UnlinkedReferencesPage from './pages/UnlinkedReferencesPage.vue'
+import MenubarPage from './pages/MenubarPage.vue'
+import FiletreePage from './pages/FiletreePage.vue'master
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -68,6 +70,20 @@ function select(u: string) {
         @click="select('unlinked_references')"
       >
         unlinked_references
+        data-unit-tab="menubar"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'menubar' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('menubar')"
+      >
+        menubar
+      </button>
+      <button
+        data-unit-tab="filetree"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'filetree' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('filetree')"
+      >
+        filetreemaster
       </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
@@ -77,5 +93,7 @@ function select(u: string) {
     <BacklinksPage v-else-if="unit === 'backlinks'" />
     <OutgoingLinksPage v-else-if="unit === 'outgoing_links'" />
     <UnlinkedReferencesPage v-else-if="unit === 'unlinked_references'" />
+    <MenubarPage v-else-if="unit === 'menubar'" />
+    <FiletreePage v-else-if="unit === 'filetree'" />master
   </div>
 </template>

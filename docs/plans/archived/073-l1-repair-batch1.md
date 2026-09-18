@@ -1,6 +1,7 @@
 ---
 plan_id: PLAN-073
-status: reviewed              # drafting → executing → execution_done → reviewed → archived
+status: archived              # drafting → executing → execution_done → reviewed → archived（终态；merge 收据 PLAN-073:r1 见 §10）
+completion_kind: delivered     # PLAN-073:r1 五 checkpoint 全闭环（2026-09-18 merge）
 feature_name: l1-repair-batch1（桶① 5 面配方化与双端对齐）
 author: [zhaopuming]
 created_at: 2026-09-18
@@ -8,7 +9,7 @@ updated_at: 2026-09-18
 plan_revision: 1
 
 supersedes_spec_components: []
-new_spec_components: []        # 账本 P073-x 由 merge 落账
+new_spec_components: []        # 账本已落账：P072-1 更新（architecture）+ P073-1 新增（reviews），merge 收据 PLAN-073:r1
 touched_goals: []
 
 affects: [jade-garden/front]
@@ -207,3 +208,30 @@ gallery 基建（units.mjs/gate.mjs/e2e baselines，5 样板含 status_bar/tabs
 | --- | --- | --- | --- |
 | Q-1 | ①-2 的 daily-note ext（lucide dyn）在 VM 臂的等价形态 | T-02 修复面 | **已答（T-02 实测）**：daily-note 面为 web 特有（desktop 无该流），VM twin 无需等价物——结论落 README 债表 D-2 |
 | ~~Q-2~~ | ~~配方化的 recipe 落点~~ **已答（T-00 裁定）**：各单元 .at 文件内顶层 `style` 声明（app 内单源）；`class:`/`style:` 双属性位 bare-ident 消费均实证脱糖双轨可用（附件 §3 P-1..P-4）；字面任意值→标准 token（text-[11px]→text-xs）、zinc→语义 token；amber/编译器模板 zinc 记债不改 | T-01/T-02/T-03 | 已关闭，见附件 §4 |
+
+## 10. merge 收据（PLAN-073:r1）
+
+- **prepared ✅**：reviewed 基线 504d0a5397ed（master 6dd8bfb 未漂移实证；
+  依赖兄弟 down-073/auto-lang @520a96958 detached）；SD-01 规范增量已随分支
+  落 ARCHITECTURE §8.6（冻结于 reviewed commit）；账本投影 delivery commit
+  `8000013`——P072-1 原地更新（同目标同节复用规则：§8.6 当前知识=桶① 5 面
+  基线已锁/6 单元/配方化/债表 D-1..D-5/toolbar 落点，related +PLAN-073）+
+  新增 reviews P073-1（验收复审收据+归档路径），241→242 条目，JSON 校验过，
+  最小 diff（16+/3-），实现/依赖零变动（纯投影后代=合法 delivery_commit）。
+- **landed ✅**：master merge commit `1aa7efd`（--no-ff，merge-base 实证
+  6dd8bfb 未漂移）；ancestry 断言 504d0a5 ∈ master；18 files/346 insertions
+  与 reviewed delta + 账本一致；`git diff plan-073-dev..master -- jade-garden/`
+  零差异=master 的 jade-garden 树与全量验证过的分支逐字节同一（known-good
+  内容同一性论证，替代冗余套件重跑）。
+- **ledger_refreshed ✅**：主检出 `.autoos/specs.json`（tracked，经 worktree
+  提交随 merge 落地）回读：242 条目零重复；P072-1 architecture/related
+  [PLAN-072,PLAN-073]/content 含"基线已锁"；P073-1 reviews/stable/file 指
+  归档路径。
+- **archived ✅**：本文件 `git mv` → `docs/plans/archived/073-l1-repair-batch1.md`
+  + status: archived + completion_kind: delivered。
+- **cleaned ✅**：worktree git 零脏 → node_modules 三处（front/gallery/
+  auto gen vue）摘除——front/gallery 整目录 rm（MSYS rm 对 junction 仅
+  unlink 不穿透，主检出 engine dist/src 摘后完好性实证）、gen vue 391 链接
+  同法 → wt-guard clean（auto-down）→ 双 worktree 移除（auto-down +
+  auto-lang 兄弟 @520a96958 detached，注册归零）→ 分支 plan-073-dev 删除
+  （was 8000013，master 含其祖先）→ 组目录 D:/autostack/.wt/down-073 移除。

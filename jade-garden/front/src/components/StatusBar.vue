@@ -42,7 +42,7 @@ watch(current_path, () => {
 </script>
 
 <template>
-    <footer class="flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[11px] text-muted-foreground">
+    <footer class="flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-xs text-muted-foreground">
       <div class="flex items-center gap-3">
         <span class="truncate max-w-[240px]" :title="ws_title">
           <span>{{ ws_name }}</span>

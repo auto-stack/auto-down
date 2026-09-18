@@ -19,8 +19,9 @@
 //
 // plan 037 T3: tablePanel retired the same way — the table family widget's
 // view face owns the Table slot (table.table-node contract), cells riding
-// the renderEmbedded closure through the BlockChildren hole (the list
-// adapter's sibling). StreamingTable.vue no longer registers anything; the
+// the renderInlineChildren closure through the BlockChildren hole (the list
+// adapter's sibling — cells are parseInline output, inline flow since musk
+// plan 072). StreamingTable.vue no longer registers anything; the
 // module goes fully dead until the T5 retirement deletes it.
 
 import { h, type VNode } from 'vue'

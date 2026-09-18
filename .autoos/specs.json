@@ -925,6 +925,18 @@
           "PLAN-069"
         ],
         "superseded_by": null
+      },
+      {
+        "id": "P070-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "auto-edit/jade-garden 源码级组件平台化 — filetree 支撑件 bp 导入/tabs_store 字节部署单源/ui_config 命令面双轨（jade-autoedit-bp-convergence）",
+        "content": "- **filetree 支撑件**：唯一真身 auto-lang/blueprints/navigation/filetree（support-files-only；组合形态暂缓挂 auto-lang DEBTS），消费面 desktop/041 经 dep bps + 符号导入零副本（L1）；041 的 filetree 家族为死代码删除（左栏实为 TreeView）。门：desktop/scripts/bp-gate.mjs（副本归零/bps 幽灵导入×4 消费位）。\n- **tabs_store 单源**：唯一源 front/auto/src/front/tabs_store.at，desktop 副本为字节部署产物（tabs-store-sync.mjs 部署/--check）；跨包导入不可行根因=use back.api 按文件位置解析（位置即绑定）。三 delta 单源化：显式守卫×3/str 哨兵/索引狩猎（findIndex VM 静默失效实证推翻 §9.5⑥）。\n- **web 命令面**：ui_config 单源声明（front/auto/app-config.at，桌面 067 动作集 web 子集）→ T-05 组件级 handler 交集门合成 → MenuBar.vue 部署 + AppShell 壳顶；行为经 menu_bar_ext 委托 facade store。不收敛裁定：web file_tree/status_bar 三版=同名不同物（DEBTS 070 行）。\n- 持久契约全文：jade-garden/ARCHITECTURE.md §7 组件复用与命令面（SD-01）。",
+        "file": "jade-garden/ARCHITECTURE.md",
+        "related": [
+          "PLAN-070"
+        ],
+        "superseded_by": null
       }
     ],
     "designs": [
@@ -2242,6 +2254,18 @@
         "file": "autodown/demo/auto/README.md",
         "related": [
           "PLAN-069"
+        ],
+        "superseded_by": null
+      },
+      {
+        "id": "P070-2",
+        "section": "reviews",
+        "status": "stable",
+        "title": "PLAN-070 — 验收与复审收据（reviewed pass 556f5cb；F-1/F-2 当轮补齐）",
+        "content": "- 验收：AC-01 bp-gate 正/负测（假副本注入 exit 1）+独立 find 零副本断言+smoke files 臂端到端；AC-02 sync --check 字节等价+§9.5 退役；AC-03 e2e 24-menubar 2/2（DOM+保存落盘）+pnpm build；AC-04 双模 smoke 三轮全臂+全量 playwright 基线更新后绿+门负测红实测；AC-05 F-1 补账后 DEBTS 在案。\n- findings：F-1 AC-05 DEBTS 两行缺→556f5cb 补；F-2 §9 表⑥ 624 已修 find_index 记载与实证冲突→修正注记指向 §9.5（单源取索引狩猎）。\n- 复审限制声明：实现会话内按工件重建裁定（独立复验清单在案）。\n- 归档：docs/plans/archived/070-jade-autoedit-bp-convergence.md。",
+        "file": "docs/plans/archived/070-jade-autoedit-bp-convergence.md",
+        "related": [
+          "PLAN-070"
         ],
         "superseded_by": null
       }

@@ -281,6 +281,13 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   next: review（全量门已在本轮跑毕，review 复核 + 按需抽验后端面）`。
   Q-8 用户裁定（c+本计划 phase）已按 rev3 全额交付：web 命令系统真落地
   而非挂前置。
+- 2026-09-18 merge 收据 `PLAN-070:r3`：
+  `prepared` = reviewed 基线 556f5cb（plan-070-dev）+1c27ba4ca（auto-down-dev），canonical delta=SD-01（ARCHITECTURE §7）/SD-02（README §9.5 退役），auto-lang 侧 contract.md 组件级门节为 docs-only 后代 4e81d67c8；
+  `landed` = auto-down master 1c20a44（merge plan-070-dev，落地后 bp-gate/sync/pnpm build 复验绿）；auto-lang master 4e81d67c8（merge auto-down-dev，主检出 bp list 见 navigation/filetree+041 boot 净）；
+  `ledger_refreshed` = auto-down .autoos/specs.json P070-1（architecture→ARCHITECTURE §7）/P070-2（reviews→归档计划）提交 6a56085；auto-lang .autoos/specs.json P070-1/2（runtime-only 直写，readback 在案）；
+  `archived` = 本文件 status archived + completion_kind delivered；
+  `cleaned` = ✅（2026-09-18）——wt-guard 双绿（auto-lang 侧 117 链接/auto-down 侧 1866 链接 pnpm junction 按 guard 处方逐链接清除后 clean）；worktree down-070/{auto-lang,auto-down} 移除、分支 auto-down-dev(4e81d67c8)/plan-070-dev(e3ad353, 已含于 master 1c20a44) 删除、组目录 down-070 移除；`git worktree list`/branch 双查零残留。
+  流程注记：账本 auto-down 侧提交实际落 master（6a56085）早于分支落地——落地即终态一致，收据如实记录；本收据首写因 git mv 断链被跳过，归档后补写（依据=上列已验证 commit/门/回读证据）。
 - 2026-09-18 review（独立复验轮，实现会话内按工件重建裁定——限制已声明）：
   `stage: review | plan_id: PLAN-070 | plan_revision: 3 | outcome: pass |
   reviewed_commit: auto-down plan-070-dev@556f5cb + auto-lang auto-down-dev@1c27ba4ca |

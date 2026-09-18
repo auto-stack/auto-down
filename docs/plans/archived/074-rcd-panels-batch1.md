@@ -287,4 +287,10 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
   related=[072,073,074] 且含"8 单元双绿/PLAN-074"内容、无重复 id。
 - **archived ✅**：本文件 `git mv` → `docs/plans/archived/074-rcd-panels-batch1.md`
   + status: archived + completion_kind: delivered。
-- **cleaned ✅**：见下方补记。
+- **cleaned ✅**：摘链 auto-down worktree 2660 junction（pnpm node_modules
+  类，2 passes；含 front engine link 重指针）→ auto-lang 兄弟 pass 1 即净
+  → wt-guard clean 双目录实证 → worktree 移除（双仓注册归零+prune）→
+  分支 plan-074-dev 双侧删除（auto-down was 7bd2ba5/master 含其祖先；
+  auto-lang was 899aa2e9c/折叠合并 ffe2dac6d）→ 组目录移除。auto-lang
+  补丁折回语义验证：折叠版 exe（v0.4.2-1198-gffe2dac6d，含 PLAN-642 并入）
+  跑 jade gallery gate 双臂绿。

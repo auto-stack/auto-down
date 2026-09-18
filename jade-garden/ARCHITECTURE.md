@@ -118,12 +118,12 @@ props / 041 store 直读 / web ext+composable）均为**同名不同物**（数�
 
 | 环节 | 已有 | 成色 |
 | --- | --- | --- |
-| 捕获/编辑 | 富文本 markdown（标题/列表/任务/代码块/粗斜体/wikilink）、每日笔记、whiteboard 雏形 | 编辑器为日常主战场 |
+| 捕获/编辑 | 富文本 markdown（标题/列表/任务/代码块/粗斜体/wikilink）、每日笔记、~~whiteboard 雏形~~（PLAN-071 移除） | 编辑器为日常主战场 |
 | 组织 | 文件树、双 tab+keep-alive、properties、recent files | 基本可用 |
 | 链接 | wikilink、块锚、反链/出链/未链接提及三面板、linkgraph、图谱 tab | 对标核心环已立住 |
 | 检索 | search 面板、command palette、quick switcher | query 后端引擎在、前端视图缺 |
 | 消化（差异化） | SRS 闪卡 + agenda | 强于 Obsidian core |
-| 系统 | 主题、菜单栏（070）、zip 导入导出、plugins_store | — |
+| 系统 | 主题、菜单栏（070）、zip 导入导出（命令面板，PLAN-071 勾定）、~~plugins_store~~（PLAN-071 移除） | — |
 
 ### 8.2 缺口（P0 补日常刚需 / P1 深化 / P2 明确不做）
 
@@ -131,11 +131,16 @@ props / 041 store 直读 / web ext+composable）均为**同名不同物**（数�
 - **P1**：query 前端视图（引擎已就绪）、数学公式渲染面、footnote/mark（引擎 DEBTS）、图谱过滤/orphans、日历视图。
 - **P2 不做**：发布、同步服务、多 vault。
 
-### 8.3 瘦身裁定（PLAN-071）
+### 8.3 瘦身裁定（PLAN-071，2026-09-18 处置落地勾记）
 
-plugins_store+插件面移除；whiteboard 移除/标注实验；legacy-autoui 删除；
-SRS 入口收敛（flashcard modal 唯一复习流）；zip 导入导出降级命令面板；
-query.at 后端引擎**保留**（标注"引擎就绪、无前端"）。
+| 处置 | 状态 |
+| --- | --- |
+| plugins_store + 插件面移除 | ✅ 移除——UI 消费点清点为零（store 全死）；store/ext/生成物/facade 四件删 |
+| whiteboard 移除/标注实验 | ✅ front 面全删（页面/入口/facade/api 手写层）；back 契约与端点保留＝实验性可回归通道（git 历史可取回 front 面） |
+| legacy-autoui 删除 | ✅ 目录删除（零引用死树；历史注释保留） |
+| SRS 入口收敛 | ✅ flashcard modal＝唯一复习流（palette 命令唯一点，全仓断言）；agenda 面板保留；Cards Probe 页归 `front/e2e/fixtures-pages/` 测试资产 |
+| zip 导入导出降级命令面板 | ✅ 实证达成——070 菜单栏 v1 即无 zip 项，palette 双命令在册；裁定注记落 app-config.at/menu_bar.at/menu_bar_ext（zip/闪卡停留命令面板，不进菜单栏） |
+| query.at 后端引擎保留 | ✅ 保留，README 树行标注"engine ready, no front view" |
 
 ### 8.4 双形态战略（A'：冻结-瘦身-三层统一-解冻）
 
@@ -157,7 +162,7 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
 
 | 计划 | 仓 | 内容 | 状态 |
 | --- | --- | --- | --- |
-| PLAN-071 | auto-down | 瘦身（§8.3 六项） | drafting |
+| PLAN-071 | auto-down | 瘦身（§8.3 六项） | executing |
 | PLAN-072 | auto-down | 盘点分类 + L1 组件 gallery 基建（三桶/双端 gate 骨架） | drafting |
 | PLAN-645 | auto-lang | 工具链债（bps fn 转译 + with_defaults 扫描根，L2 前置） | drafting |
 | L2 抽取+gallery | 双仓 | bp 抽取（判定规则）+蓝图级 parity（依赖 072 清单+645） | 待起草 |

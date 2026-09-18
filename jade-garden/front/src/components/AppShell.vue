@@ -1,6 +1,7 @@
 <!-- AppShell component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import MenuBar from './MenuBar.vue'
 import { CommandPalette } from '../../auto/src/front/utils/app_shell_ext'
 import { FlashcardModal } from '../../auto/src/front/utils/app_shell_ext'
 import { LeftSidebar } from '../../auto/src/front/utils/app_shell_ext'
@@ -52,6 +53,7 @@ onUnmounted(() => {
 
 <template>
     <div class="flex h-full flex-col bg-background text-foreground">
+      <MenuBar :key="'MenuBar-0'" />
       <div class="flex flex-1 overflow-hidden">
         <Ribbon :key="'Ribbon-1'" />
         <LeftSidebar :key="'LeftSidebar-2'" />

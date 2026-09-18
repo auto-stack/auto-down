@@ -96,3 +96,18 @@ markdown 解析历史三镜像：engine `markdown_parser.at`（单源）/ 前端
 
 结构性视觉基线：`front/desktop/baseline/iced-slice5-structure.txt`；
 web 侧基线：e2e 08-screenshots specs。
+
+## 7. 组件复用与命令面（PLAN-070，2026-09-18）
+
+三类共享面、三种机制，替代历史上的"手工复制移植"惯例：
+
+| 共享面 | 机制 | 唯一源 | 门 |
+| --- | --- | --- | --- |
+| filetree 支撑件（tree_util/tree_icon） | auto-lang **Blueprint 包**跨包导入（`dep bps` + `use bps.navigation.filetree.<file>:`，L1 零副本） | `auto-lang/blueprints/navigation/filetree/` | `desktop/scripts/bp-gate.mjs`（副本归零 + 幽灵导入 + ×4 消费位） |
+| tabs_store | **单源 + 字节部署**：唯一源 front/auto/src/front/，desktop 副本由 `tabs-store-sync.mjs` 部署（产物非资产；跨包导入不可行的原因=`use back.api:` 位置即绑定） | front/auto/src/front/tabs_store.at | `tabs-store-sync.mjs --check`（字节等价） |
+| 命令面（actions/menubar/toolbar） | **ui_config 单源声明**（front/auto/app-config.at，Plan 418/639 形态）：桌面/VM 运行时加载 + vue 轨经 T-05 handler 交集选择性继承合成（Menu.vue 组件级参与）；MenuBar.vue 部署 + AppShell 壳顶 | front/auto/app-config.at | e2e/24-menubar.spec.ts（DOM + 保存落盘端到端） |
+
+裁定记录：jade web 的 file_tree/fileTree_store 与 status_bar 三版（desktop 值
+props / 041 store 直读 / web ext+composable）均为**同名不同物**（数据流/运行时
+惯用/功能面互异），裁定不收敛（DEBTS 070 行 + blueprints spec gotcha#2）；
+收敛重启条件=出现第三消费方或对应谱系需改。

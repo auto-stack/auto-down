@@ -262,7 +262,7 @@ AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:8199 \
 | ③ | **CALL_SPEC 返回列表 RC 接线**（`.length` 恒 0，Plan 432 D26 对偶）：导入导出返回计数面 | desktop/README §7.3 遗留①；plan-022 slice 3 D4 |
 | ④ | **tick/timer 原语**：hover/滚动延迟类交互在 VM 轨的等价物（DynamicComponent tick_interval 面） | DEBTS 059；desktop/README §2 timers 裁定 |
 | ⑤ | 交叉引用 P063 在案两项（不重复立项）：scroll_to 仅绝对偏移限制；AnchorSlot 委托层 downcast panic | docs/plans/archived/063-vm-scroll-sync-oneway-anchor.md §0/§4.2 |
-| ⑥ | **store facade VM 缺口簇**（2026-09-14 PLAN-622 精化：a/b/c 经最小语料实证当前 master 已健康，守卫语料 `plan622_store_facade_gap_tests` 钉死；**d 已修** auto.list.splice 2071；**e 已修** 捕获槽位编址 + self 特判捕获 __state）；**残余接缝（facade 切换实机新发现）**：合并单态路径 widget handler 读 store 字段解析 App_State 报 Field not found（repro：本目录 app.at facade 形态 `.tabs.find` 实机崩），伴生 `?str` 跨状态读 Invalid object ID、`&&/||` 为 VM 布尔逻辑、findIndex 静默失效——jade 侧规避形态已备（plain str 哨兵/显式空值守卫/显式索引狩猎，tabs_store.at 预备副本见 git 历史）。**✅ 闭合（2026-09-15，PLAN-067 落账）**：残余接缝经 auto-lang PLAN-624 清偿（跨状态字段解析的帧协议/值语义修复 + auto.list.splice/find_index 2071/2072；624 merge 门 smoke split+merged 双模 PASS 实证 facade 形态无 VM 缺陷）；"Field not found" 真相 = tabs_store.at 转写遗失 `active_path` 声明行（622 时代），**非 VM 缺陷**——桌面副本已补声明（PLAN-067 T-01a 基线 230dc57），app.at facade 形态 + `view_*`→`active_*` 投影对齐正式落地（§9 契约节），smoke 双模全臂绿背书 | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录；PLAN-067 §9 复审记录 |
+| ⑥ | **store facade VM 缺口簇**（2026-09-14 PLAN-622 精化：a/b/c 经最小语料实证当前 master 已健康，守卫语料 `plan622_store_facade_gap_tests` 钉死；**d 已修** auto.list.splice 2071；**e 已修** 捕获槽位编址 + self 特判捕获 __state）；**残余接缝（facade 切换实机新发现）**：合并单态路径 widget handler 读 store 字段解析 App_State 报 Field not found（repro：本目录 app.at facade 形态 `.tabs.find` 实机崩），伴生 `?str` 跨状态读 Invalid object ID、`&&/||` 为 VM 布尔逻辑、findIndex 静默失效——jade 侧规避形态已备（plain str 哨兵/显式空值守卫/显式索引狩猎，tabs_store.at 预备副本见 git 历史）。**✅ 闭合（2026-09-15，PLAN-067 落账）**：残余接缝经 auto-lang PLAN-624 清偿（跨状态字段解析的帧协议/值语义修复 + auto.list.splice/find_index 2071/2072；624 merge 门 smoke split+merged 双模 PASS 实证 facade 形态无 VM 缺陷）；"Field not found" 真相 = tabs_store.at 转写遗失 `active_path` 声明行（622 时代），**非 VM 缺陷**——桌面副本已补声明（PLAN-067 T-01a 基线 230dc57），app.at facade 形态 + `view_*`→`active_*` 投影对齐正式落地（§9 契约节），smoke 双模全臂绿背书；**▶ 记载修正（PLAN-070 T-02 实证，2026-09-18）**：find_index 的"624 已修"仅覆盖 splice/部分路径——lambda findIndex 于 store 状态路径仍静默失效（tabs(3) idx 恒 -1 复现），单源取显式索引狩猎，见 §9.5 | desktop/ext-registry.json tabs_store_ext 行；vm-smoke tabs 臂（本轮全部断言经等价实现绕行实证）；PLAN-064 §9 work 复审记录；PLAN-067 §9 复审记录 |
 | ⑦ | **原生组件外部注册 SPI**（2026-09-14 入档，同日实施）：VM/iced 富组件现为编译期闭集（aura_view_builder 硬编码臂 ×38 + View 闭集枚举 + 快照穷尽 match），无外部组件类型注册通道；提案立 `View::Custom` 透传变体 + name→factory NativeWidgetRegistry + 快照/事件配套，**autodown_editor 首迁外部件** + stream 渐进臂（对齐 engine 032 三态/TS stream→edit v1 裁定——现状 streaming 恒按 final 豁免已摘除）；terminal/code_editor/video 同款受益。**✅ 已实施（PLAN-066）**：auto-lang `auto-down-dev` 分支 72fd9d70c+31a2a1035（NativeWidgetRegistry 双入口/派发序接线/快照配套/编辑器臂迁出/流式只读门+状态条），全量新红=0，vm-smoke 16 臂 ×2 绿（worktree exe）；折 master 随 merge 通道 | docs/plans/attachments/066-auto-lang-native-widget-spi.md（提案全文+证据索引）+ docs/plans/066-auto-lang-native-widget-spi.md（实施记录 §4/§9）；aura_view_builder.rs:1727-1887/3375-3525；widget_registry.rs（.at 件注册表，原生件无通道）；Cargo.toml:132 autodown-core 跨仓 path 依赖先例 |
 
 > 提案⑥修复后：desktop/src/front/tabs_store.at 回归（git 历史 plan-064-dev
@@ -356,15 +356,28 @@ PLAN-068 增量：tab 条 041 化（§9.6）+ 正文编辑器换装 autodown_edi
 ⑤action 配置 vue 发射器不消费（本桌面以 VM 轨为主，web 面仅保 tabs_store
 共享，视图同步另行计划）。
 
-### 9.5 tabs_store 共享面口径（AC-6）
+### 9.5 tabs_store 共享面口径（PLAN-070 T-02 起退役为历史注记）
 
-桌面副本与 web 孪生（`jade-garden/front/auto/src/front/tabs_store.at`）的
-diff 仅有：头注（副本出处 + VM delta 登记）、`active_path str = ""` 声明行
-（PLAN-624 修复：622 转写遗失）、`&&/||` 链改显式空值守卫 ×3、Close 的
-findIndex→显式索引狩猎、`active_path = ""` 哨兵赋值——均为头注登记的 VM 面
-适配，业务语义零变更；本计划（PLAN-067）对该文件零改动（T-01a 基线 230dc57
-逐字节携入后未再触碰）。PLAN-068 同 zero-touch（tab 条换装纯视图消费
-`t.title/t.dirty/t.path`，基线 3adc930 起 diff 审查为空）。
+**孪生已死（2026-09-18，PLAN-070 T-02）**：tabs_store 收敛为单源 +
+字节部署——唯一源 = `jade-garden/front/auto/src/front/tabs_store.at`，
+desktop 副本由 `node scripts/tabs-store-sync.mjs` 字节部署（产物非资产，
+禁止手改副本；`--check` 门检非等价即红）。原"逐字共享 + diff 登记册"的
+手工孪生维护就此取消。
+
+历史 diff 登记册（PLAN-064/067 时代）的三处 VM 适配，处置如下：
+1. `&&/||` 值传播链 → 单源已改显式空值守卫 ×3（web 语义等价）；
+2. `active_path ?str` → 单源取 `str + ""` 哨兵（VM 已证形态；web 消费方
+   falsy/等值判断兼容，`pnpm build` 门绿）；
+3. Close `findIndex` → 单源取显式索引狩猎（**实机实证 findIndex 在 VM 轨
+   仍静默失效**：tabs(3) idx 恒 -1 → 关闭失效、重开见脏文；desktop README
+   §9 表 ⑥"624 已修 find_index 2072"的记载以本次实证推翻/修正——修复
+   覆盖面不含 lambda findIndex 于 store 状态路径）。
+
+不跨包导入（True single-file）的原因：store 内 `use back.api:` 按文件
+位置解析——desktop 副本必须留在 `desktop/src/front/` 才能命中带 VM 助手
+fn 的 `src/back/api.at` 契约副本；跨包导入实证 read_wiki 等符号调用期
+失联（status 停在 files-reloaded，PLAN-070 T-02）。位置即绑定，字节部署
+是该缝现工具链下的正确单源形态。
 
 ### 9.6 tab 条契约（PLAN-068，041 形态）
 

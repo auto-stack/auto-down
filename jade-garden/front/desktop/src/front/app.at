@@ -27,7 +27,8 @@
 
 use store: Tabs
 use status_bar: StatusBar
-use components.tree_util: flatten_tree, toggle_id
+use bps.navigation.filetree.tree_util: flatten_tree, toggle_id
+use bps.navigation.filetree.tree_icon: TreeIcon
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
 use auto.http
 
@@ -56,9 +57,6 @@ fn to_fs_nodes(nodes List) List {
 }
 
 widget App {
-    // PLAN-618 T-06 同款：package use 必须在 widget 内（顶层 parse 报
-    // LBrace 错）——TreeIcon 树行图标消费。
-    use { package: official from "./components" }
 
     msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str) }
 

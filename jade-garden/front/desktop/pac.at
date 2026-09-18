@@ -5,3 +5,9 @@
 //   （split：AUTO_VM_MERGE=0 AUTO_BACKEND=http://127.0.0.1:<jade-port>）
 name: "jade-garden-desktop"
 window: "1000x700"
+
+// PLAN-070 T-01：共享 filetree bp 依赖（auto-lang blueprints 包库；L1 零副本）。
+// 路径相对本 pac.at：主检出=autostack/auto-lang；组 worktree=down-070/auto-lang 兄弟。
+dep bps {
+    path: "../../../../auto-lang/blueprints"
+}

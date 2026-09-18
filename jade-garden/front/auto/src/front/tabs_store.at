@@ -2,13 +2,23 @@
 // Pinia → Auto store pilot (plan 011 Phase 5.1), port of the original
 // hand-written front/src/stores/tabs.ts.
 //
-// Shared VERBATIM between the two render trees (PLAN-064 T-04):
-//   - web: front/auto/src/front/ → `auto build` + sed → src/stores/auto/
-//     useTabsStore.ts, whose '@/lib/api' import is sed-rewritten to
-//     utils/tabs_store_ext.ts (the shrunken web shim face)
-//   - VM:  copy at jade-garden/front/desktop/src/front/; `use back.api:`
-//     resolves against the desktop contract copy (src/back/api.at) where
-//     the VM-side helper fns live (plain fns, no #[api])
+// 单源（PLAN-070 T-02）：本文件是 tabs_store 的唯一源。desktop 副本由
+// `node scripts/tabs-store-sync.mjs` 从本文件字节部署（GENERATED 纪律：
+// 禁止手改副本，改动只落本文件后重新部署）——PLAN-064 时代的手维护孪生
+// 取消，front/README §9.5 登记册退役。不跨包导入的原因：`use back.api:`
+// 按文件位置解析（desktop 副本须留在 desktop/src/front/ 才能解析到带 VM
+// 助手 fn 的契约副本），位置即绑定，见 T-02 证据。
+// 布线不变：
+//   - web: `auto build` + sed → src/stores/auto/useTabsStore.ts（'@/lib/api'
+//     import 被 sed 改写为 utils/tabs_store_ext.ts 薄垫面）
+//   - VM: `use back.api:` 解析到 desktop 契约副本（src/back/api.at，VM 助手
+//     fn 为普通 fn 无 #[api]）
+// 原孪生三 delta 处置（PLAN-070 T-02）：①findIndex——
+// VM 轨静默失效实机复现（tabs(3) idx 恒 -1 → 关闭失效重开见脏文；§9.5⑥
+// "624 已修"以实证推翻），单源取显式索引狩猎（web 语义等价）；②&&/|| 值传播链——
+// 三处改显式空值守卫（VM 上 &&/|| 是布尔逻辑；web 语义等价）；③?str——
+// 单源取 str+"" 哨兵（VM 已证形态；"" 即无活动 tab，web 消费方
+// falsy/等值判断兼容）。
 //
 // External surface after the six-helper disposal (PLAN-064 §5.2):
 //   - read_wiki / write_wiki: contract fn names (#[api] channel). The old
@@ -76,8 +86,11 @@ store Tabs {
         // Tab objects (Array<str> = any; the Tab interface lives in the
         // hand-written facade front/src/stores/tabs.ts).
         var tabs Array<str> = []
-        // null = no active tab (None -> null).
-        var active_path ?str = None
+        // PLAN-070 T-02：str + "" 哨兵替代 web 原 ?str/None——?str 跨状态
+        // 对象读在 624 后仍不安全（vm-smoke tabs(2) 实证：.find 的
+        // t.path == .active_path 匹配失效），plain str 为双轨已证形态；
+        // "" 即"无活动 tab"（web 侧消费方均为 falsy/等值判断，兼容）。
+        var active_path str = ""
     }
 
     // msg payloads are SINGLE-typed only (compiler limitation), so the
@@ -112,8 +125,17 @@ store Tabs {
                     if doc2 != null && existing.loaded == false {
                         existing.body = doc2.body
                         existing.originalBody = doc2.body
-                        existing.frontmatter = doc2.frontmatter || {}
-                        existing.title = doc2.frontmatter && doc2.frontmatter.title || existing.title
+                        // PLAN-070 T-02 单源：显式空值守卫（VM 上 &&/|| 是
+                        // 布尔逻辑；web 语义等价——null/"" 时保持原值）。
+                        if doc2.frontmatter != null {
+                            existing.frontmatter = doc2.frontmatter
+                            var fm_title = doc2.frontmatter.title
+                            if fm_title != null {
+                                if fm_title != "" {
+                                    existing.title = fm_title
+                                }
+                            }
+                        }
                         existing.dirty = false
                         existing.loaded = true
                     }
@@ -144,8 +166,16 @@ store Tabs {
                 if tab != null && doc != null && tab.loaded == false {
                     tab.body = doc.body
                     tab.originalBody = doc.body
-                    tab.frontmatter = doc.frontmatter || {}
-                    tab.title = doc.frontmatter && doc.frontmatter.title || tab.title
+                    // PLAN-070 T-02 单源：显式空值守卫（同上）。
+                    if doc.frontmatter != null {
+                        tab.frontmatter = doc.frontmatter
+                        var fm_title2 = doc.frontmatter.title
+                        if fm_title2 != null {
+                            if fm_title2 != "" {
+                                tab.title = fm_title2
+                            }
+                        }
+                    }
                     tab.dirty = false
                     tab.loaded = true
                 }
@@ -210,8 +240,16 @@ store Tabs {
                 if doc != null && tab.loaded == false {
                     tab.body = doc.body
                     tab.originalBody = doc.body
-                    tab.frontmatter = doc.frontmatter || {}
-                    tab.title = doc.frontmatter && doc.frontmatter.title || tab.title
+                    // PLAN-070 T-02 单源：显式空值守卫（同上）。
+                    if doc.frontmatter != null {
+                        tab.frontmatter = doc.frontmatter
+                        var fm_title3 = doc.frontmatter.title
+                        if fm_title3 != null {
+                            if fm_title3 != "" {
+                                tab.title = fm_title3
+                            }
+                        }
+                    }
                     tab.dirty = false
                     tab.loaded = true
                 }
@@ -224,7 +262,17 @@ store Tabs {
         }
 
         .Close(path) -> {
-            var idx = .tabs.findIndex(t => t.path == path)
+            // PLAN-070 T-02：显式索引狩猎——findIndex 在 VM 轨静默失效
+            // （tabs(3) 实证：关闭后重开仍在脏内容，idx 恒 -1；README §9.5
+            // ⑥"624 已修"与实机不符，以实证为准）。web 语义等价。
+            var idx = -1
+            var i = 0
+            for t in .tabs {
+                if t.path == path && idx == -1 {
+                    idx = i
+                }
+                i = i + 1
+            }
             if idx != -1 {
                 var tab = .tabs[idx]
                 var ok = true
@@ -239,7 +287,7 @@ store Tabs {
                             .active_path = .tabs[idx2].path
                         }
                         if .tabs.len() == 0 {
-                            .active_path = None
+                            .active_path = ""
                         }
                     }
                 }

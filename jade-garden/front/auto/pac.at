@@ -18,3 +18,6 @@ npm_deps: {
   "cytoscape-fcose": "^2.2.0"
   "@autodown/engine": "link:D:/autostack/auto-down/autodown/packages/engine"
 }
+
+// PLAN-070 T-06：jade web 命令系统声明入口（bp-edit 见 app-config.at）。
+ui_config: "app-config.at"

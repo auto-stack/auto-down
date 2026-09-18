@@ -1,0 +1,27 @@
+// menu_bar.at — MenuBar（PLAN-070 T-06）：jade web 命令面。
+//
+// ui_config（pac.at `ui_config: "app-config.at"`，Plan 418/639 形态）经
+// PLAN-070 T-05 组件级选择性继承注入 ActionsBlock——本组件声明全部匹配
+// handler（泄漏门参与条件，api.rs handler 交集）。行为经 ext 委托 facade
+// store（与 command_palette/ribbon 同源行为面）。桌面 067 动作集的 web
+// 子集：cards/import/export 的 web 对应物另接（T-03 注记，v1 不含）。
+widget MenuBar {
+    use {
+        fn: menuOpenWorkspace, menuReloadFiles, menuSave, menuCloseTab, menuOpenGraph from "src/front/utils/menu_bar_ext.ts"
+    }
+
+    msg { ActOpenWs, ActReload, ActSave, ActCloseTab, ActGraph }
+
+    view {
+        menubar (class: "items-center border-b") {}
+        toolbar (class: "px-2 py-1 gap-1 border-b") {}
+    }
+
+    on {
+        .ActOpenWs -> { menuOpenWorkspace() }
+        .ActReload -> { menuReloadFiles() }
+        .ActSave -> { menuSave() }
+        .ActCloseTab -> { menuCloseTab() }
+        .ActGraph -> { menuOpenGraph() }
+    }
+}

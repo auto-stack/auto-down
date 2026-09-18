@@ -32,20 +32,21 @@
 | ①-4 | toolbar | app-config.at `toolbar{}` 声明在案；**front/src/components 无 Toolbar.vue**——vue 渲染落点待复核 | app.at toolbar 配置合成（041 同款） | web 声明面有、渲染件缺席（近似反向差）；T-04 回填复核结论 | RC-B（落点复核后定） |
 | ①-5 | filetree 行家族 | file_tree.at（81L）+ file_tree_node.at（192L）+ fileTree_store（104L，api:1）——谱系 C（070 Q-7 裁定独立，DEBTS 在案） | app.at 内联 ft_rows（`flatten_tree` 纯函数 + bps.navigation.filetree tree_icon/tree_util 消费，P614/P618 纪律） | bp spec gotcha#2 在案；行形态/icon/展开交互对照 | RC-B |
 
-## 3. 桶② 只有 vue 有（VM 缺件待办）——22 件
+## 3. 桶② 只有 vue 有（VM 缺件待办）——24 件
 
 > 机制 §3：进"VM 实现待办"（lighthouse 流素材）。gallery 对本桶挂
 > **缺件红占位单元**（gate 检测 VM 臂缺席=红，即缺件即红语义）。
 > 注：desktop 六流（搜索/反链出链/闪卡/图谱/导入导出）有**流粒度内联等价物**
 > （app.at 内联视图 + vm-smoke 六流臂），但非组件级——组件级 VM 臂缺席成立。
 
-### RC-D VM 缺件（组件渲染臂待实现）——15 件
+### RC-D VM 缺件（组件渲染臂待实现）——16 件
 
 | 件 | 行数 | 耦合事实（ext=TS ext 通道引用数） | 流粒度等价物 |
 | --- | --- | --- | --- |
 | agenda_panel.at | 131 | ext:3 | desktop 闪卡流内联（LoadCards/Grade） |
 | backlinks_panel.at | 117 | ext:4（useTabsStore + fetchBacklinksSafe） | desktop 反链流内联（get_backlinks） |
 | outgoing_links_panel.at | 102 | ext:3 | desktop 出链流内联（get_outlinks） |
+| outline_panel.at | 71 | ext:3（useBlocksStore/useTabsStore）；**F-6 缺件即红实证单元（T-03：VM 直挂=ext no-op stub 静默降级）+ gallery 样板（twin 双绿）** | — |
 | unlinked_references_panel.at | 97 | ext:3 | — |
 | properties_panel.at | 267 | ext:3 | — |
 | recent_files_panel.at | 113 | ext:3 | — |
@@ -59,7 +60,7 @@
 | graph_sidebar.at | 162 | ext:3 | desktop 图谱流内联（get_graph） |
 | graph_controls.at | 216 | ext:4（+styleblock 伴生） | — |
 
-### 其他修复类（桶②内细分）——7 件
+### 其他修复类（桶②内细分）——8 件
 
 | 件 | 行数 | 修复类 | 说明 |
 | --- | --- | --- | --- |
@@ -67,6 +68,7 @@
 | main_area.at | 98 | RC-C 组装级 | 同上（编辑区装配，TabStrip 挂载点） |
 | left_sidebar.at | 53 | RC-C 组装级 | 同上 |
 | right_sidebar.at | 53 | RC-C 组装级 | 同上 |
+| ribbon.at | 118 | RC-C 组装级 | 壳面家具（左 activity bar，lucide 图标轨 + 主题触发）；desktop 无对应面（desktop toolbar ≠ ribbon——同名不同物注记） |
 | graph_page.at | 202 | RC-C 组装级 | 同上（图谱页装配） |
 | editor_tab.at | 211 | RC-E 引擎对拍 | **Q-2 裁定（默认）**：AutoDownEditor 引擎对拍（autodown-engine TS ↔ autodown-core Rust）归 autodown lighthouse 流；gallery 只挂状态占位单元 |
 | graph_view.at | 141 | RC-F 第三方边界 | cytoscape 内核不比；图谱视图面（宿主面）入 L1，VM 侧实现形态（native/canvas）单列待办 |
@@ -96,8 +98,8 @@ web 渲染件落点复核（已在桶①注记，不构成独立反向补 vue �
 | --- | --- | --- |
 | RC-A | 配方先行：style recipe/token 化后再 gate（PLAN-607/635/637 机制） | 与 RC-B 叠加（status_bar 等 token 密集面） |
 | RC-B | 结构对齐：双端都有，结构/类差修复后锁基线 | 桶① 5 面 |
-| RC-C | 组装级：L3 边界（app 层既有基建盖），L1 挂占位 | 5 |
-| RC-D | VM 缺件：渲染臂待实现（lighthouse 素材），gallery 挂缺件红占位 | 15 |
+| RC-C | 组装级：L3 边界（app 层既有基建盖），L1 挂占位 | 6 |
+| RC-D | VM 缺件：渲染臂待实现（lighthouse 素材），gallery 挂缺件红占位 | 16 |
 | RC-E | 引擎对拍：autodown lighthouse 流 | 1 |
 | RC-F | 第三方边界：内核不比，宿主面单列 | 1 |
 

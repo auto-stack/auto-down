@@ -176,7 +176,7 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
 - **三桶清单（单元台账）**：`docs/plans/attachments/072-inventory.md`——
   29 web widget（↔29 部署 SFC 对拍）×desktop 3 件实勘。桶①双端都有 5 面
   （status_bar/tab 条/menubar/toolbar/filetree 行家族）；桶②只有 vue 有
-  22 件（RC-D VM 缺件 15 / RC-C 组装级 5 / RC-E 引擎对拍 1 / RC-F 第三方
+  24 件（RC-D VM 缺件 16 / RC-C 组装级 6 / RC-E 引擎对拍 1 / RC-F 第三方
   边界 1）；桶③只有 vm 有 **空桶**。修复类预估 RC-A..F 定义在册。
 - **L1 gallery**：`jade-garden/front/component-gallery/`——双臂隔离面：
   vue 臂挂真件部署 SFC（fixture API shim，截图基线 e2e/baselines/）+

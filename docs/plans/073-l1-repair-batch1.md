@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-073
-status: execution_done        # drafting → executing → execution_done → reviewed → archived
+status: reviewed              # drafting → executing → execution_done → reviewed → archived
 feature_name: l1-repair-batch1（桶① 5 面配方化与双端对齐）
 author: [zhaopuming]
 created_at: 2026-09-18
@@ -167,6 +167,26 @@ gallery 基建（units.mjs/gate.mjs/e2e baselines，5 样板含 status_bar/tabs
   e2e 6 passed（03-tabs/24-menubar/08-screenshots）；vm-smoke 双模绿
   （merged 16 项+split tabs 臂）；SD-01 §8.6 勾记在分支 | blockers: 无 |
   next: review`。
+- 2026-09-18 review（实现会话内复审，独立性受限声明在案；验收全部自工件
+  与命令重放重构，未采信执行期摘要）：`stage: review | plan_id: PLAN-073 |
+  plan_revision: 1 | outcome: pass | reviewed_commit: 504d0a5397ed573bac660
+  ed7eec14f6af0d742f0（plan-073-dev @down-073/auto-down，worktree 零脏）
+  | base_commit: 6dd8bfb8f4c714114f84778f26c34833f55dd01a（master） |
+  dependency_revisions: down-073/auto-lang @520a96958af831205b887a7331387
+  ba225ba2444（detached pinned；auto.exe v0.4.2-1140 同源） | spec_inputs:
+  jade-garden/ARCHITECTURE.md §8.6（SD-01，diff 冻结于 reviewed commit）+
+  072-inventory §2 + 073-literal-style-inventory.md | acceptance_results:
+  AC-01 pass（gate 全新复跑双臂绿 6 单元+基线 6 张 git ls-files 在册）/
+  AC-02 pass（三面 grep 11px|zinc 全 0 重放）/AC-03 pass（073 附件 §1 落点
+  结论+072-inventory ①-4 勾记双工件在库）/AC-04 pass（pnpm build 绿+**全量
+  front e2e 24/24**+vm-smoke 双模各 16 项绿——复审口径严于执行期 3 spec）/
+  AC-05 pass（§8.6 勾记在 reviewed commit；账本 P073-x 未发布 ✓ 归 merge）
+  | findings: 无阻断项；F-R1(info) §8.6 引用的 073 附件在 master 账面
+  （bookkeeping），merge 后自然统一；F-R2(info) e2e 前端端口 13100 落本机
+  排除段为宿主瞬态，复跑需本地端口便利（已记 §8 偏差） | evidence: 本记录
+  命令结果+gallery gate 输出（6 单元断言+缺件红占位可见）+e2e 24 passed
+  截行+vm-smoke 双模 ✓ 计数；断言非空性旁证=执行期 vue 臂曾在 dist 损坏时
+  变红并恢复 | next: merge`。
 
 ### 环境与偏差记录（work 执行期）
 

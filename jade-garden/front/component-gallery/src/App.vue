@@ -9,7 +9,7 @@ import BacklinksPage from './pages/BacklinksPage.vue'
 import OutgoingLinksPage from './pages/OutgoingLinksPage.vue'
 import UnlinkedReferencesPage from './pages/UnlinkedReferencesPage.vue'
 import MenubarPage from './pages/MenubarPage.vue'
-import FiletreePage from './pages/FiletreePage.vue'master
+import FiletreePage from './pages/FiletreePage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -83,7 +83,7 @@ function select(u: string) {
         :class="unit === 'filetree' ? 'text-foreground' : 'text-zinc-400'"
         @click="select('filetree')"
       >
-        filetreemaster
+        filetree
       </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
@@ -94,6 +94,6 @@ function select(u: string) {
     <OutgoingLinksPage v-else-if="unit === 'outgoing_links'" />
     <UnlinkedReferencesPage v-else-if="unit === 'unlinked_references'" />
     <MenubarPage v-else-if="unit === 'menubar'" />
-    <FiletreePage v-else-if="unit === 'filetree'" />master
+    <FiletreePage v-else-if="unit === 'filetree'" />
   </div>
 </template>

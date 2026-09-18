@@ -360,6 +360,14 @@ widget App {
             .ft_rows.push({ label: "方法", guides: [], has_kids: true, open: false, is_dir: true, id: "wiki/方法" })
             .ft_rows.push({ label: "另页.ad", guides: [], has_kids: false, open: false, is_dir: false, id: "wiki/另页.ad" })
             .ft_count = 3
+            .olp_rows.push({ target_title: "方法", target_path: "wiki/方法.ad", exists: true })
+            .olp_rows.push({ target_title: "缺失页", target_path: "", exists: false })
+            .olp_count = 2
+            .olp_exists = 1
+            .olp_has = true
+            .ul_rows.push({ page_path: "wiki/另页.ad", context: "这一段提到 引言 的概念但从未写成链接" })
+            .ul_count = 1
+            .ul_has = true
         }
 
         .Select(u) -> {
@@ -377,14 +385,6 @@ widget App {
             if will_open {
                 .ft_open_dir = id
                 .ft_count = 4
-            .olp_rows.push({ target_title: "方法", target_path: "wiki/方法.ad", exists: true })
-            .olp_rows.push({ target_title: "缺失页", target_path: "", exists: false })
-            .olp_count = 2
-            .olp_exists = 1
-            .olp_has = true
-            .ul_rows.push({ page_path: "wiki/另页.ad", context: "这一段提到 引言 的概念但从未写成链接" })
-            .ul_count = 1
-            .ul_has = true
             }
             if !will_open {
                 .ft_open_dir = ""

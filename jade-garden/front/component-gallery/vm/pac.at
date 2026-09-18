@@ -1,0 +1,21 @@
+// pac.at — component-gallery VM 臂（PLAN-072 T-01）。
+//
+// L1 parity 隔离面的 VM 轨：单元 twin 页（值 props / root 内联行）+
+// root fixture 投影，`auto run -r vm` boot，MCP autoui_state/snapshot
+// 断言（gate 骨架见 ../scripts/，T-02）。隔离面原则：无 app 全局态、
+// 无后端依赖。
+//
+// 自包含（T-01 实测裁定，偏差已记计划 §7）：不声明 dep——实测声明
+// jadeauto/bps 即被构建层急切物化为 junction（wt-guard 违例类）并全量
+// 扫描编译（bps 的 dashboard/overview 包 reference/components 缺目录 →
+// vue 构建中止；jadeauto 全量 38 件 + ext 拷贝在深路径断裂）。真件零副
+// 本消费改由 vue 臂 vite alias 直挂部署 SFC（../README.md 架构节）；
+// `use jadeauto.front.<widget>` 通道在 T-02 作为实验探针另测。
+name: "jade-component-gallery-vm"
+title: "Jade Component Gallery VM"
+title_zh: "玉圃组件画廊 VM"
+version: "0.1.0"
+scene: "ui"
+render: "vue"
+window: "1200x800"
+shadcn: off

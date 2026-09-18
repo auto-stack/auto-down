@@ -949,6 +949,18 @@
           "PLAN-071"
         ],
         "superseded_by": null
+      },
+      {
+        "id": "P072-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "jade-garden L1 三桶盘点与组件 gallery 双臂隔离面（parity-inventory-l1-gallery）",
+        "content": "- **三桶台账**：docs/plans/attachments/072-inventory.md——29 web widget（↔29 部署 SFC 一一对拍）×desktop 3 件实勘。桶①双端都有 5 面（status_bar/tab 条/menubar/toolbar/filetree 行家族，toolbar=声明面有、web 渲染件待复核）；桶②只有 vue 有 24 件（RC-D VM 缺件 16/RC-C 组装级 6/RC-E 引擎对拍 1/RC-F 第三方边界 1）；桶③只有 vm 有=空桶。修复类 RC-A..F 定义在册；编辑器单元引擎对拍归 autodown lighthouse 流（Q-2）。\n- **L1 gallery 双臂**：jade-garden/front/component-gallery/——vue 臂真件部署 SFC 直挂（vite alias @→front/src 零副本 + fixture API shim，playwright 截图基线 e2e/baselines/）；VM 臂自包含 twin 项目（`auto run -r vm` + MCP autoui_state/snapshot 断言）；gate=scripts/gate.mjs（单元配置 scripts/units.mjs）。样板上限四单元双绿：status_bar（纯展示）/tab_strip（交互）/backlinks（数据绑定）/outline（列表）；command_palette 缺件红占位在册。\n- **实测裁定（gallery README F-1..F-6）**：子件子树对 MCP 快照不可见（当前 master 复测成立）；computed `>` 作 if 条件不进分支；f-string 内插 computed 不解析；dyn 双轨可用；blocks.ts activeTab watch 原地改引用失活（DEBTS 候选，归 app 层/修复循环）；缺件即红=ext no-op stub 静默降级（非崩溃，红信号=stub WARN+数据投影空）。\n- **dep 物化裁定**：pac.at 声明 dep 即被构建层急切物化为 junction（wt-guard 违例类）并全量扫描编译；`auto run` 走编译器 pac.at 直读不物化。gallery 因此自包含无 dep；真件零副本消费走 vue 臂 vite alias。\n- 持久裁定全文：jade-garden/ARCHITECTURE.md §8.6 三桶清单与 L1 gallery（PLAN-072 SD-01）。",
+        "file": "jade-garden/ARCHITECTURE.md",
+        "related": [
+          "PLAN-072"
+        ],
+        "superseded_by": null
       }
     ],
     "designs": [
@@ -2290,6 +2302,18 @@
         "file": "docs/plans/archived/071-jade-garden-slim-down.md",
         "related": [
           "PLAN-071"
+        ],
+        "superseded_by": null
+      },
+      {
+        "id": "P072-2",
+        "section": "reviews",
+        "status": "stable",
+        "title": "PLAN-072 — 验收与复审收据（reviewed pass 0e2542e；F-R1 覆盖修复后重审 AC-01 pass）",
+        "content": "- 验收：AC-01 三桶清单在案+交叉校验（29 widget 逐一在册程序化对账，桶①5 面/桶②24/桶③空桶，九项计数断言全过）；AC-02 gallery 双轨可跑（vue build+playwright 真件渲染断言+VM boot 净+MCP 断言）；AC-03 双端 gate 骨架配置化+样板四单元双绿+command_palette 缺件红占位；AC-04 ARCHITECTURE §8.6 落笔（账本 P072-x 归本条目）。\n- 回归门：front e2e 全量 24/24 passed（worktree 内实跑）；gallery gate 双臂 fresh 复跑绿。\n- findings：F-R1 三桶账 27/29（outline_panel/ribbon 未归桶）→0e2542e 补全重审 pass；F-R2 gallery package.json 内嵌主检出 engine 绝对路径 link（vm-smoke MAIN_REPO 同款先例，informational）；F-R3 worktree 清理清单（gallery/gen+node_modules pnpm 链接、复制的 engine dist/back exe/tmp fixture，均 gitignored）→merge 清理执行。\n- 复审限制声明：实现会话内按工件重建裁定（diff 范围/程序化对账/负测复验，复审视角重执行）。\n- 归档：docs/plans/archived/072-parity-inventory-l1-gallery.md。",
+        "file": "docs/plans/archived/072-parity-inventory-l1-gallery.md",
+        "related": [
+          "PLAN-072"
         ],
         "superseded_by": null
       }

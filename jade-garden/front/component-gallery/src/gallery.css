@@ -1,0 +1,4 @@
+/* gallery.css — tailwind 单源入口：直接消费 front 的主题/基样式
+   （CSS vars + @tailwind 指令），utilities 由本 harness 的 content 配置
+   （真件 SFC + ext 类串）生成。 */
+@import '../../src/assets/index.css';

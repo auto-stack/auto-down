@@ -79,6 +79,36 @@ export const UNITS = [
     },
   },
   {
+    id: 'outgoing_links',
+    title: '出链行（桶②·RC-D 批次1·PLAN-074 下沉）',
+    vue: {
+      url: '/?unit=outgoing_links',
+      ready: '[data-unit="outgoing_links"] li',
+      needles: ['方法', '缺失页', '#abc1234'],
+      needleSelector: '[data-unit="outgoing_links"] li',
+    },
+    vm: {
+      actions: [{ button: 'outgoing_links' }],
+      state: { olp_count: '2', olp_exists: '1' },
+      snapshot: ['unit=outgoing_links rows:2 exists:1', '方法', '缺失页'],
+    },
+  },
+  {
+    id: 'unlinked_references',
+    title: '未链引用行（桶②·RC-D 批次1·PLAN-074 下沉）',
+    vue: {
+      url: '/?unit=unlinked_references',
+      ready: '[data-unit="unlinked_references"] li',
+      needles: ['wiki/另页.ad', '提到'],
+      needleSelector: '[data-unit="unlinked_references"] li',
+    },
+    vm: {
+      actions: [{ button: 'unlinked_references' }],
+      state: { ul_count: '1' },
+      snapshot: ['unit=unlinked_references rows:1', 'wiki/另页.ad', '从未写成链接'],
+    },
+  },
+  {
     id: 'command_palette',
     title: '命令面板（桶②·RC-D 缺件红占位）',
     missing: true,

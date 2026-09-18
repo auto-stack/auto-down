@@ -1,16 +1,17 @@
 <!-- UnlinkedReferencesPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { tabTitle, tabPath, fetchUnlinkedSafe } from '../../auto/src/front/utils/unlinked_references_panel_ext'
+import { highlight_context } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 
 const tabsStore = useTabsStore()
 
+import { get_unlinked_refs } from '../../auto/src/front/utils/unlinked_references_panel_ext'
 
 const refs = ref<any[]>([])
 const loading = ref<boolean>(false)
 
-const watch_key = computed<any>(() => tabPath(tabsStore.activeTab))
+const watch_key = computed<any>(() => tab_path(tabsStore.activeTab))
 const show_loading = computed<boolean>(() => loading.value)
 const show_list = computed<boolean>(() => !loading.value && refs.value.length > 0)
 const show_empty = computed<boolean>(() => !loading.value && refs.value.length === 0)
@@ -21,16 +22,20 @@ const emit = defineEmits<{
   OpenRef: [any]
 }>()
 
-watch(watch_key, () => {
+watch(watch_key, async () => {
 
-  let title = tabTitle(tabsStore.activeTab);
+  let title = tab_title(tabsStore.activeTab);
   if (title == '') {refs.value = [];
   }
   if (title != '') {loading.value = true;
-  let p = fetchUnlinkedSafe(title);
-  p.then((res: any) => { refs.value = res;
-  loading.value = false;
-   });
+  try {let res = await get_unlinked_refs(title);
+  let rows = [];
+  for (const r of res.refs) {rows.push({ page_path: r.page_path, html: highlight_context(r.context, r.matched_text) });
+  }
+  refs.value = rows;
+  } catch (e) {refs.value = [];
+  } finally {loading.value = false;
+  }
   }
 }, { immediate: true })
 
@@ -38,6 +43,18 @@ function OpenRef(r: any): void {
   tabsStore.open(r.page_path);
 
   emit('OpenRef', r)
+}
+
+function tab_title(tab: any): string {
+  if (tab == null) {return '';
+  }
+  return tab.title;
+}
+
+function tab_path(tab: any): string {
+  if (tab == null) {return '';
+  }
+  return tab.path;
 }
 
 

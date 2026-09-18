@@ -6,6 +6,8 @@ import StatusBarPage from './pages/StatusBarPage.vue'
 import OutlinePage from './pages/OutlinePage.vue'
 import TabStripPage from './pages/TabStripPage.vue'
 import BacklinksPage from './pages/BacklinksPage.vue'
+import OutgoingLinksPage from './pages/OutgoingLinksPage.vue'
+import UnlinkedReferencesPage from './pages/UnlinkedReferencesPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -51,11 +53,29 @@ function select(u: string) {
       >
         backlinks
       </button>
+      <button
+        data-unit-tab="outgoing_links"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'outgoing_links' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('outgoing_links')"
+      >
+        outgoing_links
+      </button>
+      <button
+        data-unit-tab="unlinked_references"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'unlinked_references' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('unlinked_references')"
+      >
+        unlinked_references
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
     <OutlinePage v-else-if="unit === 'outline'" />
     <TabStripPage v-else-if="unit === 'tab_strip'" />
     <BacklinksPage v-else-if="unit === 'backlinks'" />
+    <OutgoingLinksPage v-else-if="unit === 'outgoing_links'" />
+    <UnlinkedReferencesPage v-else-if="unit === 'unlinked_references'" />
   </div>
 </template>

@@ -1,12 +1,15 @@
 // outgoing_links_panel_ext.ts — hand-written TS extension for
 // outgoing_links_panel.at.
 //
-// Only what the DSL genuinely cannot express lives here:
-// - the tabs/fileTree store facade re-exports (dual-resolution shim — a
-//   `use` path cannot leave the auto project's src/),
-// - try/catch around the outlinks API (the DSL has no try/catch/finally),
+// PLAN-074 T-03 sink: tabFileStem (string math) and the fetchOutlinksSafe
+// orchestration moved INTO the .at (module fn + watch try/catch/finally
+// around the `use back.api:` call). What stays here is exactly the web
+// host face:
+// - the tabs-store facade re-export (dual-resolution shim),
+// - the get_outlinks contract alias (deploy sed rewrites the emitted
+//   '@/lib/api' import onto this shim; tabs_store_ext read_wiki precedent),
 // - the whole openTarget flow (confirm + early return + three sequential
-//   awaits; the DSL has no async/await/early return).
+//   awaits — window/store host face the DSL cannot express).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
@@ -17,26 +20,14 @@ import { useFileTreeStore } from '../../../../src/stores/fileTree'
 
 export { useTabsStore }
 
-/** Original: currentTitle = tabs.activeTab?.path ? fileStem(path) : ''. */
-export function tabFileStem(tab: { path: string } | null): string {
-  if (!tab) return ''
-  const name = tab.path.split('/').pop() || tab.path
-  const idx = name.lastIndexOf('.')
-  return idx > 0 ? name.slice(0, idx) : name
+/** Contract-name alias (see PLAN-064 T-04's read_wiki). Returns the
+ *  { title, links } envelope; the .at watch reads `.links` and maps
+ *  failures to the empty list in its own catch. */
+export async function get_outlinks(title: string): Promise<{ title: string; links: Outlink[] }> {
+  return getOutlinks(title)
 }
 
-/** getOutlinks that never rejects (the DSL has no try/catch); the
- *  original's catch branch maps to a silent empty-array return. */
-export async function fetchOutlinksSafe(title: string): Promise<Outlink[]> {
-  try {
-    const res = await getOutlinks(title)
-    return res.links
-  } catch (e) {
-    return []
-  }
-}
-
-/** Original openTarget, verbatim: confirm + early return + sequential
+/** Original openTarget, verbatim: confirm + early return + three sequential
  *  awaits cannot be expressed in the DSL (no async/await/early return). */
 export async function openOutlinkTarget(link: Outlink): Promise<void> {
   const tabs = useTabsStore()

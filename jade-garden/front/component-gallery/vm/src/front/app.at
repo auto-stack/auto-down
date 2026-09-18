@@ -36,6 +36,17 @@ widget App {
         // —— fixture：backlinks 面（数据绑定样板：行 + 计数投影）——
         var bl_rows = []
         var bl_count int = 0
+        // —— fixture：outgoing_links 面（PLAN-074 T-03 twin：exists 双态行）
+        // VM 实测（T-01 同款纪律）：数值/布尔分支开关全落 model 字段。
+        var olp_rows = []
+        var olp_count int = 0
+        var olp_exists int = 0
+        var olp_has bool = false
+        // —— fixture：unlinked_references 面（PLAN-074 T-03 twin：page_path
+        // + context 文本行；html 高亮属 vue 显示面，twin 不镜像）——
+        var ul_rows = []
+        var ul_count int = 0
+        var ul_has bool = false
     }
 
     computed {
@@ -43,10 +54,14 @@ widget App {
         show_outline => .unit == "outline"
         show_tab_strip => .unit == "tab_strip"
         show_backlinks => .unit == "backlinks"
+        show_outgoing_links => .unit == "outgoing_links"
+        show_unlinked_references => .unit == "unlinked_references"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
         bl_marker => f"unit=backlinks count:${.bl_count}"
+        olp_marker => f"unit=outgoing_links rows:${.olp_count} exists:${.olp_exists}"
+        ul_marker => f"unit=unlinked_references rows:${.ul_count}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -71,6 +86,14 @@ widget App {
                 }
                 button (text: "backlinks", variant: "text") {
                     onclick: .Select("backlinks")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "outgoing_links", variant: "text") {
+                    onclick: .Select("outgoing_links")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "unlinked_references", variant: "text") {
+                    onclick: .Select("unlinked_references")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -134,6 +157,47 @@ widget App {
                     }
                 }
             }
+            if .show_outgoing_links {
+                col (class: "flex-col p-3") {
+                    col (class: "w-72 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Outgoing links" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .olp_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-0.5",
+                                for o in .olp_rows {
+                                    dyn (.li_tag) {
+                                        key: o.target_title,
+                                        class: "cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-zinc-800",
+                                        text o.target_title
+                                    }
+                                }
+                            }
+                        }
+                        text .olp_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_unlinked_references {
+                col (class: "flex-col p-3") {
+                    col (class: "w-72 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Unlinked References" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .ul_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-1",
+                                for r in .ul_rows {
+                                    dyn (.li_tag) {
+                                        key: r.page_path,
+                                        class: "cursor-pointer rounded px-1.5 py-1 text-xs text-zinc-800",
+                                        text r.page_path
+                                        text r.context
+                                    }
+                                }
+                            }
+                        }
+                        text .ul_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -149,6 +213,14 @@ widget App {
             .ts_active = "wiki/引言.ad"
             .bl_rows.push({ source_title: "另页", source_path: "wiki/另页.ad", context: "链接到 fixture 页" })
             .bl_count = 1
+            .olp_rows.push({ target_title: "方法", target_path: "wiki/方法.ad", exists: true })
+            .olp_rows.push({ target_title: "缺失页", target_path: "", exists: false })
+            .olp_count = 2
+            .olp_exists = 1
+            .olp_has = true
+            .ul_rows.push({ page_path: "wiki/另页.ad", context: "这一段提到 引言 的概念但从未写成链接" })
+            .ul_count = 1
+            .ul_has = true
         }
 
         .Select(u) -> {

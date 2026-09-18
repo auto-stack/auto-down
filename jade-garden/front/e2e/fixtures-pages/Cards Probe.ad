@@ -1,0 +1,13 @@
+---
+updated_at: 2026-08-30T14:51:47
+---
+
+# Cards Probe ^cards-probe
+
+- 探针问题：1+1=? #card ^probe-c1
+  card-ease-factor:: 2.22
+  card-last-interval:: 6.0
+  card-last-reviewed:: 2026-09-14
+  card-last-score:: 3
+  card-next-schedule:: 2026-09-20
+  card-repeats:: 2

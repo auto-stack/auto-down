@@ -61,6 +61,14 @@ References, Properties** (right sidebar) plus Search/Recent (left sidebar).
   `No cards due for review` empty state against the card-less fixture, and
   `12-flashcards.spec.ts` covers the with-cards review flow.
 
+## Test assets (`fixtures-pages/`)
+
+`fixtures-pages/` holds tracked wiki-page fixtures that are test material,
+not product content (PLAN-071 SRS 入口收敛). `Cards Probe.ad` is the manual
+SRS probe page (one `#card` block with full schedule properties) kept for
+ad-hoc srs-endpoint probing; the automated specs create their card documents
+in-test via the API (see the 09–12 caveats below).
+
 ## Known app-side gaps pinned by this baseline
 
 - **OutlinePanel is always empty.** Nothing in the app ever calls

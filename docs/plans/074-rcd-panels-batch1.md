@@ -211,6 +211,14 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
   （info 级，不阻断）。
 - 主检出 `?? jade-garden/front/tmp/`（他 session scratch）维持不并入；
   本批次自身探针（front/tmp/p074-sinkprobe）已清，worktree 树净。
+- **master 漂移注记（执行期并发）**：本批次执行期间 master 由 `b92f7f6`
+  前移至 `ed100dd`（PLAN-073 落地合并 + auto-musk-dev 并入，他 session）。
+  plan-074-dev 五提交基于 b92f7f6 未重写；review/merge 时预期冲突面：
+  `component-gallery/scripts/units.mjs`（073 加 2 单元/本批次加 2 单元，
+  数组并集即解）与 `ARCHITECTURE.md §8.6`（073 勾记 vs 本批次新 bullet）；
+  合并后 gallery 单元数=8（本档 §8.6 的"6 单元/8 基线"为分支态计数，
+  合并态按 8 单元刷新）；README 债表 D 系列为本批次刻意未触面（P-6 建议
+  合并后转录为 D-6）。
 
 ## 9. 待澄清事项
 

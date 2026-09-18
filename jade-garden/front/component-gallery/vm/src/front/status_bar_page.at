@@ -9,15 +9,19 @@
 //
 // class: 而非 style:：双轨同构（demo 双轨语料主导形态；VM 经 tailwind
 // parser 消费，desktop README §1「widget DSL → iced」行）。
+//
+// PLAN-073 T-01 随 desktop/src/front/status_bar.at 配方化同步（derived
+// 镜像纪律）：text-[11px] → text-xs，zinc-700/500 → 语义 token
+// text-foreground/text-muted-foreground（双端对照修复，AC-02）。
 widget StatusBarPage (status: str = "", root_path: str = "", bl: int = 0, ol: int = 0) {
     view {
         col (class: "w-full shrink-0") {
             col (class: "h-px w-full bg-zinc-200")
             row (class: "h-6 items-center bg-zinc-100 shrink-0 w-full gap-3 px-2") {
-                text .status { class: "text-[11px] text-zinc-700" }
-                text .root_path { class: "text-[11px] text-zinc-500" }
-                text f"bl:${.bl}" { class: "text-[11px] text-zinc-500 ml-auto" }
-                text f"ol:${.ol}" { class: "text-[11px] text-zinc-500" }
+                text .status { class: "text-xs text-foreground" }
+                text .root_path { class: "text-xs text-muted-foreground" }
+                text f"bl:${.bl}" { class: "text-xs text-muted-foreground ml-auto" }
+                text f"ol:${.ol}" { class: "text-xs text-muted-foreground" }
             }
         }
     }

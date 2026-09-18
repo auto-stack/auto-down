@@ -20,6 +20,13 @@
 //   24f0dd16, gap 20 fix).
 // - This widget has no view events, so it declares no msg/on blocks; the
 //   backlink-count fetch lives entirely in the watch block.
+//
+// PLAN-073 T-01 配方化（RC-A；清单 073-literal-style-inventory.md §4）：
+// footer 类串收敛为命名 recipe sb_footer（class: bare-ident 消费，编译期
+// 脱糖，双轨同源——附件 §3 P-1/P-3 实证）；字面任意值字号换标准 token
+// text-xs（原值与被替换字面全录清单 §2，AC-02 grep 本文件零命中）。
+// max-w-[240px] 与 dirty 琥珀色不在 AC-02 字面范围，维持原样（债表在册）。
+style sb_footer = "flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-xs text-muted-foreground"
 
 widget StatusBar {
     use {
@@ -51,7 +58,7 @@ widget StatusBar {
 
     view {
         footer {
-            class: "flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[11px] text-muted-foreground",
+            class: sb_footer,
             div {
                 class: "flex items-center gap-3",
                 span {

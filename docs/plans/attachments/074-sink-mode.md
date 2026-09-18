@@ -81,19 +81,57 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
   后缀比较域）或 store title 权威，禁止在 VM 轨对 CJK 域做 find/slice
   索引算术。**坑表随 gallery README 债表 D 系列维护。
 
-## 3. 步骤与坑清单（T-04 定稿，占位）
+## 3. 步骤与坑清单（T-04 定稿）
 
-- 步骤：①逐 fn 分类（§1 口径）→ ②沉 .at（模块 fn/watch 编排，P-2/P-3
-  形态）→ ③契约通道接线（P-4：use 行 + watch try/catch/finally + ext
-  薄别名 + 部署 sed 第二表达式）→ ④再生成部署 SFC → ⑤gallery 双臂 gate
-  → ⑥05-panels 抽验。
-- 坑清单：G-1 撞名（P-5）；G-2 VM 字符串分歧（P-6）；G-3 .at 无跨文件
-  导入（links.at 头注在案）→ 重复 fn 随件各沉、模式文档登记不抽象共享
-  模块；G-4 `link` 为 DSL 元素关键字（for 循环变量禁用，既有头注）；
-  G-5 ext 同名优先：use 导入 fn 若与 ext 导出同名，手写 ext 赢（Plan 522
+**步骤**（逐件流水）：
+
+1. 逐 fn 分类（§1 口径），记入本档 §1 表。
+2. 沉 .at：纯 fn → widget 文件顶层模块 fn（find+递归末段形态 P-2、
+   f-string 数学内插 P-3、null 显式守卫）；fetch 编排 → watch 块
+   try/catch/finally（catch=原吞错映射，finally=loading 复位）。
+3. 契约通道接线：.at 顶 `use back.api: <fn>`；ext 增 snake 契约别名
+   （薄转发手写客户端）；`stubs/gen_lib_api.ts` 增同名 gen stub
+   （`assert-api-stub-sync` 门 B/C 要求 cp stub → gen 两处镜像位）。
+4. 再生成部署 SFC：`auto build`（须用含 PLAN-074 补丁的编译器）→ sed
+   双表达式部署（ext import + `@/lib/api` 两条都改写到 ext shim）。
+5. gallery 双臂 gate（新单元：vue 页 + shim 路由 + VM twin + units.mjs
+   登记 + `--update-snapshots` 建基线）；`node scripts/gate.mjs` 全绿。
+6. 回归收口：`pnpm build`（front vue-tsc）+ `pnpm test:e2e`（05-panels
+   等 web 行为面）+ desktop vm-smoke 双模快验。
+
+**坑清单**：
+
+- **G-1 撞名（P-5）**：模块 fn 局部名避开本件 model/computed 名
+  （state-ref 改写误发 `local.value`；R013 检查不覆盖 fn 体内局部名）。
+- **G-2 VM 字符串语义分歧（P-6）**：非 ASCII 域 find/slice/char_at
+  （字节系）× length（字符系）混用双轨不可移植；VM 轨标题派生走
+  tabs_store `strip_ext`（ASCII 后缀域）或 store title 权威。
+- **G-3 无跨文件导入**：.at 模块间 import 缺位（links.at 头注在案）→
+  tab_file_stem 等重复 fn 随件各沉，模式表登记，不抽象共享模块。
+- **G-4 关键字撞名**：`link` 为 DSL 元素关键字，循环变量禁用（既有）。
+- **G-5 ext 同名优先**：use 导入 fn 与 ext 导出同名时手写赢（Plan 522
   发射前过滤）→ 沉 fn 后必须从 ext 删除同名导出，否则 SFC 继续走旧 ext。
+- **G-6 编译器通道补丁（本批次落 auto-lang `plan-074-dev`，40d7488 +
+  899aa2e9c）**：src/front 兄弟生成臂 bare-regen 丢 fn 池（同文件模块 fn
+  + use 导入池，Plan 522 只补了 components//bps 与 dep 通道）；watch 块体
+  不入 api 调用扫描；api walker 无 Try 臂。**未修面**：components//bps
+  通道的同文件模块 fn 同病（无消费方，待后续编译器计划收口）。旧版
+  编译器（≤1140）跑本批次 .at 必现 TS2304 类红——regen 须用补丁版。
+- **G-7 PLAN-646 gen 支持件（环境项）**：编译器 ≥646 的 `auto build` 在
+  gen main.ts 追加 overlay 动态 import 但不落 `auto-select/overlay.ts`
+  与 `vite-env.d.ts`——worktree regen 后手工补两文件（gitignored 环境件，
+  不入 git；`src/src` 镜像在 build 前刷新，build 后再刷一次）。
+- **G-8 部署 sed 双表达式**：`.at` 头注 regen 命令已更新为
+  `-e ext -e '@/lib/api'` 双改写；漏 `@/lib/api` 臂 = TS2304。
 
-## 4. desktop 消费登记（T-04 定稿，占位）
+## 4. desktop 消费登记（T-04 定稿；装配归 L3，本批次仅登记）
 
-（四面板 app 挂载形态逐件裁定登记：内联 vs 组件；P614/P618 约束注记；
-装配归 L3，本批次仅登记。）
+| 面板 | desktop 现状 | 挂载裁定（登记） | 约束注记 |
+| --- | --- | --- | --- |
+| backlinks | app.at 反链流内联（.OpenFile 直拉 get_backlinks） | **组件挂载**为本批后首选：逻辑已 .at 单源（模块 fn + watch 编排），desktop 侧复用=编译消费本 .at（`use` 通道同款）；内联流在 L3 装配前维持现状 | F-1：子件子树对 MCP 快照不可见——装配后断言/交互面走 root 投影；G-2：VM 轨标题派生禁 CJK find/slice 索引算术（走 store title 权威） |
+| outgoing_links | app.at 出链流内联（get_outlinks） | 同 backlinks | openTarget 桥（confirm）VM 侧语义缺口在案（api.at 助手层同款偏差登记路径）；P614 for-in 参数列表零迭代 → VM 消费侧行遍历用 while+索引纪律 |
+| unlinked_references | desktop 无对应流 | **组件挂载**（唯一路径）；数据通道 #[api] get_unlinked_refs 双端契约已在 | 高亮 html 为 vue 显示面（regex ext 桥），VM twin 不镜像（本批次 units.mjs 口径） |
+| outline | desktop 无对应流；web 面 pinned-empty | **组件挂载**；行构造已 .at 单源（outline_headings） | F-5：blocks facade activeTab watch 原地改引用不重触发（072 在案）——desktop 挂载需显式 parse 播种或等 watch 修复（候选 DEBTS 归 app 层） |
+
+> 登记 ≠ 装配：desktop app.at 面板装配（含内联流退役）归 L3/后续计划；
+> P614/P618 深帧与 G-2 纪律为装配时的前置约束源（本档 §2/§3）。

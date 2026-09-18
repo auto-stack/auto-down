@@ -188,3 +188,13 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
   （当前 master 复测）；computed `>` 作 if 条件不进分支；f-string 内插
   computed 不解析；`dyn` 双轨可用；blocks.ts activeTab watch 原地改引用
   失活（候选 DEBTS）；缺件即红 = ext no-op stub 静默降级（非崩溃）。
+- **PLAN-074 RC-D 批次 1（面板家族纯逻辑下沉，2026-09-18）**：backlinks/
+  outgoing_links/outline/unlinked_references 四件 ext 数据编排与行构造
+  下沉 .at（模块 fn + watch try/catch/finally + `use back.api` 契约通道；
+  ext 薄化至 facade 再导出+契约别名+宿主桥），部署 SFC 经 a2ts 内联发射
+  再生成；gallery 四单元 VM twin 臂建成（gate 双臂全绿 6 单元，基线 8 张，
+  command_palette 预期红占位不变）。**下沉模式文档**（RC-D 批次 2/3 作业
+  标准；判定规则/步骤/坑清单 G-1..G-8）：`docs/plans/attachments/
+  074-sink-mode.md`；desktop 挂载裁定登记（内联 vs 组件，装配归 L3）见其
+  §4。编译器侧：src/front 兄弟臂 fn 池重挂 + watch/Try api 扫描补丁落
+  auto-lang `plan-074-dev`（40d7488/899aa2e）。

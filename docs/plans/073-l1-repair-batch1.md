@@ -12,7 +12,7 @@ new_spec_components: []        # 账本 P073-x 由 merge 落账
 touched_goals: []
 
 affects: [jade-garden/front]
-current_step: 2
+current_step: 3
 total_steps: 5
 ---
 

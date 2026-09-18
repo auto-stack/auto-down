@@ -70,7 +70,7 @@
 | right_sidebar.at | 53 | RC-C 组装级 | 同上 |
 | ribbon.at | 118 | RC-C 组装级 | 壳面家具（左 activity bar，lucide 图标轨 + 主题触发）；desktop 无对应面（desktop toolbar ≠ ribbon——同名不同物注记） |
 | graph_page.at | 202 | RC-C 组装级 | 同上（图谱页装配） |
-| editor_tab.at | 211 | RC-E 引擎对拍 | **Q-2 裁定（默认）**：AutoDownEditor 引擎对拍（autodown-engine TS ↔ autodown-core Rust）归 autodown lighthouse 流；gallery 只挂状态占位单元 |
+| editor_tab.at | 211 | RC-E 引擎对拍 | **Q-2 裁定（默认）**：AutoDownEditor 引擎对拍（autodown-engine TS ↔ autodown-core Rust）归 autodown lighthouse 流；gallery 只挂状态占位单元。**PLAN-651 状态更新（2026-09-18）**：对拍 gate 已常驻在库——auto-lang `t651_*` 测试组（`cargo nextest run -p auto-lang --lib --features autodown,code-editor t651`，9/9 绿：T-01 五格闭合 + T-02 三格闭合 + closure corpus 幂等锚）；三态支持矩阵在案（auto-lang `docs/plans/attachments/651-matrix.md`，17 kind × 三态 × 双实现逐格）；gallery 已登记 `editor_tab` 状态占位单元（units.mjs，missing=expected-red 可见化，不设 gate） |
 | graph_view.at | 141 | RC-F 第三方边界 | cytoscape 内核不比；图谱视图面（宿主面）入 L1，VM 侧实现形态（native/canvas）单列待办 |
 
 ## 4. 桶③ 只有 vm 有（反向补 vue）——**空桶（0 件）**

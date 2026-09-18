@@ -156,4 +156,11 @@ export const UNITS = [
     missingReason:
       'RC-D：无 VM twin，真件 ext-composable 耦合 → VM 直挂即 ext 全量 no-op stub（T-03 实验：outline_panel 同构实证，README F-6）——VM 臂缺席=红',
   },
+  {
+    id: 'editor_tab',
+    title: '编辑器引擎对拍（RC-E·状态占位）',
+    missing: true,
+    missingReason:
+      'RC-E：对拍 gate 常驻在库（auto-lang plan-651 t651 套件：cargo nextest run -p auto-lang --lib --features autodown,code-editor t651；三态矩阵 = auto-lang docs/plans/attachments/651-matrix.md）——PLAN-072 Q-2 裁定 gallery 挂状态占位不设 gate；真件装配随 jade L3（A\' 解冻条件由矩阵度量）',
+  },
 ]

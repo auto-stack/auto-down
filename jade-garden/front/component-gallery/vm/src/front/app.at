@@ -1,0 +1,109 @@
+// app.at — component gallery 根（PLAN-072 T-01 骨架）。
+//
+// 隔离面原则：无 jade app 全局态、无后端依赖；数据 = root model 内
+// fixture（.Init 播种，双轨同构：VM boot 自动派发 Init / vue onMounted，
+// flashcard_modal.at 头注同款语义）。
+//
+// 单元形态双规（T-02 对 Q-3「单元粒度」的实测载体）：
+//   - status_bar：**子件挂载形态**（StatusBarPage 值 props——desktop
+//     StatusBar 先例）。已知约束：组件子树对 MCP 快照不可见（041 README
+//     「vm 组件边界」②，T-02 在当前 master 复测）→ VM 结构断言走 root
+//     投影字段（sb_marker/sb_* state），视觉断言走 vue 截图。
+//   - outline：**root 内联行形态**（dyn ul/li 行结构对快照可见性待
+//     T-02 实测定），view 块镜像 outline_panel.at（fixture 解锁其
+//     pinned-empty 的列表路径）。
+// 两形态的 fixture 权威都在 root（autoui_state 只读 root 态——desktop
+// vm-smoke 同款断言口径）。
+use pages.status_bar_page: StatusBarPage
+
+widget App {
+    msg Msg { Select(str) }
+
+    model {
+        var unit str = "status_bar"
+        // —— fixture：status_bar 面 ——
+        var sb_status str = "ready"
+        var sb_root str = "wiki-demo"
+        var sb_bl int = 12
+        var sb_ol int = 7
+        // —— fixture：outline 面（行 = {content, pad}，形态沿 outline_panel.at
+        // 的 headings 投影；pad 预计算——该件「表达式括号丢弃」纪律）——
+        var ol_rows = []
+        // VM 实测（T-01）：computed 字段不入 autoui_state，且 f-string 内插
+        // computed 不解析（${ol_count} 原样出现）——计数/标记全部落 model
+        // 字段，Init 维护（sb_marker 同款：model 字段内插已证可行）。
+        var ol_count int = 0
+        // VM 实测（T-01）：computed 数值比较（>）作 if 条件不进入分支
+        // （== 计算字段正常）——行分支开关用 bool model 字段。
+        var ol_has bool = false
+    }
+
+    computed {
+        show_status_bar => .unit == "status_bar"
+        show_outline => .unit == "outline"
+        sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
+        ol_marker => f"unit=outline rows:${.ol_count}"
+        // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
+        // 走 dyn(.tag) 形态）
+        ul_tag => "ul"
+        li_tag => "li"
+    }
+
+    view {
+        col (class: "h-screen w-full flex-col bg-white text-zinc-900") {
+            row (class: "h-9 shrink-0 items-center gap-2 border-b border-zinc-200 px-3") {
+                text "component-gallery" { class: "text-xs font-semibold text-zinc-700" }
+                button (text: "status_bar", variant: "text") {
+                    onclick: .Select("status_bar")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "outline", variant: "text") {
+                    onclick: .Select("outline")
+                    class: "text-[11px] text-zinc-600"
+                }
+                text .unit { class: "ml-auto text-[11px] text-zinc-400" }
+            }
+            if .show_status_bar {
+                col (class: "flex-col") {
+                    StatusBarPage (status: .sb_status, root_path: .sb_root, bl: .sb_bl, ol: .sb_ol) {}
+                    text .sb_marker { class: "px-3 pt-2 text-[11px] text-zinc-400" }
+                }
+            }
+            if .show_outline {
+                col (class: "flex-col p-3") {
+                    col (class: "w-72 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Outline" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .ol_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-0.5",
+                                for h in .ol_rows {
+                                    dyn (.li_tag) {
+                                        key: h.content,
+                                        class: "cursor-pointer truncate rounded px-1.5 py-0.5 text-xs text-zinc-800",
+                                        title: h.content,
+                                        text h.content
+                                    }
+                                }
+                            }
+                        }
+                        text .ol_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+        }
+    }
+
+    on {
+        .Init -> {
+            .ol_rows.push({ content: "引言", pad: "0px" })
+            .ol_rows.push({ content: "方法", pad: "12px" })
+            .ol_rows.push({ content: "方法 > 探针", pad: "24px" })
+            .ol_count = 3
+            .ol_has = true
+        }
+
+        .Select(u) -> {
+            .unit = u
+        }
+    }
+}

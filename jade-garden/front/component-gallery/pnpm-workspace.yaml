@@ -1,0 +1,5 @@
+# pnpm-workspace.yaml — harness 独立安装根（隔离 front 工作区吸收）。
+# allowBuilds 与 front 同款惯例：esbuild/vue-demi 平台二进制安装脚本。
+allowBuilds:
+  esbuild: true
+  vue-demi: true

@@ -4,7 +4,7 @@
 // PLAN-070 T-05 组件级选择性继承注入 ActionsBlock——本组件声明全部匹配
 // handler（泄漏门参与条件，api.rs handler 交集）。行为经 ext 委托 facade
 // store（与 command_palette/ribbon 同源行为面）。桌面 067 动作集的 web
-// 子集：cards/import/export 的 web 对应物另接（T-03 注记，v1 不含）。
+// 子集：PLAN-071 裁定 zip 导入导出/闪卡复习停留命令面板，不进菜单栏。
 widget MenuBar {
     use {
         fn: menuOpenWorkspace, menuReloadFiles, menuSave, menuCloseTab, menuOpenGraph from "src/front/utils/menu_bar_ext.ts"

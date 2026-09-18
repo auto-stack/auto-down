@@ -192,7 +192,8 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
   outgoing_links/outline/unlinked_references 四件 ext 数据编排与行构造
   下沉 .at（模块 fn + watch try/catch/finally + `use back.api` 契约通道；
   ext 薄化至 facade 再导出+契约别名+宿主桥），部署 SFC 经 a2ts 内联发射
-  再生成；gallery 四单元 VM twin 臂建成（gate 双臂全绿 6 单元，基线 8 张，
+  再生成；gallery 四单元 VM twin 臂建成（gate 双臂全绿 6 单元，基线 6 张
+  分支态——073 合并后并集 8 张，
   command_palette 预期红占位不变）。**下沉模式文档**（RC-D 批次 2/3 作业
   标准；判定规则/步骤/坑清单 G-1..G-8）：`docs/plans/attachments/
   074-sink-mode.md`；desktop 挂载裁定登记（内联 vs 组件，装配归 L3）见其

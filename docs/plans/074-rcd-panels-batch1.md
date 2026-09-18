@@ -12,7 +12,7 @@ new_spec_components: []        # 账本 P074-x 由 merge 落账
 touched_goals: []
 
 affects: [jade-garden/front]
-current_step: 4
+current_step: 5
 total_steps: 5
 ---
 
@@ -122,8 +122,8 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
 - **T-00** [x] [调查] 四件 ext 逐 fn 分类表（可沉/必留）+ back.api 通道核对。
   产物：分类表（模式文档 §1）。依赖：无。→ AC-01/03
   - [x] T-00 ✅ 已完成（2026-09-18，down-074 @a22d293）：分类表落
-    `docs/plans/attachments/074-sink-mode.md` §1（13 fn：7 sink/6 必留，
-    逐件裁定+去向）；back.api 通道核对 + 下沉机制探针实证（P-1..P-6）落
+    `docs/plans/attachments/074-sink-mode.md` §1（14 行=7 sink+7 必留，
+    15 fn——tabTitle/tabPath 与双 re-export 各自合行；逐件裁定+去向）；back.api 通道核对 + 下沉机制探针实证（P-1..P-6）落
     §2——模块 fn 三通道发射通/find+递归末段形态/f-string 数学内插/
     契约通道双轨 + ext 薄别名方案/撞名坑（R013 类实锤）/VM 字符串字节-
     字符语义分歧（微探针 MCP 断言实证，L3 纪律项）。total_steps 4→5 勘正
@@ -155,9 +155,13 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
     gallery 双单元上线（vue 真件页 ×2 + shim 路由 ×2 + VM twin 行 ×2 +
     units.mjs 登记），基线 2 张新增/旧 4 张零漂移，gate 双臂全绿 6 单元
     （command_palette 预期红占位不变）。
-- **T-04** [ ] [改] 模式文档定稿（判定规则/步骤/坑清单）+ desktop 消费结论登记
+- **T-04** [x] [改] 模式文档定稿（判定规则/步骤/坑清单）+ desktop 消费结论登记
   + 回归收口（pnpm build/05-panels 抽验/双模 smoke 快验）+ §8.6 勾记。
-  依赖：T-01..T-03。→ AC-03/04（F-R1 重开：§8.6 计数修复）
+  依赖：T-01..T-03。→ AC-03/04
+  - [x] T-04 ✅ F-R1 修复重勾（2026-09-18，down-074 @a4bd622）：§8.6 bullet
+    基线 8→6（分支态 git ls-files 实测；073 合并后并集 8 张括注）+ 计划
+    账面两处同源行（T-00 14 行=7+7、§8 记录 6 张）——仅触 ARCHITECTURE
+    一 bullet 与计划记录，代码面零变化；AC-04 重审随 review#2。
   - [x] T-04 ✅ 已完成（2026-09-18，down-074 @80fef4a）：模式文档定稿
     （步骤六步 + 坑清单 G-1..G-8 + desktop 消费裁定登记表 §4——backlinks/
     outgoing 组件挂载首选、unlinked/outline 组件唯一路径，装配归 L3）；
@@ -204,7 +208,7 @@ status_bar_ext/tabs_store_ext（ext 薄化先例）。
   80fef4a；依赖兄弟 down-074/auto-lang @899aa2e9c[分支 plan-074-dev，
   编译器补丁 ×2，built exe v0.4.2-1173]） |
   task_ids: T-00..T-04 全勾（current_step 5/5） |
-  evidence: gallery gate 双臂绿（6 单元，基线 8 张在库、旧 4 张零漂移）；
+  evidence: gallery gate 双臂绿（6 单元，基线 6 张在库[分支态]、旧 4 张零漂移）；
   AC-01 四件 ext 薄化在案（逐 fn 分类+裁定=模式文档 §1：7 sink/6 必留）；
   AC-02 四单元 twin 双绿；AC-03 模式文档定稿（G-1..G-8）；AC-04 §8.6+inventory
   勾记（账本 P074-x 归 merge）。回归：front pnpm build 绿 + front e2e

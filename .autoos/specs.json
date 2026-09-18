@@ -937,6 +937,18 @@
           "PLAN-070"
         ],
         "superseded_by": null
+      },
+      {
+        "id": "P071-1",
+        "section": "architecture",
+        "status": "stable",
+        "title": "jade-garden 功能版图瘦身 — 六项过剩处置（jade-garden-slim-down）",
+        "content": "- **移除面**：plugins_store+插件面（store/ext/生成物/facade 四件删，UI 消费点清点为零）；whiteboard front 面（whiteboard_page.at/ext/WhiteboardPage.vue/入口链全删；back 契约与端点保留=实验性可回归通道）；legacy-autoui/（plan-011 归档残留零引用死树）。\n- **入口收敛**：SRS 复习流唯一入口=命令面板 Review flashcards→FlashcardModal（dispatch/listen 全仓唯一点），agenda 面板保留；Cards Probe 页归 front/e2e/fixtures-pages/ 测试资产。zip 导入导出停留命令面板不进菜单栏（070 菜单栏 v1 即无 zip 项，裁定注记落 app-config.at/menu_bar.at/menu_bar_ext）。\n- **保留标注**：query.at 后端引擎保留，README 树行标注 engine ready, no front view。\n- 持久裁定全文：jade-garden/ARCHITECTURE.md §8 功能版图与统一路线（§8.1 划线注/§8.3 处置勾记表/§8.5 计划组合）；功能口径 jade-garden/README.md（SD-01/SD-02）。",
+        "file": "jade-garden/ARCHITECTURE.md",
+        "related": [
+          "PLAN-071"
+        ],
+        "superseded_by": null
       }
     ],
     "designs": [
@@ -2266,6 +2278,18 @@
         "file": "docs/plans/archived/070-jade-autoedit-bp-convergence.md",
         "related": [
           "PLAN-070"
+        ],
+        "superseded_by": null
+      },
+      {
+        "id": "P071-2",
+        "section": "reviews",
+        "status": "stable",
+        "title": "PLAN-071 — 验收与复审收据（reviewed pass a934e25）",
+        "content": "- 验收：AC-01 六项处置落地+文档口径同步（9 文件缺席/2 保留存在/1 标注，一站式断言全过）；AC-02 构建与测试面全绿（pnpm build 绿；playwright 全量 24 passed 基线零更新；vm-smoke split+merged 双模全臂+fixture hash 等价；desktop 三门 bp-gate/ext-registry 293/293/sync 字节等价）。\n- findings：F-1 §8.5 状态列活值元数据（merge 刷新）；F-2 tab_strip.at 习语史注释残留（零代码影响，处置对象外）；F-3=§9 O-1 JADE_GARDEN_SERVER=vm 后端 e2e 变体 master 预存损坏（server.at 裸调 build_router 遭现役 auto-lang 拒编译；desktop vm-smoke 不受累；建议登记 DEBTS）。\n- 复审限制声明：实现会话内按工件重建裁定，全部验证复审视角重执行。\n- 归档：docs/plans/archived/071-jade-garden-slim-down.md。",
+        "file": "docs/plans/archived/071-jade-garden-slim-down.md",
+        "related": [
+          "PLAN-071"
         ],
         "superseded_by": null
       }

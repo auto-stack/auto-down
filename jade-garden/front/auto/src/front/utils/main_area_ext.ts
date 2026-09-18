@@ -48,17 +48,6 @@ export function graphDepth(activeTab: any): number {
   return activeTab?.graphDepth || 1
 }
 
-/** Original: activeWhiteboardTab = tabs.activeTab?.isWhiteboard ?
- *  tabs.activeTab : null (consumed as v-if="activeWhiteboardTab"). */
-export function hasWhiteboardTab(activeTab: any): boolean {
-  return !!activeTab?.isWhiteboard
-}
-
-/** Original: :key="activeWhiteboardTab.path" + :path="activeWhiteboardTab.path". */
-export function whiteboardPath(activeTab: any): string {
-  return activeTab?.isWhiteboard ? activeTab.path : ''
-}
-
 /** Original: v-if="tabs.tabs.length === 0". */
 export function noTabs(tabs: any[]): boolean {
   return (tabs ?? []).length === 0

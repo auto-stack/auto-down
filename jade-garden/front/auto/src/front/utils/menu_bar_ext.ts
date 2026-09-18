@@ -6,7 +6,8 @@
 // prompt lives here (file_tree_ext prompt precedent).
 //
 // v1 action set mirrors desktop PLAN-067's high-frequency four + graph;
-// cards/import/export web counterparts are wired separately (T-03 注记).
+// PLAN-071 ruling: zip import/export and flashcard review stay in the
+// command palette, they never join the menubar.
 
 import { useWorkspaceStore } from '../../../../src/stores/workspace'
 import { useTabsStore } from '../../../../src/stores/tabs'

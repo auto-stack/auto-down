@@ -1,7 +1,7 @@
 <!-- MainArea component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { editorTabs, hasGraphTab, graphTabPath, graphCenter, graphDepth, hasWhiteboardTab, whiteboardPath, noTabs, EmptyFileIcon } from '../../auto/src/front/utils/main_area_ext'
+import { editorTabs, hasGraphTab, graphTabPath, graphCenter, graphDepth, noTabs, EmptyFileIcon } from '../../auto/src/front/utils/main_area_ext'
 import { useTabsStore } from '../../auto/src/front/utils/main_area_ext'
 
 const tabsStore = useTabsStore()
@@ -9,7 +9,6 @@ const tabsStore = useTabsStore()
 import EditorTab from '@/components/EditorTab.vue'
 import GraphPage from '@/components/GraphPage.vue'
 import TabStrip from '@/components/TabStrip.vue'
-import WhiteboardPage from '@/components/WhiteboardPage.vue'
 
 
 const editor_tabs = computed<any>(() => editorTabs(tabsStore.tabs, tabsStore.activePath))
@@ -17,8 +16,6 @@ const has_graph = computed<any>(() => hasGraphTab(tabsStore.activeTab))
 const graph_key = computed<any>(() => graphTabPath(tabsStore.activeTab))
 const graph_center = computed<any>(() => graphCenter(tabsStore.activeTab))
 const graph_depth = computed<any>(() => graphDepth(tabsStore.activeTab))
-const has_whiteboard = computed<any>(() => hasWhiteboardTab(tabsStore.activeTab))
-const whiteboard_path = computed<any>(() => whiteboardPath(tabsStore.activeTab))
 const no_tabs = computed<any>(() => noTabs(tabsStore.tabs))
 
 
@@ -31,9 +28,6 @@ const no_tabs = computed<any>(() => noTabs(tabsStore.tabs))
         <EditorTab :class="'absolute inset-0'" :key="tab.path" :path="tab.path" v-show="tab.active"  v-for="tab in editor_tabs"/>
         <template v-if="has_graph">
           <GraphPage :centerPath="graph_center" :class="'absolute inset-0'" :depth="graph_depth" :key="graph_key" />
-        </template>
-        <template v-if="has_whiteboard">
-          <WhiteboardPage :class="'absolute inset-0'" :key="whiteboard_path" :path="whiteboard_path" />
         </template>
         <template v-if="no_tabs">
           <div class="flex h-full flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">

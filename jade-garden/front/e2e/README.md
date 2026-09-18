@@ -44,7 +44,6 @@ the debug binary) and `pnpm install` in `front/`.
 | Graph view mounts cytoscape | `07-graph.spec.ts` | Asserts `.graph-view canvas` + sidebar stats, not canvas pixels. |
 | Screenshot baselines | `08-screenshots.spec.ts` | Main layout, editor area, and each right-sidebar panel. Baselines in `08-screenshots.spec.ts-snapshots/`. |
 | File-tree context menu CRUD | `09-filetree-context.spec.ts` | Right-click → teleported `.file-context-menu` → New file / New folder / Rename / Delete. Native `prompt`/`confirm` auto-answered via `page.on('dialog')`; effects verified through the API and the reloaded tree. |
-| Whiteboard (.canvas) | `10-whiteboard.spec.ts` | Seed via API (see caveat below), open from the tree, edit a note label on blur, `Add note`; saves verified by polling `GET /api/whiteboard/:path`. |
 | PropertiesPanel editing | `11-properties.spec.ts` | Edit an existing frontmatter value + add a new property; the 1.2 s debounced save is verified through `GET /api/wiki/:path`. Target doc created via API. |
 | Flashcard review with due cards | `12-flashcards.spec.ts` | Card doc created via API (`#card` + `^block-id` + `{{cloze answer \ hint}}`). Covers question render, reveal, all four rating buttons, and the SRS write-back; after rating, the card leaves the due set (empty state + `/api/cards/due` = 0). |
 
@@ -60,6 +59,14 @@ References, Properties** (right sidebar) plus Search/Recent (left sidebar).
 - **Flashcards**: a modal, not a panel; `06-palette.spec.ts` asserts the
   `No cards due for review` empty state against the card-less fixture, and
   `12-flashcards.spec.ts` covers the with-cards review flow.
+
+## Test assets (`fixtures-pages/`)
+
+`fixtures-pages/` holds tracked wiki-page fixtures that are test material,
+not product content (PLAN-071 SRS 入口收敛). `Cards Probe.ad` is the manual
+SRS probe page (one `#card` block with full schedule properties) kept for
+ad-hoc srs-endpoint probing; the automated specs create their card documents
+in-test via the API (see the 09–12 caveats below).
 
 ## Known app-side gaps pinned by this baseline
 
@@ -87,10 +94,9 @@ References, Properties** (right sidebar) plus Search/Recent (left sidebar).
   workspace is reset by `e2e-prepare.mjs` before every run, so no cleanup is
   needed). The static fixture `tmp/wiki-demo/wiki` is untouched. The new specs
   sort after `08-screenshots`, so their extra files cannot alter the baselines.
-- **Whiteboard storage is split**: the file tree shows a `.canvas` marker at
-  the wiki root, but `GET/POST /api/whiteboard/:path` reads/writes
-  `whiteboards/:path` (the backend namespaces the shape document). The test
-  seeds both halves — this pins the current app behavior, including the split.
+- ~~**Whiteboard storage is split**~~ removed with the whiteboard face
+  (PLAN-071): the `10-whiteboard.spec.ts` spec and its caveat retired; the
+  backend `/api/whiteboard` contract stays (experimental-return channel).
 
 ## Deliberately NOT covered (and why)
 

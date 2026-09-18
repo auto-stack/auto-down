@@ -1,11 +1,11 @@
 {
   "plan": "PLAN-064 T-01",
-  "updated": "2026-09-14",
-  "baseline": "desktop/README §2（2026-08-29 机扫 37 文件）；2026-09-14 复扫：文件数 37 不变（29 widget ext + 8 store ext）；内容漂移=blocks_store_ext 读路径已接 engine parser、tabs_store_ext ensureBlockAnchors 已接 parser_gen（DEBTS 020 已清偿行）、blockParser.ts 已删除",
+  "updated": "2026-09-18",
+  "baseline": "desktop/README §2（2026-08-29 机扫 37 文件）；2026-09-14 复扫：文件数 37 不变（29 widget ext + 8 store ext）；内容漂移=blocks_store_ext 读路径已接 engine parser、tabs_store_ext ensureBlockAnchors 已接 parser_gen（DEBTS 020 已清偿行）、blockParser.ts 已删除；2026-09-18 PLAN-071：plugins_store_ext/whiteboard_page_ext 随面移除销行 10（死账清零），menu_bar_ext 5 行补登（070 未登记清零）",
   "schema": "{file, fn, class: sink|bridge|deviation, target, evidence, gate}；class 三分类（PLAN-064 §0/§5.1）：sink=下沉 .at（含 web-codegen shim——widget .at 化即原生取代）/ bridge=VM 原生·宿主桥 / deviation=登记偏差（平台缺口走 auto-lang 提案，禁止第四类 jade 侧绕过）",
   "counts": {
-    "sink": 241,
-    "bridge": 37,
+    "sink": 236,
+    "bridge": 35,
     "deviation": 22
   },
   "entries": [
@@ -1219,22 +1219,6 @@
     },
     {
       "file": "main_area_ext.ts",
-      "fn": "hasWhiteboardTab",
-      "class": "sink",
-      "target": "迁移时下沉 .at：判定纯逻辑",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "main_area 迁移"
-    },
-    {
-      "file": "main_area_ext.ts",
-      "fn": "whiteboardPath",
-      "class": "sink",
-      "target": "迁移时下沉 .at：路径派生",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "main_area 迁移"
-    },
-    {
-      "file": "main_area_ext.ts",
       "fn": "noTabs",
       "class": "sink",
       "target": "迁移时下沉 .at：空态判定",
@@ -1320,14 +1304,6 @@
       "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
       "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
       "gate": "-"
-    },
-    {
-      "file": "plugins_store_ext.ts",
-      "fn": "loadPluginsResult",
-      "class": "sink",
-      "target": "迁移时下沉 .at：载入结果规整（error map 语义 gap 13）",
-      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
-      "gate": "plugins store 迁移"
     },
     {
       "file": "properties_panel_ext.ts",
@@ -2250,78 +2226,6 @@
       "gate": "-"
     },
     {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "loadWhiteboard",
-      "class": "bridge",
-      "target": "VM 原生/宿主桥：read_whiteboard #[api] 通道（多回调编排 → .at try/catch）",
-      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "saveWhiteboard",
-      "class": "bridge",
-      "target": "VM 原生/宿主桥：write_whiteboard #[api] 通道",
-      "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "addNoteShape",
-      "class": "sink",
-      "target": "迁移时下沉 .at：shape 追加纯逻辑",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "shapeList",
-      "class": "sink",
-      "target": "迁移时下沉 .at：shape 列表装配",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "readLabel",
-      "class": "sink",
-      "target": "迁移时下沉 .at：标签读取纯函数",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "openShapeTarget",
-      "class": "sink",
-      "target": "迁移时下沉 .at：目标导航编排",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "showError",
-      "class": "sink",
-      "target": "迁移时下沉 .at：错误态判定纯逻辑",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "showCanvas",
-      "class": "sink",
-      "target": "迁移时下沉 .at：画布态判定纯逻辑（gap 54 互斥三分支）",
-      "evidence": "desktop/README §2 类别扫描+逐项裁定（2026-08-29 基线，2026-09-14 复扫）",
-      "gate": "whiteboard 迁移"
-    },
-    {
-      "file": "whiteboard_page_ext.ts",
-      "fn": "useTabsStore",
-      "class": "sink",
-      "target": "web-codegen shim：store facade 再导出；widget .at 化即原生语法取代（兄弟 widget 直引/store facade/use 通道），无 VM 迁移动作",
-      "evidence": "front/auto/README dual-resolution shim 惯例（gen 工程镜像面）",
-      "gate": "-"
-    },
-    {
       "file": "workspace_opener_ext.ts",
       "fn": "openWorkspaceFlow",
       "class": "bridge",
@@ -2408,6 +2312,46 @@
       "target": "迁移时下沉 .at：open_workspace 结果规整",
       "evidence": "Plan 340 #[api] api_over_http 通道（契约 fn 即 VM 面）",
       "gate": "workspace store 迁移"
+    },
+    {
+      "file": "menu_bar_ext.ts",
+      "fn": "menuOpenWorkspace",
+      "class": "sink",
+      "target": "web 命令面：菜单动作委托 facade store（与 command_palette/ribbon 同源行为面）",
+      "evidence": "PLAN-070 T-06 落地面，2026-09-18 PLAN-071 补登（ext-registry-gate 未登记清零）",
+      "gate": "PLAN-070 命令面"
+    },
+    {
+      "file": "menu_bar_ext.ts",
+      "fn": "menuReloadFiles",
+      "class": "sink",
+      "target": "web 命令面：菜单动作委托 facade store（与 command_palette/ribbon 同源行为面）",
+      "evidence": "PLAN-070 T-06 落地面，2026-09-18 PLAN-071 补登（ext-registry-gate 未登记清零）",
+      "gate": "PLAN-070 命令面"
+    },
+    {
+      "file": "menu_bar_ext.ts",
+      "fn": "menuSave",
+      "class": "sink",
+      "target": "web 命令面：菜单动作委托 facade store（与 command_palette/ribbon 同源行为面）",
+      "evidence": "PLAN-070 T-06 落地面，2026-09-18 PLAN-071 补登（ext-registry-gate 未登记清零）",
+      "gate": "PLAN-070 命令面"
+    },
+    {
+      "file": "menu_bar_ext.ts",
+      "fn": "menuCloseTab",
+      "class": "sink",
+      "target": "web 命令面：菜单动作委托 facade store（与 command_palette/ribbon 同源行为面）",
+      "evidence": "PLAN-070 T-06 落地面，2026-09-18 PLAN-071 补登（ext-registry-gate 未登记清零）",
+      "gate": "PLAN-070 命令面"
+    },
+    {
+      "file": "menu_bar_ext.ts",
+      "fn": "menuOpenGraph",
+      "class": "sink",
+      "target": "web 命令面：菜单动作委托 facade store（与 command_palette/ribbon 同源行为面）",
+      "evidence": "PLAN-070 T-06 落地面，2026-09-18 PLAN-071 补登（ext-registry-gate 未登记清零）",
+      "gate": "PLAN-070 命令面"
     }
   ]
 }

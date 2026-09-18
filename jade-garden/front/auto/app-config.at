@@ -1,7 +1,8 @@
 // PLAN-070 T-06：jade web 命令系统声明（Plan 418/639 ui_config 形态）。
 // 单源命令注册表：VM/桌面轨经 AUTO_VM_ACTION_CONFIG 运行时加载；vue 轨经
 // T-05 组件级选择性继承（menubar/toolbar 组件 + handler 交集门）合成。
-// 动作集 = desktop 067 高频件 + 图谱（cards/import/export web 对应物另接）。
+// 动作集 = desktop 067 高频件 + 图谱（PLAN-071 裁定：zip 导入导出/闪卡复习
+// 停留命令面板，不进菜单栏——备份操作不占壳顶）。
 bp-edit {
     action { id : "ws.open"      handler : ".ActOpenWs"  title : "打开工作区" icon : "folder-open" shortcut : "Ctrl+O" }
     action { id : "files.reload" handler : ".ActReload"  title : "重载文件列表" icon : "refresh-cw" shortcut : "F5" }

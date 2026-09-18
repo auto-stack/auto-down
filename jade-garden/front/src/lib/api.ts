@@ -23,7 +23,6 @@ import type {
   TasksResponse,
   UnlinkedRefsResponse,
   UploadAssetResponse,
-  WhiteboardDoc,
   WikiDoc,
   WorkspaceInfo,
 } from './api_gen'
@@ -51,8 +50,6 @@ export type {
   TasksResponse,
   UnlinkedRef,
   UnlinkedRefsResponse,
-  WhiteboardDoc,
-  WhiteboardShape,
   WikiDoc,
   WorkspaceInfo,
 } from './api_gen'
@@ -282,22 +279,6 @@ export async function importMarkdown(zipFile: File): Promise<ImportResult> {
   const res = await fetch('/api/import/markdown', {
     method: 'POST',
     body: formData,
-  })
-  if (!res.ok) throw new Error(await errorMessage(res))
-  return res.json()
-}
-
-export async function readWhiteboard(path: string): Promise<WhiteboardDoc> {
-  const res = await fetch(`/api/whiteboard/${encodeURIComponent(path)}`)
-  if (!res.ok) throw new Error(await errorMessage(res))
-  return res.json()
-}
-
-export async function writeWhiteboard(path: string, doc: WhiteboardDoc): Promise<WhiteboardDoc> {
-  const res = await fetch(`/api/whiteboard/${encodeURIComponent(path)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(doc),
   })
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()

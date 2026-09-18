@@ -23,7 +23,6 @@ export interface Tab {
   isGraph?: boolean
   graphCenterPath?: string | null
   graphDepth?: number
-  isWhiteboard?: boolean
 }
 
 const g = useGeneratedTabsStore()
@@ -45,8 +44,6 @@ export function useTabsStore() {
     open: (path: string, title?: string): Promise<void> => g.Open({ path, title: title ?? '' }),
     openGraph: (centerPath?: string | null, depth = 1): Promise<void> =>
       g.OpenGraph({ center: centerPath ?? '', depth }),
-    openWhiteboard: (path: string, title?: string): Promise<void> =>
-      g.OpenWhiteboard({ path, title: title ?? '' }),
     close: (path: string): Promise<void> => g.Close(path),
     load: (path: string): Promise<void> => g.Load(path),
     setBody: (path: string, body: string): void => g.SetBody({ path, body }),

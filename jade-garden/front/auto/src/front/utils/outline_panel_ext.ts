@@ -1,10 +1,10 @@
 // outline_panel_ext.ts — hand-written TS extension for outline_panel.at.
 //
-// Only what the DSL genuinely cannot express lives here:
+// PLAN-074 T-01 sink: the heading-row construction (outlineHeadings) moved
+// INTO the .at as the module fn outline_headings (single source; the vue
+// codegen emits it into the deployed SFC). What stays here is exactly the
+// host face:
 // - the blocks/tabs store facade re-exports (dual-resolution shim),
-// - the per-heading padding math: `((h.level ?? 1) - 1) * 0.6 + 0.375` —
-//   the DSL has no `??` in view bindings and DROPS expression parentheses,
-//   so the rem string is precomputed per item,
 // - the CustomEvent dispatch (`new CustomEvent` is not expressible).
 //
 // NOTE: the panel is pinned EMPTY at runtime (the app never calls
@@ -19,25 +19,6 @@ import { useBlocksStore } from '../../../../src/stores/blocks'
 import { useTabsStore } from '../../../../src/stores/tabs'
 
 export { useBlocksStore, useTabsStore }
-
-export interface OutlineHeading {
-  content: string
-  lineStart: number
-  pad: string
-}
-
-/** Original: blocks.activeBlocks.filter(b => b.kind === 'heading'), with
- *  the `:style="{ paddingLeft: `${((h.level ?? 1) - 1) * 0.6 + 0.375}rem` }"`
- *  precomputed per heading. */
-export function outlineHeadings(blocks: any[]): OutlineHeading[] {
-  return blocks
-    .filter((b) => b.kind === 'heading')
-    .map((b) => ({
-      content: b.content,
-      lineStart: b.lineStart,
-      pad: `${((b.level ?? 1) - 1) * 0.6 + 0.375}rem`,
-    }))
-}
 
 /** Original scrollToHeading, verbatim: slugify the heading text, then
  *  dispatch the jade-scroll-to-block CustomEvent for the active tab. */

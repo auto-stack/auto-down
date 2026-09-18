@@ -1,11 +1,11 @@
 ---
 plan_id: PLAN-070
-status: executing              # drafting → executing → execution_done → reviewed → archived
+status: reviewed              # drafting → executing → execution_done → reviewed → archived
 feature_name: jade-autoedit-bp-convergence（auto-edit/jade-garden 源码级组件平台化）
 author: [zhaopuming]
 created_at: 2026-09-17
 updated_at: 2026-09-17
-plan_revision: 1
+plan_revision: 3
 
 # /auto-plan:review 结束时填写：
 supersedes_spec_components: []
@@ -13,8 +13,8 @@ new_spec_components: []        # 本仓无 docs/specs/（见 §3 Specs 状况）
 touched_goals: []              # 本仓无 goals.md
 
 affects: [jade-garden/front, auto-lang/examples/ui/041-auto-edit]
-current_step: 1
-total_steps: 5
+current_step: 7
+total_steps: 7
 ---
 
 # [PLAN-070] jade-autoedit-bp-convergence——auto-edit/jade-garden 源码级组件平台化
@@ -138,7 +138,7 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
 
 | ID | 可观察行为 | 验证方法 |
 | --- | --- | --- |
-| AC-01 | filetree 单源：三消费面 import 同一 bp，仓内副本归零，chevron 走参数 | grep/sha256 门 + 双端渲染断言 |
+| AC-01 | **（rev2 修订，Q-7 裁定 A）** filetree 家族单源：活消费面（desktop/041）经 bps 导入共享支撑件，三方仓内副本归零（041 死副本删除；web 谱系裁定为独立组件不属副本——DEBTS 070 行）；chevron 参数化注销（无活消费方） | grep/sha256 副本归零门 + desktop vm-smoke 全臂（files 臂=bp flatten_tree 端到端） |
 | AC-02 | tabs_store 单源：desktop 副本删除、增量上提有裁定记录、§9.5 退役 | 文件缺席断言 + 裁定工件 + 双形态 tabs parity 门绿 |
 | AC-03 | jade web 命令系统生效，与 desktop 同语义 | playwright menubar DOM 断言 + vm-smoke 无回归 |
 | AC-04 | 门禁全绿 + 防再漂移门入列 | §5 全量基线绿 + 新门在门禁脚本序列中可触发（注入假副本变红实测） |
@@ -161,12 +161,86 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   master）。blueprints/ master 观察：README+四 kind+pac.at 在案。
 - **T-01** [改+新] filetree bp 包（auto-lang 仓）+ 三消费面切换 import + 删副本
   + chevron 参数化双端断言。依赖：T-00；639 T-04。→ AC-01
-- **T-02** [改] tabs_store 收敛：desktop 副本删除、增量裁定上提、§9.5 退役改写
+  [x] [🔶 VM 轨切片完成 2026-09-18；web 切片经 Q-7 裁定 A 于 rev2 关闭——不收敛，DEBTS 070 登记] 实勘修正前提：filetree
+  家族的活消费只有 tree_util+TreeIcon（desktop app.at 内联树行——067 VM 组件
+  边界裁定；041 全家死代码、左栏实为 TreeView）；web 谱系=同名不同物（store
+  驱动 vue 专属），无副本可删。已交付：bp 包 navigation/filetree（reference/
+  default=FileTree 组合形态 + 包根支撑件 tree_util/tree_icon——包格式扩展：
+  支撑件不占 variant 位，单文件单 widget 纪律所需）+ desktop 消费切换
+  （pac.at dep bps + app.at use bps...{tree_util,tree_icon}，四副本删除）+
+  041 消费切换（treeview/editor_store 导入 bps，死副本三件删除）。chevron
+  参数化注销（无活消费方）。验证：负测（flatten_tree_MISSING → ft_rows
+  computed 断裂）证明 bps 导入承载；vm-smoke split+merged 全臂 PASS（files
+  臂 6 docs=bp flatten_tree 端到端）；041 boot 零解析错误。提交：auto-lang
+  af8c72a84 / auto-down 9ace132。发现登记：BlueprintRegistry::with_defaults
+  用编译期 CARGO_MANIFEST_DIR 定扫描根——`auto bp list` 看不到非构建期路径的
+  包（worktree/外部检出），消费方 dep 解析不受影响；待登记 auto-lang DEBTS。
+- **T-02** [x] [改] tabs_store 收敛：desktop 副本删除、增量裁定上提、§9.5 退役改写
   （SD-02）。依赖：T-00；639 T-04。→ AC-02
-- **T-03** [改] status_bar/ctx_menu/actions 骨架 bp 化 + jade web 命令系统接入。
+  [✅ 已完成 2026-09-18] 形态裁定变更（证据驱动，rev2 内记录）：跨包导入
+  实测否决——store 内 `use back.api:` 按文件位置解析（位置即绑定），desktop
+  副本移出即 read_wiki 等符号调用期失联（status 停 files-reloaded 复现）。
+  单源形态 = 唯一源 front/auto/src/front/tabs_store.at + desktop 字节部署
+  产物（scripts/tabs-store-sync.mjs 部署/--check 门；产物非资产纪律）。
+  三 delta 终裁：①显式守卫 ×3 入单源（web 语义等价）；②str+"" 哨兵
+  （VM 已证形态，web falsy/等值兼容）；③**显式索引狩猎**——findIndex 于
+  VM 轨静默失效实机复现（tabs(3) idx 恒 -1 → 重开见脏文），§9.5 表⑥
+  "624 已修 find_index"以实证推翻/修正（覆盖面不含 lambda findIndex 于
+  store 状态路径）。§9.5 退役改写落笔。验证：desktop vm-smoke split+
+  merged 全臂 PASS；web useTabsStore.ts 重部署（sed 同形改写）+ pnpm
+  build（vue-tsc+vite）门绿。提交：auto-down 69f69d2。方法论注：--arms
+  tabs 单臂模式存在既有 flake（tabs② stateIs 对非迁移值即时匹配旧值，
+  对照实验旧副本同失败），全量跑为有效验证面。
+- **T-03** [🔶 部分：两项不收敛注记 + web 切片 blocked（工具链前置）] 
+  status_bar/ctx_menu/actions 骨架 bp 化 + jade web 命令系统接入。
   依赖：T-00；639 T-05。→ AC-03
-- **T-04** [改] 门禁收口：§5 全量基线复跑 + §4.4 新门落地 + DEBTS/ARCHITECTURE
-  落笔（SD-01）。依赖：T-01..T-03。→ AC-04/05
+  [🔶 处置注记 2026-09-18] ①status_bar **不收敛**（Q-7 同款实证：三版同名
+  不同物——desktop=值 props 纯展示反链/出链、041=store 直读 line:col+terminal
+  按钮、web=ext/composable 字数+watch 反链抓取；内容零重叠仅视觉骨架同，
+  并集 bp=过度设计）；②ctx_menu **不迁移**（唯一消费方 041，搬家非复用，
+  留 041 侧）；③web 命令系统 **blocked**：639 的 ui_config→ActionsBlock
+  合成为 app.at 壳专属（crates/auto-lang/src/ui_gen/api.rs:390 "App-level
+  config: only the app shell (app.at) inherits"，设计如此防动作泄漏；
+  046 生成 App.vue 实证 menubar=shadcn 族+handler refs+快捷键 keymap），
+  而 jade web 无 app 根（app.at 永不部署的占位、组件级部署+手写壳）。
+  解阻选项：**(a)** auto-lang 扩 ui_config 合成面至非 app 组件（新计划）；
+  **(b)** jade web 采用 app 根部署（架构大改）；**(c)** AC-03 web 切片
+  修订——web 命令面以既有 ribbon/command_palette 手写面为准，DSL 命令
+  系统 web 接入挂前置。→ Q-8 已裁定（rev3）：c 修订 + T-05/T-06 新 phase
+  真正解决。零代码改动（纯调查/裁定切片）。
+- **T-05** [新 phase，auto-lang 侧] ui_config 合成面扩展至非 app 组件：
+  现状=合成仅 app.at 壳继承（api.rs:390 防动作泄漏设计）。扩展为**选择性
+  继承**——组件 AST 含 menubar/toolbar widget 时才注入 pac.at ui_config 的
+  ActionsBlock（无 menubar/toolbar 的组件零注入，保住泄漏防线）。
+  产物：crates/auto-lang/src/ui_gen/api.rs 扩展 + 组件级测试（含泄漏负
+  断言）；验证：新测试绿 + 046 build 不回归 + 既有 cargo 测试面。
+  依赖：无（639 T-05 已交付 app 壳合成，本 phase 扩其适用面）。→ AC-03
+  [✅ 已完成 2026-09-18] 统一 handler 交集参与门（app 壳不豁免——jade 占位
+  app.at 无条件继承即 TS2304 复现，首试即抓）+ menubar/toolbar 视图合成
+  解除 shadcn 模式门（menubar 标签+actions=选择加入契约）。测试：组件级
+  正/负断言 + 既有 046/app 壳回归，plan639 4/4 绿；cargo build 0 error。
+  提交：auto-lang 1c27ba4ca。
+- **T-06** [新 phase，jade 侧] jade web 命令系统落地：front/auto 增
+  ui_config（app-config.at，动作集镜像 desktop 067 六流）+ menu_bar.at
+  组件（menubar/toolbar 视图 + ext 委托 facade store 的 handler）+
+  MenuBar.vue 部署 + AppShell 接线；验证：pnpm build + playwright menubar
+  DOM 断言（新 e2e spec）。依赖：T-05。→ AC-03
+  [✅ 已完成 2026-09-18] app-config.at 六流动作（镜像 desktop 067 高频件+
+  图谱）+ menu_bar.at（T-05 门参与）+ menu_bar_ext.ts（委托 facade store，
+  与 command_palette 同源行为面）+ MenuBar.vue 部署 + AppShell 壳顶接线；
+  ui/menubar+ui/button 模块与 cn util 宿主化（reka-ui/clsx/tailwind-merge
+  既有依赖，shadcn: off 项目按契约自备命令面运行时）。验证：pnpm build 绿
+  + e2e/24-menubar.spec.ts 2/2（DOM 断言 + 文件→保存后端写盘端到端）。
+  提交：auto-down b4177ed。
+- **T-04** [x] [改] 门禁收口：§5 全量基线复跑 + §4.4 新门落地 + DEBTS/ARCHITECTURE
+  落笔（SD-01）。依赖：T-01..T-03、T-05、T-06（居末执行）。→ AC-04/05
+  [✅ 已完成 2026-09-18] bp-gate.mjs 三断言（副本归零/bps 幽灵导入×4 消费位
+  覆盖 jade+041/tabs_store 字节等价）跑绿；desktop vm-smoke split+merged
+  全臂 PASS（收口轮复跑）；front pnpm build 绿；全量 playwright 25 = 23 过
+  + 08-screenshots 两张基线随 MenuBar 入壳更新后复跑绿（刻意见面变更的
+  标准基线更新）。后端零改动（back 侧门由 review 按需抽验）。ARCHITECTURE
+  §7 三共享面三机制表落笔（SD-01）；§9.5 孪生登记册退役（T-02）。提交：
+  6bb528c + 基线 090060b。review F-1/F-2 补账 556f5cb（见 §9）。
 
 ## 8. 复审记录
 
@@ -174,13 +248,69 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   （blocked on：依赖 PLAN-639 T-04/T-05 未落地；639 与本计划 review 未跑）。
   `next: 639 先行 review+work；本计划 review 可先跑，T-00 即可开工（不依赖 639），
   T-01+ 等 639 双轨解析就绪`。
-- 2026-09-18 work handoff：`stage: work | plan_id: PLAN-070 | plan_revision: 1 |
+- 2026-09-18 work handoff：`stage: work | plan_id: PLAN-070 | plan_revision: 3 |
   outcome: pass(T-00)/blocked(T-01+) | code_commit: 无（T-00 零代码改动，簿记
   3a05255 线上） | task_ids: T-00 | evidence: attachments/070-consumption-matrix.md |
   blockers: T-01+ 待 PLAN-639 merge 收口（当前 reviewed、合并中；blueprints/
   包库结构已见 master） | next: 639 收口后 T-01 开工；开工时先建组内 auto-lang
   兄弟 worktree（分支基须含 639 落地提交）`。worktree：
   `D:/autostack/.wt/down-070/auto-down`（plan-070-dev，基 3a05255）。
+- 2026-09-18 work handoff #3（rev2）：`stage: work | plan_id: PLAN-070 |
+  plan_revision: 3 | outcome: pass(T-01/T-02) | code_commit: auto-lang
+  af8c72a84+2cf3b4a74（auto-down-dev）/ auto-down 9ace132+69f69d2
+  （plan-070-dev） | task_ids: T-01,T-02 | evidence: 各任务勾记注记 +
+  vm-smoke 双模全臂 ×2（T-01/T-02 各一轮）+ pnpm build 绿 + 负测 |
+  blockers: 无（Q-7 用户已裁 A） | next: T-03（status_bar/ctx_menu bp 化 +
+  jade web 命令系统接入）`。契约变更：plan_revision 2（AC-01 措辞修订 +
+  T-01/T-02 形态裁定变更，证据在案；授权范围未扩）。
+- 2026-09-18 work handoff #4：`stage: work | plan_id: PLAN-070 |
+  plan_revision: 3 | outcome: pass(T-01 前置修正 f3d79c18f)/blocked(T-03
+  web 切片——Q-8) | code_commit: auto-lang f3d79c18f | task_ids: T-03（处置
+  注记） | evidence: 三版 status_bar 对读 + api.rs:390 + 046 gen App.vue |
+  blockers: Q-8 用户裁定 | next: 裁定后——c 则 AC-03 rev3 修订+T-03 勾记
+  进 T-04；a 则拆 auto-lang 新计划后回本计划`。附带修正：filetree bp 收缩
+  support-files-only（vue bps 扫描 fn 转译缺口实证，046 断裂解除——该缺口
+  若不修会炸任何声明 dep bps 的 vue 构建，T-01 引入 T-03 前置解除）。
+- 2026-09-18 work handoff #5（execution_done）：`stage: work | plan_id:
+  PLAN-070 | plan_revision: 3 | outcome: pass | code_commit: auto-lang
+  af8c72a84+2cf3b4a74+f3d79c18f+1c27ba4ca（auto-down-dev）/ auto-down
+  9ace132+69f69d2+b4177ed+6bb528c+090060b（plan-070-dev）|
+  task_ids: T-00..T-06 全部 | evidence: 各任务勾记 + vm-smoke 双模全臂
+  （T-01/T-02/T-04 三轮）+ plan639 4/4 + e2e 24-menubar 2/2 + 全量
+  playwright 基线更新后绿 + bp-gate/tabs-store-sync 门绿 | blockers: 无 |
+  next: review（全量门已在本轮跑毕，review 复核 + 按需抽验后端面）`。
+  Q-8 用户裁定（c+本计划 phase）已按 rev3 全额交付：web 命令系统真落地
+  而非挂前置。
+- 2026-09-18 review（独立复验轮，实现会话内按工件重建裁定——限制已声明）：
+  `stage: review | plan_id: PLAN-070 | plan_revision: 3 | outcome: pass |
+  reviewed_commit: auto-down plan-070-dev@556f5cb + auto-lang auto-down-dev@1c27ba4ca |
+  base_commit: plan-070-dev 基 16a4bbf（3a05255 起）/ auto-down-dev 基 cfc849f80 |
+  dependency_revisions: auto-lang master cfc849f80（PLAN-639 delivered）、
+  blueprints 包经组 worktree 解析、046-bp-import 语料 |
+  spec_inputs: 本计划 §4 规范增量 SD-01/02（rev2/3 无新增 delta；frontmatter
+  new_spec_components=[] 的书面解释=本仓无 docs/specs/，P070-x 归 merge 落账） |
+  acceptance_results: AC-01..05 全 pass——AC-01 bp-gate 正向+负测（注入假
+  tree_util.at → exit 1 精准点名）+独立 find 断言（三仓消费面零副本）；
+  AC-02 sync --check 字节等价+desktop 副本缺席+§9.5 退役文；AC-03 e2e
+  24-menubar 2/2 复跑+pnpm build 绿+desktop smoke 16 臂无回归；AC-04 门绿
+  +负测红实测+基线复跑（T-04 轮双模 smoke+全量 playwright 基线更新后绿）；
+  AC-05 F-1 补账后 DEBTS 在案（auto-down：Q-7=A+widgets-gallery+musk；
+  auto-lang：with_defaults 根+bps 扫描转译缺口）+SD-01/02 落笔+P070-x 归
+  merge |
+  findings: F-1（AC-05 DEBTS 两行 widgets-gallery/musk 未落，勾记缺失）→
+  needs_fix 回 work 补齐 556f5cb 复验在案；F-2（desktop README §9 表⑥
+  "624 已修 find_index"与 T-02 实证冲突未修正）→ 同补修正注记指向 §9.5；
+  两项均文档账面级，无代码变更 |
+  evidence: 本节复验清单 + 提交 556f5cb（worktree 内可溯） |
+  next: merge（账本 P070-x 落账）`。
+- 2026-09-18 work handoff #2：`stage: work | plan_id: PLAN-070 | plan_revision: 3 |
+  outcome: pass(T-01 VM 轨切片)/blocked(T-01 web 切片——Q-7 用户裁定) |
+  code_commit: auto-lang af8c72a84（auto-down-dev）+ auto-down 9ace132
+  （plan-070-dev） | task_ids: T-01（部分） | evidence: 本计划 T-01 证据注记 +
+  vm-smoke split+merged 双模全臂 PASS + 负测 ft_rows 断裂实证 | blockers:
+  Q-7（web 谱系：方案 A 不收敛登记 DEBTS【推荐】/方案 B bp v2 收敛设计） |
+  next: Q-7 裁定后——A 则 T-01 勾记+AC-01 措辞修订（plan_revision 2）进 T-02；
+  B 则 T-01 续做 bp v2 设计切片`。
 
 ## 9. 待澄清事项
 
@@ -190,5 +320,7 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
 | Q-2 | jade web actions 接入形态：R-2 provisional（.at 直声明优先） | T-03 | 639 merge 收口后按实际发射面定稿 |
 | Q-3 | 041 改动的仓归属流程（auto-lang examples 内文件，是否随 639 组 worktree 顺带） | T-01/T-03 执行布局 | T-01 开工时与 639 组对齐 |
 | Q-4 | auto-edit 空仓启用（宿主产品化）时机与立项拆分 | 本计划范围边界 | 用户裁定（本计划不含） |
-| Q-5 | **T-00 新增**：package.at 两版择一（b6ff9789 vs gallery 93543315）与 treeview.at 归属（R-5） | T-01 | T-01 内裁定 |
+| Q-5 | ~~package.at/treeview 归属~~ **已闭环（T-01 实勘）**：package.at=目录清单文件（两版仅头注/description 异），bp 包自带清单；treeview=041 活组件（非 filetree 家族），留 041 侧 | 已闭环 |
 | Q-6 | **T-00 新增**：filetree web 谱系 C 的数据注入面改造量（fileTree_store fs 读取按 639 datasource 契约） | T-01 工作量 | T-01 设计细分 |
+| Q-7 | ~~web FileTree 谱系裁定~~ **已裁定（2026-09-18 用户：方案 A 不收敛）**：web 谱系=独立组件，DEBTS 070 登记 + bp spec gotcha#2 在案；AC-01 rev2 修订 | 已闭环（rev2） |
+| Q-8 | ~~web 命令系统处置~~ **已裁定（2026-09-18 用户）**：(c) 修订 + **在本计划内加 phase 真正解决**——ui_config 合成面扩展（auto-lang 侧，本计划 T-05，在既有 down-070/auto-lang worktree 执行）+ jade web 命令系统落地（T-06），不另立 auto-lang 计划 | 已闭环（rev3） |

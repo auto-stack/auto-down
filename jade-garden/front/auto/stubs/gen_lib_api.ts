@@ -104,10 +104,6 @@ export async function deleteFileRaw(_path: string): Promise<void> {}
 
 export function toggleExpanded(_expanded: any, _path: string): void {}
 
-export async function loadPluginsResult(): Promise<any> {
-  return { plugins: [], error: '' }
-}
-
 export function cacheClear(_cache: any, _path: string): void {}
 
 // --- Phase 5.1 widget panel additions (types + link/page API) ---

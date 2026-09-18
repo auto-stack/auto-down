@@ -216,7 +216,7 @@ sed 's|@/lib/api|../../../auto/src/front/utils/<name>_store_ext|g' \
     `watch(...)`，语义与 Pinia setup 内 watch 一致。
 13. **错误传播的两种复刻**：原 action 有 try/catch 吞下错误 → ext 返回
     `{ ..., error: "" }` map，store 内 `if res.error == ""` 双分支
-    （workspace/graph/fileTree.load/plugins）；原 action 让 rejection
+    （workspace/graph/fileTree.load）；原 action 让 rejection
     传播 → ext 用 RAW 包装直接 throw，rejection 穿过 async handler 到
     facade 调用方（fileTree 的 create/duplicate/rename/delete，行为与
     原 Pinia 完全一致）。「设置 error 后再 re-throw」（workspace.open）

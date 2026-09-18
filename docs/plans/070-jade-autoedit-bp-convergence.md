@@ -5,7 +5,7 @@ feature_name: jade-autoedit-bp-convergence（auto-edit/jade-garden 源码级组�
 author: [zhaopuming]
 created_at: 2026-09-17
 updated_at: 2026-09-17
-plan_revision: 2
+plan_revision: 3
 
 # /auto-plan:review 结束时填写：
 supersedes_spec_components: []
@@ -14,7 +14,7 @@ touched_goals: []              # 本仓无 goals.md
 
 affects: [jade-garden/front, auto-lang/examples/ui/041-auto-edit]
 current_step: 3
-total_steps: 5
+total_steps: 7
 ---
 
 # [PLAN-070] jade-autoedit-bp-convergence——auto-edit/jade-garden 源码级组件平台化
@@ -206,9 +206,22 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   解阻选项：**(a)** auto-lang 扩 ui_config 合成面至非 app 组件（新计划）；
   **(b)** jade web 采用 app 根部署（架构大改）；**(c)** AC-03 web 切片
   修订——web 命令面以既有 ribbon/command_palette 手写面为准，DSL 命令
-  系统 web 接入挂前置。→ Q-8 用户裁定。零代码改动（纯调查/裁定切片）。
+  系统 web 接入挂前置。→ Q-8 已裁定（rev3）：c 修订 + T-05/T-06 新 phase
+  真正解决。零代码改动（纯调查/裁定切片）。
+- **T-05** [新 phase，auto-lang 侧] ui_config 合成面扩展至非 app 组件：
+  现状=合成仅 app.at 壳继承（api.rs:390 防动作泄漏设计）。扩展为**选择性
+  继承**——组件 AST 含 menubar/toolbar widget 时才注入 pac.at ui_config 的
+  ActionsBlock（无 menubar/toolbar 的组件零注入，保住泄漏防线）。
+  产物：crates/auto-lang/src/ui_gen/api.rs 扩展 + 组件级测试（含泄漏负
+  断言）；验证：新测试绿 + 046 build 不回归 + 既有 cargo 测试面。
+  依赖：无（639 T-05 已交付 app 壳合成，本 phase 扩其适用面）。→ AC-03
+- **T-06** [新 phase，jade 侧] jade web 命令系统落地：front/auto 增
+  ui_config（app-config.at，动作集镜像 desktop 067 六流）+ menu_bar.at
+  组件（menubar/toolbar 视图 + ext 委托 facade store 的 handler）+
+  MenuBar.vue 部署 + AppShell 接线；验证：pnpm build + playwright menubar
+  DOM 断言（新 e2e spec）。依赖：T-05。→ AC-03
 - **T-04** [改] 门禁收口：§5 全量基线复跑 + §4.4 新门落地 + DEBTS/ARCHITECTURE
-  落笔（SD-01）。依赖：T-01..T-03。→ AC-04/05
+  落笔（SD-01）。依赖：T-01..T-03、T-05、T-06（居末执行）。→ AC-04/05
 
 ## 8. 复审记录
 
@@ -216,7 +229,7 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   （blocked on：依赖 PLAN-639 T-04/T-05 未落地；639 与本计划 review 未跑）。
   `next: 639 先行 review+work；本计划 review 可先跑，T-00 即可开工（不依赖 639），
   T-01+ 等 639 双轨解析就绪`。
-- 2026-09-18 work handoff：`stage: work | plan_id: PLAN-070 | plan_revision: 2 |
+- 2026-09-18 work handoff：`stage: work | plan_id: PLAN-070 | plan_revision: 3 |
   outcome: pass(T-00)/blocked(T-01+) | code_commit: 无（T-00 零代码改动，簿记
   3a05255 线上） | task_ids: T-00 | evidence: attachments/070-consumption-matrix.md |
   blockers: T-01+ 待 PLAN-639 merge 收口（当前 reviewed、合并中；blueprints/
@@ -224,7 +237,7 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   兄弟 worktree（分支基须含 639 落地提交）`。worktree：
   `D:/autostack/.wt/down-070/auto-down`（plan-070-dev，基 3a05255）。
 - 2026-09-18 work handoff #3（rev2）：`stage: work | plan_id: PLAN-070 |
-  plan_revision: 2 | outcome: pass(T-01/T-02) | code_commit: auto-lang
+  plan_revision: 3 | outcome: pass(T-01/T-02) | code_commit: auto-lang
   af8c72a84+2cf3b4a74（auto-down-dev）/ auto-down 9ace132+69f69d2
   （plan-070-dev） | task_ids: T-01,T-02 | evidence: 各任务勾记注记 +
   vm-smoke 双模全臂 ×2（T-01/T-02 各一轮）+ pnpm build 绿 + 负测 |
@@ -232,14 +245,14 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
   jade web 命令系统接入）`。契约变更：plan_revision 2（AC-01 措辞修订 +
   T-01/T-02 形态裁定变更，证据在案；授权范围未扩）。
 - 2026-09-18 work handoff #4：`stage: work | plan_id: PLAN-070 |
-  plan_revision: 2 | outcome: pass(T-01 前置修正 f3d79c18f)/blocked(T-03
+  plan_revision: 3 | outcome: pass(T-01 前置修正 f3d79c18f)/blocked(T-03
   web 切片——Q-8) | code_commit: auto-lang f3d79c18f | task_ids: T-03（处置
   注记） | evidence: 三版 status_bar 对读 + api.rs:390 + 046 gen App.vue |
   blockers: Q-8 用户裁定 | next: 裁定后——c 则 AC-03 rev3 修订+T-03 勾记
   进 T-04；a 则拆 auto-lang 新计划后回本计划`。附带修正：filetree bp 收缩
   support-files-only（vue bps 扫描 fn 转译缺口实证，046 断裂解除——该缺口
   若不修会炸任何声明 dep bps 的 vue 构建，T-01 引入 T-03 前置解除）。
-- 2026-09-18 work handoff #2：`stage: work | plan_id: PLAN-070 | plan_revision: 2 |
+- 2026-09-18 work handoff #2：`stage: work | plan_id: PLAN-070 | plan_revision: 3 |
   outcome: pass(T-01 VM 轨切片)/blocked(T-01 web 切片——Q-7 用户裁定) |
   code_commit: auto-lang af8c72a84（auto-down-dev）+ auto-down 9ace132
   （plan-070-dev） | task_ids: T-01（部分） | evidence: 本计划 T-01 证据注记 +
@@ -259,4 +272,4 @@ web 轨：依赖 639 T-05 发射后，jade web 在 front/auto 声明 actions 消
 | Q-5 | ~~package.at/treeview 归属~~ **已闭环（T-01 实勘）**：package.at=目录清单文件（两版仅头注/description 异），bp 包自带清单；treeview=041 活组件（非 filetree 家族），留 041 侧 | 已闭环 |
 | Q-6 | **T-00 新增**：filetree web 谱系 C 的数据注入面改造量（fileTree_store fs 读取按 639 datasource 契约） | T-01 工作量 | T-01 设计细分 |
 | Q-7 | ~~web FileTree 谱系裁定~~ **已裁定（2026-09-18 用户：方案 A 不收敛）**：web 谱系=独立组件，DEBTS 070 登记 + bp spec gotcha#2 在案；AC-01 rev2 修订 | 已闭环（rev2） |
-| Q-8 | **T-03 新增（阻塞 AC-03 web 切片）**：web 命令系统处置——(a) auto-lang 扩 ui_config 合成面至非 app 组件；(b) jade web app 根部署；(c) AC-03 web 切片修订（web 命令面=既有手写 ribbon/command_palette，DSL 命令系统挂前置） | AC-03 完成判定 | **用户裁定**（倾向 c：web UX 已有命令面，(a) 可作 auto-lang 独立计划后续） |
+| Q-8 | ~~web 命令系统处置~~ **已裁定（2026-09-18 用户）**：(c) 修订 + **在本计划内加 phase 真正解决**——ui_config 合成面扩展（auto-lang 侧，本计划 T-05，在既有 down-070/auto-lang worktree 执行）+ jade web 命令系统落地（T-06），不另立 auto-lang 计划 | 已闭环（rev3） |

@@ -202,5 +202,8 @@ spec 同步删改（08-screenshots 基线预期受 §0-2/3/5 影响）。
   `archived` = 本文件 git mv → docs/plans/archived/071-jade-garden-slim-down.md +
   status: archived + completion_kind: delivered（附件 071-consumption-matrix.md 一并收编
   docs/plans/attachments/）；
-  `cleaned` = ⏳（worktree down-071/auto-down + 分支 plan-071-dev + 只读 auto-lang 兄弟
-  wt + 组目录清理后补记）。
+  `cleaned` = ✅（2026-09-18）——wt-guard 复跑 clean（worktree 内 1385 个 pnpm junction 按
+  处方逐链接清除，REMAIN=0）；git worktree remove --force down-071/auto-down、分支
+  plan-071-dev(b999938) 删除、只读 auto-lang 兄弟 wt（@14de34e06）移除、组目录
+  down-071 移除；`git worktree list`/branch/组目录三查零残留；ancestry 验证
+  b999938∈master 后删。

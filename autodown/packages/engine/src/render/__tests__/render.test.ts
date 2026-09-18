@@ -57,13 +57,19 @@ describe('MarkdownRender DOM contract', () => {
     expect(html).toMatch(/<pre[^>]*data-language="rust"[^>]*><code[^>]*>fn a\(\) \{\}\n<\/code>/)
   })
 
-  it('renders tables with table-node and embedded renderers in cells', async () => {
-    const html = clean(await render('| a | b |\n| --- | --- |\n| 1 | 2 |'))
+  it('renders tables with table-node and inline cell flow (musk plan 072)', async () => {
+    const html = clean(
+      await render('| a | b |\n| --- | --- |\n| `1` | 2 |'),
+    )
     expect(html).toContain('<table class="table-node"')
     expect(html).toContain('class="table-node__resize-handle"')
     expect(html).toContain('>a<')
-    // nested cell content carries its own node slots
-    expect(html).toContain('data-node-type="text"')
+    // cells are parseInline output: inline vnodes flow DIRECTLY inside the
+    // td — no node-slot wrappers (they stacked vertically), no unknown-node
+    // degrade (it printed the bare `inline_code` type name)
+    expect(html).toContain('data-node-type="table"')
+    expect(html).not.toContain('data-node-type="inline_code"')
+    expect(html).toContain('<code class="inline-code"><span>1</span></code>')
   })
 
   it('renders lists and blockquotes with embedded markdown-renderer', async () => {

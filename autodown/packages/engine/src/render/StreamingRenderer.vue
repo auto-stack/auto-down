@@ -99,8 +99,7 @@ const props = withDefaults(
     /** editor scroll-sync mode: zeroes slot-edge margins for stable block
      *  measurement. Plain streaming reads should turn this OFF to keep the
      *  normal heading/paragraph vertical rhythm. */
-    scrollSync?: boolean
-    /** Theme declaration entry (PLAN-051 T4): which palette档 the document
+    scrollSync?: boolean    /** Theme declaration entry (PLAN-051 T4): which palette档 the document
      *  face renders in. Declarative in the view tree (the DSL
      *  `dark_mode:`/`accent:` bindings land here) — NOT an ambient CSS fact
      *  the VM track can't see. Values per auto-lang Design 22 §7. */
@@ -109,7 +108,12 @@ const props = withDefaults(
   }>(),
   {
     streaming: false,
-    scrollSync: true,
+    // musk plan 072: was `true` — the is-sync slot-edge margin zeroing
+    // (with !important) then shipped with every plain read, killing the
+    // heading top margins the doc comment above already reserved for
+    // scroll-sync-only. Consumers wanting sync pass :scroll-sync="true"
+    // (the editor twin and the wiki view already do).
+    scrollSync: false,
     darkMode: false,
     accent: 'indigo',
   }
@@ -504,6 +508,36 @@ defineExpose({
 
 .streaming-document :deep(h3) {
   font-size: 1.18rem;
+}
+
+/* musk plan 072: h4-h6 had no rules here — the app reset (Tailwind
+   preflight) zeroed their margins and they glued to the surrounding blocks.
+   Same descending rhythm, continuing from h3. */
+.streaming-document :deep(h4) {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.4rem;
+  margin-bottom: 0.7rem;
+  color: var(--ad-accent-strong);
+}
+
+.streaming-document :deep(h5) {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.3rem;
+  margin-bottom: 0.6rem;
+  color: var(--ad-accent-strong);
+}
+
+.streaming-document :deep(h6) {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  color: var(--ad-accent-strong);
 }
 
 /* Paragraphs */

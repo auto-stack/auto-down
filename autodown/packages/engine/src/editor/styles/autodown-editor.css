@@ -210,6 +210,34 @@
   font-size: 1.18rem;
 }
 
+/* musk plan 072: h4-h6 were left to the CSS reset (margin 0) — glued to the
+   surrounding blocks. Same descending rhythm as the streaming pane. */
+.autodown-editor-content h4,
+.autodown-editor-content h5,
+.autodown-editor-content h6 {
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ad-accent-strong, #4338ca);
+}
+
+.autodown-editor-content h4 {
+  font-size: 1.05rem;
+  margin-top: 1.2rem;
+  margin-bottom: 0.45rem;
+}
+
+.autodown-editor-content h5 {
+  font-size: 1rem;
+  margin-top: 1.1rem;
+  margin-bottom: 0.45rem;
+}
+
+.autodown-editor-content h6 {
+  font-size: 0.95rem;
+  margin-top: 1rem;
+  margin-bottom: 0.45rem;
+}
+
 .autodown-editor-content p {
   margin: 0.5rem 0;
 }
@@ -801,15 +829,19 @@ ol.list-node {
   white-space: nowrap;
 }
 
-/* ─── Task list checkboxes (plan 030 T4/T7) ─── */
-.autodown-editor-content .list-item.task-item {
+/* ─── Task list checkboxes (plan 030 T4/T7; pane-agnostic since musk plan 072) ───
+   No `.autodown-editor-content` prefix: the read/stream panes render the same
+   widget classes (`li.list-item.task-item` from listItemsOfPanel), and the
+   view li is an inline checkbox input followed by a BLOCK markdown-renderer
+   div — without the flex row the content drops a line below the checkbox. */
+.list-item.task-item {
   list-style: none;
   display: flex;
   align-items: flex-start;
   gap: 0.4rem;
 }
 
-.autodown-editor-content .list-item.task-item > .task-checkbox {
+.list-item.task-item > .task-checkbox {
   margin-top: 0.35em;
   accent-color: var(--ad-primary, #3b82f6);
   flex-shrink: 0;
@@ -818,11 +850,11 @@ ol.list-node {
   cursor: pointer;
 }
 
-.autodown-editor-content .list-item.task-item > .task-checkbox:disabled {
+.list-item.task-item > .task-checkbox:disabled {
   cursor: default;
 }
 
-.autodown-editor-content .list-item.task-item > .markdown-renderer {
+.list-item.task-item > .markdown-renderer {
   flex: 1;
   min-width: 0;
 }

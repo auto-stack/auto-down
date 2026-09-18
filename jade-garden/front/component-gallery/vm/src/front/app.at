@@ -36,6 +36,12 @@ widget App {
         // —— fixture：backlinks 面（数据绑定样板：行 + 计数投影）——
         var bl_rows = []
         var bl_count int = 0
+        // —— fixture：menubar+toolbar 面（①-3/①-4：ui_config 合成面 twin，
+        // PLAN-073 T-02——web 子集动作集结构镜像；命令面交互行为归 app 层
+        // 24-menubar e2e，gallery=结构锁，故无点击断言）——
+        var mb_menus int = 0
+        var mb_actions int = 0
+        var mb_toolbar int = 0
     }
 
     computed {
@@ -43,10 +49,12 @@ widget App {
         show_outline => .unit == "outline"
         show_tab_strip => .unit == "tab_strip"
         show_backlinks => .unit == "backlinks"
+        show_menubar => .unit == "menubar"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
         bl_marker => f"unit=backlinks count:${.bl_count}"
+        mb_marker => f"unit=menubar menus:${.mb_menus} actions:${.mb_actions} toolbar:${.mb_toolbar}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -71,6 +79,10 @@ widget App {
                 }
                 button (text: "backlinks", variant: "text") {
                     onclick: .Select("backlinks")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "menubar", variant: "text") {
+                    onclick: .Select("menubar")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -134,6 +146,45 @@ widget App {
                     }
                 }
             }
+            if .show_menubar {
+                col (class: "flex-col p-3") {
+                    // 结构镜像（MenuBar.vue 渲染面 / desktop app.at L326-353
+                    // 同款组件族）：菜单 web 子集（PLAN-071 裁定）+ toolbar
+                    // 3 按钮（icon 在 VM 臂以文本 title 呈现）。VM=Popover
+                    // lowering，内容态可见性归运行时，快照按树结构断言。
+                    row (class: "items-center gap-2") {
+                        menubar (class: "items-center") {
+                            menubar-menu (value: "file") {
+                                menubar-trigger "文件"
+                                menubar-content {
+                                    menubar-item (title: "打开工作区") {}
+                                    menubar-item (title: "保存") {}
+                                    menubar-item (title: "关闭标签") {}
+                                }
+                            }
+                            menubar-menu (value: "view") {
+                                menubar-trigger "查看"
+                                menubar-content {
+                                    menubar-item (title: "重载文件列表") {}
+                                    menubar-item (title: "打开图谱") {}
+                                }
+                            }
+                        }
+                        row (class: "items-center gap-1 px-2 py-1") {
+                            button (text: "保存", variant: "text") {
+                                class: "h-7 w-7 px-0 py-0"
+                            }
+                            button (text: "关闭标签", variant: "text") {
+                                class: "h-7 w-7 px-0 py-0"
+                            }
+                            button (text: "重载文件列表", variant: "text") {
+                                class: "h-7 w-7 px-0 py-0"
+                            }
+                        }
+                    }
+                    text .mb_marker { class: "px-3 pt-2 text-[11px] text-zinc-400" }
+                }
+            }
         }
     }
 
@@ -149,6 +200,9 @@ widget App {
             .ts_active = "wiki/引言.ad"
             .bl_rows.push({ source_title: "另页", source_path: "wiki/另页.ad", context: "链接到 fixture 页" })
             .bl_count = 1
+            .mb_menus = 2
+            .mb_actions = 5
+            .mb_toolbar = 3
         }
 
         .Select(u) -> {

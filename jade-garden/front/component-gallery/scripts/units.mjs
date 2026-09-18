@@ -79,6 +79,24 @@ export const UNITS = [
     },
   },
   {
+    id: 'menubar',
+    title: '菜单栏+工具栏（桶①-3/①-4·命令面，PLAN-073 T-02）',
+    // toolbar 落点（T-00 复核）：menu_bar.at 第二 view 块 → MenuBar.vue 内
+    // 渲染，无独立 SFC——本单元 = 双面结构锁（菜单面 web 子集 + 工具栏 3
+    // 按钮）；命令面交互行为归 app 层 24-menubar e2e（070 T-06），gallery
+    // 无点击断言。
+    vue: {
+      url: '/?unit=menubar',
+      ready: '[data-unit="menubar"] button[title="保存"]',
+      needles: ['文件', '查看'],
+    },
+    vm: {
+      actions: [{ button: 'menubar' }],
+      state: { unit: 'menubar', mb_menus: '2', mb_actions: '5', mb_toolbar: '3' },
+      snapshot: ['unit=menubar menus:2 actions:5 toolbar:3', '文件', '查看', '重载文件列表'],
+    },
+  },
+  {
     id: 'command_palette',
     title: '命令面板（桶②·RC-D 缺件红占位）',
     missing: true,

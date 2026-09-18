@@ -73,3 +73,13 @@ cd .. && node scripts/vm-probe.mjs   # boot + MCP 断言（可 --port）
 | F-4 | `dyn (.tag)` 双轨可用：VM 快照可见（渲染为容器+文本子树），vue 臂为生成 SFC 常规形态 | vm-probe：dyn ul/li 行文本可断言 |
 | F-5 | blocks.ts 的 activeTab watch 因 Open 原地改 tab 对象（引用不变）不重触发——生产侧 pinned-empty 掩盖；gallery 改显式 `blocks.parse` 播种 | OutlinePage 注释 + vue-probe；候选 DEBTS（front 侧修复归 L1 修复循环/app 层） |
 | F-6 | **缺件即红的真实形态 = 静默降级，非崩溃**：真件（outline_panel 代表）VM 直挂经 `dep jadeauto` 通道可 load/render，但 TS ext 全量降级为 no-op stub（`WARN ext stub: outlineHeadings/useBlocksStore ... no-op platform stub`）→ 数据面空渲染（"No headings."）。红信号 = stub WARN 日志 + 数据投影为空。`auto run` 的 dep 解析走编译器 pac.at 直读，不物化 junction（build 才物化） | T-03 一次性实验（临时 dep + 挂载，已还原）；本表即证据留档 |
+
+## 债表（PLAN-073 T-02 复核结论在档）
+
+| # | 单元 | 结论 | 证据/去向 |
+| --- | --- | --- | --- |
+| D-1 | ①-2 tab 条·VM 语言语义复核 | **P622/P624 修复在当前 master 成立**（auto.exe v0.4.2-1140）：find 闭包（捕获本地变量 `.tabs.find(tt => tt.path == path)` / 根态字段 `== .active_path`，desktop app.at L156/181/197/203/237/252）、splice 写回、`?:` 三元（tab_strip.at L66 class 三元 / app.at `enabled:`）均正常。固化载体 = gallery tab_strip 单元（twin 切换交互，本 gate 在案）+ desktop vm-smoke tabs 臂五断言（运行收据归 PLAN-073 T-04） | units.mjs tab_strip 双绿 + desktop/vm-smoke.mjs |
+| D-2 | ①-2 tab 条·结构对照 | **两端各持合法（070 R-1，不 bp 化）**：web=button/tab（active `bg-primary/10 text-primary`、truncate、dirty `●` text-[9px]、hover 显 close X、局部图谱/今日笔记/daily 导航附加钮）；desktop=row/tab（Plan 449 view fn 片段双分支、active `bg-[#1C1D24]`、dirty `*` amber、x 钮仅活动行、无附加钮）。结构差异=各应用自持形态，不做对齐修复；parity 锁在各自 gate | tab_strip 单元（072 样板）+ desktop app.at L408-441 |
+| D-3 | ①-1/①-2 dirty 标色 | web `text-amber-500`（亮底）vs VM `text-amber-400`（暗底）——调色板字面，统一需主题 warning 语义 token（shadcn 默认无），留主题系统流；不在 AC-02 字面范围（11px/zinc） | 073-literal-style-inventory.md §4.3 |
+| D-4 | ①-3 menubar·快捷键标注 | MenuBar.vue 快捷键 `<span class="ml-auto text-[11px] text-zinc-500">` ×4 源自编译器合成模板（auto-lang `ui_gen/vue.rs:6056`）——跨仓 codegen 面，菜单结构对照不受影响，模板 token 化留 L2 | 073-literal-style-inventory.md §2 |
+| D-5 | ①-5 filetree 行家族·结构对照 | **行解剖两端对齐，缩进表示各持合法**：web（file_tree_node.at）=margin 缩进（level*12px style_obj）+ chevron span（h-4 w-4）+ NodeIcon ext 函数件 + name truncate，行点击 dir=toggle/file=open；desktop（app.at ft_rows）=guides 竖线（041 同款）+ mouse-area chevron（w-3.5 h-3.5）+ bps TreeIcon + label 钮。chevron 双态（right/down）、icon 按型、label 语义两端一致；ctx 菜单/新增钮为 web 独有面（desktop 无对应流）。bp spec gotcha#2 在案：bps 家族（flatten_tree/tree_icon）desktop 消费侧 gate 归本 twin（pac 自包含裁定，icon 以内置名替代），包级 gate 归 L2 | filetree 单元双臂绿（vue 点击展开 + VM ▸→▾ 翻转 rows:3→4）@本仓 T-03 |

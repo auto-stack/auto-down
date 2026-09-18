@@ -7,15 +7,25 @@
 // 共享的撞名面不与之相触（PLAN-067 §5.1 撞名裁定同源纪律）。
 // 组件子树对 MCP 快照不可见（041 README「vm 组件边界」②）——smoke 对
 // status/root/计数的断言走 autoui_state 根态字段，无快照定位依赖。
+//
+// PLAN-073 T-01 配方化（RC-A；清单 073-literal-style-inventory.md §4）：
+// 字面调色板色 → 语义 token（text-foreground/text-muted-foreground，VM
+// 主题既有映射）、字面任意值字号 → text-xs（P-4 实证）；原字面全录清单
+// §2（AC-02 grep 本文件零命中）。重复串收敛 sb_meta/sb_dim 双配方
+// （style: bare-ident 消费，P-2 实证）。bl 行的 ml-auto 为行内特有定位，
+// 保持独立串。
+style sb_meta = "text-xs text-foreground"
+style sb_dim = "text-xs text-muted-foreground"
+
 widget StatusBar (status_text: str = "", root_path: str = "", bl: int = 0, ol: int = 0) {
     view {
         col (style: "w-full shrink-0") {
             col (style: "h-px w-full bg-border")
             row (style: "h-6 items-center bg-muted/30 shrink-0 w-full gap-3 px-2") {
-                text .status_text { style: "text-[11px] text-zinc-300" }
-                text .root_path { style: "text-[11px] text-zinc-400" }
-                text f"bl:${.bl}" { style: "text-[11px] text-zinc-400 ml-auto" }
-                text f"ol:${.ol}" { style: "text-[11px] text-zinc-400" }
+                text .status_text { style: sb_meta }
+                text .root_path { style: sb_dim }
+                text f"bl:${.bl}" { style: "text-xs text-muted-foreground ml-auto" }
+                text f"ol:${.ol}" { style: sb_dim }
             }
         }
     }

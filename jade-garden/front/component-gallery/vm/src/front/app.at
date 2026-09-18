@@ -36,6 +36,20 @@ widget App {
         // —— fixture：backlinks 面（数据绑定样板：行 + 计数投影）——
         var bl_rows = []
         var bl_count int = 0
+        // —— fixture：menubar+toolbar 面（①-3/①-4：ui_config 合成面 twin，
+        // PLAN-073 T-02——web 子集动作集结构镜像；命令面交互行为归 app 层
+        // 24-menubar e2e，gallery=结构锁，故无点击断言）——
+        var mb_menus int = 0
+        var mb_actions int = 0
+        var mb_toolbar int = 0
+        // —— fixture：filetree 行家族面（①-5：flatten_tree 渲染语义 twin，
+        // PLAN-073 T-03——行解剖 guides/chevron/icon/label 镜像 desktop
+        // app.at ft_rows；展开交互走 label 钮（web 行点击同款），子行经
+        // 条件分支渲染（desktop `if r.open` 双分支同款，避开 splice 面）——
+        var ft_rows = []
+        var ft_open_dir str = ""
+        var ft_count int = 0
+        var ft_sel str = ""
     }
 
     computed {
@@ -43,10 +57,14 @@ widget App {
         show_outline => .unit == "outline"
         show_tab_strip => .unit == "tab_strip"
         show_backlinks => .unit == "backlinks"
+        show_menubar => .unit == "menubar"
+        show_filetree => .unit == "filetree"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
         bl_marker => f"unit=backlinks count:${.bl_count}"
+        mb_marker => f"unit=menubar menus:${.mb_menus} actions:${.mb_actions} toolbar:${.mb_toolbar}"
+        ft_marker => f"unit=filetree rows:${.ft_count} open:${.ft_open_dir} sel:${.ft_sel}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -71,6 +89,14 @@ widget App {
                 }
                 button (text: "backlinks", variant: "text") {
                     onclick: .Select("backlinks")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "menubar", variant: "text") {
+                    onclick: .Select("menubar")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "filetree", variant: "text") {
+                    onclick: .Select("filetree")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -134,6 +160,120 @@ widget App {
                     }
                 }
             }
+            if .show_menubar {
+                col (class: "flex-col p-3") {
+                    // 结构镜像（MenuBar.vue 渲染面 / desktop app.at L326-353
+                    // 同款组件族）：菜单 web 子集（PLAN-071 裁定）+ toolbar
+                    // 3 按钮（icon 在 VM 臂以文本 title 呈现）。VM=Popover
+                    // lowering，内容态可见性归运行时，快照按树结构断言。
+                    row (class: "items-center gap-2") {
+                        menubar (class: "items-center") {
+                            menubar-menu (value: "file") {
+                                menubar-trigger "文件"
+                                menubar-content {
+                                    menubar-item (title: "打开工作区") {}
+                                    menubar-item (title: "保存") {}
+                                    menubar-item (title: "关闭标签") {}
+                                }
+                            }
+                            menubar-menu (value: "view") {
+                                menubar-trigger "查看"
+                                menubar-content {
+                                    menubar-item (title: "重载文件列表") {}
+                                    menubar-item (title: "打开图谱") {}
+                                }
+                            }
+                        }
+                        row (class: "items-center gap-1 px-2 py-1") {
+                            button (text: "保存", variant: "text") {
+                                class: "h-7 w-7 px-0 py-0"
+                            }
+                            button (text: "关闭标签", variant: "text") {
+                                class: "h-7 w-7 px-0 py-0"
+                            }
+                            button (text: "重载文件列表", variant: "text") {
+                                class: "h-7 w-7 px-0 py-0"
+                            }
+                        }
+                    }
+                    text .mb_marker { class: "px-3 pt-2 text-[11px] text-zinc-400" }
+                }
+            }
+            if .show_filetree {
+                col (class: "flex-col p-3") {
+                    col (class: "w-72 shrink-0 gap-1 border-r pr-2") {
+                        text "Files" { class: "text-xs font-semibold uppercase tracking-wider text-muted-foreground" }
+                        for r in .ft_rows {
+                            row (class: "items-center") {
+                                for g in r.guides {
+                                    if g == "l" {
+                                        div (class: "w-4 h-6 flex items-center justify-center") {
+                                            div (class: "w-px h-6 bg-border") {}
+                                        }
+                                    }
+                                    if g != "l" {
+                                        div (class: "w-4 h-6") {}
+                                    }
+                                }
+                                // chevron（desktop mouse-area 的 gate 可驱动
+                                // 等价：label 钮双分支，文案 ▾/▸ 随开合翻转）
+                                if r.has_kids {
+                                    if .ft_open_dir == r.id {
+                                        button (text: "▾", variant: "text") {
+                                            onclick: .FtToggle(r.id)
+                                            class: "w-5 h-5 px-0"
+                                        }
+                                    }
+                                    if .ft_open_dir != r.id {
+                                        button (text: "▸", variant: "text") {
+                                            onclick: .FtToggle(r.id)
+                                            class: "w-5 h-5 px-0"
+                                        }
+                                    }
+                                }
+                                if !r.has_kids {
+                                    div (class: "w-5 shrink-0") {}
+                                }
+                                // icon（bps TreeIcon 无 dep 通道——pac.at 自包含
+                                // 裁定——twin 以内置 icon 名替代：dir=folder /
+                                // file=file-text；语义对齐 desktop r.icon）
+                                if r.is_dir {
+                                    icon (name: "folder", class: "w-4 h-4 text-muted-foreground") {}
+                                }
+                                if !r.is_dir {
+                                    icon (name: "file-text", class: "w-4 h-4 text-muted-foreground") {}
+                                }
+                                if r.has_kids {
+                                    button (text: r.label, variant: "text") {
+                                        onclick: .FtToggle(r.id)
+                                        class: "flex-1 px-1 text-left text-sm"
+                                    }
+                                }
+                                if !r.has_kids {
+                                    button (text: r.label, variant: "text") {
+                                        onclick: .FtOpen(r.id)
+                                        class: "flex-1 px-1 text-left text-sm"
+                                    }
+                                }
+                            }
+                            // 展开子行（flatten_tree 展开臂渲染语义：子行随
+                            // open 出现，guides +1 层）
+                            if .ft_open_dir == r.id {
+                                row (class: "items-center") {
+                                    div (class: "w-4 h-6 flex items-center justify-center") {
+                                        div (class: "w-px h-6 bg-border") {}
+                                    }
+                                    button (text: "探针.ad", variant: "text") {
+                                        onclick: .FtOpen("wiki/方法/探针.ad")
+                                        class: "flex-1 px-1 text-left text-sm"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    text .ft_marker { class: "px-3 pt-2 text-[11px] text-zinc-400" }
+                }
+            }
         }
     }
 
@@ -149,6 +289,13 @@ widget App {
             .ts_active = "wiki/引言.ad"
             .bl_rows.push({ source_title: "另页", source_path: "wiki/另页.ad", context: "链接到 fixture 页" })
             .bl_count = 1
+            .mb_menus = 2
+            .mb_actions = 5
+            .mb_toolbar = 3
+            .ft_rows.push({ label: "引言.ad", guides: [], has_kids: false, open: false, is_dir: false, id: "wiki/引言.ad" })
+            .ft_rows.push({ label: "方法", guides: [], has_kids: true, open: false, is_dir: true, id: "wiki/方法" })
+            .ft_rows.push({ label: "另页.ad", guides: [], has_kids: false, open: false, is_dir: false, id: "wiki/另页.ad" })
+            .ft_count = 3
         }
 
         .Select(u) -> {
@@ -157,6 +304,24 @@ widget App {
 
         .TsSwitch(path) -> {
             .ts_active = path
+        }
+
+        .FtToggle(id) -> {
+            // 先算布尔再双分支（desktop .CloseTab was_dirty 同款）——两个
+            // 条件 if 顺序执行，第一个分支改状态后第二个不得再进。
+            var will_open = .ft_open_dir != id
+            if will_open {
+                .ft_open_dir = id
+                .ft_count = 4
+            }
+            if !will_open {
+                .ft_open_dir = ""
+                .ft_count = 3
+            }
+        }
+
+        .FtOpen(id) -> {
+            .ft_sel = id
         }
     }
 }

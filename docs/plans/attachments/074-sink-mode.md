@@ -190,6 +190,7 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
 | Search/FileText/Box（再导出） | 必留 | lucide 组件值（dyn 渲染） | 留 ext |
 | searchSafe | **sink（编排）** | try/catch 吞错映射沉 watch try/catch/finally；`search(q,30)` 客户端调用改 `use back.api: search_pages` 契约通道（双端 api.at:283/287 在案） | search_panel.at watch；ext 增 `search_pages` 薄别名（get_backlinks 同款）+ gen stub |
 | snippetHtml | 必留（bridge） | regex 字面量 \u0001\u0002 无 DSL 词位 | 留 ext；下沉行构造经 use fn 逐行调用（unlinked highlight_context 先例） |
+| errorMessage | 必留（strict 桥，**T-02 增设**；review F-2 补行） | DSL catch 绑定发射裸 `catch (e)`，front tsconfig strict ⇒ unknown 域属性访问 TS18046——错误消息提取须在类型化 TS 侧（query_block_widget 编辑器先例） | 留 ext；Init debounce 闭包 catch 体调用 |
 | withSearchDisplay | **sink（行构造）** | is_page/is_block/has_snippet 平凡布尔 + title_text 显式 if 守卫（P618 两步赋值）；snippet_html 字段经 ext 桥逐行预计算 | search_panel.at 模块 fn |
 | scheduleScrollToBlock | 必留（bridge） | setTimeout + CustomEvent + dispatchEvent | 留 ext |
 
@@ -222,9 +223,14 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
 ### 5.4 批次 2 计数勘正
 
 计划 §5 预分类 "18 fn 基型" 勘正为 **22 逻辑 fn**（4+11+7，不含纯再导出
-名）：sink 12 + 拆沉 1（runPaletteItem）+ 必留 9（含 hotkey 对合 1 行
-×2 件计 4 fn + focus ×2 + buildCommands + PaletteIcon + snippetHtml +
-scheduleScrollToBlock）。
+名）：sink 11 + 拆沉 1（runPaletteItem）+ 必留 10（hotkey 对 ×2 件计
+4 fn + focus ×2 + buildCommands + PaletteIcon + snippetHtml +
+scheduleScrollToBlock；sink 枚举 = §5.1 两行 + §5.2 五 fn + §5.3 四 fn）。
+（review F-1 勘正：初版误记 12+1+9——sink 行枚举 2+5+4=11、必留括注
+自和=10；总数 22 恰好掩盖拆分错。）另：T-02 执行期增设 errorMessage
+strict 桥（§5.1 表行在案）与 search_pages 薄别名（§5.1 searchSafe 行
+去向在案）、T-03 拆沉残臂 runCommandAction（§5.2 runPaletteItem 行
+去向在案）——批次后 ext 逻辑 fn 面 = 必留 10 + 新增 3 = 13。
 
 
 ### 4.1 desktop 消费登记·批次 2（PLAN-076 T-04 扩表；装配归 L3）

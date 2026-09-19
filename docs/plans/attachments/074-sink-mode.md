@@ -408,3 +408,91 @@ properties 12 实义中 sink 6 → 实沉 4。
 
 > 登记 ≠ 装配（§4 同款）：desktop app.at 面板装配归 L3/后续计划；P-9
 > （map 迭代）为 properties_panel 挂载前置约束源（本档 §6.0）。
+
+## 7. RC-D 批次 4 扩节：图谱族两件 + RC-F 宿主面首单元（PLAN-078 T-00，2026-09-19）
+
+> 作业标准续册。批次 4 = graph_sidebar 162L / graph_controls 216L（+82L
+> styleblock 伴生）两件 RC-D 下沉 + graph_view 141L **RC-F 宿主面首单元**
+>（cytoscape 内核豁免，壳+过滤派生入 L1）。本批 = **RC-D 清零批**
+>（16 件全闭：4+3+7+2）。编译器 = master v0.4.2-1378-g0c6b03fd3（074/076
+> 折回补丁全在）——本批无新增编译器补丁预期（探针五点双轨全绿实证）。
+
+### 7.0 批次 4 探针结论（P-11..P-14，T-00 实证）
+
+探针工件：`jade-garden/front/tmp/p078-probe/`（worktree 一次性，双轨绿后
+弃；auto.exe v0.4.2-1378 主检出 debug exe 同源）。vue 轨 = auto build
+（内跑 vue-tsc && vite build）全绿；VM 轨 = auto run -r vm + MCP
+state/snapshot/action（press/toggle）断言全绿。
+
+- **P-11 map 括号写 VM 轨静默吞 handler（Q-3 关联，P-9 同族新员）**：
+  `.settings["key"] = v`（字面量键与 var 键同病）在 VM msg handler 体内
+  **静默中止**——写后语句全部不执行、无错误输出（isolation 四形态实证：
+  纯 int 写绿/全量 map 字面量重赋绿/括号写两形态计数恒 0）。**可用水位**：
+  点号写 `.settings.nodeSize = 20` 绿（读回 20）、括号读
+  `.settings["nodeSize"]` 绿（读回 20）、msg→msg 链 `.Tail()` 绿、全量
+  字面量重赋 `.settings = {...}` 绿。vue 轨括号写发射正确
+  （`settings.value[args.key] = args.value`，探针 SFC 实文）。
+  **处置**：settings 写通道按 Q-3 裁定走 store fn（vue 轨执行面）；VM
+  twin 不镜像 settings 交互写（F-1 播种投影口径）；L3 desktop 装配图谱
+  设置流时禁 map 括号写（点号写/重赋/集合 fn 通道）——P614 纪律同款登记。
+- **P-12 slider 词位 VM 轨缺席（Q-4 主证据）**：DSL `slider` 元素在 VM
+  轨 **静默丢弃**——aura_view_builder 无 slider 臂（input/checkbox 有臂
+  ，crates/auto-lang/src/ui/aura_view_builder.rs:2075/2181），快照零节点
+  ，set_value 动作不可达；iced View::Slider 运行时形态仅 a2r codegen 轨
+  （rust.rs:3706，PLAN-025 T-03）可达。vue 轨 slider 发射
+  `<input :min :max :step :value @change>` 但**无 type="range"**（vue.rs
+  slider→input 映射不带 type 注入，探针 SFC 实文）——**RangeInput ext
+  桥必留**（生产件滑条 DOM 保真），DSL slider 词位双轨均不可用作生产。
+- **P-13 checkbox 词位双轨可用（Q-4 副证据）**：VM 轨 checkbox 原生词位
+  可驱动——MCP `toggle` 动作 → on_toggle msg 通道 → 布尔翻转投影实证
+  （ps_flag true）；vue 轨 checkbox 自带 `type="checkbox"` + `:checked`
+  （vue.rs:7175 注入臂）。**twin 断言面可用 checkbox 驱动布尔投影**。
+- **P-14 math.round 双轨词位（opacityLabel 沉降依据）**：`math.round(x)`
+  vue 轨发 `Math.round(x)`（ts_adapter.rs:2217 math 模块臂）、VM 轨走
+  静态模块白名单 → `auto.math.round` native（codegen.rs:9167 白名单 +
+  native_catalog.rs:325 注册）——探针 "85%" 双轨绿。ASCII 后缀剥除按
+  strip_ext 纪律形态（length+slice+尾比较）双轨绿（"wiki/Intro" 剥成）
+  ；CJK 路径 VM 原样退化（G-2 字节域确证，centerLabel=vue 轨执行面）
+  。
+- **五点探针总览（计划 §6/T-00 对应）**：①排序下沉（copy+while 选排+
+  cap+break+display 显式 if）双轨绿（top_count=3/first=引言）；②形态
+  算术（math.round/strip_ext）见 P-14；③slider/checkbox 见 P-12/P-13
+  ；④嵌套写通道见 P-11；⑤过滤拆沉（showMissing/showOrphans 节点过滤
+  + 边端点 kept×边表双成员扫描——无 Set 词位）双轨绿（F/F 默认 2/1，
+  翻转后 3/3——graph_view filter_domains 拆沉形态实证）。
+
+### 7.1 graph_sidebar_ext.ts 逐 fn 分类（47L，5 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useGraphStore/useTabsStore/Network（再导出） | 必留 | facade shim + lucide 组件值（dyn 渲染） | 留 ext |
+| graphStats | **sink** | 四 filter/length 计数 + stats Obj 构造（probe_stats 同形，探针⑤同族双轨绿） | graph_sidebar.at 模块 fn `graph_stats` |
+| topDegreeNodes | **sink** | spread/sort/slice 三无词位 → copy+while 选排 + cap 15 + break（探针①双轨绿）；`label || id` → 显式 if（display 字段预计算——gap 46 口径维持，click 仍传 raw label） | graph_sidebar.at 模块 fn `top_degree_nodes` |
+
+### 7.2 graph_controls_ext.ts 逐 fn 分类（~110L，13 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useGraphStore/Search/SlidersHorizontal/Palette/Magnet/Focus（再导出） | 必留 | facade shim + lucide | 留 ext |
+| RangeInput | 必留 | h 组件；DSL input 映射 shadcn Input 丢 min/max/step 在案 + **P-12：DSL slider 词位 vue 轨无 type="range"、VM 轨缺席**——生产滑条 DOM 保真唯一通道 | 留 ext |
+| centerLabel | **sink** | regex `.ad$` → strip_ext 纪律形态（探针②ASCII 双轨绿；CJK 域 VM 退化 G-2——**vue 轨执行面**，VM twin 不镜像 CJK 臂） | graph_controls.at 模块 fn `center_label` |
+| opacityLabel | **sink** | Math.round → `math.round` 双轨词位（P-14）+ f-string `%` 后缀 | graph_controls.at 模块 fn `opacity_label` |
+| eventValue | **消解** | handler 直写 `e.target.value`（077 properties 先例，部署 SFC 实证） | 删（handler 内联） |
+| eventNumber/eventChecked | **必留 cast 桥** | Number() 强转 + checked 读——v-model.number 语义；VM 臂交互断言走 P-13 checkbox 投影，slider 交互不进 VM 断言（Q-4 裁定面） | 留 ext |
+| setGraphNumber/setGraphFlag/resetGraphSettings | **转 store fn 通道**（Q-3，随 T-00 终裁执行） | 括号写词位 vue 轨可行（探针④ SFC 实文）但 VM 轨 P-11 静默吞——写通道收敛 `graph_store.at` `set_setting`/`reset_settings` 两 fn（store 单源，saveSettings 内聚）；VM twin 不镜像（F-1） | graph_store.at 增 fn；ext 三 fn 删 |
+| styleblock 伴生（82L） | 维持 | regen 追加流程（既有部署管线）；style 面不进 VM 断言 | 维持 |
+
+### 7.3 graph_view_ext.ts 逐 fn 分类（~200L，8 导出名；RC-F 宿主面切分）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| buildElements | **拆沉** | 前段过滤 = nodes×settings[showMissing/showOrphans] 节点过滤 + 边端点双成员扫描（探针⑤双轨绿——kept 列表×边表内标，无 Set 词位）→ .at 模块 fn `filter_domains(nodes, edges, settings)` 返回 {kept_nodes, kept_edges}；后段 cytoscape element Obj 构造留 ext 消费 filter_domains 产物 | graph_view.at 模块 fn + ext 改造 |
+| initGraph/updateGraphElements/applyGraphSettings/applyGraphHighlight/destroyGraph/graphFit/graphRelayout | 必留（RC-F 内核豁免面） | cytoscape 实例生命周期全家（init/fcose/tap/高亮/fit/relayout/destroy）——plan 011 非目标 #3 封装策略；宿主面 .at 壳经 use fn 通道调用（形态维持） | 留 ext |
+| hsl/buildStyle/runLayout/updateHighlight（ext 内私有） | 必留 | 同上（RC-F 豁免域） | 留 ext（私有） |
+
+> 宿主面切分裁定（Q-1 默认预案 A，终裁记录见判定档
+> `attachments/078-graph-view-ruling.md`）：L1 单元 = .at 壳（容器/
+> loading/watch 编排/expose 契约）+ filter_domains 过滤派生（双端同 fn
+> 计数投影）；画布本体（坐标/布局/交互）= RC-F 内核豁免登记。VM 无
+> canvas 词位（ark generator 零命中 + P-12 家族证据）、desktop 图谱流现
+> 状 = 计数+行按钮（app.at:304）——A 预案与"内核不比"裁定精神一致。

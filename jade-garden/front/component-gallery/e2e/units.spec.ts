@@ -24,6 +24,9 @@ test.afterAll(async () => {
 
 for (const u of UNITS) {
   if (u.missing) continue
+  // PLAN-079 T-04：placeholder = 状态占位（无 vue/vm 臂——组装级/裁定
+  // 注记，vm-probe 同款跳过口径）。
+  if (u.placeholder) continue
   test(`vue gate: ${u.id}（${u.title}）`, async ({ page }) => {
     await page.goto(`${BASE}${u.vue.url}`)
     await page.waitForSelector(u.vue.ready, { timeout: 15_000 })

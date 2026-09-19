@@ -258,6 +258,31 @@ merged 双模 PASS。逐 fn 分类表（34 实义 fn）/desktop 挂载裁定登�
   front pnpm build 绿。逐 fn 分类表/desktop 挂载裁定：
   `docs/plans/attachments/074-sink-mode.md` §7/§4.3；判定档
   `attachments/078-graph-view-ruling.md`。编译器零新增补丁（exe ≥1378）。
+- **PLAN-079 L3 收口批次 1（desktop 面板装配 + RC-C 壳面 + L3 门固化，
+  2026-09-19）**：**装配形态裁定 = β 内联消费**（模式文档
+  `docs/plans/attachments/079-l3-assembly-mode.md`——T-00 双路径探针：α
+  组件挂载编译/boot 绿但数据面死[tabsStore facade stub 短路]+断言面死
+  [F-1 挂载子树快照黑盒]；β 契约直拉+根视图行渲染全链绿；**新坑 P-15
+  跨项目 fn 导入静默死面** → 下沉 fn 一律部署副本 + 同项目 use 引回）。
+  **10 件装配落地**（§4.4 回填表）：批 A 右栏四件（backlinks/outgoing
+  doc_title 收敛 tab_file_stem + SwitchTab 刷新语义；unlinked 契约直拉
+  行按钮；outline 行扫描等价推导——blocks 源不可达差异）+ 批 B palette/
+  switcher desktop 自持（ui_config 重建清单 × 静态行绑定[DSL 无按名
+  派发]；sw fns 形状适配；search/flashcard 内联维持裁定）+ 批 C agenda/
+  recent/theme 装配 + cpp 改道自持（后端 outlinks exists 恒真——
+  linkgraph targetPage 裸标题实勘，缺失分支双端死路）；**properties 划
+  批次 2**（P-9 map 迭代前置）。**RC-C 壳面**：gallery units.mjs 六状态
+  占位（app_shell/main_area/left·right_sidebar 组装级 + ribbon Q-2
+  web-only 特有面裁定 + graph_page 批次 2 注记——placeholder 形态 ≠
+  缺件红）。**L3 门批次 1 版**：desktop 首批结构基线
+  （desktop/baseline/iced-l3-batch1-structure.txt）+ vm-smoke 双模 22
+  检查项（13 臂含 palette/switcher/agenda/recent/cpp/theme 新六臂）+
+  front e2e + gallery gate（20 真件零漂移 + 占位族可见）。执行期坑实录
+  （裸 var x=[] VM 静默坏列表·typed List 纪律/同值 status 断言竞态/
+  SCHEDULED 语法）见 079 计划 T-03 收据。消费登记表回填：
+  `docs/plans/attachments/074-sink-mode.md` §4.4。编译器零新增补丁
+  （exe v0.4.2-1414）。**批次 2 = graph 族四件**（gated on auto-lang
+  PLAN-661 交付 + properties 配对列表通道）。
 - **PLAN-075 L2 首证（2026-09-19）**：首批 L1 基线存量 9 单元（073 五面 +
   074 四件）跑完 design 30 §6 判定——判定记录
   `docs/plans/attachments/075-bp-extraction-record.md`（U-1 status_bar 骨架+

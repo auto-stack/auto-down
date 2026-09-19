@@ -509,3 +509,32 @@ state/snapshot/action（press/toggle）断言全绿。
 > 登记 ≠ 装配（§4 同款）：desktop 图谱族装配归 L3；graph_controls 挂载
 > 的前置 = 独立计划 Slider 补全（Q-4）；graph_sidebar 挂载无前置约束
 > （P-14 域 + G-2 CJK 剥除退化已知）。
+
+### 4.4 desktop 消费登记·L3 批次 1 回填（PLAN-079 T-05，2026-09-19）
+
+> §4/§4.1/§4.2 各行"挂载裁定"的**实际装配形态**回填。形态裁定依据 =
+> `079-l3-assembly-mode.md`（T-00 双路径探针：α 组件挂载数据面/断言面
+> 双死——E-2..E-4；β 内联消费定形——E-5..E-9；跨项目 fn 导入静默死面
+> P-15 → 下沉 fn 一律部署副本 + 同项目 use 引回）。
+
+| 件 | 登记表裁定（当时） | 实际装配形态（PLAN-079） |
+| --- | --- | --- |
+| backlinks | 组件挂载首选 | **β 装配（内联流收敛升级）**：fetch key 收敛 tab_file_stem 部署副本（doc_title 单源化）+ SwitchTab 面板刷新（web watch activeTab 语义对齐）；vm-smoke bl 锚不变绿 = 行为等价 |
+| outgoing_links | 同 backlinks | 同 backlinks（tab_file_stem 一副本双登记） |
+| unlinked_references | 组件挂载（唯一路径） | **β 装配**（T-00 探针件 → 生产形态）：契约直拉 + 根视图行按钮开页；高亮 html = vue 显示面差异登记 |
+| outline | 组件挂载（唯一路径） | **β 装配**：ol_headings 行扫描等价推导（# 级别 + 围栏守卫 + ^锚/{#id} 剥除）——blocks 源不可达（blocks 契约仅按 id 单取，无整页列表路由；backend 出 079 affects）+ scroll_to 点击面差异 |
+| search_panel | 组件挂载可选 | **内联流维持**（Q-3 裁定：.DoSearch 已覆盖功能面；装配延后批次 2 顺带） |
+| command_palette | 组件挂载（唯一路径） | **β 变体 desktop 自持**：视图菜单 + Ctrl+P 入口；命令清单 = actions 注册表 ui_config 单源重建（本表裁定口径兑现）；pal_match 过滤门 × 静态行绑定（DSL 无按名派发通道）；Enter/方向键 = 键盘 ext 域差异 |
+| quick_switcher | 组件挂载（唯一路径） | **β 变体 desktop 自持**：Ctrl+K 入口；sw_collect/sw_filter 部署副本（入参形状适配 ft_nodes）+ 行点击开页 + 随开页自闭 |
+| properties_panel | 组件挂载（唯一路径） | **划批次 2**：P-9 map 键值迭代 VM 零迭代（本表预判复证）——配对列表通道需 backend/编译器面，出 079 affects |
+| recent_files_panel | 组件挂载（唯一路径） | **β 装配**：desktop 会话自记账（recordRecent no-op 偏差的装配侧补偿——去重前插 cap10）+ rf_rows 副本；时间列（openedAt/formatTime）= Date/locale TS 域差异，持久化（web localStorage）差异登记 |
+| create_page_prompt | 组件挂载（唯一路径） | **β 变体 desktop 自持（改道）**：文件菜单「新建页面」→ 标题输入 + Create → create_file 真建页——**后端 outlinks exists 恒真**（linkgraph targetPage 裸标题 → is_some 恒 true，079 实勘）+ web cpp 本表外实证为孤儿组件（§6.3 在案），缺失出链触发分支双端死路；wikiTitleToPath regex 桥不镜像（直拼 ${title}.ad，fixture 域等价） |
+| theme_popover | 组件挂载（唯一路径） | **β 变体 desktop 自持**：视图菜单主题面板（Light/Dark + theme_accents 逐字副本五 accent 行）；运行时应用 = AUTO_UI_THEME env 域差异（web = classList 即时） |
+| flashcard_modal | 组件挂载可选 | **内联流维持**（Q-3 裁定：LoadCards/Grade 流已覆盖；延后批次 2） |
+| workspace_opener | 内联流维持 | **零动作**（裁定兑现，OpenWs 流覆盖） |
+
+> 图谱族四件（graph_view/graph_page/graph_sidebar·controls 挂载）= L3
+> 批次 2，gated on auto-lang PLAN-661（2026-09-19 已 execution_done 待
+> review——map 写修复/Slider/canvas 三表 onhit 在案）。gallery RC-C 六
+> 占位（units.mjs placeholder 形态）+ ribbon Q-2 web-only 特有面裁定
+> 落地见 072-inventory RC-C 行注记。

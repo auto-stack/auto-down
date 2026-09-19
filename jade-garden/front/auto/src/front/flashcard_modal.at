@@ -2,11 +2,23 @@
 //
 // Auto-generated replacement for the hand-written
 // front/src/components/FlashcardModal.vue (plan 011 Phase 5.2).
+//
+// PLAN-077 T-03 sink (mode doc §6.6): the ext's orchestration moved INTO
+// the DSL — the .Init/.is_open-watch/.Rate bodies run the get_due_cards/
+// review_card contract calls in try/catch/finally directly (the safe
+// wrappers' never-reject semantics fold into catch = error set, finally =
+// loading reset; error message extraction via the ext's errorMessage strict
+// bridge — 076 search_panel precedent), and card_at/card_question/
+// card_answer/counter_text are the module fns below. The ext keeps exactly:
+// the Brain re-export, the errorMessage strict bridge, and the
+// get_due_cards/review_card contract aliases.
+//
 // Regenerate:
 //
 //   cd jade-garden/front/auto
 //   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/flashcard_modal_ext|../../auto/src/front/utils/flashcard_modal_ext|g' \
+//   sed -e 's|@/ext/src/front/utils/flashcard_modal_ext|../../auto/src/front/utils/flashcard_modal_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/flashcard_modal_ext|g' \
 //     gen/front/vue/src/components/FlashcardModal.vue > ../src/components/FlashcardModal.vue
 //
 // Idioms forced by DSL codegen gaps (see README's gap list):
@@ -26,9 +38,76 @@
 // - current / question / answer / the index+1 counter are extension Calls
 //   (no optional chaining or view-text arithmetic in the DSL).
 
+// Contract channel: web = ext-shim alias of the hand-written client (deploy
+// sed rewrites the emitted '@/lib/api' import), VM = #[api] get_due_cards /
+// review_card (desktop/src/back/api.at:370/386, back/auto/api.at:366/382).
+use back.api: get_due_cards, review_card
+
+// Sunk from ext cardAt (PLAN-077 T-03): `cards[index] || null` as a
+// counting walk — no indexed access (dual-track safe), out-of-range and
+// empty-deck both land on null (the original's `?? null` arm).
+fn card_at(cards_in, index_in) {
+    var out = null
+    var i = 0
+    for c in cards_in {
+        if i == index_in && out == null {
+            out = c
+        }
+        i = i + 1
+    }
+    return out
+}
+
+// Sunk from ext cardQuestion/cardAnswer (PLAN-077 T-03): the original's
+// `card?.question || card?.raw || ''` chain as explicit guards — the ||
+// falls through on null AND empty string, so both are checked; a null raw
+// leaves "" (the chain's terminal).
+fn card_question(card_in) str {
+    var out = ""
+    if card_in != null {
+        var q = card_in.question
+        var r = card_in.raw
+        if q != null && q != "" {
+            out = q
+        }
+        if q == null || q == "" {
+            if r != null {
+                out = r
+            }
+        }
+    }
+    return out
+}
+
+fn card_answer(card_in) str {
+    var out = ""
+    if card_in != null {
+        var a = card_in.answer
+        var r = card_in.raw
+        if a != null && a != "" {
+            out = a
+        }
+        if a == null || a == "" {
+            if r != null {
+                out = r
+            }
+        }
+    }
+    return out
+}
+
+// Sunk from ext counterText (PLAN-077 T-03): the `{{ index + 1 }} /
+// {{ cards.length }}` header — f-string math interpolation (P-3 domain).
+// NB: fn name is counter_label, NOT counter_text — the widget already has a
+// computed of that name and the two would collide in the emitted script
+// (G-1 fn-name arm).
+fn counter_label(index_in, count_in) str {
+    return f"${index_in + 1} / ${count_in}"
+}
+
 widget FlashcardModal(open: bool) {
     use {
-        fn: Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText from "src/front/utils/flashcard_modal_ext.ts"
+        fn: Brain, errorMessage from "src/front/utils/flashcard_modal_ext.ts"
     }
 
     msg Msg { Init, Reveal, Rate, "update:open"(bool) }
@@ -44,10 +123,10 @@ widget FlashcardModal(open: bool) {
 
     computed {
         is_open => .open
-        current => cardAt(.cards, .index)
-        counter_text => counterText(.index, .cards.length)
-        question_text => cardQuestion(.current)
-        answer_text => cardAnswer(.current)
+        current => card_at(.cards, .index)
+        counter_text => counter_label(.index, .cards.length)
+        question_text => card_question(.current)
+        answer_text => card_answer(.current)
         has_error => .error != ""
         show_loading => .loading
         show_error => !.loading && .has_error
@@ -133,45 +212,48 @@ widget FlashcardModal(open: bool) {
     }
 
     watch {
-        // Original: watch(open, (isOpen) => { if (isOpen) load() }).
+        // Original: watch(open, (isOpen) => { if (isOpen) load() }) — load()
+        // = getDueCards(50) with catch coming back as { cards: [], error }
+        // data (PLAN-077 sink: the safe-wrapper fold puts the success arm in
+        // try, the error arm in catch — cards untouched on error, exactly
+        // the original .then's error branch — and loading reset in finally).
         .is_open -> {
             if .is_open {
                 .loading = true
                 .error = ""
-                let p = getDueCardsSafe()
-                p.then(res => {
-                    if res.error == "" {
-                        .cards = res.cards
-                        .index = 0
-                        .show_answer = false
-                    }
-                    if res.error != "" {
-                        .error = res.error
-                    }
+                try {
+                    let res = get_due_cards(50)
+                    .cards = res.cards
+                    .index = 0
+                    .show_answer = false
+                } catch (e) {
+                    .error = errorMessage(e)
+                } finally {
                     .loading = false
-                })
+                }
             }
         }
     }
 
     on {
-        // Original: onMounted(() => { if (open.value) load() }).
+        // Original: onMounted(() => { if (open.value) load() }) — same
+        // safe-wrapper fold as the watch (no handler-to-handler calls in
+        // the DSL, so the load body stays duplicated here, .Rate reload
+        // and watch).
         .Init -> {
             if .open {
                 .loading = true
                 .error = ""
-                let p = getDueCardsSafe()
-                p.then(res => {
-                    if res.error == "" {
-                        .cards = res.cards
-                        .index = 0
-                        .show_answer = false
-                    }
-                    if res.error != "" {
-                        .error = res.error
-                    }
+                try {
+                    let res = get_due_cards(50)
+                    .cards = res.cards
+                    .index = 0
+                    .show_answer = false
+                } catch (e) {
+                    .error = errorMessage(e)
+                } finally {
                     .loading = false
-                })
+                }
             }
         }
         // Original: function reveal() { showAnswer.value = true }.
@@ -180,39 +262,35 @@ widget FlashcardModal(open: bool) {
         }
         // Original rate(grade): await reviewCard; on success index + 1,
         // hide the answer, and reload when the deck is exhausted; on error
-        // only the error message is set (index stays). The extension's
-        // reviewCardSafe never rejects, so the single .then carries both
-        // branches; the reload is the load() body inlined (no
-        // handler-to-handler calls in the DSL).
+        // only the error message is set (index stays). PLAN-077 sink: the
+        // review_card contract call runs in try/catch (rejection = the old
+        // safe wrapper's error mapping via errorMessage), the reload is the
+        // load body inlined with its own try/catch/finally (nested try is
+        // probe-verified both tracks — mode doc §6.0 P-10).
         .Rate(grade) -> {
             var card = .current
             if card != null {
-                let p = reviewCardSafe(card.page_path, card.block_id, grade)
-                p.then(res => {
-                    if res.error != "" {
-                        .error = res.error
-                    }
-                    if res.error == "" {
-                        .index = .index + 1
-                        .show_answer = false
-                        if .index >= .cards.length {
-                            .loading = true
-                            .error = ""
-                            let p2 = getDueCardsSafe()
-                            p2.then(res2 => {
-                                if res2.error == "" {
-                                    .cards = res2.cards
-                                    .index = 0
-                                    .show_answer = false
-                                }
-                                if res2.error != "" {
-                                    .error = res2.error
-                                }
-                                .loading = false
-                            })
+                try {
+                    review_card(card.page_path, card.block_id, grade)
+                    .index = .index + 1
+                    .show_answer = false
+                    if .index >= .cards.length {
+                        .loading = true
+                        .error = ""
+                        try {
+                            let res2 = get_due_cards(50)
+                            .cards = res2.cards
+                            .index = 0
+                            .show_answer = false
+                        } catch (e2) {
+                            .error = errorMessage(e2)
+                        } finally {
+                            .loading = false
                         }
                     }
-                })
+                } catch (e) {
+                    .error = errorMessage(e)
+                }
             }
         }
         // The v-model:open write-up: the view wires this quoted variant with

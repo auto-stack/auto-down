@@ -138,8 +138,24 @@ fn ag_display_probe(groups_in) List {
     return out
 }
 
+// —— flashcard twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/flashcard_modal.at 的 card_at——G-3 各持一份；
+// PLAN-077 T-03。越界 null 守卫的计数走查——无索引表达式双轨域，
+// P-9 家族纪律同款）。
+fn fm_card_at(cards_in, index_in) {
+    var out = null
+    var i = 0
+    for c in cards_in {
+        if i == index_in && out == null {
+            out = c
+        }
+        i = i + 1
+    }
+    return out
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate }
 
     model {
         var unit str = "status_bar"
@@ -238,6 +254,16 @@ widget App {
         var ag_groups = []
         var ag_count int = 0
         var ag_has bool = false
+        // —— fixture：flashcard_modal 面（PLAN-077 T-03 twin：fm_cards
+        // 播种两卡（第二卡 question/answer 空串——raw 回落面同构）；
+        // fm_reveal/fm_rate 驱动 show_answer/index 投影（fm_card_at 计数
+        // 走查取当前卡——契约调用面归 vue 臂，twin 不镜像，F-1）——
+        var fm_cards = []
+        var fm_index int = 0
+        var fm_show_answer bool = false
+        var fm_counter str = ""
+        var fm_question str = ""
+        var fm_answer str = ""
     }
 
     computed {
@@ -256,6 +282,8 @@ widget App {
         show_theme_popover => .unit == "theme_popover"
         show_recent_files => .unit == "recent_files"
         show_agenda => .unit == "agenda"
+        show_flashcard_modal => .unit == "flashcard_modal"
+        fm_marker => f"unit=flashcard_modal idx:${.fm_index}"
         rf_marker => f"unit=recent_files rows:${.rf_count}"
         ag_marker => f"unit=agenda rows:${.ag_count}"
         cpp_marker => f"unit=create_page_prompt path:${.cpp_path} choice:${.cpp_choice}"
@@ -339,6 +367,10 @@ widget App {
                 }
                 button (text: "agenda", variant: "text") {
                     onclick: .Select("agenda")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "flashcard_modal", variant: "text") {
+                    onclick: .Select("flashcard_modal")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -775,6 +807,33 @@ widget App {
                     }
                 }
             }
+            if .show_flashcard_modal {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 rounded-lg border border-zinc-200 bg-zinc-50 p-3") {
+                        row (class: "items-center gap-2 border-b border-zinc-200 pb-2") {
+                            text "Flashcards" { class: "text-sm font-semibold text-zinc-800" }
+                            text .fm_counter { class: "ml-auto text-xs text-zinc-500" }
+                        }
+                        col (class: "flex-col pt-2") {
+                            text .fm_question { class: "text-sm text-zinc-800" }
+                            if .fm_show_answer {
+                                text .fm_answer { class: "pt-1 text-sm text-emerald-700" }
+                            }
+                        }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "fm_reveal", variant: "text") {
+                                onclick: .FmReveal
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "fm_rate", variant: "text") {
+                                onclick: .FmRate
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .fm_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -888,6 +947,23 @@ widget App {
             if .ag_count > 0 {
                 .ag_has = true
             }
+            // flashcard_modal：播种两卡（第二卡 q/a 空串——raw 回落同构），
+            // counter/question 经 fm_card_at 走查投影（.Init 语义 =
+            // onMounted load 成功臂）
+            .fm_cards.push({ page_path: "wiki/引言.ad", block_id: "blk-1", raw: "引言原始文本", question: "写引言草稿", answer: "引言已成稿" })
+            .fm_cards.push({ page_path: "wiki/方法.ad", block_id: "blk-2", raw: "方法原始文本", question: "", answer: "" })
+            .fm_index = 0
+            .fm_show_answer = false
+            var c0 = fm_card_at(.fm_cards, .fm_index)
+            if c0 != null {
+                if c0.question != null && c0.question != "" {
+                    .fm_question = c0.question
+                }
+                if c0.question == null || c0.question == "" {
+                    .fm_question = c0.raw
+                }
+            }
+            .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
         }
 
         .Select(u) -> {
@@ -968,6 +1044,43 @@ widget App {
         .RfClear -> {
             .rf_rows = []
             .rf_count = 0
+        }
+
+        .FmReveal -> {
+            // 下沉 .Reveal 直写（show_answer = true）
+            .fm_show_answer = true
+            var c = fm_card_at(.fm_cards, .fm_index)
+            if c != null {
+                if c.answer != null && c.answer != "" {
+                    .fm_answer = c.answer
+                }
+                if c.answer == null || c.answer == "" {
+                    .fm_answer = c.raw
+                }
+            }
+        }
+
+        .FmRate -> {
+            // 下沉 .Rate 成功臂形状（契约调用面归 vue 臂 shim，twin 不
+            // 镜像——F-1）：index 前移 + 隐藏答案 + exhaustion 重载形状
+            // （末卡后 index 归零 + 第二卡 raw 投影 = 重载面等价投影）
+            .fm_index = .fm_index + 1
+            .fm_show_answer = false
+            .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
+            var c = fm_card_at(.fm_cards, .fm_index)
+            if c != null {
+                if c.question != null && c.question != "" {
+                    .fm_question = c.question
+                }
+                if c.question == null || c.question == "" {
+                    .fm_question = c.raw
+                }
+            }
+            if c == null {
+                .fm_index = 0
+                .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
+                .fm_question = "(reloaded) 写引言草稿"
+            }
         }
     }
 }

@@ -75,6 +75,21 @@ const routes: Route[] = [
     }),
   },
   {
+    // PLAN-077 T-03：闪卡两卡（question/answer/raw 三域——card_question/
+    // card_answer 显式守卫链的 q/a 直下与 raw 回落双面）。
+    re: /^\/api\/cards\/due$/,
+    reply: (m, url) => ({
+      cards: [
+        { page_path: 'wiki/引言.ad', block_id: 'blk-1', uuid: 'u1', raw: '引言原始文本', question: '写引言草稿', answer: '引言已成稿', deck: null, ease_factor: 2.5, repeats: 0, last_interval: 0 },
+        { page_path: 'wiki/方法.ad', block_id: 'blk-2', uuid: 'u2', raw: '方法原始文本', question: '', answer: '', deck: null, ease_factor: 2.5, repeats: 0, last_interval: 0 },
+      ],
+    }),
+  },
+  {
+    re: /^\/api\/cards\/review$/,
+    reply: () => ({}),
+  },
+  {
     // PLAN-077 T-02：日程面板两组三任务——TODO/DONE/DOING marker 三态
     // （markerClass 互斥布尔 if 链下沉面）+ priority [#2] + title 空串
     // 回落 page_path（`title || page_path` 显式守卫面）+ title 非空直下面

@@ -310,6 +310,36 @@ export const UNITS = [
     },
   },
   {
+    id: 'flashcard_modal',
+    title: '闪卡复述（桶②·RC-D 批次3·PLAN-077 下沉）',
+    // vue 臂：open 播种 → .Init → 下沉 try/catch/finally 经 get_due_cards
+    // 契约别名 → shim 两卡（第二卡 question/answer 空串——card_question/
+    // card_answer raw 回落面）→ counter_label（f-string 数学内插）+
+    // card_question 守卫投影。click 门 Reveal → answer 域 + 评级按钮
+    // 出现（.Reveal 直写 + .Rate 按钮面在案）。VM 臂 twin：fm_card_at
+    // derived 计数走查 + fm_reveal/fm_rate 驱动 index 前移（契约面归
+    // vue 臂——F-1）。
+    vue: {
+      url: '/?unit=flashcard_modal',
+      ready: '[data-unit="flashcard_modal"] button',
+      needles: ['Flashcards', '1 / 2', '写引言草稿'],
+      needleSelector: '[data-unit="flashcard_modal"]',
+      click: {
+        selector: 'button:has-text("Show answer")',
+        ready: 'button:has-text("Good")',
+        needles: ['Answer', '引言已成稿'],
+      },
+    },
+    vm: {
+      actions: [{ button: 'flashcard_modal' }, { button: 'fm_reveal' }, { button: 'fm_rate' }],
+      // fm_rate 在 fm_reveal 之后（动作序）——下沉 .Rate 的隐藏答案臂
+      // 使最终 show_answer=false（index 前移 + counter 2/2 + 第二卡
+      // raw 回落投影才是终态断言面）。
+      state: { unit: 'flashcard_modal', fm_index: '1', fm_show_answer: 'false', fm_counter: '2 / 2', fm_question: '方法原始文本' },
+      snapshot: ['unit=flashcard_modal idx:1', '方法原始文本'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

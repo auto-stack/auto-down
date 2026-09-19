@@ -21,6 +21,7 @@ import FlashcardPage from './pages/FlashcardPage.vue'
 import WorkspaceOpenerPage from './pages/WorkspaceOpenerPage.vue'
 import PropertiesPanelPage from './pages/PropertiesPanelPage.vue'
 import GraphSidebarPage from './pages/GraphSidebarPage.vue'
+import GraphControlsPage from './pages/GraphControlsPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -188,6 +189,14 @@ function select(u: string) {
       >
         graph_sidebar
       </button>
+      <button
+        data-unit-tab="graph_controls"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'graph_controls' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('graph_controls')"
+      >
+        graph_controls
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -209,5 +218,6 @@ function select(u: string) {
     <WorkspaceOpenerPage v-else-if="unit === 'workspace_opener'" />
     <PropertiesPanelPage v-else-if="unit === 'properties_panel'" />
     <GraphSidebarPage v-else-if="unit === 'graph_sidebar'" />
+    <GraphControlsPage v-else-if="unit === 'graph_controls'" />
   </div>
 </template>

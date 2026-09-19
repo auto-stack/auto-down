@@ -419,6 +419,35 @@ export const UNITS = [
     },
   },
   {
+    id: 'graph_controls',
+    title: '图谱设置（桶②·RC-D 批次4·PLAN-078 下沉，Q-3/Q-4 裁定单元）',
+    // vue 臂：graph facade 播种（centerPath 暴露局部图谱节 + settings
+    // textOpacity 0.4 偏离默认）→ 下沉 gc_center_label（strip_ext 纪律
+    // 形态——vue 执行面剥 .ad）+ gc_opacity_label（math.round 40%）+
+    // RangeInput 九滑条（P-12 必留）。click 门：重置设置 → 下沉
+    // gc_reset_settings（逐字段点号写 P-11 安全形 + saveSettings）→
+    // 85% 出现。slider 交互不进断言（Q-4 收敛口径）。
+    // VM 臂 twin：gc_center_label/gc_opacity_label derived 副本真跑
+    // （ASCII 域——G-2 CJK 剥除 VM 退化不镜像）+ gc_reset 驱动 40%→85%
+    // + 旗标翻转（gc_reset_settings 形状镜像）+ checkbox 词位在位（P-13）。
+    vue: {
+      url: '/?unit=graph_controls',
+      ready: 'input[placeholder="搜索节点…"]',
+      needles: ['局部图谱', '中心：wiki/引言', '深度', '40%', '显示孤立文件', '重置设置'],
+      needleSelector: '[data-unit="graph_controls"]',
+      click: {
+        selector: 'button:has-text("重置设置")',
+        ready: '[data-unit="graph_controls"]',
+        needles: ['85%'],
+      },
+    },
+    vm: {
+      actions: [{ button: 'graph_controls' }, { button: 'gc_reset' }],
+      state: { unit: 'graph_controls', gcc_center: 'wiki/Intro', gcc_opacity: '85%', gcc_flag: 'true', gcc_resets: '1' },
+      snapshot: ['unit=graph_controls center:wiki/Intro opacity:85% resets:1', 'showOrphans'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

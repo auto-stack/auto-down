@@ -2,14 +2,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RangeInput } from '../../auto/src/front/utils/graph_controls_ext'
-import { centerLabel, opacityLabel, eventNumber, eventValue, eventChecked, setGraphNumber, setGraphFlag, resetGraphSettings, Search, SlidersHorizontal, Palette, Magnet, Focus } from '../../auto/src/front/utils/graph_controls_ext'
+import { eventNumber, eventChecked, Search, SlidersHorizontal, Palette, Magnet, Focus } from '../../auto/src/front/utils/graph_controls_ext'
 import { useGraphStore } from '../../auto/src/front/utils/graph_controls_ext'
 
 const graphStore = useGraphStore()
 
 
-const center_label = computed<any>(() => centerLabel(graphStore))
-const opacity_label = computed<any>(() => opacityLabel(graphStore))
+const center_label = computed<any>(() => gc_center_label(graphStore.centerPath))
+const opacity_label = computed<any>(() => gc_opacity_label(graphStore.settings.textOpacity))
 
 const emit = defineEmits<{
   SearchInput: [any]
@@ -27,20 +27,20 @@ function DepthChanged(e: any): void {
 }
 
 function FlagChanged(key: any, evt: any): void {
-  setGraphFlag(graphStore, key, eventChecked(evt));
+  gc_set_setting(graphStore, key, eventChecked(evt));
   graphStore.saveSettings();
 
   emit('FlagChanged', key, evt)
 }
 
 function Reset(): void {
-  resetGraphSettings(graphStore);
+  gc_reset_settings(graphStore);
 
   emit('Reset')
 }
 
 function SearchInput(e: any): void {
-  graphStore.searchQuery = eventValue(e);
+  graphStore.searchQuery = e.target.value;
 
   emit('SearchInput', e)
 }
@@ -52,10 +52,42 @@ function ShowGlobal(): void {
 }
 
 function SliderChanged(key: any, evt: any): void {
-  setGraphNumber(graphStore, key, eventNumber(evt));
+  gc_set_setting(graphStore, key, eventNumber(evt));
   graphStore.saveSettings();
 
   emit('SliderChanged', key, evt)
+}
+
+function gc_center_label(path_in: any): string {
+  let ext: string = '.ad';
+  let n = path_in.length;
+  let m = ext.length;
+  if (n >= m) {let tail = path_in.substring(n - m, n);
+  if (tail == ext) {return path_in.substring(0, n - m);
+  }}
+  return path_in;
+}
+
+function gc_opacity_label(opacity_in: any): string {
+  return `${Math.round(opacity_in * 100)}%`;
+}
+
+function gc_set_setting(graph_store: any, key_in: any, value_in: any) {
+  graph_store.settings[key_in] = value_in;
+}
+
+function gc_reset_settings(graph_store: any) {
+  graph_store.settings.showOrphans = true;
+  graph_store.settings.showMissing = false;
+  graph_store.settings.nodeSize = 12;
+  graph_store.settings.textOpacity = 0.85;
+  graph_store.settings.edgeWidth = 1;
+  graph_store.settings.showArrows = false;
+  graph_store.settings.gravity = 0.05;
+  graph_store.settings.repulsion = 4500;
+  graph_store.settings.attraction = 0.05;
+  graph_store.settings.linkLength = 120;
+  graph_store.saveSettings();
 }
 
 
@@ -70,7 +102,7 @@ function SliderChanged(key: any, evt: any): void {
             <span>搜索</span>
           </span>
         </div>
-        <input class="graph-input" :placeholder="'搜索节点…'" :type="'text'" :value="graphStore.searchQuery" @input="SearchInput($event)" />
+        <input class="graph-input" :placeholder="'搜索节点…'" :type="'text'" :value="graphStore.searchQuery" @input="SearchInput(($event.target as HTMLInputElement).value)" />
       </div>
       <template v-if="graphStore.centerPath">
         <div class="section">

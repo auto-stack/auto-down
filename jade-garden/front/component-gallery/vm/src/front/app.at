@@ -215,8 +215,29 @@ fn gs_top_degree(nodes_in) List {
     return out
 }
 
+// —— graph_controls twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/graph_controls.at 的 gc_center_label/gc_opacity_label
+// ——G-3 各持一份；PLAN-078 T-02。strip_ext 纪律形态（ASCII 域——G-2 CJK
+// 剥除 VM 退化，twin 不镜像 CJK 臂）+ math.round 双轨词位（P-14））。
+fn gc_center_label(path_in) str {
+    var ext = ".ad"
+    var n = path_in.length
+    var m = ext.length
+    if n >= m {
+        var tail = path_in.slice(n - m, n)
+        if tail == ext {
+            return path_in.slice(0, n - m)
+        }
+    }
+    return path_in
+}
+
+fn gc_opacity_label(opacity_in) str {
+    return f"${math.round(opacity_in * 100)}%"
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd, GsbOpen(str) }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd, GsbOpen(str), GccReset, GccToggleFlag }
 
     model {
         var unit str = "status_bar"
@@ -359,6 +380,17 @@ widget App {
         var gs_id_fallback str = ""
         var gs_opened str = ""
         var gs_has bool = false
+        // —— fixture：graph_controls 面（PLAN-078 T-02 twin：gc_center ASCII
+        // 剥除 + gc_opacity 40%（偏离默认，重置行为可断言）；GcReset 驱动
+        // 40%→85% + showOrphans 默认 true 的旗标翻转（gc_reset_settings
+        // 形状镜像——P-11 安全形：点号写/字面量重赋，括号写禁）；checkbox
+        // 词位在位（P-13）——
+        var gcc_center str = ""
+        var gcc_opacity str = "40%"
+        var gcc_flag bool = false
+        var gcc_flag_label str = "false"
+        var gcc_resets int = 0
+        var gcc_marker str = ""
     }
 
     computed {
@@ -381,7 +413,9 @@ widget App {
         show_workspace_opener => .unit == "workspace_opener"
         show_properties_panel => .unit == "properties_panel"
         show_graph_sidebar => .unit == "graph_sidebar"
+        show_graph_controls => .unit == "graph_controls"
         gs_marker => f"unit=graph_sidebar total:${.gs_total} missing:${.gs_missing} orphan:${.gs_orphan} edges:${.gs_edges} top:${.gs_count}"
+        gcc_marker_line => f"unit=graph_controls center:${.gcc_center} opacity:${.gcc_opacity} resets:${.gcc_resets}"
         gs_stat_total => f"页面 ${.gs_total}"
         gs_stat_edges => f"链接 ${.gs_edges}"
         gs_stat_missing => f"缺失 ${.gs_missing}"
@@ -488,6 +522,10 @@ widget App {
                 }
                 button (text: "graph_sidebar", variant: "text") {
                     onclick: .Select("graph_sidebar")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "graph_controls", variant: "text") {
+                    onclick: .Select("graph_controls")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -1037,6 +1075,24 @@ widget App {
                     }
                 }
             }
+            if .show_graph_controls {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "图谱设置" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        text .gcc_center { class: "text-xs text-zinc-800" }
+                        text .gcc_opacity { class: "text-xs text-zinc-800" }
+                        row (class: "items-center gap-2") {
+                            checkbox { checked: .gcc_flag, label: "showOrphans", onclick: .GccToggleFlag }
+                            text .gcc_flag_label { class: "text-xs text-zinc-600" }
+                        }
+                        button (text: "gc_reset", variant: "text") {
+                            onclick: .GccReset
+                            class: "mt-2 w-fit rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                        }
+                        text .gcc_marker_line { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -1210,6 +1266,10 @@ widget App {
             if .gs_count > 0 {
                 .gs_has = true
             }
+            // graph_controls：ASCII 中心路径剥除（G-2——CJK 臂不镜像）+
+            // opacity 40% 偏离默认（重置可断言）
+            .gcc_center = gc_center_label("wiki/Intro.ad")
+            .gcc_opacity = gc_opacity_label(0.4)
         }
 
         .Select(u) -> {
@@ -1220,6 +1280,25 @@ widget App {
         // gs_opened 投影承载——无 tabs store，F-1 口径）
         .GsbOpen(path) -> {
             .gs_opened = path
+        }
+
+        // graph_controls 重置形状镜像（gc_reset_settings：默认值回置 +
+        // showOrphans→true 旗标翻转；opacity 40%→85%）
+        .GccReset -> {
+            .gcc_opacity = gc_opacity_label(0.85)
+            .gcc_flag = true
+            .gcc_flag_label = "true"
+            .gcc_resets = .gcc_resets + 1
+        }
+
+        .GccToggleFlag -> {
+            .gcc_flag = !.gcc_flag
+            if .gcc_flag {
+                .gcc_flag_label = "true"
+            }
+            if !.gcc_flag {
+                .gcc_flag_label = "false"
+            }
         }
 
         .TsSwitch(path) -> {

@@ -1,44 +1,102 @@
 // graph_controls.at — GraphControls widget (Auto language source).
 //
 // Auto-generated replacement for the hand-written
-// front/src/components/GraphControls.vue (plan 011 Phase 5.2).
+// front/src/components/GraphControls.vue (plan 011 Phase 5.2; PLAN-078
+// T-02 sink: labels + settings write channel moved into module fns here).
 // Regenerate:
 //
 //   cd jade-garden/front/auto
 //   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/graph_controls_ext|../../auto/src/front/utils/graph_controls_ext|g' \
+//   sed -e 's|@/ext/src/front/utils/graph_controls_ext|../../auto/src/front/utils/graph_controls_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/graph_controls_ext|g' \
 //     gen/front/vue/src/components/GraphControls.vue > ../src/components/GraphControls.vue
 //   # The DSL emits an empty <style> block — the original's scoped styles
 //   # are appended verbatim (they style the same class hooks):
 //   cat src/front/graph_controls.styleblock >> ../src/components/GraphControls.vue
 //
 // Idioms forced by DSL codegen gaps (see README's gap list):
+// - PLAN-078 T-02: centerLabel (regex `.ad$`) is the strip_ext discipline
+//   form (length+slice+tail-compare, tabs_store.at:47 shape — ASCII
+//   dual-track green; CJK paths degrade verbatim on VM per G-2, the
+//   control label is a vue execution face); opacityLabel uses the
+//   `math.round` dual-track word (074-sink-mode §7.0 P-14); eventValue is
+//   dissolved into the handler (`e.target.value`, 077 properties
+//   precedent). The nested settings writes go through module fns
+//   (gc_set_setting bracket write / gc_reset_settings dot writes — the
+//   P-11-safe form; `$patch` and a `$`-named method have no DSL word, the
+//   per-field reset is observably equivalent: same defaults + saveSettings,
+//   and GraphView's deep settings watch fires on both shapes).
 // - The v-model fold only fires for plain model vars, and these inputs
 //   bind nested facade paths (graph.settings.*) — so every input uses an
 //   explicit :value/:checked + @input/@change pair (exactly what v-model
 //   compiles to) with the write-back in the handler/extension.
 //   v-model.number's numeric coercion is the extension's eventNumber.
-// - The nested settings writes (graph.settings.<key> = v) have no DSL
-//   assignment form → setGraphNumber / setGraphFlag; the $patch reset has
-//   no DSL form either → resetGraphSettings.
-// - The center-label regex and the opacity percentage interpolation are
-//   extension Calls (regex literals / Math.round have no DSL form).
 // - The original's scoped <style> block cannot be emitted by the codegen
 //   (it always appends an empty <style>) — kept verbatim in
 //   graph_controls.styleblock and appended by the regen flow above.
 
+// Sunk from graph_controls_ext.ts centerLabel (PLAN-078 T-02): the
+// `centerPath.replace(/\.ad$/, '')` regex has no DSL word — strip_ext
+// discipline form (ASCII dual-track; CJK degrades verbatim on VM, G-2).
+fn gc_center_label(path_in) str {
+    var ext = ".ad"
+    var n = path_in.length
+    var m = ext.length
+    if n >= m {
+        var tail = path_in.slice(n - m, n)
+        if tail == ext {
+            return path_in.slice(0, n - m)
+        }
+    }
+    return path_in
+}
+
+// Sunk from graph_controls_ext.ts opacityLabel (PLAN-078 T-02): the
+// `Math.round(textOpacity * 100) + '%'` interpolation via the math.round
+// dual-track word (P-14).
+fn gc_opacity_label(opacity_in) str {
+    return f"${math.round(opacity_in * 100)}%"
+}
+
+// Sunk write channel (PLAN-078 T-02, Q-3 ruling): the nested
+// `graph.settings.<key> = value` bracket write as a module fn over the
+// store facade (vue execution face — P-11: the VM bracket write aborts
+// handlers, the twin drives projections instead; VM fix handoff in
+// 078-vm-map-write-repro). Setters take the facade explicitly.
+fn gc_set_setting(graph_store, key_in, value_in) {
+    graph_store.settings[key_in] = value_in
+}
+
+// Sunk from graph_controls_ext.ts resetGraphSettings (PLAN-078 T-02): the
+// reset button's $patch(defaults) + saveSettings — per-field dot writes
+// (P-11-safe form) replace the `$patch` object swap, observably
+// equivalent (same defaults, same save, deep watch fires on both).
+fn gc_reset_settings(graph_store) {
+    graph_store.settings.showOrphans = true
+    graph_store.settings.showMissing = false
+    graph_store.settings.nodeSize = 12
+    graph_store.settings.textOpacity = 0.85
+    graph_store.settings.edgeWidth = 1
+    graph_store.settings.showArrows = false
+    graph_store.settings.gravity = 0.05
+    graph_store.settings.repulsion = 4500
+    graph_store.settings.attraction = 0.05
+    graph_store.settings.linkLength = 120
+    graph_store.saveSettings()
+}
+
 widget GraphControls {
     use {
         composable: useGraphStore from "src/front/utils/graph_controls_ext.ts"
-        fn: centerLabel, opacityLabel, eventNumber, eventValue, eventChecked, setGraphNumber, setGraphFlag, resetGraphSettings, Search, SlidersHorizontal, Palette, Magnet, Focus from "src/front/utils/graph_controls_ext.ts"
+        fn: eventNumber, eventChecked, Search, SlidersHorizontal, Palette, Magnet, Focus from "src/front/utils/graph_controls_ext.ts"
         component: RangeInput from "src/front/utils/graph_controls_ext.ts"
     }
 
     msg Msg { SearchInput, SliderChanged, DepthChanged, FlagChanged, ShowGlobal, Reset }
 
     computed {
-        center_label => centerLabel(.graphStore)
-        opacity_label => opacityLabel(.graphStore)
+        center_label => gc_center_label(.graphStore.centerPath)
+        opacity_label => gc_opacity_label(.graphStore.settings.textOpacity)
     }
 
     view {
@@ -185,14 +243,15 @@ widget GraphControls {
     }
 
     on {
-        // Original: v-model="graph.searchQuery" write-back.
+        // Original: v-model="graph.searchQuery" write-back (eventValue
+        // dissolved — 077 properties precedent).
         .SearchInput(e) -> {
-            .graphStore.searchQuery = eventValue(e)
+            .graphStore.searchQuery = e.target.value
         }
         // Original: v-model.number="graph.settings.<key>" + @input="update"
-        // (update = graph.saveSettings()).
+        // (update = graph.saveSettings()) — write channel via gc_set_setting.
         .SliderChanged(key, evt) -> {
-            setGraphNumber(.graphStore, key, eventNumber(evt))
+            gc_set_setting(.graphStore, key, eventNumber(evt))
             .graphStore.saveSettings()
         }
         // Original: v-model.number="graph.depth" (no saveSettings on depth).
@@ -201,16 +260,17 @@ widget GraphControls {
         }
         // Original: v-model="graph.settings.<key>" checkbox + @change="update".
         .FlagChanged(key, evt) -> {
-            setGraphFlag(.graphStore, key, eventChecked(evt))
+            gc_set_setting(.graphStore, key, eventChecked(evt))
             .graphStore.saveSettings()
         }
         // Original: @click="graph.showGlobal()".
         .ShowGlobal -> {
             .graphStore.showGlobal()
         }
-        // Original: reset() = $patch(defaults) + saveSettings().
+        // Original: reset() = $patch(defaults) + saveSettings() — via
+        // gc_reset_settings (per-field dot writes).
         .Reset -> {
-            resetGraphSettings(.graphStore)
+            gc_reset_settings(.graphStore)
         }
     }
 }

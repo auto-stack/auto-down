@@ -440,4 +440,12 @@ _strip 按钮序列同款）+ 行 needle；search_panel VM 臂 Init 播种 shim 
   双臂绿（语义验证）。
 - **archived ✅**：本文件移入 `docs/plans/archived/076-rcd-search-nav-batch2.md`
   + status: archived + completion_kind: delivered。
-- **cleaned ✅**：见下补记。
+- **cleaned ✅**：摘链 auto-down worktree **2755** junction（pnpm
+  node_modules 类：autodown demo/engine/front/gallery 四 workspace 安装
+  面；python os.rmdir 自枚举 reparse point 全量拆除 0 败——cmd 循环引号
+  吞噬与 subprocess 输出流两番假净后改自枚举）→ auto-lang 兄弟 pass 1
+  即净 → wt-guard clean 双目录实证 → worktree 双移除（--force：残留
+  仅本批 scratch tmp/探针工件与 test-results，证据已录本档）→ 分支
+  plan-076-dev 双侧删除（auto-down was ecab008/master 0332b43 含其祖先；
+  auto-lang was 58f2af216/折叠合并 ea3268d1e）→ 组目录 down-076/ 移除
+  （双仓 worktree 注册归零+prune）。

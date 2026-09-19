@@ -964,6 +964,21 @@
      "PLAN-076"
     ],
     "superseded_by": null
+   },
+   {
+    "id": "P075-1",
+    "section": "architecture",
+    "status": "stable",
+    "title": "jade-garden L2 蓝图抽取首证（l2-bp-extract-batch0：判定规则首执 + 两件骨架 bp + 蓝图级双端 gate）",
+    "content": "- **判定记录（design 30 §6 四通道首执）**：docs/plans/attachments/075-bp-extraction-record.md——首批 L1 基线存量 9 单元（073 五面+074 四件）逐个裁定：U-1 status_bar 骨架+slot（三版同名不同物通道③）/U-2..U-4 不收敛登记（tab 条 R-1、menubar+toolbar ui_config 单源、filetree web 谱系 Q-7）/U-5 filetree bp 家族归位（包级 gate 归 L2 即本计划首证对象）/U-6..U-9 row-list 骨架 7 使用位。四裁定 R-A（kind=layout/status-bar+data-display/row-list，词表内存量）/R-B（gate=auto-lang examples/bp-gate 沙箱形态——auto build 物化 deps junction 实锤，worktree 红线规避）/R-C（VM 臂=root 投影+标记行，F-1 约束）/R-D（T-01 重定范围：645 已落地跨文件 fn 转译，DEBTS.md 漏划销致起草误判，075 收口 G-6 同文件面）。\n- **两件骨架 bp（auto-lang blueprints/，fn-free 三件套）**：layout/status-bar（底栏骨架+左中右内容 slot）+ data-display/row-list（行列表骨架+行 slot，面板行族公共形状——row-list 使用位证据含 076 三件形状登记，076 落地后自然补强）。jade 存量单元迁移为 bp 消费归后续按需（非目标）。\n- **蓝图级双端 gate（auto-lang examples/bp-gate/）**：design 30 §2 L2 门首次落地——vue 臂沙箱构建+playwright 截图基线 × VM 臂 MCP boot 断言，三单元（两骨架+filetree 组合形态）复跑 exit 0；jade gallery 消费侧 gate（P072-1）维持零漂移（075 时点 8 单元双臂绿+gen 对拍逐字节一致；076 后 11 单元）。\n- **072 台账闭环**：§2 Q-1 裁定的『包级 gate 归 L2』兑现（072-inventory L2 注记）；jade 代码零改动（ARCHITECTURE §8.6 L2 bullet + §8.5 组合表两行修正=SD-01）。",
+    "file": "docs/plans/archived/075-l2-bp-extract-batch0.md",
+    "related": [
+     "PLAN-075",
+     "PLAN-072",
+     "PLAN-073",
+     "PLAN-074"
+    ],
+    "superseded_by": null
    }
   ],
   "designs": [
@@ -2353,6 +2368,18 @@
     "file": "docs/plans/archived/076-rcd-search-nav-batch2.md",
     "related": [
      "PLAN-076"
+    ],
+    "superseded_by": null
+   },
+   {
+    "id": "P075-2",
+    "section": "reviews",
+    "status": "stable",
+    "title": "PLAN-075 — 验收与复审收据（reviewed pass：L2 判定+骨架 bp+双端 gate 首证）",
+    "content": "- 复审 r1 pass（2026-09-19，实现会话内复审·独立性受限声明在案·结论自工件重建：逐行 diff+提交态测试/gate 复跑）。AC-01..05 全 pass：判定记录 9 单元四通道可溯；AC-02 plan075_bp_tests 红→绿（0/2→2/2）+048 沙箱构建（ModuleFnDemo fn 内联+vue-tsc+vite 绿）+plan645 3/3+DEBTS 070-2 划销（R-D 重定范围成文：645 已落地面验证收货+G-6 尾面本计划实现）；AC-03 registry 150/150+bp list 双包可见；AC-04 HEAD 复跑 gate exit 0（vue 4/4+基线 3 张/VM 三单元，组合件 VM 真实挂载）；AC-05 SD-01/SD-02/inventory 注记+回归四件。\n- 门禁：cargo tf 3639/3643（4 红全定责预存：mouse_area+kitchen_sink=日常档基点 A/B 同名红；display_family+ffi_dual_019=feature 配置差家族，当前主检出同红；本计划 auto-lang 源码仅 auto-man 两臂挂池）；auto-man 302→304/304；bps-gallery build 绿；jade gallery 双臂 exit 0+双二进制 gen 对拍 front/auto 逐字节一致。\n- 非阻断：F-NB1 plan075 测试失败路径沙箱泄漏（Drop guard 候选）；F-NB4 ARCHITECTURE §8.5 状态词滞后随归档刷新。reviewed_commit=auto-lang a8d40f4da+auto-down 6746830（base 3d0d633/a615d69）。",
+    "file": "docs/plans/archived/075-l2-bp-extract-batch0.md",
+    "related": [
+     "PLAN-075"
     ],
     "superseded_by": null
    }

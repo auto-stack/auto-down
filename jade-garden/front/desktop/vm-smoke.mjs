@@ -515,6 +515,60 @@ arm('search', async (checks) => {
   checks.push('search: search_pages("CAP") → hit_count=1 + 命中按钮呈现')
 })
 
+// PLAN-079 T-02 批 B：命令面板（ui_config 重建清单 × pal_match 过滤门 ×
+// 静态行绑定派发）+ 快速切换器（sw_collect×sw_filter 下沉 fn 真消费 + 行
+// 点击开页 + 面板随开页自闭）。
+arm('palette', async (checks) => {
+  await pressMenuItem('视图', '命令面板')
+  await stateIs('status', 'palette')
+  // CJK 过滤（P-7 域）："重" → 重载文件列表在场、保存缺席（过滤门真效）
+  await typeInto((n) => n.head.startsWith('input '), '重', 'palette input')
+  await stateIs('status', 'palette-typing')
+  let tree = await snapshot()
+  if (!findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === '重载文件列表'))
+    throw new Error('palette: filtered row 重载文件列表 missing')
+  if (findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === '保存'))
+    throw new Error('palette: 保存 should be filtered out by query 重')
+  // 静态行绑定派发：press 重载文件列表 → files-reloaded
+  await pressButton('重载文件列表')
+  await stateIs('status', 'files-reloaded')
+  // 重开面板 = 空查询全量直下（OpenPalette 重置 palette_q；pal_match 空
+  // 查询语义）
+  await pressButton('关闭')
+  await stateIs('status', 'palette-closed')
+  await pressMenuItem('视图', '命令面板')
+  await stateIs('status', 'palette')
+  const tree2 = await snapshot()
+  if (!findFirst(tree2, (n) => n.head.startsWith('button ') && ownText(n) === '导入归档'))
+    throw new Error('palette: empty-query full list missing 导入归档')
+  await pressButton('关闭')
+  await stateIs('status', 'palette-closed')
+  checks.push('palette: 视图菜单开面板 → "重" 过滤（重载在场/保存缺席）→ press 行派发 files-reloaded → 重开空查询全量 → 关闭 ✓')
+})
+
+arm('switcher', async (checks) => {
+  await pressMenuItem('视图', '快速切换')
+  await stateIs('status', 'switcher')
+  await typeInto((n) => n.head.startsWith('input '), '定', 'switcher input')
+  await stateIs('status', 'switcher-typing')
+  // CJK 过滤走下沉 fn 部署副本（sw_collect×sw_filter computed 纯派生）。
+  // 行按钮与文件树同名（CAP 定理.ad）——DFS 序文件树在前，取 last =
+  // 切换器面板行（main col 在 filetree col 之后）。
+  const treeS = await snapshot()
+  const rowBtns = findAll(treeS, (n) => n.head.startsWith('button ') && ownText(n) === 'CAP 定理.ad' && elementIdOf(n))
+  if (!rowBtns.length) throw new Error('switcher: no CAP 定理.ad buttons rendered')
+  await callTool('autoui_action', { element_id: elementIdOf(rowBtns[rowBtns.length - 1]), action: 'press' })
+  await stateIs('status', 'opened')
+  await stateIs('active_title', 'CAP 定理')
+  // 面板随开页自闭（自持弹层面板语义）
+  const tree = await snapshot()
+  if (findFirst(tree, (n) => n.head.startsWith('input ') && ownText(n) === '切换到文件…'))
+    throw new Error('switcher: panel should auto-close on file open')
+  const inputCount = findAll(tree, (n) => n.head.startsWith('input ')).length
+  if (inputCount !== 1) throw new Error(`switcher: expected 1 input (search) after close, saw ${inputCount}`)
+  checks.push('switcher: 视图菜单开切换器 → "定" 过滤 → press CAP 定理.ad 开页 + 面板自闭 ✓')
+})
+
 // tabs 臂（PLAN-064 T-05，§5.4 五断言，tabs_store 驱动的多 tab 编辑器流）：
 //   ① 双 tab 打开且 tab 条在场
 //   ② 切换回读正文不串页
@@ -673,6 +727,8 @@ const ARM_DEPS = {
   save: ['open-ws', 'files'],
   links: ['open-ws', 'files'],
   search: ['open-ws'],
+  palette: ['open-ws'],
+  switcher: ['open-ws'],
 }
 
 async function runOnce(attempt) {

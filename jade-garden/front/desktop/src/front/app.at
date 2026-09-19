@@ -33,6 +33,9 @@ use bps.navigation.filetree.tree_icon: TreeIcon
 // §2/§3——tab_file_stem/backlinks·outgoing 双登记、tab_title/tab_path/
 // unlinked、ol_headings/outline 等价推导）。
 use panels_a_fns: tab_file_stem, tab_title, tab_path, ol_headings
+// PLAN-079 T-02 批 B 装配：sw_collect/sw_filter（quick_switcher 下沉 fn，
+// 入参形状适配 ft_nodes）+ pal_match（palette filter 链 title 臂语义）。
+use panels_b_fns: sw_collect, sw_filter, pal_match
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages
 use auto.http
 
@@ -62,7 +65,7 @@ fn to_fs_nodes(nodes List) List {
 
 widget App {
 
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str) }
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery }
 
     model {
         var status str = "boot"
@@ -88,6 +91,11 @@ widget App {
         // —— PLAN-079 T-01 批 A 装配：unlinked 行 + outline 行（右栏根视图
         // 行渲染，F-1 口径；计数 = vm-smoke 断言锚。outline_count 独立命名
         // ——ol_count 为 outlinks 计数既有 smoke 锚，不复用）。 ——
+        // —— PLAN-079 T-02 批 B 装配：palette/switcher 自持面板态。 ——
+        var palette_open bool = false
+        var palette_q str = ""
+        var switcher_open bool = false
+        var switcher_q str = ""
         var unlinked_rows = []
         var ul_count int = 0
         var outline_rows = []
@@ -104,6 +112,19 @@ widget App {
         // 可见行序列（041 FileTree/TreeView 同款纯派生）：fs 树 × 展开态 ×
         // 选中态；directory=true → 目录/文件图标自动映射。
         ft_rows => flatten_tree(.ft_nodes, .ft_expanded, true, .ft_sel)
+        // PLAN-079 T-02 批 B：switcher 行 = sw_collect × sw_filter 纯派生
+        //（下沉 fn 部署副本真消费——quick_switcher 数据面同源）；palette
+        // 行 = 静态绑定（命令派发无动态通道，模式文档 §2 注记）× 逐行
+        // pal_match 过滤门。
+        switcher_rows => sw_filter(sw_collect(.ft_nodes), .switcher_q)
+        pal_f_open => pal_match("打开工作区", .palette_q)
+        pal_f_reload => pal_match("重载文件列表", .palette_q)
+        pal_f_save => pal_match("保存", .palette_q)
+        pal_f_close => pal_match("关闭标签", .palette_q)
+        pal_f_cards => pal_match("加载卡片", .palette_q)
+        pal_f_graph => pal_match("加载图谱", .palette_q)
+        pal_f_export => pal_match("导出工作区", .palette_q)
+        pal_f_import => pal_match("导入归档", .palette_q)
     }
 
     // PLAN-067 T-02: actions 注册表（Plan 451 DSL）——六流 action 化。
@@ -120,6 +141,12 @@ widget App {
         action (id: "graph.load",   handler: .LoadGraph, title: "加载图谱", icon: "share-2")
         action (id: "ws.export",    handler: .ExportWs,  title: "导出工作区", icon: "download")
         action (id: "ws.import",    handler: .ImportZip, title: "导入归档", icon: "upload")
+        // PLAN-079 T-02 批 B：palette/switcher 面板入口（命令清单 = 本
+        // actions 注册表 ui_config 单源重建——076 §4.1 裁定；热键 desktop
+        // 自持：Ctrl+P 命令面板 + Ctrl+K 快速切换，web 的 Ctrl+O 与
+        // ws.open 冲突维持差异）。
+        action (id: "palette.open", handler: .OpenPalette, title: "命令面板", icon: "command", shortcut: "Ctrl+P")
+        action (id: "quick.switch", handler: .OpenSwitcher, title: "快速切换", icon: "search", shortcut: "Ctrl+K")
 
         // 高频件收编（PLAN-067 §5.2）：open/save/close/reload 进工具栏；
         // cards/graph/export/import 走菜单。
@@ -162,6 +189,10 @@ widget App {
             if seg_count == 1 {
                 path = f"${path}.ad"
             }
+            // 批 B 面板随开页关闭（自持弹层面板语义 + 后续臂输入定位卫生：
+            // 面板开着会占据快照首 input 位）。
+            .palette_open = false
+            .switcher_open = false
             .ft_sel = path
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
@@ -317,6 +348,41 @@ widget App {
             .status = "typing"
         }
 
+        // —— PLAN-079 T-02 批 B：palette/switcher 自持面板 handler ——
+        // 命令行 = ui_config(actions) 重建清单（pal_match 过滤门 × 静态行
+        // 绑定）；查询串经 value: 绑定自动回写，handler 仅打状态标。
+        .OpenPalette -> {
+            .palette_q = ""
+            .palette_open = true
+            .switcher_open = false
+            .status = "palette"
+        }
+
+        .ClosePalette -> {
+            .palette_open = false
+            .status = "palette-closed"
+        }
+
+        .PaletteQuery -> {
+            .status = "palette-typing"
+        }
+
+        .OpenSwitcher -> {
+            .switcher_q = ""
+            .switcher_open = true
+            .palette_open = false
+            .status = "switcher"
+        }
+
+        .CloseSwitcher -> {
+            .switcher_open = false
+            .status = "switcher-closed"
+        }
+
+        .SwitcherQuery -> {
+            .status = "switcher-typing"
+        }
+
         // 保存：store Save 面（write_wiki 经 #[api] → 340 HTTP；回声
         // 采纳 adopt_save_result 防在途编辑被回声覆盖——022 Phase 3 语义）。
         .Save -> {
@@ -408,6 +474,8 @@ widget App {
                         menubar-trigger "视图"
                         menubar-content {
                             menubar-item (title: "重载文件列表", icon: "refresh-cw", shortcut: "F5") { onclick: .LoadFiles }
+                            menubar-item (title: "命令面板", icon: "command", shortcut: "Ctrl+P") { onclick: .OpenPalette }
+                            menubar-item (title: "快速切换", icon: "search", shortcut: "Ctrl+K") { onclick: .OpenSwitcher }
                             // console 位预留（041 同款；jade v1 无 console 面板）
                         }
                     }
@@ -471,6 +539,50 @@ widget App {
                 }
                 col {
                     class: "flex flex-1 flex-col gap-2",
+                    // —— PLAN-079 T-02 批 B：命令面板（静态命令行 × pal_match
+                    // 过滤门；命令清单 = actions 注册表 ui_config 单源重建，
+                    // 076 §4.1 裁定；Enter/方向键 = window 级键盘域不装配，
+                    // 差异登记模式文档 §2）。 ——
+                    if .palette_open {
+                        col {
+                            class: "border rounded p-2 gap-1 bg-muted/20",
+                            row {
+                                class: "gap-2 items-center",
+                                input (value: .palette_q, placeholder: "命令…") {
+                                    oninput: .PaletteQuery
+                                }
+                                button "关闭" { onclick: .ClosePalette }
+                            }
+                            if .pal_f_open { button (text: "打开工作区") { onclick: .OpenWs } }
+                            if .pal_f_reload { button (text: "重载文件列表") { onclick: .LoadFiles } }
+                            if .pal_f_save { button (text: "保存") { onclick: .Save } }
+                            if .pal_f_close { button (text: "关闭标签") { onclick: .CloseTab } }
+                            if .pal_f_cards { button (text: "加载卡片") { onclick: .LoadCards } }
+                            if .pal_f_graph { button (text: "加载图谱") { onclick: .LoadGraph } }
+                            if .pal_f_export { button (text: "导出工作区") { onclick: .ExportWs } }
+                            if .pal_f_import { button (text: "导入归档") { onclick: .ImportZip } }
+                        }
+                    }
+                    // —— 快速切换器（sw_collect×sw_filter 下沉 fn 真消费，
+                    // 行点击 = .OpenFile 开页）。 ——
+                    if .switcher_open {
+                        col {
+                            class: "border rounded p-2 gap-1 bg-muted/20",
+                            row {
+                                class: "gap-2 items-center",
+                                input (value: .switcher_q, placeholder: "切换到文件…") {
+                                    oninput: .SwitcherQuery
+                                }
+                                button "关闭" { onclick: .CloseSwitcher }
+                            }
+                            for f in .switcher_rows {
+                                button (text: f.name) {
+                                    onclick: .OpenFile(f.id)
+                                    style: "text-left text-[12px] text-zinc-300"
+                                }
+                            }
+                        }
+                    }
                     // PLAN-068 T-01: tab 条 041 化（041 app.at 同款双分支——
                     // Plan 449：view fn 片段参数化条件不求值，激活/非激活须
                     // 双分支）。x 钮 = 零参 .CloseTab（活动 tab 语义，x 只在

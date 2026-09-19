@@ -1,0 +1,77 @@
+// panels_b_fns.at — L3 装配批 B fn 部署副本（PLAN-079 T-02）。
+//
+// 形态依据：docs/plans/attachments/079-l3-assembly-mode.md §2（交互独立面
+// = β 变体 desktop 自持：下沉 fn 部署副本 + desktop 自有 UI；热键/焦点 =
+// window 级 ext 域不镜像，076 §5.2/§5.3 登记）。
+//
+// sw_collect — derived-from front/auto/src/front/quick_switcher.at 模块 fn
+// collect_files（PLAN-076 T-01 sink，P-8 双轨实证形态）。**入参形状适配**：
+// web 走 fileTree facade 树（is_dir/path/name），desktop 走 ft_nodes
+// （tree_util schema：kind/id/label/children）——遍历语义同源（递归 walk
+// 收集全部文件）。while+索引纪律（P614，desktop to_fs_nodes 同款）。
+fn sw_collect(nodes) List {
+    var out List = []
+    var i int = 0
+    while i < nodes.len() {
+        var nd = nodes[i]
+        if nd.kind == "dir" {
+            if nd.children != null {
+                var deeper = sw_collect(nd.children)
+                var j int = 0
+                while j < deeper.len() {
+                    out.push(deeper[j])
+                    j = j + 1
+                }
+            }
+        }
+        if nd.kind != "dir" {
+            out.push({ id: nd.id, name: nd.label })
+        }
+        i = i + 1
+    }
+    return out
+}
+
+// sw_filter — derived-from quick_switcher.at 模块 fn filter_files（P-7
+// filter 链双轨一致域：trim/to_lower/contains + 布尔或 + cap 12；hay 双臂
+// web= name/path，desktop= name/id（ft 树 id=path 等价））。
+fn sw_filter(files, qstr) List {
+    var rows List = []
+    let needle = qstr.trim().to_lower()
+    var kept = 0
+    var i int = 0
+    while i < files.len() {
+        if kept >= 12 {
+            break
+        }
+        var f = files[i]
+        if needle == "" {
+            rows.push({ id: f.id, name: f.name })
+            kept = kept + 1
+        }
+        if needle != "" {
+            var hay_name = f.name.to_lower()
+            var hay_id = f.id.to_lower()
+            if hay_name.contains(needle) || hay_id.contains(needle) {
+                rows.push({ id: f.id, name: f.name })
+                kept = kept + 1
+            }
+        }
+        i = i + 1
+    }
+    return rows
+}
+
+// pal_match — derived-from front/auto/src/front/command_palette.at 模块 fn
+// filter_palette 的 title 臂 contains 语义（P-7 域）。desktop 面板行 =
+// 静态绑定形态（命令派发无动态通道——DSL 无按名/按引派发，行 onclick
+// 必须静态引用 handler；模式文档 §2 批 B 注记），过滤门 = 每行一
+// computed 布尔调用本 fn。空查询 = 全显（web filter_palette needle==""
+// 语义：命令面全量直下）。
+fn pal_match(hay str, qstr str) bool {
+    var needle = qstr.trim().to_lower()
+    if needle == "" {
+        return true
+    }
+    return hay.to_lower().contains(needle)
+}

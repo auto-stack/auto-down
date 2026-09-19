@@ -321,6 +321,10 @@ bp 双端 gate 首证（vue 臂：构建+渲染+截图基线；VM 臂：boot+断
   （无新模块/项目）。
 - **archived**：`docs/plans/archived/075-l2-bp-extract-batch0.md`（untracked
   计划平移入册，076 同款）；status=archived/completion_kind=delivered。
+- **cleaned（2026-09-19 补记）**：双 worktree node_modules pnpm junction
+  摘链（auto-lang 143+auto-down 1960 枚 reparse point 逐链 rmdir 后双
+  wt-guard clean）→ 双 worktree remove + 双 plan-075-dev 分支删除（eef2b8b64/
+  396220d）+ 组目录 `.wt/down-075/` 移除，worktree list 双仓零残留。
 
 ## 10. 待澄清事项
 

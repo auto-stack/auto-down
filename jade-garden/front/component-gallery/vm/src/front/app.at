@@ -154,8 +154,69 @@ fn fm_card_at(cards_in, index_in) {
     return out
 }
 
+// —— graph_sidebar twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/graph_sidebar.at 的 graph_stats/top_degree_nodes
+// ——G-3 各持一份；PLAN-078 T-01。四计数 + Obj 构造 + copy/while 选排
+// cap15 + display 显式 if——T-00 探针①⑤同形，VM 真跑面）。
+fn gs_graph_stats(nodes_in, edges_in) map {
+    var total = 0
+    var existing = 0
+    var orphan = 0
+    for n in nodes_in {
+        total = total + 1
+        if n.exists {
+            existing = existing + 1
+        }
+        if n.degree == 0 {
+            orphan = orphan + 1
+        }
+    }
+    return { total: total, existing: existing, missing: total - existing, orphan: orphan, edges: edges_in.len() }
+}
+
+fn gs_top_degree(nodes_in) List {
+    var copy List = []
+    for n in nodes_in {
+        copy.push(n)
+    }
+    var total = copy.len()
+    var i = 0
+    while i < total {
+        var max_i = i
+        var j = i + 1
+        while j < total {
+            var cj = copy[j]
+            var cm = copy[max_i]
+            if cj.degree > cm.degree {
+                max_i = j
+            }
+            j = j + 1
+        }
+        var ci = copy[i]
+        var cmax = copy[max_i]
+        copy[i] = cmax
+        copy[max_i] = ci
+        i = i + 1
+    }
+    var out List = []
+    var k = 0
+    while k < total {
+        if k >= 15 {
+            break
+        }
+        var nd = copy[k]
+        var disp = nd.id
+        if nd.label != null && nd.label != "" {
+            disp = nd.label
+        }
+        out.push({ id: nd.id, label: nd.label, path: nd.path, exists: nd.exists, degree: nd.degree, display: disp })
+        k = k + 1
+    }
+    return out
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd, GsbOpen(str) }
 
     model {
         var unit str = "status_bar"
@@ -283,6 +344,21 @@ widget App {
         var pp_bool_val bool = true
         var pp_bool_label str = "true"
         var pp_has bool = false
+        // —— fixture：graph_sidebar 面（PLAN-078 T-01 twin：四节点三边
+        // 播种（CJK 标题 + exists 双态 + degree0 孤儿 + 空 label 回落 id
+        // 面）→ gs_graph_stats/gs_top_degree 真跑投影；GsbOpen 行按钮
+        // 驱动 gs_opened（OpenNode→tabs.open 形状镜像）——
+        var gsb_nodes = []
+        var gsb_edges = []
+        var gs_rows = []
+        var gs_total int = 0
+        var gs_missing int = 0
+        var gs_orphan int = 0
+        var gs_edges int = 0
+        var gs_count int = 0
+        var gs_id_fallback str = ""
+        var gs_opened str = ""
+        var gs_has bool = false
     }
 
     computed {
@@ -304,6 +380,12 @@ widget App {
         show_flashcard_modal => .unit == "flashcard_modal"
         show_workspace_opener => .unit == "workspace_opener"
         show_properties_panel => .unit == "properties_panel"
+        show_graph_sidebar => .unit == "graph_sidebar"
+        gs_marker => f"unit=graph_sidebar total:${.gs_total} missing:${.gs_missing} orphan:${.gs_orphan} edges:${.gs_edges} top:${.gs_count}"
+        gs_stat_total => f"页面 ${.gs_total}"
+        gs_stat_edges => f"链接 ${.gs_edges}"
+        gs_stat_missing => f"缺失 ${.gs_missing}"
+        gs_stat_orphan => f"孤立 ${.gs_orphan}"
         pp_marker => f"unit=properties_panel rows:${.pp_count} bool:${.pp_bool_label}"
         wo_marker => f"unit=workspace_opener busy:${.wo_busy} err:${.wo_error}"
         fm_marker => f"unit=flashcard_modal idx:${.fm_index}"
@@ -402,6 +484,10 @@ widget App {
                 }
                 button (text: "properties_panel", variant: "text") {
                     onclick: .Select("properties_panel")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "graph_sidebar", variant: "text") {
+                    onclick: .Select("graph_sidebar")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -918,6 +1004,39 @@ widget App {
                     }
                 }
             }
+            if .show_graph_sidebar {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "图谱" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        row (class: "grid grid-cols-2 gap-2 text-xs") {
+                            text .gs_stat_total { class: "rounded border border-zinc-200 bg-white p-1.5 text-zinc-800" }
+                            text .gs_stat_edges { class: "rounded border border-zinc-200 bg-white p-1.5 text-zinc-800" }
+                            text .gs_stat_missing { class: "rounded border border-zinc-200 bg-white p-1.5 text-zinc-800" }
+                            text .gs_stat_orphan { class: "rounded border border-zinc-200 bg-white p-1.5 text-zinc-800" }
+                        }
+                        text "连接最多的页面" { class: "pt-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .gs_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-1",
+                                for r in .gs_rows {
+                                    dyn (.li_tag) {
+                                        key: r.id,
+                                        class: "cursor-pointer truncate rounded px-2 py-1 text-xs text-zinc-800",
+                                        title: r.display,
+                                        text r.display
+                                    }
+                                }
+                            }
+                        }
+                        button (text: "gs_open_引言", variant: "text") {
+                            onclick: .GsbOpen("wiki/引言.ad")
+                            class: "mt-2 w-fit rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                        }
+                        text .gs_opened { class: "pt-1 text-[10px] text-emerald-700" }
+                        text .gs_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -1062,10 +1181,45 @@ widget App {
             if .pp_count > 0 {
                 .pp_has = true
             }
+            // graph_sidebar：四节点三边播种 → gs_graph_stats/gs_top_degree
+            // 真跑（下沉同形 derived 副本——T-00 探针①⑤同形 VM 面）；
+            // 空 label 节点 b 走 display 回落 id（`label || id` 显式 if 面）
+            .gsb_nodes = [
+                { id: "a", label: "引言", path: "wiki/引言.ad", exists: true, degree: 3 },
+                { id: "b", label: "", path: "wiki/方法.ad", exists: true, degree: 1 },
+                { id: "c", label: "缺失页", path: "", exists: false, degree: 2 },
+                { id: "d", label: "孤儿页", path: "wiki/孤儿.ad", exists: true, degree: 0 },
+            ]
+            .gsb_edges = [
+                { source: "a", target: "b" },
+                { source: "a", target: "c" },
+                { source: "c", target: "b" },
+            ]
+            var gs_st = gs_graph_stats(.gsb_nodes, .gsb_edges)
+            .gs_total = gs_st.total
+            .gs_missing = gs_st.missing
+            .gs_orphan = gs_st.orphan
+            .gs_edges = gs_st.edges
+            .gs_rows = gs_top_degree(.gsb_nodes)
+            .gs_count = .gs_rows.len()
+            for r in .gs_rows {
+                if r.id == "b" {
+                    .gs_id_fallback = f"${r.display}"
+                }
+            }
+            if .gs_count > 0 {
+                .gs_has = true
+            }
         }
 
         .Select(u) -> {
             .unit = u
+        }
+
+        // graph_sidebar 行 click 形状镜像（OpenNode → tabs.open：twin 以
+        // gs_opened 投影承载——无 tabs store，F-1 口径）
+        .GsbOpen(path) -> {
+            .gs_opened = path
         }
 
         .TsSwitch(path) -> {

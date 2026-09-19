@@ -396,6 +396,29 @@ export const UNITS = [
     },
   },
   {
+    id: 'graph_sidebar',
+    title: '图谱边栏（桶②·RC-D 批次4·PLAN-078 下沉）',
+    // vue 臂：graph facade 播种四节点三边（CJK 标题 + exists 双态 + degree0
+    // 孤儿 + 空 label 节点）→ 真 .Init（nodes 非空守卫跳过 load）→ 下沉
+    // graph_stats 四卡（页面/链接/缺失/孤立计数）+ top_degree_nodes 选排
+    // cap15 行（display = label||id 显式 if——空 label 行 b 回落 id 面）。
+    // 行 click（tabs.open）不进断言（077 backlinks 同款）。
+    // VM 臂 twin：gs_graph_stats/gs_top_degree derived 副本真跑（G-3 各持
+    // 一份——T-00 探针①⑤同形），四卡计数投影 + gs_open 行按钮驱动
+    // gs_opened（OpenNode 形状镜像）。
+    vue: {
+      url: '/?unit=graph_sidebar',
+      ready: '[data-unit="graph_sidebar"] .stat-card',
+      needles: ['页面', '链接', '缺失', '孤立', '引言', '缺失页', '孤儿页'],
+      needleSelector: '[data-unit="graph_sidebar"]',
+    },
+    vm: {
+      actions: [{ button: 'graph_sidebar' }, { button: 'gs_open_引言' }],
+      state: { unit: 'graph_sidebar', gs_total: '4', gs_missing: '1', gs_orphan: '1', gs_edges: '3', gs_count: '4', gs_id_fallback: 'b', gs_opened: 'wiki/引言.ad' },
+      snapshot: ['unit=graph_sidebar total:4 missing:1 orphan:1 edges:3 top:4', '引言', '缺失页', '孤儿页'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

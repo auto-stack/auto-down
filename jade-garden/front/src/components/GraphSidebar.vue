@@ -1,15 +1,15 @@
 <!-- GraphSidebar component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { graphStats, topDegreeNodes, Network } from '../../auto/src/front/utils/graph_sidebar_ext'
+import { Network } from '../../auto/src/front/utils/graph_sidebar_ext'
 import { useGraphStore, useTabsStore } from '../../auto/src/front/utils/graph_sidebar_ext'
 
 const graphStore = useGraphStore()
 const tabsStore = useTabsStore()
 
 
-const stats = computed<any>(() => graphStats(graphStore.nodes, graphStore.edges))
-const top_nodes = computed<any>(() => topDegreeNodes(graphStore.nodes))
+const stats = computed<any>(() => graph_stats(graphStore.nodes, graphStore.edges))
+const top_nodes = computed<any>(() => top_degree_nodes(graphStore.nodes))
 const ul_tag = computed<string>(() => 'ul')
 const li_tag = computed<string>(() => 'li')
 
@@ -22,6 +22,48 @@ function OpenNode(node: any): void {
   tabsStore.open(node.path, node.label);
 
   emit('OpenNode', node)
+}
+
+function graph_stats(nodes_in: any, edges_in: any): any {
+  let total: number = 0;
+  let existing: number = 0;
+  let orphan: number = 0;
+  for (const n of nodes_in) {total = total + 1;
+  if (n.exists) {existing = existing + 1;
+  }if (n.degree == 0) {orphan = orphan + 1;
+  }}
+  return { total: total, existing: existing, missing: total - existing, orphan: orphan, edges: edges_in.length };
+}
+
+function top_degree_nodes(nodes_in: any): any {
+  let copy: any[] = [];
+  for (const n of nodes_in) {copy.push(n);
+  }
+  let total = copy.length;
+  let i: number = 0;
+  while (i < total) {let max_i: number = i;
+  let j: number = i + 1;
+  while (j < total) {let cj = copy[j];
+  let cm = copy[max_i];
+  if (cj.degree > cm.degree) {max_i = j;
+  }j = j + 1;
+  }
+  let ci = copy[i];
+  let cmax = copy[max_i];
+  copy[i] = cmax;
+  copy[max_i] = ci;
+  i = i + 1;
+  }
+  let out: any[] = [];
+  let k: number = 0;
+  while (k < total) {if (k >= 15) {break;
+  }let nd = copy[k];
+  let disp = nd.id;
+  if (nd.label != null && nd.label != '') {disp = nd.label;
+  }out.push({ id: nd.id, label: nd.label, path: nd.path, exists: nd.exists, degree: nd.degree, display: disp });
+  k = k + 1;
+  }
+  return out;
 }
 
 onMounted(() => {

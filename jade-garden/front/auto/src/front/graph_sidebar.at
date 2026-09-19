@@ -1,20 +1,24 @@
 // graph_sidebar.at — GraphSidebar widget (Auto language source).
 //
 // Auto-generated replacement for the hand-written
-// front/src/components/GraphSidebar.vue (plan 011 Phase 5.3b).
+// front/src/components/GraphSidebar.vue (plan 011 Phase 5.3b; PLAN-078
+// T-01 sink: graphStats/topDegreeNodes moved into module fns here).
 // Regenerate:
 //
 //   cd jade-garden/front/auto
 //   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/graph_sidebar_ext|../../auto/src/front/utils/graph_sidebar_ext|g' \
+//   sed -e 's|@/ext/src/front/utils/graph_sidebar_ext|../../auto/src/front/utils/graph_sidebar_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/graph_sidebar_ext|g' \
 //     gen/front/vue/src/components/GraphSidebar.vue > ../src/components/GraphSidebar.vue
 //
 // Idioms forced by DSL codegen gaps (see README's gap list):
-// - The stats / topNodes computeds are extension Calls (multi-count object
-//   literal and spread+sort+slice have no DSL form); the
-//   `node.label || node.id` fallback is precomputed as `display` by the
-//   topDegreeNodes mapper (a Call in view text has no DSL form — README
-//   gap 46).
+// - PLAN-078 T-01: the stats / topNodes computeds are module fns sunk from
+//   the ext (074-sink-mode §7.1): graph_stats = four filters/counts over
+//   the node list (probe_stats probe form); top_degree_nodes = copy +
+//   while selection sort (spread/sort/slice have no DSL word) + cap 15 +
+//   explicit-if `display` (`node.label || node.id` fallback — a Call in
+//   view text has no DSL form, README gap 46). The click handler still
+//   passes the raw node.label as the tab title.
 // - ul/li are not in the DSL element table (they fall back to <div>), so
 //   the list renders via dyn with string tags (backlinks_panel precedent);
 //   the li carries the original's :key="node.id".
@@ -27,20 +31,83 @@
 //   (027-native-css), emitted verbatim as <style scoped>.
 // - NO commas between sibling view children (README gap 30).
 
+// Sunk from graph_sidebar_ext.ts graphStats (PLAN-078 T-01): four
+// filters/counts over the node list + edge count, stats object literal
+// (probe P-14 probe_stats form — dual-track green).
+fn graph_stats(nodes_in, edges_in) map {
+    var total = 0
+    var existing = 0
+    var orphan = 0
+    for n in nodes_in {
+        total = total + 1
+        if n.exists {
+            existing = existing + 1
+        }
+        if n.degree == 0 {
+            orphan = orphan + 1
+        }
+    }
+    return { total: total, existing: existing, missing: total - existing, orphan: orphan, edges: edges_in.len() }
+}
+
+// Sunk from graph_sidebar_ext.ts topDegreeNodes (PLAN-078 T-01): copy +
+// while selection sort by degree desc (spread/sort/slice have no DSL word)
+// + cap 15 + precomputed `display` (label || id as explicit ifs).
+fn top_degree_nodes(nodes_in) List {
+    var copy List = []
+    for n in nodes_in {
+        copy.push(n)
+    }
+    var total = copy.len()
+    var i = 0
+    while i < total {
+        var max_i = i
+        var j = i + 1
+        while j < total {
+            var cj = copy[j]
+            var cm = copy[max_i]
+            if cj.degree > cm.degree {
+                max_i = j
+            }
+            j = j + 1
+        }
+        var ci = copy[i]
+        var cmax = copy[max_i]
+        copy[i] = cmax
+        copy[max_i] = ci
+        i = i + 1
+    }
+    var out List = []
+    var k = 0
+    while k < total {
+        if k >= 15 {
+            break
+        }
+        var nd = copy[k]
+        var disp = nd.id
+        if nd.label != null && nd.label != "" {
+            disp = nd.label
+        }
+        out.push({ id: nd.id, label: nd.label, path: nd.path, exists: nd.exists, degree: nd.degree, display: disp })
+        k = k + 1
+    }
+    return out
+}
+
 widget GraphSidebar {
     use {
         composable: useGraphStore, useTabsStore from "src/front/utils/graph_sidebar_ext.ts"
-        fn: graphStats, topDegreeNodes, Network from "src/front/utils/graph_sidebar_ext.ts"
+        fn: Network from "src/front/utils/graph_sidebar_ext.ts"
     }
 
     msg Msg { Init, OpenNode }
 
     computed {
         // Original: stats / topNodes computeds (extension Calls; the
-        // facade getters execute inside the computed, so the reactive
+        // sunk module fns execute inside the computed, so the reactive
         // tracking matches the original).
-        stats => graphStats(.graphStore.nodes, .graphStore.edges)
-        top_nodes => topDegreeNodes(.graphStore.nodes)
+        stats => graph_stats(.graphStore.nodes, .graphStore.edges)
+        top_nodes => top_degree_nodes(.graphStore.nodes)
         // Native tags the DSL maps to div (backlinks_panel precedent).
         ul_tag => "ul"
         li_tag => "li"

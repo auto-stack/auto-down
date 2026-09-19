@@ -175,6 +175,10 @@ child.stderr.on('data', (d) => process.stderr.write(`[vm] ${d}`))
 const checks = []
 try {
   await waitForServer(30_000)
+  // 首拍前固定 settle：冷 boot 的 wgpu/着色器初始化窗口内 autoui_snapshot
+  // 会报 "No UI available yet"（078 T-01 实录）——state 轮询可吸收，快照
+  // 不可，故显式等待。
+  await sleep(1500)
   checks.push(`vm boot: auto.exe run -r vm (cwd=vm, MCP :${port})`)
 
   for (const u of UNITS_RUN) {

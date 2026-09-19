@@ -20,6 +20,7 @@ import AgendaPage from './pages/AgendaPage.vue'
 import FlashcardPage from './pages/FlashcardPage.vue'
 import WorkspaceOpenerPage from './pages/WorkspaceOpenerPage.vue'
 import PropertiesPanelPage from './pages/PropertiesPanelPage.vue'
+import GraphSidebarPage from './pages/GraphSidebarPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -179,6 +180,14 @@ function select(u: string) {
       >
         properties_panel
       </button>
+      <button
+        data-unit-tab="graph_sidebar"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'graph_sidebar' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('graph_sidebar')"
+      >
+        graph_sidebar
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -199,5 +208,6 @@ function select(u: string) {
     <FlashcardPage v-else-if="unit === 'flashcard_modal'" />
     <WorkspaceOpenerPage v-else-if="unit === 'workspace_opener'" />
     <PropertiesPanelPage v-else-if="unit === 'properties_panel'" />
+    <GraphSidebarPage v-else-if="unit === 'graph_sidebar'" />
   </div>
 </template>

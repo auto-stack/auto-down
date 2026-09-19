@@ -10,6 +10,7 @@ import OutgoingLinksPage from './pages/OutgoingLinksPage.vue'
 import UnlinkedReferencesPage from './pages/UnlinkedReferencesPage.vue'
 import MenubarPage from './pages/MenubarPage.vue'
 import FiletreePage from './pages/FiletreePage.vue'
+import QuickSwitcherPage from './pages/QuickSwitcherPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -70,6 +71,10 @@ function select(u: string) {
         @click="select('unlinked_references')"
       >
         unlinked_references
+      </button>
+      <!-- PLAN-076 T-01 注：此处 menubar 按钮缺 `<button` 开标签（073/074
+           merge 胶水残留——gate 深链不走 tab 条故未红）；本批顺手修复。 -->
+      <button
         data-unit-tab="menubar"
         class="rounded px-1.5 text-[11px] hover:bg-accent"
         :class="unit === 'menubar' ? 'text-foreground' : 'text-zinc-400'"
@@ -85,6 +90,14 @@ function select(u: string) {
       >
         filetree
       </button>
+      <button
+        data-unit-tab="quick_switcher"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'quick_switcher' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('quick_switcher')"
+      >
+        quick_switcher
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -95,5 +108,6 @@ function select(u: string) {
     <UnlinkedReferencesPage v-else-if="unit === 'unlinked_references'" />
     <MenubarPage v-else-if="unit === 'menubar'" />
     <FiletreePage v-else-if="unit === 'filetree'" />
+    <QuickSwitcherPage v-else-if="unit === 'quick_switcher'" />
   </div>
 </template>

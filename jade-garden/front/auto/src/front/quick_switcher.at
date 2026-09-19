@@ -1,13 +1,20 @@
 // quick_switcher.at — QuickSwitcher widget (Auto language source).
 //
 // Auto-generated replacement for the hand-written
-// front/src/components/QuickSwitcher.vue (plan 011 Phase 5.2).
-// Regenerate:
+// front/src/components/QuickSwitcher.vue (plan 011 Phase 5.2). Regenerate:
 //
 //   cd jade-garden/front/auto
-//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   D:/autostack/.wt/down-076/auto-lang/target/debug/auto.exe build -d .
 //   sed 's|@/ext/src/front/utils/quick_switcher_ext|../../auto/src/front/utils/quick_switcher_ext|g' \
 //     gen/front/vue/src/components/QuickSwitcher.vue > ../src/components/QuickSwitcher.vue
+//
+// PLAN-076 T-01 sink (mode doc §5.3): the pure filter/walk/modulo logic moved
+// INTO the DSL as the module fns below — collect_files (recursive file-tree
+// walk, probe P-8), filter_files (trim/to_lower/contains chain + per-row idx
+// + cap 12, probe P-7: dual-track CJK-consistent), next_index/prev_index
+// (wrap-around modulo). The ext keeps exactly the window-level host face:
+// the hotkey pair, the focus bridge, and the re-exports. No contract channel
+// (this widget calls no api fn).
 //
 // Idioms forced by DSL codegen gaps (see README's gap list + the
 // command_palette.at header — this widget is the same shape):
@@ -15,21 +22,68 @@
 //   window event live in the extension's listenSwitcherHotkeys with the
 //   open/close write-backs arriving as closures (app_shell precedent);
 //   .Destroy unlistens.
-// - collectFiles / filterFiles are extension Calls (recursion, regex-free
-//   but lowercase/includes chains); filterFiles carries the per-row idx
-//   so the view needs no indexed v-for (auto-:key emits idx?.id on a
-//   number).
+// - collect_files / filter_files / next_index / prev_index are module fns
+//   (Plan 367 P2-4 inlined into the deployed SFC); filter_files carries the
+//   per-row idx so the view needs no indexed v-for (auto-:key emits idx?.id
+//   on a number loop var).
 // - The query input uses the v-model fold (value + oninput →
 //   v-model="query"; QueryInput is the dead fold target). Arrow/Enter
 //   handling uses key+prevent modifiers, exactly the original onKeydown's
 //   per-key preventDefault branches.
 // - The selected-row class ternary is a real dynamic `class:` expression
 //   (compiler ≥ 24f0dd16, gap 20 fix); ul/li render via dyn with string tags.
+// - Module fn locals avoid widget model/computed names (probe P-5/G-1).
+
+fn collect_files(nodes, out) List {
+    for nd in nodes {
+        if nd.is_dir {
+            if nd.children != null {
+                collect_files(nd.children, out)
+            }
+        }
+        if !nd.is_dir {
+            out.push({ path: nd.path, name: nd.name })
+        }
+    }
+    return out
+}
+
+fn filter_files(files, qstr) List {
+    var rows List = []
+    let needle = qstr.trim().to_lower()
+    var kept = 0
+    for f in files {
+        if kept >= 12 {
+            break
+        }
+        if needle == "" {
+            rows.push({ path: f.path, name: f.name, idx: kept })
+            kept = kept + 1
+        }
+        if needle != "" {
+            var hay_name = f.name.to_lower()
+            var hay_path = f.path.to_lower()
+            if hay_name.contains(needle) || hay_path.contains(needle) {
+                rows.push({ path: f.path, name: f.name, idx: kept })
+                kept = kept + 1
+            }
+        }
+    }
+    return rows
+}
+
+fn next_index(i, len) int {
+    return (i + 1) % len
+}
+
+fn prev_index(i, len) int {
+    return (i - 1 + len) % len
+}
 
 widget QuickSwitcher {
     use {
         composable: useFileTreeStore, useTabsStore from "src/front/utils/quick_switcher_ext.ts"
-        fn: collectFiles, filterFiles, nextIndex, prevIndex, listenSwitcherHotkeys, unlistenSwitcherHotkeys, focusSwitcherInput, Search from "src/front/utils/quick_switcher_ext.ts"
+        fn: listenSwitcherHotkeys, unlistenSwitcherHotkeys, focusSwitcherInput, Search from "src/front/utils/quick_switcher_ext.ts"
     }
 
     msg Msg { Init, Destroy, CloseOverlay, QueryInput, SelectFile, SelectCurrent, NextItem, PrevItem, HoverFile }
@@ -41,8 +95,8 @@ widget QuickSwitcher {
     }
 
     computed {
-        all_files => collectFiles(.fileTreeStore.files)
-        filtered => filterFiles(.all_files, .query)
+        all_files => collect_files(.fileTreeStore.files, [])
+        filtered => filter_files(.all_files, .query)
         has_results => .filtered.length > 0
         no_results => .filtered.length == 0
         ul_tag => "ul"
@@ -151,11 +205,11 @@ widget QuickSwitcher {
         }
         // Original onKeydown's ArrowDown branch.
         .NextItem -> {
-            .selected_index = nextIndex(.selected_index, .filtered.length)
+            .selected_index = next_index(.selected_index, .filtered.length)
         }
         // Original onKeydown's ArrowUp branch.
         .PrevItem -> {
-            .selected_index = prevIndex(.selected_index, .filtered.length)
+            .selected_index = prev_index(.selected_index, .filtered.length)
         }
         // Original: @mouseenter="selectedIndex = idx".
         .HoverFile(file) -> {

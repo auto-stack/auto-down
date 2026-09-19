@@ -10,8 +10,50 @@
 // tab_strip/backlinks 为 root 内联 twin（derived 探针工件，非生产件）。
 use pages.status_bar_page: StatusBarPage
 
+// —— quick_switcher twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/quick_switcher.at 模块 fn——G-3 无跨文件导入故随
+// twin 各持一份；PLAN-076 T-01。VM 臂执行与 vue 轨同形的递归 walk +
+// CJK 过滤链（P-7/P-8 域），Init 对 fixture 树跑真过滤）。
+fn qs_collect(nodes, out) List {
+    for nd in nodes {
+        if nd.is_dir {
+            if nd.children != null {
+                qs_collect(nd.children, out)
+            }
+        }
+        if !nd.is_dir {
+            out.push({ path: nd.path, name: nd.name })
+        }
+    }
+    return out
+}
+
+fn qs_filter(files, qstr) List {
+    var rows List = []
+    let needle = qstr.trim().to_lower()
+    var kept = 0
+    for f in files {
+        if kept >= 12 {
+            break
+        }
+        if needle == "" {
+            rows.push({ path: f.path, name: f.name, idx: kept })
+            kept = kept + 1
+        }
+        if needle != "" {
+            var hay_name = f.name.to_lower()
+            var hay_path = f.path.to_lower()
+            if hay_name.contains(needle) || hay_path.contains(needle) {
+                rows.push({ path: f.path, name: f.name, idx: kept })
+                kept = kept + 1
+            }
+        }
+    }
+    return rows
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str) }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev }
 
     model {
         var unit str = "status_bar"
@@ -61,6 +103,14 @@ widget App {
         var ul_rows = []
         var ul_count int = 0
         var ul_has bool = false
+        // —— fixture：quick_switcher 面（PLAN-076 T-01 twin：qs_rows 由
+        // qs_collect/qs_filter 对 fixture 树真跑 CJK 查询 "引" 而来——
+        // 名含 引 的 引言.ad/引子.ad 两行；selected 模运算环绕由 qs_next/
+        // qs_prev 按钮驱动，补 06-palette 无 ArrowUp/Down e2e 的选中面）——
+        var qs_rows = []
+        var qs_count int = 0
+        var qs_selected int = 0
+        var qs_has bool = false
     }
 
     computed {
@@ -72,6 +122,7 @@ widget App {
         show_filetree => .unit == "filetree"
         show_outgoing_links => .unit == "outgoing_links"
         show_unlinked_references => .unit == "unlinked_references"
+        show_quick_switcher => .unit == "quick_switcher"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
@@ -80,6 +131,7 @@ widget App {
         ft_marker => f"unit=filetree rows:${.ft_count} open:${.ft_open_dir} sel:${.ft_sel}"
         olp_marker => f"unit=outgoing_links rows:${.olp_count} exists:${.olp_exists}"
         ul_marker => f"unit=unlinked_references rows:${.ul_count}"
+        qs_marker => f"unit=quick_switcher rows:${.qs_count} sel:${.qs_selected}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -120,6 +172,10 @@ widget App {
                 }
                 button (text: "unlinked_references", variant: "text") {
                     onclick: .Select("unlinked_references")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "quick_switcher", variant: "text") {
+                    onclick: .Select("quick_switcher")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -338,6 +394,43 @@ widget App {
                     }
                 }
             }
+            if .show_quick_switcher {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Quick Switcher" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        // 查询输入面（twin 只投影 CJK 查询 "引"；键盘/焦点
+                        // = window 级 DOM 必留 ext 域，不镜像）
+                        row (class: "items-center gap-2 border-b border-zinc-200 px-2 pb-2") {
+                            text "引" { class: "text-sm text-zinc-700" }
+                            text "Ctrl+O" { class: "text-[10px] text-zinc-400" }
+                        }
+                        if .qs_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-0.5",
+                                for f in .qs_rows {
+                                    dyn (.li_tag) {
+                                        key: f.path,
+                                        class: f.idx == .qs_selected ? "cursor-pointer rounded px-1.5 py-1 text-xs bg-accent text-zinc-900" : "cursor-pointer rounded px-1.5 py-1 text-xs text-zinc-800",
+                                        text f.name
+                                        text f.path
+                                    }
+                                }
+                            }
+                        }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "qs_next", variant: "text") {
+                                onclick: .QsNext
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "qs_prev", variant: "text") {
+                                onclick: .QsPrev
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .qs_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -368,6 +461,25 @@ widget App {
             .ul_rows.push({ page_path: "wiki/另页.ad", context: "这一段提到 引言 的概念但从未写成链接" })
             .ul_count = 1
             .ul_has = true
+            // quick_switcher：对 fixture 树真跑下沉同形 fn（qs_collect 递归
+            // walk → qs_filter CJK 查询 "引"——P-7/P-8 VM 侧实证面）
+            var qs_tree = [
+                { is_dir: true, name: "wiki", children: [
+                    { is_dir: false, name: "引言.ad", children: [] },
+                    { is_dir: true, name: "方法", children: [
+                        { is_dir: false, name: "引子.ad", children: [] },
+                        { is_dir: false, name: "探针.ad", children: [] },
+                    ] },
+                ] },
+                { is_dir: false, name: "另页.ad", children: [] },
+            ]
+            var qs_files = qs_collect(qs_tree, [])
+            .qs_rows = qs_filter(qs_files, "引")
+            .qs_count = .qs_rows.len()
+            .qs_selected = 0
+            if .qs_count > 0 {
+                .qs_has = true
+            }
         }
 
         .Select(u) -> {
@@ -394,6 +506,15 @@ widget App {
 
         .FtOpen(id) -> {
             .ft_sel = id
+        }
+
+        .QsNext -> {
+            // 与下沉 fn next_index 同形的环绕模运算（quick_switcher.at）
+            .qs_selected = (.qs_selected + 1) % .qs_count
+        }
+
+        .QsPrev -> {
+            .qs_selected = (.qs_selected - 1 + .qs_count) % .qs_count
         }
     }
 }

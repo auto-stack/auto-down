@@ -1,13 +1,11 @@
 // quick_switcher_ext.ts — hand-written TS extension for quick_switcher.at.
 //
-// Only what the DSL genuinely cannot express lives here:
+// PLAN-076 T-01 sink (mode doc §5.3): collectFiles/filterFiles/nextIndex/
+// prevIndex moved INTO the .at (module fns collect_files/filter_files/
+// next_index/prev_index — the filter chain is dual-track CJK-consistent,
+// probe P-7). What stays here is exactly the window-level host face:
 // - the store facade re-exports (dual-resolution shims),
 // - the lucide icon re-export (rendered via `dyn`),
-// - collectFiles (the recursive file-tree walk) and filterFiles (the
-//   trim/lowercase includes/slice(0, 12) filter; also carries the per-row
-//   idx display field so the view needs no indexed v-for — its auto-:key
-//   emits idx?.id on a number loop var),
-// - nextIndex / prevIndex (the wrap-around modulo),
 // - listenSwitcherHotkeys / unlistenSwitcherHotkeys (the onKeyStroke('o')
 //   Ctrl/Cmd+O open — always SETS open=true, no toggle, no alt/shift
 //   guard — the onKeyStroke('Escape') close, and the
@@ -25,47 +23,6 @@ import { useFileTreeStore } from '../../../../src/stores/fileTree'
 import { useTabsStore } from '../../../../src/stores/tabs'
 
 export { useFileTreeStore, useTabsStore, Search }
-
-export interface SwitcherFile {
-  path: string
-  name: string
-  idx?: number
-}
-
-/** Original collectFiles recursion. */
-export function collectFiles(nodes: any[], items: SwitcherFile[] = []): SwitcherFile[] {
-  for (const n of nodes ?? []) {
-    if (n.is_dir && n.children) {
-      collectFiles(n.children, items)
-    } else if (!n.is_dir) {
-      items.push({ path: n.path, name: n.name })
-    }
-  }
-  return items
-}
-
-/** Original: the filtered computed (name-or-path includes, slice(0, 12)),
- *  plus the per-row idx display field (selected-class ternary +
- *  mouseenter). */
-export function filterFiles(files: SwitcherFile[], query: string): SwitcherFile[] {
-  const q = query.trim().toLowerCase()
-  const base = !q
-    ? files ?? []
-    : (files ?? []).filter(
-        (f) => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q),
-      )
-  return base.slice(0, 12).map((f, idx) => ({ ...f, idx }))
-}
-
-/** Original: (selectedIndex + 1) % filtered.length. */
-export function nextIndex(i: number, len: number): number {
-  return (i + 1) % len
-}
-
-/** Original: (selectedIndex - 1 + filtered.length) % filtered.length. */
-export function prevIndex(i: number, len: number): number {
-  return (i - 1 + len) % len
-}
 
 // The original registers the hotkeys via onKeyStroke (lifecycle-scoped) and
 // the external event via onMounted/onUnmounted; the switcher is a singleton,

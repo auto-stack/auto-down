@@ -150,6 +150,27 @@ export const UNITS = [
     },
   },
   {
+    id: 'quick_switcher',
+    title: '快速切换器（桶②·RC-D 批次2·PLAN-076 下沉）',
+    // vue 臂：fileTree facade 播种嵌套树 → 'jade-open-quick-switcher'
+    // window 通道开面板（热键等价）→ 空查询全量行（collect_files 递归 walk
+    // + filter_files + cap 12）。VM 臂 twin：执行下沉同形模块 fn（derived
+    // 副本）对 CJK 查询 "引" 过滤（P-7 域）+ qs_next 按钮序列驱动
+    // selected_index 模运算环绕（0→1→0，补 06-palette 无 ArrowUp/Down e2e
+    // 的选中移动面）。热键/焦点 = window 级 DOM 必留 ext，twin 不镜像（F-1）。
+    vue: {
+      url: '/?unit=quick_switcher',
+      ready: '[data-unit="quick_switcher"] li',
+      needles: ['引言.ad', '探针.ad', '另页.ad'],
+      needleSelector: '[data-unit="quick_switcher"] li',
+    },
+    vm: {
+      actions: [{ button: 'quick_switcher' }, { button: 'qs_next' }, { button: 'qs_next' }],
+      state: { unit: 'quick_switcher', qs_count: '2', qs_selected: '0' },
+      snapshot: ['unit=quick_switcher rows:2', '引言.ad', '引子.ad'],
+    },
+  },
+  {
     id: 'command_palette',
     title: '命令面板（桶②·RC-D 缺件红占位）',
     missing: true,

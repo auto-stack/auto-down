@@ -116,7 +116,6 @@ widget App {
         var recent_count int = 0
         var cpp_open bool = false
         var cpp_input str = ""
-
         var theme_open bool = false
         var theme_mode str = "dark"
         var theme_accent str = "indigo"

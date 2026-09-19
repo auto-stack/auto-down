@@ -276,7 +276,7 @@ merged 双模 PASS。逐 fn 分类表（34 实义 fn）/desktop 挂载裁定登�
   web-only 特有面裁定 + graph_page 批次 2 注记——placeholder 形态 ≠
   缺件红）。**L3 门批次 1 版**：desktop 首批结构基线
   （desktop/baseline/iced-l3-batch1-structure.txt）+ vm-smoke 双模 22
-  检查项（13 臂含 palette/switcher/agenda/recent/cpp/theme 新六臂）+
+  检查项（15 臂含 palette/switcher/agenda/recent/cpp/theme 新六臂）+
   front e2e + gallery gate（20 真件零漂移 + 占位族可见）。执行期坑实录
   （裸 var x=[] VM 静默坏列表·typed List 纪律/同值 status 断言竞态/
   SCHEDULED 语法）见 079 计划 T-03 收据。消费登记表回填：

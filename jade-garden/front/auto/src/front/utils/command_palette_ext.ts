@@ -1,23 +1,22 @@
 // command_palette_ext.ts — hand-written TS extension for command_palette.at.
 //
-// Only what the DSL genuinely cannot express lives here:
+// PLAN-076 T-03 sink (mode doc §5.2): recentFileItems / allPaletteItems /
+// filterPalette / nextIndex / prevIndex moved INTO the .at (module fns
+// recent_file_items / all_palette_items / filter_palette / next_index /
+// prev_index), and runPaletteItem split — the file branch (tabsStore.open)
+// sank into the widget's Execute handlers; the command branch stays here as
+// runCommandAction (the DSL cannot call a closure stored on an object).
+// What stays here is exactly the host face:
 // - the store facade re-exports (dual-resolution shims),
-// - the lucide icon re-exports (the item icons are component VALUES stored
-//   in the item objects — rendered through PaletteIcon, the `<component
-//   :is="item.icon">` stand-in),
+// - the lucide icon imports/re-exports (component VALUES — buildCommands
+//   stores them in the item objects; Clock renders through the view's file
+//   branch, ruling B),
 // - buildCommands (the commands computed: action closures over stores /
 //   window.dispatchEvent / openDailyNote / export+import with pickFile and
 //   downloadBlob — DOM APIs, Blob/URL, alert, dynamic import() input —
 //   none expressible in the DSL),
-// - recentFileItems / allPaletteItems / filterPalette (the recent-files
-//   mapping, the spread concat, and the trim/lowercase/includes/slice
-//   filter; filterPalette also adds the per-item display fields — row
-//   index and has_subtitle — because the indexed v-for auto-:key emits
-//   `idx?.id` on a number loop var and the DSL view has no truthy if on a
-//   loop-var string field),
-// - runPaletteItem (execute's command/file branch — the DSL cannot call a
-//   closure stored on an object),
-// - nextIndex / prevIndex (the wrap-around modulo),
+// - runCommandAction (execute's command branch — see header),
+// - PaletteIcon (the `<component :is="item.icon">` stand-in),
 // - listenPaletteHotkeys / unlistenPaletteHotkeys (the two onKeyStroke
 //   registrations: Ctrl/Cmd+P toggle with the alt/shift guard +
 //   preventDefault + workspace.root guard, and Escape close — window-level
@@ -47,6 +46,7 @@ import {
 // The gen project's lucide-vue-next has no LucideIcon type export — the
 // item icons are component values, `any` is precise enough here.
 export type LucideIcon = any
+export { Clock }
 import { useTabsStore } from '../../../../src/stores/tabs'
 import { useFileTreeStore } from '../../../../src/stores/fileTree'
 import { useSidebarStore } from '../../../../src/stores/sidebar'
@@ -74,29 +74,16 @@ export interface CommandItem {
   action: () => void
 }
 
+/** The sunk recent_file_items rows (icon injected view-side, ruling B). */
 export interface FileItem {
   id: string
   type: 'file'
   title: string
   subtitle: string
-  icon: typeof Clock
   recent: RecentFile
 }
 
 export type PaletteItem = CommandItem | FileItem
-
-/** Display fields added per item by filterPalette. */
-export interface PaletteItemView {
-  id: string
-  type: 'command' | 'file'
-  title: string
-  subtitle?: string
-  icon: LucideIcon
-  action?: () => void
-  recent?: RecentFile
-  idx: number
-  has_subtitle: boolean
-}
 
 /** `<component :is="item.icon" class="h-4 w-4 shrink-0 opacity-70" />`
  *  stand-in (the DSL's dyn takes a static symbol, not a loop-var field). */
@@ -217,57 +204,13 @@ export function buildCommands(tabs: any, fileTree: any, sidebar: any, theme: any
   ]
 }
 
-/** Original: the recentFileItems computed. */
-export function recentFileItems(files: RecentFile[]): FileItem[] {
-  return (files ?? []).map((f) => ({
-    id: `recent:${f.path}`,
-    type: 'file',
-    title: f.title,
-    subtitle: f.path,
-    icon: Clock,
-    recent: f,
-  }))
-}
-
-/** Original: [...commands.value, ...recentFileItems.value]. */
-export function allPaletteItems(commands: CommandItem[], recentItems: FileItem[]): PaletteItem[] {
-  return [...(commands ?? []), ...(recentItems ?? [])]
-}
-
-/** Original: the filtered computed (trim/lowercase/includes/slice(0, 20)),
- *  plus the per-item display fields (row index for the selected-class
- *  ternaries and mouseenter, has_subtitle for the subtitle v-if). */
-export function filterPalette(items: PaletteItem[], query: string): PaletteItemView[] {
-  const q = query.trim().toLowerCase()
-  const base = !q
-    ? items ?? []
-    : (items ?? []).filter((item) =>
-        [item.title, item.subtitle].join(' ').toLowerCase().includes(q),
-      )
-  return base.slice(0, 20).map((item, idx) => ({
-    ...item,
-    idx,
-    has_subtitle: !!item.subtitle,
-  }))
-}
-
-/** Original execute(item): run the command action / open the recent file. */
-export function runPaletteItem(item: PaletteItemView, tabs: any): void {
+/** PLAN-076 T-03 split sink: execute's command branch — the DSL cannot call
+ *  a closure stored on an object, so this stays a bridge. The file branch
+ *  (tabsStore.open) lives in the widget's Execute handlers. */
+export function runCommandAction(item: any): void {
   if (item.type === 'command') {
     item.action?.()
-  } else if (item.recent) {
-    tabs.open(item.recent.path, item.recent.title)
   }
-}
-
-/** Original: (selectedIndex + 1) % filtered.length. */
-export function nextIndex(i: number, len: number): number {
-  return (i + 1) % len
-}
-
-/** Original: (selectedIndex - 1 + filtered.length) % filtered.length. */
-export function prevIndex(i: number, len: number): number {
-  return (i - 1 + len) % len
 }
 
 // The original keeps the onKeyStroke registrations component-lifecycle-scoped;

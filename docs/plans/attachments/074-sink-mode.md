@@ -116,7 +116,7 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
   + use 导入池，Plan 522 只补了 components//bps 与 dep 通道）；watch 块体
   不入 api 调用扫描；api walker 无 Try 臂。**未修面**：components//bps
   通道的同文件模块 fn 同病（无消费方，待后续编译器计划收口）。旧版
-  编译器（≤1140）跑本批次 .at 必现 TS2304 类红——regen 须用补丁版。
+  编译器（≤1140）跑本批次 .at 必现 TS2304 类红——regen 须用补丁版。**076 增补（plan-076-dev 58f2af2）**：api walker 补 Closure/Lambda 臂（on-handler 闭包体契约调用 TS2304）+ 闭包体 api 调用 async 前缀（TS1308）——search_panel debounce 闭包首件实证，074 同款折回候。
 - **G-7 PLAN-646 gen 支持件（环境项）**：编译器 ≥646 的 `auto build` 在
   gen main.ts 追加 overlay 动态 import 但不落 `auto-select/overlay.ts`
   与 `vite-env.d.ts`——worktree regen 后手工补两文件（gitignored 环境件，

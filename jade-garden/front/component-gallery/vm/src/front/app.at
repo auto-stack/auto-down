@@ -52,8 +52,37 @@ fn qs_filter(files, qstr) List {
     return rows
 }
 
+// —— command_palette twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/command_palette.at 的 filter_palette——G-3 各持
+// 一份；PLAN-076 T-03 转正。title/subtitle 双 contains 布尔或 + cap 20 +
+// idx/has_subtitle 行构造，与 vue 轨同形；Init 对 command×9+recent×2 混合
+// fixture 真跑 CJK 查询 "引"——英文命令全落、CJK recent 两行命中）。
+fn cp_filter(items, qstr) List {
+    var rows List = []
+    let needle = qstr.trim().to_lower()
+    var kept = 0
+    for it in items {
+        if kept >= 20 {
+            break
+        }
+        var sub_text = ""
+        if it.subtitle != null {
+            sub_text = it.subtitle
+        }
+        if needle != "" {
+            var hay_title = it.title.to_lower()
+            var hay_sub = sub_text.to_lower()
+            if hay_title.contains(needle) || hay_sub.contains(needle) {
+                rows.push({ title: it.title, subtitle: sub_text, kind: it.type, idx: kept })
+                kept = kept + 1
+            }
+        }
+    }
+    return rows
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev }
 
     model {
         var unit str = "status_bar"
@@ -118,6 +147,15 @@ widget App {
         var sp_rows = []
         var sp_count int = 0
         var sp_has bool = false
+        // —— fixture：command_palette 面（PLAN-076 T-03 twin 转正：
+        // cp_rows 由 cp_filter 对 command×9+recent×2 混合 fixture 真跑
+        // CJK 查询 "引" 而来——英文命令全落、recent 引言/引子 两行命中；
+        // icon = 宿主组件值经 view 双分支注入（ruling B），twin 以 kind
+        // 投影；selected 环绕由 cp_next/cp_prev 驱动）——
+        var cp_rows = []
+        var cp_count int = 0
+        var cp_selected int = 0
+        var cp_has bool = false
     }
 
     computed {
@@ -131,6 +169,7 @@ widget App {
         show_unlinked_references => .unit == "unlinked_references"
         show_quick_switcher => .unit == "quick_switcher"
         show_search_panel => .unit == "search_panel"
+        show_command_palette => .unit == "command_palette"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
@@ -141,6 +180,7 @@ widget App {
         ul_marker => f"unit=unlinked_references rows:${.ul_count}"
         qs_marker => f"unit=quick_switcher rows:${.qs_count} sel:${.qs_selected}"
         sp_marker => f"unit=search_panel rows:${.sp_count}"
+        cp_marker => f"unit=command_palette rows:${.cp_count} sel:${.cp_selected}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -189,6 +229,10 @@ widget App {
                 }
                 button (text: "search_panel", variant: "text") {
                     onclick: .Select("search_panel")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "command_palette", variant: "text") {
+                    onclick: .Select("command_palette")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -471,6 +515,42 @@ widget App {
                     }
                 }
             }
+            if .show_command_palette {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Command Palette" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        // 查询输入面投影（vue 臂 fill 门同款查询"引言"域）
+                        row (class: "items-center gap-2 border-b border-zinc-200 px-2 pb-2") {
+                            text "⌘/Ctrl+P" { class: "text-[10px] text-zinc-400" }
+                            text "引" { class: "flex-1 text-sm text-zinc-700" }
+                        }
+                        if .cp_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-0.5",
+                                for r in .cp_rows {
+                                    dyn (.li_tag) {
+                                        key: r.idx,
+                                        class: r.idx == .cp_selected ? "cursor-pointer rounded px-2 py-1 text-xs bg-accent text-zinc-900" : "cursor-pointer rounded px-2 py-1 text-xs text-zinc-800",
+                                        text r.title
+                                        text r.subtitle
+                                    }
+                                }
+                            }
+                        }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "cp_next", variant: "text") {
+                                onclick: .CpNext
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "cp_prev", variant: "text") {
+                                onclick: .CpPrev
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .cp_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -526,6 +606,27 @@ widget App {
             .sp_rows.push({ title_text: "wiki/方法.ad", has_snippet: false, snippet_plain: "" })
             .sp_count = 2
             .sp_has = true
+            // command_palette：command×9（英文，与 buildCommands 面同构的
+            // title 域）+ recent×2（CJK）混合 fixture，cp_filter 真跑 "引"
+            var cp_items = [
+                { type: "command", title: "Open today's note", subtitle: "Create or open the daily journal entry" },
+                { type: "command", title: "Open global graph", subtitle: "Show the workspace graph view" },
+                { type: "command", title: "Toggle theme", subtitle: "Current: light" },
+                { type: "command", title: "Toggle left sidebar", subtitle: "Show" },
+                { type: "command", title: "Toggle right sidebar", subtitle: "Hide" },
+                { type: "command", title: "Open file search", subtitle: "Quick switcher (Ctrl+O)" },
+                { type: "command", title: "Review flashcards", subtitle: "SRS due cards" },
+                { type: "command", title: "Export Markdown", subtitle: "Download workspace as zip of .md files" },
+                { type: "command", title: "Import Markdown", subtitle: "Upload a zip of .md files" },
+                { type: "file", title: "引言", subtitle: "wiki/引言.ad" },
+                { type: "file", title: "引子", subtitle: "wiki/方法/引子.ad" },
+            ]
+            .cp_rows = cp_filter(cp_items, "引")
+            .cp_count = .cp_rows.len()
+            .cp_selected = 0
+            if .cp_count > 0 {
+                .cp_has = true
+            }
         }
 
         .Select(u) -> {
@@ -561,6 +662,15 @@ widget App {
 
         .QsPrev -> {
             .qs_selected = (.qs_selected - 1 + .qs_count) % .qs_count
+        }
+
+        .CpNext -> {
+            // 与下沉 fn next_index 同形的环绕模运算（command_palette.at）
+            .cp_selected = (.cp_selected + 1) % .cp_count
+        }
+
+        .CpPrev -> {
+            .cp_selected = (.cp_selected - 1 + .cp_count) % .cp_count
         }
     }
 }

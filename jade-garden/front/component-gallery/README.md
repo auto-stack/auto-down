@@ -72,7 +72,7 @@ cd .. && node scripts/vm-probe.mjs   # boot + MCP 断言（可 --port）
 | F-3 | f-string 内插 computed 不解析（`${.ol_count}` 原样出现）；model 字段内插正常（sb_marker 证明） | 同上迭代 |
 | F-4 | `dyn (.tag)` 双轨可用：VM 快照可见（渲染为容器+文本子树），vue 臂为生成 SFC 常规形态 | vm-probe：dyn ul/li 行文本可断言 |
 | F-5 | blocks.ts 的 activeTab watch 因 Open 原地改 tab 对象（引用不变）不重触发——生产侧 pinned-empty 掩盖；gallery 改显式 `blocks.parse` 播种 | OutlinePage 注释 + vue-probe；候选 DEBTS（front 侧修复归 L1 修复循环/app 层） |
-| F-6 | **缺件即红的真实形态 = 静默降级，非崩溃**：真件（outline_panel 代表）VM 直挂经 `dep jadeauto` 通道可 load/render，但 TS ext 全量降级为 no-op stub（`WARN ext stub: outlineHeadings/useBlocksStore ... no-op platform stub`）→ 数据面空渲染（"No headings."）。红信号 = stub WARN 日志 + 数据投影为空。`auto run` 的 dep 解析走编译器 pac.at 直读，不物化 junction（build 才物化） | T-03 一次性实验（临时 dep + 挂载，已还原）；本表即证据留档 |
+| F-6 | **缺件即红的真实形态 = 静默降级，非崩溃**：真件（outline_panel 代表）VM 直挂经 `dep jadeauto` 通道可 load/render，但 TS ext 全量降级为 no-op stub（`WARN ext stub: outlineHeadings/useBlocksStore ... no-op platform stub`）→ 数据面空渲染（"No headings."）。红信号 = stub WARN 日志 + 数据投影为空。`auto run` 的 dep 解析走编译器 pac.at 直读，不物化 junction（build 才物化） | T-03 一次性实验（临时 dep + 挂载，已还原）；本表即证据留档。**076 注记**：command_palette 缺件红占位已于 PLAN-076 T-03 转正（真单元双臂绿），负例样本由 editor_tab RC-E 状态占位续任（units.mjs 在案） |
 
 ## 债表（PLAN-073 T-02 复核结论在档）
 

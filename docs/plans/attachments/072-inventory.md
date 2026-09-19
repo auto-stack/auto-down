@@ -111,7 +111,7 @@ web 渲染件落点复核（已在桶①注记，不构成独立反向补 vue �
 | 列表/展示 | outline 行 | OutlinePanel.vue + 显式 parse 播种（F-5）列表路径解锁 | root 内联 dyn ul/li 行 | ✅ 双绿 |
 | 交互 | tab strip 面 | TabStrip.vue + 点击切换断言（data-active-path 投影） | root 行按钮 + TsSwitch state/marker | ✅ 双绿 |
 | 数据绑定 | backlinks 行 | BacklinksPanel.vue + shim 拉取渲染行 | root 行 + bl_count 投影 | ✅ 双绿 |
-| 缺件即红 | command_palette（RC-D 占位） | — | **RED(expected)**：missing+理由必填，gate 汇总可见化 | ⚠ 预期红在册 |
+| 缺件即红 | command_palette（RC-D 占位） | — | **RED(expected)**：missing+理由必填，gate 汇总可见化 | ⚠ 预期红在册（**076 转正**：已于 PLAN-076 T-03 转正真单元双臂绿，负例样本由 editor_tab RC-E 状态占位续任） |
 
 > gate 基线：e2e/baselines/*.png 4 张；VM 断言 13 项。执行：`node
 > scripts/gate.mjs`（--update-snapshots 刷基线）。

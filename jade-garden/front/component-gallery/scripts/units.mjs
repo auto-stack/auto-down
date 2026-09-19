@@ -194,10 +194,29 @@ export const UNITS = [
   },
   {
     id: 'command_palette',
-    title: '命令面板（桶②·RC-D 缺件红占位）',
-    missing: true,
-    missingReason:
-      'RC-D：无 VM twin，真件 ext-composable 耦合 → VM 直挂即 ext 全量 no-op stub（T-03 实验：outline_panel 同构实证，README F-6）——VM 臂缺席=红',
+    title: '命令面板（桶②·RC-D 批次2·PLAN-076 下沉+转正）',
+    // 转正（076 T-03）：missing:true 退场——负例样本由 editor_tab 占位
+    // 续任（README F-6 注记）。vue 臂：workspace/recentFiles facade 播种
+    // （root 守卫 + CJK 两行）→ 合成 Ctrl+P 开面板 → fill 门键入"引言"
+    // → 下沉 filter_palette 过滤 command×9+recent×2 → recent 行命中。
+    // VM 臂 twin：cp_filter 同形模块 fn 真跑 CJK 查询"引"（command 英文
+    // 全落、recent 引言/引子 两中）+ cp_next×2 环绕。热键/焦点 = window
+    // 级 DOM 必留 ext，twin 不镜像（F-1）。
+    vue: {
+      url: '/?unit=command_palette',
+      ready: 'input[placeholder="Type a command or recent file..."]',
+      needles: ['Open global graph', '引言'],
+      needleSelector: '[data-unit="command_palette"] li',
+      fill: [{ selector: 'input[placeholder="Type a command or recent file..."]', value: '引言' }],
+      afterReady: '[data-unit="command_palette"] li',
+      afterNeedles: ['引言', 'wiki/引言.ad'],
+      afterNeedleSelector: '[data-unit="command_palette"] li',
+    },
+    vm: {
+      actions: [{ button: 'command_palette' }, { button: 'cp_next' }, { button: 'cp_next' }],
+      state: { unit: 'command_palette', cp_count: '2', cp_selected: '0' },
+      snapshot: ['unit=command_palette rows:2', '引言', '引子'],
+    },
   },
   {
     id: 'editor_tab',

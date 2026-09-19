@@ -134,6 +134,13 @@ web 渲染件落点复核（已在桶①注记，不构成独立反向补 vue �
 | Q-2 editor gate 归属 | **引擎对拍归 autodown lighthouse 流**；gallery 挂状态占位（RC-E，编辑器单元入册不设 gate） | 计划 §9 Q-2 默认 + 机制 §4 |
 | Q-3 单元粒度 | **已答（T-01/T-02 实测）**：VM 臂 = root 投影字段 + root 内联/twin 行（F-1 子件子树快照不可见）；整页单 boot + 配置化按钮序列切单元 | gallery README F-1..F-6 + units.mjs |
 
+> **L2 注记（PLAN-075，2026-09-19）**：Q-1 裁定的"包级 gate 归 L2"已首证
+> 落地——auto-lang `examples/bp-gate/`（蓝图级双端 gate：vue 臂沙箱构建+
+> playwright 截图基线 × VM 臂 MCP boot 断言；首批三单元 = 075 两件骨架 bp
+> + filetree 组合形态，复跑 exit 0）。判定记录与本批 9 单元台账见
+> `075-bp-extraction-record.md`；①-5 filetree 行家族由此归位 bp 包级 gate
+> （jade gallery 消费侧 gate 维持不变）。
+
 ## 9. 交叉校验命令记录
 
 ```sh

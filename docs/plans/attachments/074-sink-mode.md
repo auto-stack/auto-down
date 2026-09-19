@@ -497,3 +497,15 @@ state/snapshot/action（press/toggle）断言全绿。
 > "VM 无 canvas 词位"表述作废；slider = a2r 完整/aura 臂缺/vue 缺
 > type=range 的补全面。§7.1/7.2 两件 RC-D 下沉裁定不受影响，078 照常
 > 执行；§7.3 graph_view 分类表移存独立计划 T-0 复用）。
+
+### 4.3 desktop 消费登记·批次 4（PLAN-078 T-04 扩表；装配归 L3）
+
+| 面板 | desktop 现状 | 挂载裁定（登记） | 约束注记 |
+| --- | --- | --- | --- |
+| graph_sidebar | app.at LoadGraph 流内联（app.at:304：get_graph 计数 + graph_rows 行按钮，无视图） | **组件挂载**为本批后可选：graph_stats/top_degree_nodes 已 .at 单源（统计/选排 P-14 探针双轨绿）；内联流在 L3 装配前维持现状 | 行 click（tabs.open）= web 宿主通道——desktop 装配走自家开页流；Network 图标 dyn 渲染面 VM twin 以内置 icon 名替代（gallery 同款） |
+| graph_controls | desktop 无对应流（图谱设置面缺位） | **组件挂载 = 唯一路径**：gc_center_label/gc_opacity_label/gc_set_setting/gc_reset_settings 已 .at 单源（写通道 = 点号写/bracket 写 vue 执行面——P-11 修复前 VM 轨禁括号写）；RangeInput/eventNumber/eventChecked = vue 滑条/勾选域 | **Q-4 收敛口径**：slider 词位 VM 缺席（P-12）+ AutoUI Slider 补全随独立计划（DEBTS 078）——desktop 装图谱设置面前置依赖该计划；saveSettings 持久化 = localStorage 域（graph_store_ext），desktop 侧等价物归 L3 裁 |
+| graph_view | desktop 无图谱视图（LoadGraph 仅计数行按钮） | **划出 078**（用户终裁 2026-09-19）：真渲染随 canvas 场景契约独立计划（草案 attachments/078-canvas-graph-scene-plan-draft.md——Plan 563 canvas 双轨已在、场景契约扩容 + Slider 补全 + cytoscape 对位）；宿主面单元一并划出 | DEBTS 078 行在案；判定档 attachments/078-graph-view-ruling.md §5/§6 |
+
+> 登记 ≠ 装配（§4 同款）：desktop 图谱族装配归 L3；graph_controls 挂载
+> 的前置 = 独立计划 Slider 补全（Q-4）；graph_sidebar 挂载无前置约束
+> （P-14 域 + G-2 CJK 剥除退化已知）。

@@ -240,6 +240,24 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
 merged 双模 PASS。逐 fn 分类表（34 实义 fn）/desktop 挂载裁定登记：
   `docs/plans/attachments/074-sink-mode.md` §6/§4.2。编译器零新增补丁
   （exe ≥ v0.4.2-1305 同源含 074/076 折回全量）。
+- **PLAN-078 RC-D 批次 4（图谱族两件下沉 + RC-D 清零，2026-09-19）**：
+  graph_sidebar/graph_controls 两件 ext 逻辑下沉 .at（graph_stats/
+  top_degree_nodes 选排 cap15+display 显式 if；gc_center_label strip_ext
+  纪律形/gc_opacity_label math.round/gc_set_setting bracket 写/
+  gc_reset_settings 逐字段点号写 P-11 安全形 + eventValue 消解——077
+  先例），ext 薄化至真宿主面（RangeInput/cast 桥/icons/store 再导出）。
+  **T-00 探针新发现 P-11..P-14**（模式文档 §7.0）：map 括号写 VM 轨静默
+  吞 handler（复现包 handoff auto-lang，修复前 VM 禁括号写）/slider 词位
+  VM 缺席+vue 无 type=range（RangeInput 必留）/checkbox 原生可驱动/
+  math.round 双轨词位。**graph_view RC-F 终裁（用户 2026-09-19）**：
+  canvas 元素 Plan 563 双轨已在（笔笔画契约）——真渲染=场景契约扩容
+  （图元/标签/命中）+AutoUI Slider 补全+cytoscape 对位**独立计划**（草案
+  attachments/078-canvas-graph-scene-plan-draft.md，立项归 auto-lang），
+  宿主面单元划出记 DEBTS。**RC-D 16 件清零**（4+3+7+2）；gallery 双臂
+  全绿 **20 真件单元** + editor_tab 占位（新增 2 张基线，旧 18 零漂移）；
+  front pnpm build 绿。逐 fn 分类表/desktop 挂载裁定：
+  `docs/plans/attachments/074-sink-mode.md` §7/§4.3；判定档
+  `attachments/078-graph-view-ruling.md`。编译器零新增补丁（exe ≥1378）。
 - **PLAN-075 L2 首证（2026-09-19）**：首批 L1 基线存量 9 单元（073 五面 +
   074 四件）跑完 design 30 §6 判定——判定记录
   `docs/plans/attachments/075-bp-extraction-record.md`（U-1 status_bar 骨架+

@@ -57,8 +57,8 @@
 | create_page_prompt.at | 92 | ext:2 | —【077】极薄件零 sink 面（wikiTitleToPath regex 桥/CodeTag 留 ext），VM 渲染臂 twin 双绿（批次价值=渲染臂首验+props/emits 契约） |
 | workspace_opener.at | 133 | ext:3 | desktop OpenWs 流（showDirectoryPicker VM 通道=目录选择器裁定待办）——【077】已下沉 .at（编排链+workspace_error_text 模块 fn）+ **Q-1 裁定销号（2026-09-19）**：VM twin 断言域 = path 输入 + Open 流形状（busy 复位/error 清位/root 投影），picker 按钮（showDirectoryPicker=window 级 DOM）不进 VM 断言（F-1 口径同款）；desktop 装配走自家 menubar action（app.at:103 ws.open）不消费 picker 通道——VM twin 双绿 |
 | flashcard_modal.at | 222 | ext:2 | desktop 闪卡流内联——【077】已下沉 .at（Init/watch/Rate 三处编排 try/catch finally 直调 get_due_cards/review_card 契约+errorMessage strict 桥；card_at/card_question/card_answer/counter_label 模块 fn），ext 薄化，VM twin 双绿 |
-| graph_sidebar.at | 162 | ext:3 | desktop 图谱流内联（get_graph） |
-| graph_controls.at | 216 | ext:4（+styleblock 伴生） | — |
+| graph_sidebar.at | 162 | ext:3 | desktop 图谱流内联（get_graph）——【078】已下沉 .at（graph_stats/top_degree_nodes 模块 fn：四计数+选排 cap15+display 显式 if，P-14 探针双轨绿），ext 薄化至 store/Network 再导出，gallery 第 19 真件双绿 |
+| graph_controls.at | 216 | ext:4（+styleblock 伴生） | —【078】已下沉 .at（gc_center_label strip_ext 纪律形/gc_opacity_label math.round/gc_set_setting bracket 写/gc_reset_settings 逐字段点号写 P-11 安全形 + eventValue 消解），ext 薄化至 RangeInput/cast 桥/icons/store（P-12：DSL slider 词位无 type=range——RangeInput 必留），gallery 第 20 真件双绿（40%→重置→85% 门） |
 
 ### 其他修复类（桶②内细分）——8 件
 
@@ -71,7 +71,7 @@
 | ribbon.at | 118 | RC-C 组装级 | 壳面家具（左 activity bar，lucide 图标轨 + 主题触发）；desktop 无对应面（desktop toolbar ≠ ribbon——同名不同物注记） |
 | graph_page.at | 202 | RC-C 组装级 | 同上（图谱页装配） |
 | editor_tab.at | 211 | RC-E 引擎对拍 | **Q-2 裁定（默认）**：AutoDownEditor 引擎对拍（autodown-engine TS ↔ autodown-core Rust）归 autodown lighthouse 流；gallery 只挂状态占位单元。**PLAN-651 状态更新（2026-09-18）**：对拍 gate 已常驻在库——auto-lang `t651_*` 测试组（`cargo nextest run -p auto-lang --lib --features autodown,code-editor t651`，9/9 绿：T-01 五格闭合 + T-02 三格闭合 + closure corpus 幂等锚）；三态支持矩阵在案（auto-lang `docs/plans/attachments/651-matrix.md`，17 kind × 三态 × 双实现逐格）；gallery 已登记 `editor_tab` 状态占位单元（units.mjs，missing=expected-red 可见化，不设 gate） |
-| graph_view.at | 141 | RC-F 第三方边界 | cytoscape 内核不比；图谱视图面（宿主面）入 L1，VM 侧实现形态（native/canvas）单列待办 |
+| graph_view.at | 141 | RC-F 第三方边界 | cytoscape 内核不比；图谱视图面（宿主面）入 L1，VM 侧实现形态（native/canvas）单列待办——【078 终裁 2026-09-19】canvas 元素 Plan 563 双轨已在（笔笔画契约），真渲染=场景契约扩容+Slider 补全+cytoscape 对位**独立计划**（草案 attachments/078-canvas-graph-scene-plan-draft.md）；宿主面单元划出记 DEBTS 078，判定档 §5/§6 |
 
 ## 4. 桶③ 只有 vm 有（反向补 vue）——**空桶（0 件）**
 

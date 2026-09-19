@@ -1,22 +1,35 @@
 // command_palette.at — CommandPalette widget (Auto language source).
 //
 // Auto-generated replacement for the hand-written
-// front/src/components/CommandPalette.vue (plan 011 Phase 5.2).
-// Regenerate:
+// front/src/components/CommandPalette.vue (plan 011 Phase 5.2). Regenerate:
 //
 //   cd jade-garden/front/auto
-//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
+//   D:/autostack/.wt/down-076/auto-lang/target/debug/auto.exe build -d .
 //   sed 's|@/ext/src/front/utils/command_palette_ext|../../auto/src/front/utils/command_palette_ext|g' \
 //     gen/front/vue/src/components/CommandPalette.vue > ../src/components/CommandPalette.vue
+//
+// PLAN-076 T-03 sink (mode doc §5.2): the pure chain moved INTO the DSL as
+// the module fns below — recent_file_items (row construction; icon = a
+// host component value, so the rows carry none and the VIEW injects Clock
+// per file branch — ruling B, `dyn (.Search)` same-channel precedent),
+// all_palette_items (concat via for-push), filter_palette (trim/to_lower/
+// contains over title+subtitle + per-item idx/has_subtitle + cap 20, probe
+// P-7 dual-track CJK-consistent), next_index/prev_index (wrap modulo).
+// runPaletteItem SPLIT: the file branch (tabsStore.open) sank into the
+// Execute handlers; the command branch (calling a closure stored on an
+// object — the DSL cannot) stays an ext bridge (runCommandAction). The
+// ext keeps exactly: the store re-exports, buildCommands (nine command
+// closures — DOM/Blob/dispatchEvent/dynamic-import host stream), PaletteIcon,
+// the hotkey pair, the focus bridge, and the Clock re-export.
 //
 // Idioms forced by DSL codegen gaps (see README's gap list):
 // - The Ctrl/Cmd+P and Escape hotkeys (the original's two onKeyStroke
 //   registrations) live in the extension's listenPaletteHotkeys with the
 //   toggle/close write-backs arriving as closures (app_shell
 //   listenOpenFlashcards precedent); .Destroy unlistens.
-// - The commands/recentItems/allItems/filtered computed chain is four
-//   extension Calls (Call bodies emit computed<any>, README gap 28);
-//   filterPalette also carries the per-item display fields (idx,
+// - The recentItems/allItems/filtered computeds are module-fn calls over
+//   the ext's buildCommands output (Call bodies emit computed<any>, README
+//   gap 28); filter_palette also carries the per-item display fields (idx,
 //   has_subtitle) so the view needs no indexed v-for (whose auto-:key
 //   emits idx?.id on a number) and no truthy if on a loop-var string.
 // - The query input uses the v-model fold (value + oninput →
@@ -25,18 +38,110 @@
 //   modifiers (@keydown.down.prevent etc.), exactly the original
 //   onKeydown's per-key preventDefault branches.
 // - The item icon (<component :is="item.icon">) is the extension's
-//   PaletteIcon functional component; ul/li render via dyn with string
-//   tags (backlinks precedent).
+//   PaletteIcon functional component; command rows pass item.icon through,
+//   file rows pass the Clock re-export (ruling B); ul/li render via dyn
+//   with string tags (backlinks precedent).
 // - The selected-row class ternaries are real dynamic `class:` expressions
 //   (compiler ≥ 24f0dd16, gap 20 fix).
 // - focusPaletteInput replicates watch(open)'s nextTick + inputRef.focus()
 //   (no template refs in the DSL; the singleton input is located by its
 //   placeholder).
+// - Module fn locals AND params avoid widget model/computed names (probe
+//   P-5/G-1).
+
+// Sunk from ext recentFileItems (PLAN-076 T-03): the recent-files mapping.
+// The icon field is a host component value — the rows carry none; the view
+// injects Clock on the file branch (ruling B, see header).
+fn recent_file_items(files) List {
+    var out List = []
+    for f in files {
+        out.push({
+            id: f"recent:${f.path}",
+            type: "file",
+            title: f.title,
+            subtitle: f.path,
+            recent: f,
+        })
+    }
+    return out
+}
+
+// Sunk from ext allPaletteItems: [...commands, ...recentItems].
+fn all_palette_items(cmds, recents) List {
+    var out List = []
+    for c in cmds {
+        out.push(c)
+    }
+    for r in recents {
+        out.push(r)
+    }
+    return out
+}
+
+// Sunk from ext filterPalette: trim/to_lower/contains over title+subtitle
+// (null subtitle guarded to ""), cap 20, per-item idx + has_subtitle.
+fn filter_palette(items, qstr) List {
+    var rows List = []
+    let needle = qstr.trim().to_lower()
+    var kept = 0
+    for it in items {
+        if kept >= 20 {
+            break
+        }
+        var sub_text = ""
+        if it.subtitle != null {
+            sub_text = it.subtitle
+        }
+        if needle == "" {
+            rows.push({
+                id: it.id,
+                type: it.type,
+                title: it.title,
+                subtitle: sub_text,
+                icon: it.icon,
+                action: it.action,
+                recent: it.recent,
+                idx: kept,
+                has_subtitle: it.subtitle != null,
+            })
+            kept = kept + 1
+        }
+        if needle != "" {
+            var hay_title = it.title.to_lower()
+            var hay_sub = sub_text.to_lower()
+            if hay_title.contains(needle) || hay_sub.contains(needle) {
+                rows.push({
+                    id: it.id,
+                    type: it.type,
+                    title: it.title,
+                    subtitle: sub_text,
+                    icon: it.icon,
+                    action: it.action,
+                    recent: it.recent,
+                    idx: kept,
+                    has_subtitle: it.subtitle != null,
+                })
+                kept = kept + 1
+            }
+        }
+    }
+    return rows
+}
+
+// Original: (selectedIndex + 1) % filtered.length.
+fn next_index(i, len) int {
+    return (i + 1) % len
+}
+
+// Original: (selectedIndex - 1 + filtered.length) % filtered.length.
+fn prev_index(i, len) int {
+    return (i - 1 + len) % len
+}
 
 widget CommandPalette {
     use {
         composable: useTabsStore, useFileTreeStore, useSidebarStore, useThemeStore, useRecentFilesStore, useWorkspaceStore from "src/front/utils/command_palette_ext.ts"
-        fn: buildCommands, recentFileItems, allPaletteItems, filterPalette, runPaletteItem, nextIndex, prevIndex, listenPaletteHotkeys, unlistenPaletteHotkeys, focusPaletteInput from "src/front/utils/command_palette_ext.ts"
+        fn: buildCommands, runCommandAction, listenPaletteHotkeys, unlistenPaletteHotkeys, focusPaletteInput, Clock from "src/front/utils/command_palette_ext.ts"
         component: PaletteIcon from "src/front/utils/command_palette_ext.ts"
     }
 
@@ -50,9 +155,9 @@ widget CommandPalette {
 
     computed {
         commands => buildCommands(.tabsStore, .fileTreeStore, .sidebarStore, .themeStore)
-        recent_items => recentFileItems(.recentFilesStore.files)
-        all_items => allPaletteItems(.commands, .recent_items)
-        filtered => filterPalette(.all_items, .query)
+        recent_items => recent_file_items(.recentFilesStore.files)
+        all_items => all_palette_items(.commands, .recent_items)
+        filtered => filter_palette(.all_items, .query)
         has_results => .filtered.length > 0
         no_results => .filtered.length == 0
         ul_tag => "ul"
@@ -91,7 +196,15 @@ widget CommandPalette {
                                         onmouseenter: .HoverItem(item),
                                         div {
                                             class: "flex items-center gap-2",
-                                            PaletteIcon (icon: item.icon, class: "h-4 w-4 shrink-0 opacity-70")
+                                            // icon 注入双分支（ruling B）：command
+                                            // 行透传 buildCommands 的组件值，file
+                                            // 行注入 Clock 再导出（宿主面）。
+                                            if item.type == "command" {
+                                                PaletteIcon (icon: item.icon, class: "h-4 w-4 shrink-0 opacity-70")
+                                            }
+                                            if item.type == "file" {
+                                                PaletteIcon (icon: .Clock, class: "h-4 w-4 shrink-0 opacity-70")
+                                            }
                                             div {
                                                 class: "min-w-0 flex-1",
                                                 div { class: "truncate", text item.title }
@@ -155,26 +268,42 @@ widget CommandPalette {
         .QueryInput(e) -> {
             .query = e.target.value
         }
-        // Original execute(item): run the item, then close.
+        // Original execute(item): run the item, then close. PLAN-076 T-03
+        // split sink — command branch over the ext bridge (a closure stored
+        // on an object), file branch straight to tabsStore.open. Ext bridge name: runCommandAction.
         .Execute(item) -> {
-            runPaletteItem(item, .tabsStore)
+            if item.type == "command" {
+                runCommandAction(item)
+            }
+            if item.type == "file" {
+                if item.recent != null {
+                    .tabsStore.open(item.recent.path, item.recent.title)
+                }
+            }
             .open = false
         }
         // Original onKeydown's Enter branch.
         .ExecuteSelected -> {
             var item = .filtered[.selected_index]
             if item != null {
-                runPaletteItem(item, .tabsStore)
+                if item.type == "command" {
+                    runCommandAction(item)
+                }
+                if item.type == "file" {
+                    if item.recent != null {
+                        .tabsStore.open(item.recent.path, item.recent.title)
+                    }
+                }
                 .open = false
             }
         }
         // Original onKeydown's ArrowDown branch.
         .NextItem -> {
-            .selected_index = nextIndex(.selected_index, .filtered.length)
+            .selected_index = next_index(.selected_index, .filtered.length)
         }
         // Original onKeydown's ArrowUp branch.
         .PrevItem -> {
-            .selected_index = prevIndex(.selected_index, .filtered.length)
+            .selected_index = prev_index(.selected_index, .filtered.length)
         }
         // Original: @mouseenter="selectedIndex = idx".
         .HoverItem(item) -> {

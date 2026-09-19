@@ -101,7 +101,7 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
 
 **坑清单**：
 
-- **G-1 撞名（P-5）**：模块 fn 局部名避开本件 model/computed 名
+- **G-1 撞名（P-5；076 T-01 参数域增证）**：模块 fn 局部名**与参数名**避开本件 model/computed 名（filter_files 参数 query 撞 model.query 发射 query.value.trim() 运行时炸、vue-tsc 因 any 静默——参数与局部同禁）
   （state-ref 改写误发 `local.value`；R013 检查不覆盖 fn 体内局部名）。
 - **G-2 VM 字符串语义分歧（P-6）**：非 ASCII 域 find/slice/char_at
   （字节系）× length（字符系）混用双轨不可移植；VM 轨标题派生走
@@ -116,7 +116,7 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
   + use 导入池，Plan 522 只补了 components//bps 与 dep 通道）；watch 块体
   不入 api 调用扫描；api walker 无 Try 臂。**未修面**：components//bps
   通道的同文件模块 fn 同病（无消费方，待后续编译器计划收口）。旧版
-  编译器（≤1140）跑本批次 .at 必现 TS2304 类红——regen 须用补丁版。
+  编译器（≤1140）跑本批次 .at 必现 TS2304 类红——regen 须用补丁版。**076 增补（plan-076-dev 58f2af2）**：api walker 补 Closure/Lambda 臂（on-handler 闭包体契约调用 TS2304）+ 闭包体 api 调用 async 前缀（TS1308）——search_panel debounce 闭包首件实证，074 同款折回候。
 - **G-7 PLAN-646 gen 支持件（环境项）**：编译器 ≥646 的 `auto build` 在
   gen main.ts 追加 overlay 动态 import 但不落 `auto-select/overlay.ts`
   与 `vite-env.d.ts`——worktree regen 后手工补两文件（gitignored 环境件，
@@ -135,3 +135,108 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
 
 > 登记 ≠ 装配：desktop app.at 面板装配（含内联流退役）归 L3/后续计划；
 > P614/P618 深帧与 G-2 纪律为装配时的前置约束源（本档 §2/§3）。
+
+## 5. RC-D 批次 2 扩节：检索/导航族三件（PLAN-076 T-00，2026-09-19）
+
+> 作业标准续册（随批次演进）。批次 2 = search_panel 177L / command_palette
+> 184L / quick_switcher 165L，形状 = "query 输入 → 过滤/检索 → 行列表 +
+> 键盘导航"。与批次 1 的差异面：①键盘导航/热键/焦点 = window 级 DOM，
+> 必留 ext 域（VM twin 不镜像，F-1 口径）；②command_palette 缺件红占位
+> 转正真单元。编译器 = master v0.4.2-1198-gffe2dac6d（074 三补丁已折回）
+> ——本批无新增编译器预期（P-8 兄弟通道首验在 T-01）。
+
+### 5.0 批次 2 探针结论（P-7/P-8，T-00 实证）
+
+探针工件：`jade-garden/front/tmp/p076-filterprobe/`（worktree 一次性，
+双轨绿后弃；auto.exe v0.4.2-1198 主检出 debug exe）。
+
+- **P-7 filter 链 CJK 语义双轨一致（Q-1 关闭）**：`trim()/to_lower()/
+  contains()` 在 CJK/ASCII/混合域 VM 全绿（"引"→1 命中且首行正确、
+  "ABOUT"→2 命中折叠、" 方法.ad "→trim 后 1 命中、"方法/探"→混合命中、
+  无中→0）。机制：VM 引擎 str 臂 `lower`→Rust `to_lowercase`（Unicode
+  字符域）、`contains`→Rust `String::contains`（UTF-8 字节子串，自同步
+  性质 ⇒ 与 JS `includes` 真值等价）、`trim`→Unicode 空白、`len`→字符数
+  （engine.rs CALL_SPEC str 臂实勘）。**P-6 字节-字符分歧不及于过滤域**——
+  该分歧专属索引算术（find/slice/char_at 返回字节索引与字符系 length 混
+  用）；filter 链不产生不消费索引。vue 轨发射 `q.trim().toLowerCase()`/
+  `n.toLowerCase().includes(needle)`（ts_adapter 映射实证）。**裁定：twin
+  断言域直接用 CJK fixture（无 ASCII 限制）；下沉 fn 为 vue 轨执行面 +
+  VM 形态可编译可运行（探针已证）。**
+- **P-8 模块 fn 自递归双轨通（Q-2 root 通道关闭）**：collectFiles 形态
+  （模块 fn 顶层自递归 walk 嵌套 {is_dir, children}) vue 轨发射为
+  `function probe_walk(){...probe_walk(...)}` 提升声明、VM 轨深度优先
+  序正确（引言.ad→探针.ad→b.md）。root 通道（app.at）实证；**兄弟生成
+  臂（widget .at → 部署 SFC）为 G-6 已修面（074 补丁 40d7488 折回
+  1198），T-01 quick_switcher 首件复验**。
+- **DSL 词位（批次 2 新用面）**：filter 链 = `.trim()/.to_lower()/
+  .contains()`（vue.rs/ts_adapter/engine 三表一致）；布尔或 `a || b`
+  布尔域可用（tabs_store:208 先例，值传播差异不涉布尔）；列表局部/
+  返回 = `var out List = []` / `fn f() List`（outline_headings 先例，
+  裸 `var x = []` 发射 TS7034）；f-string 插值必须 `${...}` 形态
+  （`{.x}` 发射为字面量，探针实证）。
+- **Q-3 关闭（e2e 盘点）**：06-palette 四测已覆盖热键开合（Ctrl+P/Ctrl+O/
+  Escape）+ 输入过滤（fill 'global graph'/'Tasks'）+ Enter 执行 command
+  分支（图谱/闪卡）+ switcher file 分支点击开页——下沉行为面 e2e 在案。
+  缺口（执行注记）：ArrowDown/ArrowUp 选中移动无 e2e 断言（现测 Enter
+  均在 selected=0 态隐式执行）——gallery twin 以 NextItem/PrevItem 按钮
+  序列断言 selected_index 投影补此面；e2e 增补非本批 gate。
+
+### 5.1 search_panel_ext.ts 逐 fn 分类（81L，9 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useTabsStore（再导出） | 必留 | facade shim | 留 ext |
+| useDebounceFn（再导出） | 必留 | @vueuse/core npm（DSL 不能导入） | 留 ext |
+| Search/FileText/Box（再导出） | 必留 | lucide 组件值（dyn 渲染） | 留 ext |
+| searchSafe | **sink（编排）** | try/catch 吞错映射沉 watch try/catch/finally；`search(q,30)` 客户端调用改 `use back.api: search_pages` 契约通道（双端 api.at:283/287 在案） | search_panel.at watch；ext 增 `search_pages` 薄别名（get_backlinks 同款）+ gen stub |
+| snippetHtml | 必留（bridge） | regex 字面量 \u0001\u0002 无 DSL 词位 | 留 ext；下沉行构造经 use fn 逐行调用（unlinked highlight_context 先例） |
+| errorMessage | 必留（strict 桥，**T-02 增设**；review F-2 补行） | DSL catch 绑定发射裸 `catch (e)`，front tsconfig strict ⇒ unknown 域属性访问 TS18046——错误消息提取须在类型化 TS 侧（query_block_widget 编辑器先例） | 留 ext；Init debounce 闭包 catch 体调用 |
+| withSearchDisplay | **sink（行构造）** | is_page/is_block/has_snippet 平凡布尔 + title_text 显式 if 守卫（P618 两步赋值）；snippet_html 字段经 ext 桥逐行预计算 | search_panel.at 模块 fn |
+| scheduleScrollToBlock | 必留（bridge） | setTimeout + CustomEvent + dispatchEvent | 留 ext |
+
+### 5.2 command_palette_ext.ts 逐 fn 分类（317L，18 导出名含 6 store 再导出 + LucideIcon type）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| 6 store 再导出（tabs/fileTree/sidebar/theme/recentFiles/workspace） | 必留 | facade shim | 留 ext |
+| buildCommands | 必留（真宿主流整体） | 九命令闭包：DOM（dispatchEvent/ createElement）、Blob/URL、alert、dynamic import、pickFile——半沉造成缝合面（openOutlinkTarget 先例） | 留 ext 整体 |
+| PaletteIcon | 必留 | h() 函数组件（`<component :is>` 代位） | 留 ext |
+| recentFileItems | **sink** | map 行构造（id f-string/显式字段）；**icon 字段 = 宿主组件值**——裁定 A（默认）：沉 fn 收 icon 实参（Clock 经 use fn 通道传入，search_panel lucide fn 导入先例），T-03 发射首验；发射红则裁 B：行不带 icon，view 双分支注入 | command_palette.at 模块 fn |
+| allPaletteItems | **sink** | spread concat → for-push | command_palette.at 模块 fn |
+| filterPalette | **sink** | trim/to_lower/contains 链（P-7 双轨一致）+ idx/has_subtitle 行构造 + cap 20 + join(" ") 改双 contains 布尔或（`||` 布尔域） | command_palette.at 模块 fn |
+| runPaletteItem | **拆沉** | file 分支 = tabsStore.open 沉 on-handler；command 分支 = 对象闭包调用（DSL 不能调对象上闭包）留 ext 桥 `run_command_action` | .at on + ext 桥 |
+| nextIndex / prevIndex | **sink** | 模运算（P-3 数学内插同域，纯 int） | command_palette.at 模块 fn |
+| listen/unlistenPaletteHotkeys | 必留 | window keydown（Ctrl/Cmd+P 守卫 + Escape），handler 同一性移除 | 留 ext |
+| focusPaletteInput | 必留 | nextTick + querySelector focus（无模板 ref） | 留 ext |
+
+### 5.3 quick_switcher_ext.ts 逐 fn 分类（115L，10 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useFileTreeStore/useTabsStore/Search（再导出） | 必留 | facade shim + lucide 组件值 | 留 ext |
+| collectFiles | **sink** | 递归 walk（P-8 双轨实证；G-3 无跨文件导入 → 与 palette 各沉各份） | quick_switcher.at 模块 fn |
+| filterFiles | **sink** | name/path 双 contains 布尔或 + idx 行构造 + cap 12（P-7） | quick_switcher.at 模块 fn |
+| nextIndex / prevIndex | **sink** | 模运算 | quick_switcher.at 模块 fn |
+| listen/unlistenSwitcherHotkeys | 必留 | window keydown（Ctrl/Cmd+O + Escape）+ 'jade-open-quick-switcher' CustomEvent | 留 ext |
+| focusSwitcherInput | 必留 | nextTick + querySelector focus | 留 ext |
+
+### 5.4 批次 2 计数勘正
+
+计划 §5 预分类 "18 fn 基型" 勘正为 **22 逻辑 fn**（4+11+7，不含纯再导出
+名）：sink 11 + 拆沉 1（runPaletteItem）+ 必留 10（hotkey 对 ×2 件计
+4 fn + focus ×2 + buildCommands + PaletteIcon + snippetHtml +
+scheduleScrollToBlock；sink 枚举 = §5.1 两行 + §5.2 五 fn + §5.3 四 fn）。
+（review F-1 勘正：初版误记 12+1+9——sink 行枚举 2+5+4=11、必留括注
+自和=10；总数 22 恰好掩盖拆分错。）另：T-02 执行期增设 errorMessage
+strict 桥（§5.1 表行在案）与 search_pages 薄别名（§5.1 searchSafe 行
+去向在案）、T-03 拆沉残臂 runCommandAction（§5.2 runPaletteItem 行
+去向在案）——批次后 ext 逻辑 fn 面 = 必留 10 + 新增 3 = 13。
+
+
+### 4.1 desktop 消费登记·批次 2（PLAN-076 T-04 扩表；装配归 L3）
+
+| 面板 | desktop 现状 | 挂载裁定（登记） | 约束注记 |
+| --- | --- | --- | --- |
+| search_panel | app.at 搜索流内联（.DoSearch 直拉 search_pages） | **组件挂载**为本批后可选：搜索编排已 .at 单源（with_search_display 模块 fn + debounce 闭包 try/catch/finally + `use back.api: search_pages` 契约同通道）；内联流在 L3 装配前维持现状 | snippet 高亮 regex 属 vue 显示面（ext 桥），VM twin 不镜像；errorMessage 桥 = vue 轨 strict 域（VM 轨契约调用语义不同——desktop 内联流自持 try 面）；G-2：VM 轨禁 CJK find/slice 索引算术（filter 域 P-7 不涉） |
+| command_palette | desktop 无 palette 流（命令面 = ui_config menubar/toolbar，PLAN-073） | **组件挂载 = 唯一路径**（如 L3 需 palette）：过滤链/构造/模运算已 .at 单源（filter_palette 等）；但 buildCommands 为 web 宿主流整体（DOM/Blob/dispatchEvent/dynamic import）——desktop 消费侧命令清单应从 ui_config 单源重建（§8.5 口径），非移植 buildCommands | icon 组件值 = view 双分支注入（ruling B）；runCommandAction 桥 = command 分支对象闭包（desktop 侧等价物走 ui_config action 面）；热键/焦点 = window 级 ext 域 |
+| quick_switcher | desktop 无 switcher 流（开页走 filetree） | **组件挂载 = 唯一路径**：collect_files 递归/filter_files/模运算已 .at 单源，fileTree facade 通道双端同形 | 'jade-open-quick-switcher' CustomEvent = web 宿主通道（desktop 装配时换自家开面板事件/api）；热键/焦点 = window 级 ext 域；G-2：VM 轨文件名过滤 = P-7 域（contains 链双轨一致）可用 |

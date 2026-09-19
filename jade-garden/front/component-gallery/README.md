@@ -72,7 +72,7 @@ cd .. && node scripts/vm-probe.mjs   # boot + MCP 断言（可 --port）
 | F-3 | f-string 内插 computed 不解析（`${.ol_count}` 原样出现）；model 字段内插正常（sb_marker 证明） | 同上迭代 |
 | F-4 | `dyn (.tag)` 双轨可用：VM 快照可见（渲染为容器+文本子树），vue 臂为生成 SFC 常规形态 | vm-probe：dyn ul/li 行文本可断言 |
 | F-5 | blocks.ts 的 activeTab watch 因 Open 原地改 tab 对象（引用不变）不重触发——生产侧 pinned-empty 掩盖；gallery 改显式 `blocks.parse` 播种 | OutlinePage 注释 + vue-probe；候选 DEBTS（front 侧修复归 L1 修复循环/app 层） |
-| F-6 | **缺件即红的真实形态 = 静默降级，非崩溃**：真件（outline_panel 代表）VM 直挂经 `dep jadeauto` 通道可 load/render，但 TS ext 全量降级为 no-op stub（`WARN ext stub: outlineHeadings/useBlocksStore ... no-op platform stub`）→ 数据面空渲染（"No headings."）。红信号 = stub WARN 日志 + 数据投影为空。`auto run` 的 dep 解析走编译器 pac.at 直读，不物化 junction（build 才物化） | T-03 一次性实验（临时 dep + 挂载，已还原）；本表即证据留档 |
+| F-6 | **缺件即红的真实形态 = 静默降级，非崩溃**：真件（outline_panel 代表）VM 直挂经 `dep jadeauto` 通道可 load/render，但 TS ext 全量降级为 no-op stub（`WARN ext stub: outlineHeadings/useBlocksStore ... no-op platform stub`）→ 数据面空渲染（"No headings."）。红信号 = stub WARN 日志 + 数据投影为空。`auto run` 的 dep 解析走编译器 pac.at 直读，不物化 junction（build 才物化） | T-03 一次性实验（临时 dep + 挂载，已还原）；本表即证据留档。**076 注记**：command_palette 缺件红占位已于 PLAN-076 T-03 转正（真单元双臂绿），负例样本由 editor_tab RC-E 状态占位续任（units.mjs 在案） |
 
 ## 债表（PLAN-073 T-02 复核结论在档）
 
@@ -83,3 +83,5 @@ cd .. && node scripts/vm-probe.mjs   # boot + MCP 断言（可 --port）
 | D-3 | ①-1/①-2 dirty 标色 | web `text-amber-500`（亮底）vs VM `text-amber-400`（暗底）——调色板字面，统一需主题 warning 语义 token（shadcn 默认无），留主题系统流；不在 AC-02 字面范围（11px/zinc） | 073-literal-style-inventory.md §4.3 |
 | D-4 | ①-3 menubar·快捷键标注 | MenuBar.vue 快捷键 `<span class="ml-auto text-[11px] text-zinc-500">` ×4 源自编译器合成模板（auto-lang `ui_gen/vue.rs:6056`）——跨仓 codegen 面，菜单结构对照不受影响，模板 token 化留 L2 | 073-literal-style-inventory.md §2 |
 | D-5 | ①-5 filetree 行家族·结构对照 | **行解剖两端对齐，缩进表示各持合法**：web（file_tree_node.at）=margin 缩进（level*12px style_obj）+ chevron span（h-4 w-4）+ NodeIcon ext 函数件 + name truncate，行点击 dir=toggle/file=open；desktop（app.at ft_rows）=guides 竖线（041 同款）+ mouse-area chevron（w-3.5 h-3.5）+ bps TreeIcon + label 钮。chevron 双态（right/down）、icon 按型、label 语义两端一致；ctx 菜单/新增钮为 web 独有面（desktop 无对应流）。bp spec gotcha#2 在案：bps 家族（flatten_tree/tree_icon）desktop 消费侧 gate 归本 twin（pac 自包含裁定，icon 以内置名替代），包级 gate 归 L2 | filetree 单元双臂绿（vue 点击展开 + VM ▸→▾ 翻转 rows:3→4）@本仓 T-03 |
+| D-6 | VM 字符串语义分歧登记（074 P-6 转录） | **L3 纪律项**：VM 轨 `length` 字符数 × `find/slice/char_at` 字节索引混用双轨不可移植（"wiki/引言.ad" 实测 find=11/slice(5,10)="引"/char_at(7)=0/length=10）；vue 轨全字符语义。desktop 装配消费标题类派生一律走 tabs_store `strip_ext`（ASCII 后缀域）或 store title 权威，禁止 VM 轨 CJK 域索引算术 | 074-sink-mode.md §2 P-6（微探针 MCP state 断言） |
+| D-7 | filter 链 CJK 语义（076 T-00 探针） | **双轨一致，P-6 不及于过滤域**：`trim/to_lower/contains` CJK+ASCII+混合域 VM 全绿（Rust to_lowercase/UTF-8 contains[自同步⇒JS includes 等价]/Unicode trim）；分歧专属索引算术。twin 断言域可用 CJK fixture 直接断言 | 074-sink-mode.md §5.0 P-7（p076-filterprobe 双轨实证） |

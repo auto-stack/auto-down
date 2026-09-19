@@ -206,3 +206,17 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
   `docs/plans/attachments/074-sink-mode.md`；desktop 挂载裁定登记（内联
   vs 组件，装配归 L3）见其 §4。编译器侧：src/front 兄弟臂 fn 池重挂 +
   watch/Try api 扫描补丁落 auto-lang `plan-074-dev`（40d7488/899aa2e）。
+- **PLAN-076 RC-D 批次 2（检索/导航族纯逻辑下沉，2026-09-19）**：
+  search_panel/command_palette/quick_switcher 三件 ext 过滤链/行构造/
+  递归 walk/模运算下沉 .at（模块 fn + debounce 闭包 try/catch/finally +
+  `use back.api: search_pages` 契约通道 + gen stub；runPaletteItem 拆沉
+  file 分支；ext 薄化至热键/焦点/再导出/真宿主流）；**command_palette
+  缺件红占位转正**（负例样本由 editor_tab RC-E 状态占位续任，README
+  F-6/072 台账注记在案）。VM filter 链 CJK 语义结论（P-7：P-6 字节-字符
+  分歧不及于过滤域——twin 断言域可用 CJK；债表 D-6/D-7）。gallery gate
+  双臂全绿 **11 真单元** + 截图基线 11 张在库（新增 3，旧 8 零漂移）；
+  vue 臂 fill 门新增（query 输入 typing 面）。逐 fn 分类表/坑清单增补/
+  desktop 挂载裁定：`docs/plans/attachments/074-sink-mode.md` §5/§4.1。
+  编译器侧：api walker 补 Closure/Lambda 臂 + 闭包体 api 调用 async
+  前缀，落 auto-lang `plan-076-dev`（58f2af2，074 三补丁后第四件，
+  待折回）。

@@ -307,3 +307,13 @@ export async function get_outlinks(_title: string): Promise<any> {
 export async function get_unlinked_refs(_title: string): Promise<any> {
   return { title: '', refs: [] }
 }
+
+// PLAN-076 T-02: search_panel's debounced closure calls the search contract
+// fn from its .at body (`use back.api: search_pages`), so the generated SFC
+// emits `import { search_pages } from '@/lib/api'`. Gen-side the name
+// resolves here; in the deployed front tree the sed-rewritten import lands
+// on the search_panel ext shim (contract-name alias of the hand-written
+// client face).
+export async function search_pages(_q: string, _limit: number): Promise<any> {
+  return { results: [] }
+}

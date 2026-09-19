@@ -45,6 +45,23 @@ for (const u of UNITS) {
         }
       }
     }
+    // PLAN-076 T-02：fill 阶段——检索/导航族单元的 query 输入面（v-model
+    // 输入框 typing → 真件自身 watch/debounce 链路 → afterReady 结果态）。
+    if (u.vue.fill?.length) {
+      for (const step of u.vue.fill) {
+        await page.fill(step.selector, step.value)
+      }
+      if (u.vue.afterReady) {
+        await page.waitForSelector(u.vue.afterReady, { timeout: 15_000 })
+      }
+      for (const needle of u.vue.afterNeedles ?? []) {
+        const sel = u.vue.afterNeedleSelector ?? '[data-unit]'
+        const text = await page.$$eval(sel, (els) => els.map((e) => e.textContent ?? '').join('\n'))
+        if (!text.includes(needle)) {
+          throw new Error(`${u.id}: fill 后 ${sel} 缺 "${needle}"（got: ${text.slice(0, 200)}）`)
+        }
+      }
+    }
     await expect(page).toHaveScreenshot(`${u.id}.png`)
   })
 }

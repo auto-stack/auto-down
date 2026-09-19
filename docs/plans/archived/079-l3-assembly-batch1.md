@@ -381,6 +381,14 @@ gallery gate 零漂移）+ app 级双端截图基线：web 侧 08-screenshots �
     point 残留——078 同款类，MSYS_NO_PATHCONV=1 cmd /c rmdir 只删链接
     本身] → wt-guard 双净 → 双 worktree 移除 + plan-079-dev 分支删除 +
     组目录 down-079 移除 + 双仓 prune）。
+  - **cleaned** ✓（2026-09-20 补记）：worktree 摘链 1765 条（engine
+    pnpm install reparse point 残留——`find -type l -delete` 只删链接
+    本身不 descend，node_modules 树随后整体移除；误删 worktree 受track
+    fixture 5 文件经 git checkout 还原后零脏）→ **wt-guard 双净**
+    （auto-down + auto-lang 均 clean）→ 双 worktree remove + 分支
+    plan-079-dev 删除（was 5bc4cc9 全落 master）+ 组目录 down-079 移除 +
+    双仓 prune **零残留**（worktree list grep down-079 = 0）。PLAN-079:r2
+    五 checkpoint 全闭环 delivered。
 
 ## 10. 待澄清事项
 

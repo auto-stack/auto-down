@@ -1,0 +1,111 @@
+// panels_a_fns.at — L3 装配批 A fn 部署副本（PLAN-079 T-01）。
+//
+// 形态依据：docs/plans/attachments/079-l3-assembly-mode.md（β 内联消费
+// 裁定——跨项目 fn 导入静默死面 P-15，下沉 fn 一律部署副本 + 同项目
+// `use <stem>: <fn>` 引回，E-9 通道实证；desktop 同项目 use 无 G-3 约束，
+// 按批聚合单文件，per-fn derived-from 注记）。
+//
+// derived-from front/auto/src/front/backlinks_panel.at 模块 fn
+//（PLAN-074 T-02 sink；outgoing_links_panel.at 同名 fn 为 G-3 重复实现，
+// 一副本双登记）。VM 安全形态：find/slice 均作用于 ASCII 分隔符边界
+//（自同步性质），无 char_at/字节-字符混用（G-2/P-6 域）。
+fn last_segment(path str) str {
+    let sep = path.find("/")
+    if sep == -1 {
+        return path
+    }
+    return last_segment(path.slice(sep + 1, path.length.to(int)))
+}
+
+fn stem_of_path(path str) str {
+    let name = last_segment(path)
+    let dot = name.find(".")
+    if dot > 0 {
+        return name.slice(0, dot)
+    }
+    return name
+}
+
+fn tab_file_stem(tab) str {
+    if tab == null {
+        return ""
+    }
+    return stem_of_path(tab.path)
+}
+
+// derived-from front/auto/src/front/unlinked_references_panel.at 模块 fn
+//（PLAN-074 T-03 sink）：平凡 null→"" 访问器。
+fn tab_title(tab) str {
+    if tab == null {
+        return ""
+    }
+    return tab.title
+}
+
+fn tab_path(tab) str {
+    if tab == null {
+        return ""
+    }
+    return tab.path
+}
+
+// ol_headings — outline 装配的 desktop 等价推导（PLAN-079 T-01）。
+// derived-from front/auto/src/front/outline_panel.at 模块 fn outline_headings
+// 的**数据面**（heading 行 {content, 缩进}）；blocks 源不可达（web 读
+// blocksStore facade=ext 域 F-5；blocks 契约仅按 id 单取，无整页列表路由，
+// backend 不在本计划 affects）→ 行扫描等价：# 前缀级别 + 围栏守卫 +
+// ` ^锚`/` {#id}` 后缀剥除。解析器级边缘（setext/内联标记）不镜像，
+// 差异登记 079 模式文档 §2 表 outline 行。VM 纪律：while+索引（P614）、
+// find/slice 仅 ASCII 标记边界（G-2）、局部名避开 App model 字段（G-1）。
+fn ol_headings(body str) List {
+    var out List = []
+    var lines = body.split("\n")
+    var in_fence bool = false
+    var marks = ["#", "##", "###", "####", "#####", "######"]
+    var i int = 0
+    while i < lines.len() {
+        var ln = lines[i]
+        if ln.find("```") == 0 {
+            in_fence = !in_fence
+        }
+        if !in_fence && ln.find("#") == 0 {
+            var parts = ln.split(" ")
+            var mark = parts[0]
+            var lvl = mark.length.to(int)
+            if lvl >= 1 && lvl <= 6 {
+                if mark == marks[lvl - 1] {
+                    var txt = ""
+                    var pi = 1
+                    while pi < parts.len() {
+                        if txt != "" {
+                            txt = txt + " "
+                        }
+                        txt = txt + parts[pi]
+                        pi = pi + 1
+                    }
+                    var anchor_at = txt.find(" ^")
+                    if anchor_at > 0 {
+                        txt = txt.slice(0, anchor_at)
+                    }
+                    var id_at = txt.find(" {#")
+                    if id_at > 0 {
+                        txt = txt.slice(0, id_at)
+                    }
+                    txt = txt.trim()
+                    if txt != "" {
+                        var rowstyle = "text-left text-[12px] text-zinc-300"
+                        if lvl >= 2 {
+                            rowstyle = "text-left text-[12px] text-zinc-400 pl-3"
+                        }
+                        if lvl >= 3 {
+                            rowstyle = "text-left text-[12px] text-zinc-500 pl-6"
+                        }
+                        out.push({ content: txt, rowstyle: rowstyle })
+                    }
+                }
+            }
+        }
+        i = i + 1
+    }
+    return out
+}

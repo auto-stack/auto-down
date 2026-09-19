@@ -29,7 +29,11 @@ use store: Tabs
 use status_bar: StatusBar
 use bps.navigation.filetree.tree_util: flatten_tree, toggle_id
 use bps.navigation.filetree.tree_icon: TreeIcon
-use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_graph, search_pages
+// PLAN-079 T-01 批 A 装配：下沉 fn 部署副本（β 内联消费裁定，模式文档
+// §2/§3——tab_file_stem/backlinks·outgoing 双登记、tab_title/tab_path/
+// unlinked、ol_headings/outline 等价推导）。
+use panels_a_fns: tab_file_stem, tab_title, tab_path, ol_headings
+use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages
 use auto.http
 
 // FileNode（wire：name/path/is_dir/children）→ tree_util 节点 schema
@@ -81,6 +85,13 @@ widget App {
         var outlinks = []
         var bl_count int = 0
         var ol_count int = 0
+        // —— PLAN-079 T-01 批 A 装配：unlinked 行 + outline 行（右栏根视图
+        // 行渲染，F-1 口径；计数 = vm-smoke 断言锚。outline_count 独立命名
+        // ——ol_count 为 outlinks 计数既有 smoke 锚，不复用）。 ——
+        var unlinked_rows = []
+        var ul_count int = 0
+        var outline_rows = []
+        var outline_count int = 0
         var search_q str = ""
         var search_rows = []
         var hit_count int = 0
@@ -163,19 +174,51 @@ widget App {
             // + key 变即重挂载 = 播种通道；显式 code_editor_set_text 需编辑器
             // 已注册（首次打开该 key 未挂载即 RuntimeError "no editor
             // registered"，本仓实机复现）——041 仅对已存在 tab 清空时调用。
-            var bl = get_backlinks(.active_title)
-            var blLinks = bl.links
-            .backlinks = blLinks
-            .bl_count = blLinks.length
-            var ol = get_outlinks(.active_title)
-            var olLinks = ol.links
-            .outlinks = olLinks
-            .ol_count = olLinks.length
+            //
+            // PLAN-079 T-01 批 A 装配：标题语义收敛 web 单源（tab_file_stem
+            // 部署副本——path 末段去扩展；G-2 安全形态：find/slice 仅 ASCII
+            // 分隔符边界）。doc_title 空 = web 面板同款清列语义（backlinks_
+            // panel.at watch current_title == "" 臂）。
+            var doc_title = tab_file_stem(t)
+            if doc_title != "" {
+                var bl = get_backlinks(doc_title)
+                var blLinks = bl.links
+                .backlinks = blLinks
+                .bl_count = blLinks.length
+                var ol = get_outlinks(doc_title)
+                var olLinks = ol.links
+                .outlinks = olLinks
+                .ol_count = olLinks.length
+                var ur = get_unlinked_refs(doc_title)
+                var urRefs = ur.refs
+                .unlinked_rows = []
+                for r in urRefs {
+                    .unlinked_rows.push({ label: r.page_path, target: r.page_path })
+                }
+                .ul_count = urRefs.length
+            }
+            if doc_title == "" {
+                .backlinks = []
+                .bl_count = 0
+                .outlinks = []
+                .ol_count = 0
+                .unlinked_rows = []
+                .ul_count = 0
+            }
+            // outline 行（ol_headings 等价推导：# 级别 + 围栏守卫 + 锚点/
+            // 块 id 后缀剥除——blocks 源不可达，模式文档 §2 outline 行差异
+            // 登记；body 取激活 tab 正文）。
+            var hrows = ol_headings(.active_body)
+            .outline_rows = hrows
+            .outline_count = hrows.len()
             .status = "opened"
         }
 
         // 切换 = store Open 的激活臂（已 loaded 不重读磁盘）。键变重挂载
-        // 读 content:（播种裁定见 .OpenFile 注）。
+        // 读 content:（播种裁定见 .OpenFile 注）。PLAN-079 T-01：右栏面板
+        // 随切换刷新（web 面板 watch activeTab 语义的装配对齐——此前切换后
+        // 反链/出链停旧 tab 数据；handler 无自派发通道，刷新块与 .OpenFile
+        // 重复一段 = G-3 同族约束注记）。
         .SwitchTab(path) -> {
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
@@ -184,6 +227,35 @@ widget App {
                 .active_body = t.body
                 .active_dirty = t.dirty
             }
+            var doc_title = tab_file_stem(t)
+            if doc_title != "" {
+                var bl = get_backlinks(doc_title)
+                var blLinks = bl.links
+                .backlinks = blLinks
+                .bl_count = blLinks.length
+                var ol = get_outlinks(doc_title)
+                var olLinks = ol.links
+                .outlinks = olLinks
+                .ol_count = olLinks.length
+                var ur = get_unlinked_refs(doc_title)
+                var urRefs = ur.refs
+                .unlinked_rows = []
+                for r in urRefs {
+                    .unlinked_rows.push({ label: r.page_path, target: r.page_path })
+                }
+                .ul_count = urRefs.length
+            }
+            if doc_title == "" {
+                .backlinks = []
+                .bl_count = 0
+                .outlinks = []
+                .ol_count = 0
+                .unlinked_rows = []
+                .ul_count = 0
+            }
+            var hrows = ol_headings(.active_body)
+            .outline_rows = hrows
+            .outline_count = hrows.len()
             .status = "switched"
         }
 
@@ -492,6 +564,30 @@ widget App {
                         }
                         if !o.exists {
                             text o.target_title
+                        }
+                    }
+                    // —— PLAN-079 T-01 批 A 装配：outline 行（ol_headings
+                    // 等价推导产物，级别缩进行）+ unlinked 行（契约直拉，
+                    // 高亮 html = vue 显示面不镜像——模式文档 §2）。 ——
+                    row {
+                        class: "gap-1 items-center",
+                        text "outline" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .outline_count { style: "text-[11px] text-zinc-500" }
+                    }
+                    for h in .outline_rows {
+                        // 行非交互：web 的 dispatchScrollToHeading = window
+                        // 级 ext 桥（VM 无 scroll_to 通道，desktop README §2
+                        // dom-walk 滚动定位候选）——点击面不装配，差异登记。
+                        text h.content { style: h.rowstyle }
+                    }
+                    row {
+                        class: "gap-1 items-center",
+                        text "unlinked" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .ul_count { style: "text-[11px] text-zinc-500" }
+                    }
+                    for u in .unlinked_rows {
+                        button (text: u.label) {
+                            onclick: .OpenFile(u.target)
                         }
                     }
                     row {

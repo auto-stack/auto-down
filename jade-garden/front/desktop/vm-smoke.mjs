@@ -388,7 +388,15 @@ arm('read', async (checks) => {
   // 空格标题通配回环（/api/wiki/Hello%20World.ad）全文可达
   await stateHas('active_body', 'Hello, Jade Garden!')
   await stateHas('active_body', '返回 [[首页]]。')
-  checks.push('read: open Hello World.ad → active_title + head/tail body markers present (full markdown, space-in-title round trip)')
+  // PLAN-079 T-01 批 A 装配锚：outline 行（4 标题——Hello World/列表/任务
+  // 列表/代码块，锚点后缀剥除）+ unlinked（1 自引行）。outline_count 独立
+  // 字段（ol_count = outlinks 既有锚，不复用）。
+  await stateIs('outline_count', '4')
+  await stateIs('ul_count', '1')
+  const olTree = await snapshot()
+  const olRow = findFirst(olTree, (n) => ownText(n) === '代码块')
+  if (!olRow) throw new Error('read: outline row "代码块" not rendered')
+  checks.push('read: open Hello World.ad → active_title + head/tail body markers + outline 4 rows (代码块 rendered) + unlinked 1 (PLAN-079 批 A)')
 })
 
 arm('save', async (checks) => {
@@ -421,12 +429,20 @@ arm('links', async (checks) => {
   // engine linkgraph 化后的语义，P022 slice 5 时点的 3/2 为旧口径）。
   await stateIs('bl_count', '2')
   await stateIs('ol_count', '2')
+  // PLAN-079 T-01 批 A 装配锚：outline 6 行（CAP 一级 + 二级若干——锚点/
+  // 块 id 后缀剥除后的标题面）+ unlinked 1 自引；标题派生走 tab_file_stem
+  // 部署副本（装配后 fetch key 与 web 面板同源）。
+  await stateIs('outline_count', '6')
+  await stateIs('ul_count', '1')
+  const capOl = await snapshot()
+  const headingRow = findFirst(capOl, (n) => ownText(n) === '一致性（Consistency）')
+  if (!headingRow) throw new Error('links: outline row "一致性（Consistency）" not rendered (^anchor/{#id} strip broken?)')
   // 反链点击跳转：backlinks 列含 Hello World（button 由 .backlinks 渲染）
   const blBtn = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World')
   if (!blBtn) throw new Error('links: backlink button "Hello World" not rendered')
   await callTool('autoui_action', { element_id: elementIdOf(blBtn), action: 'press' })
   await stateIs('active_title', 'Hello World')
-  checks.push('links: CAP 定理 → bl=2/ol=2（engine 页级反链口径）+ 反链按钮跳转 Hello World ✓')
+  checks.push('links: CAP 定理 → bl=2/ol=2（engine 页级反链口径）+ outline 6/unlinked 1 装配锚 + 反链按钮跳转 Hello World ✓')
 })
 
 arm('cards', async (checks) => {

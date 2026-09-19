@@ -454,4 +454,46 @@ export const UNITS = [
     missingReason:
       'RC-E：对拍 gate 常驻在库（auto-lang plan-651 t651 套件：cargo nextest run -p auto-lang --lib --features autodown,code-editor t651；三态矩阵 = auto-lang docs/plans/attachments/651-matrix.md）——PLAN-072 Q-2 裁定 gallery 挂状态占位不设 gate；真件装配随 jade L3（A\' 解冻条件由矩阵度量）',
   },
+  // —— PLAN-079 T-04：RC-C 壳面 + ribbon + graph_page 状态占位（placeholder
+  // 形态——组装级归 L3 口径，不设 gate 也非缺件红：负例语义仅 editor_tab
+  // 续任，占位 ≠ 缺件，gate 汇总单列一行可见）。 ——
+  {
+    id: 'app_shell',
+    title: '应用壳（RC-C·组装级占位）',
+    placeholder: true,
+    placeholderReason:
+      'RC-C 组装级：壳组装归 L3 边界（app 层既有基建盖流：desktop vm-smoke 双模 + front e2e 全量）；PLAN-079 T-04 挂状态占位，不设 gate',
+  },
+  {
+    id: 'main_area',
+    title: '主区装配（RC-C·组装级占位）',
+    placeholder: true,
+    placeholderReason: 'RC-C 组装级：编辑区/TabStrip 挂载点装配归 L3；PLAN-079 T-04 占位',
+  },
+  {
+    id: 'left_sidebar',
+    title: '左栏槽位（RC-C·组装级占位）',
+    placeholder: true,
+    placeholderReason: 'RC-C 组装级：面板槽位切换装配归 L3；PLAN-079 T-04 占位',
+  },
+  {
+    id: 'right_sidebar',
+    title: '右栏槽位（RC-C·组装级占位）',
+    placeholder: true,
+    placeholderReason: 'RC-C 组装级：面板槽位切换装配归 L3；PLAN-079 T-04 占位',
+  },
+  {
+    id: 'ribbon',
+    title: '活动栏（RC-C·web-only 特有面占位）',
+    placeholder: true,
+    placeholderReason:
+      'PLAN-079 Q-2 裁定：ribbon = web-only 特有面（073 Q-1 daily-note 口径）——desktop 无对应面（desktop toolbar ≠ ribbon，同名不同物）；web 壳面家具由 vue 臂 shell 截图/08-screenshots 承载，L3 差异表登记（079 模式文档 §6）',
+  },
+  {
+    id: 'graph_page',
+    title: '图谱页（RC-C·L3 批次 2 占位）',
+    placeholder: true,
+    placeholderReason:
+      'L3 批次 2：gated on auto-lang PLAN-661 canvas 场景契约 AC 全绿（graph_view 真渲染/graph_sidebar·controls 挂载同批——PLAN-079 §5 划出注记）',
+  },
 ]

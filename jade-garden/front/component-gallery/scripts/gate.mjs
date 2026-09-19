@@ -43,10 +43,16 @@ if (ARM === 'all' || ARM === 'vm') {
 }
 
 // 缺件红占位账（不判红，只可见化）：missing 单元数 = 桶② 待办可见面。
+// PLAN-079 T-04：placeholder = RC-C/裁定状态占位（单列一行——占位 ≠ 缺件
+// 红，负例语义仅 missing 族）。
 const { UNITS } = await import('./units.mjs')
 const missing = UNITS.filter((u) => u.missing)
 if (missing.length) {
   console.log(`  ⓘ missing(expected-red 占位): ${missing.map((u) => u.id).join(', ')}`)
+}
+const placeholders = UNITS.filter((u) => u.placeholder)
+if (placeholders.length) {
+  console.log(`  ⓘ 状态占位(非缺件红·PLAN-079 RC-C/裁定注记): ${placeholders.map((u) => u.id).join(', ')}`)
 }
 
 console.log('\n=== gallery gate summary ===')

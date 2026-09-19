@@ -64,12 +64,12 @@
 
 | 件 | 行数 | 修复类 | 说明 |
 | --- | --- | --- | --- |
-| app_shell.at | 99 | RC-C 组装级 | 壳组装 → L3 边界（vm-smoke 双模 + 全量 playwright 已盖流）；L1 挂占位 |
-| main_area.at | 98 | RC-C 组装级 | 同上（编辑区装配，TabStrip 挂载点） |
-| left_sidebar.at | 53 | RC-C 组装级 | 同上 |
-| right_sidebar.at | 53 | RC-C 组装级 | 同上 |
-| ribbon.at | 118 | RC-C 组装级 | 壳面家具（左 activity bar，lucide 图标轨 + 主题触发）；desktop 无对应面（desktop toolbar ≠ ribbon——同名不同物注记） |
-| graph_page.at | 202 | RC-C 组装级 | 同上（图谱页装配） |
+| app_shell.at | 99 | RC-C 组装级 | 壳组装 → L3 边界（vm-smoke 双模 + 全量 playwright 已盖流）；L1 挂占位【PLAN-079 T-04：gallery units.mjs 状态占位已挂（placeholder 形态，非缺件红——gate 汇总单列）】 |
+| main_area.at | 98 | RC-C 组装级 | 同上（编辑区装配，TabStrip 挂载点）【079 T-04 占位同挂】 |
+| left_sidebar.at | 53 | RC-C 组装级 | 同上【079 T-04 占位同挂】 |
+| right_sidebar.at | 53 | RC-C 组装级 | 同上【079 T-04 占位同挂】 |
+| ribbon.at | 118 | RC-C 组装级 | 壳面家具（左 activity bar，lucide 图标轨 + 主题触发）；desktop 无对应面（desktop toolbar ≠ ribbon——同名不同物注记）【PLAN-079 Q-2 裁定落地：web-only 特有面（073 Q-1 daily-note 口径）+ gallery 状态占位 + L3 差异表登记——079 模式文档 §6 证据（三 facade 驱动 + 今日笔记/全局图谱入口均 web 特有流）】 |
+| graph_page.at | 202 | RC-C 组装级 | 同上（图谱页装配）【PLAN-079 §5 划出注记：L3 批次 2，gated on auto-lang PLAN-661 canvas 场景契约 AC 全绿——占位批次 2 注记】 |
 | editor_tab.at | 211 | RC-E 引擎对拍 | **Q-2 裁定（默认）**：AutoDownEditor 引擎对拍（autodown-engine TS ↔ autodown-core Rust）归 autodown lighthouse 流；gallery 只挂状态占位单元。**PLAN-651 状态更新（2026-09-18）**：对拍 gate 已常驻在库——auto-lang `t651_*` 测试组（`cargo nextest run -p auto-lang --lib --features autodown,code-editor t651`，9/9 绿：T-01 五格闭合 + T-02 三格闭合 + closure corpus 幂等锚）；三态支持矩阵在案（auto-lang `docs/plans/attachments/651-matrix.md`，17 kind × 三态 × 双实现逐格）；gallery 已登记 `editor_tab` 状态占位单元（units.mjs，missing=expected-red 可见化，不设 gate） |
 | graph_view.at | 141 | RC-F 第三方边界 | cytoscape 内核不比；图谱视图面（宿主面）入 L1，VM 侧实现形态（native/canvas）单列待办——【078 终裁 2026-09-19】canvas 元素 Plan 563 双轨已在（笔笔画契约），真渲染=场景契约扩容+Slider 补全+cytoscape 对位**独立计划**（草案 attachments/078-canvas-graph-scene-plan-draft.md）；宿主面单元划出记 DEBTS 078，判定档 §5/§6 |
 

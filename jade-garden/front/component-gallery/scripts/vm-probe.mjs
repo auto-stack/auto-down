@@ -182,6 +182,13 @@ try {
   checks.push(`vm boot: auto.exe run -r vm (cwd=vm, MCP :${port})`)
 
   for (const u of UNITS_RUN) {
+    // PLAN-079 T-04：placeholder = 状态占位（组装级/裁定注记——不设 gate
+    // 也非缺件红；负例语义仅 editor_tab 的 missing 续任）。
+    if (u.placeholder) {
+      if (!u.placeholderReason) throw new Error(`${u.id}: placeholder 单元缺 placeholderReason（状态占位必须留因）`)
+      console.log(`  ⓘ ${u.id}: 占位(状态注记) — ${u.placeholderReason}`)
+      continue
+    }
     if (u.missing) {
       if (!u.missingReason) throw new Error(`${u.id}: missing 单元缺 missingReason（缺件红必须留因）`)
       console.log(`  ⚠ ${u.id}: RED(expected，缺件占位) — ${u.missingReason}`)

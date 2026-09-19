@@ -367,6 +367,35 @@ export const UNITS = [
     },
   },
   {
+    id: 'properties_panel',
+    title: '属性面板（桶②·RC-D 批次3·PLAN-077 压轴下沉）',
+    // vue 臂：generated tabs store 直播种 activeTab（五型 frontmatter——
+    // inferType 分派域全覆盖）→ 下沉 sync_entries（P-9 map 迭代 vue 执行面
+    // + inferType 逐值桥）+ with_prop_display 就地字段写 → 行渲染。click
+    // 门 bool pill → ToggleBool 翻转 → 'false' 标签出现。VM 臂 twin：
+    // pp_rows 分派型播种（inferType TS 域不入 VM——F-1）+ pp_toggle/
+    // pp_add 翻转/增行投影。
+    vue: {
+      url: '/?unit=properties_panel',
+      ready: '[data-unit="properties_panel"] input',
+      // 行 key/value 落 input value 属性（textContent 不可见）——数据面由
+      // 截图基线视觉锁 + VM twin 投影 + 11-properties e2e 承载；文本面 =
+      // 面板题 + 五行 select 选项串 + bool pill 'true' 标签。
+      needles: ['Properties', 'true'],
+      needleSelector: '[data-unit="properties_panel"]',
+      click: {
+        selector: 'button:has-text("true")',
+        ready: '[data-unit="properties_panel"] button:has-text("false")',
+        needles: ['false'],
+      },
+    },
+    vm: {
+      actions: [{ button: 'properties_panel' }, { button: 'pp_toggle' }, { button: 'pp_add' }],
+      state: { unit: 'properties_panel', pp_count: '4', pp_bool_label: 'false' },
+      snapshot: ['unit=properties_panel rows:4', 'title', 'published'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

@@ -155,7 +155,7 @@ fn fm_card_at(cards_in, index_in) {
 }
 
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd }
 
     model {
         var unit str = "status_bar"
@@ -273,6 +273,16 @@ widget App {
         var wo_busy bool = false
         var wo_error str = ""
         var wo_root str = ""
+        // —— fixture：properties_panel 面（PLAN-077 T-05 twin 压轴：
+        // pp_rows 分派型播种——sync_entries 的 map 迭代 P-9 VM 零迭代 +
+        // inferType ext 桥 TS 域，均不入 twin，行以派定型 fixture 播种；
+        // pp_toggle 翻转布尔行（ToggleBool 直写臂形状）+ pp_add 增行
+        // （try_add_property 成功臂形状）——
+        var pp_rows = []
+        var pp_count int = 0
+        var pp_bool_val bool = true
+        var pp_bool_label str = "true"
+        var pp_has bool = false
     }
 
     computed {
@@ -293,6 +303,8 @@ widget App {
         show_agenda => .unit == "agenda"
         show_flashcard_modal => .unit == "flashcard_modal"
         show_workspace_opener => .unit == "workspace_opener"
+        show_properties_panel => .unit == "properties_panel"
+        pp_marker => f"unit=properties_panel rows:${.pp_count} bool:${.pp_bool_label}"
         wo_marker => f"unit=workspace_opener busy:${.wo_busy} err:${.wo_error}"
         fm_marker => f"unit=flashcard_modal idx:${.fm_index}"
         rf_marker => f"unit=recent_files rows:${.rf_count}"
@@ -386,6 +398,10 @@ widget App {
                 }
                 button (text: "workspace_opener", variant: "text") {
                     onclick: .Select("workspace_opener")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "properties_panel", variant: "text") {
+                    onclick: .Select("properties_panel")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -870,6 +886,38 @@ widget App {
                     }
                 }
             }
+            if .show_properties_panel {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Properties" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .pp_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-1",
+                                for r in .pp_rows {
+                                    dyn (.li_tag) {
+                                        key: r.key,
+                                        class: "flex items-center gap-1 text-xs text-zinc-800",
+                                        text r.key
+                                        text r.type
+                                    }
+                                }
+                            }
+                        }
+                        text .pp_bool_label { class: "pt-1 text-xs text-emerald-700" }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "pp_toggle", variant: "text") {
+                                onclick: .PpToggle
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "pp_add", variant: "text") {
+                                onclick: .PpAdd
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .pp_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -1005,6 +1053,15 @@ widget App {
             .wo_busy = false
             .wo_error = "boom"
             .wo_root = ""
+            // properties_panel：行以派定型 fixture 播种（inferType 分派
+            // 已定——TS 域不入 twin），布尔行翻转/增行由按钮驱动
+            .pp_rows.push({ key: "title", value: "引言", type: "text" })
+            .pp_rows.push({ key: "published", value: true, type: "boolean" })
+            .pp_rows.push({ key: "tags", value: "a, b", type: "list" })
+            .pp_count = .pp_rows.len()
+            if .pp_count > 0 {
+                .pp_has = true
+            }
         }
 
         .Select(u) -> {
@@ -1135,6 +1192,24 @@ widget App {
                 .wo_root = p
                 .wo_busy = false
             }
+        }
+
+        .PpToggle -> {
+            // 下沉 .ToggleBool 直写臂形状（entry.value = !entry.value →
+            // bool_label 翻转投影）
+            .pp_bool_val = !.pp_bool_val
+            if .pp_bool_val == true {
+                .pp_bool_label = "true"
+            }
+            if .pp_bool_val != true {
+                .pp_bool_label = "false"
+            }
+        }
+
+        .PpAdd -> {
+            // 下沉 .AddProperty/try_add_property 成功臂形状（push + 计数）
+            .pp_rows.push({ key: "extra", value: "", type: "text" })
+            .pp_count = .pp_rows.len()
         }
     }
 }

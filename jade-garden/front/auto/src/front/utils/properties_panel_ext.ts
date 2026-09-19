@@ -4,23 +4,28 @@
 // - the tabs facade + useDebounceFn re-exports (dual-resolution shim /
 //   npm import),
 // - the lucide icon re-exports (rendered via `dyn`),
-// - syncEntries / normalize / inferType (Object.entries, Array.isArray,
-//   typeof chains, a regex literal for the date check),
+// - inferType (exported since the PLAN-077 sink: the .at's sync_entries
+//   module fn calls it per value over the use-fn channel — typeof/
+//   Array.isArray chains and the date regex literal have no DSL word;
+//   highlight_context precedent),
+// - normalize (private, propsDirty's per-entry normalize call),
 // - fmJson (the deep frontmatter watch surrogate: JSON.stringify of the
 //   active tab's frontmatter — watching its string form triggers on the
-//   same mutation set as the original's `watch(fm, ..., { deep: true })`),
-// - propsDirty (the dirty computed's JSON.stringify comparisons),
+//   same mutation set as the original's `watch(fm, ..., { deep: true })`;
+//   JSON.stringify has no VM word — Q-2 ext-bridge ruling),
+// - propsDirty (the dirty computed's JSON.stringify comparisons — Q-2),
 // - commitFrontmatter (updateFrontmatter's fm rebuild + assignment +
-//   debounced save — typeof/Number.isNaN/split chains),
-// - setEntryType (the setType value conversions incl. Boolean()/split),
-// - tryAddProperty (addProperty's trim/dup guard + alert()),
-// - withPropDisplay (per-entry display fields: the type branch booleans,
-//   the true/false label, the list placeholder — no Call/ternary
-//   bindings in the DSL view; mutates entries in place so write-backs
-//   still hit the real entry objects),
-// - eventValue (the ($event.target as HTMLInputElement).value cast),
-// - tabsActiveTab (typed predicate-style accessor — a dot-ref computed
-//   body over a composable field would be mis-typed, README gap 28).
+//   debounced save — typeof value-domain dispatch, Number/isNaN coercion
+//   and the facade write are one body; T-00 correction of the plan's
+//   partial-sink prediction),
+// - setEntryType (the setType value conversions — Boolean()/Array.isArray/
+//   String() coercions over a typeof dispatch; T-00 correction).
+//
+// PLAN-077 T-05 sink: syncEntries (map iteration + row construction),
+// tryAddProperty (dup loop + push + alert), withPropDisplay (in-place
+// display fields), tabsActiveTab (two-step null guard) moved into the .at
+// as module fns, and eventValue dissolved into the handlers (mode doc
+// §6.1).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
@@ -45,8 +50,13 @@ export interface PropEntry {
   placeholder_text?: string
 }
 
-/** Original inferType. */
-function inferType(value: PropValue): PropEntry['type'] {
+/** Original inferType — exported bridge: the .at's sync_entries calls it
+ *  per value (typeof/Array.isArray/regex have no DSL word). The param is
+ *  `any` (not PropValue): the emitted call site passes an Object.entries
+ *  destructured value, which TS5 infers as `unknown` at a plain-`any`
+ *  receiver — unknown is not assignable to PropValue (TS2345, worktree
+ *  regen T-05). */
+export function inferType(value: any): PropEntry['type'] {
   if (Array.isArray(value)) return 'list'
   if (typeof value === 'boolean') return 'boolean'
   if (typeof value === 'number') return 'number'
@@ -57,21 +67,13 @@ function inferType(value: PropValue): PropEntry['type'] {
   return 'text'
 }
 
-/** Original normalize. */
+/** Original normalize — private survivor: propsDirty calls it per entry
+ *  (the sunk sync_entries passes JSON values through raw; the undefined arm
+ *  is unreachable from Object.entries' JSON value domain). */
 function normalize(value: string | number | boolean | string[] | null | undefined): PropValue {
   if (value === undefined) return ''
   if (value === null) return null
   return value
-}
-
-/** Original syncEntries: rebuild the entry list from the active tab's
- *  frontmatter. */
-export function syncEntries(tabs: { activeTab: any }): PropEntry[] {
-  const fm: Record<string, any> = tabs.activeTab?.frontmatter ?? {}
-  return Object.entries(fm).map(([key, raw]) => {
-    const value = normalize(raw)
-    return { key, value, type: inferType(value) }
-  })
 }
 
 /** Deep-watch surrogate: the widget watches this computed's string form
@@ -146,47 +148,4 @@ export function setEntryType(entries: PropEntry[], idx: number, type: string): v
   }
 }
 
-/** Original addProperty's guard + push (the widget clears the inputs and
- *  commits when this returns true). */
-export function tryAddProperty(entries: PropEntry[], newKey: string, newValue: string): boolean {
-  const key = newKey.trim()
-  if (!key) return false
-  if (entries.some((e) => e.key === key)) {
-    alert(`Property "${key}" already exists.`)
-    return false
-  }
-  entries.push({ key, value: newValue, type: 'text' })
-  return true
-}
 
-/** Per-entry display fields, computed in place so handler write-backs
- *  (entry.key / entry.value) still land on the real entry objects:
- *  the boolean/date/other branch booleans (v-if/v-else-if/v-else on
- *  entry.type), the {{ entry.value ? 'true' : 'false' }} label, the
- *  :placeholder ternary, and the row index (the DSL's indexed v-for
- *  auto-:key emits `idx?.id` on a number loop var — TS-invalid — so the
- *  loop runs unindexed over these display objects instead). */
-export function withPropDisplay(entries: PropEntry[]): PropEntry[] {
-  ;(entries ?? []).forEach((e, i) => {
-    e.idx = i
-    e.is_bool = e.type === 'boolean'
-    e.is_date = e.type === 'date'
-    e.is_other = e.type !== 'boolean' && e.type !== 'date'
-    e.bool_label = e.value ? 'true' : 'false'
-    e.placeholder_text = e.type === 'list' ? 'comma, separated, values' : 'value'
-  })
-  return entries ?? []
-}
-
-/** Original: ($event.target as HTMLInputElement).value (also the select's
- *  HTMLSelectElement cast). */
-export function eventValue(e: Event): string {
-  return (e.target as HTMLInputElement).value
-}
-
-/** Typed accessor for the active tab (README gap 28: a bare dot-ref
- *  computed body over a composable field is mis-typed by the name
- *  heuristic; a Call body emits computed<any>). */
-export function tabsActiveTab(tabs: { activeTab: any }): any {
-  return tabs.activeTab ?? null
-}

@@ -1,7 +1,7 @@
 <!-- PropertiesPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useDebounceFn, syncEntries, fmJson, propsDirty, commitFrontmatter, setEntryType, tryAddProperty, withPropDisplay, eventValue, tabsActiveTab, Plus, Trash2, Check, X } from '../../auto/src/front/utils/properties_panel_ext'
+import { useDebounceFn, inferType, fmJson, propsDirty, commitFrontmatter, setEntryType, Plus, Trash2, Check, X } from '../../auto/src/front/utils/properties_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/properties_panel_ext'
 
 const tabsStore = useTabsStore()
@@ -12,9 +12,9 @@ const new_key = ref<string>('')
 const new_value = ref<string>('')
 const debounced_save = ref<any>(null)
 
-const active_tab = computed<any>(() => tabsActiveTab(tabsStore))
+const active_tab = computed<any>(() => tabs_active_tab(tabsStore))
 const fm_json = computed<any>(() => fmJson(tabsStore))
-const display_entries = computed<any>(() => withPropDisplay(entries.value))
+const display_entries = computed<any>(() => with_prop_display(entries.value))
 const is_dirty = computed<any>(() => propsDirty(entries.value, tabsStore))
 const has_entries = computed<boolean>(() => entries.value.length > 0)
 const no_entries = computed<boolean>(() => entries.value.length === 0)
@@ -37,15 +37,15 @@ const emit = defineEmits<{
 }>()
 
 watch(active_tab, () => {
-  entries.value = syncEntries(tabsStore);
+  entries.value = sync_entries(tabsStore);
 }, { immediate: true })
 
 watch(fm_json, () => {
-  entries.value = syncEntries(tabsStore);
+  entries.value = sync_entries(tabsStore);
 })
 
 function AddProperty(): void {
-  let added = tryAddProperty(entries.value, new_key.value, new_value.value);
+  let added = try_add_property(entries.value, new_key.value, new_value.value);
   if (added) {new_key.value = '';
   new_value.value = '';
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
@@ -55,7 +55,7 @@ function AddProperty(): void {
 }
 
 function Cancel(): void {
-  entries.value = syncEntries(tabsStore);
+  entries.value = sync_entries(tabsStore);
 
   emit('Cancel')
 }
@@ -67,7 +67,7 @@ function Commit(entry: any): void {
 }
 
 function KeyChanged(entry: any, evt: any): void {
-  entry.key = eventValue(evt);
+  entry.key = evt.target.value;
 
   emit('KeyChanged', entry, evt)
 }
@@ -100,7 +100,7 @@ function SaveNow(): void {
 }
 
 function SetType(idx: any, evt: any): void {
-  setEntryType(entries.value, idx, eventValue(evt));
+  setEntryType(entries.value, idx, evt.target.value);
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
   emit('SetType', idx, evt)
@@ -114,10 +114,59 @@ function ToggleBool(entry: any): void {
 }
 
 function ValueChanged(entry: any, evt: any): void {
-  entry.value = eventValue(evt);
+  entry.value = evt.target.value;
   commitFrontmatter(tabsStore, entries.value, debounced_save.value);
 
   emit('ValueChanged', entry, evt)
+}
+
+function tabs_active_tab(tabs_in: any) {
+  let out = null;
+  if (tabs_in.activeTab != null) {out = tabs_in.activeTab;
+  }
+  return out;
+}
+
+function sync_entries(tabs_in: any): any {
+  let out: any[] = [];
+  let tab = tabs_in.activeTab;
+  if (tab != null) {let fm = tab.frontmatter;
+  if (fm == null) {fm = {  };
+  }for (const [k, raw] of Object.entries(fm)) {out.push({ key: k, value: raw, type: inferType(raw) });
+  }
+  }
+  return out;
+}
+
+function try_add_property(entries_in: any, new_key_in: any, new_value_in: any): boolean {
+  let key = new_key_in.trim();
+  if (key == '') {return false;
+  }
+  let dup: boolean = false;
+  for (const e of entries_in) {if (e.key == key) {dup = true;
+  }}
+  if (dup) {alert(`Property "{key}" already exists.`);
+  return false;
+  }
+  entries_in.push({ key: key, value: new_value_in, type: 'text' });
+  return true;
+}
+
+function with_prop_display(entries_in: any): any {
+  let i: number = 0;
+  for (const e of entries_in) {e.idx = i;
+  e.is_bool = e.type == 'boolean';
+  e.is_date = e.type == 'date';
+  e.is_other = e.type != 'boolean' && e.type != 'date';
+  let lbl: string = 'false';
+  if (e.value == true) {lbl = 'true';
+  }e.bool_label = lbl;
+  let ph: string = 'value';
+  if (e.type == 'list') {ph = 'comma, separated, values';
+  }e.placeholder_text = ph;
+  i = i + 1;
+  }
+  return entries_in;
 }
 
 onMounted(() => {
@@ -196,8 +245,8 @@ onMounted(() => {
         </p>
       </template>
       <div class="mt-3 flex items-center gap-1 border-t border-border/50 pt-2">
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'key'" :type="'text'" v-model="new_key" @input="NewKeyInput($event)" @keydown.enter="AddProperty" />
-        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'value'" :type="'text'" v-model="new_value" @input="NewValueInput($event)" @keydown.enter="AddProperty" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'key'" :type="'text'" v-model="new_key" @input="NewKeyInput(($event.target as HTMLInputElement).value)" @keydown.enter="AddProperty" />
+        <input class="h-6 flex-1 rounded border bg-background px-1.5 text-xs outline-none focus:border-primary" :placeholder="'value'" :type="'text'" v-model="new_value" @input="NewValueInput(($event.target as HTMLInputElement).value)" @keydown.enter="AddProperty" />
         <button class="flex h-6 w-6 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground hover:bg-accent hover:text-foreground" :type="'button'" @click="AddProperty">
           <component :is="(Plus) as any" class="h-3.5 w-3.5" />
         </button>

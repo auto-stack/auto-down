@@ -7,8 +7,10 @@
 //   DSL; the icons render via `dyn` — <component :is> — so the rendered
 //   DOM is identical). Both the front tree and the gen project depend on
 //   lucide-vue-next, so no gen stub is needed for this import,
-// - formatTime (Date/toLocaleTimeString are not expressible), applied per
-//   item so the view needs no Call bindings.
+// - formatTime (Date/toLocaleTimeString are not expressible) — exported
+//   since the PLAN-077 sink: the .at's recent_files_with_time module fn
+//   calls it per row over the use-fn channel (Q-3 time bridge,
+//   snippet_html precedent).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
@@ -19,14 +21,9 @@ export { useRecentFilesStore, useTabsStore }
 export { Clock, X, Trash2 } from 'lucide-vue-next'
 
 /** Original formatTime, verbatim. */
-function formatTime(ts: number): string {
+export function formatTime(ts: number): string {
   const date = new Date(ts)
   return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-}
-
-/** recent.files with the display time precomputed per entry. */
-export function recentFilesWithTime(files: any[]): any[] {
-  return files.map((f) => ({ ...f, time: formatTime(f.openedAt) }))
 }
 
 /** recent.remove(path) — routed through the extension because the DSL

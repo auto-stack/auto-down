@@ -262,6 +262,54 @@ export const UNITS = [
     },
   },
   {
+    id: 'recent_files',
+    title: '最近文件行（桶②·RC-D 批次3·PLAN-077 下沉）',
+    // vue 臂：recentFiles facade 播种两行（CJK 标题 + openedAt）→ 下沉
+    // recent_files_with_time 行构造（time 经 ext formatTime 桥逐行预计算
+    // ——Q-3 locale 域不作 needle，title/path 承载断言）→ click 门 ClearAll
+    // → 真 store.clear() 通道 → 空态文案正向 needle。
+    // VM 臂 twin：rf_remove 驱动计数 2→1（formatTime TS 域不入 VM，
+    // twin 以 raw time 播种，F-1 口径）。
+    vue: {
+      url: '/?unit=recent_files',
+      ready: '[data-unit="recent_files"] li',
+      needles: ['引言', 'wiki/另页.ad'],
+      needleSelector: '[data-unit="recent_files"] li',
+      click: {
+        selector: 'button[title="Clear recent files"]',
+        ready: 'div:has-text("No recent files")',
+        needles: ['No recent files'],
+      },
+    },
+    vm: {
+      actions: [{ button: 'recent_files' }, { button: 'rf_remove' }],
+      state: { unit: 'recent_files', rf_count: '1' },
+      snapshot: ['unit=recent_files rows:1', 'wiki/另页.ad'],
+    },
+  },
+  {
+    id: 'agenda',
+    title: '日程分组行（桶②·RC-D 批次3·PLAN-077 下沉）',
+    // vue 臂：面板自身 current_path watch immediate → 下沉 try/catch/finally
+    // 经 get_agenda 契约别名拉取 → shim 应答两组三任务（TODO/DONE/DOING
+    // marker 三态 + priority [#2] + title 空串回落 page_path 显式守卫面 +
+    // title 非空直下面）→ agenda_display 行构造（formatted_date 经 ext
+    // formatDate 桥——Q-3 locale 域不作 needle）。
+    // VM 臂 twin：ag_display_probe derived 副本真跑行构造（to_upper
+    // if-chain——P-7 对称词位 VM 面），日期 raw 投影。
+    vue: {
+      url: '/?unit=agenda',
+      ready: '[data-unit="agenda"] li',
+      needles: ['写引言草稿', '小节题', 'wiki/引言.ad', 'TODO', '[#2]'],
+      needleSelector: '[data-unit="agenda"] li',
+    },
+    vm: {
+      actions: [{ button: 'agenda' }],
+      state: { unit: 'agenda', ag_count: '3' },
+      snapshot: ['unit=agenda rows:3', '小节题', 'wiki/引言.ad', 'TODO'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

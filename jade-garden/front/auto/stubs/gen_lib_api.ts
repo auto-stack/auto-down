@@ -317,3 +317,13 @@ export async function get_unlinked_refs(_title: string): Promise<any> {
 export async function search_pages(_q: string, _limit: number): Promise<any> {
   return { results: [] }
 }
+
+// PLAN-077 T-02: agenda_panel's watch body calls the agenda contract fn
+// from its .at body (`use back.api: get_agenda`), so the generated SFC
+// emits `import { get_agenda } from '@/lib/api'`. Gen-side the name
+// resolves here; in the deployed front tree the sed-rewritten import lands
+// on the agenda_panel ext shim (contract-name alias of the hand-written
+// client face).
+export async function get_agenda(_days: number): Promise<any> {
+  return { groups: [] }
+}

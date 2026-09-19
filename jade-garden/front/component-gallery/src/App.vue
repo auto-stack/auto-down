@@ -15,6 +15,8 @@ import SearchPanelPage from './pages/SearchPanelPage.vue'
 import CommandPalettePage from './pages/CommandPalettePage.vue'
 import CreatePagePromptPage from './pages/CreatePagePromptPage.vue'
 import ThemePopoverPage from './pages/ThemePopoverPage.vue'
+import RecentFilesPage from './pages/RecentFilesPage.vue'
+import AgendaPage from './pages/AgendaPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -134,6 +136,22 @@ function select(u: string) {
       >
         theme_popover
       </button>
+      <button
+        data-unit-tab="recent_files"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'recent_files' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('recent_files')"
+      >
+        recent_files
+      </button>
+      <button
+        data-unit-tab="agenda"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'agenda' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('agenda')"
+      >
+        agenda
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -149,5 +167,7 @@ function select(u: string) {
     <CommandPalettePage v-else-if="unit === 'command_palette'" />
     <CreatePagePromptPage v-else-if="unit === 'create_page_prompt'" />
     <ThemePopoverPage v-else-if="unit === 'theme_popover'" />
+    <RecentFilesPage v-else-if="unit === 'recent_files'" />
+    <AgendaPage v-else-if="unit === 'agenda'" />
   </div>
 </template>

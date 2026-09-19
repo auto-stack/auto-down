@@ -95,8 +95,51 @@ fn tp_theme_accents() List {
     ]
 }
 
+// —— agenda twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/agenda_panel.at 的 agenda_display——G-3 各持一份；
+// PLAN-077 T-02。markerClass switch → to_upper 互斥布尔 if 链（P-7 对称
+// 词位 VM 面）+ `title || page_path` 显式双守卫；formatted_date 属 ext
+// formatDate 桥（Q-3 TS 域）——twin 以 date raw 投影，不镜像格式化）。
+fn ag_display_probe(groups_in) List {
+    var out List = []
+    for g in groups_in {
+        var tasks List = []
+        for tk in g.tasks {
+            var mu = tk.marker.to_upper()
+            var muted = false
+            var primary = false
+            var done = false
+            if mu == "DOING" || mu == "NOW" {
+                primary = true
+            }
+            if mu == "DONE" {
+                done = true
+            }
+            if mu != "DOING" && mu != "NOW" && mu != "DONE" {
+                muted = true
+            }
+            var line = tk.page_path
+            if tk.title != null && tk.title != "" {
+                line = tk.title
+            }
+            tasks.push({
+                page_path: tk.page_path,
+                marker: tk.marker,
+                priority: tk.priority,
+                content: tk.content,
+                marker_muted: muted,
+                marker_primary: primary,
+                marker_done: done,
+                line: line,
+            })
+        }
+        out.push({ date: g.date, tasks: tasks })
+    }
+    return out
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear }
 
     model {
         var unit str = "status_bar"
@@ -183,6 +226,18 @@ widget App {
         var tp_count int = 0
         var tp_mode str = "light"
         var tp_has bool = false
+        // —— fixture：recent_files 面（PLAN-077 T-02 twin：rf_rows 播种
+        // 两行（time 为 raw 值——formatTime ext 桥 TS 域不入 VM）；rf_remove
+        // 重建去首行（避 .remove → .splice 误射域），计数 2→1）——
+        var rf_rows = []
+        var rf_count int = 0
+        var rf_has bool = false
+        // —— fixture：agenda 面（PLAN-077 T-02 twin：ag_groups 由
+        // ag_display_probe 对 fixture 组真跑而来——行构造 + marker 旗标 +
+        // title 守卫同形；ag_count = 任务总数投影）——
+        var ag_groups = []
+        var ag_count int = 0
+        var ag_has bool = false
     }
 
     computed {
@@ -199,6 +254,10 @@ widget App {
         show_command_palette => .unit == "command_palette"
         show_create_page_prompt => .unit == "create_page_prompt"
         show_theme_popover => .unit == "theme_popover"
+        show_recent_files => .unit == "recent_files"
+        show_agenda => .unit == "agenda"
+        rf_marker => f"unit=recent_files rows:${.rf_count}"
+        ag_marker => f"unit=agenda rows:${.ag_count}"
         cpp_marker => f"unit=create_page_prompt path:${.cpp_path} choice:${.cpp_choice}"
         tp_marker => f"unit=theme_popover accents:${.tp_count} mode:${.tp_mode}"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
@@ -272,6 +331,14 @@ widget App {
                 }
                 button (text: "theme_popover", variant: "text") {
                     onclick: .Select("theme_popover")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "recent_files", variant: "text") {
+                    onclick: .Select("recent_files")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "agenda", variant: "text") {
+                    onclick: .Select("agenda")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -648,6 +715,66 @@ widget App {
                     }
                 }
             }
+            if .show_recent_files {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Recent" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .rf_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-0.5",
+                                for rf in .rf_rows {
+                                    dyn (.li_tag) {
+                                        key: rf.path,
+                                        class: "cursor-pointer rounded px-2 py-1.5 text-xs text-zinc-800",
+                                        text rf.title
+                                        text rf.path
+                                        text rf.time
+                                    }
+                                }
+                            }
+                        }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "rf_remove", variant: "text") {
+                                onclick: .RfRemove
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "rf_clear", variant: "text") {
+                                onclick: .RfClear
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .rf_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_agenda {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-md border border-zinc-200 bg-zinc-50 p-2") {
+                        text "Agenda" { class: "mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .ag_has {
+                            for g in .ag_groups {
+                                col (class: "flex-col gap-1 pb-2") {
+                                    text g.date { class: "text-[11px] font-medium text-zinc-500" }
+                                    dyn (.ul_tag) {
+                                        class: "space-y-1",
+                                        for tk in g.tasks {
+                                            dyn (.li_tag) {
+                                                key: tk.page_path,
+                                                class: "cursor-pointer rounded px-2 py-1 text-xs text-zinc-800",
+                                                text tk.marker
+                                                text f"[#${tk.priority}]"
+                                                text tk.content
+                                                text tk.line
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        text .ag_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -735,6 +862,32 @@ widget App {
             if .tp_count > 0 {
                 .tp_has = true
             }
+            // recent_files：播种两行（time raw——formatTime 桥 TS 域）
+            .rf_rows.push({ path: "wiki/引言.ad", title: "引言", time: "09:41" })
+            .rf_rows.push({ path: "wiki/另页.ad", title: "另页", time: "08:15" })
+            .rf_count = .rf_rows.len()
+            if .rf_count > 0 {
+                .rf_has = true
+            }
+            // agenda：fixture 组经 ag_display_probe 真跑（行构造 + marker
+            // 旗标 + title 守卫同形），任务总数投影
+            var ag_fixture = [
+                { date: "2026-09-19", tasks: [
+                    { page_path: "wiki/引言.ad", title: "", marker: "TODO", priority: null, content: "写引言草稿" },
+                    { page_path: "wiki/方法.ad", title: "小节题", marker: "DONE", priority: "2", content: "方法验证" },
+                ] },
+                { date: "2026-09-20", tasks: [
+                    { page_path: "wiki/另页.ad", title: "", marker: "DOING", priority: null, content: "另页任务" },
+                ] },
+            ]
+            .ag_groups = ag_display_probe(ag_fixture)
+            .ag_count = 0
+            for gg in .ag_groups {
+                .ag_count = .ag_count + gg.tasks.len()
+            }
+            if .ag_count > 0 {
+                .ag_has = true
+            }
         }
 
         .Select(u) -> {
@@ -795,6 +948,26 @@ widget App {
 
         .TpSetDark -> {
             .tp_mode = "dark"
+        }
+
+        .RfRemove -> {
+            // 重建去首行（避 .remove → .splice 误射域，074 removeRecent
+            // 注记同款）
+            var rest List = []
+            var i = 0
+            for r in .rf_rows {
+                if i > 0 {
+                    rest.push(r)
+                }
+                i = i + 1
+            }
+            .rf_rows = rest
+            .rf_count = .rf_rows.len()
+        }
+
+        .RfClear -> {
+            .rf_rows = []
+            .rf_count = 0
         }
     }
 }

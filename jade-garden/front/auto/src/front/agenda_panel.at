@@ -2,11 +2,23 @@
 //
 // Auto-generated replacement for the hand-written
 // front/src/components/AgendaPanel.vue (plan 011 Phase 5.1 batch 2).
+//
+// PLAN-077 T-02 sink (mode doc §6.7): tabPath/fetchAgendaSafe/agendaDisplay
+// moved INTO the DSL — tab_path is the `?? ""` accessor (two-step guards);
+// the watch body runs the get_agenda contract call in try/catch/finally
+// directly (catch = keep previous groups — the original console.error log
+// is log-only, dropped; finally = loading reset); agenda_display is the row
+// construction (to_upper if-chain replacing the markerClass switch,
+// `title || page_path` as explicit != null && != "" guard). The ext keeps
+// exactly: the re-exports, formatDate (Q-3 bridge, now exported), and the
+// get_agenda contract alias (search_pages precedent).
+//
 // Regenerate:
 //
 //   cd jade-garden/front/auto
 //   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/agenda_panel_ext|../../auto/src/front/utils/agenda_panel_ext|g' \
+//   sed -e 's|@/ext/src/front/utils/agenda_panel_ext|../../auto/src/front/utils/agenda_panel_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/agenda_panel_ext|g' \
 //     gen/front/vue/src/components/AgendaPanel.vue > ../src/components/AgendaPanel.vue
 //
 // Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
@@ -30,10 +42,77 @@
 //   rejects; its null return keeps the previous groups (the original's
 //   catch branch) and the finally's loading=false lands in the callback.
 
+// Contract channel: web = ext-shim alias of the hand-written client (deploy
+// sed rewrites the emitted '@/lib/api' import), VM = #[api] get_agenda
+// (desktop/src/back/api.at:332, back/auto/api.at:328).
+use back.api: get_agenda
+
+// Sunk from ext tabPath (PLAN-077 T-02): the watch source accessor —
+// `tab?.path ?? ''` as two-step guards (074 tabTitle/tabPath precedent).
+fn tab_path(tab_in) str {
+    var out = ""
+    if tab_in != null {
+        if tab_in.path != null {
+            out = tab_in.path
+        }
+    }
+    return out
+}
+
+// Sunk from ext agendaDisplay + markerClass (PLAN-077 T-02): two-level
+// for+push row construction. markerClass's switch becomes the exclusive
+// boolean if-chain below (DOING/NOW → primary, DONE → done, everything
+// else — TODO/LATER/unknown default arm — → muted); to_upper on the ASCII
+// marker domain is the P-7 symmetric word (mode doc §6.0#5). The original's
+// `title || page_path` line falls through on the empty string too, so the
+// explicit guard checks both null and "". formatted_date goes through the
+// ext formatDate bridge per group (Q-3 — no DSL word for toLocaleDateString).
+fn agenda_display(groups_in) List {
+    var out List = []
+    for g in groups_in {
+        var tasks List = []
+        for tk in g.tasks {
+            var mu = tk.marker.to_upper()
+            var muted = false
+            var primary = false
+            var done = false
+            if mu == "DOING" || mu == "NOW" {
+                primary = true
+            }
+            if mu == "DONE" {
+                done = true
+            }
+            if mu != "DOING" && mu != "NOW" && mu != "DONE" {
+                muted = true
+            }
+            var line = tk.page_path
+            if tk.title != null && tk.title != "" {
+                line = tk.title
+            }
+            tasks.push({
+                page_path: tk.page_path,
+                marker: tk.marker,
+                priority: tk.priority,
+                content: tk.content,
+                marker_muted: muted,
+                marker_primary: primary,
+                marker_done: done,
+                line: line,
+            })
+        }
+        out.push({
+            date: g.date,
+            formatted_date: formatDate(g.date),
+            tasks: tasks,
+        })
+    }
+    return out
+}
+
 widget AgendaPanel {
     use {
         composable: useTabsStore from "src/front/utils/agenda_panel_ext.ts"
-        fn: tabPath, fetchAgendaSafe, agendaDisplay, CalendarClock from "src/front/utils/agenda_panel_ext.ts"
+        fn: formatDate, CalendarClock from "src/front/utils/agenda_panel_ext.ts"
     }
 
     msg Msg { OpenTask }
@@ -44,8 +123,8 @@ widget AgendaPanel {
     }
 
     computed {
-        current_path => tabPath(.tabsStore.activeTab)
-        display_groups => agendaDisplay(.groups)
+        current_path => tab_path(.tabsStore.activeTab)
+        display_groups => agenda_display(.groups)
         show_loading => .loading
         show_empty => !.loading && .groups.length == 0
         show_groups => !.loading && .groups.length > 0
@@ -108,17 +187,22 @@ widget AgendaPanel {
     }
 
     watch {
-        // Original: watch(() => tabs.activeTab?.path, load, { immediate: true }).
+        // Original: watch(() => tabs.activeTab?.path, load, { immediate: true })
+        // where load() = getAgenda(14) with catch logging + keeping the
+        // previous groups (PLAN-077 sink: the orchestration folds into the
+        // watch body's try/catch/finally over the get_agenda contract call —
+        // empty catch = keep-previous semantics, the console.error log is
+        // log-only and dropped; finally = loading reset, 074 searchSafe
+        // fold precedent).
         .current_path.immediate -> {
             .loading = true
-            let p = fetchAgendaSafe()
-            p.then(res => {
-                // Original catch branch: keep the previous groups.
-                if res != null {
-                    .groups = res
-                }
+            try {
+                let res = get_agenda(14)
+                .groups = res.groups
+            } catch (e) {
+            } finally {
                 .loading = false
-            })
+            }
         }
     }
 

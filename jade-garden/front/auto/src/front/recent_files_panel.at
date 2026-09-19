@@ -1,6 +1,15 @@
 // recent_files_panel.at — RecentFilesPanel widget (Auto language source).
 // Auto-generated replacement for the hand-written
 // front/src/components/RecentFilesPanel.vue (plan 011 Phase 5.1).
+//
+// PLAN-077 T-02 sink (mode doc §6.2): the ext's recentFilesWithTime moved
+// INTO the DSL — recent_files_with_time is the row construction (map →
+// for+push); the time field goes through the ext's (now exported) formatTime
+// bridge per row (Q-3: Date/toLocale* have no DSL word — snippet_html
+// precedent; VM twin shows raw values, no formatting mirror). The ext keeps
+// exactly: the re-exports, formatTime (Q-3 bridge), and the removeRecent
+// one-line bridge (.remove → .splice misfire trap).
+//
 // Regenerate:
 //
 //   cd jade-garden/front/auto
@@ -20,17 +29,33 @@
 //   (Vue's .stop modifier, identical stopPropagation behaviour).
 // - `type: "button"` uses the PAREN prop form (type is a keyword token).
 
+// Sunk from ext recentFilesWithTime (PLAN-077 T-02): per-entry display rows
+// with explicit path/title/openedAt field fidelity; the time string comes
+// from the ext formatTime bridge (Q-3 — no DSL word for Date/toLocale*).
+fn recent_files_with_time(files_in) List {
+    var out List = []
+    for f in files_in {
+        out.push({
+            path: f.path,
+            title: f.title,
+            openedAt: f.openedAt,
+            time: formatTime(f.openedAt),
+        })
+    }
+    return out
+}
+
 widget RecentFilesPanel {
     use {
         composable: useRecentFilesStore, useTabsStore from "src/front/utils/recent_files_panel_ext.ts"
-        fn: recentFilesWithTime, removeRecent, Clock, X, Trash2 from "src/front/utils/recent_files_panel_ext.ts"
+        fn: formatTime, removeRecent, Clock, X, Trash2 from "src/front/utils/recent_files_panel_ext.ts"
     }
 
     msg Msg { Open, Remove, ClearAll }
 
     computed {
         // Original: recent.files, with formatTime(openedAt) precomputed.
-        files => recentFilesWithTime(.recentFilesStore.files)
+        files => recent_files_with_time(.recentFilesStore.files)
         has_files => .files.length > 0
         show_empty => .files.length == 0
         ul_tag => "ul"

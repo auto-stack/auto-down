@@ -226,3 +226,11 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
 ×2 件计 4 fn + focus ×2 + buildCommands + PaletteIcon + snippetHtml +
 scheduleScrollToBlock）。
 
+
+### 4.1 desktop 消费登记·批次 2（PLAN-076 T-04 扩表；装配归 L3）
+
+| 面板 | desktop 现状 | 挂载裁定（登记） | 约束注记 |
+| --- | --- | --- | --- |
+| search_panel | app.at 搜索流内联（.DoSearch 直拉 search_pages） | **组件挂载**为本批后可选：搜索编排已 .at 单源（with_search_display 模块 fn + debounce 闭包 try/catch/finally + `use back.api: search_pages` 契约同通道）；内联流在 L3 装配前维持现状 | snippet 高亮 regex 属 vue 显示面（ext 桥），VM twin 不镜像；errorMessage 桥 = vue 轨 strict 域（VM 轨契约调用语义不同——desktop 内联流自持 try 面）；G-2：VM 轨禁 CJK find/slice 索引算术（filter 域 P-7 不涉） |
+| command_palette | desktop 无 palette 流（命令面 = ui_config menubar/toolbar，PLAN-073） | **组件挂载 = 唯一路径**（如 L3 需 palette）：过滤链/构造/模运算已 .at 单源（filter_palette 等）；但 buildCommands 为 web 宿主流整体（DOM/Blob/dispatchEvent/dynamic import）——desktop 消费侧命令清单应从 ui_config 单源重建（§8.5 口径），非移植 buildCommands | icon 组件值 = view 双分支注入（ruling B）；runCommandAction 桥 = command 分支对象闭包（desktop 侧等价物走 ui_config action 面）；热键/焦点 = window 级 ext 域 |
+| quick_switcher | desktop 无 switcher 流（开页走 filetree） | **组件挂载 = 唯一路径**：collect_files 递归/filter_files/模运算已 .at 单源，fileTree facade 通道双端同形 | 'jade-open-quick-switcher' CustomEvent = web 宿主通道（desktop 装配时换自家开面板事件/api）；热键/焦点 = window 级 ext 域；G-2：VM 轨文件名过滤 = P-7 域（contains 链双轨一致）可用 |

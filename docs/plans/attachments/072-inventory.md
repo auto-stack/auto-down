@@ -50,9 +50,9 @@
 | unlinked_references_panel.at | 97 | ext:3——【074】已下沉 .at（高亮 regex 留 ext 桥），VM twin 双绿 | — |
 | properties_panel.at | 267 | ext:3 | — |
 | recent_files_panel.at | 113 | ext:3 | — |
-| search_panel.at | 177 | ext:3 | desktop 搜索流内联（search_pages，.type 撞名→search_pages 规避在案） |
-| command_palette.at | 184 | ext:4 | — |
-| quick_switcher.at | 165 | ext:3 | — |
+| search_panel.at | 177 | ext:3 | desktop 搜索流内联（search_pages，.type 撞名→search_pages 规避在案）——【076】已下沉 .at（debounce 闭包体 try/catch/finally + search_pages 契约通道 + with_search_display 行构造），ext 薄化，VM twin 双绿 |
+| command_palette.at | 184 | ext:4——【076】已下沉 .at（过滤链/构造/模运算 + runPaletteItem 拆沉）+ 缺件红占位**转正**（VM twin 双绿，负例由 editor_tab 续任） | — |
+| quick_switcher.at | 165 | ext:3——【076】已下沉 .at（collect_files 递归 / filter_files CJK 链 / 模运算），ext 薄化至热键/焦点，VM twin 双绿 | — |
 | theme_popover.at | 120 | ext:3 | — |
 | create_page_prompt.at | 92 | ext:2 | — |
 | workspace_opener.at | 133 | ext:3 | desktop OpenWs 流（showDirectoryPicker VM 通道=目录选择器裁定待办） |

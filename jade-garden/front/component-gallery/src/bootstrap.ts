@@ -75,6 +75,23 @@ const routes: Route[] = [
     }),
   },
   {
+    // PLAN-077 T-04：工作区打开流的 fileTree.load 臂（/api/files——
+    // quick_switcher fixture 同构嵌套树）。
+    re: /^\/api\/files$/,
+    reply: () => ({
+      files: [
+        {
+          name: 'wiki',
+          path: 'wiki',
+          is_dir: true,
+          children: [
+            { name: '引言.ad', path: 'wiki/引言.ad', is_dir: false, children: [] },
+          ],
+        },
+      ],
+    }),
+  },
+  {
     // PLAN-077 T-03：闪卡两卡（question/answer/raw 三域——card_question/
     // card_answer 显式守卫链的 q/a 直下与 raw 回落双面）。
     re: /^\/api\/cards\/due$/,

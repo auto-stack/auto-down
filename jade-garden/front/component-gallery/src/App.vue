@@ -18,6 +18,7 @@ import ThemePopoverPage from './pages/ThemePopoverPage.vue'
 import RecentFilesPage from './pages/RecentFilesPage.vue'
 import AgendaPage from './pages/AgendaPage.vue'
 import FlashcardPage from './pages/FlashcardPage.vue'
+import WorkspaceOpenerPage from './pages/WorkspaceOpenerPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -161,6 +162,14 @@ function select(u: string) {
       >
         flashcard_modal
       </button>
+      <button
+        data-unit-tab="workspace_opener"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'workspace_opener' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('workspace_opener')"
+      >
+        workspace_opener
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -179,5 +188,6 @@ function select(u: string) {
     <RecentFilesPage v-else-if="unit === 'recent_files'" />
     <AgendaPage v-else-if="unit === 'agenda'" />
     <FlashcardPage v-else-if="unit === 'flashcard_modal'" />
+    <WorkspaceOpenerPage v-else-if="unit === 'workspace_opener'" />
   </div>
 </template>

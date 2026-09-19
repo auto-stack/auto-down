@@ -5,14 +5,14 @@
 // - the lucide icon re-exports (rendered via `dyn`),
 // - WorkspaceLogo: the original's inline SVG brand mark as a functional
 //   component (the DSL has no svg element),
-// - openWorkspaceFlow: the original open()'s try body (await workspace.open
-//   then fileTree.load; the rejection propagates — the widget's .finally
-//   clears busy exactly like the original's finally),
-// - clearWorkspaceError / workspaceErrorText: facade setter/getter access
-//   shapes the DSL cannot lvalue / safely type,
+// - clearWorkspaceError: the facade write shape (not a DSL lvalue),
 // - chooseWorkspaceDir: window.showDirectoryPicker + try/catch + the
 //   template-ref focus/select fallback (the DSL has no DOM APIs or template
 //   refs; the input is located by its stable placeholder attribute).
+//
+// PLAN-077 T-04 sink: openWorkspaceFlow (orchestration) moved into the .at
+// .Open handler as an explicit promise chain, and workspaceErrorText into
+// the workspace_error_text module fn (mode doc §6.4, Q-1 ruling).
 //
 // Relative imports: this file is shared verbatim between trees; the paths
 // below resolve to front/src/... in the jade-garden front tree.
@@ -41,28 +41,9 @@ export const WorkspaceLogo = () =>
       '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
   })
 
-/** Original open()'s try body: `await workspace.open(path); await
- *  fileTree.load()`. The rejection propagates to the widget's .finally
- *  chain (facade open() throws after setting error — same as the original). */
-export async function openWorkspaceFlow(
-  workspace: { open: (path: string) => Promise<void> },
-  fileTree: { load: () => Promise<void> },
-  path: string,
-): Promise<void> {
-  await workspace.open(path)
-  await fileTree.load()
-}
-
 /** Original: `workspace.error = null` at the top of open(). */
 export function clearWorkspaceError(workspace: { error: string | null }): void {
   workspace.error = null
-}
-
-/** Original: `{{ workspace.error }}` guarded by v-if="workspace.error" —
- *  exposed as text ("" when null) so the computed is a Call body
- *  (computed<any>; README gap 28). */
-export function workspaceErrorText(workspace: { error: string | null }): string {
-  return workspace.error ?? ''
 }
 
 /** Original: async function chooseDirectory() — showDirectoryPicker with a

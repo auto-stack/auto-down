@@ -55,7 +55,7 @@
 | quick_switcher.at | 165 | ext:3——【076】已下沉 .at（collect_files 递归 / filter_files CJK 链 / 模运算），ext 薄化至热键/焦点，VM twin 双绿 | — |
 | theme_popover.at | 120 | ext:3 | — |
 | create_page_prompt.at | 92 | ext:2 | — |
-| workspace_opener.at | 133 | ext:3 | desktop OpenWs 流（showDirectoryPicker VM 通道=目录选择器裁定待办） |
+| workspace_opener.at | 133 | ext:3 | desktop OpenWs 流（showDirectoryPicker VM 通道=目录选择器裁定待办）——【077】已下沉 .at（编排链+workspace_error_text 模块 fn）+ **Q-1 裁定销号（2026-09-19）**：VM twin 断言域 = path 输入 + Open 流形状（busy 复位/error 清位/root 投影），picker 按钮（showDirectoryPicker=window 级 DOM）不进 VM 断言（F-1 口径同款）；desktop 装配走自家 menubar action（app.at:103 ws.open）不消费 picker 通道——VM twin 双绿 |
 | flashcard_modal.at | 222 | ext:2 | desktop 闪卡流内联 |
 | graph_sidebar.at | 162 | ext:3 | desktop 图谱流内联（get_graph） |
 | graph_controls.at | 216 | ext:4（+styleblock 伴生） | — |

@@ -340,6 +340,33 @@ export const UNITS = [
     },
   },
   {
+    id: 'workspace_opener',
+    title: '工作区打开（桶②·RC-D 批次3·PLAN-077 下沉，Q-1 裁定单元）',
+    // vue 臂：path 播种（合成 input 事件——v-model 写回）→ click 门 Open →
+    // 下沉 .Open 编排链（busy 置位 → clearWorkspaceError → store facade
+    // open（open_workspace 契约经 shim）→ then(fileTree.load——/api/files
+    // shim) → finally busy 复位）→ workspace.root 投影（页内 data-ws-root
+    // 直读 store）。picker 按钮（window 级 DOM）不进断言域（Q-1/F-1）。
+    // VM 臂 twin：wo_busy/wo_error/wo_root 投影（编排形状播种——契约面
+    // 归 vue 臂，twin 不镜像，F-1）。
+    vue: {
+      url: '/?unit=workspace_opener',
+      ready: 'input[placeholder^="粘贴完整目录路径"]',
+      needles: ['Jade Garden', 'Open'],
+      needleSelector: '[data-unit="workspace_opener"]',
+      click: {
+        selector: 'button.bg-primary',
+        ready: '[data-ws-root]:has-text("D:/tmp/wiki-demo")',
+        needles: ['D:/tmp/wiki-demo'],
+      },
+    },
+    vm: {
+      actions: [{ button: 'workspace_opener' }, { button: 'Open' }],
+      state: { unit: 'workspace_opener', wo_busy: 'false', wo_root: 'D:/tmp/wiki-demo' },
+      snapshot: ['unit=workspace_opener busy:false', 'Jade Garden', 'D:/tmp/wiki-demo'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

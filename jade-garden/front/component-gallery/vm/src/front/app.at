@@ -155,7 +155,7 @@ fn fm_card_at(cards_in, index_in) {
 }
 
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen }
 
     model {
         var unit str = "status_bar"
@@ -264,6 +264,15 @@ widget App {
         var fm_counter str = ""
         var fm_question str = ""
         var fm_answer str = ""
+        // —— fixture：workspace_opener 面（PLAN-077 T-04 twin，Q-1 裁定：
+        // 断言域 = path 输入 + Open 流形状（busy 置位→复位 + error 清位 +
+        // root 投影）；契约调用面归 vue 臂 shim（twin 无后端，不镜像），
+        // picker 按钮（window 级 DOM）不进断言域——F-1。wo_error 预置
+        // 'boom' 验 error 清位臂）——
+        var wo_path str = ""
+        var wo_busy bool = false
+        var wo_error str = ""
+        var wo_root str = ""
     }
 
     computed {
@@ -283,6 +292,8 @@ widget App {
         show_recent_files => .unit == "recent_files"
         show_agenda => .unit == "agenda"
         show_flashcard_modal => .unit == "flashcard_modal"
+        show_workspace_opener => .unit == "workspace_opener"
+        wo_marker => f"unit=workspace_opener busy:${.wo_busy} err:${.wo_error}"
         fm_marker => f"unit=flashcard_modal idx:${.fm_index}"
         rf_marker => f"unit=recent_files rows:${.rf_count}"
         ag_marker => f"unit=agenda rows:${.ag_count}"
@@ -371,6 +382,10 @@ widget App {
                 }
                 button (text: "flashcard_modal", variant: "text") {
                     onclick: .Select("flashcard_modal")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "workspace_opener", variant: "text") {
+                    onclick: .Select("workspace_opener")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -834,6 +849,27 @@ widget App {
                     }
                 }
             }
+            if .show_workspace_opener {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 items-center rounded-xl border border-zinc-200 bg-zinc-50 p-4") {
+                        text "Jade Garden" { class: "text-lg font-bold text-zinc-800" }
+                        // path 输入投影 + Open 流（picker 按钮 = window 级
+                        // DOM，不进 twin 断言域——Q-1/F-1）
+                        row (class: "items-center gap-1 pt-2") {
+                            text .wo_path { class: "flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700" }
+                            button (text: "Open", variant: "text") {
+                                onclick: .WoOpen
+                                class: "rounded bg-zinc-800 px-2 py-0.5 text-xs text-white"
+                            }
+                        }
+                        if .wo_error != "" {
+                            text .wo_error { class: "pt-1 text-xs text-red-600" }
+                        }
+                        text .wo_root { class: "pt-1 text-xs text-zinc-500" }
+                        text .wo_marker { class: "pt-2 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -964,6 +1000,11 @@ widget App {
                 }
             }
             .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
+            // workspace_opener：path 播种 + 预置 error（清位臂验证面）
+            .wo_path = "D:/tmp/wiki-demo"
+            .wo_busy = false
+            .wo_error = "boom"
+            .wo_root = ""
         }
 
         .Select(u) -> {
@@ -1080,6 +1121,19 @@ widget App {
                 .fm_index = 0
                 .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
                 .fm_question = "(reloaded) 写引言草稿"
+            }
+        }
+
+        .WoOpen -> {
+            // 下沉 .Open 编排形状（契约调用面归 vue 臂 shim——twin 以
+            // 同步应答播种流完成态）：busy 置位 → error 清位 → root 投影
+            // → busy 复位（.finally 臂）
+            var p = .wo_path.trim()
+            if p != "" {
+                .wo_busy = true
+                .wo_error = ""
+                .wo_root = p
+                .wo_busy = false
             }
         }
     }

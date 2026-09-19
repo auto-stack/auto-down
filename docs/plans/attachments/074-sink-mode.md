@@ -393,3 +393,18 @@ get_due_cards/review_card——workspace 走 store facade 不增）。校正要�
 typeof 无词位使 properties 四 fn（inferType/commitFrontmatter/
 setEntryType 必留 + fmJson/propsDirty JSON 域）离开 sink 面，预分类
 properties 12 实义中 sink 6 → 实沉 4。
+
+### 4.2 desktop 消费登记·批次 3（PLAN-077 T-06 扩表；装配归 L3）
+
+| 面板 | desktop 现状 | 挂载裁定（登记） | 约束注记 |
+| --- | --- | --- | --- |
+| properties_panel | desktop 无对应流 | **组件挂载 = 唯一路径**：sync_entries/with_prop_display/try_add_property/tabs_active_tab 已 .at 单源；frontmatter 编辑/facade 写（commitFrontmatter）= vue 轨 strict 域 | **P-9 纪律首事主**：sync_entries 的 map 键值迭代 VM 轨零迭代——desktop 挂载前需 twin 侧配对列表通道或编译器补课（P614 同族）；JSON.stringify 域不入 VM |
+| recent_files_panel | desktop 无对应流 | **组件挂载**（唯一路径）：recent_files_with_time 行构造已 .at 单源 | formatTime 桥 TS 域——desktop 消费侧时间显示走 raw 或自家格式化 |
+| create_page_prompt | desktop 无对应流 | **组件挂载**（唯一路径）：零 sink 面（wikiTitleToPath regex 桥/CodeTag ext） | wikiTitleToPath = web lib 单源——desktop 消费侧需等价 path 推导（ASCII 域 strip_ext 纪律） |
+| workspace_opener | app.at OpenWs 流内联（app.at:128，menubar action ws.open Ctrl+O） | **内联流维持现状**（OpenWs 流已覆盖打开面）；组件挂载为可选（Q-1 裁定：picker 按钮=window 级 DOM 不进 VM 断言域，desktop 装配走自家 menubar action 不消费 picker 通道） | .Open 编排链（promise 链 busy 复位）已 .at 单源；open_workspace 契约在 store Open 内部持 error 状态——desktop 直挂组件时 error 面同通道 |
+| theme_popover | desktop 无 popover 流（主题走 status_bar/settings 面） | **组件挂载 = 唯一路径**：theme_accents 字面量列表已 .at 单源（Q-4 VM 全键形状锁定域实证） | accent key 类型 = web ThemeAccent union——desktop 侧五 accent 单源自家声明 |
+| flashcard_modal | app.at 闪卡流内联（app.at:261 LoadCards/:267 Grade） | **组件挂载**为本批后可选：Init/watch/Rate 编排已 .at 单源（get_due_cards/review_card 契约直用双端在案）；内联流在 L3 装配前维持现状 | errorMessage strict 桥 = vue 轨域（desktop 内联流自持 try 面）；card_at 走查形态双轨安全 |
+| agenda_panel | desktop 无对应流 | **组件挂载 = 唯一路径**：tab_path/agenda_display 行构造 + watch 编排已 .at 单源（get_agenda 契约直用） | formatDate 桥 TS 域（Q-3）——desktop 消费侧日期显示走 raw 或自家格式化；to_upper marker 链 P-7 双轨一致可复用 |
+
+> 登记 ≠ 装配（§4 同款）：desktop app.at 面板装配归 L3/后续计划；P-9
+> （map 迭代）为 properties_panel 挂载前置约束源（本档 §6.0）。

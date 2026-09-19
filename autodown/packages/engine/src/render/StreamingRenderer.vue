@@ -2,7 +2,7 @@
   <div
     ref="containerRef"
     class="streaming-document"
-    :class="{ 'is-sync': scrollSync, 'is-dark': darkMode }"
+    :class="{ 'is-sync': scrollSync, 'is-dark': isDarkActive }"
     :data-accent="accentAttr"
   >
     <template v-for="(part, idx) in parts" :key="part.kind + '-' + idx">
@@ -123,6 +123,28 @@ const ACCENTS = ['indigo', 'coral', 'ocean', 'sage', 'amber'] as const
 const accentAttr = computed(() =>
   ACCENTS.includes(props.accent as (typeof ACCENTS)[number]) ? props.accent : 'indigo'
 )
+
+const ambientDark = ref(false)
+const isDarkActive = computed(() => props.darkMode || ambientDark.value)
+
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    const checkDark = () => {
+      ambientDark.value = Boolean(
+        document.documentElement.classList.contains('dark') ||
+        document.documentElement.getAttribute('data-theme') === 'dark' ||
+        containerRef.value?.closest('.dark, [data-theme="dark"]')
+      )
+    }
+    checkDark()
+    const observer = new MutationObserver(checkDark)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    if (containerRef.value?.parentElement) {
+      observer.observe(containerRef.value.parentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    }
+    onBeforeUnmount(() => observer.disconnect())
+  }
+})
 
 const { segments } = useStreamingDocument(computed(() => props.source))
 
@@ -461,6 +483,11 @@ defineExpose({
 
 /* Segment spacing */
 .streaming-document > * + * {
+  margin-top: 0.75rem;
+}
+
+/* Intra-segment block rhythm: slot spacing inside single markdown renderer (PLAN-076 / musk PLAN-056 convergence) */
+.streaming-document :deep(.markdown-renderer > .node-slot + .node-slot) {
   margin-top: 0.75rem;
 }
 

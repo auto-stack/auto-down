@@ -2,7 +2,7 @@
   <div
     ref="root"
     class="autodown-editor"
-    :class="{ 'is-dark': darkMode }"
+    :class="{ 'is-dark': isDarkActive }"
     :data-accent="accentAttr"
   >
     <div ref="wrapper" class="autodown-editor-content-wrapper">
@@ -340,6 +340,28 @@ const ACCENTS = ['indigo', 'coral', 'ocean', 'sage', 'amber'] as const
 const accentAttr = computed(() =>
   ACCENTS.includes(props.accent as (typeof ACCENTS)[number]) ? props.accent : 'indigo'
 )
+
+const ambientDark = ref(false)
+const isDarkActive = computed(() => props.darkMode || ambientDark.value)
+
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    const checkDark = () => {
+      ambientDark.value = Boolean(
+        document.documentElement.classList.contains('dark') ||
+        document.documentElement.getAttribute('data-theme') === 'dark' ||
+        root.value?.closest('.dark, [data-theme="dark"]')
+      )
+    }
+    checkDark()
+    const observer = new MutationObserver(checkDark)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    if (root.value?.parentElement) {
+      observer.observe(root.value.parentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    }
+    onBeforeUnmount(() => observer.disconnect())
+  }
+})
 
 const emit = defineEmits<{ (e: 'update', md: string): void; (e: 'update:modelValue', md: string): void; (e: 'save', md: string): void; (e: 'focusblock', block: { id: string; height: number } | null): void; (e: 'open-wiki-link', title: string, blockId?: string): void }>()
 

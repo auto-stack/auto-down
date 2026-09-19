@@ -569,6 +569,106 @@ arm('switcher', async (checks) => {
   checks.push('switcher: 视图菜单开切换器 → "定" 过滤 → press CAP 定理.ad 开页 + 面板自闭 ✓')
 })
 
+// PLAN-079 T-03 批 C 臂：agenda（get_agenda 契约 + ag_display 副本行构造，
+// SCHEDULED 子行播种）/ recent（会话记账 + rf_rows 副本）/ cpp（缺失出链
+// 点击 → 确认面板 → create_file 建页真流）/ theme（theme_accents 副本 +
+// 模式/accent 状态面）。
+arm('agenda', async (checks) => {
+  // 播种带日程任务（语法 = tasks-fixtures.json 实证：`- TODO` 关键字形态
+  // 标记 + 2 空格缩进 SCHEDULED 子行 + 角括号日期；`- [ ]` 复选框在
+  // tasks_gen 语法里不是任务标记——实勘 fixture 第 2 页 expected=[]）。
+  // 明日 = 14 天窗口内；fixture 恢复协议兜底回滚。
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  const q = `议程探针 ${nonce()}`
+  const post = (p, payload) =>
+    fetch(`${BACKEND}${p}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+  const doc = await fetch(`${BACKEND}/api/wiki/${encodeURIComponent('Tasks.ad')}`).then((r) => r.json())
+  const seed = `- TODO ${q}\n  SCHEDULED: <${tomorrow}>\n`
+  const put = await post(`/api/wiki/${encodeURIComponent('Tasks.ad')}`, { frontmatter: doc.frontmatter, body: doc.body + '\n' + seed })
+  if (!put.ok) throw new Error(`agenda: seed write failed: ${put.status}`)
+  await pressMenuItem('视图', '日程')
+  await stateIs('status', 'agenda-loaded')
+  await stateIs('agenda_count', '1')
+  // 行渲染面 = marker/line/date（line = title 回落页题——web agenda_display
+  // 同形；content 字段行模型在场但视图不显，与 web 面板一致）
+  const tree = await snapshot()
+  const flat = subtreeText(tree)
+  if (!flat.includes('TODO')) throw new Error('agenda: marker TODO not rendered')
+  if (!flat.includes(tomorrow)) throw new Error(`agenda: date raw ${tomorrow} not rendered`)
+  checks.push(`agenda: SCHEDULED 播种（- TODO 关键字 + 角括号日期）→ 装载 → agenda_count=1 + 行渲染（marker/date raw 直下）`)
+})
+
+arm('recent', async (checks) => {
+  // 会话记账：显式双开（Projects + Tasks）→ recent_count 增 2 + 行在场。
+  // 同步纪律：status "opened" 是同值断言（第二次 press 会立即命中第一次
+  // 的残留值，不等待 handler 完成——本轮实录竞态），故以 recent_count
+  // 轮询为同步点。
+  const readCount = async () => {
+    const st = await callTool('autoui_state', { fields: ['recent_count'] })
+    return parseInt(st.match(/recent_count:\s*(\d+)/)?.[1] ?? '0', 10)
+  }
+  const base = await readCount()
+  for (const [i, name] of ['Projects.ad', 'Tasks.ad'].entries()) {
+    const tree = await snapshot()
+    const btn = findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === name)
+    if (!btn) throw new Error(`recent: file button ${name} not found`)
+    await callTool('autoui_action', { element_id: elementIdOf(btn), action: 'press' })
+    for (const deadline = Date.now() + 6000; ; ) {
+      if ((await readCount()) >= base + i + 1) break
+      if (Date.now() > deadline) throw new Error(`recent: count never advanced past ${base + i + 1} after opening ${name}`)
+      await sleep(120)
+    }
+  }
+  const n = await readCount()
+  const tree2 = await snapshot()
+  const labels = findAll(tree2, (n) => n.head.startsWith('button ')).map(ownText)
+  for (const want of ['Projects', 'Tasks']) {
+    if (!labels.includes(want)) throw new Error(`recent: row label ${want} missing`)
+  }
+  checks.push(`recent: 双开记账 → recent_count=${n}（去重前插 cap10）+ 行在场（rf_rows 副本，时间列 TS 域差异）`)
+})
+
+arm('cpp', async (checks) => {
+  // cpp 建页面板（自持入口）：文件菜单「新建页面」→ 标题输入 → Create →
+  // create_file 真建页 + 文件树刷新 + 新页打开。（缺失出链触发 = 死路：
+  // 后端 outlinks exists 恒真——linkgraph targetPage 裸标题实勘，web 同款
+  // 孤儿面；批 C 装配裁定见 .OpenCpp 注记。）
+  const missing = `缺失页七九${nonce().slice(0, 5)}`
+  await pressMenuItem('文件', '新建页面')
+  await stateIs('status', 'cpp-open')
+  await typeInto((n) => n.head.startsWith('input '), missing, 'cpp title input')
+  await stateIs('status', 'cpp-typing')
+  await pressButton('Create')
+  await stateIs('status', 'cpp-created')
+  // 建页实证：文件树出现新 .ad 按钮（CppCreate 内 ft_nodes 刷新）+ 面板自闭
+  for (const deadline = Date.now() + 6000; ; ) {
+    const tree = await snapshot()
+    if (findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === `${missing}.ad`)) break
+    if (Date.now() > deadline) throw new Error(`cpp: created file ${missing}.ad not in the file tree`)
+    await sleep(150)
+  }
+  checks.push(`cpp: 文件菜单新建页面 → 标题输入 → Create → ${missing}.ad 建页 + 树刷新 + 打开 ✓`)
+})
+
+arm('theme', async (checks) => {
+  await pressMenuItem('视图', '主题')
+  await stateIs('status', 'theme-open')
+  const tree = await snapshot()
+  for (const label of ['Light', 'Dark', 'Indigo', 'Emerald', 'Rose', 'Amber', 'Slate']) {
+    if (!findFirst(tree, (n) => n.head.startsWith('button ') && ownText(n) === label))
+      throw new Error(`theme: button ${label} missing`)
+  }
+  await pressButton('Dark')
+  await stateIs('status', 'theme-dark')
+  await stateIs('theme_mode', 'dark')
+  await pressButton('Rose')
+  await stateIs('status', 'accent-rose')
+  await stateIs('theme_accent', 'rose')
+  await pressButton('关闭')
+  await stateIs('status', 'theme-closed')
+  checks.push('theme: 面板五 accent（theme_accents 副本）+ Light/Dark + 模式/accent 状态投影（运行时应用 env 域差异登记）✓')
+})
+
 // tabs 臂（PLAN-064 T-05，§5.4 五断言，tabs_store 驱动的多 tab 编辑器流）：
 //   ① 双 tab 打开且 tab 条在场
 //   ② 切换回读正文不串页
@@ -729,6 +829,10 @@ const ARM_DEPS = {
   search: ['open-ws'],
   palette: ['open-ws'],
   switcher: ['open-ws'],
+  agenda: ['open-ws'],
+  recent: ['open-ws'],
+  cpp: ['open-ws'],
+  theme: ['open-ws'],
 }
 
 async function runOnce(attempt) {

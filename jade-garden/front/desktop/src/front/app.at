@@ -36,7 +36,11 @@ use panels_a_fns: tab_file_stem, tab_title, tab_path, ol_headings
 // PLAN-079 T-02 批 B 装配：sw_collect/sw_filter（quick_switcher 下沉 fn，
 // 入参形状适配 ft_nodes）+ pal_match（palette filter 链 title 臂语义）。
 use panels_b_fns: sw_collect, sw_filter, pal_match
-use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages
+// PLAN-079 T-03 批 C 装配：ag_display（agenda_display 副本·date raw）/
+// rf_rows（recent_files_with_time 副本·无 time 列差异）/theme_accents
+//（逐字副本）。
+use panels_c_fns: ag_display, rf_rows, theme_accents
+use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages, get_agenda, create_file
 use auto.http
 
 // FileNode（wire：name/path/is_dir/children）→ tree_util 节点 schema
@@ -65,7 +69,7 @@ fn to_fs_nodes(nodes List) List {
 
 widget App {
 
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery }
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery, LoadAgenda, OpenCpp, CppQuery, CppCreate, CppCancel, ThemeOpen, ThemeClose, SetThemeMode(str), SetAccent(str) }
 
     model {
         var status str = "boot"
@@ -100,6 +104,22 @@ widget App {
         var ul_count int = 0
         var outline_rows = []
         var outline_count int = 0
+        // —— PLAN-079 T-03 批 C 装配：agenda 行（全局日程，视图菜单装载）/
+        // recent 会话记账（desktop 无 recentFiles store——recordRecent no-op
+        // 登记偏差，会话内 OpenFile 自记账 + rf_rows 行构造）/ cpp 建页确认
+        // / theme 面板态（应用通道 = AUTO_UI_THEME env 域，运行时应用差异
+        // 登记）。 ——
+        var agenda_rows = []
+        var agenda_count int = 0
+        var recent_entries = []
+        var recent_rows = []
+        var recent_count int = 0
+        var cpp_open bool = false
+        var cpp_input str = ""
+
+        var theme_open bool = false
+        var theme_mode str = "dark"
+        var theme_accent str = "indigo"
         var search_q str = ""
         var search_rows = []
         var hit_count int = 0
@@ -117,6 +137,9 @@ widget App {
         // 行 = 静态绑定（命令派发无动态通道，模式文档 §2 注记）× 逐行
         // pal_match 过滤门。
         switcher_rows => sw_filter(sw_collect(.ft_nodes), .switcher_q)
+        // PLAN-079 T-03 批 C：theme accent 行 = theme_accents 部署副本
+        // 纯派生（静态五 accent 字面量，Q-4 域）。
+        theme_rows => theme_accents()
         pal_f_open => pal_match("打开工作区", .palette_q)
         pal_f_reload => pal_match("重载文件列表", .palette_q)
         pal_f_save => pal_match("保存", .palette_q)
@@ -189,10 +212,12 @@ widget App {
             if seg_count == 1 {
                 path = f"${path}.ad"
             }
-            // 批 B 面板随开页关闭（自持弹层面板语义 + 后续臂输入定位卫生：
-            // 面板开着会占据快照首 input 位）。
+            // 批 B/C 面板随开页关闭（自持弹层面板语义 + 后续臂输入定位卫生：
+            // 面板开着会占据快照首 input 位；theme 无 input 不涉定位，保留
+            // 用户显式关闭语义）。互斥：三面板 Open* 各自闭另两面。
             .palette_open = false
             .switcher_open = false
+            .cpp_open = false
             .ft_sel = path
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
@@ -201,6 +226,29 @@ widget App {
                 .active_body = t.body
                 .active_dirty = t.dirty
             }
+            // 批 C recent 会话记账：去重前插 + cap 10（desktop 无
+            // recentFiles store——recordRecent no-op 登记偏差的装配侧
+            // 补偿；rf_rows 副本行构造，时间列 TS 域差异）。.len() 走
+            // 局部副本（模型字段直读 .len() 无先例——to_fs_nodes 参数
+            // 形态纪律）。
+            var prev_recents = .recent_entries
+            // typed List 声明纪律：裸 `var x = []` 在 VM 轨静默坏列表
+            //（076 TS7034 坑的 VM 变体——本轮实录，模式文档 §4 增记）。
+            var fresh List = []
+            fresh.push({ path: path, title: .active_title })
+            var ri int = 0
+            while ri < prev_recents.len() {
+                var re = prev_recents[ri]
+                if re.path != path {
+                    if fresh.len() < 10 {
+                        fresh.push(re)
+                    }
+                }
+                ri = ri + 1
+            }
+            .recent_entries = fresh
+            .recent_rows = rf_rows(fresh)
+            .recent_count = fresh.len()
             // 编辑器播种裁定（T-04 实机）：content: 绑定每帧外部 diff 回写
             // + key 变即重挂载 = 播种通道；显式 code_editor_set_text 需编辑器
             // 已注册（首次打开该 key 未挂载即 RuntimeError "no editor
@@ -355,6 +403,7 @@ widget App {
             .palette_q = ""
             .palette_open = true
             .switcher_open = false
+            .theme_open = false
             .status = "palette"
         }
 
@@ -371,6 +420,7 @@ widget App {
             .switcher_q = ""
             .switcher_open = true
             .palette_open = false
+            .theme_open = false
             .status = "switcher"
         }
 
@@ -381,6 +431,97 @@ widget App {
 
         .SwitcherQuery -> {
             .status = "switcher-typing"
+        }
+
+        // —— PLAN-079 T-03 批 C：agenda/cpp/recent/theme 装配 handler ——
+        // agenda = 全局日程（get_agenda(14) 默认窗口 = 后端 default_days），
+        // ag_display 副本行构造（date raw 直下）+ 平铺行模型（右栏行渲染）。
+        .LoadAgenda -> {
+            var res = get_agenda(14)
+            var groups = res.groups
+            var rows = ag_display(groups)
+            var flat List = []
+            var gi int = 0
+            while gi < rows.len() {
+                var g = rows[gi]
+                var ti int = 0
+                while ti < g.tasks.len() {
+                    flat.push(g.tasks[ti])
+                    ti = ti + 1
+                }
+                gi = gi + 1
+            }
+            .agenda_rows = flat
+            .agenda_count = flat.len()
+            .status = "agenda-loaded"
+        }
+
+        // cpp 建页确认（web create_page_prompt 对位——**孤儿组件无消费者**
+        // 在案 077 §6.3：后端 outlinks 的 exists 恒真（linkgraph targetPage
+        // 永为非空裸标题 → is_some 恒 true，本轮 API 实勘），缺失出链分支
+        // 双端皆死路——desktop 装配走自持入口：文件菜单「新建页面」→
+        // 面板（标题输入 + Create/Cancel）。wikiTitleToPath regex 桥不镜像
+        // ——desktop 直拼 ${title}.ad，fixture 域等价，差异登记模式文档
+        // §2 批 C 表）。
+        .OpenCpp -> {
+            .cpp_input = ""
+            .cpp_open = true
+            .status = "cpp-open"
+        }
+
+        .CppQuery -> {
+            .status = "cpp-typing"
+        }
+
+        .CppCreate -> {
+            if .cpp_input == "" {
+                .status = "cpp-empty"
+            }
+            if .cpp_input != "" {
+                var new_path = f"${.cpp_input}.ad"
+                create_file(new_path, false)
+                .ft_nodes = to_fs_nodes(list_files("", true))
+                .cpp_open = false
+                Tabs.Open({ path: new_path, title: "" })
+                var t = .tabs.find(tt => tt.path == new_path)
+                if t != null {
+                    .active_title = t.title
+                    .active_body = t.body
+                    .active_dirty = t.dirty
+                }
+                .status = "cpp-created"
+            }
+        }
+
+        .CppCancel -> {
+            .cpp_open = false
+            .status = "cpp-cancelled"
+        }
+
+        // theme 面板（web theme_popover 对位；应用通道差异：web =
+        // documentElement.classList，desktop = AUTO_UI_THEME env 域——
+        // 渲染器启动时消费，运行时应用为壳层后续面；状态单源在本 model，
+        // desktop README §2 matchMedia 裁定同族口径）。
+        .ThemeOpen -> {
+            .theme_open = true
+            .palette_open = false
+            .switcher_open = false
+            .status = "theme-open"
+        }
+
+        .ThemeClose -> {
+            .theme_open = false
+            .status = "theme-closed"
+        }
+
+        .SetThemeMode(mode) -> {
+            .theme_mode = mode
+            .status = f"theme-${mode}"
+        }
+
+        .SetAccent(key) -> {
+            .theme_accent = key
+            .status = f"accent-${key}"
         }
 
         // 保存：store Save 面（write_wiki 经 #[api] → 340 HTTP；回声
@@ -466,6 +607,9 @@ widget App {
                         menubar-trigger "文件"
                         menubar-content {
                             menubar-item (title: "打开工作区", icon: "folder-open", shortcut: "Ctrl+O") { onclick: .OpenWs }
+                            // PLAN-079 T-03 批 C：cpp 建页面板入口（自持——
+                            // 孤儿组件/exists 恒真死路面注记见 .OpenCpp）。
+                            menubar-item (title: "新建页面", icon: "file-plus") { onclick: .OpenCpp }
                             menubar-item (title: "保存", icon: "save", shortcut: "Ctrl+S", enabled: .active_title != "") { onclick: .Save }
                             menubar-item (title: "关闭标签", icon: "x", shortcut: "Ctrl+W") { onclick: .CloseTab }
                         }
@@ -476,6 +620,9 @@ widget App {
                             menubar-item (title: "重载文件列表", icon: "refresh-cw", shortcut: "F5") { onclick: .LoadFiles }
                             menubar-item (title: "命令面板", icon: "command", shortcut: "Ctrl+P") { onclick: .OpenPalette }
                             menubar-item (title: "快速切换", icon: "search", shortcut: "Ctrl+K") { onclick: .OpenSwitcher }
+                            // PLAN-079 T-03 批 C：agenda 装载 + theme 面板入口。
+                            menubar-item (title: "日程", icon: "calendar-days") { onclick: .LoadAgenda }
+                            menubar-item (title: "主题", icon: "palette") { onclick: .ThemeOpen }
                             // console 位预留（041 同款；jade v1 无 console 面板）
                         }
                     }
@@ -583,6 +730,47 @@ widget App {
                             }
                         }
                     }
+                    // —— 批 C：cpp 建页面板（web create_page_prompt 对位
+                    //——自持入口：文件菜单「新建页面」；标题输入 + Create/
+                    // Cancel；exists 恒真死路面注记见 .OpenCpp）。 ——
+                    if .cpp_open {
+                        col {
+                            class: "border rounded p-2 gap-1 bg-muted/20",
+                            text "Create missing page?" { style: "text-[12px] text-zinc-300" }
+                            row {
+                                class: "gap-2 items-center",
+                                input (value: .cpp_input, placeholder: "页面标题…") {
+                                    oninput: .CppQuery
+                                }
+                                button "Create" { onclick: .CppCreate }
+                                button "Cancel" { onclick: .CppCancel }
+                            }
+                        }
+                    }
+                    // —— 批 C：theme 面板（web theme_popover 对位——Light/
+                    // Dark 模式 + theme_accents 副本五 accent 行；运行时应用
+                    // 差异登记，见 .ThemeOpen 注）。 ——
+                    if .theme_open {
+                        col {
+                            class: "border rounded p-2 gap-1 bg-muted/20",
+                            row {
+                                class: "gap-2 items-center",
+                                text "theme" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                                button "Light" { onclick: .SetThemeMode("light") }
+                                button "Dark" { onclick: .SetThemeMode("dark") }
+                                button "关闭" { onclick: .ThemeClose }
+                            }
+                            row {
+                                class: "gap-1 flex-wrap",
+                                for a in .theme_rows {
+                                    button (text: a.label) {
+                                        onclick: .SetAccent(a.key)
+                                        style: "text-[11px] text-zinc-400"
+                                    }
+                                }
+                            }
+                        }
+                    }
                     // PLAN-068 T-01: tab 条 041 化（041 app.at 同款双分支——
                     // Plan 449：view fn 片段参数化条件不求值，激活/非激活须
                     // 双分支）。x 钮 = 零参 .CloseTab（活动 tab 语义，x 只在
@@ -674,6 +862,10 @@ widget App {
                                 onclick: .OpenFile(o.target_path)
                             }
                         }
+                        // 缺失目标行维持非交互 text：后端 outlinks exists 恒真
+                        //（linkgraph targetPage 裸标题 → is_some 恒 true，
+                        // T-03 实勘），该分支为 web 同款死路面——cpp 建页
+                        // 走文件菜单自持入口（.OpenCpp 注记）。
                         if !o.exists {
                             text o.target_title
                         }
@@ -716,6 +908,32 @@ widget App {
                                 button "again" { onclick: .Grade(c.page_path, c.block_id, 1) }
                                 button "good" { onclick: .Grade(c.page_path, c.block_id, 3) }
                             }
+                        }
+                    }
+                    // —— 批 C：agenda 行（视图菜单装载，ag_display 副本；
+                    // date raw 直下——formatDate Q-3 桥差异）+ recent 会话
+                    // 行（rf_rows 副本）。 ——
+                    row {
+                        class: "gap-1 items-center",
+                        text "agenda" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .agenda_count { style: "text-[11px] text-zinc-500" }
+                    }
+                    for a in .agenda_rows {
+                        row {
+                            class: "gap-1 items-center",
+                            text a.marker { style: "text-[10px] text-amber-400" }
+                            text a.line { style: "text-[12px] text-zinc-300" }
+                            text a.date { style: "text-[10px] text-zinc-600" }
+                        }
+                    }
+                    row {
+                        class: "gap-1 items-center",
+                        text "recent" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .recent_count { style: "text-[11px] text-zinc-500" }
+                    }
+                    for rc in .recent_rows {
+                        button (text: rc.label) {
+                            onclick: .OpenFile(rc.target)
                         }
                     }
                 }

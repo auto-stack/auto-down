@@ -240,3 +240,156 @@ strict 桥（§5.1 表行在案）与 search_pages 薄别名（§5.1 searchSafe 
 | search_panel | app.at 搜索流内联（.DoSearch 直拉 search_pages） | **组件挂载**为本批后可选：搜索编排已 .at 单源（with_search_display 模块 fn + debounce 闭包 try/catch/finally + `use back.api: search_pages` 契约同通道）；内联流在 L3 装配前维持现状 | snippet 高亮 regex 属 vue 显示面（ext 桥），VM twin 不镜像；errorMessage 桥 = vue 轨 strict 域（VM 轨契约调用语义不同——desktop 内联流自持 try 面）；G-2：VM 轨禁 CJK find/slice 索引算术（filter 域 P-7 不涉） |
 | command_palette | desktop 无 palette 流（命令面 = ui_config menubar/toolbar，PLAN-073） | **组件挂载 = 唯一路径**（如 L3 需 palette）：过滤链/构造/模运算已 .at 单源（filter_palette 等）；但 buildCommands 为 web 宿主流整体（DOM/Blob/dispatchEvent/dynamic import）——desktop 消费侧命令清单应从 ui_config 单源重建（§8.5 口径），非移植 buildCommands | icon 组件值 = view 双分支注入（ruling B）；runCommandAction 桥 = command 分支对象闭包（desktop 侧等价物走 ui_config action 面）；热键/焦点 = window 级 ext 域 |
 | quick_switcher | desktop 无 switcher 流（开页走 filetree） | **组件挂载 = 唯一路径**：collect_files 递归/filter_files/模运算已 .at 单源，fileTree facade 通道双端同形 | 'jade-open-quick-switcher' CustomEvent = web 宿主通道（desktop 装配时换自家开面板事件/api）；热键/焦点 = window 级 ext 域；G-2：VM 轨文件名过滤 = P-7 域（contains 链双轨一致）可用 |
+
+## 6. RC-D 批次 3 扩节：属性/文件/主题/闪卡/日程七件（PLAN-077 T-00，2026-09-19）
+
+> 作业标准续册。批次 3 = properties_panel 267L / recent_files_panel 113L /
+> create_page_prompt 92L / workspace_opener 133L / theme_popover 120L /
+> flashcard_modal 222L / agenda_panel 131L（合计 1078L；图谱族两件
+> graph_sidebar/graph_controls 归批次 4 独立立项）。形状 = "拉取/派生 →
+> 行列表/表单"（074/076 两轮已验证）+ 两个新域（JSON 域/时间格式化域）。
+> 编译器 = master v0.4.2-1305-ga38461ba3（074/076 折回补丁全在）——本批
+> 无新增编译器补丁（P-9 缺口按 P614 惯例走纪律登记，不阻断）。
+
+### 6.0 批次 3 探针结论（T-00 实证）
+
+探针工件：`jade-garden/front/tmp/p077-probe/`（worktree 一次性，双轨绿后
+弃；auto.exe v0.4.2-1305 主检出 debug exe）。vue 轨 = auto build（内跑
+vue-tsc && vite build）全绿；VM 轨 = auto run -r vm + MCP state/snapshot
+断言全绿（SHAPE-1 诊断项除外）。
+
+- **P-9 map 键值迭代 VM 轨零迭代（P614 同族，Q-4 关联面）**：`for (k, v)
+  in map` vue 轨发射 `for (const [k, v] of Object.entries(map))`
+  （ts_adapter.rs:799，执行正确）；VM 轨 codegen 有臂（codegen.rs:3319，
+  经 auto.hashmap.keys native）但运行时零迭代（顶层 map 字面量 fixture
+  实证：count 恒 0，无错误输出）。**处置（P614 惯例，不补编译器）**：
+  map 迭代 fn 为 vue 轨执行面（sync_entries）；VM twin 以配对列表
+  fixture 播种行（search_panel Init 播种先例），不镜像 map 迭代；L3
+  desktop 消费侧行遍历禁 map-for-in（P614 while+索引纪律同款注记）。
+- **P-10 try/finally 无 catch 解析红**：parser expected "Catch" found
+  "finally"（探针实证）——DSL try 必须带 catch。workspace .Open 的
+  busy 复位形态 = try/catch(空)/finally：空 catch 吞 rejection（原
+  openWorkspaceFlow().finally() 链的传播 = console 域 unhandled
+  rejection，UI 面零变化——error 显示源自 store.error 而非 rejection）。
+  嵌套 try/catch/finally 双轨绿（flashcard .Rate reload 形态实证：
+  inner:fin 投影正确）。
+- **五点裁定（计划 §6/T-00）**：
+  1. **JSON 域（Q-2，默认成立）**：`JSON.stringify` vue 轨透传可用
+     （ts_adapter.rs:2033 stringify 直传）；VM 轨无词位（engine
+     CALL_SPEC 无 JSON 臂）→ fmJson/propsDirty **留 ext 桥**（.at
+     watch/computed 经 use fn 通道）；facade 写（tab.frontmatter/
+     tab.dirty lvalue）**必留 ext**（非 DSL lvalue，clearWorkspaceError
+     先例）。**增证（预分类校正）**：DSL 无 typeof/is_array 词位
+     （parser/ui_gen 全查无）→ commitFrontmatter 重建循环（值域 typeof
+     分派 + Number/isNaN 强转）与 setEntryType（Boolean()/Array.isArray/
+     String() 强转）**整体必留 ext**——重建循环与强转/facade 写三面
+     同体不可分离，计划 "部分沉" 预判不成立。
+  2. **时间格式化域（Q-3，默认成立）**：Date/toLocale* 无 DSL 词位 →
+     行构造沉 .at + time/formatted_date 字段经 ext 桥逐行预计算
+     （snippet_html 先例）；VM twin 直显 raw 值不镜像格式化。
+  3. **静态 Obj 字面量列表（Q-4 关闭，双轨绿）**：`fn f() List { return
+     [{...}, {...}] }` vue 轨发射数组字面量、VM 轨 acc_count=2 +
+     snapshot 行渲染（indigo/emerald）——theme accents 可沉，VM Obj
+     全键形状锁定域实证无碍。
+  4. **map for-in 迭代**：见 P-9（vue 执行面 + twin 播种裁定）。
+  5. **to_upper**：双轨绿（ts_adapter.rs:1500 → toUpperCase /
+     engine.rs:7102 upper 臂；VM "TODO" state 实证）→ markerClass 沉
+     （ASCII 域，G-2 不及）。
+- **词位增证**：f-string `\"` 转义双轨绿（`{k}` 单括号 = 字面量复证
+  ——076 结论）；camelCase 字段名（openedAt）读写双轨绿；DSL `!= null`
+  发射松散 `!= null`（JS null+undefined 双捕获，部署 SFC 实证）——
+  两步守卫等价 `??` 域。
+
+### 6.1 properties_panel_ext.ts 逐 fn 分类（192L，14 导出名；T-00 校正定稿）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useTabsStore/useDebounceFn/Plus/Trash2/Check/X（再导出） | 必留 | facade shim + npm + lucide | 留 ext |
+| syncEntries | **sink** | for (k, v) in map 键值迭代 + 行构造（P-9：vue 执行面，twin 播种）；activeTab null 守卫两步；infer_type 逐值 ext 桥（highlight_context 先例） | properties_panel.at 模块 fn `sync_entries` |
+| normalize | **拆沉** | null 透传/undefined 臂（Object.entries 域不可达）丢弃；私有副本留 ext 供 propsDirty | 沉入 `sync_entries` 内联 + ext 私有 |
+| inferType | 必留（**校正：预分类 "拆沉" 不成立**） | typeof/Array.isArray/regex 三重无词位；改导出供 .at use fn 逐值桥 | 留 ext（导出 inferType） |
+| fmJson | 必留（JSON 桥，Q-2） | JSON.stringify VM 无词位 | 留 ext |
+| propsDirty | 必留（JSON 桥） | JSON.stringify 深比较 + Object.keys 计数 | 留 ext |
+| commitFrontmatter | 必留（**校正：预分类 "部分沉" 不成立**） | 重建循环 typeof 值域分派 + Number/isNaN + facade 写三面同体 | 留 ext |
+| setEntryType | 必留（**校正：预分类 "sink" 不成立**） | Boolean()/Array.isArray()/String() 强转 + typeof 分派 | 留 ext |
+| tryAddProperty | **sink** | dup 检测 for-loop + push + alert 透传（f-string 转义引号探针绿；alert = 浏览器全局，VM twin 不镜像 alert 臂） | properties_panel.at 模块 fn `try_add_property` |
+| withPropDisplay | **sink** | 就地字段写循环 + bool_label（`== true` 显式）+ placeholder 双 if | properties_panel.at 模块 fn `with_prop_display` |
+| eventValue | **消解** | handler 直写 `evt.target.value`（search_panel QueryInput 先例） | 删（handler 内联） |
+| tabsActiveTab | **sink** | 两步 null 守卫（Call body 免 gap-28 误型） | properties_panel.at 模块 fn `tabs_active_tab` |
+
+### 6.2 recent_files_panel_ext.ts 逐 fn 分类（37L，5 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useRecentFilesStore/useTabsStore/Clock/X/Trash2（再导出） | 必留 | facade shim + lucide | 留 ext |
+| recentFilesWithTime | **sink** | map → for+push 行构造；time 字段经 ext formatTime 桥逐行预计算（Q-3；snippet_html 先例）；path/title/openedAt 显式字段保真 | recent_files_panel.at 模块 fn `recent_files_with_time` |
+| formatTime | 必留（Q-3 桥） | Date/toLocaleTimeString | 留 ext |
+| removeRecent | 必留一行桥 | DSL `.remove(...)` → `.splice` 误射在案 | 留 ext |
+
+### 6.3 create_page_prompt_ext.ts 逐 fn 分类（18L，2 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| wikiTitleToPath（re-export） | 必留 | regex 桥（wikiLink.ts 单源；DSL 无 lib 导入通道） | 留 ext |
+| CodeTag | 必留 | code 标签 h 组件（dyn 代位） | 留 ext |
+
+（极薄件零 sink 面——批次价值 = VM 渲染臂首验 + props/emits 契约；
+orphan 组件无消费者，头注在案。）
+
+### 6.4 workspace_opener_ext.ts 逐 fn 分类（93L，9 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useWorkspaceStore/useFileTreeStore/FolderOpen/Info（再导出） | 必留 | facade shim + lucide | 留 ext |
+| openWorkspaceFlow | **消解（编排内联）** | 双 store 调用内联 .Open handler try/catch(空)/finally（P-10 形态）；workspace 走 store facade 通道（open_workspace 契约在 store 内部、error 状态由 store 维护——直调契约将丢 error 置位面）；busy 复位落 finally | 删（handler 内联） |
+| workspaceErrorText | **sink** | `?? ""` 两步守卫（`!= null` 松散发射实证） | workspace_opener.at 模块 fn `workspace_error_text` |
+| clearWorkspaceError | 必留 | facade 写（非 DSL lvalue） | 留 ext |
+| chooseWorkspaceDir | 必留 | showDirectoryPicker + focus/select（window DOM——Q-1 VM 臂不覆盖） | 留 ext |
+| WorkspaceLogo | 必留 | SVG h 组件 | 留 ext |
+
+### 6.5 theme_popover_ext.ts 逐 fn 分类（51L，5 导出名含 interface）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useThemeStore/Sun/Moon（再导出） | 必留 | facade shim + lucide | 留 ext |
+| themeAccents | **sink** | 静态五 accent Obj 字面量列表 return（Q-4 探针双轨绿——6.0#3） | theme_popover.at 模块 fn `theme_accents` |
+| isOutsideThemePopover | 必留 | DOM closest（.Close 恒真化注记保真留 ext） | 留 ext |
+| AccentSwatch interface | **删** | sink 后无消费者（ThemeAccent 依 typealias 一并清理） | 删 |
+
+### 6.6 flashcard_modal_ext.ts 逐 fn 分类（71L，7 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| Brain（再导出） | 必留 | lucide | 留 ext |
+| getDueCardsSafe | **sink（编排）** | try/catch/finally 直调 `use back.api: get_due_cards`（Init/is_open watch/Rate reload 三处 body——catch=error 置位、finally=loading 复位；错误消息经 errorMessage strict 桥——076 先例）；ext 增 get_due_cards 薄别名 + gen stub | flashcard_modal.at 三处 handler body |
+| reviewCardSafe | **sink（编排）** | .Rate try/catch 直调 `review_card` 契约（成功臂 index+1/隐藏/ exhaustion reload；失败臂 error 置位——原 safe 包装零 reject 语义由 try/catch 等价承载） | flashcard_modal.at .Rate body |
+| cardAt | **sink** | 越界 null 守卫（for+计数两步——避免索引表达式双轨域） | flashcard_modal.at 模块 fn `card_at` |
+| cardQuestion/cardAnswer | **sink** | `?.question \|\| raw` 改显式 if 链（null+空串双守卫——\|\| 字符串域） | 模块 fn `card_question`/`card_answer` |
+| counterText | **sink** | f-string `${index + 1} / ${count}`（P-3 数学内插） | 模块 fn `counter_text` |
+| errorMessage（**T-00 增设**） | 必留（strict 桥） | catch e unknown 域属性访问 TS18046——076 search_panel 同款 | 留 ext（新增） |
+
+### 6.7 agenda_panel_ext.ts 逐 fn 分类（104L，5 导出名）
+
+| fn | 分类 | 裁定 | 去向 |
+| --- | --- | --- | --- |
+| useTabsStore/CalendarClock（再导出） | 必留 | facade shim + lucide | 留 ext |
+| tabPath | **sink** | `?? ""` 两步守卫（074 tabTitle/tabPath 先例） | agenda_panel.at 模块 fn `tab_path` |
+| fetchAgendaSafe | **sink（编排）** | watch body try/catch/finally + `use back.api: get_agenda` 契约直用；catch 空（原 console.error 仅日志域，丢弃注记——无 UI face）；finally loading 复位；ext 增 get_agenda 薄别名 + gen stub | agenda_panel.at watch body |
+| formatDate | 必留（Q-3 桥） | Date/toLocaleDateString——formatted_date 逐组经 ext | 留 ext |
+| markerClass | **sink（并入行构造）** | switch 改互斥布尔 if 链（DOING/NOW→primary、DONE→done、其余→muted——default 臂显式化）；to_upper ASCII 域（6.0#5） | 沉入 `agenda_display` |
+| agendaDisplay | **sink（行构造）** | 双层 for+push；`title \|\| page_path` 改 `!= null && != ""` 显式 if（\|\| 字符串域空串语义保真）；formatted_date 逐组 ext 桥 | agenda_panel.at 模块 fn `agenda_display` |
+
+### 6.8 批次 3 计数勘正
+
+计划 §5 预分类 "~40 fn 基型" 勘正为 **34 实义 fn**（纯再导出名不计）：
+sink **17**（properties 4 + recent 1 + theme 1 + flashcard 6 + agenda 4 +
+workspace 1）+ 消解 **2**（eventValue、openWorkspaceFlow 内联）+ 拆沉
+**1**（normalize 部分沉）+ 必留 **13**（properties 5[inferType 改导出 +
+JSON 域 ×2 + commitFrontmatter + setEntryType] + recent 2 + cpp 2 +
+workspace 4[chooseWorkspaceDir/clearWorkspaceError/WorkspaceLogo +
+isOutsideThemePopover 归 theme] + theme 1 + flashcard 0 + agenda 1）+
+**T-00 增设 1**（errorMessage strict 桥）+ **契约别名 3**（get_agenda/
+get_due_cards/review_card——workspace 走 store facade 不增）。校正要点：
+typeof 无词位使 properties 四 fn（inferType/commitFrontmatter/
+setEntryType 必留 + fmJson/propsDirty JSON 域）离开 sink 面，预分类
+properties 12 实义中 sink 6 → 实沉 4。

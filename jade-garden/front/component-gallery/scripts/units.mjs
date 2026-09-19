@@ -219,6 +219,49 @@ export const UNITS = [
     },
   },
   {
+    id: 'create_page_prompt',
+    title: '创建页确认弹窗（桶②·RC-D 批次3·PLAN-077 极薄件首验）',
+    // vue 臂：title/open 双 prop 播种 → page_path 投影（wikiTitleToPath 经
+    // ext regex 桥——wikiLink.ts 单源）+ 双按钮 emit 契约（orphan 组件无
+    // 消费者，点击无落点，无 click 断言）。VM 臂 twin：cpp_path/cpp_choice
+    // 投影（derived 值播种——regex 桥 TS 域不入 VM，F-1 口径），Create
+    // 按钮驱动 cpp_choice（emit 等价面）。
+    vue: {
+      url: '/?unit=create_page_prompt',
+      ready: '[data-unit="create_page_prompt"] button',
+      needles: ['Create missing page?', '引言', '引言.ad'],
+      needleSelector: '[data-unit="create_page_prompt"]',
+    },
+    vm: {
+      actions: [{ button: 'create_page_prompt' }, { button: 'Create' }],
+      state: { unit: 'create_page_prompt', cpp_choice: 'create' },
+      snapshot: ['unit=create_page_prompt path:引言.ad', 'Create missing page?', '引言.ad'],
+    },
+  },
+  {
+    id: 'theme_popover',
+    title: '主题弹层（桶②·RC-D 批次3·PLAN-077 下沉，Q-4 字面量首件）',
+    // vue 臂：open prop 播种 + theme facade 初始值 → teleport 弹层
+    // （DOM 落 body 层，needle 走 .theme-popover 选择器）→ sunk
+    // theme_accents 静态五 accent 列表（Q-4 探针同形）；SetLight/SetDark/
+    // SetAccent 交互投影断言归 VM twin（vue needleSelector 不及 class 域）。
+    // VM 臂 twin：tp_theme_accents derived 副本（G-3 各持一份）真跑字面量
+    // 列表（VM Obj 全键形状锁定域实证）+ SetDark 驱动 tp_mode 投影。
+    vue: {
+      url: '/?unit=theme_popover',
+      ready: '.theme-popover button',
+      // accent 色板 = title 属性 + 色块（无文本）——五 accent 结构由截图基线
+      // 视觉锁 + VM twin tp_count=5 断言承载。
+      needles: ['Appearance', 'Light', 'Dark', 'Accent'],
+      needleSelector: '.theme-popover',
+    },
+    vm: {
+      actions: [{ button: 'theme_popover' }, { button: 'SetDark' }],
+      state: { unit: 'theme_popover', tp_mode: 'dark', tp_count: '5' },
+      snapshot: ['unit=theme_popover accents:5 mode:dark', 'Indigo', 'Slate'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,

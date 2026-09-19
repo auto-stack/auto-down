@@ -81,8 +81,22 @@ fn cp_filter(items, qstr) List {
     return rows
 }
 
+// —— theme_popover twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/theme_popover.at 的 theme_accents——G-3 各持一份；
+// PLAN-077 T-01。静态五 accent Obj 字面量列表 return——Q-4 探针同形，
+// VM Obj 全键形状锁定域实证面）。
+fn tp_theme_accents() List {
+    return [
+        { key: "indigo", label: "Indigo", color: "hsl(238 55% 58%)" },
+        { key: "emerald", label: "Emerald", color: "hsl(160 60% 38%)" },
+        { key: "rose", label: "Rose", color: "hsl(350 70% 55%)" },
+        { key: "amber", label: "Amber", color: "hsl(38 90% 50%)" },
+        { key: "slate", label: "Slate", color: "hsl(220 10% 45%)" },
+    ]
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark }
 
     model {
         var unit str = "status_bar"
@@ -156,6 +170,19 @@ widget App {
         var cp_count int = 0
         var cp_selected int = 0
         var cp_has bool = false
+        // —— fixture：create_page_prompt 面（PLAN-077 T-01 twin：cpp_path
+        // derived 值播种——wikiTitleToPath regex 桥 TS 域不入 VM（F-1），
+        // 双按钮 emit 契约以 cpp_choice 投影）——
+        var cpp_title str = ""
+        var cpp_path str = ""
+        var cpp_choice str = ""
+        // —— fixture：theme_popover 面（PLAN-077 T-01 twin：tp_accents 由
+        // tp_theme_accents 字面量列表真跑（Q-4 实证面）；tp_mode 由
+        // SetLight/SetDark 按钮驱动投影——theme facade 交互通道同形）——
+        var tp_accents = []
+        var tp_count int = 0
+        var tp_mode str = "light"
+        var tp_has bool = false
     }
 
     computed {
@@ -170,6 +197,10 @@ widget App {
         show_quick_switcher => .unit == "quick_switcher"
         show_search_panel => .unit == "search_panel"
         show_command_palette => .unit == "command_palette"
+        show_create_page_prompt => .unit == "create_page_prompt"
+        show_theme_popover => .unit == "theme_popover"
+        cpp_marker => f"unit=create_page_prompt path:${.cpp_path} choice:${.cpp_choice}"
+        tp_marker => f"unit=theme_popover accents:${.tp_count} mode:${.tp_mode}"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
@@ -233,6 +264,14 @@ widget App {
                 }
                 button (text: "command_palette", variant: "text") {
                     onclick: .Select("command_palette")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "create_page_prompt", variant: "text") {
+                    onclick: .Select("create_page_prompt")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "theme_popover", variant: "text") {
+                    onclick: .Select("theme_popover")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -551,6 +590,64 @@ widget App {
                     }
                 }
             }
+            if .show_create_page_prompt {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 rounded-lg border border-zinc-200 bg-zinc-50 p-3") {
+                        text "Create missing page?" { class: "text-sm font-semibold text-zinc-800" }
+                        row (class: "items-center gap-1 pt-2") {
+                            text f"[[${.cpp_title}]]" { class: "text-xs text-zinc-600" }
+                            text "does not exist yet." { class: "text-xs text-zinc-500" }
+                        }
+                        row (class: "items-center gap-1 pt-1") {
+                            text "Will be created as" { class: "text-xs text-zinc-500" }
+                            text .cpp_path { class: "rounded bg-zinc-200 px-1 py-0.5 text-xs text-zinc-800" }
+                        }
+                        row (class: "justify-end gap-1 pt-2") {
+                            button (text: "Cancel", variant: "text") {
+                                onclick: .CppCancel
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600"
+                            }
+                            button (text: "Create", variant: "text") {
+                                onclick: .CppCreate
+                                class: "rounded border border-zinc-300 bg-zinc-800 px-2 py-0.5 text-xs text-white"
+                            }
+                        }
+                        text .cpp_marker { class: "pt-2 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_theme_popover {
+                col (class: "flex-col p-3") {
+                    col (class: "w-56 rounded-xl border border-zinc-200 bg-zinc-50 p-3") {
+                        text "Appearance" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        row (class: "items-center gap-1") {
+                            button (text: "SetLight", variant: "text") {
+                                onclick: .TpSetLight
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "SetDark", variant: "text") {
+                                onclick: .TpSetDark
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text "Accent" { class: "mb-1 mt-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .tp_has {
+                            dyn (.ul_tag) {
+                                class: "grid grid-cols-1 gap-1",
+                                for a in .tp_accents {
+                                    dyn (.li_tag) {
+                                        key: a.key,
+                                        class: "flex items-center gap-1 text-xs text-zinc-700",
+                                        text a.label
+                                        text a.color
+                                    }
+                                }
+                            }
+                        }
+                        text .tp_marker { class: "pt-2 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -627,6 +724,17 @@ widget App {
             if .cp_count > 0 {
                 .cp_has = true
             }
+            // create_page_prompt：cpp_path derived 值播种（wikiTitleToPath
+            // "引言" → "引言.ad"——regex 桥 TS 域，twin 播种等价投影）
+            .cpp_title = "引言"
+            .cpp_path = "引言.ad"
+            .cpp_choice = ""
+            // theme_popover：字面量列表真跑（Q-4 实证面）
+            .tp_accents = tp_theme_accents()
+            .tp_count = .tp_accents.len()
+            if .tp_count > 0 {
+                .tp_has = true
+            }
         }
 
         .Select(u) -> {
@@ -671,6 +779,22 @@ widget App {
 
         .CpPrev -> {
             .cp_selected = (.cp_selected - 1 + .cp_count) % .cp_count
+        }
+
+        .CppCreate -> {
+            .cpp_choice = "create"
+        }
+
+        .CppCancel -> {
+            .cpp_choice = "cancel"
+        }
+
+        .TpSetLight -> {
+            .tp_mode = "light"
+        }
+
+        .TpSetDark -> {
+            .tp_mode = "dark"
         }
     }
 }

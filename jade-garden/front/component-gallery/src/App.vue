@@ -13,6 +13,8 @@ import FiletreePage from './pages/FiletreePage.vue'
 import QuickSwitcherPage from './pages/QuickSwitcherPage.vue'
 import SearchPanelPage from './pages/SearchPanelPage.vue'
 import CommandPalettePage from './pages/CommandPalettePage.vue'
+import CreatePagePromptPage from './pages/CreatePagePromptPage.vue'
+import ThemePopoverPage from './pages/ThemePopoverPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -116,6 +118,22 @@ function select(u: string) {
       >
         command_palette
       </button>
+      <button
+        data-unit-tab="create_page_prompt"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'create_page_prompt' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('create_page_prompt')"
+      >
+        create_page_prompt
+      </button>
+      <button
+        data-unit-tab="theme_popover"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'theme_popover' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('theme_popover')"
+      >
+        theme_popover
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -129,5 +147,7 @@ function select(u: string) {
     <QuickSwitcherPage v-else-if="unit === 'quick_switcher'" />
     <SearchPanelPage v-else-if="unit === 'search_panel'" />
     <CommandPalettePage v-else-if="unit === 'command_palette'" />
+    <CreatePagePromptPage v-else-if="unit === 'create_page_prompt'" />
+    <ThemePopoverPage v-else-if="unit === 'theme_popover'" />
   </div>
 </template>

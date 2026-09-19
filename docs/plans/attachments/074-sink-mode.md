@@ -490,9 +490,10 @@ state/snapshot/action（press/toggle）断言全绿。
 | initGraph/updateGraphElements/applyGraphSettings/applyGraphHighlight/destroyGraph/graphFit/graphRelayout | 必留（RC-F 内核豁免面） | cytoscape 实例生命周期全家（init/fcose/tap/高亮/fit/relayout/destroy）——plan 011 非目标 #3 封装策略；宿主面 .at 壳经 use fn 通道调用（形态维持） | 留 ext |
 | hsl/buildStyle/runLayout/updateHighlight（ext 内私有） | 必留 | 同上（RC-F 豁免域） | 留 ext（私有） |
 
-> 宿主面切分裁定（Q-1 默认预案 A，终裁记录见判定档
-> `attachments/078-graph-view-ruling.md`）：L1 单元 = .at 壳（容器/
-> loading/watch 编排/expose 契约）+ filter_domains 过滤派生（双端同 fn
-> 计数投影）；画布本体（坐标/布局/交互）= RC-F 内核豁免登记。VM 无
-> canvas 词位（ark generator 零命中 + P-12 家族证据）、desktop 图谱流现
-> 状 = 计数+行按钮（app.at:304）——A 预案与"内核不比"裁定精神一致。
+> 宿主面切分裁定（Q-1 **终裁 2026-09-19：划出 078**——graph_view 真渲染
+> 随 canvas 场景契约独立计划，草案 attachments/078-canvas-graph-scene-
+> plan-draft.md；宿主面单元一并划出记 DEBT。终裁记录与事实勘误见判定档
+> §5/§6：**canvas 元素双轨已在**（Plan 563，场景=笔笔画契约），本节
+> "VM 无 canvas 词位"表述作废；slider = a2r 完整/aura 臂缺/vue 缺
+> type=range 的补全面。§7.1/7.2 两件 RC-D 下沉裁定不受影响，078 照常
+> 执行；§7.3 graph_view 分类表移存独立计划 T-0 复用）。

@@ -50,11 +50,37 @@
   checkbox 通道驱动；depth/flags 值经 Init 播种 + Reset/ShowGlobal 按钮
   驱动投影翻转（077 picker 同款口径）。
 
-## 5. 终裁记录（用户裁定后回填）
+## 5. 终裁记录（2026-09-19 用户裁定，回填）
 
-- Q-1 裁定：＿＿（A / B / C）
-- Q-2 单元定义：＿＿（随 Q-1）
-- Q-3 写通道：＿＿（store fn / ext 桥）
-- Q-4 断言域：＿＿（收敛口径 / 其他）
-- 裁定日期：＿＿
-- 影响：若裁 B/C → T-03 与工作量重估（回 work 前提出）。
+- **Q-1 裁定：C'（用户方案）**——canvas **并非不存在**（起草期 F1/F2
+  结论**作废**，见 §6 勘误）：desktop 底层 iced 有 canvas，Plan 563 已把
+  `canvas` 元素升为 AutoUI 双轨组件（场景契约=笔笔画），charts/svg 组件
+  借助它在案。graph_view 真渲染的路径 = **场景契约扩容（图元+命中）**，
+  值得独立计划——划出 078，草案落
+  `attachments/078-canvas-graph-scene-plan-draft.md`，正式立项归
+  auto-lang 侧 auto-plan:new。
+- **Q-2 裁定：随 Q-1 划出**——graph_view 宿主面单元（壳+filter_domains）
+  本计划（078）**不做**，记 DEBT 随独立计划跟踪；078 的 T-03 撤销，
+  gallery 20 真件口径（18+2，无 graph_view）。
+- **Q-3 裁定**：settings 桌面数据结构 = VM 堆 map（hashmap 族）；
+  括号写静默吞 handler 确认为 **VM 实现问题**（根因：codegen index-assign
+  无 map 路由 + engine SET_ELEM 数组专用，读侧 auto.hashmap.get 有路由——
+  双臂不对称）。最小复现包落
+  `attachments/078-vm-map-write-repro/`（实录 RuntimeError "Invalid array
+  ID"），**handoff auto-lang VM 侧修复**。修复前 T-02 写通道按 store fn
+  深沉执行（vue 轨执行面，不受 bug 影响）。
+- **Q-4 裁定**：AutoUI 底层有 View::Slider（a2r 轨 PLAN-025 完整）+
+  snapshot Slider kind，唯 VM/aura 视图树臂缺失 + vue 缺 type="range"——
+  **补全**（不新增组件），随 Q-1 独立计划；修复前 078 的 VM 断言域收敛
+  维持（checkbox/按钮驱动投影，P-13 通道）。
+- 裁定日期：2026-09-19
+- 影响：078 范围修订（T-03 撤销→DEBT；T-01/T-02/T-04 依原授权执行）；
+  077 gallery 21 真件口径改为 20（graph_view 单元随独立计划补位）。
+
+## 6. 事实勘误（终裁调查修正）
+
+| 原记录 | 勘正 | 证据 |
+| --- | --- | --- |
+| F1/F2"VM 无 canvas 词位/快照无画布节点" | **作废**——canvas 元素 Plan 563 双轨已在（场景=笔笔画契约）；起草期仅 grep 了 ark 轨 | aura_view_builder.rs:1976/11800、schema.rs:2405、vue.rs:6625、view.rs:1016-1046 |
+| "Q-1 选项 C = 上游补 canvas 词位（时序不可控）" | 改判为**用户选定路径 C'**：契约已存在，缺的是图元场景扩容（形状/标签/命中）——工作量有界、可立项 | CanvasScene{strokes} 契约 + charts/svg 先例 |
+| P-12"slider 词位 VM 缺席 = 组件不存在" | 精确化：a2r 轨完整（PLAN-025）、snapshot kind 在案，缺 = aura_view_builder 臂 + vue type="range" 注入——**补全**而非新造 | rust.rs:3706、snapshot_builder.rs:348、vue.rs:9035 |

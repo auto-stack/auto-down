@@ -1,0 +1,7 @@
+name: "p078-map-write-repro"
+title: "VM map bracket-write repro"
+version: "0.1.0"
+scene: "ui"
+render: "vue"
+window: "800x600"
+shadcn: off

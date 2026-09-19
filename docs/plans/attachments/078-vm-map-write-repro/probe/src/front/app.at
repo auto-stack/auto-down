@@ -1,0 +1,32 @@
+// 078-vm-map-write-repro — 最小复现：map 括号写 VM 轨静默吞 handler。
+// 预期：按 DoIt 后 count=1 且 readback="2"。
+// 实际（VM 轨，auto.exe v0.4.2-1378）：handler 在 .m["b"] = 2 处中止，
+// count 恒 0；stderr 报 RuntimeError（见 README.md 实录）。
+widget App {
+    msg Msg { DoIt }
+
+    model {
+        var m map = { a: 1 }
+        var count int = 0
+        var readback str = ""
+    }
+
+    view {
+        col (class: "flex-col gap-2 p-3") {
+            button (text: "DoIt", variant: "text") { onclick: .DoIt }
+            text .readback { class: "text-xs" }
+        }
+    }
+
+    on {
+        .Init -> {
+            .readback = "init"
+        }
+        .DoIt -> {
+            .m["b"] = 2
+            var cur = .m["b"]
+            .readback = f"${cur}"
+            .count = .count + 1
+        }
+    }
+}

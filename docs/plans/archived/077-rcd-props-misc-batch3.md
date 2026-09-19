@@ -353,3 +353,11 @@ auto-plan-work 进入 executing）。
   拆除 0 败）→ auto-lang 兄弟 pass 1 即净（guard 双净实证）→ worktree
   双移除 → 分支 plan-077-dev 删除（auto-down was 33e1c8a/master a778c27
   含其祖先；auto-lang 兄弟 detached 无分支）→ 组目录 down-077/ 移除。
+  **补记（清理后实证）**：落地上先摘链后 merge（wt-guard 双净 @ merge 前
+  复跑 clean——guard 纪律在落地检查点即满足）；`git worktree remove
+  --force` 双侧（残留仅 tmp scratch 补丁脚本，证据已录本档与归档件）；
+  auto-lang 目录盘上残留（git 注销先于盘删）经内容核查（8974 文件纯
+  checkout 无 reparse point）后 rm -rf；双侧 `worktree prune` 后注册零
+  残留（auto-down list grep down-077=0、auto-lang 侧=0）；plan-077-dev
+  分支双侧零残（auto-lang 无此分支）；组目录 down-077/ 移除后 .wt 下
+  grep 零命中。PLAN-077:r1 五 checkpoint 全闭环。

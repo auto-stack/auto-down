@@ -43,20 +43,20 @@
 
 | 件 | 行数 | 耦合事实（ext=TS ext 通道引用数） | 流粒度等价物 |
 | --- | --- | --- | --- |
-| agenda_panel.at | 131 | ext:3 | desktop 闪卡流内联（LoadCards/Grade） |
+| agenda_panel.at | 131 | ext:3 | desktop 闪卡流内联（LoadCards/Grade）——【077】已下沉 .at（tab_path/agenda_display 行构造+watch 编排 get_agenda 契约直用），ext 薄化，VM twin 双绿 |
 | backlinks_panel.at | 117 | ext:4（useTabsStore + fetchBacklinksSafe） | desktop 反链流内联（get_backlinks）——【074】已下沉 .at（模块 fn+watch 编排+契约通道），ext 薄化，VM twin 双绿 |
 | outgoing_links_panel.at | 102 | ext:3 | desktop 出链流内联（get_outlinks）——【074】已下沉 .at 同款，VM twin 双绿 |
 | outline_panel.at | 71 | ext:3（useBlocksStore/useTabsStore）；**F-6 缺件即红实证单元（T-03：VM 直挂=ext no-op stub 静默降级）+ gallery 样板（twin 双绿）**——【074】outline_headings 已下沉 .at（正式化） | — |
 | unlinked_references_panel.at | 97 | ext:3——【074】已下沉 .at（高亮 regex 留 ext 桥），VM twin 双绿 | — |
-| properties_panel.at | 267 | ext:3 | — |
-| recent_files_panel.at | 113 | ext:3 | — |
+| properties_panel.at | 267 | ext:3 | —【077】已下沉 .at（sync_entries map 迭代 P-9 vue 执行面+inferType 逐值桥+try_add_property/with_prop_display/tabs_active_tab 模块 fn；JSON 域/typeof 强转域留 ext——T-00 校正），VM twin 双绿 |
+| recent_files_panel.at | 113 | ext:3 | —【077】已下沉 .at（recent_files_with_time 行构造，time 经 ext formatTime 桥逐行预计算——Q-3），ext 薄化，VM twin 双绿 |
 | search_panel.at | 177 | ext:3 | desktop 搜索流内联（search_pages，.type 撞名→search_pages 规避在案）——【076】已下沉 .at（debounce 闭包体 try/catch/finally + search_pages 契约通道 + with_search_display 行构造），ext 薄化，VM twin 双绿 |
 | command_palette.at | 184 | ext:4——【076】已下沉 .at（过滤链/构造/模运算 + runPaletteItem 拆沉）+ 缺件红占位**转正**（VM twin 双绿，负例由 editor_tab 续任） | — |
 | quick_switcher.at | 165 | ext:3——【076】已下沉 .at（collect_files 递归 / filter_files CJK 链 / 模运算），ext 薄化至热键/焦点，VM twin 双绿 | — |
-| theme_popover.at | 120 | ext:3 | — |
-| create_page_prompt.at | 92 | ext:2 | — |
-| workspace_opener.at | 133 | ext:3 | desktop OpenWs 流（showDirectoryPicker VM 通道=目录选择器裁定待办） |
-| flashcard_modal.at | 222 | ext:2 | desktop 闪卡流内联 |
+| theme_popover.at | 120 | ext:3 | —【077】已下沉 .at（theme_accents 静态五 accent 字面量列表——Q-4 探针双轨绿关闭），ext 薄化至 re-export+DOM 守卫，VM twin 双绿 |
+| create_page_prompt.at | 92 | ext:2 | —【077】极薄件零 sink 面（wikiTitleToPath regex 桥/CodeTag 留 ext），VM 渲染臂 twin 双绿（批次价值=渲染臂首验+props/emits 契约） |
+| workspace_opener.at | 133 | ext:3 | desktop OpenWs 流（showDirectoryPicker VM 通道=目录选择器裁定待办）——【077】已下沉 .at（编排链+workspace_error_text 模块 fn）+ **Q-1 裁定销号（2026-09-19）**：VM twin 断言域 = path 输入 + Open 流形状（busy 复位/error 清位/root 投影），picker 按钮（showDirectoryPicker=window 级 DOM）不进 VM 断言（F-1 口径同款）；desktop 装配走自家 menubar action（app.at:103 ws.open）不消费 picker 通道——VM twin 双绿 |
+| flashcard_modal.at | 222 | ext:2 | desktop 闪卡流内联——【077】已下沉 .at（Init/watch/Rate 三处编排 try/catch finally 直调 get_due_cards/review_card 契约+errorMessage strict 桥；card_at/card_question/card_answer/counter_label 模块 fn），ext 薄化，VM twin 双绿 |
 | graph_sidebar.at | 162 | ext:3 | desktop 图谱流内联（get_graph） |
 | graph_controls.at | 216 | ext:4（+styleblock 伴生） | — |
 

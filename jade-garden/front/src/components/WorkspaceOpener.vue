@@ -1,7 +1,7 @@
 <!-- WorkspaceOpener component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { openWorkspaceFlow, chooseWorkspaceDir, clearWorkspaceError, workspaceErrorText, WorkspaceLogo, FolderOpen, Info } from '../../auto/src/front/utils/workspace_opener_ext'
+import { chooseWorkspaceDir, clearWorkspaceError, WorkspaceLogo, FolderOpen, Info } from '../../auto/src/front/utils/workspace_opener_ext'
 import { useWorkspaceStore, useFileTreeStore } from '../../auto/src/front/utils/workspace_opener_ext'
 
 const workspaceStore = useWorkspaceStore()
@@ -11,7 +11,7 @@ const fileTreeStore = useFileTreeStore()
 const path = ref<string>('')
 const busy = ref<boolean>(false)
 
-const error_text = computed<any>(() => workspaceErrorText(workspaceStore))
+const error_text = computed<any>(() => workspace_error_text(workspaceStore))
 
 const emit = defineEmits<{
   Open: []
@@ -31,8 +31,10 @@ function Open(): void {
   let p = path.value.trim();
   if (p != '') {busy.value = true;
   clearWorkspaceError(workspaceStore);
-  let pr = openWorkspaceFlow(workspaceStore, fileTreeStore, p);
-  pr.finally(() => { busy.value = false;
+  let pr = workspaceStore.open(p);
+  let pr2 = pr.then(() => { return fileTreeStore.load();
+   });
+  pr2.finally(() => { busy.value = false;
    });
   }
 
@@ -43,6 +45,13 @@ function PathInput(e: any): void {
   path.value = e.target.value;
 
   emit('PathInput', e)
+}
+
+function workspace_error_text(ws_in: any): string {
+  let out: string = '';
+  if (ws_in.error != null) {out = ws_in.error;
+  }
+  return out;
 }
 
 
@@ -66,7 +75,7 @@ function PathInput(e: any): void {
           <button class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" :title="'选择文件夹'" :type="'button'" @click="ChooseDir">
             <component :is="(FolderOpen) as any" class="h-5 w-5" />
           </button>
-          <input class="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-primary/30 transition-shadow focus:ring-2" :placeholder="'粘贴完整目录路径，例如 D:\\\\wiki\\\\demo'" :type="'text'" v-model="path" @input="PathInput($event)" @keydown.enter="Open" />
+          <input class="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-primary/30 transition-shadow focus:ring-2" :placeholder="'粘贴完整目录路径，例如 D:\\\\wiki\\\\demo'" :type="'text'" v-model="path" @input="PathInput(($event.target as HTMLInputElement).value)" @keydown.enter="Open" />
           <button class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50" :disabled="busy" @click="Open">
             <span>Open</span>
           </button>

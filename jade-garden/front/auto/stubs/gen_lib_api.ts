@@ -317,3 +317,26 @@ export async function get_unlinked_refs(_title: string): Promise<any> {
 export async function search_pages(_q: string, _limit: number): Promise<any> {
   return { results: [] }
 }
+
+// PLAN-077 T-02: agenda_panel's watch body calls the agenda contract fn
+// from its .at body (`use back.api: get_agenda`), so the generated SFC
+// emits `import { get_agenda } from '@/lib/api'`. Gen-side the name
+// resolves here; in the deployed front tree the sed-rewritten import lands
+// on the agenda_panel ext shim (contract-name alias of the hand-written
+// client face).
+export async function get_agenda(_days: number): Promise<any> {
+  return { groups: [] }
+}
+
+// PLAN-077 T-03: flashcard_modal's handler bodies call the SRS contract fns
+// from the .at (`use back.api: get_due_cards, review_card`), so the
+// generated SFC emits `import { get_due_cards, review_card } from
+// '@/lib/api'`. Gen-side the names resolve here; in the deployed front tree
+// the sed-rewritten import lands on the flashcard_modal ext shim.
+export async function get_due_cards(_limit: number): Promise<any> {
+  return { cards: [] }
+}
+
+export async function review_card(_page_path: string, _block_id: string, _grade: number): Promise<any> {
+  return {}
+}

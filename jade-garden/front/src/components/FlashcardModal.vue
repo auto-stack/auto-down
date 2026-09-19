@@ -1,8 +1,13 @@
 <!-- FlashcardModal component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Brain, getDueCardsSafe, reviewCardSafe, cardAt, cardQuestion, cardAnswer, counterText } from '../../auto/src/front/utils/flashcard_modal_ext'
+import { Brain, errorMessage } from '../../auto/src/front/utils/flashcard_modal_ext'
 
+import { get_due_cards, review_card } from '../../auto/src/front/utils/flashcard_modal_ext'
+
+const props = defineProps<{
+  open: boolean
+}>()
 
 const cards = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -11,19 +16,15 @@ const show_answer = ref<boolean>(false)
 const error = ref<string>('')
 
 const is_open = computed<boolean>(() => props.open)
-const current = computed<any>(() => cardAt(cards.value, index.value))
-const counter_text = computed<any>(() => counterText(index.value, cards.value.length))
-const question_text = computed<any>(() => cardQuestion(current.value))
-const answer_text = computed<any>(() => cardAnswer(current.value))
+const current = computed<any>(() => card_at(cards.value, index.value))
+const counter_text = computed<any>(() => counter_label(index.value, cards.value.length))
+const question_text = computed<any>(() => card_question(current.value))
+const answer_text = computed<any>(() => card_answer(current.value))
 const has_error = computed<boolean>(() => !!(error.value))
 const show_loading = computed<boolean>(() => loading.value)
 const show_error = computed<boolean>(() => !loading.value && has_error.value)
 const show_empty = computed<boolean>(() => !loading.value && !has_error.value && cards.value.length === 0)
 const show_cards = computed<boolean>(() => !loading.value && !has_error.value && cards.value.length > 0)
-
-const props = defineProps<{
-  open: boolean
-}>()
 
 const emit = defineEmits<{
   Init: []
@@ -32,35 +33,35 @@ const emit = defineEmits<{
   'update:open': [boolean]
 }>()
 
-watch(is_open, () => {
+watch(is_open, async () => {
   if (is_open.value) {loading.value = true;
   error.value = '';
-  let p = getDueCardsSafe();
-  p.then((res: any) => { if (res.error == '') {cards.value = res.cards;
+  try {let res = await get_due_cards(50);
+  cards.value = res.cards;
   index.value = 0;
   show_answer.value = false;
-  }if (res.error != '') {error.value = res.error;
-  }loading.value = false;
-   });
+  } catch (e) {error.value = errorMessage(e);
+  } finally {loading.value = false;
+  }
   }
 })
 
-function Rate(grade: any): void {
+async function Rate(grade: any): Promise<void> {
   let card = current.value;
-  if (card != null) {let p = reviewCardSafe(card.page_path, card.block_id, grade);
-  p.then((res: any) => { if (res.error != '') {error.value = res.error;
-  }if (res.error == '') {index.value = index.value + 1;
+  if (card != null) {try {await review_card(card.page_path, card.block_id, grade);
+  index.value = index.value + 1;
   show_answer.value = false;
   if (index.value >= cards.value.length) {loading.value = true;
   error.value = '';
-  let p2 = getDueCardsSafe();
-  p2.then((res2: any) => { if (res2.error == '') {cards.value = res2.cards;
+  try {let res2 = await get_due_cards(50);
+  cards.value = res2.cards;
   index.value = 0;
   show_answer.value = false;
-  }if (res2.error != '') {error.value = res2.error;
-  }loading.value = false;
-   });
-  }} });
+  } catch (e2) {error.value = errorMessage(e2);
+  } finally {loading.value = false;
+  }
+  }} catch (e) {error.value = errorMessage(e);
+  }
   }
 
   emit('Rate', grade)
@@ -78,16 +79,49 @@ function update_open(v: any): void {
   emit('update:open', v)
 }
 
-onMounted(() => {
+function card_at(cards_in: any, index_in: any) {
+  let out = null;
+  let i: number = 0;
+  for (const c of cards_in) {if (i == index_in && out == null) {out = c;
+  }i = i + 1;
+  }
+  return out;
+}
+
+function card_question(card_in: any): string {
+  let out: string = '';
+  if (card_in != null) {let q = card_in.question;
+  let r = card_in.raw;
+  if (q != null && q != '') {out = q;
+  }if (q == null || q == '') {if (r != null) {out = r;
+  }}}
+  return out;
+}
+
+function card_answer(card_in: any): string {
+  let out: string = '';
+  if (card_in != null) {let a = card_in.answer;
+  let r = card_in.raw;
+  if (a != null && a != '') {out = a;
+  }if (a == null || a == '') {if (r != null) {out = r;
+  }}}
+  return out;
+}
+
+function counter_label(index_in: any, count_in: any): string {
+  return `${index_in + 1} / ${count_in}`;
+}
+
+onMounted(async () => {
   if (props.open) {loading.value = true;
   error.value = '';
-  let p = getDueCardsSafe();
-  p.then((res: any) => { if (res.error == '') {cards.value = res.cards;
+  try {let res = await get_due_cards(50);
+  cards.value = res.cards;
   index.value = 0;
   show_answer.value = false;
-  }if (res.error != '') {error.value = res.error;
-  }loading.value = false;
-   });
+  } catch (e) {error.value = errorMessage(e);
+  } finally {loading.value = false;
+  }
   }
 })
 

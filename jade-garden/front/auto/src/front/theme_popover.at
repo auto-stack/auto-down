@@ -2,6 +2,13 @@
 //
 // Auto-generated replacement for the hand-written
 // front/src/components/ThemePopover.vue (plan 011 Phase 5.1 batch 2).
+//
+// PLAN-077 T-01 sink (mode doc §6.5): the ext's static five-accent list
+// moved INTO the DSL — theme_accents is a plain object-literal list return
+// (Q-4 probe green both tracks: vue emits the array literal, VM renders the
+// rows — mode doc §6.0#3). The ext keeps exactly: the re-exports, and the
+// isOutsideThemePopover DOM guard (.Close 恒真化保真留档).
+//
 // Regenerate:
 //
 //   cd jade-garden/front/auto
@@ -28,21 +35,33 @@
 // - The `open` prop is read through the is_open computed (the view `if`
 //   then binds a computed, same shape as the editor node views'
 //   selected_state pattern).
-// - The accents list comes from the extension's themeAccents() call: a
-//   computed over a dot-ref to an imported const is mis-typed
-//   computed<number> (DSL name heuristic), a Call body emits computed<any>.
+// - The accents list comes from the sunk theme_accents module fn (a
+//   computed over a Call body emits computed<any> — README gap 28).
+
+// Sunk from ext themeAccents (PLAN-077 T-01): the original's static accents
+// list verbatim — object-literal keys/labels/colors, no loop needed (Q-4:
+// VM 全键形状锁定域探针双轨绿，mode doc §6.0#3).
+fn theme_accents() List {
+    return [
+        { key: "indigo", label: "Indigo", color: "hsl(238 55% 58%)" },
+        { key: "emerald", label: "Emerald", color: "hsl(160 60% 38%)" },
+        { key: "rose", label: "Rose", color: "hsl(350 70% 55%)" },
+        { key: "amber", label: "Amber", color: "hsl(38 90% 50%)" },
+        { key: "slate", label: "Slate", color: "hsl(220 10% 45%)" },
+    ]
+}
 
 widget ThemePopover(open: bool) {
     use {
         composable: useThemeStore from "src/front/utils/theme_popover_ext.ts"
-        fn: Sun, Moon, themeAccents, isOutsideThemePopover from "src/front/utils/theme_popover_ext.ts"
+        fn: Sun, Moon, isOutsideThemePopover from "src/front/utils/theme_popover_ext.ts"
     }
 
     msg Msg { Close, SetLight, SetDark, SetAccent }
 
     computed {
         is_open => .open
-        accents => themeAccents()
+        accents => theme_accents()
     }
 
     view {

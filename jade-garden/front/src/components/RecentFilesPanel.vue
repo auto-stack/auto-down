@@ -1,14 +1,14 @@
 <!-- RecentFilesPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { recentFilesWithTime, removeRecent, Clock, X, Trash2 } from '../../auto/src/front/utils/recent_files_panel_ext'
+import { formatTime, removeRecent, Clock, X, Trash2 } from '../../auto/src/front/utils/recent_files_panel_ext'
 import { useRecentFilesStore, useTabsStore } from '../../auto/src/front/utils/recent_files_panel_ext'
 
 const recentFilesStore = useRecentFilesStore()
 const tabsStore = useTabsStore()
 
 
-const files = computed<any>(() => recentFilesWithTime(recentFilesStore.files))
+const files = computed<any>(() => recent_files_with_time(recentFilesStore.files))
 const has_files = computed<boolean>(() => files.value.length > 0)
 const show_empty = computed<boolean>(() => files.value.length === 0)
 const ul_tag = computed<string>(() => 'ul')
@@ -36,6 +36,13 @@ function Remove(rf: any): void {
   removeRecent(rf.path);
 
   emit('Remove', rf)
+}
+
+function recent_files_with_time(files_in: any): any {
+  let out: any[] = [];
+  for (const f of files_in) {out.push({ path: f.path, title: f.title, openedAt: f.openedAt, time: formatTime(f.openedAt) });
+  }
+  return out;
 }
 
 

@@ -220,6 +220,26 @@ ext/视图样式层；每个 web 新特性附 VM 复刻注记（gap 台账）。
   编译器侧：api walker 补 Closure/Lambda 臂 + 闭包体 api 调用 async
   前缀，落 auto-lang `plan-076-dev`（58f2af2，074 三补丁后第四件，
   待折回）。
+- **PLAN-077 RC-D 批次 3（属性/文件/主题/闪卡/日程七件下沉，2026-09-19）**：
+  properties_panel/recent_files_panel/create_page_prompt/workspace_opener/
+  theme_popover/flashcard_modal/agenda_panel 七件 ext 逻辑下沉 .at（模块 fn
+  + handler/watch try/catch finally 编排 + `use back.api: get_agenda/
+  get_due_cards/review_card` 契约直用 + gen stub；workspace 走 store facade
+  通道——openWorkspaceFlow 消解为显式 promise 链保真 rejection 透传；ext
+  薄化至 re-export/Q-3 时间桥/JSON 域/typeof 强转域——T-00 校正 properties
+  预分类 sink 6→4）。**两个新域裁定**：JSON 域（JSON.stringify vue 透传/
+  VM 无词位→ext 桥）与时间格式化域（Date/toLocale*→行构造沉 + 格式化字段
+  ext 桥逐行预计算）；**Q-4 关闭**（静态 Obj 字面量列表 return 双轨绿）。
+  探针结论 P-9（map 键值迭代 VM 轨零迭代——P614 同族纪律不补编译器，twin
+  配对列表播种）/P-10（try/finally 无 catch 解析红→空 catch/链式形态）落
+  模式文档 §6.0。**workspace_opener VM 通道裁定销号**（072 台账 Q-1：VM
+  twin 断言域=path+Open 流形状，picker 按钮 window 级 DOM 不进域，desktop
+  装配走 menubar action）。gallery gate 双臂全绿 **18 真件单元** + editor_tab
+  占位 + 截图基线 18 张在库（新增 7，旧 11 零漂移）；front e2e 全量 24
+  passed（11-properties/12-flashcards 直接相关）+ desktop vm-smoke split/
+merged 双模 PASS。逐 fn 分类表（34 实义 fn）/desktop 挂载裁定登记：
+  `docs/plans/attachments/074-sink-mode.md` §6/§4.2。编译器零新增补丁
+  （exe ≥ v0.4.2-1305 同源含 074/076 折回全量）。
 - **PLAN-075 L2 首证（2026-09-19）**：首批 L1 基线存量 9 单元（073 五面 +
   074 四件）跑完 design 30 §6 判定——判定记录
   `docs/plans/attachments/075-bp-extraction-record.md`（U-1 status_bar 骨架+

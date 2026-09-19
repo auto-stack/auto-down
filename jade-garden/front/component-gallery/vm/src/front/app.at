@@ -81,8 +81,81 @@ fn cp_filter(items, qstr) List {
     return rows
 }
 
+// —— theme_popover twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/theme_popover.at 的 theme_accents——G-3 各持一份；
+// PLAN-077 T-01。静态五 accent Obj 字面量列表 return——Q-4 探针同形，
+// VM Obj 全键形状锁定域实证面）。
+fn tp_theme_accents() List {
+    return [
+        { key: "indigo", label: "Indigo", color: "hsl(238 55% 58%)" },
+        { key: "emerald", label: "Emerald", color: "hsl(160 60% 38%)" },
+        { key: "rose", label: "Rose", color: "hsl(350 70% 55%)" },
+        { key: "amber", label: "Amber", color: "hsl(38 90% 50%)" },
+        { key: "slate", label: "Slate", color: "hsl(220 10% 45%)" },
+    ]
+}
+
+// —— agenda twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/agenda_panel.at 的 agenda_display——G-3 各持一份；
+// PLAN-077 T-02。markerClass switch → to_upper 互斥布尔 if 链（P-7 对称
+// 词位 VM 面）+ `title || page_path` 显式双守卫；formatted_date 属 ext
+// formatDate 桥（Q-3 TS 域）——twin 以 date raw 投影，不镜像格式化）。
+fn ag_display_probe(groups_in) List {
+    var out List = []
+    for g in groups_in {
+        var tasks List = []
+        for tk in g.tasks {
+            var mu = tk.marker.to_upper()
+            var muted = false
+            var primary = false
+            var done = false
+            if mu == "DOING" || mu == "NOW" {
+                primary = true
+            }
+            if mu == "DONE" {
+                done = true
+            }
+            if mu != "DOING" && mu != "NOW" && mu != "DONE" {
+                muted = true
+            }
+            var line = tk.page_path
+            if tk.title != null && tk.title != "" {
+                line = tk.title
+            }
+            tasks.push({
+                page_path: tk.page_path,
+                marker: tk.marker,
+                priority: tk.priority,
+                content: tk.content,
+                marker_muted: muted,
+                marker_primary: primary,
+                marker_done: done,
+                line: line,
+            })
+        }
+        out.push({ date: g.date, tasks: tasks })
+    }
+    return out
+}
+
+// —— flashcard twin 模块 fn（derived 副本，derived-from
+// front/auto/src/front/flashcard_modal.at 的 card_at——G-3 各持一份；
+// PLAN-077 T-03。越界 null 守卫的计数走查——无索引表达式双轨域，
+// P-9 家族纪律同款）。
+fn fm_card_at(cards_in, index_in) {
+    var out = null
+    var i = 0
+    for c in cards_in {
+        if i == index_in && out == null {
+            out = c
+        }
+        i = i + 1
+    }
+    return out
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd }
 
     model {
         var unit str = "status_bar"
@@ -156,6 +229,60 @@ widget App {
         var cp_count int = 0
         var cp_selected int = 0
         var cp_has bool = false
+        // —— fixture：create_page_prompt 面（PLAN-077 T-01 twin：cpp_path
+        // derived 值播种——wikiTitleToPath regex 桥 TS 域不入 VM（F-1），
+        // 双按钮 emit 契约以 cpp_choice 投影）——
+        var cpp_title str = ""
+        var cpp_path str = ""
+        var cpp_choice str = ""
+        // —— fixture：theme_popover 面（PLAN-077 T-01 twin：tp_accents 由
+        // tp_theme_accents 字面量列表真跑（Q-4 实证面）；tp_mode 由
+        // SetLight/SetDark 按钮驱动投影——theme facade 交互通道同形）——
+        var tp_accents = []
+        var tp_count int = 0
+        var tp_mode str = "light"
+        var tp_has bool = false
+        // —— fixture：recent_files 面（PLAN-077 T-02 twin：rf_rows 播种
+        // 两行（time 为 raw 值——formatTime ext 桥 TS 域不入 VM）；rf_remove
+        // 重建去首行（避 .remove → .splice 误射域），计数 2→1）——
+        var rf_rows = []
+        var rf_count int = 0
+        var rf_has bool = false
+        // —— fixture：agenda 面（PLAN-077 T-02 twin：ag_groups 由
+        // ag_display_probe 对 fixture 组真跑而来——行构造 + marker 旗标 +
+        // title 守卫同形；ag_count = 任务总数投影）——
+        var ag_groups = []
+        var ag_count int = 0
+        var ag_has bool = false
+        // —— fixture：flashcard_modal 面（PLAN-077 T-03 twin：fm_cards
+        // 播种两卡（第二卡 question/answer 空串——raw 回落面同构）；
+        // fm_reveal/fm_rate 驱动 show_answer/index 投影（fm_card_at 计数
+        // 走查取当前卡——契约调用面归 vue 臂，twin 不镜像，F-1）——
+        var fm_cards = []
+        var fm_index int = 0
+        var fm_show_answer bool = false
+        var fm_counter str = ""
+        var fm_question str = ""
+        var fm_answer str = ""
+        // —— fixture：workspace_opener 面（PLAN-077 T-04 twin，Q-1 裁定：
+        // 断言域 = path 输入 + Open 流形状（busy 置位→复位 + error 清位 +
+        // root 投影）；契约调用面归 vue 臂 shim（twin 无后端，不镜像），
+        // picker 按钮（window 级 DOM）不进断言域——F-1。wo_error 预置
+        // 'boom' 验 error 清位臂）——
+        var wo_path str = ""
+        var wo_busy bool = false
+        var wo_error str = ""
+        var wo_root str = ""
+        // —— fixture：properties_panel 面（PLAN-077 T-05 twin 压轴：
+        // pp_rows 分派型播种——sync_entries 的 map 迭代 P-9 VM 零迭代 +
+        // inferType ext 桥 TS 域，均不入 twin，行以派定型 fixture 播种；
+        // pp_toggle 翻转布尔行（ToggleBool 直写臂形状）+ pp_add 增行
+        // （try_add_property 成功臂形状）——
+        var pp_rows = []
+        var pp_count int = 0
+        var pp_bool_val bool = true
+        var pp_bool_label str = "true"
+        var pp_has bool = false
     }
 
     computed {
@@ -170,6 +297,20 @@ widget App {
         show_quick_switcher => .unit == "quick_switcher"
         show_search_panel => .unit == "search_panel"
         show_command_palette => .unit == "command_palette"
+        show_create_page_prompt => .unit == "create_page_prompt"
+        show_theme_popover => .unit == "theme_popover"
+        show_recent_files => .unit == "recent_files"
+        show_agenda => .unit == "agenda"
+        show_flashcard_modal => .unit == "flashcard_modal"
+        show_workspace_opener => .unit == "workspace_opener"
+        show_properties_panel => .unit == "properties_panel"
+        pp_marker => f"unit=properties_panel rows:${.pp_count} bool:${.pp_bool_label}"
+        wo_marker => f"unit=workspace_opener busy:${.wo_busy} err:${.wo_error}"
+        fm_marker => f"unit=flashcard_modal idx:${.fm_index}"
+        rf_marker => f"unit=recent_files rows:${.rf_count}"
+        ag_marker => f"unit=agenda rows:${.ag_count}"
+        cpp_marker => f"unit=create_page_prompt path:${.cpp_path} choice:${.cpp_choice}"
+        tp_marker => f"unit=theme_popover accents:${.tp_count} mode:${.tp_mode}"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
@@ -233,6 +374,34 @@ widget App {
                 }
                 button (text: "command_palette", variant: "text") {
                     onclick: .Select("command_palette")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "create_page_prompt", variant: "text") {
+                    onclick: .Select("create_page_prompt")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "theme_popover", variant: "text") {
+                    onclick: .Select("theme_popover")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "recent_files", variant: "text") {
+                    onclick: .Select("recent_files")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "agenda", variant: "text") {
+                    onclick: .Select("agenda")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "flashcard_modal", variant: "text") {
+                    onclick: .Select("flashcard_modal")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "workspace_opener", variant: "text") {
+                    onclick: .Select("workspace_opener")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "properties_panel", variant: "text") {
+                    onclick: .Select("properties_panel")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -551,6 +720,204 @@ widget App {
                     }
                 }
             }
+            if .show_create_page_prompt {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 rounded-lg border border-zinc-200 bg-zinc-50 p-3") {
+                        text "Create missing page?" { class: "text-sm font-semibold text-zinc-800" }
+                        row (class: "items-center gap-1 pt-2") {
+                            text f"[[${.cpp_title}]]" { class: "text-xs text-zinc-600" }
+                            text "does not exist yet." { class: "text-xs text-zinc-500" }
+                        }
+                        row (class: "items-center gap-1 pt-1") {
+                            text "Will be created as" { class: "text-xs text-zinc-500" }
+                            text .cpp_path { class: "rounded bg-zinc-200 px-1 py-0.5 text-xs text-zinc-800" }
+                        }
+                        row (class: "justify-end gap-1 pt-2") {
+                            button (text: "Cancel", variant: "text") {
+                                onclick: .CppCancel
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600"
+                            }
+                            button (text: "Create", variant: "text") {
+                                onclick: .CppCreate
+                                class: "rounded border border-zinc-300 bg-zinc-800 px-2 py-0.5 text-xs text-white"
+                            }
+                        }
+                        text .cpp_marker { class: "pt-2 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_theme_popover {
+                col (class: "flex-col p-3") {
+                    col (class: "w-56 rounded-xl border border-zinc-200 bg-zinc-50 p-3") {
+                        text "Appearance" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        row (class: "items-center gap-1") {
+                            button (text: "SetLight", variant: "text") {
+                                onclick: .TpSetLight
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "SetDark", variant: "text") {
+                                onclick: .TpSetDark
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text "Accent" { class: "mb-1 mt-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .tp_has {
+                            dyn (.ul_tag) {
+                                class: "grid grid-cols-1 gap-1",
+                                for a in .tp_accents {
+                                    dyn (.li_tag) {
+                                        key: a.key,
+                                        class: "flex items-center gap-1 text-xs text-zinc-700",
+                                        text a.label
+                                        text a.color
+                                    }
+                                }
+                            }
+                        }
+                        text .tp_marker { class: "pt-2 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_recent_files {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Recent" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .rf_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-0.5",
+                                for rf in .rf_rows {
+                                    dyn (.li_tag) {
+                                        key: rf.path,
+                                        class: "cursor-pointer rounded px-2 py-1.5 text-xs text-zinc-800",
+                                        text rf.title
+                                        text rf.path
+                                        text rf.time
+                                    }
+                                }
+                            }
+                        }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "rf_remove", variant: "text") {
+                                onclick: .RfRemove
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "rf_clear", variant: "text") {
+                                onclick: .RfClear
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .rf_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_agenda {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-md border border-zinc-200 bg-zinc-50 p-2") {
+                        text "Agenda" { class: "mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .ag_has {
+                            for g in .ag_groups {
+                                col (class: "flex-col gap-1 pb-2") {
+                                    text g.date { class: "text-[11px] font-medium text-zinc-500" }
+                                    dyn (.ul_tag) {
+                                        class: "space-y-1",
+                                        for tk in g.tasks {
+                                            dyn (.li_tag) {
+                                                key: tk.page_path,
+                                                class: "cursor-pointer rounded px-2 py-1 text-xs text-zinc-800",
+                                                text tk.marker
+                                                text f"[#${tk.priority}]"
+                                                text tk.content
+                                                text tk.line
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        text .ag_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_flashcard_modal {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 rounded-lg border border-zinc-200 bg-zinc-50 p-3") {
+                        row (class: "items-center gap-2 border-b border-zinc-200 pb-2") {
+                            text "Flashcards" { class: "text-sm font-semibold text-zinc-800" }
+                            text .fm_counter { class: "ml-auto text-xs text-zinc-500" }
+                        }
+                        col (class: "flex-col pt-2") {
+                            text .fm_question { class: "text-sm text-zinc-800" }
+                            if .fm_show_answer {
+                                text .fm_answer { class: "pt-1 text-sm text-emerald-700" }
+                            }
+                        }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "fm_reveal", variant: "text") {
+                                onclick: .FmReveal
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "fm_rate", variant: "text") {
+                                onclick: .FmRate
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .fm_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_workspace_opener {
+                col (class: "flex-col p-3") {
+                    col (class: "w-96 items-center rounded-xl border border-zinc-200 bg-zinc-50 p-4") {
+                        text "Jade Garden" { class: "text-lg font-bold text-zinc-800" }
+                        // path 输入投影 + Open 流（picker 按钮 = window 级
+                        // DOM，不进 twin 断言域——Q-1/F-1）
+                        row (class: "items-center gap-1 pt-2") {
+                            text .wo_path { class: "flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700" }
+                            button (text: "Open", variant: "text") {
+                                onclick: .WoOpen
+                                class: "rounded bg-zinc-800 px-2 py-0.5 text-xs text-white"
+                            }
+                        }
+                        if .wo_error != "" {
+                            text .wo_error { class: "pt-1 text-xs text-red-600" }
+                        }
+                        text .wo_root { class: "pt-1 text-xs text-zinc-500" }
+                        text .wo_marker { class: "pt-2 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
+            if .show_properties_panel {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Properties" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        if .pp_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-1",
+                                for r in .pp_rows {
+                                    dyn (.li_tag) {
+                                        key: r.key,
+                                        class: "flex items-center gap-1 text-xs text-zinc-800",
+                                        text r.key
+                                        text r.type
+                                    }
+                                }
+                            }
+                        }
+                        text .pp_bool_label { class: "pt-1 text-xs text-emerald-700" }
+                        row (class: "gap-1 pt-2") {
+                            button (text: "pp_toggle", variant: "text") {
+                                onclick: .PpToggle
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                            button (text: "pp_add", variant: "text") {
+                                onclick: .PpAdd
+                                class: "rounded border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-600"
+                            }
+                        }
+                        text .pp_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -627,6 +994,74 @@ widget App {
             if .cp_count > 0 {
                 .cp_has = true
             }
+            // create_page_prompt：cpp_path derived 值播种（wikiTitleToPath
+            // "引言" → "引言.ad"——regex 桥 TS 域，twin 播种等价投影）
+            .cpp_title = "引言"
+            .cpp_path = "引言.ad"
+            .cpp_choice = ""
+            // theme_popover：字面量列表真跑（Q-4 实证面）
+            .tp_accents = tp_theme_accents()
+            .tp_count = .tp_accents.len()
+            if .tp_count > 0 {
+                .tp_has = true
+            }
+            // recent_files：播种两行（time raw——formatTime 桥 TS 域）
+            .rf_rows.push({ path: "wiki/引言.ad", title: "引言", time: "09:41" })
+            .rf_rows.push({ path: "wiki/另页.ad", title: "另页", time: "08:15" })
+            .rf_count = .rf_rows.len()
+            if .rf_count > 0 {
+                .rf_has = true
+            }
+            // agenda：fixture 组经 ag_display_probe 真跑（行构造 + marker
+            // 旗标 + title 守卫同形），任务总数投影
+            var ag_fixture = [
+                { date: "2026-09-19", tasks: [
+                    { page_path: "wiki/引言.ad", title: "", marker: "TODO", priority: null, content: "写引言草稿" },
+                    { page_path: "wiki/方法.ad", title: "小节题", marker: "DONE", priority: "2", content: "方法验证" },
+                ] },
+                { date: "2026-09-20", tasks: [
+                    { page_path: "wiki/另页.ad", title: "", marker: "DOING", priority: null, content: "另页任务" },
+                ] },
+            ]
+            .ag_groups = ag_display_probe(ag_fixture)
+            .ag_count = 0
+            for gg in .ag_groups {
+                .ag_count = .ag_count + gg.tasks.len()
+            }
+            if .ag_count > 0 {
+                .ag_has = true
+            }
+            // flashcard_modal：播种两卡（第二卡 q/a 空串——raw 回落同构），
+            // counter/question 经 fm_card_at 走查投影（.Init 语义 =
+            // onMounted load 成功臂）
+            .fm_cards.push({ page_path: "wiki/引言.ad", block_id: "blk-1", raw: "引言原始文本", question: "写引言草稿", answer: "引言已成稿" })
+            .fm_cards.push({ page_path: "wiki/方法.ad", block_id: "blk-2", raw: "方法原始文本", question: "", answer: "" })
+            .fm_index = 0
+            .fm_show_answer = false
+            var c0 = fm_card_at(.fm_cards, .fm_index)
+            if c0 != null {
+                if c0.question != null && c0.question != "" {
+                    .fm_question = c0.question
+                }
+                if c0.question == null || c0.question == "" {
+                    .fm_question = c0.raw
+                }
+            }
+            .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
+            // workspace_opener：path 播种 + 预置 error（清位臂验证面）
+            .wo_path = "D:/tmp/wiki-demo"
+            .wo_busy = false
+            .wo_error = "boom"
+            .wo_root = ""
+            // properties_panel：行以派定型 fixture 播种（inferType 分派
+            // 已定——TS 域不入 twin），布尔行翻转/增行由按钮驱动
+            .pp_rows.push({ key: "title", value: "引言", type: "text" })
+            .pp_rows.push({ key: "published", value: true, type: "boolean" })
+            .pp_rows.push({ key: "tags", value: "a, b", type: "list" })
+            .pp_count = .pp_rows.len()
+            if .pp_count > 0 {
+                .pp_has = true
+            }
         }
 
         .Select(u) -> {
@@ -671,6 +1106,110 @@ widget App {
 
         .CpPrev -> {
             .cp_selected = (.cp_selected - 1 + .cp_count) % .cp_count
+        }
+
+        .CppCreate -> {
+            .cpp_choice = "create"
+        }
+
+        .CppCancel -> {
+            .cpp_choice = "cancel"
+        }
+
+        .TpSetLight -> {
+            .tp_mode = "light"
+        }
+
+        .TpSetDark -> {
+            .tp_mode = "dark"
+        }
+
+        .RfRemove -> {
+            // 重建去首行（避 .remove → .splice 误射域，074 removeRecent
+            // 注记同款）
+            var rest List = []
+            var i = 0
+            for r in .rf_rows {
+                if i > 0 {
+                    rest.push(r)
+                }
+                i = i + 1
+            }
+            .rf_rows = rest
+            .rf_count = .rf_rows.len()
+        }
+
+        .RfClear -> {
+            .rf_rows = []
+            .rf_count = 0
+        }
+
+        .FmReveal -> {
+            // 下沉 .Reveal 直写（show_answer = true）
+            .fm_show_answer = true
+            var c = fm_card_at(.fm_cards, .fm_index)
+            if c != null {
+                if c.answer != null && c.answer != "" {
+                    .fm_answer = c.answer
+                }
+                if c.answer == null || c.answer == "" {
+                    .fm_answer = c.raw
+                }
+            }
+        }
+
+        .FmRate -> {
+            // 下沉 .Rate 成功臂形状（契约调用面归 vue 臂 shim，twin 不
+            // 镜像——F-1）：index 前移 + 隐藏答案 + exhaustion 重载形状
+            // （末卡后 index 归零 + 第二卡 raw 投影 = 重载面等价投影）
+            .fm_index = .fm_index + 1
+            .fm_show_answer = false
+            .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
+            var c = fm_card_at(.fm_cards, .fm_index)
+            if c != null {
+                if c.question != null && c.question != "" {
+                    .fm_question = c.question
+                }
+                if c.question == null || c.question == "" {
+                    .fm_question = c.raw
+                }
+            }
+            if c == null {
+                .fm_index = 0
+                .fm_counter = f"${.fm_index + 1} / ${.fm_cards.len()}"
+                .fm_question = "(reloaded) 写引言草稿"
+            }
+        }
+
+        .WoOpen -> {
+            // 下沉 .Open 编排形状（契约调用面归 vue 臂 shim——twin 以
+            // 同步应答播种流完成态）：busy 置位 → error 清位 → root 投影
+            // → busy 复位（.finally 臂）
+            var p = .wo_path.trim()
+            if p != "" {
+                .wo_busy = true
+                .wo_error = ""
+                .wo_root = p
+                .wo_busy = false
+            }
+        }
+
+        .PpToggle -> {
+            // 下沉 .ToggleBool 直写臂形状（entry.value = !entry.value →
+            // bool_label 翻转投影）
+            .pp_bool_val = !.pp_bool_val
+            if .pp_bool_val == true {
+                .pp_bool_label = "true"
+            }
+            if .pp_bool_val != true {
+                .pp_bool_label = "false"
+            }
+        }
+
+        .PpAdd -> {
+            // 下沉 .AddProperty/try_add_property 成功臂形状（push + 计数）
+            .pp_rows.push({ key: "extra", value: "", type: "text" })
+            .pp_count = .pp_rows.len()
         }
     }
 }

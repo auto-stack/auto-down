@@ -75,6 +75,62 @@ const routes: Route[] = [
     }),
   },
   {
+    // PLAN-077 T-04：工作区打开流的 fileTree.load 臂（/api/files——
+    // quick_switcher fixture 同构嵌套树）。
+    re: /^\/api\/files$/,
+    reply: () => ({
+      files: [
+        {
+          name: 'wiki',
+          path: 'wiki',
+          is_dir: true,
+          children: [
+            { name: '引言.ad', path: 'wiki/引言.ad', is_dir: false, children: [] },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    // PLAN-077 T-03：闪卡两卡（question/answer/raw 三域——card_question/
+    // card_answer 显式守卫链的 q/a 直下与 raw 回落双面）。
+    re: /^\/api\/cards\/due$/,
+    reply: (m, url) => ({
+      cards: [
+        { page_path: 'wiki/引言.ad', block_id: 'blk-1', uuid: 'u1', raw: '引言原始文本', question: '写引言草稿', answer: '引言已成稿', deck: null, ease_factor: 2.5, repeats: 0, last_interval: 0 },
+        { page_path: 'wiki/方法.ad', block_id: 'blk-2', uuid: 'u2', raw: '方法原始文本', question: '', answer: '', deck: null, ease_factor: 2.5, repeats: 0, last_interval: 0 },
+      ],
+    }),
+  },
+  {
+    re: /^\/api\/cards\/review$/,
+    reply: () => ({}),
+  },
+  {
+    // PLAN-077 T-02：日程面板两组三任务——TODO/DONE/DOING marker 三态
+    // （markerClass 互斥布尔 if 链下沉面）+ priority [#2] + title 空串
+    // 回落 page_path（`title || page_path` 显式守卫面）+ title 非空直下面
+    // （formatted_date 经 ext formatDate 桥——Q-3 locale 域不作 needle）。
+    re: /^\/api\/agenda$/,
+    reply: (m, url) => ({
+      groups: [
+        {
+          date: '2026-09-19',
+          tasks: [
+            { page_path: 'wiki/引言.ad', title: '', line: 1, raw: '', marker: 'TODO', priority: null, content: '写引言草稿', scheduled: null, deadline: null },
+            { page_path: 'wiki/方法.ad', title: '小节题', line: 2, raw: '', marker: 'DONE', priority: '2', content: '方法验证', scheduled: null, deadline: null },
+          ],
+        },
+        {
+          date: '2026-09-20',
+          tasks: [
+            { page_path: 'wiki/另页.ad', title: '', line: 1, raw: '', marker: 'DOING', priority: null, content: '另页任务', scheduled: null, deadline: null },
+          ],
+        },
+      ],
+    }),
+  },
+  {
     // PLAN-076 T-02：检索面板两行——Page 行带 \u0001/\u0002 snippet 标记
     // （snippet_html 经 ext regex 桥逐行预计算），Block 行无 snippet
     // （is_block/title_text=page_path + has_snippet=false 分支面）。

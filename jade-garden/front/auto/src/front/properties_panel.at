@@ -2,6 +2,20 @@
 //
 // Auto-generated replacement for the hand-written
 // front/src/components/PropertiesPanel.vue (plan 011 Phase 5.2).
+//
+// PLAN-077 T-05 sink (mode doc §6.1): syncEntries/tryAddProperty/
+// withPropDisplay/tabsActiveTab moved INTO the DSL as the module fns below
+// (sync_entries runs the Object.entries map iteration on the vue track —
+// P-9: the VM twin seeds pair-list rows instead; inferType stays an ext
+// bridge called per value — typeof/Array.isArray/regex have no DSL word),
+// and eventValue dissolved into the handlers (`evt.target.value` written
+// directly — search_panel QueryInput precedent). The ext keeps exactly:
+// the re-exports, inferType (now exported bridge), the JSON domain
+// (fmJson/propsDirty — JSON.stringify has no VM word, Q-2), and
+// commitFrontmatter + setEntryType (typeof value-domain dispatch +
+// Boolean()/Number()/String() coercions + the facade write — one body,
+// T-00 correction of the plan's partial-sink prediction).
+//
 // Regenerate:
 //
 //   cd jade-garden/front/auto
@@ -35,10 +49,93 @@
 //   (compiler ≥ 24f0dd16, gap 20 fix), replicating the original's truthy
 //   :class check on entry.value.
 
+// Sunk from ext tabsActiveTab (PLAN-077 T-05): the active-tab accessor —
+// two-step null guard (Call body免 gap-28 name-heuristic mis-typing).
+fn tabs_active_tab(tabs_in) {
+    var out = null
+    if tabs_in.activeTab != null {
+        out = tabs_in.activeTab
+    }
+    return out
+}
+
+// Sunk from ext syncEntries (PLAN-077 T-05): the frontmatter rebuild —
+// `for (k, v) in map` (vue track = Object.entries, ts_adapter.rs:799;
+// P-9: VM track zero-iterates, the twin seeds pair-list rows instead).
+// Per-value typing goes through the ext inferType bridge (highlight_context
+// precedent); the ext normalize's undefined arm is unreachable from
+// Object.entries' JSON value domain, so the value passes through raw
+// (null stays null — the original normalize's null arm).
+fn sync_entries(tabs_in) List {
+    var out List = []
+    var tab = tabs_in.activeTab
+    if tab != null {
+        var fm = tab.frontmatter
+        if fm == null {
+            fm = {}
+        }
+        for (k, raw) in fm {
+            out.push({ key: k, value: raw, type: inferType(raw) })
+        }
+    }
+    return out
+}
+
+// Sunk from ext tryAddProperty (PLAN-077 T-05): trim + dup detection loop +
+// push; the alert stays inline (browser global, passes through on the vue
+// track; the VM twin does not mirror the alert arm — F-1; f-string escaped
+// quotes probe-verified §6.0#5).
+fn try_add_property(entries_in, new_key_in, new_value_in) bool {
+    var key = new_key_in.trim()
+    if key == "" {
+        return false
+    }
+    var dup = false
+    for e in entries_in {
+        if e.key == key {
+            dup = true
+        }
+    }
+    if dup {
+        alert(f"Property \"{key}\" already exists.")
+        return false
+    }
+    entries_in.push({ key: key, value: new_value_in, type: "text" })
+    return true
+}
+
+// Sunk from ext withPropDisplay (PLAN-077 T-05): in-place display fields so
+// handler write-backs still hit the real entry objects. bool_label uses an
+// explicit `== true` (no DSL truthiness coercion); the divergence window is
+// the label of NON-bool entries, which the view never renders — the boolean
+// pill exists only under is_bool. The list placeholder ternary becomes the
+// explicit two-branch if.
+fn with_prop_display(entries_in) List {
+    var i = 0
+    for e in entries_in {
+        e.idx = i
+        e.is_bool = e.type == "boolean"
+        e.is_date = e.type == "date"
+        e.is_other = e.type != "boolean" && e.type != "date"
+        var lbl = "false"
+        if e.value == true {
+            lbl = "true"
+        }
+        e.bool_label = lbl
+        var ph = "value"
+        if e.type == "list" {
+            ph = "comma, separated, values"
+        }
+        e.placeholder_text = ph
+        i = i + 1
+    }
+    return entries_in
+}
+
 widget PropertiesPanel {
     use {
         composable: useTabsStore from "src/front/utils/properties_panel_ext.ts"
-        fn: useDebounceFn, syncEntries, fmJson, propsDirty, commitFrontmatter, setEntryType, tryAddProperty, withPropDisplay, eventValue, tabsActiveTab, Plus, Trash2, Check, X from "src/front/utils/properties_panel_ext.ts"
+        fn: useDebounceFn, inferType, fmJson, propsDirty, commitFrontmatter, setEntryType, Plus, Trash2, Check, X from "src/front/utils/properties_panel_ext.ts"
     }
 
     msg Msg { Init, KeyChanged, ValueChanged, Commit, ToggleBool, SetType, RemoveProperty, AddProperty, Cancel, SaveNow, NewKeyInput, NewValueInput }
@@ -52,9 +149,9 @@ widget PropertiesPanel {
     }
 
     computed {
-        active_tab => tabsActiveTab(.tabsStore)
+        active_tab => tabs_active_tab(.tabsStore)
         fm_json => fmJson(.tabsStore)
-        display_entries => withPropDisplay(.entries)
+        display_entries => with_prop_display(.entries)
         is_dirty => propsDirty(.entries, .tabsStore)
         has_entries => .entries.length > 0
         no_entries => .entries.length == 0
@@ -179,13 +276,13 @@ widget PropertiesPanel {
         // { immediate: true }) — the path never mutates in place, so the
         // tab-object watch triggers on the same set.
         .active_tab.immediate -> {
-            .entries = syncEntries(.tabsStore)
+            .entries = sync_entries(.tabsStore)
         }
         // Original: watch(() => tabs.activeTab?.frontmatter, syncEntries,
         // { deep: true }) — the JSON string form changes on the same
         // mutation set.
         .fm_json -> {
-            .entries = syncEntries(.tabsStore)
+            .entries = sync_entries(.tabsStore)
         }
     }
 
@@ -208,11 +305,11 @@ widget PropertiesPanel {
         // handlers only register the first param, so the view passes one
         // map arg.
         .KeyChanged(entry, evt) -> {
-            entry.key = eventValue(evt)
+            entry.key = evt.target.value
         }
         // Original: v-model="entry.value" + @input="updateFrontmatter".
         .ValueChanged(entry, evt) -> {
-            entry.value = eventValue(evt)
+            entry.value = evt.target.value
             commitFrontmatter(.tabsStore, .entries, .debounced_save)
         }
         // Original: @change="updateFrontmatter" on the key input.
@@ -227,7 +324,7 @@ widget PropertiesPanel {
         // Original: @change="setType(idx, ($event.target as
         // HTMLSelectElement).value as any)".
         .SetType(idx, evt) -> {
-            setEntryType(.entries, idx, eventValue(evt))
+            setEntryType(.entries, idx, evt.target.value)
             commitFrontmatter(.tabsStore, .entries, .debounced_save)
         }
         // Original: removeProperty(idx) = splice + updateFrontmatter.
@@ -237,7 +334,7 @@ widget PropertiesPanel {
         }
         // Original: addProperty() = guard + push + clear + updateFrontmatter.
         .AddProperty -> {
-            let added = tryAddProperty(.entries, .new_key, .new_value)
+            let added = try_add_property(.entries, .new_key, .new_value)
             if added {
                 .new_key = ""
                 .new_value = ""
@@ -246,7 +343,7 @@ widget PropertiesPanel {
         }
         // Original: cancel() = syncEntries().
         .Cancel -> {
-            .entries = syncEntries(.tabsStore)
+            .entries = sync_entries(.tabsStore)
         }
         // Original: @click="tabs.activeTab?.path && tabs.save(tabs.activeTab.path)".
         .SaveNow -> {

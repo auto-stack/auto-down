@@ -1,18 +1,18 @@
 <!-- ThemePopover component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Sun, Moon, themeAccents, isOutsideThemePopover } from '../../auto/src/front/utils/theme_popover_ext'
+import { Sun, Moon, isOutsideThemePopover } from '../../auto/src/front/utils/theme_popover_ext'
 import { useThemeStore } from '../../auto/src/front/utils/theme_popover_ext'
 
 const themeStore = useThemeStore()
 
 
-const is_open = computed<boolean>(() => props.open)
-const accents = computed<any>(() => themeAccents())
-
 const props = defineProps<{
   open: boolean
 }>()
+
+const is_open = computed<boolean>(() => props.open)
+const accents = computed<any>(() => theme_accents())
 
 const emit = defineEmits<{
   Close: [any]
@@ -43,6 +43,10 @@ function SetLight(): void {
   themeStore.setMode('light');
 
   emit('SetLight')
+}
+
+function theme_accents(): any {
+  return [{ key: 'indigo', label: 'Indigo', color: 'hsl(238 55% 58%)' }, { key: 'emerald', label: 'Emerald', color: 'hsl(160 60% 38%)' }, { key: 'rose', label: 'Rose', color: 'hsl(350 70% 55%)' }, { key: 'amber', label: 'Amber', color: 'hsl(38 90% 50%)' }, { key: 'slate', label: 'Slate', color: 'hsl(220 10% 45%)' }];
 }
 
 

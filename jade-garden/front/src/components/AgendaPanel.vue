@@ -1,17 +1,18 @@
 <!-- AgendaPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { tabPath, fetchAgendaSafe, agendaDisplay, CalendarClock } from '../../auto/src/front/utils/agenda_panel_ext'
+import { formatDate, CalendarClock } from '../../auto/src/front/utils/agenda_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/agenda_panel_ext'
 
 const tabsStore = useTabsStore()
 
+import { get_agenda } from '../../auto/src/front/utils/agenda_panel_ext'
 
 const groups = ref<any[]>([])
 const loading = ref<boolean>(false)
 
-const current_path = computed<any>(() => tabPath(tabsStore.activeTab))
-const display_groups = computed<any>(() => agendaDisplay(groups.value))
+const current_path = computed<any>(() => tab_path(tabsStore.activeTab))
+const display_groups = computed<any>(() => agenda_display(groups.value))
 const show_loading = computed<boolean>(() => loading.value)
 const show_empty = computed<boolean>(() => !loading.value && groups.value.length === 0)
 const show_groups = computed<boolean>(() => !loading.value && groups.value.length > 0)
@@ -22,19 +23,44 @@ const emit = defineEmits<{
   OpenTask: [any]
 }>()
 
-watch(current_path, () => {
+watch(current_path, async () => {
   loading.value = true;
-  let p = fetchAgendaSafe();
-  p.then((res: any) => { 
-  if (res != null) {groups.value = res;
-  }loading.value = false;
-   });
+  try {let res = await get_agenda(14);
+  groups.value = res.groups;
+  } catch (e) {} finally {loading.value = false;
+  }
 }, { immediate: true })
 
 function OpenTask(tk: any): void {
   tabsStore.open(tk.page_path);
 
   emit('OpenTask', tk)
+}
+
+function tab_path(tab_in: any): string {
+  let out: string = '';
+  if (tab_in != null) {if (tab_in.path != null) {out = tab_in.path;
+  }}
+  return out;
+}
+
+function agenda_display(groups_in: any): any {
+  let out: any[] = [];
+  for (const g of groups_in) {let tasks: any[] = [];
+  for (const tk of g.tasks) {let mu = tk.marker.toUpperCase();
+  let muted: boolean = false;
+  let primary: boolean = false;
+  let done: boolean = false;
+  if (mu == 'DOING' || mu == 'NOW') {primary = true;
+  }if (mu == 'DONE') {done = true;
+  }if (mu != 'DOING' && mu != 'NOW' && mu != 'DONE') {muted = true;
+  }let line = tk.page_path;
+  if (tk.title != null && tk.title != '') {line = tk.title;
+  }tasks.push({ page_path: tk.page_path, marker: tk.marker, priority: tk.priority, content: tk.content, marker_muted: muted, marker_primary: primary, marker_done: done, line: line });
+  }
+  out.push({ date: g.date, formatted_date: formatDate(g.date), tasks: tasks });
+  }
+  return out;
 }
 
 

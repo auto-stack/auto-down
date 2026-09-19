@@ -2,6 +2,20 @@
 //
 // Auto-generated replacement for the hand-written
 // front/src/components/WorkspaceOpener.vue (plan 011 Phase 5.1 batch 3).
+//
+// PLAN-077 T-04 sink (mode doc §6.4, Q-1 ruling): openWorkspaceFlow moved
+// INTO the .Open handler as an explicit promise chain (workspace.open →
+// then(fileTree.load, its promise returned so the chain stays sequenced) →
+// finally busy=false — the original try/finally semantics; the rejection
+// propagates through .finally as the unhandled-rejection console face,
+// identical to the original). workspaceErrorText moved into the
+// workspace_error_text module fn below. The ext keeps exactly: the
+// re-exports, clearWorkspaceError (facade write — not a DSL lvalue),
+// chooseWorkspaceDir (window DOM — Q-1: not in the VM assertion domain),
+// and WorkspaceLogo. NO contract import here: workspace flows through the
+// store facade (open_workspace lives inside the store's Open handler,
+// which owns the error state) — the deploy sed stays single-expression.
+//
 // Regenerate:
 //
 //   cd jade-garden/front/auto
@@ -35,10 +49,21 @@
 // - NO commas between sibling view children — a trailing comma emits a junk
 //   <div /> spacer (commas belong between props only).
 
+// Sunk from ext workspaceErrorText (PLAN-077 T-04): the `?? ""` accessor
+// as two-step guards (`!= null` emits loosely — null+undefined domain,
+// mode doc §6.0 词位增证).
+fn workspace_error_text(ws_in) str {
+    var out = ""
+    if ws_in.error != null {
+        out = ws_in.error
+    }
+    return out
+}
+
 widget WorkspaceOpener {
     use {
         composable: useWorkspaceStore, useFileTreeStore from "src/front/utils/workspace_opener_ext.ts"
-        fn: openWorkspaceFlow, chooseWorkspaceDir, clearWorkspaceError, workspaceErrorText, WorkspaceLogo, FolderOpen, Info from "src/front/utils/workspace_opener_ext.ts"
+        fn: chooseWorkspaceDir, clearWorkspaceError, WorkspaceLogo, FolderOpen, Info from "src/front/utils/workspace_opener_ext.ts"
     }
 
     msg Msg { Open, PathInput, ChooseDir }
@@ -50,7 +75,7 @@ widget WorkspaceOpener {
 
     computed {
         // Original: workspace.error displayed as-is (null -> hidden by v-if).
-        error_text => workspaceErrorText(.workspaceStore)
+        error_text => workspace_error_text(.workspaceStore)
     }
 
     view {
@@ -105,13 +130,25 @@ widget WorkspaceOpener {
         // Original: async function open() { if (!path.value.trim()) return;
         // busy=true; workspace.error=null; try { await workspace.open(trimmed);
         // await fileTree.load() } finally { busy=false } }.
+        // Original: async function open() { if (!path.value.trim()) return;
+        // busy=true; workspace.error=null; try { await workspace.open(trimmed);
+        // await fileTree.load() } finally { busy=false } }.
+        // PLAN-077 sink: the two awaits are the explicit promise chain below
+        // (load's promise returned inside .then so the sequence holds);
+        // .finally passes rejections through — the same console-domain
+        // unhandled face as the original (P-10: DSL try needs a catch, and
+        // an empty-catch arm would SWALLOW the rejection, so the chain form
+        // is the faithful one here).
         .Open -> {
             var p = .path.trim()
             if p != "" {
                 .busy = true
                 clearWorkspaceError(.workspaceStore)
-                let pr = openWorkspaceFlow(.workspaceStore, .fileTreeStore, p)
-                pr.finally(() => {
+                let pr = .workspaceStore.open(p)
+                let pr2 = pr.then(() => {
+                    return .fileTreeStore.load()
+                })
+                pr2.finally(() => {
                     .busy = false
                 })
             }

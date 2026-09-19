@@ -370,3 +370,11 @@ L3 收口待本计划 DoD）；**仅起草，执行未授权；Q-1 为设计裁�
   P078-1 新增 reviews 收据，247→248 条，回读验证 ✓ | archive:
   docs/plans/archived/078-rcf-graph-family-batch4.md（status: archived，
   completion_kind: delivered） | cleaned: 见下方补记`。
+- 2026-09-19 merge cleaned 补记：`stage: merge | plan_id: PLAN-078 |
+  checkpoint: cleaned | evidence: 摘链 2476 junction（worktree pnpm install
+  残留——gallery @autodown/engine 绝对链接指向主检出，guard 防穿透对象；
+  unlink 后 guard 双净 auto-down+auto-lang）+ worktree 提交全落（HEAD
+  d62124c = master）+ 双 worktree 移除 + plan-078-dev 分支删除（was
+  d62124c 全落）+ 组目录 down-078 移除 + 双仓 worktree prune 零残留 +
+  auto-lang 侧无 plan-078 分支 | outcome: PLAN-078:r2 五 checkpoint 全闭
+  环（delivered）`。

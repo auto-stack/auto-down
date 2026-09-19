@@ -101,7 +101,7 @@ build 双轨绿后即弃；auto.exe v0.4.2-1140 同源）。发现记 P-1..P-6�
 
 **坑清单**：
 
-- **G-1 撞名（P-5）**：模块 fn 局部名避开本件 model/computed 名
+- **G-1 撞名（P-5；076 T-01 参数域增证）**：模块 fn 局部名**与参数名**避开本件 model/computed 名（filter_files 参数 query 撞 model.query 发射 query.value.trim() 运行时炸、vue-tsc 因 any 静默——参数与局部同禁）
   （state-ref 改写误发 `local.value`；R013 检查不覆盖 fn 体内局部名）。
 - **G-2 VM 字符串语义分歧（P-6）**：非 ASCII 域 find/slice/char_at
   （字节系）× length（字符系）混用双轨不可移植；VM 轨标题派生走

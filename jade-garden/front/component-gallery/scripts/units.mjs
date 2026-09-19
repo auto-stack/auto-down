@@ -171,6 +171,28 @@ export const UNITS = [
     },
   },
   {
+    id: 'search_panel',
+    title: '检索面板（桶②·RC-D 批次2·PLAN-076 下沉）',
+    // vue 臂：fill 门（T-02 扩展）键入 CJK 查询"引言" → 真件自身
+    // .Init debounce 闭包（250ms）→ 下沉闭包体 try/catch/finally 经
+    // search_pages 契约别名 → shim 两行（Page 带 \u0001/\u0002 标记经
+    // snippet_html ext 桥，Block 行 page_path 题 + 无 snippet）。
+    // VM 臂 twin：Init 播种行投影（074 Q-2 口径）。
+    vue: {
+      url: '/?unit=search_panel',
+      ready: 'input[placeholder="Search pages and blocks..."]',
+      fill: [{ selector: 'input[placeholder="Search pages and blocks..."]', value: '引言' }],
+      afterReady: '[data-unit="search_panel"] li',
+      afterNeedles: ['引言', 'wiki/方法.ad'],
+      afterNeedleSelector: '[data-unit="search_panel"] li',
+    },
+    vm: {
+      actions: [{ button: 'search_panel' }],
+      state: { unit: 'search_panel', sp_count: '2' },
+      snapshot: ['unit=search_panel rows:2', '引言', 'wiki/方法.ad'],
+    },
+  },
+  {
     id: 'command_palette',
     title: '命令面板（桶②·RC-D 缺件红占位）',
     missing: true,

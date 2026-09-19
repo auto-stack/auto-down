@@ -111,6 +111,13 @@ widget App {
         var qs_count int = 0
         var qs_selected int = 0
         var qs_has bool = false
+        // —— fixture：search_panel 面（PLAN-076 T-02 twin：Init 播种行
+        // 投影——vue 臂 shim 应答同构两行：Page 行 title_text=引言 带
+        // snippet、Block 行 title_text=page_path 无 snippet；snippet 高亮
+        // html 属 vue 显示面（regex ext 桥），twin 以 has_snippet 投影）——
+        var sp_rows = []
+        var sp_count int = 0
+        var sp_has bool = false
     }
 
     computed {
@@ -123,6 +130,7 @@ widget App {
         show_outgoing_links => .unit == "outgoing_links"
         show_unlinked_references => .unit == "unlinked_references"
         show_quick_switcher => .unit == "quick_switcher"
+        show_search_panel => .unit == "search_panel"
         sb_marker => f"unit=status_bar status:${.sb_status} bl:${.sb_bl} ol:${.sb_ol}"
         ol_marker => f"unit=outline rows:${.ol_count}"
         ts_marker => f"unit=tab_strip active:${.ts_active}"
@@ -132,6 +140,7 @@ widget App {
         olp_marker => f"unit=outgoing_links rows:${.olp_count} exists:${.olp_exists}"
         ul_marker => f"unit=unlinked_references rows:${.ul_count}"
         qs_marker => f"unit=quick_switcher rows:${.qs_count} sel:${.qs_selected}"
+        sp_marker => f"unit=search_panel rows:${.sp_count}"
         // dyn 标签经 computed（outline_panel.at 同款：view 内字面量标签
         // 走 dyn(.tag) 形态）
         ul_tag => "ul"
@@ -176,6 +185,10 @@ widget App {
                 }
                 button (text: "quick_switcher", variant: "text") {
                     onclick: .Select("quick_switcher")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "search_panel", variant: "text") {
+                    onclick: .Select("search_panel")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -431,6 +444,33 @@ widget App {
                     }
                 }
             }
+            if .show_search_panel {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "Search" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        // 查询输入面投影（vue 臂 fill 门同款查询"引言"）
+                        row (class: "items-center gap-2 rounded-md border border-zinc-200 bg-white px-2 py-1.5") {
+                            text "引言" { class: "flex-1 text-sm text-zinc-700" }
+                        }
+                        if .sp_has {
+                            dyn (.ul_tag) {
+                                class: "space-y-1",
+                                for r in .sp_rows {
+                                    dyn (.li_tag) {
+                                        key: r.title_text,
+                                        class: "cursor-pointer rounded px-2 py-1.5 text-xs text-zinc-800",
+                                        text r.title_text
+                                        if r.has_snippet {
+                                            text r.snippet_plain
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        text .sp_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -480,6 +520,12 @@ widget App {
             if .qs_count > 0 {
                 .qs_has = true
             }
+            // search_panel：Init 播种行投影（vue 臂 shim 应答同构；Page 行
+            // has_snippet=true + 纯文本摘要，Block 行 title_text=page_path）
+            .sp_rows.push({ title_text: "引言", has_snippet: true, snippet_plain: "正文提到 引言 的概念，见首章" })
+            .sp_rows.push({ title_text: "wiki/方法.ad", has_snippet: false, snippet_plain: "" })
+            .sp_count = 2
+            .sp_has = true
         }
 
         .Select(u) -> {

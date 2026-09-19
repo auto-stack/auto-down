@@ -1,11 +1,12 @@
 <!-- SearchPanel component - Auto-generated from Auto language -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, Search, FileText, Box } from '../../auto/src/front/utils/search_panel_ext'
+import { useDebounceFn, snippetHtml, scheduleScrollToBlock, errorMessage, Search, FileText, Box } from '../../auto/src/front/utils/search_panel_ext'
 import { useTabsStore } from '../../auto/src/front/utils/search_panel_ext'
 
 const tabsStore = useTabsStore()
 
+import { search_pages } from '../../auto/src/front/utils/search_panel_ext'
 
 const query = ref<string>('')
 const results = ref<any[]>([])
@@ -13,7 +14,7 @@ const loading = ref<boolean>(false)
 const error = ref<string>('')
 const debounced_search = ref<any>(null)
 
-const display_results = computed<any>(() => withSearchDisplay(results.value))
+const display_results = computed<any>(() => with_search_display(results.value))
 const has_query = computed<boolean>(() => query.value.trim()?.length > 0)
 const has_error = computed<boolean>(() => !!(error.value))
 const show_loading = computed<boolean>(() => loading.value)
@@ -52,15 +53,31 @@ function QueryInput(e: any): void {
   emit('QueryInput', e)
 }
 
-onMounted(() => {
-  let run = () => { let q = query.value.trim();
+function with_search_display(rows_in: any): any {
+  let out: any[] = [];
+  for (const r of rows_in) {let tt: string = '';
+  if (r.type == 'Page') {if (r.title != null) {tt = r.title;
+  }}if (r.type != 'Page') {if (r.page_path != null) {tt = r.page_path;
+  }}let sn_html: string = '';
+  let sn_has: boolean = false;
+  if (r.snippet != null) {sn_html = snippetHtml(r.snippet);
+  sn_has = true;
+  }out.push({ type: r.type, path: r.path, title: r.title, uuid: r.uuid, page_path: r.page_path, block_id: r.block_id, content: r.content, snippet: r.snippet, is_page: r.type == 'Page', is_block: r.type != 'Page', title_text: tt, has_snippet: sn_has, snippet_html: sn_html });
+  }
+  return out;
+}
+
+onMounted(async () => {
+  let run = async () => { let q = query.value.trim();
   if (q != '') {loading.value = true;
   error.value = '';
-  let p = searchSafe(q);
-  p.then((res: any) => { results.value = res.results;
-  error.value = res.error;
-  loading.value = false;
-   });
+  try {let res = await search_pages(q, 30);
+  results.value = res.results;
+  error.value = '';
+  } catch (e) {results.value = [];
+  error.value = errorMessage(e);
+  } finally {loading.value = false;
+  }
   }if (q == '') {results.value = [];
   } };
   let f = useDebounceFn(run, 250);
@@ -74,7 +91,7 @@ onMounted(() => {
     <div class="flex h-full flex-col p-3">
       <div class="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5">
         <component :is="(Search) as any" class="h-4 w-4 text-muted-foreground" />
-        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Search pages and blocks...'" :type="'text'" v-model="query" @input="QueryInput($event)" />
+        <input class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" :placeholder="'Search pages and blocks...'" :type="'text'" v-model="query" @input="QueryInput(($event.target as HTMLInputElement).value)" />
       </div>
       <template v-if="show_loading">
         <div class="mt-4 text-center text-xs text-muted-foreground">

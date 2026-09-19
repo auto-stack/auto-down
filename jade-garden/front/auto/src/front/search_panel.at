@@ -5,9 +5,21 @@
 // Regenerate:
 //
 //   cd jade-garden/front/auto
-//   D:/autostack/auto-lang/target/debug/auto.exe build -d .
-//   sed 's|@/ext/src/front/utils/search_panel_ext|../../auto/src/front/utils/search_panel_ext|g' \
+//   D:/autostack/.wt/down-076/auto-lang/target/debug/auto.exe build -d .
+//   sed -e 's|@/ext/src/front/utils/search_panel_ext|../../auto/src/front/utils/search_panel_ext|g' \
+//       -e 's|@/lib/api|../../auto/src/front/utils/search_panel_ext|g' \
 //     gen/front/vue/src/components/SearchPanel.vue > ../src/components/SearchPanel.vue
+//
+// PLAN-076 T-02 sink (mode doc §5.1): the ext's data orchestration moved INTO
+// the DSL — searchSafe's try/catch/finally mapping is the debounced run
+// closure's own try/catch/finally around the `use back.api: search_pages`
+// contract call (compiler ≥ c5b5fecf; error message extraction via the ext's
+// errorMessage bridge — strict TS unknown-catch domain), and
+// withSearchDisplay's row construction is the with_search_display module fn
+// below (snippet_html stays an ext bridge call per row — regex literals have
+// no DSL word, unlinked highlight_context precedent). The ext keeps exactly:
+// the re-exports, snippetHtml, scheduleScrollToBlock, and the two contract/
+// strict bridges.
 //
 // Idioms forced by DSL codegen gaps (see backlinks_panel.at header + README):
 // - The search input uses real v-model: `value: .query` (plain model var)
@@ -18,26 +30,78 @@
 // - The 250ms debounce is the original's useDebounceFn (re-exported via
 //   the extension): .Init builds the debounced closure (its body is the
 //   original debouncedSearch verbatim — the empty-query early return
-//   becomes exclusive if guards, try/catch/finally folds into a
-//   one-callback .then over the never-rejecting searchSafe) and stores it
-//   in a model var; the query watch let-binds it and calls the local
-//   (TableMenu/NodeView let-bind precedent).
+//   becomes exclusive if guards, and the PLAN-076 sink folds the old
+//   searchSafe wrapper's try/catch data mapping straight into the closure
+//   body: no promise, no .then) and stores it in a model var; the query
+//   watch let-binds it and calls the local (TableMenu/NodeView let-bind
+//   precedent).
 // - The v-else-if chain (loading / error / results / hasQuery / hint)
 //   becomes five exclusive named-boolean computeds; error is a plain str
 //   model var ("" = no error), checked with `!= ""`.
 // - ul/li render via dyn with string tags (backlinks precedent).
 // - The per-result icon branch / title ternary / snippet v-html are
-//   precomputed by the extension's withSearchDisplay (no Call/ternary
-//   bindings in the view); the v-html itself is the DSL's native `html:`
-//   prop on plain elements (compiler c7034bf5, gap 22 closed).
+//   precomputed by with_search_display (no Call/ternary bindings in the
+//   view); the v-html itself is the DSL's native `html:` prop on plain
+//   elements (compiler c7034bf5, gap 22 closed).
 // - The Block branch's `tabs.open(...).then(setTimeout dispatch)` maps to
 //   a one-callback .then whose body calls the extension's
 //   scheduleScrollToBlock (setTimeout + CustomEvent).
+// - Module fn locals AND params avoid widget model/computed names (probe
+//   P-5/G-1: a param named like a model field gets state-ref-rewritten).
+
+// Contract channel: web = ext-shim alias of the hand-written client (deploy
+// sed rewrites the emitted '@/lib/api' import), VM = #[api] search_pages
+// (desktop/src/back/api.at:287, back/auto/api.at:283).
+use back.api: search_pages
+
+// Sunk from ext withSearchDisplay (PLAN-076 T-02): per-result display
+// fields — the type ternary (is_page/is_block), title_text with explicit
+// null guards (P618 two-step assignment), has_snippet plain boolean, and
+// snippet_html via the ext bridge (regex \u0001/\u0002 → <mark>, no DSL
+// word — unlinked_references highlight_context precedent).
+fn with_search_display(rows_in) List {
+    var out List = []
+    for r in rows_in {
+        var tt = ""
+        if r.type == "Page" {
+            if r.title != null {
+                tt = r.title
+            }
+        }
+        if r.type != "Page" {
+            if r.page_path != null {
+                tt = r.page_path
+            }
+        }
+        var sn_html = ""
+        var sn_has = false
+        if r.snippet != null {
+            sn_html = snippetHtml(r.snippet)
+            sn_has = true
+        }
+        out.push({
+            type: r.type,
+            path: r.path,
+            title: r.title,
+            uuid: r.uuid,
+            page_path: r.page_path,
+            block_id: r.block_id,
+            content: r.content,
+            snippet: r.snippet,
+            is_page: r.type == "Page",
+            is_block: r.type != "Page",
+            title_text: tt,
+            has_snippet: sn_has,
+            snippet_html: sn_html,
+        })
+    }
+    return out
+}
 
 widget SearchPanel {
     use {
         composable: useTabsStore from "src/front/utils/search_panel_ext.ts"
-        fn: useDebounceFn, searchSafe, withSearchDisplay, scheduleScrollToBlock, Search, FileText, Box from "src/front/utils/search_panel_ext.ts"
+        fn: useDebounceFn, snippetHtml, scheduleScrollToBlock, errorMessage, Search, FileText, Box from "src/front/utils/search_panel_ext.ts"
     }
 
     msg Msg { Init, QueryInput, OpenResult }
@@ -52,7 +116,7 @@ widget SearchPanel {
     }
 
     computed {
-        display_results => withSearchDisplay(.results)
+        display_results => with_search_display(.results)
         has_query => .query.trim().length > 0
         has_error => .error != ""
         show_loading => .loading
@@ -127,24 +191,29 @@ widget SearchPanel {
 
     on {
         // Builds the debounced search closure (the original's
-        // useDebounceFn(async () => { ... }, 250) body verbatim):
+        // useDebounceFn(async () => { ... }, 250) body verbatim; the
+        // PLAN-076 sink folds the old searchSafe wrapper's catch-mapping
+        // and the finally's loading reset into the closure body itself —
+        // try carries success, catch maps failure to the empty list plus
+        // the message, finally resets loading on both paths):
         // - empty query: clear results and return (error/loading untouched),
-        // - otherwise: loading + clear error, fetch, then apply (the
-        //   extension's searchSafe never rejects, so the single .then
-        //   carries the try branch, the catch branch's data, and the
-        //   finally's loading=false).
+        // - otherwise: loading + clear error, fetch, apply.
         .Init -> {
             let run = () => {
                 var q = .query.trim()
                 if q != "" {
                     .loading = true
                     .error = ""
-                    let p = searchSafe(q)
-                    p.then(res => {
+                    try {
+                        let res = search_pages(q, 30)
                         .results = res.results
-                        .error = res.error
+                        .error = ""
+                    } catch (e) {
+                        .results = []
+                        .error = errorMessage(e)
+                    } finally {
                         .loading = false
-                    })
+                    }
                 }
                 if q == "" {
                     .results = []

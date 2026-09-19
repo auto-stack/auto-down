@@ -11,6 +11,7 @@ import UnlinkedReferencesPage from './pages/UnlinkedReferencesPage.vue'
 import MenubarPage from './pages/MenubarPage.vue'
 import FiletreePage from './pages/FiletreePage.vue'
 import QuickSwitcherPage from './pages/QuickSwitcherPage.vue'
+import SearchPanelPage from './pages/SearchPanelPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -98,6 +99,14 @@ function select(u: string) {
       >
         quick_switcher
       </button>
+      <button
+        data-unit-tab="search_panel"
+        class="rounded px-1.5 text-[11px] hover:bg-accent"
+        :class="unit === 'search_panel' ? 'text-foreground' : 'text-zinc-400'"
+        @click="select('search_panel')"
+      >
+        search_panel
+      </button>
       <span class="ml-auto text-[11px] text-zinc-400" data-current-unit>{{ unit }}</span>
     </header>
     <StatusBarPage v-if="unit === 'status_bar'" />
@@ -109,5 +118,6 @@ function select(u: string) {
     <MenubarPage v-else-if="unit === 'menubar'" />
     <FiletreePage v-else-if="unit === 'filetree'" />
     <QuickSwitcherPage v-else-if="unit === 'quick_switcher'" />
+    <SearchPanelPage v-else-if="unit === 'search_panel'" />
   </div>
 </template>

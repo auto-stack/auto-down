@@ -74,6 +74,37 @@ const routes: Route[] = [
       ],
     }),
   },
+  {
+    // PLAN-076 T-02：检索面板两行——Page 行带 \u0001/\u0002 snippet 标记
+    // （snippet_html 经 ext regex 桥逐行预计算），Block 行无 snippet
+    // （is_block/title_text=page_path + has_snippet=false 分支面）。
+    re: /^\/api\/search$/,
+    reply: (m, url) => ({
+      q: url.searchParams.get('q') ?? '',
+      results: [
+        {
+          type: 'Page',
+          path: 'wiki/引言.ad',
+          title: '引言',
+          uuid: null,
+          page_path: null,
+          block_id: null,
+          content: null,
+          snippet: '正文提到 \u0001引言\u0002 的概念，见首章',
+        },
+        {
+          type: 'Block',
+          path: null,
+          title: null,
+          uuid: 'blk-42',
+          page_path: 'wiki/方法.ad',
+          block_id: 'abc1234',
+          content: '方法段落正文',
+          snippet: null,
+        },
+      ],
+    }),
+  },
 ]
 
 const origFetch = globalThis.fetch.bind(globalThis)

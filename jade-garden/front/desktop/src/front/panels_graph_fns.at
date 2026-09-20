@@ -1,0 +1,82 @@
+// panels_graph_fns.at — PLAN-080 T-02 批 E 装配：graph 真渲染部署副本。
+//
+// derived-from: auto-lang examples/capability-tests/049-canvas-graph/src/
+// front/app.at（环形布局 + 三表 CSV 构造——canvas 场景契约 v2，上游布局
+// R-3：.at 侧生成坐标，渲染端只收绝对坐标；详规 auto-lang docs/specs/
+// auto-lang/ui/design/canvas-scene.md）。消费登记：074-sink-mode §4.3
+// graph_view 划出 078 → P661-D4 交接 → 本副本承接（desktop 面 cytoscape
+// 退役）。078 graph_sidebar/graph_controls 下沉 fn 副本随 T-03 扩入本档。
+//
+// 形态：get_graph nodes[{id,label,path,exists,degree}]/edges[{source,
+// target}]（id=path、edge 端点=path——linkgraph 双端已解析页语义）→
+// 环形布局（n 均分 2π，coords 500x500 逻辑域，R=190，049 SetRadius
+// 同族）→ 三表：
+//   .graph_nodes  = ["<path>,<x>,<y>,circle,<color>,16", ...]  id=path（onhit 直开页）
+//   .graph_edges  = ["<x1>,<y1>,<x2>,<y2>,#475569,2", ...]     坐标按 node 位表线性扫描派生
+//   .graph_labels = ["<x>,<y+30>,<label>,#e2e8f0", ...]        CJK 直写（G-2 只禁索引算术）
+// exists=false 杂色（当前后端恒 true——linkgraph 只收已解析页；分支为
+// 契约域预留）。VM 纪律：typed List；float 累计器代 int 除法（049 无
+// int→float 混算先例，float/float 已证域）；P614 参数列表 while+索引。
+
+fn graph_ring_tables(nodes List, edges List) map {
+    var tn List = []
+    var te List = []
+    var tl List = []
+    var xs List = []
+    var ys List = []
+    var n = nodes.len()
+    if n > 0 {
+        // float 累计器取 total（int→float 显式转换无先例——逐元素 +1.0）
+        var total_f float = 0.0
+        var ci int = 0
+        while ci < n {
+            total_f = total_f + 1.0
+            ci = ci + 1
+        }
+        var i int = 0
+        while i < n {
+            var nd = nodes[i]
+            var fi float = i
+            var fa float = 6.283185307179586 * fi / total_f
+            var x float = 250.0 + 190.0 * math.cos(fa)
+            var y float = 250.0 + 190.0 * math.sin(fa)
+            var color str = "#3b82f6"
+            if nd.exists != true {
+                color = "#64748b"
+            }
+            tn.push(nd.path + "," + x.to_string() + "," + y.to_string() + ",circle," + color + ",16")
+            tl.push(x.to_string() + "," + (y + 30.0).to_string() + "," + nd.label + ",#e2e8f0")
+            xs.push(x)
+            ys.push(y)
+            i = i + 1
+        }
+        // edges：坐标自 node 位表线性扫描派生（VM 无 map——O(n·e) 小域
+        // 可受；双端任一不在 node 表 = linkgraph 契约外，跳过）。
+        var ei int = 0
+        while ei < edges.len() {
+            var ed = edges[ei]
+            var x1 float = -1.0
+            var y1 float = -1.0
+            var x2 float = -1.0
+            var y2 float = -1.0
+            var si int = 0
+            while si < n {
+                var snd = nodes[si]
+                if snd.path == ed.source {
+                    x1 = xs[si]
+                    y1 = ys[si]
+                }
+                if snd.path == ed.target {
+                    x2 = xs[si]
+                    y2 = ys[si]
+                }
+                si = si + 1
+            }
+            if x1 >= 0.0 && x2 >= 0.0 {
+                te.push(x1.to_string() + "," + y1.to_string() + "," + x2.to_string() + "," + y2.to_string() + ",#475569,2")
+            }
+            ei = ei + 1
+        }
+    }
+    return { nodes: tn, edges: te, labels: tl }
+}

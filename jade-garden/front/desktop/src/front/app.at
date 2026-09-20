@@ -43,6 +43,10 @@ use panels_c_fns: ag_display, rf_rows, theme_accents
 // PLAN-080 T-01 批 D 装配：props_rows（properties sync_entries 的配对通道
 // 形状适配副本——P-9 map 迭代禁面经 frontmatter_pairs 绕开，只读 v1）。
 use panels_d_fns: props_rows
+// PLAN-080 T-02 批 E 装配：graph_ring_tables（环形布局→三表 CSV——049
+// 样板部署副本，canvas 场景契约 v2/R-3 上游坐标；graph_view 真渲染，
+// cytoscape desktop 面退役）。
+use panels_graph_fns: graph_ring_tables
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages, get_agenda, create_file
 use auto.http
 
@@ -72,7 +76,7 @@ fn to_fs_nodes(nodes List) List {
 
 widget App {
 
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery, LoadAgenda, OpenCpp, CppQuery, CppCreate, CppCancel, ThemeOpen, ThemeClose, SetThemeMode(str), SetAccent(str) }
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, GraphNodeTap(str), ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery, LoadAgenda, OpenCpp, CppQuery, CppCreate, CppCancel, ThemeOpen, ThemeClose, SetThemeMode(str), SetAccent(str) }
 
     model {
         var status str = "boot"
@@ -131,8 +135,17 @@ widget App {
         var search_q str = ""
         var search_rows = []
         var hit_count int = 0
-        var graph_rows = []
-        var graph_edges int = 0
+        // —— PLAN-080 T-02 批 E：graph_view 真渲染（canvas 场景契约 v2 三表
+        // 族，scene 前缀 graph——.graph_nodes/.graph_edges/.graph_labels 为
+        // canvas 数据通道；既有边计数 int 改名 graph_edge_count 让位表名）。
+        // graph_page = 图谱页视图开关（主区 canvas ↔ 编辑器切换；开页自闭
+        // ——.OpenFile 置 false，079 弹层面板同族语义）。 ——
+        var graph_nodes list = []
+        var graph_edges list = []
+        var graph_labels list = []
+        var graph_page bool = false
+        var graph_node_count int = 0
+        var graph_edge_count int = 0
         var io_note str = ""
     }
 
@@ -223,9 +236,11 @@ widget App {
             // 批 B/C 面板随开页关闭（自持弹层面板语义 + 后续臂输入定位卫生：
             // 面板开着会占据快照首 input 位；theme 无 input 不涉定位，保留
             // 用户显式关闭语义）。互斥：三面板 Open* 各自闭另两面。
+            // 批 E：graph_page 同族——开页自图谱页回编辑区。
             .palette_open = false
             .switcher_open = false
             .cpp_open = false
+            .graph_page = false
             .ft_sel = path
             Tabs.Open({ path: path, title: "" })
             var t = .tabs.find(tt => tt.path == path)
@@ -607,16 +622,28 @@ widget App {
             .status = "imported"
         }
 
+        // —— PLAN-080 T-02 批 E：graph_view 真渲染。旧平铺行退役（行按钮
+        // → canvas 真渲染，β 装配 canvas 变体——079 模式 §2 批次 2 表）：
+        // 契约直拉 → graph_ring_tables 副本（环形布局 R-3 + 三表 CSV 行族）
+        // → canvas 数据通道 + 计数投影；graph_page 置位 = 图谱页视图。 ——
         .LoadGraph -> {
             var g = get_graph()
             var nodes = g.nodes
             var edges = g.edges
-            .graph_edges = edges.length
-            .graph_rows = []
-            for n in nodes {
-                .graph_rows.push({ label: n.label, target: n.path })
-            }
+            var t = graph_ring_tables(nodes, edges)
+            .graph_nodes = t.nodes
+            .graph_edges = t.edges
+            .graph_labels = t.labels
+            .graph_node_count = nodes.len()
+            .graph_edge_count = t.edges.len()
+            .graph_page = true
             .status = "graph-loaded"
+        }
+
+        // onhit 命中（R-1）：载荷 = 命中元素 id 字符串（= node id = path，
+        // 三表首列）→ 直开页（.OpenFile 内 graph_page 自闭回编辑区）。
+        .GraphNodeTap(id) -> {
+            .OpenFile(id)
         }
     }
 
@@ -840,7 +867,17 @@ widget App {
                         }
                     }
                     col (class: "h-px w-full bg-border shrink-0") {}
-                    if .active_title != "" {
+                    // —— 批 E：图谱页视图（graph_page）——canvas 真渲染三表
+                    //（scene: .graph 前缀绑定 .graph_nodes/_edges/_labels；
+                    // coords 500x500 逻辑域 = 布局 fn 同域；onhit 载荷 id=
+                    // path 直开页）。049 样板同形态。 ——
+                    if .graph_page {
+                        canvas (scene: .graph, coords: "500x500", clear: "#111827", onhit: .GraphNodeTap) {
+                            style: "flex-1 w-full"
+                        }
+                    }
+                    if !.graph_page {
+                        if .active_title != "" {
                         // PLAN-068 T-02: 正文 = autodown_editor（AutoDown 块
                         // 编辑器，PLAN-066 NativeWidgetRegistry 原生外部件；
                         // 形态模板 = autodown/demo/auto 左栏）。key 按 tab
@@ -861,6 +898,7 @@ widget App {
                                 style: "text-[13px] text-zinc-500"
                             }
                         }
+                    }
                     }
                     text .save_note
                 }
@@ -988,18 +1026,13 @@ widget App {
                 button "search" { onclick: .DoSearch }
                 text .hit_count
                 text "graph-edges"
-                text .graph_edges
+                text .graph_edge_count
             }
             row {
                 class: "flex flex-wrap gap-1 overflow-auto",
                 for r in .search_rows {
                     button (text: r.label) {
                         onclick: .OpenFile(r.target)
-                    }
-                }
-                for n in .graph_rows {
-                    button (text: n.label) {
-                        onclick: .OpenFile(n.target)
                     }
                 }
             }

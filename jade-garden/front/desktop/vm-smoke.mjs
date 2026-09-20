@@ -704,6 +704,43 @@ arm('properties', async (checks) => {
   checks.push('properties: CAP 定理 → prop_count=5 + 五键行 + summary/updated_at 标量值 + 切换刷新（配对通道 P-9 绕开，只读 v1）✓')
 })
 
+// PLAN-080 T-02 批 E 臂：graph_view 真渲染（canvas 场景契约 v2——049 样板
+// 断言通道：state 直读三表 + canvas 在场 + press(value=id) onhit 直达 +
+// 开页自闭回编辑区）。P661-D4 消费侧交接的 desktop 面承接。
+arm('graph', async (checks) => {
+  await pressMenuItem('卡片', '加载图谱')
+  await stateIs('status', 'graph-loaded')
+  // fixture 域断言：真实 5 页为下限（cpp 臂历史泄漏的缺失页*.ad 会入图
+  // ——fixture 恢复协议只回滚 tracked 文件，untracked 泄漏累积在案）
+  const cntSt = await callTool('autoui_state', { fields: ['graph_node_count'] })
+  const cnt = parseInt(cntSt.match(/graph_node_count:\s*(\d+)/)?.[1] ?? '0', 10)
+  if (cnt < 5) throw new Error(`graph: expected ≥5 graph nodes, got ${cnt}`)
+  // 三表真值（state 直读——graph_ring_tables 副本产物）：节点行 id=path
+  //（"CAP 定理.ad,…" 前缀）+ 标签行 label 在场 + 边表非空
+  const st = await callTool('autoui_state', { fields: ['graph_nodes', 'graph_labels', 'graph_edges'] })
+  if (!/CAP 定理\.ad,/.test(st)) throw new Error(`graph: node table lacks path-id row: ${st.slice(0, 300)}`)
+  if (!/CAP 定理/.test(st.match(/graph_labels: (\[[^\]]*\])/)?.[1] ?? '')) {
+    throw new Error(`graph: label table lacks CJK label: ${st.slice(0, 300)}`)
+  }
+  if (!/graph_edges: \[.+\]/.test(st) || /graph_edges: \[\]/.test(st)) {
+    throw new Error(`graph: edge table empty: ${st.slice(0, 300)}`)
+  }
+  // 图谱页视图切换：canvas 在场、编辑器缺席
+  const tree = await snapshot()
+  const cnv = findFirst(tree, (n) => n.head.startsWith('canvas ') && elementIdOf(n))
+  if (!cnv) throw new Error('graph: canvas not rendered in graph page view')
+  if (findFirst(tree, isEditorNode)) throw new Error('graph: editor should be hidden in graph page view')
+  // onhit（R-1）：press(value=id) 直达 → .GraphNodeTap(id) → .OpenFile 开页
+  //（active_title 跟随 + graph_page 自闭——编辑区回来）
+  await callTool('autoui_action', { element_id: elementIdOf(cnv), action: 'press', value: 'CAP 定理.ad' })
+  await stateIs('active_title', 'CAP 定理')
+  await stateIs('graph_page', 'false')
+  const tree2 = await snapshot()
+  if (findFirst(tree2, (n) => n.head.startsWith('canvas '))) throw new Error('graph: graph_page should auto-close on node open')
+  if (!findFirst(tree2, isEditorNode)) throw new Error('graph: editor not restored after node open')
+  checks.push('graph: 加载图谱 → 环形三表（5 节点 path-id + CJK 标签 + 边表）+ canvas 图谱页 + press(id) 开页 + 自闭回编辑区 ✓')
+})
+
 // tabs 臂（PLAN-064 T-05，§5.4 五断言，tabs_store 驱动的多 tab 编辑器流）：
 //   ① 双 tab 打开且 tab 条在场
 //   ② 切换回读正文不串页
@@ -869,6 +906,7 @@ const ARM_DEPS = {
   cpp: ['open-ws'],
   theme: ['open-ws'],
   properties: ['open-ws', 'files'],
+  graph: ['open-ws'],
 }
 
 async function runOnce(attempt) {

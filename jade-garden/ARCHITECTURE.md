@@ -283,6 +283,28 @@ merged 双模 PASS。逐 fn 分类表（34 实义 fn）/desktop 挂载裁定登�
   `docs/plans/attachments/074-sink-mode.md` §4.4。编译器零新增补丁
   （exe v0.4.2-1414）。**批次 2 = graph 族四件**（gated on auto-lang
   PLAN-661 交付 + properties 配对列表通道）。
+- **PLAN-080 L3 收口批次 2（graph 真渲染 + properties 配对通道 + L3
+  DoD 终验，2026-09-20）**：**前置解锁消费**（661 交付 4cbc810eb——
+  canvas 场景契约 v2 三表族+onhit / Slider 词位 / map 括号写；049 样板
+  冒烟 11/11 锚定，worktree exe 重建替换主检出 1414-dirty）。**graph 族
+  真渲染**：graph_view = 环形布局 fn（.at 侧 R-3 上游坐标）→ 三表 CSV →
+  `canvas (scene/coords/onhit)`，id=path press 直开页（cytoscape desktop
+  面退役）；graph_sidebar/graph_controls = 078 fn 副本挂载（stats/top
+  行 + slider 词位 + gc_set_setting 括号写 + flags 双分支按钮）；图谱页
+  入口 = menubar 视图→图谱页（全局 v1，局部 BFS 划出）。**properties
+  配对通道**：backend WikiDoc 加法字段 frontmatter_pairs（YAML 映射序
+  ——serde_yaml::Value 二次解析，serde_json 未开 preserve_order 实勘）
+  → web tabs_store.at 单源存字段 → desktop 只读属性段（P-9 绕开，编辑
+  面 vue strict 域差异登记）。**转正面**：gallery 第 21 真件（graph_view
+  双臂——vm twin canvas 三表 + press(id) 投影，vue 真件 cytoscape 截图
+  基线）+ search/flashcard fn 单源消费（with_search_display/card_* 副本，
+  079 Q-3 兑现）。**L3 DoD 终验**：全量套件绿（vm-smoke 双模 18 臂 +
+  e2e 24 + gallery 21 真件 + cargo 47 + sync/stub 门）+ 结构基线批次 2
+  后态（desktop/baseline/iced-l3-batch2-structure.txt）+ **差异表收口**
+  （079 模式文档 §8：批次 1+2 合账，逐项归"归档级/组装级"——剩余差异
+  仅限布局组装级的 design 30 §2 DoD 陈述成立）。执行期坑实录（P-16
+  撞名 link 死/fixture clean -x 域坑/同值竞态再现）见模式文档 §4。消费
+  登记表终版：074-sink-mode §4.3/§4.4。
 - **PLAN-075 L2 首证（2026-09-19）**：首批 L1 基线存量 9 单元（073 五面 +
   074 四件）跑完 design 30 §6 判定——判定记录
   `docs/plans/attachments/075-bp-extraction-record.md`（U-1 status_bar 骨架+

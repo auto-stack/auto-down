@@ -206,3 +206,40 @@ app_shell/main_area/left_sidebar/right_sidebar = 组装级单元（归 L3 口径
 072 台账"L1 挂占位"）；graph_page = 批次 2（gated on 661）。gallery
 units.mjs 增状态占位行（`missing: false` 的状态注记形态——负例语义仅
 editor_tab 续任，占位 ≠ 缺件红，登记措辞区分；gate 汇总单独一行可见）。
+**PLAN-080 T-04 后注**：graph_page 占位注记回填"已装配"（desktop
+menubar 视图→图谱页 + vm-smoke graph 臂承载；app 级组装面无独立组件
+真件，RC-C 口径续任）。
+
+## 8. L3 差异表收口（PLAN-080 T-05 终验，批次 1+2 合账）
+
+design 30 §2 L3 DoD = "全绿，剩余差异仅限布局组装级"。两批装配差异
+合账如下，逐项归两类：**归档级**（契约边界/用户裁定/上游后置债——
+登记在案的既定事实，非未决缺口）与**组装级**（desktop 自持 β 形态与
+web 形态的布局组装差异）。两类之外零未决——DoD 陈述成立。
+
+| # | 面 | 差异 | 级 | 归档 |
+| --- | --- | --- | --- | --- |
+| D-01 | outline | 行扫描等价推导（blocks 源不可达——F-5） | 组装级 | 079 §2 批 A |
+| D-02 | recent | 时间列 TS 域（formatTime 桥不镜像） | 组装级 | 079 §2 批 C |
+| D-03 | palette/switcher | Enter/方向键 = window 级键盘域不装配 | 组装级 | 079 §2 批 B |
+| D-04 | theme | 运行时应用 = AUTO_UI_THEME env 域（启动时消费） | 组装级 | 079 §2 批 C |
+| D-05 | unlinked/search | 高亮 mark html（regex 桥）不镜像 | 组装级 | 079 §2 / 080 §2 批 F |
+| D-06 | cpp | 自持入口（后端 outlinks exists 恒真——双端同款死路） | 归档级 | 079 §2 批 C 实勘 |
+| D-07 | ribbon | web-only 特有面（Q-2 裁定） | 归档级 | 本档 §6 |
+| D-08 | editor_tab | RC-E 引擎对拍（lighthouse 流，651 矩阵门在库） | 归档级 | 072 Q-2 |
+| D-09 | graph 布局 | 环形 v1 vs fcose 力导（P661-D3 后置） | 组装级 | 080 §2 批 E |
+| D-10 | graph_view | desktop canvas 三表 vs web cytoscape（渲染=数据纯函数双端各绘——563/661 契约裁定） | 归档级 | canvas-scene.md |
+| D-11 | properties | 只读 v1（编辑面 = typeof/Array.isArray vue strict 域） | 组装级 | 080 §2 批 D |
+| D-12 | graph settings | localStorage 跨重启持久化 = session KV str 域读回无 parse 词位（升级前置 auto-lang 值域/JSON 词位） | 组装级 | 080 §4 |
+| D-13 | graph flags | checkbox → desktop 双分支按钮（P-13 词位留后续） | 组装级 | 080 §2 批 E |
+| D-14 | graph 力导四参 | gravity/repulsion/attraction/linkLength = fcose 域不装配 | 组装级 | 080 §2 批 E |
+| D-15 | 局部图谱 | centerPath BFS 划出（Q-3 裁定；ext Set/queue 域） | 归档级 | 080 Q-3 |
+| D-16 | graph 命中域 | edges/labels 命中上报后置（v1 nodes only） | 归档级 | P661-D2 |
+| D-17 | graph exists | 杂色分支死面（后端恒 true——linkgraph 只收已解析页，契约域预留） | 归档级 | 080 §2 批 E |
+| D-18 | graph sidebar | degree 数字列不镜像（显示级） | 组装级 | 080 §2 批 E |
+| D-19 | flashcard | 列表形态直显 answer（无 reveal 模态——desktop 自持列表流） | 组装级 | 080 §2 批 F |
+
+**终验陈述（2026-09-20）**：全量套件绿（vm-smoke 双模 18 臂 / front e2e
+24 / gallery 21 真件 / cargo 47 / sync·stub 门）+ 结构基线批次 2 后态
+在库；上表 19 项差异全部落在归档级（8）与组装级（11）两类，无第三类
+未决——"剩余差异仅限布局组装级"的 design 30 §2 L3 DoD 陈述成立。

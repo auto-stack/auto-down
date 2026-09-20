@@ -508,7 +508,9 @@ state/snapshot/action（press/toggle）断言全绿。
 
 > 登记 ≠ 装配（§4 同款）：desktop 图谱族装配归 L3；graph_controls 挂载
 > 的前置 = 独立计划 Slider 补全（Q-4）；graph_sidebar 挂载无前置约束
-> （P-14 域 + G-2 CJK 剥除退化已知）。
+> （P-14 域 + G-2 CJK 剥除退化已知）。**终版注记（PLAN-080）**：前置
+> Slider 词位/map 括号写已随 661 交付解除；图谱族实际装配形态见 §4.5
+> 批次 2 终版回填。
 
 ### 4.4 desktop 消费登记·L3 批次 1 回填（PLAN-079 T-05，2026-09-19）
 
@@ -538,3 +540,18 @@ state/snapshot/action（press/toggle）断言全绿。
 > review——map 写修复/Slider/canvas 三表 onhit 在案）。gallery RC-C 六
 > 占位（units.mjs placeholder 形态）+ ribbon Q-2 web-only 特有面裁定
 > 落地见 072-inventory RC-C 行注记。
+
+### 4.5 desktop 消费登记·L3 批次 2 终版回填（PLAN-080 T-05，2026-09-20）
+
+> 661 交付（4cbc810eb）后的消费终表——L3 台账收口。作业标准 =
+> `079-l3-assembly-mode.md` §2 批次 2 表 + §3 流水；差异合账 = 同档 §8。
+
+| 件 | 登记表裁定（当时） | 实际装配形态（PLAN-080） |
+| --- | --- | --- |
+| properties_panel | §4.4 划批次 2（P-9 前置） | **配对通道 β 装配（只读 v1）**：backend WikiDoc 加法字段 frontmatter_pairs（YAML 序，serde_yaml::Value 二次解析）→ web tabs_store.at 单源存字段（字节部署）→ desktop props_rows 副本行（右栏末位，四流刷新）；编辑面 = vue strict 域差异（模式文档 §8 D-11） |
+| graph_view | §4.3 划出 078 → 661 交接 | **真渲染 β 装配（canvas 变体）**：graph_ring_tables 副本（环形布局 R-3 上游坐标 → 三表 CSV，049 样板形态）→ canvas (scene/coords/onhit)；id=path press 直开页 + 图谱页自闭；cytoscape desktop 面退役；gallery 第 21 真件双臂 |
+| graph_sidebar | §4.3 可选挂载 | **β 装配**：graph_stats/top_degree_nodes 副本（P614 while+索引 + 拾取式选排适配）+ 右栏 graph 段（stats 卡 + top 行开页）；degree 数字列显示级差异（D-18） |
+| graph_controls | §4.3 唯一路径（前置 Slider） | **β 装配**：gc_* 副本 + DSL slider 词位原生（661 解锁）+ gc_set_setting 括号写（P-11 已修）+ flags 双分支按钮（D-13）+ reset；localStorage 跨重启 = session KV str 域差异（D-12）；力导四参不装配（D-14） |
+| graph_page | §4.3 批次 2 | **β 装配（全局 v1）**：menubar 视图→图谱页 + graph_page 主区视图开关（canvas↔编辑器互斥，开页自闭）；局部 BFS 划出 Q-3（D-15）；gallery 占位注记回填已装配（app 级组装面无独立组件真件） |
+| search_panel | §4.4 内联维持（Q-3 延后） | **转正**：with_search_display 副本消费（title_text 全形状行；snippet mark 桥差异 D-05） |
+| flashcard_modal | §4.4 内联维持（Q-3 延后） | **转正**：card_at/card_question/card_answer/counter_label 副本消费（raw 回落 + counter 行序 + answer 直显差异 D-19） |

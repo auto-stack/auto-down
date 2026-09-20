@@ -52,6 +52,12 @@ autodown/demo/*.cjs
 autodown/demo/test-results/
 autodown/test-results/
 
+# Screenshots / e2e artifacts（走查与失败截图——tracked 基线资产不受影响：
+# gallery e2e/baselines/ 与 *-snapshots/ 为在册基线，勿入此列）
+jade-garden/front/tmp/
+jade-garden/front/e2e/test-results/
+jade-garden/front/component-gallery/e2e/test-results/
+
 # pnpm store
 .pnpm-store/
 .worktree/

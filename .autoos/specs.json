@@ -2434,6 +2434,18 @@
     ],
     "superseded_by": null,
     "content": "- 验收：AC-01 exe@4cbc810eb 重建锚定（0.4.2-1457 版本回读）+049 四能力冒烟 11/11+布局/契约定形（实勘修正：serde_json 未开 preserve_order——pairs YAML 序走 serde_yaml::Value 二次解析）；AC-02 配对通道闭环（cargo 47/47 含 zebra/alpha/mike/kilo YAML 序判别+e2e 24/24[11-properties 不变绿·08 截图零漂移=web 零破坏]+tabs-store-sync+properties 臂双模：计数 5/五键/summary·updated_at 标量值端到端/切换刷新）；AC-03 graph 族三件（graph_view canvas 三表真渲染[环形布局 R-3 上游坐标→CSV 行族]press(id) 直开页+图谱页视图开关自闭/sidebar stats·top 行开页/controls slider set_value→r=24 投影+孤立过滤+reset）；AC-04 gallery 第 21 真件双臂（vm twin canvas press 寻址面+vue 真件 cytoscape 截图基线，旧 20 张字节零漂移）+search/flashcard fn 单源转正+图谱页菜单入口实证；AC-05 全量门双模（vm-smoke 18 臂 split+merged/e2e 24/gallery 21 真件/cargo 47/sync·stub 门）+结构基线 iced-l3-batch2-structure.txt+差异表收口（079-mode §8：批次 1+2 合账 19 项=归档级 8/组装级 11，design 30 §2\"剩余差异仅限布局组装级\"DoD 陈述成立）+SD-01 §8.6 批次 2 bullet+074-sink-mode §4.5 终版回填。\n- 复审（r1 pass @ cd81321）：独立复跑六组门全绿（同会话局限声明在案——裁定从工件重构）；findings 全 🟢info：F-R1 merge 账本 P080-x=merge 阶段结构交付/F-R2 AC-03 snapshot-vs-state 断言通道语义等价（049 同款 state 直读三表+canvas 在场+press 寻址）/F-R3 顺带删 072 误入库 test-results 工件；两处 authorized adaptation（preserve_order 缺席→二次解析/session KV str 域→settings 会话内态 D-12）已记模式文档。\n- 执行注记：worktree exe 0.4.2-1457-g4cbc810eb（主检出 1414-dirty 未动）；新坑 P-16（model 字段与 use 导入 fn 同名=VmBridge link 死——graph_stats 撞名实录）；fixture restore 协议 clean -x 修正（tmp/ 整树 gitignored 致 clean -f 从未真清——18 历史泄漏页清零，fixture 回真 5 页基线）；同值 status 竞态两处改判别字段轮询（tabs②/properties 切页）。"
+   },
+   {
+    "id": "P081-1",
+    "section": "reviews",
+    "status": "stable",
+    "title": "PLAN-081 — 验收与复审收据（reviewed pass @ rev 1 7ab3911：jade-edit 初始版——独立仓 + 单工程双轨 + engine 编辑器 + 契约复用 + 一致性门 v0）",
+    "file": "docs/plans/archived/081-jade-edit-bootstrap.md",
+    "related": [
+     "PLAN-081"
+    ],
+    "superseded_by": null,
+    "content": "- 验收：AC-01 仓落成（D:/autostack/jade-edit 独立仓 master 9 commits 139ee98→7ab3911，工作树净；RF-1 info=pac.at 落 T-02 commit 骨架两笔成型）；AC-02 双轨定形（t00 三勘定档在库[R-1 裁 A'=render:[\"vm\",\"vue\"] Multi 声明+双命令分工 run -r vm / build -r vue、R-2 F-1 过时[vue.rs:6835 PLAN-070 T-05 去门化]、R-3 axum+VM 模式一 env 开关留后续]+pac.at 与裁定一致+双冒烟以更强形态复跑）；AC-03 vm 环全通（vm_matrix 7/7：boot/tree 5/5/open 播种/edit 脏标/save 落盘三验[原文+标记+frontmatter]/reload 外改可见+结构基线 structure-v0 零漂移）；AC-04 vue 环全通（pnpm build=regen-vue 一键链绿[gen→四缺口补丁→engine dist 卫兵→vue-tsc+vite]+pnpm test:e2e 六检查同一检查单 6/6）；AC-05 一致性门 v0（gate.mjs 四段顺序 ALL GREEN+parity-ledger v0 九项三分类在库）；AC-06 契约复用（副本↔冻结源字节等价门+run-back 手跑 health ok）；AC-07 冻结纪律（auto-down 全程 tracked 净——tmp/wiki-demo 途中被 config-压-env 事故写坏一次已 git restore 还原并根治）。\n- 复审（r1 pass @ 7ab3911）：门四段复跑 ALL GREEN（vm 7/7+build+e2e+契约）+run-back 独立端口 8215 health ok+git/工件实查；findings 全 info（RF-1 首 commit 字面/RF-2 vue stub 配方收窄为生成链原生映射+补件/RF-3 同会话复审局限声明/RF-4 t00 探针临时位）。\n- 执行注记：单源定形 013 形态（.store.* 读面——合并根状态裸读与 store computed 均 vue 发射坏）；VM 保存定律（JsonAny 经 VM 变量/Obj 字面量存取均损坏⇒现读现传；INPUT_TEXT=整文替换）；生成 api client 四上游缺口（通配 URL/List<T>/JsonAny/map 直译——regen-vue 补丁守，上游候选）；后端 config-压-env 事故机理与 exe 拷贝隔离根治（e2e-prepare 配方）；jade-edit spec 面=仓内 docs/（ARCHITECTURE SD-01+parity-ledger v0）——auto-down 侧零 spec 增量（冻结纪律）。"
    }
   ],
   "reports": [

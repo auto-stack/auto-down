@@ -40,6 +40,9 @@ use panels_b_fns: sw_collect, sw_filter, pal_match
 // rf_rows（recent_files_with_time 副本·无 time 列差异）/theme_accents
 //（逐字副本）。
 use panels_c_fns: ag_display, rf_rows, theme_accents
+// PLAN-080 T-01 批 D 装配：props_rows（properties sync_entries 的配对通道
+// 形状适配副本——P-9 map 迭代禁面经 frontmatter_pairs 绕开，只读 v1）。
+use panels_d_fns: props_rows
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages, get_agenda, create_file
 use auto.http
 
@@ -119,6 +122,12 @@ widget App {
         var theme_open bool = false
         var theme_mode str = "dark"
         var theme_accent str = "indigo"
+        // —— PLAN-080 T-01 批 D 装配：properties 只读段（右栏末位，web
+        // RightSidebar 同位）——行 = tab.frontmatter_pairs（YAML 序配对
+        // 通道，P-9 绕开），OpenFile/SwitchTab 流重取（watch 型面板 = 流
+        // 内刷新，desktop 无 watch immediate 依赖面）。 ——
+        var prop_rows = []
+        var prop_count int = 0
         var search_q str = ""
         var search_rows = []
         var hit_count int = 0
@@ -289,6 +298,14 @@ widget App {
             var hrows = ol_headings(.active_body)
             .outline_rows = hrows
             .outline_count = hrows.len()
+            // 批 D properties 行重取（配对通道；t = Open 后的 tab，pairs
+            // 随读已在 tab model——prop_value_text 的 list 串化形态差异
+            // 见 panels_d_fns.at 头注）。
+            if t != null {
+                var pairs_in = t.frontmatter_pairs
+                .prop_rows = props_rows(pairs_in)
+                .prop_count = pairs_in.len()
+            }
             .status = "opened"
         }
 
@@ -334,6 +351,12 @@ widget App {
             var hrows = ol_headings(.active_body)
             .outline_rows = hrows
             .outline_count = hrows.len()
+            // 批 D properties 行重取（切换臂，同 .OpenFile）。
+            if t != null {
+                var pairs_in = t.frontmatter_pairs
+                .prop_rows = props_rows(pairs_in)
+                .prop_count = pairs_in.len()
+            }
             .status = "switched"
         }
 
@@ -360,6 +383,8 @@ widget App {
                     .active_title = ""
                     .active_body = ""
                     .active_dirty = false
+                    .prop_rows = []
+                    .prop_count = 0
                 }
             }
             if was_dirty {
@@ -488,6 +513,9 @@ widget App {
                     .active_body = t.body
                     .active_dirty = t.dirty
                 }
+                // 新页 frontmatter 空（create_file 空文档）——批 D 行清空。
+                .prop_rows = []
+                .prop_count = 0
                 .status = "cpp-created"
             }
         }
@@ -933,6 +961,21 @@ widget App {
                     for rc in .recent_rows {
                         button (text: rc.label) {
                             onclick: .OpenFile(rc.target)
+                        }
+                    }
+                    // —— 批 D：properties 只读行（web RightSidebar 末位对位；
+                    // 行 = frontmatter_pairs 配对通道，键/值文本双列非交互
+                    // ——编辑面 vue strict 域差异登记，模式文档 §2 批次 2）。 ——
+                    row {
+                        class: "gap-1 items-center",
+                        text "properties" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                        text .prop_count { style: "text-[11px] text-zinc-500" }
+                    }
+                    for pr in .prop_rows {
+                        row {
+                            class: "gap-1 items-center",
+                            text pr.key { style: "text-[11px] text-zinc-500" }
+                            text pr.value_text { style: "text-[12px] text-zinc-300" }
                         }
                     }
                 }

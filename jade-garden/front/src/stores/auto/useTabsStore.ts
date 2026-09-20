@@ -36,7 +36,9 @@ tab.originalBody = doc.body;
 if (doc.frontmatter != null) {tab.frontmatter = doc.frontmatter;
 let fm_title3 = doc.frontmatter.title;
 if (fm_title3 != null) {if (fm_title3 != '') {tab.title = fm_title3;
-}}}tab.dirty = false;
+}}}
+if (doc.frontmatter_pairs != null) {tab.frontmatter_pairs = doc.frontmatter_pairs;
+}tab.dirty = false;
 tab.loaded = true;
 }if (doc == null) {tab.loaded = true;
 tab.originalBody = tab.body;
@@ -64,7 +66,10 @@ existing.originalBody = doc2.body;
 if (doc2.frontmatter != null) {existing.frontmatter = doc2.frontmatter;
 let fm_title = doc2.frontmatter.title;
 if (fm_title != null) {if (fm_title != '') {existing.title = fm_title;
-}}}existing.dirty = false;
+}}}
+
+if (doc2.frontmatter_pairs != null) {existing.frontmatter_pairs = doc2.frontmatter_pairs;
+}existing.dirty = false;
 existing.loaded = true;
 }if (doc2 == null) {existing.loaded = true;
 existing.originalBody = existing.body;
@@ -72,7 +77,7 @@ existing.dirty = false;
 }}}
 if (existing == null) {let t2 = title;
 if (t2 == '') {t2 = strip_ext(path, '.ad');
-}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: false, saving: false });
+}tabs.value.push({ path: path, title: t2, body: '', originalBody: '', frontmatter: {  }, frontmatter_pairs: [], dirty: false, loaded: false, saving: false });
 active_path.value = path;
 let doc = null;
 try {doc = await read_wiki(path);
@@ -88,7 +93,9 @@ tab.originalBody = doc.body;
 if (doc.frontmatter != null) {tab.frontmatter = doc.frontmatter;
 let fm_title2 = doc.frontmatter.title;
 if (fm_title2 != null) {if (fm_title2 != '') {tab.title = fm_title2;
-}}}tab.dirty = false;
+}}}
+if (doc.frontmatter_pairs != null) {tab.frontmatter_pairs = doc.frontmatter_pairs;
+}tab.dirty = false;
 tab.loaded = true;
 }if (tab != null && doc == null) {tab.loaded = true;
 tab.originalBody = tab.body;
@@ -107,7 +114,7 @@ title = `局部图谱：${strip_ext(center, '.ad')}`;
 let existing = tabs.value.find((t: any) => t.path == path);
 if (existing != null) {active_path.value = path;
 }
-if (existing == null) {tabs.value.push({ path: path, title: title, body: '', originalBody: '', frontmatter: {  }, dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || null, graphDepth: depth });
+if (existing == null) {tabs.value.push({ path: path, title: title, body: '', originalBody: '', frontmatter: {  }, frontmatter_pairs: [], dirty: false, loaded: true, saving: false, isGraph: true, graphCenterPath: center || null, graphDepth: depth });
 active_path.value = path;
 }
  }

@@ -163,12 +163,23 @@ pub fn upload_asset() UploadAssetResponse {
 
 // ------------------------------------------------------ wiki docs
 
+// PLAN-080 T-01: additive read-only pair channel (P-9 bypass — the VM track
+// cannot iterate a JSON map, but consumes key/value pair lists). Read path
+// fills it in YAML mapping order; the write path ignores/echoes it.
+pub type FrontmatterPair {
+    key str
+    value JsonAny
+}
+
 // ROUTE: GET /api/wiki/{*path}
 // ROUTE: POST /api/wiki/{*path}  (body: WikiDoc → WikiDoc)
 pub type WikiDoc {
     // arbitrary frontmatter bag (serde_json::Value on the backend)
     frontmatter JsonAny
     body str
+    // ordered pairs (YAML mapping order); optional — reads always fill it
+    // (possibly empty), writes may omit it (backend serde default)
+    frontmatter_pairs List<FrontmatterPair>?
 }
 
 #[api(method = "GET", path = "/api/wiki/{*path}")]

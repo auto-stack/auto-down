@@ -669,6 +669,41 @@ arm('theme', async (checks) => {
   checks.push('theme: 面板五 accent（theme_accents 副本）+ Light/Dark + 模式/accent 状态投影（运行时应用 env 域差异登记）✓')
 })
 
+// PLAN-080 T-01 批 D 臂：properties 配对通道端到端（backend
+// frontmatter_pairs 加法契约[back 单测判别 YAML 序] → web tabs_store 单源
+// 存字段 → desktop props_rows 副本行构造，只读 v1）。断言锚 = 行计数真值
+// + 键名 + 标量值文本（summary/updated_at 双唯一锚）+ SwitchTab 刷新。
+arm('properties', async (checks) => {
+  const tree0 = await snapshot()
+  const cap = findFirst(tree0, (n) => n.head.startsWith('button ') && ownText(n) === 'CAP 定理.ad')
+  if (!cap) throw new Error('properties: "CAP 定理.ad" file button not found')
+  await callTool('autoui_action', { element_id: elementIdOf(cap), action: 'press' })
+  await stateIs('status', 'opened')
+  await stateIs('prop_count', '5')
+  // 键真值（fixture YAML 序 status/summary/tags/title/updated_at——与本
+  // fixture 字母序重合，序判别在 back wiki 单测 zebra/alpha/mike/kilo）
+  const keys = ['status', 'summary', 'tags', 'title', 'updated_at']
+  const tree = await snapshot()
+  for (const k of keys) {
+    if (!findFirst(tree, (n) => ownText(n) === k)) throw new Error(`properties: key row ${k} missing`)
+  }
+  // 标量值端到端（summary/updated_at = 全 UI 唯一文本锚；tags 的 list 串化
+  // 形态 = 显示级差异不押——panels_d_fns.at 头注）
+  const flat = subtreeText(tree)
+  if (!flat.includes('分布式系统中的 CAP 定理简介')) throw new Error('properties: summary value missing')
+  if (!flat.includes('2026-08-27T03:50:52')) throw new Error('properties: updated_at value missing')
+  // 切换刷新：开 Hello World（文件树按钮——scoped 跑时 strip 钮可能不在
+  // 场；OpenFile 激活臂同一刷新块）→ 计数不变、summary 值随页切换
+  const hw = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
+  if (!hw) throw new Error('properties: "Hello World.ad" file button not found')
+  await callTool('autoui_action', { element_id: elementIdOf(hw), action: 'press' })
+  await stateIs('status', 'opened')
+  await stateIs('prop_count', '5')
+  const flat2 = subtreeText(await snapshot())
+  if (!flat2.includes('最基础的 AutoDown 文档示例')) throw new Error('properties: switch did not refresh pair rows')
+  checks.push('properties: CAP 定理 → prop_count=5 + 五键行 + summary/updated_at 标量值 + 切换刷新（配对通道 P-9 绕开，只读 v1）✓')
+})
+
 // tabs 臂（PLAN-064 T-05，§5.4 五断言，tabs_store 驱动的多 tab 编辑器流）：
 //   ① 双 tab 打开且 tab 条在场
 //   ② 切换回读正文不串页
@@ -833,6 +868,7 @@ const ARM_DEPS = {
   recent: ['open-ws'],
   cpp: ['open-ws'],
   theme: ['open-ws'],
+  properties: ['open-ws', 'files'],
 }
 
 async function runOnce(attempt) {

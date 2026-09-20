@@ -40,9 +40,11 @@ export function read_wiki(path: string) {
 }
 
 /** Contract-name alias: the #[api] write_wiki(path, frontmatter, body)
- *  field-scalar call shape adapted onto the client doc-shape api. */
+ *  field-scalar call shape adapted onto the client doc-shape api.
+ *  PLAN-080 T-01: pairs ride reads only — the write sends the serde-default
+ *  empty list (backend ignores the field). */
 export function write_wiki(path: string, frontmatter: Record<string, any>, body: string) {
-  return writeWiki(path, { frontmatter, body })
+  return writeWiki(path, { frontmatter, body, frontmatter_pairs: [] })
 }
 
 /** Re-throws the caught error. The DSL has try/catch/finally

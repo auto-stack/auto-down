@@ -110,6 +110,9 @@ export async function openDailyNote(
     await writeWiki(path, {
       frontmatter: { title, created_at: formatDate(date, 'yyyy-MM-dd'), updated_at: formatDate(date, 'yyyy-MM-dd') },
       body: defaultDailyBody(title, date),
+      // PLAN-080 T-01: additive pair channel — reads only; the write sends
+      // the serde-default empty list.
+      frontmatter_pairs: [],
     })
     await fileTree.load()
   }

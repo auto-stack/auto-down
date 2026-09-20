@@ -94,13 +94,25 @@ export class AssetUploadRequest {
 }
 
 
+export class FrontmatterPair {
+    key: string;
+    value: Record<string, any>;
+
+    constructor(key: string, value: Record<string, any>) {
+        this.key = key;
+        this.value = value;
+    }
+}
+
 export class WikiDoc {
     frontmatter: Record<string, any>;
     body: string;
+    frontmatter_pairs: FrontmatterPair[] | null;
 
-    constructor(frontmatter: Record<string, any>, body: string) {
+    constructor(frontmatter: Record<string, any>, body: string, frontmatter_pairs: FrontmatterPair[] | null) {
         this.frontmatter = frontmatter;
         this.body = body;
+        this.frontmatter_pairs = frontmatter_pairs;
     }
 }
 

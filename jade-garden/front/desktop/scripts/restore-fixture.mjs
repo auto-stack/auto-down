@@ -5,8 +5,13 @@
 // state afterwards so repeat runs start identical (AC-02 跑前后一致).
 //
 // Source of truth = git (tmp/wiki-demo is fully tracked). Restore =
-// scoped `git checkout --` + `git clean -f` INSIDE tmp/wiki-demo only
-// (import-arms create untracked docs; checkout alone would leave them).
+// scoped `git checkout --` + `git clean -f -x` INSIDE tmp/wiki-demo only
+// (import/cpp arms create untracked docs; checkout alone would leave them).
+// PLAN-080 T-03 实录修正：tmp/ 整树 gitignored（fixture 为 force-add 例外），
+// 无 -x 的 clean 跳过 ignored 路径 → cpp 臂的缺失页*.ad 从未被清（18 个
+// 历史泄漏实录）且多 attempt 跑结构性漂移哈希门。-x 连带清掉的索引缓存
+//（jade-garden-index.*/SRS .edn）本就是声明可再生的派生态（下方哈希契约
+// 注记），语义不变。
 //
 // CLI: node restore-fixture.mjs   → restore + print hash
 // API: snapshotFixture() / restoreFixture() / hashFixture()
@@ -44,7 +49,7 @@ export function restoreFixture() {
   const git = (argv) => execFileSync('git', ['-C', REPO_ROOT, ...argv], { stdio: 'pipe' })
   const rel = path.relative(REPO_ROOT, FIXTURE_ROOT).replace(/\\/g, '/')
   git(['checkout', '--', rel])
-  git(['clean', '-f', '--', rel])
+  git(['clean', '-f', '-x', '--', rel])
   return hashFixture()
 }
 

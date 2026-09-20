@@ -45,8 +45,9 @@ use panels_c_fns: ag_display, rf_rows, theme_accents
 use panels_d_fns: props_rows
 // PLAN-080 T-02 批 E 装配：graph_ring_tables（环形布局→三表 CSV——049
 // 样板部署副本，canvas 场景契约 v2/R-3 上游坐标；graph_view 真渲染，
-// cytoscape desktop 面退役）。
-use panels_graph_fns: graph_ring_tables
+// cytoscape desktop 面退役）。T-03 扩：graph_stats/top_degree_nodes/
+// gc_* 副本（078 下沉 fn 部署——graph_sidebar/graph_controls 挂载）。
+use panels_graph_fns: graph_ring_tables, graph_stats, top_degree_nodes, gc_set_setting, gc_default_settings
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages, get_agenda, create_file
 use auto.http
 
@@ -76,7 +77,7 @@ fn to_fs_nodes(nodes List) List {
 
 widget App {
 
-    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, GraphNodeTap(str), ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery, LoadAgenda, OpenCpp, CppQuery, CppCreate, CppCancel, ThemeOpen, ThemeClose, SetThemeMode(str), SetAccent(str) }
+    msg { Init, OpenWs, LoadFiles, OpenFile(str), Edit(str), Save, CloseTab, SwitchTab(str), LoadCards, Grade(str, str, int), QChanged, DoSearch, LoadGraph, GraphNodeTap(str), GcRebuild, GcNodeSize(float), GcEdgeWidth(float), GcOrphans, GcMissing, GcReset, ExportWs, ImportZip, FtToggle(str), OpenPalette, ClosePalette, PaletteQuery, OpenSwitcher, CloseSwitcher, SwitcherQuery, LoadAgenda, OpenCpp, CppQuery, CppCreate, CppCancel, ThemeOpen, ThemeClose, SetThemeMode(str), SetAccent(str) }
 
     model {
         var status str = "boot"
@@ -146,6 +147,18 @@ widget App {
         var graph_page bool = false
         var graph_node_count int = 0
         var graph_edge_count int = 0
+        // —— PLAN-080 T-03 批 E 扩：graph_sidebar/graph_controls 挂载态 ——
+        // settings map = 单源形状（web graph store 同形，gc_* 副本写通道）；
+        // raw 缓存 = settings 变更后免重拉的重表原料；stats/top = sidebar
+        // 副本行。localStorage 持久化差异：Plan 401 session KV 为 str 域
+        // 读回（storage.get → String），数值/bool 读回无 parse 词位——v1
+        // 会话内 model 态（模式文档 §2 批次 2 表登记，升级前置 = 值域
+        // 扩容或 JSON 词位归 auto-lang）。 ——
+        var graph_settings map = {}
+        var graph_raw_nodes List = []
+        var graph_raw_edges List = []
+        var gstats map = {}
+        var graph_top List = []
         var io_note str = ""
     }
 
@@ -205,6 +218,9 @@ widget App {
     on {
         .Init -> {
             .status = "ready"
+            // 批 E：settings 初值 = web 默认形（gc_default_settings 副本；
+            // 会话持久化差异见 model 注记）。
+            .graph_settings = gc_default_settings()
         }
 
         .OpenWs -> {
@@ -624,20 +640,66 @@ widget App {
 
         // —— PLAN-080 T-02 批 E：graph_view 真渲染。旧平铺行退役（行按钮
         // → canvas 真渲染，β 装配 canvas 变体——079 模式 §2 批次 2 表）：
-        // 契约直拉 → graph_ring_tables 副本（环形布局 R-3 + 三表 CSV 行族）
-        // → canvas 数据通道 + 计数投影；graph_page 置位 = 图谱页视图。 ——
+        // 契约直拉 → raw 缓存 → .GcRebuild（环形布局 R-3 + 三表 CSV 行族，
+        // settings 消费）→ canvas 数据通道 + 计数投影；graph_page 置位 =
+        // 图谱页视图。T-03 扩：stats/top（graph_sidebar 副本行）随载。 ——
         .LoadGraph -> {
             var g = get_graph()
-            var nodes = g.nodes
-            var edges = g.edges
-            var t = graph_ring_tables(nodes, edges)
+            .graph_raw_nodes = g.nodes
+            .graph_raw_edges = g.edges
+            .gstats = graph_stats(.graph_raw_nodes, .graph_raw_edges)
+            .graph_top = top_degree_nodes(.graph_raw_nodes)
+            .GcRebuild()
+            .graph_page = true
+            .status = "graph-loaded"
+        }
+
+        // 三表重灌（raw 缓存 × settings——Gc* 写通道统一出口；LoadGraph
+        // 与 settings 变更共用，G-3 同族：handler 无自派发外的复用通道）。
+        .GcRebuild -> {
+            var t = graph_ring_tables(.graph_raw_nodes, .graph_raw_edges, .graph_settings)
             .graph_nodes = t.nodes
             .graph_edges = t.edges
             .graph_labels = t.labels
-            .graph_node_count = nodes.len()
+            .graph_node_count = t.nodes.len()
             .graph_edge_count = t.edges.len()
-            .graph_page = true
-            .status = "graph-loaded"
+        }
+
+        // —— 批 E 控制面（graph_controls 副本消费）：DSL slider 词位（P-12
+        // 已解除——原生 onchange float 载荷，049 同形）+ gc_set_setting 写
+        // 通道（P-11 括号写已修）+ 重灌。flags = desktop 自持双分支按钮
+        //（web checkbox 形差异登记；力导四参 = fcose 域不装配，P661-D3
+        // 后置同族）。 ——
+        .GcNodeSize(v) -> {
+            .graph_settings = gc_set_setting(.graph_settings, "nodeSize", v)
+            .GcRebuild()
+            .status = "gc-nodesize"
+        }
+
+        .GcEdgeWidth(v) -> {
+            .graph_settings = gc_set_setting(.graph_settings, "edgeWidth", v)
+            .GcRebuild()
+            .status = "gc-edgewidth"
+        }
+
+        .GcOrphans -> {
+            var cur = .graph_settings.showOrphans
+            .graph_settings = gc_set_setting(.graph_settings, "showOrphans", !cur)
+            .GcRebuild()
+            .status = "gc-orphans"
+        }
+
+        .GcMissing -> {
+            var cur = .graph_settings.showMissing
+            .graph_settings = gc_set_setting(.graph_settings, "showMissing", !cur)
+            .GcRebuild()
+            .status = "gc-missing"
+        }
+
+        .GcReset -> {
+            .graph_settings = gc_default_settings()
+            .GcRebuild()
+            .status = "gc-reset"
         }
 
         // onhit 命中（R-1）：载荷 = 命中元素 id 字符串（= node id = path，
@@ -677,6 +739,9 @@ widget App {
                             // PLAN-079 T-03 批 C：agenda 装载 + theme 面板入口。
                             menubar-item (title: "日程", icon: "calendar-days") { onclick: .LoadAgenda }
                             menubar-item (title: "主题", icon: "palette") { onclick: .ThemeOpen }
+                            // PLAN-080 T-03 批 E：图谱页入口（全局 v1——
+                            // 局部 BFS 划出 Q-3；LoadGraph = 载入+图谱页视图）。
+                            menubar-item (title: "图谱页", icon: "share-2") { onclick: .LoadGraph }
                             // console 位预留（041 同款；jade v1 无 console 面板）
                         }
                     }
@@ -867,13 +932,45 @@ widget App {
                         }
                     }
                     col (class: "h-px w-full bg-border shrink-0") {}
-                    // —— 批 E：图谱页视图（graph_page）——canvas 真渲染三表
-                    //（scene: .graph 前缀绑定 .graph_nodes/_edges/_labels；
-                    // coords 500x500 逻辑域 = 布局 fn 同域；onhit 载荷 id=
-                    // path 直开页）。049 样板同形态。 ——
+                    // —— 批 E：图谱页视图（graph_page）——控制条（slider
+                    // 词位原生 + flags 双分支按钮 + reset——graph_controls
+                    // 副本消费面）+ canvas 真渲染三表（scene: .graph 前缀
+                    // 绑定 .graph_nodes/_edges/_labels；coords 500x500 逻辑
+                    // 域 = 布局 fn 同域；onhit 载荷 id=path 直开页）。049
+                    // 样板同形态。 ——
                     if .graph_page {
-                        canvas (scene: .graph, coords: "500x500", clear: "#111827", onhit: .GraphNodeTap) {
-                            style: "flex-1 w-full"
+                        col {
+                            class: "flex-1 gap-1",
+                            row {
+                                class: "flex-wrap gap-2 items-center",
+                                text "graph-controls" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                                text "节点" { style: "text-[11px] text-zinc-500" }
+                                slider (value: .graph_settings.nodeSize, min: 4.0, max: 40.0, step: 1.0) {
+                                    onchange: .GcNodeSize
+                                    style: "w-32"
+                                }
+                                text "连线" { style: "text-[11px] text-zinc-500" }
+                                slider (value: .graph_settings.edgeWidth, min: 0.5, max: 5.0, step: 0.5) {
+                                    onchange: .GcEdgeWidth
+                                    style: "w-24"
+                                }
+                                if .graph_settings.showOrphans {
+                                    button (text: "孤立:开→关") { onclick: .GcOrphans }
+                                }
+                                if !.graph_settings.showOrphans {
+                                    button (text: "孤立:关→开") { onclick: .GcOrphans }
+                                }
+                                if .graph_settings.showMissing {
+                                    button (text: "缺失:开→关") { onclick: .GcMissing }
+                                }
+                                if !.graph_settings.showMissing {
+                                    button (text: "缺失:关→开") { onclick: .GcMissing }
+                                }
+                                button "重置设置" { onclick: .GcReset }
+                            }
+                            canvas (scene: .graph, coords: "500x500", clear: "#111827", onhit: .GraphNodeTap) {
+                                style: "flex-1 w-full"
+                            }
                         }
                     }
                     if !.graph_page {
@@ -904,6 +1001,29 @@ widget App {
                 }
                 col {
                     class: "w-56 shrink-0 gap-1 overflow-auto border-l pl-2",
+                    // —— 批 E：graph_sidebar 副本消费段（graph_page 时在场，
+                    // web GraphSidebar 对位——stats 计数 + top degree 行点击
+                    // 开页；degree 数字列 = 显示级差异不镜像）。 ——
+                    if .graph_page {
+                        row {
+                            class: "gap-1 items-center",
+                            text "graph" { style: "text-[11px] text-zinc-500 tracking-wider" }
+                            text .gstats.total { style: "text-[11px] text-zinc-500" }
+                        }
+                        row {
+                            class: "gap-1 items-center",
+                            text "链接" { style: "text-[10px] text-zinc-600" }
+                            text .gstats.edges { style: "text-[10px] text-zinc-600" }
+                            text "孤立" { style: "text-[10px] text-zinc-600" }
+                            text .gstats.orphan { style: "text-[10px] text-zinc-600" }
+                        }
+                        for tp in .graph_top {
+                            button (text: tp.display) {
+                                onclick: .OpenFile(tp.path)
+                                style: "text-left text-[12px] text-zinc-300"
+                            }
+                        }
+                    }
                     // —— 反链/出链面板（PLAN-067 T-05 整形：结构/handler
                     // 不动，标准 col/row/class + 计数徽标文本）——
                     row {

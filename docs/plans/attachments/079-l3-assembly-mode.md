@@ -88,7 +88,7 @@ driver.mjs（后端真数据：Tasks 标题 → 3 条未链引用 = Projects.ad 
 | properties_panel | 079 Q-5 裁定 A 划批次 2 | **配对通道装配（只读 v1）**：backend WikiDoc 加法字段 frontmatter_pairs → web tabs_store.at 单源存字段（byte 部署）→ desktop 属性段 = pairs 行构造（sync_entries 语义的 pairs 形状适配副本）；编辑面 = vue strict 域（typeof/Array.isArray），差异登记 |
 | graph_view | §4.3 划出 078 → 661 交接 | **真渲染装配**：LoadGraph 升级 = 环形布局 fn（.at 侧 math.cos/sin，049 SetRadius 形态）→ 三表 CSV 行族 → `canvas (scene/coords/onhit)`；id=path，onhit → .OpenFile 开页；cytoscape 退役（desktop 面） |
 | graph_sidebar | §4.3 可选挂载 | 装配：graph_stats/top_degree_nodes 下沉 fn 部署副本 + 右栏段（计数卡 + top 度行） |
-| graph_controls | §4.3 唯一路径（Slider 已解锁） | 装配：gc_* 部署副本 + DSL `slider` 词位（原生，RangeInput ext 桥退役）+ settings 点号写（P-11 括号写已修，写形态以副本单源为准）+ localStorage 持久化 |
+| graph_controls | §4.3 唯一路径（Slider 已解锁） | 装配（实际形态）：gc_* 副本 + DSL `slider` 词位原生（nodeSize/edgeWidth 双滑条，onchange float 载荷）+ gc_set_setting 括号写通道（P-11 已修）+ flags = desktop 自持双分支按钮（web checkbox 形差异登记，P-13 词位留后续）+ reset；**localStorage 持久化差异**：Plan 401 session KV 为 str 域读回（storage.get → String），数值/bool 读回无 parse 词位——v1 会话内 model 态（升级前置 = 值域扩容/JSON 词位归 auto-lang）；力导四参（gravity 等）= fcose 域不装配（P661-D3 后置同族） |
 | graph_page | §4.3 批次 2 | 图谱页入口（menubar 视图→图谱页，全局 v1；局部 BFS = ext Set/queue 域划出 Q-3） |
 | search_panel/flashcard_modal | 079 Q-3 延后顺带 | 内联流升级：下沉 fn 部署副本消费（with_search_display 行构造族 / card_at·card_question·card_answer·counter_text），形态沿 §3 流水 |
 
@@ -151,7 +151,24 @@ pairs（serde default，回写仍走 frontmatter map）。⚠ 实勘修正：计
 - **P-9（沿，properties 前置）：map 键值迭代 VM 零迭代**——sync_entries
   消费侧以配对列表通道装配（twin 播种口径），map-for-in 禁面。
 - **P-11（沿）：map 括号写 VM 静默吞 handler**——批次 1 装配面无 map 写
-  需求（graph 设置族划批次 2）；如需 = 点号写/全量重赋。
+  需求（graph 设置族划批次 2）；如需 = 点号写/全量重赋。**批次 2 注记：
+  P-11/P-12 均已随 661 修复解除**（049 冒烟 11/11 实证——批次 2 的
+  slider 词位/括号写通道即修复的消费面）。
+- **P-16（新，T-03 实录）：model 字段与 use 导入 fn 同名 = link 期死**——
+  `use panels_graph_fns: graph_stats` 与 `var graph_stats map` 撞名，
+  VM 窗口启动即 "VmBridge init failed … Undefined symbol: App_State.
+  graph_stats"（MCP 不起、无编译期告警）。纪律：fn 导入名与 model 字段
+  命名空间预先错开（字段改 gstats 收口）。
+- **fixture clean 域坑（harness 修正，T-03 实录）**：tmp/ 整树 gitignored
+  （fixture 为 force-add 例外），restore 协议的 `git clean -f`（无 -x）
+  跳过 ignored 路径 → cpp 臂缺失页*.ad 从未被清（18 个历史泄漏累积），
+  多 attempt 跑哈希门结构性漂移。修正 = `-f -x`（连带清掉的索引缓存/
+  SRS .edn 本就是声明可再生派生态）。副作用为正：files/graph 臂回到
+  fixture 真 5 页基线。
+- **同值 status 竞态（再现，T-03 实录）**：079 已录坑类的两处新面——
+  tabs(2) 第二次切换的 status 同值（switched）、properties 切页的
+  prop_count 同值（双页皆 5）。纪律：跨页切换断言以**判别字段**为同步
+  点（active_title 轮询 / 目标页值文本轮询），status 仅作首切判别。
 - **探针路径坑（环境项）**：tmp 深层目录复用 desktop pac.at 时 bps 相对
   深度 +2（探针实录：dep 路径落空 = 运行时 Undefined symbol 静默红，
   非编译期报错）。

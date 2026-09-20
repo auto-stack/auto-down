@@ -693,22 +693,31 @@ arm('properties', async (checks) => {
   if (!flat.includes('分布式系统中的 CAP 定理简介')) throw new Error('properties: summary value missing')
   if (!flat.includes('2026-08-27T03:50:52')) throw new Error('properties: updated_at value missing')
   // 切换刷新：开 Hello World（文件树按钮——scoped 跑时 strip 钮可能不在
-  // 场；OpenFile 激活臂同一刷新块）→ 计数不变、summary 值随页切换
+  // 场；OpenFile 激活臂同一刷新块）→ 计数不变、summary 值随页切换。
+  // prop_count 双页同为 5 无判别力——以 Hello summary 值轮询为同步点
+  //（渲染竞态实录：全量序下单拍快照可能先于重渲染）。
   const hw = findFirst(await snapshot(), (n) => n.head.startsWith('button ') && ownText(n) === 'Hello World.ad')
   if (!hw) throw new Error('properties: "Hello World.ad" file button not found')
   await callTool('autoui_action', { element_id: elementIdOf(hw), action: 'press' })
   await stateIs('status', 'opened')
+  for (const deadline = Date.now() + 6000; ;) {
+    const flat2 = subtreeText(await snapshot())
+    if (flat2.includes('最基础的 AutoDown 文档示例')) break
+    if (Date.now() > deadline) throw new Error('properties: switch did not refresh pair rows (Hello summary never rendered)')
+    await sleep(150)
+  }
   await stateIs('prop_count', '5')
-  const flat2 = subtreeText(await snapshot())
-  if (!flat2.includes('最基础的 AutoDown 文档示例')) throw new Error('properties: switch did not refresh pair rows')
   checks.push('properties: CAP 定理 → prop_count=5 + 五键行 + summary/updated_at 标量值 + 切换刷新（配对通道 P-9 绕开，只读 v1）✓')
 })
 
-// PLAN-080 T-02 批 E 臂：graph_view 真渲染（canvas 场景契约 v2——049 样板
+// PLAN-080 T-02/T-03 批 E 臂：graph_view 真渲染（canvas 场景契约 v2——049 样板
 // 断言通道：state 直读三表 + canvas 在场 + press(value=id) onhit 直达 +
-// 开页自闭回编辑区）。P661-D4 消费侧交接的 desktop 面承接。
+// 开页自闭回编辑区）+ graph_sidebar/controls 挂载（stats/top 行 + slider
+// set_value 投影 + flags 过滤重表 + reset）。P661-D4 消费侧交接的 desktop
+// 面承接。
 arm('graph', async (checks) => {
-  await pressMenuItem('卡片', '加载图谱')
+  // T-03：图谱页入口 = 视图菜单「图谱页」（全局 v1；局部 BFS 划出 Q-3）
+  await pressMenuItem('视图', '图谱页')
   await stateIs('status', 'graph-loaded')
   // fixture 域断言：真实 5 页为下限（cpp 臂历史泄漏的缺失页*.ad 会入图
   // ——fixture 恢复协议只回滚 tracked 文件，untracked 泄漏累积在案）
@@ -730,15 +739,48 @@ arm('graph', async (checks) => {
   const cnv = findFirst(tree, (n) => n.head.startsWith('canvas ') && elementIdOf(n))
   if (!cnv) throw new Error('graph: canvas not rendered in graph page view')
   if (findFirst(tree, isEditorNode)) throw new Error('graph: editor should be hidden in graph page view')
+  // T-03 sidebar（graph_stats/top_degree_nodes 副本）：stats 段标签在场 +
+  // top 行按钮在场（度降序 top15 display）。orphan 真值自 API 推导（state
+  // 打印器对 map 呈 <vmref> 不透明——过滤效果以 API 事实断言）
+  const gres = await fetch(`${BACKEND}/api/graph`).then((r) => r.json())
+  const orphan = gres.nodes.filter((n) => n.degree === 0).length
+  const treeSb = await snapshot()
+  for (const lbl of ['链接', '孤立']) {
+    if (!findFirst(treeSb, (n) => ownText(n) === lbl)) throw new Error(`graph: sidebar stats label ${lbl} missing`)
+  }
+  const topBtns = findAll(treeSb, (n) => n.head.startsWith('button ') && elementIdOf(n))
+  if (!topBtns.some((b) => ['index', '首页', 'CAP 定理', 'Hello World'].includes(ownText(b)))) {
+    throw new Error('graph: no top-degree row button rendered (expected a real page label)')
+  }
+  // T-03 controls：slider 词位 set_value → gc_set_setting 写通道 + 三表
+  // 重灌投影（nodeSize 24 → 节点行 r=24；661 set_value 闭环消费）
+  const slider = findFirst(treeSb, (n) => n.head.startsWith('slider ') && elementIdOf(n))
+  if (!slider) throw new Error('graph: nodeSize slider not rendered')
+  await callTool('autoui_action', { element_id: elementIdOf(slider), action: 'set_value', value: 24 })
+  await stateIs('status', 'gc-nodesize')
+  await stateHas('graph_nodes', ',circle,#3b82f6,24')
+  // flags 过滤重表：孤立 off → 度 0 节点出表（orphan>0 时计数下降）
+  if (orphan > 0) {
+    await pressButton('孤立:开→关')
+    await stateIs('status', 'gc-orphans')
+    const st2 = await callTool('autoui_state', { fields: ['graph_node_count'] })
+    const cnt2 = parseInt(st2.match(/graph_node_count:\s*(\d+)/)?.[1] ?? '0', 10)
+    if (cnt2 !== cnt - orphan) throw new Error(`graph: showOrphans filter expected ${cnt - orphan} nodes, got ${cnt2}`)
+  }
+  // reset 回默认（nodeSize 12 回表）
+  await pressButton('重置设置')
+  await stateIs('status', 'gc-reset')
+  await stateHas('graph_nodes', ',circle,#3b82f6,12')
   // onhit（R-1）：press(value=id) 直达 → .GraphNodeTap(id) → .OpenFile 开页
   //（active_title 跟随 + graph_page 自闭——编辑区回来）
-  await callTool('autoui_action', { element_id: elementIdOf(cnv), action: 'press', value: 'CAP 定理.ad' })
+  const cnv2 = findFirst(await snapshot(), (n) => n.head.startsWith('canvas ') && elementIdOf(n))
+  await callTool('autoui_action', { element_id: elementIdOf(cnv2), action: 'press', value: 'CAP 定理.ad' })
   await stateIs('active_title', 'CAP 定理')
   await stateIs('graph_page', 'false')
   const tree2 = await snapshot()
   if (findFirst(tree2, (n) => n.head.startsWith('canvas '))) throw new Error('graph: graph_page should auto-close on node open')
   if (!findFirst(tree2, isEditorNode)) throw new Error('graph: editor not restored after node open')
-  checks.push('graph: 加载图谱 → 环形三表（5 节点 path-id + CJK 标签 + 边表）+ canvas 图谱页 + press(id) 开页 + 自闭回编辑区 ✓')
+  checks.push(`graph: 视图→图谱页 → 环形三表（${cnt} 节点 path-id + CJK 标签 + 边表）+ sidebar stats/top 行 + slider set_value→r=24 投影${orphan > 0 ? ` + 孤立过滤 ${cnt}→${cnt - orphan}` : ''} + reset + press(id) 开页 + 自闭回编辑区 ✓`)
 })
 
 // tabs 臂（PLAN-064 T-05，§5.4 五断言，tabs_store 驱动的多 tab 编辑器流）：
@@ -795,12 +837,14 @@ arm('tabs', async (checks) => {
   checks.push('tabs①: 双 tab 打开且 tab 条在场（strip: Hello World + CAP 定理）')
 
   // ② 切换回读正文不串页：strip 切 CAP → 正文 CAP 标记；切回 Hello → 正文
-  //    Hello 标记（正文经 SwitchTab 从 tab 状态回读，不重读磁盘）
+  //    Hello 标记（正文经 SwitchTab 从 tab 状态回读，不重读磁盘）。第二次
+  //    切换的 status 同值（switched）无判别力——以 active_title 轮询为同步
+  //    点（080 实录：同值竞态使断言先于 handler 完成读到旧 tab 正文）。
   await pressButton('CAP 定理')
   await stateIs('status', 'switched')
   await stateHas('active_body', '分布式系统')
   await pressButton('Hello World')
-  await stateIs('status', 'switched')
+  await stateIs('active_title', 'Hello World')
   // 全量跑时 Hello 的 tab 正文 = save 臂写入的 marker（整文替换语义）；
   // 单臂跑（--arms tabs）经 ③ 重开后的磁盘正文断言兜底。
   const hwNeedle = saveMarker || 'Hello, Jade Garden!'

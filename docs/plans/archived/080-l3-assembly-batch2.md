@@ -369,7 +369,7 @@ properties 只读/局部图谱划出/edges·labels 命中后置）合账成表�
   - **landed** ✓：master 基点 3f73737 = merge-base（未动，免 rebase）→ `git merge --ff-only plan-080-dev` 直进，master tip = 2a8a07b = delivery commit（无 merge commit）。known-good：主检出 exe 更新（auto.exe 拷钉定版 0.4.2-1457-g4cbc810eb 替 1414-dirty + back exe 重建含 pairs 通道）后主检出 vm-smoke **双模 PASS**（默认通道）。
   - **ledger_refreshed** ✓：主检出回读 250 条（reviews 52）；P072-1 title/related/content 与 P080-1 file=docs/plans/archived/080-l3-assembly-batch2.md、related=[PLAN-080] 逐字段核对。
   - **archived** ✓：untracked 计划平移入册 docs/plans/archived/080-l3-assembly-batch2.md（status archived + completion_kind delivered + 本收据）。
-  - **cleaned**：待补记（worktree/分支/组目录收口）。
+  - **cleaned** ✓：主检出预检零未落提交（master..plan-080-dev = 0）+ wt-guard 双净（auto-down 摘链后复闸 + auto-lang）→ 双 worktree 移除（--force 清 gitignored 构建残渣）+ plan-080-dev 分支删除（was 2a8a07b 全落）+ 组目录 down-080 移除 + 双仓 prune 零残留——**PLAN-080:r1 五 checkpoint 全闭环 delivered**。摘链实录：find -type l -delete 零链接残留 + node_modules 树整体移除（079 配方，本轮零误删——tracked 全程零脏）。
 
 ## 10. 待澄清事项
 

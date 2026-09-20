@@ -1,8 +1,9 @@
 # PLAN-079 L3 装配模式文档：desktop 面板装配作业标准（T-00 产物）
 
-> 状态：T-00 定形（2026-09-19）。074-sink-mode 的 L3 对应物——下沉（RC-D）
-> 把面板逻辑收进 web 侧 .at 单源；本文档定义 desktop 侧如何**消费**这些
-> 单源（装配 = 消费侧作业标准）。
+> 状态：T-00 定形（2026-09-19）；PLAN-080 批次 2 扩节（2026-09-20，
+> §2 批次 2 表 + §4 增补——本档随批成长，L3 作业标准单一档）。074-sink-mode
+> 的 L3 对应物——下沉（RC-D）把面板逻辑收进 web 侧 .at 单源；本文档定义
+> desktop 侧如何**消费**这些单源（装配 = 消费侧作业标准）。
 >
 > 机制依据：design 30 §2 L3 行（parity 单元 = 流程+布局组装+数据流）；
 > 074-078 四张 desktop 消费登记表（074-sink-mode §4/§4.1/§4.2/§4.3）。
@@ -69,6 +70,50 @@ driver.mjs（后端真数据：Tasks 标题 → 3 条未链引用 = Projects.ad 
 | C | flashcard_modal | 可选（Q-3） | **裁定：内联流维持，组件装配延后批次 2**——闪卡内联流已覆盖（LoadCards/Grade + due 列），同 search_panel 口径 |
 | （维持） | workspace_opener | 内联维持（077 §4.2） | 零动作（OpenWs 流已覆盖） |
 | （批次 2） | graph 族四件 | §4.3 + 661 交接 | 划出（gated on PLAN-661 AC 全绿） |
+
+### 批次 2 扩节（PLAN-080 T-00，2026-09-20 定形）
+
+> 661 交付（master 4cbc810eb）后解锁。环境锚定：auto-lang worktree
+> `D:/autostack/.wt/down-080/auto-lang` @ 4cbc810eb 重建 debug exe
+> （`--features ui-iced --bin auto`）——版本回读 `0.4.2-1457-g4cbc810eb`
+> + 049 四能力冒烟 11/11 PASS（三表初始态 5 断言 / press(id) 命中 3 /
+> set_value 重算 2 / map 写读回 1）。主检出旧 exe（1414-dirty）退役不
+> 用；back server 侧 Cargo path 依赖 `D:/autostack/auto-lang/crates/
+> auto-lang`（主检出 clean @ 4cbc810eb）自动吃 661。
+
+**逐件裁定表（批次 2，对齐 §5 装配分批表 + 074-sink-mode §4.3）**：
+
+| 件 | 登记表裁定 | 批次 2 动作（实际形态） |
+| --- | --- | --- |
+| properties_panel | 079 Q-5 裁定 A 划批次 2 | **配对通道装配（只读 v1）**：backend WikiDoc 加法字段 frontmatter_pairs → web tabs_store.at 单源存字段（byte 部署）→ desktop 属性段 = pairs 行构造（sync_entries 语义的 pairs 形状适配副本）；编辑面 = vue strict 域（typeof/Array.isArray），差异登记 |
+| graph_view | §4.3 划出 078 → 661 交接 | **真渲染装配**：LoadGraph 升级 = 环形布局 fn（.at 侧 math.cos/sin，049 SetRadius 形态）→ 三表 CSV 行族 → `canvas (scene/coords/onhit)`；id=path，onhit → .OpenFile 开页；cytoscape 退役（desktop 面） |
+| graph_sidebar | §4.3 可选挂载 | 装配：graph_stats/top_degree_nodes 下沉 fn 部署副本 + 右栏段（计数卡 + top 度行） |
+| graph_controls | §4.3 唯一路径（Slider 已解锁） | 装配：gc_* 部署副本 + DSL `slider` 词位（原生，RangeInput ext 桥退役）+ settings 点号写（P-11 括号写已修，写形态以副本单源为准）+ localStorage 持久化 |
+| graph_page | §4.3 批次 2 | 图谱页入口（menubar 视图→图谱页，全局 v1；局部 BFS = ext Set/queue 域划出 Q-3） |
+| search_panel/flashcard_modal | 079 Q-3 延后顺带 | 内联流升级：下沉 fn 部署副本消费（with_search_display 行构造族 / card_at·card_question·card_answer·counter_text），形态沿 §3 流水 |
+
+**环形布局 fn 定形（T-00）**：`get_graph() → nodes[{id,label,path,exists,degree}]`
+（无坐标——布局归属 R-3）→ 布局 fn 在 .at 侧：`i ∈ [0,n)` 环形
+`a = 2π·i/n`，`x = cx + R·cos(a)`、`y = cy + R·sin(a)`（049 SetRadius
+同族，math.cos/sin VM 词位）→ 三表构造：
+
+- `.graph_nodes = ["<path>,<x>,<y>,circle,<color>,<r>", ...]`——**id=path**
+  （onhit 载荷直接开页）；exists=false 缺页节点用杂色登记。
+- `.graph_edges = ["<x1>,<y1>,<x2>,<y2>,<color>,<width>", ...]`——坐标自
+  node 表线性扫描派生（source/target 按引用，VM 无 map——线性扫描
+  id 匹配，n 小域 O(n·e) 可受）。
+- `.graph_labels = ["<x>,<y+off>,<label>", ...]`——CJK 直写（G-2 只禁
+  索引算术，不涉及）。
+
+**properties 契约定稿（T-00，含实勘修正）**：WikiDoc 增加法字段
+`frontmatter_pairs: List<FrontmatterPair{key, value}>`；写路径不收
+pairs（serde default，回写仍走 frontmatter map）。⚠ 实勘修正：计划
+草案假设"serde_json Value→Vec 保序"不成立——back 的 serde_json 未开
+`preserve_order`，`frontmatter: Value` 在 split_ad 解析时已按 BTreeMap
+字母序重排；**pairs 序 = YAML 映射序**需 read 路径以 `serde_yaml::Value`
+（0.9 Mapping 保序）二次解析导出，frontmatter 字段行为逐字节不动
+（双解析各司其职，不开全局 feature——preserve_order 会改 join_ad 写出
+键序，属写路径行为变化，超出加法通道边界）。
 
 ## 3. 装配步骤（行族流水，逐件）
 

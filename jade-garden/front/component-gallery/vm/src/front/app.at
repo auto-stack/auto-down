@@ -236,8 +236,95 @@ fn gc_opacity_label(opacity_in) str {
     return f"${math.round(opacity_in * 100)}%"
 }
 
+// —— graph_view twin 模块 fn（derived 副本，derived-from desktop
+// jade-garden/front/desktop/src/front/panels_graph_fns.at 的
+// graph_ring_tables[049 样板形态]——PLAN-080 T-04；G-3 各持一份。canvas
+// 场景契约 v2 三表 CSV 行族 + 环形布局 R-3 上游坐标，settings 消费面
+// 同形（twin 传默认 map——副本漂移面最小化）。 ——
+
+fn gv_ring_tables(nodes List, edges List, settings map) map {
+    var tn List = []
+    var te List = []
+    var tl List = []
+    var xs List = []
+    var ys List = []
+    var keep List = []
+    var r_f float = settings.nodeSize
+    var w_f float = settings.edgeWidth
+    var show_orphans bool = settings.showOrphans
+    var show_missing bool = settings.showMissing
+    var n = nodes.len()
+    var ci int = 0
+    while ci < n {
+        var cn = nodes[ci]
+        var keep_it bool = true
+        if show_orphans != true && cn.degree == 0 {
+            keep_it = false
+        }
+        if show_missing != true && cn.exists != true {
+            keep_it = false
+        }
+        if keep_it {
+            keep.push(cn)
+        }
+        ci = ci + 1
+    }
+    var kn = keep.len()
+    if kn > 0 {
+        var total_f float = 0.0
+        var fi2 int = 0
+        while fi2 < kn {
+            total_f = total_f + 1.0
+            fi2 = fi2 + 1
+        }
+        var i int = 0
+        while i < kn {
+            var nd = keep[i]
+            var fi float = i
+            var fa float = 6.283185307179586 * fi / total_f
+            var x float = 150.0 + 110.0 * math.cos(fa)
+            var y float = 150.0 + 110.0 * math.sin(fa)
+            var color str = "#3b82f6"
+            if nd.exists != true {
+                color = "#64748b"
+            }
+            tn.push(nd.path + "," + x.to_string() + "," + y.to_string() + ",circle," + color + "," + r_f.to_string())
+            tl.push(x.to_string() + "," + (y + 26.0).to_string() + "," + nd.label + ",#e2e8f0")
+            xs.push(x)
+            ys.push(y)
+            i = i + 1
+        }
+        var ei int = 0
+        while ei < edges.len() {
+            var ed = edges[ei]
+            var x1 float = -1.0
+            var y1 float = -1.0
+            var x2 float = -1.0
+            var y2 float = -1.0
+            var si int = 0
+            while si < kn {
+                var snd = keep[si]
+                if snd.path == ed.source {
+                    x1 = xs[si]
+                    y1 = ys[si]
+                }
+                if snd.path == ed.target {
+                    x2 = xs[si]
+                    y2 = ys[si]
+                }
+                si = si + 1
+            }
+            if x1 >= 0.0 && x2 >= 0.0 {
+                te.push(x1.to_string() + "," + y1.to_string() + "," + x2.to_string() + "," + y2.to_string() + ",#475569," + w_f.to_string())
+            }
+            ei = ei + 1
+        }
+    }
+    return { nodes: tn, edges: te, labels: tl }
+}
+
 widget App {
-    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd, GsbOpen(str), GccReset, GccToggleFlag }
+    msg Msg { Select(str), TsSwitch(str), QsNext, QsPrev, CpNext, CpPrev, CppCreate, CppCancel, TpSetLight, TpSetDark, RfRemove, RfClear, FmReveal, FmRate, WoOpen, PpToggle, PpAdd, GsbOpen(str), GccReset, GccToggleFlag, GvTap(str) }
 
     model {
         var unit str = "status_bar"
@@ -391,6 +478,20 @@ widget App {
         var gcc_flag_label str = "false"
         var gcc_resets int = 0
         var gcc_marker str = ""
+        // —— fixture：graph_view 面（PLAN-080 T-04 twin：三节点两边播种
+        //（全真实 path——edge 端点=path 契约域）→ gv_ring_tables 副本真跑
+        // → canvas 三表（scene 前缀 gv）+ onhit 投影（press(value=id)
+        // MCP 寻址面，canvas-scene v2）——
+        var gv_raw_nodes List = []
+        var gv_raw_edges List = []
+        var gv_settings map = {}
+        var gv_nodes list = []
+        var gv_edges list = []
+        var gv_labels list = []
+        var gv_node_count int = 0
+        var gv_edge_count int = 0
+        var gv_tapped str = "-"
+        var gv_hits int = 0
     }
 
     computed {
@@ -414,7 +515,9 @@ widget App {
         show_properties_panel => .unit == "properties_panel"
         show_graph_sidebar => .unit == "graph_sidebar"
         show_graph_controls => .unit == "graph_controls"
+        show_graph_view => .unit == "graph_view"
         gs_marker => f"unit=graph_sidebar total:${.gs_total} missing:${.gs_missing} orphan:${.gs_orphan} edges:${.gs_edges} top:${.gs_count}"
+        gv_marker => f"unit=graph_view nodes:${.gv_node_count} edges:${.gv_edge_count} tapped:${.gv_tapped} hits:${.gv_hits}"
         gcc_marker_line => f"unit=graph_controls center:${.gcc_center} opacity:${.gcc_opacity} resets:${.gcc_resets}"
         gs_stat_total => f"页面 ${.gs_total}"
         gs_stat_edges => f"链接 ${.gs_edges}"
@@ -526,6 +629,10 @@ widget App {
                 }
                 button (text: "graph_controls", variant: "text") {
                     onclick: .Select("graph_controls")
+                    class: "text-[11px] text-zinc-600"
+                }
+                button (text: "graph_view", variant: "text") {
+                    onclick: .Select("graph_view")
                     class: "text-[11px] text-zinc-600"
                 }
                 text .unit { class: "ml-auto text-[11px] text-zinc-400" }
@@ -1093,6 +1200,22 @@ widget App {
                     }
                 }
             }
+            // —— graph_view twin（PLAN-080 T-04）：canvas 三表真渲染
+            //（scene 前缀 gv → .gv_nodes/_edges/_labels；coords 300x300 =
+            // 布局 fn 同域[150 中心/110 半径]；onhit = GvTap id 载荷，
+            // canvas-scene v2 R-1）——049 样板形态。 ——
+            if .show_graph_view {
+                col (class: "flex-col p-3") {
+                    col (class: "w-80 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5") {
+                        text "图谱画布" { class: "mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500" }
+                        canvas (scene: .gv, coords: "300x300", clear: "#f8fafc", onhit: .GvTap) {
+                            class: "h-[300px] w-full rounded border border-zinc-200"
+                        }
+                        text .gv_tapped { class: "pt-1 text-[10px] text-emerald-700" }
+                        text .gv_marker { class: "pt-1 text-[10px] text-zinc-400" }
+                    }
+                }
+            }
         }
     }
 
@@ -1270,6 +1393,24 @@ widget App {
             // opacity 40% 偏离默认（重置可断言）
             .gcc_center = gc_center_label("wiki/Intro.ad")
             .gcc_opacity = gc_opacity_label(0.4)
+            // graph_view：三节点两边（全真实 path）→ gv_ring_tables 副本
+            // 真跑（默认 settings 形）→ canvas 三表 + 计数投影
+            .gv_raw_nodes = [
+                { id: "a", label: "引言", path: "wiki/引言.ad", exists: true, degree: 2 },
+                { id: "b", label: "方法", path: "wiki/方法.ad", exists: true, degree: 1 },
+                { id: "c", label: "另页", path: "wiki/另页.ad", exists: true, degree: 1 },
+            ]
+            .gv_raw_edges = [
+                { source: "wiki/引言.ad", target: "wiki/方法.ad" },
+                { source: "wiki/引言.ad", target: "wiki/另页.ad" },
+            ]
+            .gv_settings = { showOrphans: true, showMissing: false, nodeSize: 16, edgeWidth: 2 }
+            var gv_t = gv_ring_tables(.gv_raw_nodes, .gv_raw_edges, .gv_settings)
+            .gv_nodes = gv_t.nodes
+            .gv_edges = gv_t.edges
+            .gv_labels = gv_t.labels
+            .gv_node_count = gv_t.nodes.len()
+            .gv_edge_count = gv_t.edges.len()
         }
 
         .Select(u) -> {
@@ -1299,6 +1440,13 @@ widget App {
             if !.gcc_flag {
                 .gcc_flag_label = "false"
             }
+        }
+
+        // graph_view onhit 形状镜像（R-1：载荷 = 命中元素 id 字符串——
+        // 三表首列 path；tapped/hits 投影承载）
+        .GvTap(id) -> {
+            .gv_tapped = id
+            .gv_hits = .gv_hits + 1
         }
 
         .TsSwitch(path) -> {

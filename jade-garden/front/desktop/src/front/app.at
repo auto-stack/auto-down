@@ -48,6 +48,10 @@ use panels_d_fns: props_rows
 // cytoscape desktop 面退役）。T-03 扩：graph_stats/top_degree_nodes/
 // gc_* 副本（078 下沉 fn 部署——graph_sidebar/graph_controls 挂载）。
 use panels_graph_fns: graph_ring_tables, graph_stats, top_degree_nodes, gc_set_setting, gc_default_settings
+// PLAN-080 T-04 批 F 装配：search/flashcard 转正（with_search_display/
+// card_* /counter_label 下沉 fn 部署副本——079 Q-3 延后批次 2 兑现；
+// snippet mark 桥 ext 域差异登记）。
+use panels_sf_fns: with_search_display, card_at, card_question, card_answer, counter_label
 use back.api: open_workspace, list_files, read_wiki, write_wiki, get_due_cards, review_card, get_backlinks, get_outlinks, get_unlinked_refs, get_graph, search_pages, get_agenda, create_file
 use auto.http
 
@@ -95,6 +99,11 @@ widget App {
         var active_dirty bool = false
         var save_note str = ""
         var cards = []
+        // —— PLAN-080 T-04 批 F：闪卡行 = card_* 副本构造（raw 回落面 +
+        // counter_label 行序）；search 行升级 with_search_display 全形状
+        //（title_text 派生 + is_page/is_block 旗标——view 消费 title_text/
+        // path，snippet mark 桥 ext 域差异登记）。 ——
+        var card_rows = []
         var review_note str = ""
         var backlinks = []
         var outlinks = []
@@ -597,7 +606,26 @@ widget App {
 
         .LoadCards -> {
             var res = get_due_cards(20)
-            .cards = res.cards
+            var cards_in = res.cards
+            .cards = cards_in
+            // 批 F：行构造升级 card_* 副本单源消费（question/answer 走查
+            // 取值——空 q/a 时 raw 回落，web 闪卡同源语义；counter_label
+            // 行序）。.len() 走局部副本（参数形态纪律）。
+            var rows List = []
+            var n int = cards_in.len()
+            var ci int = 0
+            while ci < n {
+                var c = card_at(cards_in, ci)
+                rows.push({
+                    q: card_question(c),
+                    a: card_answer(c),
+                    idx_label: counter_label(ci, n),
+                    page_path: c.page_path,
+                    block_id: c.block_id,
+                })
+                ci = ci + 1
+            }
+            .card_rows = rows
             .status = "cards-loaded"
         }
 
@@ -605,7 +633,23 @@ widget App {
             var res = review_card(page_path, block_id, grade)
             .review_note = "graded:" + res.card.block_id
             var res2 = get_due_cards(20)
-            .cards = res2.cards
+            var cards_in2 = res2.cards
+            .cards = cards_in2
+            var rows2 List = []
+            var n2 int = cards_in2.len()
+            var gi int = 0
+            while gi < n2 {
+                var c2 = card_at(cards_in2, gi)
+                rows2.push({
+                    q: card_question(c2),
+                    a: card_answer(c2),
+                    idx_label: counter_label(gi, n2),
+                    page_path: c2.page_path,
+                    block_id: c2.block_id,
+                })
+                gi = gi + 1
+            }
+            .card_rows = rows2
             .status = "graded"
         }
 
@@ -613,10 +657,10 @@ widget App {
             var res = search_pages(.search_q, 20)
             var hits = res.results
             .hit_count = hits.length
-            .search_rows = []
-            for h in hits {
-                .search_rows.push({ label: h.title, target: h.path })
-            }
+            // 批 F：行构造升级 with_search_display 副本单源消费
+            //（title_text = Page 取 title / Block 取 page_path 的空值
+            // 守卫派生；is_page/is_block 旗标随行）。
+            .search_rows = with_search_display(hits)
             .status = "searched"
         }
 
@@ -1084,10 +1128,17 @@ widget App {
                         text "due cards" { style: "text-[11px] text-zinc-500 tracking-wider" }
                         text .review_note { style: "text-[11px] text-zinc-500" }
                     }
-                    for c in .cards {
+                    for c in .card_rows {
                         col {
                             class: "gap-1 border-b pb-1",
-                            text c.question
+                            row {
+                                class: "gap-1 items-center",
+                                text c.idx_label { style: "text-[10px] text-zinc-600" }
+                                text c.q { style: "text-[12px] text-zinc-300" }
+                            }
+                            if c.a != "" {
+                                text c.a { style: "text-[11px] text-zinc-500" }
+                            }
                             row {
                                 class: "gap-1",
                                 button "again" { onclick: .Grade(c.page_path, c.block_id, 1) }
@@ -1151,8 +1202,8 @@ widget App {
             row {
                 class: "flex flex-wrap gap-1 overflow-auto",
                 for r in .search_rows {
-                    button (text: r.label) {
-                        onclick: .OpenFile(r.target)
+                    button (text: r.title_text) {
+                        onclick: .OpenFile(r.path)
                     }
                 }
             }

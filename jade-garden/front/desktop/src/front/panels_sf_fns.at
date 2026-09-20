@@ -1,0 +1,100 @@
+// panels_sf_fns.at — PLAN-080 T-04 批 F 装配：search/flashcard 转正部署
+// 副本（079 Q-3"延后批次 2 顺带"兑现——内联流升级为下沉 fn 单源消费）。
+//
+// derived-from: jade-garden/front/auto/src/front/search_panel.at
+//（with_search_display，PLAN-076 T-02 下沉）/ flashcard_modal.at
+//（card_at/card_question/card_answer/counter_label，PLAN-077 T-03 下沉）。
+// VM 适配：P614 for-in 参数列表零迭代 → while+索引；snippet_html 的
+// regex mark 桥 = ext 域不镜像（has_snippet 布尔保留，unlinked_references
+// 高亮同款差异登记——模式文档 §2 批次 2 表）。
+
+fn with_search_display(rows_in List) List {
+    var out List = []
+    var i int = 0
+    while i < rows_in.len() {
+        var r = rows_in[i]
+        var tt = ""
+        if r.type == "Page" {
+            if r.title != null {
+                tt = r.title
+            }
+        }
+        if r.type != "Page" {
+            if r.page_path != null {
+                tt = r.page_path
+            }
+        }
+        var sn_has = false
+        if r.snippet != null {
+            sn_has = true
+        }
+        out.push({
+            type: r.type,
+            path: r.path,
+            title: r.title,
+            uuid: r.uuid,
+            page_path: r.page_path,
+            block_id: r.block_id,
+            content: r.content,
+            snippet: r.snippet,
+            is_page: r.type == "Page",
+            is_block: r.type != "Page",
+            title_text: tt,
+            has_snippet: sn_has,
+            snippet_html: "",
+        })
+        i = i + 1
+    }
+    return out
+}
+
+fn card_at(cards_in List, index_in) {
+    var out = null
+    var i int = 0
+    while i < cards_in.len() {
+        var c = cards_in[i]
+        if i == index_in && out == null {
+            out = c
+        }
+        i = i + 1
+    }
+    return out
+}
+
+fn card_question(card_in) str {
+    var out = ""
+    if card_in != null {
+        var q = card_in.question
+        var r = card_in.raw
+        if q != null && q != "" {
+            out = q
+        }
+        if q == null || q == "" {
+            if r != null {
+                out = r
+            }
+        }
+    }
+    return out
+}
+
+fn card_answer(card_in) str {
+    var out = ""
+    if card_in != null {
+        var a = card_in.answer
+        var r = card_in.raw
+        if a != null && a != "" {
+            out = a
+        }
+        if a == null || a == "" {
+            if r != null {
+                out = r
+            }
+        }
+    }
+    return out
+}
+
+fn counter_label(index_in, count_in) str {
+    return f"${index_in + 1} / ${count_in}"
+}

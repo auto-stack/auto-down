@@ -196,6 +196,22 @@ try {
     }
     const vm = u.vm
     for (const step of vm.actions ?? []) {
+      // PLAN-080 T-04：canvas press 步型（{ canvas: true, value: <id> }）——
+      // canvas-scene v2 MCP 寻址面（press(value=id) 与真实 tap 同构直达，
+      // R-1）；首 canvas 元素定位（twin 单 canvas 域）。
+      if (step.canvas) {
+        const tree = await snapshot()
+        const cnv = findFirst(tree, (n) => n.head.startsWith('canvas ') && elementIdOf(n))
+        if (!cnv) throw new Error(`${u.id}: canvas element not found in the snapshot`)
+        const res = await callTool('autoui_action', {
+          element_id: elementIdOf(cnv),
+          action: 'press',
+          value: step.value,
+        })
+        if (!/status: ok/.test(res)) throw new Error(`${u.id}: canvas press "${step.value}" not ok: ${res}`)
+        checks.push(`${u.id}: canvas press "${step.value}"`)
+        continue
+      }
       await pressButton(step.button)
       checks.push(`${u.id}: 切换按钮 "${step.button}"`)
     }

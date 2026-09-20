@@ -22,6 +22,7 @@ import WorkspaceOpenerPage from './pages/WorkspaceOpenerPage.vue'
 import PropertiesPanelPage from './pages/PropertiesPanelPage.vue'
 import GraphSidebarPage from './pages/GraphSidebarPage.vue'
 import GraphControlsPage from './pages/GraphControlsPage.vue'
+import GraphViewPage from './pages/GraphViewPage.vue'
 
 const unit = ref(new URLSearchParams(location.search).get('unit') ?? 'status_bar')
 
@@ -219,5 +220,6 @@ function select(u: string) {
     <PropertiesPanelPage v-else-if="unit === 'properties_panel'" />
     <GraphSidebarPage v-else-if="unit === 'graph_sidebar'" />
     <GraphControlsPage v-else-if="unit === 'graph_controls'" />
+    <GraphViewPage v-else-if="unit === 'graph_view'" />
   </div>
 </template>

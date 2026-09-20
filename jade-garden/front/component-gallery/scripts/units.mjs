@@ -448,6 +448,36 @@ export const UNITS = [
     },
   },
   {
+    id: 'graph_view',
+    title: '图谱画布（桶②·RC-F 真渲染·PLAN-080 批次 2）',
+    // vue 臂：真件 GraphView.vue（cytoscape ext 浏览器域，既有管线零
+    // 改动）——graph facade 播种三节点两边 → canvas DOM 挂载（cytoscape
+    // 像素面由截图基线承载，DOM 无文本 needle）。
+    // VM 臂 twin：gv_ring_tables 副本真跑（derived-from desktop
+    // panels_graph_fns.at graph_ring_tables——049 样板形态，环形布局
+    // R-3 上游坐标 → 三表 CSV）→ canvas (scene/coords/onhit)；canvas
+    // press(value=id) MCP 寻址面（canvas-scene v2 R-1）→ tapped/hits
+    // 投影。
+    vue: {
+      url: '/?unit=graph_view',
+      ready: '[data-unit="graph_view"] canvas',
+    },
+    vm: {
+      actions: [
+        { button: 'graph_view' },
+        { canvas: true, value: 'wiki/引言.ad' },
+      ],
+      state: {
+        unit: 'graph_view',
+        gv_node_count: '3',
+        gv_edge_count: '2',
+        gv_tapped: 'wiki/引言.ad',
+        gv_hits: '1',
+      },
+      snapshot: ['unit=graph_view nodes:3 edges:2', '图谱画布'],
+    },
+  },
+  {
     id: 'editor_tab',
     title: '编辑器引擎对拍（RC-E·状态占位）',
     missing: true,
@@ -491,9 +521,9 @@ export const UNITS = [
   },
   {
     id: 'graph_page',
-    title: '图谱页（RC-C·L3 批次 2 占位）',
+    title: '图谱页（RC-C·L3 批次 2 已装配·组件级占位）',
     placeholder: true,
     placeholderReason:
-      'L3 批次 2：gated on auto-lang PLAN-661 canvas 场景契约 AC 全绿（graph_view 真渲染/graph_sidebar·controls 挂载同批——PLAN-079 §5 划出注记）',
+      'L3 批次 2 已装配（PLAN-080 T-03：desktop menubar 视图→图谱页 + canvas 三表真渲染 + sidebar/controls 挂载，vm-smoke graph 臂承载）——图谱页为 app 级组装面无独立组件真件，gallery 组件级挂状态占位不设 gate（079 RC-C 口径续任）',
   },
 ]

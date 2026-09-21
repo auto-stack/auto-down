@@ -511,6 +511,12 @@ watch(
     if (md != null && md !== serialize(engine.doc, true)) {
       suppressNextFocusEmit = true
       engine.replaceDoc(docFromMarkdown(md))
+      // D17: the replacement reshuffles block->content mapping while block
+      // ids stay deterministic (`block-N`), so cached controllers (knownText
+      // baselines, composition sessions) and mounted host DOMs all go stale.
+      // Drop them and remount every host via the docEpoch key bump.
+      hosts.clear()
+      docEpoch.value++
     }
   }
 )
@@ -557,6 +563,11 @@ const repaintVersion = ref(0)
 // caret re-placed at end). Preview slots always re-read the model, so they
 // need nothing here.
 const historyEpoch = ref(0)
+// D17: bumped on external doc replacement (replaceDoc) so host vnodes remount
+// and cached per-block controllers are discarded — deterministic block ids
+// (`block-N`) collide across documents, and a stale controller (old
+// knownText / stuck composition session) silently swallowed keystrokes.
+const docEpoch = ref(0)
 
 interface BlockView {
   id: string
@@ -757,7 +768,7 @@ function assembleView(node: BlockNode, ctx: AssemblyCtx, topLevel: boolean): Blo
                 // focus lands nowhere and every post-flip keystroke is lost.
                 // The remount re-focuses at end (plan 029; rules match only a
                 // whole-block marker, so the caret IS at end on every flip).
-                key: `host:${node.id}:${BlockType[node.kind]}:${level ?? ''}:${historyEpoch.value}`,
+                key: `host:${node.id}:${BlockType[node.kind]}:${level ?? ''}:${historyEpoch.value}:${docEpoch.value}`,
               }),
               topLevel,
               ctx.counter,

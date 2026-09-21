@@ -80,13 +80,27 @@ export class BlockHostController {
     return this.knownText
   }
 
-  /** `input` DOM event outside composition: old→new text becomes one op. */
+  /** `input` DOM event outside composition: old→new text becomes one op.
+   *  D17 fix: `knownText` only advances when the op actually mutated the
+   *  model. After an external doc replacement a cached controller can hold
+   *  a blockId that no longer exists (deterministic ids collide across
+   *  docs) — `apply` then no-ops, and unconditionally advancing knownText
+   *  desynced it from the model so every later keystroke diffed to nothing
+   *  (keystrokes reached the DOM but never the model until blur). On a
+   *  no-op we resync from the model instead, so the host DOM is pulled
+   *  back to truth on the next input event. */
   onInput(newText: string): Op | null {
     if (this.composition.composing) return null // preedit stays in the DOM
     const op = diffToOp(this.blockId, this.knownText, newText)
-    this.knownText = newText
     if (!op) return null
+    const treeBefore = this.engine.doc
     this.engine.apply(op)
+    if (this.engine.doc === treeBefore) {
+      // op silently no-op'd (block vanished / offsets invalid): realign.
+      this.syncFromModel()
+      return null
+    }
+    this.knownText = newText
     // give the input rules a chance (marker just completed): block rules
     // first (`***` whole-block), then the inline paired-marker rules
     // (plan-062 T-03) — block-level wins so `***` never double-fires.
@@ -114,7 +128,14 @@ export class BlockHostController {
       return
     }
     this.engine.apply(Op.SplitBlock(new SplitBlockOp(new BlockPos(this.blockId, offset), newId)))
-    this.knownText = ''
+    // D17 fix: only reset the diff baseline when the split actually landed.
+    // A no-op split (stale blockId) previously cleared knownText, poisoning
+    // the next keystroke's diff (giant offset-0 insert).
+    if (findBlock(this.engine.doc, newId)) {
+      this.knownText = ''
+    } else {
+      this.syncFromModel()
+    }
   }
 
   /** Backspace at offset 0 → merge with the previous sibling (if any). In a

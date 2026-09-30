@@ -141,8 +141,13 @@ function SelectItem(lang: any): void {
   emit('SelectItem', lang)
 }
 
-onMounted(() => {
-  let dom = props.editor['view'].dom;
+onMounted(async () => {
+  // Child onMounted hooks run before the parent inserts its DOM subtree into
+  // document. Resolve the editor host after the mount flush so view.dom is
+  // attached before closest() and event listeners are used.
+  await nextTick();
+  const dom: HTMLElement | null = props.editor?.view?.dom ?? null;
+  if (dom == null) return;
   editor_dom.value = dom;
   editor_el.value = dom.closest('.autodown-editor');
   wrapper_el.value = dom.closest('.autodown-editor-content-wrapper');

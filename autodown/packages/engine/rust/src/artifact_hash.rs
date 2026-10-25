@@ -62,7 +62,12 @@ pub fn fnvStep(h: i64, u: i64) -> i64 {
 
 pub fn hexDigit(d: i64) -> String {
     let digits: String = "0123456789abcdef".to_string();
-    return digits.chars().take((d + 1) as usize).skip((d) as usize).collect::<String>().to_string();
+    return digits
+        .chars()
+        .take((d + 1) as usize)
+        .skip((d) as usize)
+        .collect::<String>()
+        .to_string();
 }
 
 pub fn hex32(v: i64) -> String {
@@ -84,9 +89,20 @@ pub fn artifactKeyOf(kind: &str, source_len: i64, mut units: Vec<i64>) -> String
     for i in 0..(units.len() as i64) {
         h = fnvStep(h, units[(i) as usize].clone());
     }
-    return format!("{}{}", format!("{}{}", format!("{}{}", format!("{}{}", kind, ":"), format!("{:?}", source_len)), ":"), hex32(h));
+    return format!(
+        "{}{}",
+        format!(
+            "{}{}",
+            format!(
+                "{}{}",
+                format!("{}{}", kind, ":"),
+                format!("{:?}", source_len)
+            ),
+            ":"
+        ),
+        hex32(h)
+    );
 }
-
 
 // RP2 (plan 031): hand-written platform wrapper — the UTF-16 unit
 // materialization the .at source cannot express (encode_utf16 matches the

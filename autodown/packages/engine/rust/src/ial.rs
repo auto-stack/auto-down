@@ -16,7 +16,12 @@ pub fn startsWithStr(s: &str, prefix: &str) -> bool {
     if (s.chars().count() as i64) < (prefix.chars().count() as i64) {
         return false;
     }
-    return s.chars().take(((prefix.chars().count() as i64)) as usize).skip((0) as usize).collect::<String>() == prefix;
+    return s
+        .chars()
+        .take((prefix.chars().count() as i64) as usize)
+        .skip((0) as usize)
+        .collect::<String>()
+        == prefix;
 }
 
 pub fn startsWithAt(s: &str, prefix: &str, at: i64) -> bool {
@@ -26,14 +31,24 @@ pub fn startsWithAt(s: &str, prefix: &str, at: i64) -> bool {
     if at + (prefix.chars().count() as i64) > (s.chars().count() as i64) {
         return false;
     }
-    return s.chars().take((at + (prefix.chars().count() as i64)) as usize).skip((at) as usize).collect::<String>() == prefix;
+    return s
+        .chars()
+        .take((at + (prefix.chars().count() as i64)) as usize)
+        .skip((at) as usize)
+        .collect::<String>()
+        == prefix;
 }
 
 pub fn endsWithStr(s: &str, suffix: &str) -> bool {
     if (s.chars().count() as i64) < (suffix.chars().count() as i64) {
         return false;
     }
-    return s.chars().take(((s.chars().count() as i64)) as usize).skip(((s.chars().count() as i64) - (suffix.chars().count() as i64)) as usize).collect::<String>() == suffix;
+    return s
+        .chars()
+        .take((s.chars().count() as i64) as usize)
+        .skip(((s.chars().count() as i64) - (suffix.chars().count() as i64)) as usize)
+        .collect::<String>()
+        == suffix;
 }
 
 pub fn trimStartStr(s: &str) -> String {
@@ -49,7 +64,6 @@ pub fn trimStartStr(s: &str) -> String {
                 break;
             }
         }
-
     }
     if p == 0 {
         return s.to_string();
@@ -78,12 +92,16 @@ pub fn trimEndStr(s: &str) -> String {
                 }
             }
         }
-
     }
     if end == (s.chars().count() as i64) {
         return s.to_string();
     }
-    return s.chars().take((end) as usize).skip((0) as usize).collect::<String>().to_string();
+    return s
+        .chars()
+        .take((end) as usize)
+        .skip((0) as usize)
+        .collect::<String>()
+        .to_string();
 }
 
 pub fn hasChar(s: &str, code: i64) -> bool {
@@ -108,7 +126,12 @@ pub fn findStr(s: &str, needle: &str) -> i64 {
     }
     let mut i: i64 = 0;
     while i + nLen <= sLen {
-        if s.chars().take((i + nLen) as usize).skip((i) as usize).collect::<String>() == needle {
+        if s.chars()
+            .take((i + nLen) as usize)
+            .skip((i) as usize)
+            .collect::<String>()
+            == needle
+        {
             return i;
         }
         i += 1;
@@ -122,14 +145,20 @@ pub fn findStrFrom(s: &str, needle: &str, from: i64) -> i64 {
     if nLen == 0 {
         if from <= sLen {
             return from;
-        }        return -1;
+        }
+        return -1;
     }
     let mut i: i64 = from;
     if i < 0 {
         i = 0;
     }
     while i + nLen <= sLen {
-        if s.chars().take((i + nLen) as usize).skip((i) as usize).collect::<String>() == needle {
+        if s.chars()
+            .take((i + nLen) as usize)
+            .skip((i) as usize)
+            .collect::<String>()
+            == needle
+        {
             return i;
         }
         i += 1;
@@ -158,7 +187,8 @@ pub fn scanIntPrefix(s: &str) -> Option<i64> {
         } else {
             if s.chars().nth((0) as usize).unwrap_or('\0') as i64 == 43 {
                 i = 1;
-            }        }
+            }
+        }
     }
     let mut val: i64 = 0;
     let mut digits: i64 = 0;
@@ -175,7 +205,6 @@ pub fn scanIntPrefix(s: &str) -> Option<i64> {
         } else {
             break;
         }
-
     }
     if digits == 0 {
         return None;
@@ -199,7 +228,8 @@ fn stripQuotes(s: &str) -> String {
     } else {
         if c0 == 39 {
             start = 1;
-        }    }
+        }
+    }
 
     if end > start {
         let cl = t.chars().nth((end - 1) as usize).unwrap_or('\0') as i64;
@@ -208,9 +238,15 @@ fn stripQuotes(s: &str) -> String {
         } else {
             if cl == 39 {
                 end = end - 1;
-            }        }
+            }
+        }
     }
-    return t.chars().take((end) as usize).skip((start) as usize).collect::<String>().to_string();
+    return t
+        .chars()
+        .take((end) as usize)
+        .skip((start) as usize)
+        .collect::<String>()
+        .to_string();
 }
 
 fn parseValue(s: &str) -> Option<i64> {
@@ -281,7 +317,6 @@ fn isPipeRow(line: &str) -> bool {
                 break;
             }
         }
-
     }
     if end < 2 {
         return false;
@@ -308,7 +343,6 @@ fn isDelimRow(line: &str) -> bool {
                 break;
             }
         }
-
     }
     if end < 3 {
         return false;
@@ -337,7 +371,8 @@ fn isDelimRow(line: &str) -> bool {
                     } else {
                         if c == 9 {
                             ok = true;
-                        }                    }
+                        }
+                    }
                 }
             }
         }
@@ -363,12 +398,15 @@ fn parseIalLine(line: &str) -> Option<TableAttr> {
                 break;
             }
         }
-
     }
     if end < 9 {
         return None;
     }
-    let s = line.chars().take((end) as usize).skip((0) as usize).collect::<String>();
+    let s = line
+        .chars()
+        .take((end) as usize)
+        .skip((0) as usize)
+        .collect::<String>();
     if !(startsWithStr(s.as_str(), "{cols:[")) {
         return None;
     }
@@ -388,13 +426,24 @@ fn parseIalLine(line: &str) -> Option<TableAttr> {
     if c1 == -1 {
         return None;
     }
-    let cols = parseArray(s.chars().take((c1) as usize).skip((7) as usize).collect::<String>().as_str());
+    let cols = parseArray(
+        s.chars()
+            .take((c1) as usize)
+            .skip((7) as usize)
+            .collect::<String>()
+            .as_str(),
+    );
     let mut rows: Vec<Option<i64>> = vec![];
-    let rest = s.chars().take((bodyEnd) as usize).skip((c1 + 1) as usize).collect::<String>();
+    let rest = s
+        .chars()
+        .take((bodyEnd) as usize)
+        .skip((c1 + 1) as usize)
+        .collect::<String>();
     if rest != "" {
         if !(startsWithStr(rest.as_str(), ",")) {
             return None;
-        }        let mut r = rest.chars().skip((1) as usize).collect::<String>();
+        }
+        let mut r = rest.chars().skip((1) as usize).collect::<String>();
         let mut advancing: bool = true;
         while advancing {
             advancing = false;
@@ -415,14 +464,16 @@ fn parseIalLine(line: &str) -> Option<TableAttr> {
                             if c == 13 {
                                 r = r.chars().skip((1) as usize).collect::<String>();
                                 advancing = true;
-                            }                        }
+                            }
+                        }
                     }
                 }
             }
         }
         if !(startsWithStr(r.as_str(), "rows:[")) {
             return None;
-        }        let r2 = r.chars().skip((6) as usize).collect::<String>();
+        }
+        let r2 = r.chars().skip((6) as usize).collect::<String>();
         let mut c2: i64 = -1;
         let mut k: i64 = 0;
         while k < (r2.chars().count() as i64) {
@@ -434,15 +485,29 @@ fn parseIalLine(line: &str) -> Option<TableAttr> {
         }
         if c2 == -1 {
             return None;
-        }        if c2 + 1 != (r2.chars().count() as i64) {
+        }
+        if c2 + 1 != (r2.chars().count() as i64) {
             return None;
-        }        rows = parseArray(r2.chars().take((c2) as usize).skip((0) as usize).collect::<String>().as_str());
+        }
+        rows = parseArray(
+            r2.chars()
+                .take((c2) as usize)
+                .skip((0) as usize)
+                .collect::<String>()
+                .as_str(),
+        );
     }
-    return Some(TableAttr { cols: cols, rows: rows });
+    return Some(TableAttr {
+        cols: cols,
+        rows: rows,
+    });
 }
 
 pub fn preprocessMarkdown(md: &str) -> PreDoc {
-    let lines = md.split("\n").map(|s| s.to_string()).collect::<Vec<String>>();
+    let lines = md
+        .split("\n")
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
     let mut attrs: Vec<TableAttr> = vec![];
     let mut out: Vec<String> = vec![];
     let mut i: i64 = 0;
@@ -461,13 +526,17 @@ pub fn preprocessMarkdown(md: &str) -> PreDoc {
                                 j += 1;
                                 dataCount += 1;
                                 scanning = true;
-                            }                        }
+                            }
+                        }
                     }
                     if dataCount >= 1 {
                         if j < (lines.len() as i64) {
                             let ial = parseIalLine(lines[(j) as usize].as_str());
                             if ial != None {
-                                attrs.push(ial.unwrap_or(TableAttr { cols: vec![], rows: vec![] }));
+                                attrs.push(ial.unwrap_or(TableAttr {
+                                    cols: vec![],
+                                    rows: vec![],
+                                }));
                                 let mut k: i64 = i;
                                 while k < j {
                                     out.push(lines[(k) as usize].clone());
@@ -475,13 +544,21 @@ pub fn preprocessMarkdown(md: &str) -> PreDoc {
                                 }
                                 i = j + 1;
                                 matched = true;
-                            }                        }                    }                }            }        }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if !(matched) {
             out.push(lines[(i) as usize].clone());
             i += 1;
         }
     }
-    return PreDoc { md: out.join("\n").to_string(), tableAttrs: attrs };
+    return PreDoc {
+        md: out.join("\n").to_string(),
+        tableAttrs: attrs,
+    };
 }
 
 pub fn buildIAL(mut colwidth: Vec<Option<i64>>, mut rowheight: Vec<Option<i64>>) -> Option<String> {
@@ -490,13 +567,26 @@ pub fn buildIAL(mut colwidth: Vec<Option<i64>>, mut rowheight: Vec<Option<i64>>)
     if !(hasCols) {
         if !(hasRows) {
             return None;
-        }    }
+        }
+    }
     let mut parts: Vec<String> = vec![];
     if hasCols {
-        parts.push(format!("{}{}", format!("{}{}", "cols:[", formatArray(colwidth.clone())), "]"));
+        parts.push(format!(
+            "{}{}",
+            format!("{}{}", "cols:[", formatArray(colwidth.clone())),
+            "]"
+        ));
     }
     if hasRows {
-        parts.push(format!("{}{}", format!("{}{}", "rows:[", formatArray(rowheight.clone())), "]"));
+        parts.push(format!(
+            "{}{}",
+            format!("{}{}", "rows:[", formatArray(rowheight.clone())),
+            "]"
+        ));
     }
-    return Some(format!("{}{}", format!("{}{}", "{", parts.join(", ")), "}\n"));
+    return Some(format!(
+        "{}{}",
+        format!("{}{}", "{", parts.join(", ")),
+        "}\n"
+    ));
 }

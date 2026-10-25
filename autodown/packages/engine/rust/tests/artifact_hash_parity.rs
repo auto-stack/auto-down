@@ -19,7 +19,10 @@ const CORPUS: &[(&str, &str)] = &[
     ("MathBlock", "\\frac{1}{2} + \\sqrt{x}"),
     ("MathBlock", ""),
     ("Mermaid", "graph TD; A-->B;"),
-    ("Mermaid", "graph LR;\n A[开始] --> B[结束];\n B --> C{判定?};\n"),
+    (
+        "Mermaid",
+        "graph LR;\n A[开始] --> B[结束];\n B --> C{判定?};\n",
+    ),
     // astral emoji = surrogate pairs (UTF-16 len 2 per emoji, 1 scalar —
     // the sharpest divergence probe)
     ("Mermaid", "flowchart TD\nA[😀] --> B[🎉]\n"),
@@ -70,7 +73,9 @@ fn key_shape_is_kind_len_hex() {
     assert_eq!(parts[1], "8");
     assert_eq!(parts[2].len(), 8);
     assert!(
-        parts[2].chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+        parts[2]
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
         "hex must be lowercase: {}",
         parts[2]
     );

@@ -7,8 +7,8 @@
 //! of the same .at sources have drifted.
 
 use autodown_core::block_model::{
-    attrSet, block, leafBlock, markedSpan, rng, span, Attr, BlockNode, BlockType, InlineSpan,
-    Mark, Value,
+    attrSet, block, leafBlock, markedSpan, rng, span, Attr, BlockNode, BlockType, InlineSpan, Mark,
+    Value,
 };
 use autodown_core::serializer::serialize;
 
@@ -141,7 +141,10 @@ fn golden_sections() -> Vec<(String, String)> {
     let mut cur_name: Option<String> = None;
     let mut cur_body = String::new();
     for line in golden.lines() {
-        if let Some(name) = line.strip_prefix("=== ").and_then(|l| l.strip_suffix(" ===")) {
+        if let Some(name) = line
+            .strip_prefix("=== ")
+            .and_then(|l| l.strip_suffix(" ==="))
+        {
             if let Some(prev) = cur_name.take() {
                 sections.push((prev, std::mem::take(&mut cur_body)));
             }

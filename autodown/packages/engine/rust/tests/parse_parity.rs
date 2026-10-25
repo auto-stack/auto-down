@@ -12,7 +12,10 @@ use autodown_core::markdown_parser::parse_blocks;
 const FIXTURES: &[(&str, &str)] = &[
     ("heading-para", "# Hello\n\nworld **bold** and *em* text.\n"),
     ("setext", "标题 setext\n===\n\n第一段\n第二段\n"),
-    ("fence-closed", "```rust\nfn main() {\n    println!(\"hi\");\n}\n```\n"),
+    (
+        "fence-closed",
+        "```rust\nfn main() {\n    println!(\"hi\");\n}\n```\n",
+    ),
     ("fence-tilde-open", "~~~py\nx = 1\n"),
     ("blockquote", "> 引用一行\n> 引用二行\n\n普通段落\n"),
     ("blockquote-lazy", "> 引用\n懒惰续行\n"),
@@ -58,7 +61,10 @@ const FIXTURES: &[(&str, &str)] = &[
         "$callout(type: \"note\", title: \"提示\") {\n正文段落\n}\n",
     ),
     ("callout-unclosed", "$callout(type: \"note\") {\n正文\n"),
-    ("details-open", "$details(summary: \"更多\", open: true) {\n内容\n}\n"),
+    (
+        "details-open",
+        "$details(summary: \"更多\", open: true) {\n内容\n}\n",
+    ),
     (
         "query-embed",
         "$query(TAG #project)\n\n$embed(src: \"https://example.com/x\")\n",
@@ -70,10 +76,7 @@ const FIXTURES: &[(&str, &str)] = &[
         "comp-nested",
         "$details(summary: \"s\") {\n$callout(type: \"warn\") {\n内层\n}\n外层尾段\n}\n",
     ),
-    (
-        "task-list",
-        "- [ ] 待办甲\n- [x] 已办乙\n- 普通丙\n",
-    ),
+    ("task-list", "- [ ] 待办甲\n- [x] 已办乙\n- 普通丙\n"),
     // plan 036 T4: inline wikilink dialect — basic + #anchor + `[[[` escape
     // + unclosed literal degradation, one fixture both final and streaming.
     (
@@ -82,10 +85,7 @@ const FIXTURES: &[(&str, &str)] = &[
     ),
     // plan 036 T6: inline math dialect — valid span + opener/closer space
     // and digit-after rules degrading to literal, one fixture both modes.
-    (
-        "math-inline",
-        "行内 $a+b=c$ 与 $ bad $ 以及 $100$5 字面\n",
-    ),
+    ("math-inline", "行内 $a+b=c$ 与 $ bad $ 以及 $100$5 字面\n"),
     ("streaming-heading", "## 编辑中的标题\n\n- 列表项\n- "),
     ("streaming-link", "半截链接 [文本](https://example.\n"),
     ("streaming-pretable", "| a | b |\n| --- |\n"),

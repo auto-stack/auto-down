@@ -4,8 +4,8 @@
 //! (packages/engine/src/parser/__tests__/serializer-roundtrip.test.ts).
 
 use autodown_core::block_model::{
-    attrSet, block, leafBlock, markedSpan, rng, span, Attr, BlockNode, BlockType, InlineSpan,
-    Mark, Value,
+    attrSet, block, leafBlock, markedSpan, rng, span, Attr, BlockNode, BlockType, InlineSpan, Mark,
+    Value,
 };
 use autodown_core::serializer::serialize;
 

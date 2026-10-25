@@ -70,7 +70,10 @@ fn projection() -> Vec<String> {
             if isExtensionPanel(k) { "true" } else { "false" }
         ));
     }
-    lines.push(format!("builtinPanelKinds {}", builtinPanelKinds().join(",")));
+    lines.push(format!(
+        "builtinPanelKinds {}",
+        builtinPanelKinds().join(",")
+    ));
     lines.push(format!(
         "extensionPanelKinds {}",
         extensionPanelKinds().join(",")

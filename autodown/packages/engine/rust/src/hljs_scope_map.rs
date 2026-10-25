@@ -22,33 +22,96 @@ pub struct ScopeClassMap {
 /// 映射表主体。行序无关——匹配取**最长**原子前缀。
 pub const SCOPE_CLASS_TABLE: [ScopeClassMap; 21] = [
     // 注释族
-    ScopeClassMap { scope: "comment", hljs: "comment" },
+    ScopeClassMap {
+        scope: "comment",
+        hljs: "comment",
+    },
     // 字符串族（含转义字符）
-    ScopeClassMap { scope: "string", hljs: "string" },
-    ScopeClassMap { scope: "constant.character.escape", hljs: "string" },
+    ScopeClassMap {
+        scope: "string",
+        hljs: "string",
+    },
+    ScopeClassMap {
+        scope: "constant.character.escape",
+        hljs: "string",
+    },
     // 常量族
-    ScopeClassMap { scope: "constant.numeric", hljs: "number" },
-    ScopeClassMap { scope: "constant.language", hljs: "literal" },
-    ScopeClassMap { scope: "constant.character", hljs: "string" },
-    ScopeClassMap { scope: "constant", hljs: "number" },
+    ScopeClassMap {
+        scope: "constant.numeric",
+        hljs: "number",
+    },
+    ScopeClassMap {
+        scope: "constant.language",
+        hljs: "literal",
+    },
+    ScopeClassMap {
+        scope: "constant.character",
+        hljs: "string",
+    },
+    ScopeClassMap {
+        scope: "constant",
+        hljs: "number",
+    },
     // 关键字族（operator 归 keyword：vue CSS 未单列 operator 色）
-    ScopeClassMap { scope: "keyword.operator", hljs: "keyword" },
-    ScopeClassMap { scope: "keyword", hljs: "keyword" },
-    ScopeClassMap { scope: "storage.type", hljs: "keyword" },
-    ScopeClassMap { scope: "storage.modifier", hljs: "keyword" },
+    ScopeClassMap {
+        scope: "keyword.operator",
+        hljs: "keyword",
+    },
+    ScopeClassMap {
+        scope: "keyword",
+        hljs: "keyword",
+    },
+    ScopeClassMap {
+        scope: "storage.type",
+        hljs: "keyword",
+    },
+    ScopeClassMap {
+        scope: "storage.modifier",
+        hljs: "keyword",
+    },
     // 名字族
-    ScopeClassMap { scope: "entity.name.function", hljs: "title.function_" },
-    ScopeClassMap { scope: "entity.name.type", hljs: "title" },
-    ScopeClassMap { scope: "entity.name.tag", hljs: "tag" },
-    ScopeClassMap { scope: "entity.name.section", hljs: "section" },
-    ScopeClassMap { scope: "entity.other.attribute-name", hljs: "attr" },
+    ScopeClassMap {
+        scope: "entity.name.function",
+        hljs: "title.function_",
+    },
+    ScopeClassMap {
+        scope: "entity.name.type",
+        hljs: "title",
+    },
+    ScopeClassMap {
+        scope: "entity.name.tag",
+        hljs: "tag",
+    },
+    ScopeClassMap {
+        scope: "entity.name.section",
+        hljs: "section",
+    },
+    ScopeClassMap {
+        scope: "entity.other.attribute-name",
+        hljs: "attr",
+    },
     // 变量族
-    ScopeClassMap { scope: "variable.language", hljs: "literal" },
-    ScopeClassMap { scope: "variable", hljs: "variable" },
+    ScopeClassMap {
+        scope: "variable.language",
+        hljs: "literal",
+    },
+    ScopeClassMap {
+        scope: "variable",
+        hljs: "variable",
+    },
     // support 族
-    ScopeClassMap { scope: "support.function", hljs: "built_in" },
-    ScopeClassMap { scope: "support.type", hljs: "type" },
-    ScopeClassMap { scope: "support.class", hljs: "type" },
+    ScopeClassMap {
+        scope: "support.function",
+        hljs: "built_in",
+    },
+    ScopeClassMap {
+        scope: "support.type",
+        hljs: "type",
+    },
+    ScopeClassMap {
+        scope: "support.class",
+        hljs: "type",
+    },
 ];
 
 /// scope → hljs 类名（**最长原子前缀**匹配；`keyword.operator.assignment`
@@ -56,8 +119,10 @@ pub const SCOPE_CLASS_TABLE: [ScopeClassMap; 21] = [
 pub fn hljs_class_for_scope(scope: &str) -> Option<&'static str> {
     let mut best: Option<(usize, &'static str)> = None;
     for row in SCOPE_CLASS_TABLE.iter() {
-        let prefix_at_atom =
-            scope == row.scope || (scope.len() > row.scope.len() && scope.starts_with(row.scope) && scope.as_bytes()[row.scope.len()] == b'.');
+        let prefix_at_atom = scope == row.scope
+            || (scope.len() > row.scope.len()
+                && scope.starts_with(row.scope)
+                && scope.as_bytes()[row.scope.len()] == b'.');
         if prefix_at_atom {
             let len = row.scope.len();
             if best.map(|(bl, _)| len > bl).unwrap_or(true) {
@@ -175,7 +240,12 @@ mod tests {
     fn scope_to_class_full_assertions() {
         // 逐行：表内前缀自身必命中自身类。
         for row in SCOPE_CLASS_TABLE.iter() {
-            assert_eq!(hljs_class_for_scope(row.scope), Some(row.hljs), "row {}", row.scope);
+            assert_eq!(
+                hljs_class_for_scope(row.scope),
+                Some(row.hljs),
+                "row {}",
+                row.scope
+            );
         }
         // 实域样本（two-face 常见 scope 形态）。
         let cases: &[(&str, &str)] = &[
@@ -205,7 +275,11 @@ mod tests {
         // 未命中：source/纯文本域 → None（基础前景）。
         assert_eq!(hljs_class_for_scope("source.rust"), None);
         assert_eq!(hljs_class_for_scope(""), None);
-        assert_eq!(hljs_class_for_scope("keywordx"), None, "原子边界：keywordx ≠ keyword");
+        assert_eq!(
+            hljs_class_for_scope("keywordx"),
+            None,
+            "原子边界：keywordx ≠ keyword"
+        );
         assert_eq!(hljs_class_for_scope("keywordish.control"), None);
     }
 
@@ -215,9 +289,18 @@ mod tests {
     fn longest_atom_prefix_wins() {
         // constant.character.escape 须命中三段行（而非 constant.character
         // 两段行或 constant 一段行）——三行都存在，验证取最长。
-        assert_eq!(hljs_class_for_scope("constant.character.escape.python"), Some("string"));
-        assert_eq!(hljs_class_for_scope("constant.character.invalid"), Some("string"));
-        assert_eq!(hljs_class_for_scope("constant.numeric.integer.rust"), Some("number"));
+        assert_eq!(
+            hljs_class_for_scope("constant.character.escape.python"),
+            Some("string")
+        );
+        assert_eq!(
+            hljs_class_for_scope("constant.character.invalid"),
+            Some("string")
+        );
+        assert_eq!(
+            hljs_class_for_scope("constant.numeric.integer.rust"),
+            Some("number")
+        );
         assert_eq!(hljs_class_for_scope("constant.other.rust"), Some("number"));
     }
 
@@ -275,8 +358,14 @@ mod tests {
     /// 组合口：scope → RGB；dark/light 两态都有着色。
     #[test]
     fn combined_scope_to_rgb() {
-        assert_eq!(hljs_rgb_for_scope("keyword.control.rust", true), Some((255, 123, 114)));
-        assert_eq!(hljs_rgb_for_scope("comment.line.rust", false), Some((106, 115, 125)));
+        assert_eq!(
+            hljs_rgb_for_scope("keyword.control.rust", true),
+            Some((255, 123, 114))
+        );
+        assert_eq!(
+            hljs_rgb_for_scope("comment.line.rust", false),
+            Some((106, 115, 125))
+        );
         assert_eq!(hljs_rgb_for_scope("source.rust", true), None);
         for dark in [true, false] {
             assert!(hljs_rgb_for_scope("string.quoted.double.js", dark).is_some());

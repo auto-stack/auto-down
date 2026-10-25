@@ -20,7 +20,6 @@ pub enum Value {
     AttrsV(Vec<Attr>),
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Attr {
     pub key: String,
@@ -79,9 +78,6 @@ pub fn attrGetBool(mut attrs: Vec<Attr>, key: &str, dflt: bool) -> bool {
 }
 
 pub fn attrSet(mut attrs: Vec<Attr>, key: &str, value: Value) -> Vec<Attr> {
-
-
-
     let mut out: Vec<Attr> = vec![];
     let mut idx: i64 = -1;
     for i in 0..(attrs.len() as i64) {
@@ -91,9 +87,15 @@ pub fn attrSet(mut attrs: Vec<Attr>, key: &str, value: Value) -> Vec<Attr> {
         out.push(attrs[(i) as usize].clone());
     }
     if idx >= 0 {
-        out[(idx) as usize] = Attr { key: key.to_string(), value: value };
+        out[(idx) as usize] = Attr {
+            key: key.to_string(),
+            value: value,
+        };
     } else {
-        out.push(Attr { key: key.to_string(), value: value });
+        out.push(Attr {
+            key: key.to_string(),
+            value: value,
+        });
     }
 
     return out;
@@ -151,7 +153,7 @@ impl Mark {
             "Image" | "image" => Mark::Image,
             "Del" | "del" => Mark::Del,
             "Underline" | "underline" => Mark::Underline,
-            _ => Mark::Strong
+            _ => Mark::Strong,
         }
     }
 }
@@ -198,15 +200,27 @@ pub struct InlineSpan {
 }
 
 pub fn span(text: &str) -> InlineSpan {
-    return InlineSpan { text: text.to_string(), marks: vec![], attrs: vec![] };
+    return InlineSpan {
+        text: text.to_string(),
+        marks: vec![],
+        attrs: vec![],
+    };
 }
 
 pub fn markedSpan(text: &str, marks: Vec<Mark>) -> InlineSpan {
-    return InlineSpan { text: text.to_string(), marks: marks, attrs: vec![] };
+    return InlineSpan {
+        text: text.to_string(),
+        marks: marks,
+        attrs: vec![],
+    };
 }
 
 pub fn spanWith(text: &str, marks: Vec<Mark>, attrs: Vec<Attr>) -> InlineSpan {
-    return InlineSpan { text: text.to_string(), marks: marks, attrs: attrs };
+    return InlineSpan {
+        text: text.to_string(),
+        marks: marks,
+        attrs: attrs,
+    };
 }
 
 pub fn spansText(spans: Vec<InlineSpan>) -> String {
@@ -236,15 +250,22 @@ pub fn spansInsert(spans: Vec<InlineSpan>, offset: i64, text: &str) -> Vec<Inlin
             let sLen: i64 = (s.text.len() as i64);
             if offset <= pos + sLen {
                 let at: i64 = offset - pos;
-                let nt: String = format!("{}{}", format!("{}{}", s.text[0..(at) as usize].to_string(), text), s.text[(at) as usize..].to_string());
-                out.push(InlineSpan { text: nt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
+                let nt: String = format!(
+                    "{}{}",
+                    format!("{}{}", s.text[0..(at) as usize].to_string(), text),
+                    s.text[(at) as usize..].to_string()
+                );
+                out.push(InlineSpan {
+                    text: nt.to_string(),
+                    marks: s.marks.clone(),
+                    attrs: s.attrs.clone(),
+                });
                 done = true;
             } else {
                 out.push(s.clone().clone());
             }
             pos = pos + sLen;
         }
-
     }
     if !(done) {
         out.push(span(text));
@@ -269,11 +290,18 @@ pub fn spansDelete(spans: Vec<InlineSpan>, lo: i64, hi: i64) -> Vec<InlineSpan> 
             let mut nt: String = "".to_string();
             if lo > pos {
                 nt = s.text[0..(lo - pos) as usize].to_string();
-            }            if hi < sEnd {
+            }
+            if hi < sEnd {
                 nt = format!("{}{}", nt, s.text[(hi - pos) as usize..].to_string());
-            }            if (nt.chars().count() as i64) > 0 {
-                out.push(InlineSpan { text: nt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
-            }        } else {
+            }
+            if (nt.chars().count() as i64) > 0 {
+                out.push(InlineSpan {
+                    text: nt.to_string(),
+                    marks: s.marks.clone(),
+                    attrs: s.attrs.clone(),
+                });
+            }
+        } else {
             out.push(s.clone().clone());
         }
 
@@ -309,17 +337,29 @@ pub fn spansSplitAt(spans: Vec<InlineSpan>, offset: i64) -> SpanSplit {
                     let lt = s.text[0..(offset - pos) as usize].to_string();
                     let rt = s.text[(offset - pos) as usize..].to_string();
                     if (lt.chars().count() as i64) > 0 {
-                        before.push(InlineSpan { text: lt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
-                    }                    if (rt.chars().count() as i64) > 0 {
-                        after.push(InlineSpan { text: rt.to_string(), marks: s.marks.clone(), attrs: s.attrs.clone() });
-                    }                    done = true;
+                        before.push(InlineSpan {
+                            text: lt.to_string(),
+                            marks: s.marks.clone(),
+                            attrs: s.attrs.clone(),
+                        });
+                    }
+                    if (rt.chars().count() as i64) > 0 {
+                        after.push(InlineSpan {
+                            text: rt.to_string(),
+                            marks: s.marks.clone(),
+                            attrs: s.attrs.clone(),
+                        });
+                    }
+                    done = true;
                 }
             }
             pos = sEnd;
         }
-
     }
-    return SpanSplit { before: before, after: after };
+    return SpanSplit {
+        before: before,
+        after: after,
+    };
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -386,7 +426,7 @@ impl BlockType {
             "BlockEmbed" | "blockembed" => BlockType::BlockEmbed,
             "Mermaid" | "mermaid" => BlockType::Mermaid,
             "MathBlock" | "mathblock" => BlockType::MathBlock,
-            _ => BlockType::Heading
+            _ => BlockType::Heading,
         }
     }
 }
@@ -402,19 +442,50 @@ pub struct BlockNode {
 }
 
 pub fn block(id: &str, kind: BlockType) -> BlockNode {
-    return BlockNode { id: id.to_string(), kind: kind, attrs: vec![], children: vec![], inlines: vec![], source: rng(0, 0) };
+    return BlockNode {
+        id: id.to_string(),
+        kind: kind,
+        attrs: vec![],
+        children: vec![],
+        inlines: vec![],
+        source: rng(0, 0),
+    };
 }
 
-pub fn blockFull(id: &str, kind: BlockType, attrs: Vec<Attr>, children: Vec<BlockNode>, inlines: Vec<InlineSpan>, source: SourceRange) -> BlockNode {
-    return BlockNode { id: id.to_string(), kind: kind, attrs: attrs, children: children, inlines: inlines, source: source };
+pub fn blockFull(
+    id: &str,
+    kind: BlockType,
+    attrs: Vec<Attr>,
+    children: Vec<BlockNode>,
+    inlines: Vec<InlineSpan>,
+    source: SourceRange,
+) -> BlockNode {
+    return BlockNode {
+        id: id.to_string(),
+        kind: kind,
+        attrs: attrs,
+        children: children,
+        inlines: inlines,
+        source: source,
+    };
 }
 
 pub fn attrOf(key: &str, value: Value) -> Attr {
-    return Attr { key: key.to_string(), value: value };
+    return Attr {
+        key: key.to_string(),
+        value: value,
+    };
 }
 
 pub fn leafBlock(id: &str, kind: BlockType, text: &str) -> BlockNode {
-    return BlockNode { id: id.to_string(), kind: kind, attrs: vec![], children: vec![], inlines: vec![span(text)], source: rng(0, (text.chars().count() as i64)) };
+    return BlockNode {
+        id: id.to_string(),
+        kind: kind,
+        attrs: vec![],
+        children: vec![],
+        inlines: vec![span(text)],
+        source: rng(0, (text.chars().count() as i64)),
+    };
 }
 
 pub fn blockText(node: BlockNode) -> String {
@@ -422,15 +493,36 @@ pub fn blockText(node: BlockNode) -> String {
 }
 
 pub fn withInlines(node: BlockNode, spans: Vec<InlineSpan>) -> BlockNode {
-    return BlockNode { id: node.id.to_string(), kind: node.kind.clone(), attrs: node.attrs.clone(), children: node.children.clone(), inlines: spans, source: node.source.clone() };
+    return BlockNode {
+        id: node.id.to_string(),
+        kind: node.kind.clone(),
+        attrs: node.attrs.clone(),
+        children: node.children.clone(),
+        inlines: spans,
+        source: node.source.clone(),
+    };
 }
 
 pub fn withKind(node: BlockNode, kind: BlockType) -> BlockNode {
-    return BlockNode { id: node.id.to_string(), kind: kind, attrs: node.attrs.clone(), children: node.children.clone(), inlines: node.inlines.clone(), source: node.source.clone() };
+    return BlockNode {
+        id: node.id.to_string(),
+        kind: kind,
+        attrs: node.attrs.clone(),
+        children: node.children.clone(),
+        inlines: node.inlines.clone(),
+        source: node.source.clone(),
+    };
 }
 
 pub fn withChildren(node: BlockNode, kids: Vec<BlockNode>) -> BlockNode {
-    return BlockNode { id: node.id.to_string(), kind: node.kind.clone(), attrs: node.attrs.clone(), children: kids, inlines: node.inlines.clone(), source: node.source.clone() };
+    return BlockNode {
+        id: node.id.to_string(),
+        kind: node.kind.clone(),
+        attrs: node.attrs.clone(),
+        children: kids,
+        inlines: node.inlines.clone(),
+        source: node.source.clone(),
+    };
 }
 
 pub fn dupNodes(nodes: Vec<BlockNode>) -> Vec<BlockNode> {
@@ -446,11 +538,25 @@ pub fn anchorOf(node: BlockNode) -> String {
 }
 
 pub fn withBlockAnchor(node: BlockNode, newId: &str) -> BlockNode {
-    return BlockNode { id: newId.to_string(), kind: node.kind.clone(), attrs: attrSet(node.attrs.clone(), "anchor", Value::Str(newId.to_string())), children: node.children.clone(), inlines: node.inlines.clone(), source: node.source.clone() };
+    return BlockNode {
+        id: newId.to_string(),
+        kind: node.kind.clone(),
+        attrs: attrSet(node.attrs.clone(), "anchor", Value::Str(newId.to_string())),
+        children: node.children.clone(),
+        inlines: node.inlines.clone(),
+        source: node.source.clone(),
+    };
 }
 
 pub fn withIdAndAnchor(node: BlockNode, newId: &str) -> BlockNode {
-    return BlockNode { id: newId.to_string(), kind: node.kind.clone(), attrs: attrSet(node.attrs.clone(), "anchor", Value::Str(newId.to_string())), children: node.children.clone(), inlines: node.inlines.clone(), source: node.source.clone() };
+    return BlockNode {
+        id: newId.to_string(),
+        kind: node.kind.clone(),
+        attrs: attrSet(node.attrs.clone(), "anchor", Value::Str(newId.to_string())),
+        children: node.children.clone(),
+        inlines: node.inlines.clone(),
+        source: node.source.clone(),
+    };
 }
 
 pub fn hasIdDeep(mut tree: BlockNode, id: &str) -> bool {
@@ -477,9 +583,20 @@ pub fn retargetAnchor(mut tree: BlockNode, id: &str, newId: &str) -> BlockNode {
     }
     let mut out: Vec<BlockNode> = vec![];
     for i in 0..(tree.children.len() as i64) {
-        out.push(retargetAnchor(tree.children[(i) as usize].clone(), id, newId));
+        out.push(retargetAnchor(
+            tree.children[(i) as usize].clone(),
+            id,
+            newId,
+        ));
     }
-    return BlockNode { id: tree.id.to_string(), kind: tree.kind.clone(), attrs: tree.attrs.clone(), children: out, inlines: tree.inlines.clone(), source: tree.source.clone() };
+    return BlockNode {
+        id: tree.id.to_string(),
+        kind: tree.kind.clone(),
+        attrs: tree.attrs.clone(),
+        children: out,
+        inlines: tree.inlines.clone(),
+        source: tree.source.clone(),
+    };
 }
 
 pub fn findBlock(mut node: BlockNode, id: &str) -> Option<BlockNode> {
@@ -546,7 +663,6 @@ pub fn spliceChildren(mut node: BlockNode, id: &str, mut repl: Vec<BlockNode>) -
             } else {
                 kids.push(node.children[(i) as usize].clone());
             }
-
         }
         return withChildren(node.clone(), kids.clone());
     }
@@ -561,12 +677,19 @@ pub fn replaceNode(mut node: BlockNode, id: &str, mut repl: Vec<BlockNode>) -> B
     if node.id == id {
         if (repl.len() as i64) > 0 {
             return repl[0].clone();
-        }        return node;
+        }
+        return node;
     }
     return spliceChildren(node.clone(), id, repl.clone());
 }
 
-pub fn spliceRange(mut node: BlockNode, parentId: &str, lo: i64, hi: i64, mut repl: Vec<BlockNode>) -> BlockNode {
+pub fn spliceRange(
+    mut node: BlockNode,
+    parentId: &str,
+    lo: i64,
+    hi: i64,
+    mut repl: Vec<BlockNode>,
+) -> BlockNode {
     if node.id == parentId {
         let mut kids: Vec<BlockNode> = vec![];
         for i in 0..(node.children.len() as i64) {
@@ -604,11 +727,23 @@ pub struct Selection {
 }
 
 pub fn collapsedSel(blockId: &str, offset: i64) -> Selection {
-    return Selection { anchor: BlockPos { blockId: blockId.to_string(), offset: offset }, head: BlockPos { blockId: blockId.to_string(), offset: offset } };
+    return Selection {
+        anchor: BlockPos {
+            blockId: blockId.to_string(),
+            offset: offset,
+        },
+        head: BlockPos {
+            blockId: blockId.to_string(),
+            offset: offset,
+        },
+    };
 }
 
 pub fn pos(blockId: &str, offset: i64) -> BlockPos {
-    return BlockPos { blockId: blockId.to_string(), offset: offset };
+    return BlockPos {
+        blockId: blockId.to_string(),
+        offset: offset,
+    };
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -664,7 +799,6 @@ pub enum Op {
     ReplaceRange(ReplaceRangeOp),
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditResult {
     pub tree: BlockNode,
@@ -696,34 +830,77 @@ pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult 
             let found = findBlock(tree.clone(), a.pos.blockId.as_str());
             let mut target = found.unwrap_or(missingBlock());
             if target.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let mut spans2 = spansInsert(target.inlines.clone(), a.pos.offset, a.text.as_str());
-            let tree2 = replaceNode(tree.clone(), target.id.as_str(), vec![withInlines(target.clone(), spans2.clone())]);
-            return EditResult { tree: tree2, selection: collapsedSel(a.pos.blockId.as_str(), a.pos.offset + (a.text.len() as i64)) };
-        },
+            let tree2 = replaceNode(
+                tree.clone(),
+                target.id.as_str(),
+                vec![withInlines(target.clone(), spans2.clone())],
+            );
+            return EditResult {
+                tree: tree2,
+                selection: collapsedSel(
+                    a.pos.blockId.as_str(),
+                    a.pos.offset + (a.text.len() as i64),
+                ),
+            };
+        }
         Op::SplitBlock(a) => {
             let found = findBlock(tree.clone(), a.pos.blockId.as_str());
             let mut target = found.unwrap_or(missingBlock());
             if target.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let split = spansSplitAt(target.inlines.clone(), a.pos.offset);
-            let left = BlockNode { id: target.id.to_string(), kind: target.kind.clone(), attrs: dupAttrs(target.attrs.clone()), children: dupNodes(target.children.clone()), inlines: split.before.clone(), source: rng(target.source.start, target.source.start + a.pos.offset) };
-            let right = BlockNode { id: a.newId.to_string(), kind: splitTailKind(target.kind.clone()), attrs: splitTailAttrs(target.kind.clone(), target.attrs.clone()), children: dupNodes(target.children.clone()), inlines: split.after.clone(), source: rng(target.source.start + a.pos.offset, target.source.end) };
-            let tree2 = replaceNode(tree.clone(), target.id.as_str(), vec![left.clone(), right.clone()]);
-            return EditResult { tree: tree2, selection: collapsedSel(a.newId.as_str(), 0) };
-        },
+            let left = BlockNode {
+                id: target.id.to_string(),
+                kind: target.kind.clone(),
+                attrs: dupAttrs(target.attrs.clone()),
+                children: dupNodes(target.children.clone()),
+                inlines: split.before.clone(),
+                source: rng(target.source.start, target.source.start + a.pos.offset),
+            };
+            let right = BlockNode {
+                id: a.newId.to_string(),
+                kind: splitTailKind(target.kind.clone()),
+                attrs: splitTailAttrs(target.kind.clone(), target.attrs.clone()),
+                children: dupNodes(target.children.clone()),
+                inlines: split.after.clone(),
+                source: rng(target.source.start + a.pos.offset, target.source.end),
+            };
+            let tree2 = replaceNode(
+                tree.clone(),
+                target.id.as_str(),
+                vec![left.clone(), right.clone()],
+            );
+            return EditResult {
+                tree: tree2,
+                selection: collapsedSel(a.newId.as_str(), 0),
+            };
+        }
         Op::MergeBlocks(a) => {
             let foundA = findBlock(tree.clone(), a.aId.as_str());
             let mut nodeA = foundA.unwrap_or(missingBlock());
             let foundB = findBlock(tree.clone(), a.bId.as_str());
             let mut nodeB = foundB.unwrap_or(missingBlock());
             if nodeA.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             if nodeB.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let junction: i64 = (blockText(nodeA.clone()).len() as i64);
             let mut merged: Vec<InlineSpan> = vec![];
@@ -740,33 +917,62 @@ pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult 
             for c in &nodeB.children {
                 kids.push(c.clone().clone());
             }
-            let a2 = BlockNode { id: nodeA.id.to_string(), kind: nodeA.kind.clone(), attrs: nodeA.attrs.clone(), children: kids, inlines: merged, source: rng(nodeA.source.start, nodeB.source.end) };
+            let a2 = BlockNode {
+                id: nodeA.id.to_string(),
+                kind: nodeA.kind.clone(),
+                attrs: nodeA.attrs.clone(),
+                children: kids,
+                inlines: merged,
+                source: rng(nodeA.source.start, nodeB.source.end),
+            };
             let tree1 = replaceNode(tree.clone(), a.bId.as_str(), vec![]);
             let tree2 = replaceNode(tree1.clone(), a.aId.as_str(), vec![a2.clone()]);
-            return EditResult { tree: tree2, selection: collapsedSel(a.aId.as_str(), junction) };
-        },
+            return EditResult {
+                tree: tree2,
+                selection: collapsedSel(a.aId.as_str(), junction),
+            };
+        }
         Op::SetBlockType(a) => {
             let found = findBlock(tree.clone(), a.id.as_str());
             let mut target = found.unwrap_or(missingBlock());
             if target.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
-            let tree2 = replaceNode(tree.clone(), a.id.as_str(), vec![withKind(target.clone(), a.kind.clone())]);
-            return EditResult { tree: tree2, selection: selection };
-        },
+            let tree2 = replaceNode(
+                tree.clone(),
+                a.id.as_str(),
+                vec![withKind(target.clone(), a.kind.clone())],
+            );
+            return EditResult {
+                tree: tree2,
+                selection: selection,
+            };
+        }
         Op::LiftBlock(a) => {
             let foundT = findBlock(tree.clone(), a.id.as_str());
             let mut target = foundT.unwrap_or(missingBlock());
             if target.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let foundP = parentOf(tree.clone(), a.id.as_str());
             let mut parent = foundP.unwrap_or(missingBlock());
             if parent.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             if parent.id == tree.id {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let idx = childIndex(parent.clone(), a.id.as_str());
             let mut beforeKids: Vec<BlockNode> = vec![];
@@ -781,69 +987,144 @@ pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult 
             }
             let mut repl: Vec<BlockNode> = vec![];
             if (beforeKids.len() as i64) > 0 {
-                repl.push(BlockNode { id: parent.id.to_string(), kind: parent.kind.clone(), attrs: dupAttrs(parent.attrs.clone()), children: beforeKids, inlines: parent.inlines.clone(), source: parent.source.clone() });
+                repl.push(BlockNode {
+                    id: parent.id.to_string(),
+                    kind: parent.kind.clone(),
+                    attrs: dupAttrs(parent.attrs.clone()),
+                    children: beforeKids,
+                    inlines: parent.inlines.clone(),
+                    source: parent.source.clone(),
+                });
             }
             repl.push(target.clone());
             if (afterKids.len() as i64) > 0 {
-                repl.push(BlockNode { id: format!("{}{}", parent.id, "-l").to_string(), kind: parent.kind.clone(), attrs: dupAttrs(parent.attrs.clone()), children: afterKids, inlines: parent.inlines.clone(), source: parent.source.clone() });
+                repl.push(BlockNode {
+                    id: format!("{}{}", parent.id, "-l").to_string(),
+                    kind: parent.kind.clone(),
+                    attrs: dupAttrs(parent.attrs.clone()),
+                    children: afterKids,
+                    inlines: parent.inlines.clone(),
+                    source: parent.source.clone(),
+                });
             }
             let tree2 = replaceNode(tree.clone(), parent.id.as_str(), repl.clone());
-            return EditResult { tree: tree2, selection: selection };
-        },
+            return EditResult {
+                tree: tree2,
+                selection: selection,
+            };
+        }
         Op::WrapBlock(a) => {
             let found = findBlock(tree.clone(), a.id.as_str());
             let mut target = found.unwrap_or(missingBlock());
             if target.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
-            let wrapper = BlockNode { id: a.newId.to_string(), kind: a.kind.clone(), attrs: vec![], children: vec![target.clone()], inlines: vec![], source: rng(target.source.start, target.source.end) };
+            let wrapper = BlockNode {
+                id: a.newId.to_string(),
+                kind: a.kind.clone(),
+                attrs: vec![],
+                children: vec![target.clone()],
+                inlines: vec![],
+                source: rng(target.source.start, target.source.end),
+            };
             let tree2 = replaceNode(tree.clone(), a.id.as_str(), vec![wrapper.clone()]);
-            return EditResult { tree: tree2, selection: selection };
-        },
+            return EditResult {
+                tree: tree2,
+                selection: selection,
+            };
+        }
         Op::ReplaceRange(a) => {
             let sel: Selection = a.sel.clone();
             if sel.anchor.blockId == sel.head.blockId {
                 let found = findBlock(tree.clone(), sel.anchor.blockId.as_str());
                 let mut target = found.unwrap_or(missingBlock());
                 if target.id == "" {
-                    return EditResult { tree: tree, selection: selection };
-                }                let mut lo: i64 = sel.anchor.offset;
+                    return EditResult {
+                        tree: tree,
+                        selection: selection,
+                    };
+                }
+                let mut lo: i64 = sel.anchor.offset;
                 let mut hi: i64 = sel.head.offset;
                 if lo > hi {
                     let tmp: i64 = lo;
                     lo = hi;
                     hi = tmp;
-                }                let spans2 = spansInsert(spansDelete(target.inlines.clone(), lo, hi), lo, a.text.as_str());
-                let tree2 = replaceNode(tree.clone(), target.id.as_str(), vec![withInlines(target.clone(), spans2.clone())]);
-                return EditResult { tree: tree2, selection: collapsedSel(sel.anchor.blockId.as_str(), lo + (a.text.len() as i64)) };
+                }
+                let spans2 = spansInsert(
+                    spansDelete(target.inlines.clone(), lo, hi),
+                    lo,
+                    a.text.as_str(),
+                );
+                let tree2 = replaceNode(
+                    tree.clone(),
+                    target.id.as_str(),
+                    vec![withInlines(target.clone(), spans2.clone())],
+                );
+                return EditResult {
+                    tree: tree2,
+                    selection: collapsedSel(
+                        sel.anchor.blockId.as_str(),
+                        lo + (a.text.len() as i64),
+                    ),
+                };
             }
             let foundPA = parentOf(tree.clone(), sel.anchor.blockId.as_str());
             let mut pa = foundPA.unwrap_or(missingBlock());
             let foundPH = parentOf(tree.clone(), sel.head.blockId.as_str());
             let mut ph = foundPH.unwrap_or(missingBlock());
             if pa.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             if ph.id == "" {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             if pa.id != ph.id {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let ai = childIndex(pa.clone(), sel.anchor.blockId.as_str());
             let hi2 = childIndex(pa.clone(), sel.head.blockId.as_str());
             if ai < 0 {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             if hi2 < 0 {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             if ai > hi2 {
-                return EditResult { tree: tree, selection: selection };
+                return EditResult {
+                    tree: tree,
+                    selection: selection,
+                };
             }
             let aBlock = pa.children[(ai) as usize].clone();
             let hBlock = pa.children[(hi2) as usize].clone();
-            let mergedText: String = format!("{}{}", format!("{}{}", blockText(aBlock.clone())[0..(sel.anchor.offset) as usize].to_string(), a.text), blockText(hBlock.clone())[(sel.head.offset) as usize..].to_string());
+            let mergedText: String = format!(
+                "{}{}",
+                format!(
+                    "{}{}",
+                    blockText(aBlock.clone())[0..(sel.anchor.offset) as usize].to_string(),
+                    a.text
+                ),
+                blockText(hBlock.clone())[(sel.head.offset) as usize..].to_string()
+            );
             let mut kids3: Vec<BlockNode> = vec![];
             for c in &aBlock.children {
                 kids3.push(c.clone().clone());
@@ -851,12 +1132,34 @@ pub fn applyOp(mut tree: BlockNode, selection: Selection, op: Op) -> EditResult 
             for c in &hBlock.children {
                 kids3.push(c.clone().clone());
             }
-            let merged = BlockNode { id: aBlock.id.to_string(), kind: aBlock.kind.clone(), attrs: aBlock.attrs.clone(), children: kids3, inlines: vec![span(mergedText.as_str())], source: rng(aBlock.source.start, hBlock.source.end) };
-            let tree2 = spliceRange(tree.clone(), pa.id.as_str(), ai, hi2 + 1, vec![merged.clone()]);
-            return EditResult { tree: tree2, selection: collapsedSel(sel.anchor.blockId.as_str(), sel.anchor.offset + (a.text.len() as i64)) };
-        },
+            let merged = BlockNode {
+                id: aBlock.id.to_string(),
+                kind: aBlock.kind.clone(),
+                attrs: aBlock.attrs.clone(),
+                children: kids3,
+                inlines: vec![span(mergedText.as_str())],
+                source: rng(aBlock.source.start, hBlock.source.end),
+            };
+            let tree2 = spliceRange(
+                tree.clone(),
+                pa.id.as_str(),
+                ai,
+                hi2 + 1,
+                vec![merged.clone()],
+            );
+            return EditResult {
+                tree: tree2,
+                selection: collapsedSel(
+                    sel.anchor.blockId.as_str(),
+                    sel.anchor.offset + (a.text.len() as i64),
+                ),
+            };
+        }
     };
-    return EditResult { tree: tree, selection: selection };
+    return EditResult {
+        tree: tree,
+        selection: selection,
+    };
 }
 
 pub fn textInRange(mut tree: BlockNode, sel: Selection) -> String {
@@ -865,13 +1168,15 @@ pub fn textInRange(mut tree: BlockNode, sel: Selection) -> String {
         let mut target = found.unwrap_or(missingBlock());
         if target.id == "" {
             return "".to_string();
-        }        let mut lo: i64 = sel.anchor.offset;
+        }
+        let mut lo: i64 = sel.anchor.offset;
         let mut hi: i64 = sel.head.offset;
         if lo > hi {
             let tmp: i64 = lo;
             lo = hi;
             hi = tmp;
-        }        return blockText(target.clone())[(lo) as usize..(hi) as usize].to_string();
+        }
+        return blockText(target.clone())[(lo) as usize..(hi) as usize].to_string();
     }
     let foundA = findBlock(tree.clone(), sel.anchor.blockId.as_str());
     let a = foundA.unwrap_or(missingBlock());
@@ -882,34 +1187,85 @@ pub fn textInRange(mut tree: BlockNode, sel: Selection) -> String {
 
 pub fn invertOp(mut tree: BlockNode, op: Op) -> Op {
     match op {
-        Op::InsertText(a) => return Op::ReplaceRange(ReplaceRangeOp { sel: Selection { anchor: a.pos.clone(), head: BlockPos { blockId: a.pos.blockId.to_string(), offset: a.pos.offset + (a.text.len() as i64) } }, text: "".to_string() }),
-        Op::SplitBlock(a) => return Op::MergeBlocks(MergeBlocksOp { aId: a.pos.blockId.to_string(), bId: a.newId.to_string() }),
+        Op::InsertText(a) => {
+            return Op::ReplaceRange(ReplaceRangeOp {
+                sel: Selection {
+                    anchor: a.pos.clone(),
+                    head: BlockPos {
+                        blockId: a.pos.blockId.to_string(),
+                        offset: a.pos.offset + (a.text.len() as i64),
+                    },
+                },
+                text: "".to_string(),
+            })
+        }
+        Op::SplitBlock(a) => {
+            return Op::MergeBlocks(MergeBlocksOp {
+                aId: a.pos.blockId.to_string(),
+                bId: a.newId.to_string(),
+            })
+        }
         Op::MergeBlocks(a) => {
             let foundA = findBlock(tree.clone(), a.aId.as_str());
             let nodeA = foundA.unwrap_or(missingBlock());
-            return Op::SplitBlock(SplitBlockOp { pos: BlockPos { blockId: a.aId.to_string(), offset: (blockText(nodeA.clone()).len() as i64) }, newId: a.bId.to_string() });
-        },
+            return Op::SplitBlock(SplitBlockOp {
+                pos: BlockPos {
+                    blockId: a.aId.to_string(),
+                    offset: (blockText(nodeA.clone()).len() as i64),
+                },
+                newId: a.bId.to_string(),
+            });
+        }
         Op::SetBlockType(a) => {
             let found = findBlock(tree.clone(), a.id.as_str());
             let target = found.unwrap_or(missingBlock());
-            return Op::SetBlockType(SetBlockTypeOp { id: a.id.to_string(), kind: target.kind.clone() });
-        },
+            return Op::SetBlockType(SetBlockTypeOp {
+                id: a.id.to_string(),
+                kind: target.kind.clone(),
+            });
+        }
         Op::LiftBlock(a) => {
             let foundP = parentOf(tree.clone(), a.id.as_str());
             let mut parent = foundP.unwrap_or(missingBlock());
             if parent.id == "" {
-                return Op::SetBlockType(SetBlockTypeOp { id: a.id.to_string(), kind: BlockType::Paragraph.clone() });
+                return Op::SetBlockType(SetBlockTypeOp {
+                    id: a.id.to_string(),
+                    kind: BlockType::Paragraph.clone(),
+                });
             }
             if parent.id == tree.id {
-                return Op::SetBlockType(SetBlockTypeOp { id: a.id.to_string(), kind: BlockType::Paragraph.clone() });
+                return Op::SetBlockType(SetBlockTypeOp {
+                    id: a.id.to_string(),
+                    kind: BlockType::Paragraph.clone(),
+                });
             }
-            return Op::WrapBlock(WrapBlockOp { id: a.id.to_string(), kind: parent.kind.clone(), newId: parent.id.to_string() });
-        },
-        Op::WrapBlock(a) => return Op::LiftBlock(LiftBlockOp { id: a.id.to_string() }),
+            return Op::WrapBlock(WrapBlockOp {
+                id: a.id.to_string(),
+                kind: parent.kind.clone(),
+                newId: parent.id.to_string(),
+            });
+        }
+        Op::WrapBlock(a) => {
+            return Op::LiftBlock(LiftBlockOp {
+                id: a.id.to_string(),
+            })
+        }
         Op::ReplaceRange(a) => {
             let oldText = textInRange(tree.clone(), a.sel.clone());
-            return Op::ReplaceRange(ReplaceRangeOp { sel: Selection { anchor: a.sel.anchor.clone(), head: BlockPos { blockId: a.sel.anchor.blockId.to_string(), offset: a.sel.anchor.offset + (a.text.len() as i64) } }, text: oldText.to_string() });
-        },
+            return Op::ReplaceRange(ReplaceRangeOp {
+                sel: Selection {
+                    anchor: a.sel.anchor.clone(),
+                    head: BlockPos {
+                        blockId: a.sel.anchor.blockId.to_string(),
+                        offset: a.sel.anchor.offset + (a.text.len() as i64),
+                    },
+                },
+                text: oldText.to_string(),
+            });
+        }
     };
-    return Op::SetBlockType(SetBlockTypeOp { id: "".to_string(), kind: BlockType::Paragraph.clone() });
+    return Op::SetBlockType(SetBlockTypeOp {
+        id: "".to_string(),
+        kind: BlockType::Paragraph.clone(),
+    });
 }

@@ -68,3 +68,7 @@ jade-garden/front/component-gallery/e2e/test-results/
 # Rust crate 构建产物
 autodown/packages/engine/rust/target/
 autodown/stream-demo/test-results/
+
+# 计划证据整目录不入库（2026-10-31 用户裁定，含 *.md）：证据暂存放
+# .wt/<group>/evidence/<NNN>/（merge 时随组目录删除），摘要折叠进计划文件。
+docs/plans/attachments/

@@ -3,40 +3,63 @@
 @tailwind utilities;
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   Jade Garden Theme System — Inspired by AutoForge
+   Jade Garden Theme System — official theme package projection (PLAN-061)
+
+   Core role tokens (:root/.dark, incl. sidebar-*) are PROJECTED from the
+   AutoUI official themes package (vendor/themes 0.2.0, digest
+   9fa07742dc68aa5377ae06cb2d966386002063f184c515b6c5dddf8a6bef838e) via the
+   real build chain: jade-garden/front/auto (dep themes + use
+   themes.themes: Auto) -> generated index.css four blocks -> these values.
+   Regenerate: run `auto build -d .` in front/auto and re-sync the two var
+   blocks below from gen/front/vue/src/assets/index.css.
+
+   Brand layer (jade-owned overlay, kept): .theme-<accent> presets override
+   primary/ring per accent (default theme-indigo); --af-* semantic aliases
+   and --af-* status colours remain app-owned; --header-height is layout.
+   Mode business (.dark class + ThemePopover + localStorage) unchanged.
+   Main contract: auto-os PLAN-061
+   (061-external-workspaces-theme-adoption).
    ═════════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   :root {
-    /* Core palette — clean & minimal, low saturation */
+    /* —— official Auto/light projection（core + extended + sidebar）—— */
     --background: 0 0% 100%;
-    --foreground: 220 15% 20%;
-
+    --foreground: 240 10% 4%;
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 20%;
-
+    --card-foreground: 240 10% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 20%;
-
-    --primary: 238 55% 58%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 258 90% 66%;
     --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 258 90% 66%;
+    --success: 142 71% 45%;
+    --warning: 45 93% 47%;
+    --info: 217 91% 60%;
+    --error: 0 84% 60%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 15% 20%;
+    --radius: 0.5rem;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 4% 46%;
+    --sidebar-primary: 258 90% 66%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 7% 95%;
+    --sidebar-accent-foreground: 240 6% 10%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 258 90% 66%;
 
-    --accent: 220 14% 96%;
-    --accent-foreground: 220 15% 20%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 238 55% 58%;
-
+    /* —— jade app-owned（布局/别名/状态色，非官方词表重复）—— */
     --radius: 0.5rem;
     --header-height: 2.25rem;
 
@@ -62,7 +85,7 @@
     --af-info: 217 70% 50%;
   }
 
-  /* Accent presets */
+  /* Accent presets（品牌 overlay——PLAN-061 合法保留；默认 theme-indigo） */
   .theme-indigo {
     --primary: 238 55% 58%;
     --ring: 238 55% 58%;
@@ -84,35 +107,42 @@
     --ring: 220 10% 45%;
   }
 
-  /* Dark mode — black/white oriented, low saturation */
+  /* —— official Auto/dark projection（core + extended + sidebar）—— */
   .dark {
-    --background: 220 15% 8%;
-    --foreground: 220 10% 92%;
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 9% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 9% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 255 92% 76%;
+    --primary-foreground: 240 8% 12%;
+    --secondary: 240 6% 13%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 6% 13%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 6% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 255 92% 76%;
+    --success: 142 69% 58%;
+    --warning: 48 96% 53%;
+    --info: 213 94% 68%;
+    --error: 0 91% 71%;
 
-    --card: 220 15% 10%;
-    --card-foreground: 220 10% 92%;
+    --sidebar-background: 240 8% 5%;
+    --sidebar-foreground: 240 5% 65%;
+    --sidebar-primary: 255 92% 76%;
+    --sidebar-primary-foreground: 240 8% 12%;
+    --sidebar-accent: 240 7% 11%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 4% 16%;
+    --sidebar-ring: 255 92% 76%;
 
-    --popover: 220 15% 8%;
-    --popover-foreground: 220 10% 92%;
-
-    --primary: 238 55% 62%;
-    --primary-foreground: 220 15% 8%;
-
-    --secondary: 220 12% 16%;
-    --secondary-foreground: 220 10% 92%;
-
-    --muted: 220 12% 16%;
-    --muted-foreground: 220 9% 58%;
-
-    --accent: 220 12% 16%;
-    --accent-foreground: 220 10% 92%;
-
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 220 10% 92%;
-
-    --border: 220 12% 18%;
-    --input: 220 12% 18%;
-    --ring: 238 55% 62%;
+    /* jade app-owned dark 附加面无——别名/状态色自 :root 级联。 */
   }
 
   .dark.theme-indigo {

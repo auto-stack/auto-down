@@ -5,7 +5,22 @@
 // placeholder exists so that jade-garden widgets are generated as
 // standalone component SFCs (same pattern as autodown/packages/editor/src/auto).
 // It is never deployed to front/src/.
+//
+// auto-os/PLAN-061 T-03：官方主题包主题名导入（031 合同消费面——pac `dep
+// themes` 声明使包可解析，本 use 把包内 pub 主题收进收集链；无此行 themes
+// 树不注册，收集/生成在 C-11 未注册拒绝）。构建链投影：生成 index.css
+// 四块取本 use 选定的官方族（Auto 默认）light/dark 官方值；部署面
+// front/src/assets/index.css 消费该投影（品牌 accent overlay 与模式
+// popover 业务保留在部署面）。
+use themes.themes: Auto
+
 widget App {
+    // PLAN-061：主题设计默认（独立默认腿，构建投影取值源）。
+    design {
+        theme: "Auto"
+        mode: "dark"
+    }
+
     view {
         col {
             text "jade-garden auto root placeholder"

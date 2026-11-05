@@ -21,3 +21,15 @@ npm_deps: {
 
 // PLAN-070 T-06：jade web 命令系统声明入口（bp-edit 见 app-config.at）。
 ui_config: "app-config.at"
+
+// auto-os/PLAN-061 T-03：官方主题包正式接入——`vendor/themes` 为 UI 管理渠道
+// 发布的**固定版本快照**（themes 0.2.0，内容 digest
+// 9fa07742dc68aa5377ae06cb2d966386002063f184c515b6c5dddf8a6bef838e，
+// per-file sha256 与源包逐文件校验同律；不可二次编辑、非第二权威源）。
+// 部署形态 = 构建链投影：app 根 use 官方树 → 生成 index.css 四块
+// （light/dark core+sidebar 官方值）→ 部署面 front/src 消费；自有 CSS 策略
+// （.dark 类 + .theme-<accent> 品牌 overlay + 主题 popover 业务）保留。
+// 主合同反链见 README。
+dep themes {
+    path: "vendor/themes"
+}

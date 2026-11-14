@@ -15,6 +15,7 @@
 | [07-jade-garden-mvp-design.md](./07-jade-garden-mvp-design.md) | Jade Garden MVP 设计 |
 | [08-logseq-obsidian-feature-research.md](./08-logseq-obsidian-feature-research.md) | Logseq/Obsidian 功能调研与 jade-garden 差距分析 |
 | [09-unified-document-engine.md](./09-unified-document-engine.md) | 统一文档引擎：跨平台渲染/编辑一体化架构（Plan 016-020） |
+| [10-autodown-publishing.md](./10-autodown-publishing.md) | v0.6 文档排版设计草案：普通 Auto 模板、Node 正文、样式与延迟布局、Typst 后端及原型验证 |
 
 ## 关键决策
 
@@ -26,3 +27,6 @@
 - 存储：本地文件系统优先，`wiki/` 目录即知识库
 - 文档引擎：`@autodown/engine` **0.5.0 契约冻结**（Plan 020 Phase 4，2026-08-28；同日版本策略修订 1.0.0→0.5.0，1.0 预留给语言整体）——四出口 + EDITOR-CONTRACT DOM/事件面 + 命令层 API 冻结；rust/VM 平台面（a2r crate、VM natives）标 experimental 不随契约冻结
 - 旧包退役：`@autodown/vue`/`@autodown/editor`/`@autodown/core` 自 Plan 020 起为 deprecated re-export shim（demo/jade-garden 已切 engine；musk 冻结 0.2.0 vendor 快照）；物理归档待 musk vendor 再生路径确认弃用后执行
+- v0.6 排版方向（[Design 10](./10-autodown-publishing.md)，Draft 0.1，2026-11-14）：正文使用 AutoDown/Auto Node，模板复用普通 Auto 脚本；文档库提供样式、呈现、引用和延迟上下文，首个排版后端为 Typst。按 P0-P3 先验证原型，语法与内部表示保持实验性；本文档登记不表示实现或合同冻结。
+
+- 对应[实施计划 082–086](../plans/README.md)已建立为 drafting；下一步执行 082 最小原型并评估，后续范围随反馈调整。

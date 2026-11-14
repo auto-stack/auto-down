@@ -114,3 +114,29 @@
    - 选项 B：在 Rust 后端里实现，前端只接收 ProseMirror JSON。
 2. **确认工作区目录结构**：是否每个 Wiki 一个 `.autodown/` 目录。
 3. **确认是否立即启动 `apps/wiki` 工程**：如果是，需要先决定用 Tauri（桌面）还是纯 Web。
+
+## v0.6 并行方向：文档排版与普通 Auto 模板（2026-11-14）
+
+本节是独立于上文历史 Wiki 阶段的新增设计路线，详见 [Design 10](10-autodown-publishing.md)。与 ACE、AGE、AutoOS Linux 发行版等目标并行协调；原型先复用现有 Auto 求值链，不等待 ACE 自举完成。语言或 UI 的真实缺口由探针交给对应仓 owner。
+
+- [ ] P0：实际用普通 Auto fn/type/控制流构造内容并导出出版数据，核验 Node/序列化能力。
+- [ ] P1：一份正文通过 Auto 模板生成论文、办公书籍 PDF，验证目录、编号和引用。
+- [ ] P1b：补出版书籍、基础报纸与静态演示，形成五类真实输出对比。
+- [ ] P2：模板/正文实时更新、版本隔离、诊断、块级双向定位，与正式输出保持同 revision。
+- [ ] P3：验证结构化 Style、选择器与呈现规则、布局回调子集、测量和查询，并明确拒绝未支持能力。
+
+P0-P3 是原型阶段标识，不是正式 Plan 号；各项尚未实施。先用原型评估输出效果、书写简洁度、错误定位和热更新周转，再调整 API 与分解正式任务。DOCX/PPTX 可编辑输出、任意文本框串文和完整页面内编辑不作为首轮原型结果宣称。
+
+
+正式计划已建立：082 已交付为可运行原型（[归档计划](../plans/archived/082-auto-template-typst-prototype.md)），083–086 仍为 drafting，见[当前实施计划入口](../plans/README.md)：
+
+| 计划 | 范围 | 前置 |
+| --- | --- | --- |
+| [082](../plans/archived/082-auto-template-typst-prototype.md)（已交付） | 普通 Auto 模板与两种 Typst PDF 的最小原型 | 现有工具与解析器 |
+| [083](../plans/083-document-style-render-rules.md) | 结构化样式、作用域与呈现规则 | 082 及原型反馈 |
+| [084](../plans/084-publication-templates-semantics.md) | 五类模板、编号引用与资源语义 | 082、083 |
+| [085](../plans/085-live-pagination-preview-source-map.md) | 实时分页预览、版本隔离与定位 | 082、083 |
+| [086](../plans/086-deferred-layout-context.md) | 延迟布局回调、测量与查询 | 083、084 |
+
+082 已完成；下一步是据原型反馈评估并细化 083（084/085 可在共享合同明确后独立推进）。其余计划按原型反馈调整范围，不把建立计划当作交付能力。
+

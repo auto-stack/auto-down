@@ -1,0 +1,7 @@
+// PLAN-082 负例：Auto 语法错误（表达式未闭合）。
+// 该文件只用于验证 E_AUTO_RUN 的真实失败状态与诊断透传，不参与正常出版流程。
+
+fn main() {
+    let total = (1 +
+    print("never reached")
+}

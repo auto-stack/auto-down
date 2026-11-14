@@ -1,0 +1,34 @@
+// PLAN-082 — office_book 模板（普通 Auto 函数）
+//
+// 页面：单栏（模板固定），A4，页眉为书籍标题，页脚页码。
+// 结构：章节（1 级标题）另起一页，正文首行缩进 2em，`1.` 编号，目录深度 2，
+// 并在正文前合成"前言"与摘要段（origin=template，与正文来源区分）。
+// 参数（font_size/margin/header_text/paper）来自宿主命令行；columns 对本书模板固定为 1。
+
+use ir: Doc, Options, Publication, PageConfig, StyleConfig, PubBlock, to_pub, outline_of
+
+fn build_office_book(doc Doc, opts Options) Publication {
+    let page = PageConfig(
+        opts.paper,
+        "3cm",
+        "2.6cm",
+        "3cm",
+        "2.6cm",
+        1,
+        opts.font_size,
+        opts.font_family,
+        opts.header_text,
+        1
+    )
+    let style = StyleConfig("1.", "2em", 1, 1, "22pt", "plain")
+    var content []PubBlock = []
+    content.push(PubBlock("tpl-preface", "heading", "template", 1, 0, [], 0, [], "", "", [], "前言"))
+    if doc.meta.abstract != "" {
+        content.push(PubBlock("tpl-abstract", "paragraph", "template", 0, 0, [], 0, [], "", "", [], doc.meta.abstract))
+    }
+    for b in doc.blocks {
+        content.push(to_pub(b))
+    }
+    let outline = outline_of(content, 2)
+    return Publication("office_book", doc.meta, page, style, 2, "目 录", content, outline)
+}

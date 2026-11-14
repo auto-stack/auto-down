@@ -1,0 +1,92 @@
+// PLAN-082 — AC-01 capability probe: 普通 Auto 函数/类型/条件/循环/参数覆盖
+//
+// 该脚本不依赖宿主与 parser，直接由 `auto templates/probe.at` 执行；
+// 结果写入 <run>/probe-result.json，供 scripts/verify.mjs 断言。
+// 它证明模板链使用真实 Auto 求值，而不是把 .at 当字符串或由 JS/Rust 代写模板逻辑。
+
+use env: get
+use file: write_text
+
+// type 定义 + 构造函数式初始化
+type ProbeInput {
+    items []str
+    limit int
+}
+
+type ProbeItem {
+    key str
+    label str
+}
+
+// 函数：参数覆盖 + 条件
+fn label_for(index int, limit int, text str) str {
+    if index >= limit {
+        return text + "（超出）"
+    } else if text == "" {
+        return "空"
+    }
+    return text
+}
+
+// 函数：循环 + 列表构造
+fn expand(input ProbeInput) []ProbeItem {
+    var out []ProbeItem = []
+    var i = 0
+    for item in input.items {
+        out.push(ProbeItem("k" + i.to(str), label_for(i, input.limit, item)))
+        i = i + 1
+    }
+    return out
+}
+
+// 函数：if/for 组合的聚合
+fn count_over(items []ProbeItem, limit int) int {
+    var total = 0
+    for item in items {
+        var over = 0
+        if item.label.contains("（超出）") {
+            over = 1
+        }
+        total = total + over
+    }
+    return total
+}
+
+fn jstr(s str) str {
+    var out = ""
+    var i = 0
+    while i < s.len() {
+        let c = s.char_at(i)
+        if c == 34 {
+            out = out + "\\\""
+        } else if c == 92 {
+            out = out + "\\\\"
+        } else {
+            out = out + s.sub(i, i + 1)
+        }
+        i = i + 1
+    }
+    return "\"" + out + "\""
+}
+
+fn main() {
+    let dir = get("PLAN082_RUN_DIR")
+    let input = ProbeInput(["alpha", "", "gamma"], 2)
+    let items = expand(input)
+    let over = count_over(items, input.limit)
+    var rows = "["
+    var i = 0
+    for item in items {
+        if i > 0 {
+            rows = rows + ","
+        }
+        rows = rows + "{\"key\":" + jstr(item.key) + ",\"label\":" + jstr(item.label) + "}"
+        i = i + 1
+    }
+    rows = rows + "]"
+    let result = "{\"items\":" + rows + ",\"over_limit\":" + over.to(str) + ",\"limit\":" + input.limit.to(str) + "}"
+    print(result)
+    if dir != "" {
+        write_text(dir + "/probe-result.json", result)
+    }
+}

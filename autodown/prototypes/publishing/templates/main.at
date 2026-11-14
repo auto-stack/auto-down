@@ -1,0 +1,46 @@
+// PLAN-082 — prototype entry: Auto 求值 doc-wire → publication.json
+//
+// 宿主（host/publish.mjs）把解析后的正文写入 <run>/doc.wire、把模板参数写入 <run>/request.txt，
+// 通过环境变量 PLAN082_RUN_DIR 指定运行目录，然后执行：auto templates/main.at
+//
+// 本文件是普通 Auto 脚本入口；模板投影在 academic.at / office_book.at，
+// 数据模型与 JSON 序列化在 ir.at。全部模板逻辑由 Auto 执行，宿主不复制这些逻辑。
+
+use env: get
+use file: read_text, write_text
+use ir: Publication, parse_doc, parse_options, json_publication, json_error
+use academic: build_academic
+use office_book: build_office_book
+
+fn main() {
+    let dir = get("PLAN082_RUN_DIR")
+    if dir == "" {
+        print("E_RUN_DIR: PLAN082_RUN_DIR is not set")
+        return
+    }
+    let wire = read_text(dir + "/doc.wire")
+    let request = read_text(dir + "/request.txt")
+    let parsed_options = parse_options(request)
+    if parsed_options.ok == 0 {
+        write_text(dir + "/publication.json", json_error(parsed_options.code, parsed_options.message))
+        return
+    }
+    let parsed_doc = parse_doc(wire)
+    if parsed_doc.ok == 0 {
+        write_text(dir + "/publication.json", json_error(parsed_doc.code, parsed_doc.message))
+        return
+    }
+    let opts = parsed_options.options
+    let doc = parsed_doc.doc
+    if opts.template == "academic" {
+        let pub = build_academic(doc, opts)
+        write_text(dir + "/publication.json", json_publication(pub))
+        print("ok template=academic blocks=" + pub.content.len().to(str))
+    } else if opts.template == "office_book" {
+        let pub = build_office_book(doc, opts)
+        write_text(dir + "/publication.json", json_publication(pub))
+        print("ok template=office_book blocks=" + pub.content.len().to(str))
+    } else {
+        write_text(dir + "/publication.json", json_error("E_TEMPLATE_UNKNOWN", "unknown template: " + opts.template))
+    }
+}

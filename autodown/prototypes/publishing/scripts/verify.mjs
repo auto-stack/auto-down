@@ -1,0 +1,497 @@
+#!/usr/bin/env node
+// PLAN-082 验收脚本：AC-01..AC-07 的可复跑证据。
+//
+// 运行：node scripts/verify.mjs
+// 产物：out/verify/report.json + out/verify/report.md（每条检查含命令、退出码、关键数字）
+//
+// 本脚本不修改实现文件；失败以非零退出码返回，并打印失败断言。
+
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { parseSource } from '../host/doc-parse.mjs';
+import { emitTypst } from '../host/emit-typst.mjs';
+import { locateTypst, typstCompile, PINNED_TYPST_VERSION } from '../host/typst.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PROTO = path.resolve(HERE, '..');
+const REPO = path.resolve(PROTO, '../../..');
+const OUT = path.join(PROTO, 'out', 'verify');
+const AUTO = process.env.PLAN082_AUTO || 'auto';
+
+const checks = [];
+async function check(id, name, fn) {
+  const started = Date.now();
+  try {
+    const detail = await fn();
+    checks.push({ id, name, ok: true, detail: detail ?? null, ms: Date.now() - started });
+    process.stdout.write(`  ok  ${id} ${name}\n`);
+  } catch (error) {
+    checks.push({
+      id,
+      name,
+      ok: false,
+      detail: { message: error.message, ...(error.detail ?? {}) },
+      ms: Date.now() - started,
+    });
+    process.stdout.write(`  FAIL ${id} ${name}: ${error.message}\n`);
+  }
+}
+
+function assert(condition, message, detail) {
+  if (!condition) {
+    const error = new Error(message);
+    error.detail = detail ?? {};
+    throw error;
+  }
+}
+
+function run(command, args, options = {}) {
+  const started = Date.now();
+  const result = spawnSync(command, args, {
+    cwd: options.cwd ?? PROTO,
+    encoding: 'utf8',
+    env: { ...process.env, ...(options.env ?? {}) },
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return {
+    command: [command, ...args].join(' '),
+    code: result.status ?? -1,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    ms: Date.now() - started,
+  };
+}
+
+function parsePayload(result) {
+  for (const stream of [result.stdout, result.stderr]) {
+    const trimmed = stream.trim();
+    if (!trimmed.startsWith('{')) continue;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // 继续尝试另一个流
+    }
+  }
+  return null;
+}
+
+function publish(args) {
+  const result = run(process.execPath, [path.join(PROTO, 'host', 'publish.mjs'), ...args]);
+  return { ...result, payload: parsePayload(result) };
+}
+
+function pdfProbe(runDir, withPng) {
+  const json = path.join(runDir, 'pdf-probe.json');
+  const png = path.join(runDir, 'png');
+  mkdirSync(png, { recursive: true });
+  const result = run('python', [path.join(PROTO, 'host', 'pdf_probe.py'), path.join(runDir, 'publication.pdf'), json, png]);
+  if (result.code !== 0) {
+    const error = new Error(`pdf_probe failed: ${result.stderr.slice(-800)}`);
+    error.detail = { command: result.command, exit: result.code };
+    throw error;
+  }
+  return JSON.parse(readFileSync(json, 'utf8'));
+}
+
+// 把同一页的正文行首分成栏：行首簇占比 >= 15%，且相邻簇间距 > 页宽 20% 才视为新栏。
+// 过短页（标题/前言）与目录页不作为栏位样本（它们的行首来自居中标题与目录点线）。
+function columnCount(page) {
+  if (page.chars < 400) return 0;
+  if (/\.\s+\.\s+\./.test(page.text)) return 0; // 目录页（点线引导）不作为栏位样本
+  const width = page.width;
+  const clusters = page.x_clusters.filter((c) => c.share >= 0.15).sort((a, b) => a.x0 - b.x0);
+  if (clusters.length === 0) return 0;
+  let columns = 1;
+  for (let i = 1; i < clusters.length; i += 1) {
+    if (clusters[i].x0 - clusters[i - 1].x0 > width * 0.2) columns += 1;
+  }
+  return columns;
+}
+
+function stripWs(value) {
+  return value.replace(/\s+/g, '');
+}
+
+function sha256File(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
+
+function syntheticPublication(text) {
+  return {
+    schema_version: 'publication-ir-v0',
+    template: 'academic',
+    document: { title: '序列化检查', authors: ['排版原型'], abstract: '', lang: 'zh', source: 'synthetic.ad' },
+    page: {
+      paper: 'a4',
+      margin: { top: '2cm', bottom: '2cm', left: '2cm', right: '2cm' },
+      columns: 1,
+      font_size: '10pt',
+      font_family: ['Noto Serif SC'],
+      header_text: '',
+      page_numbers: true,
+    },
+    style: {
+      heading_numbering: '',
+      first_line_indent: '0em',
+      chapter_pagebreak: false,
+      justify: false,
+      title_size: '16pt',
+      abstract_style: 'plain',
+    },
+    outline: { depth: 0, title: '', entries: [] },
+    content: [{ id: 'syn-1', kind: 'paragraph', origin: 'template', text }],
+  };
+}
+
+async function main() {
+  rmSync(OUT, { recursive: true, force: true });
+  mkdirSync(OUT, { recursive: true });
+
+  const autoVersion = run(AUTO, ['--version']);
+  const typstBin = locateTypst(PROTO);
+  const typstVersion = typstBin ? run(typstBin, ['--version']) : null;
+  const env = {
+    auto: `${autoVersion.command} -> ${autoVersion.stdout.trim() || autoVersion.stderr.trim()}`,
+    typst: typstVersion ? `${typstVersion.command} -> ${typstVersion.stdout.trim()}` : 'missing',
+    node: process.version,
+    platform: process.platform,
+    typst_pinned: PINNED_TYPST_VERSION,
+  };
+
+  // ---------------------------------------------------------------- AC-01
+  await check('AC-01', '普通 Auto 执行 fn/type/if/for 并产生结构化输出', () => {
+    const probeDir = path.join(OUT, 'probe');
+    mkdirSync(probeDir, { recursive: true });
+    const result = run(AUTO, [path.join(PROTO, 'templates', 'probe.at')], {
+      env: { PLAN082_RUN_DIR: probeDir },
+    });
+    assert(result.code === 0, `auto probe exit ${result.code}`, { stderr: result.stderr.slice(-800) });
+    const resultPath = path.join(probeDir, 'probe-result.json');
+    assert(existsSync(resultPath), 'probe-result.json missing');
+    const probe = JSON.parse(readFileSync(resultPath, 'utf8'));
+    const labels = probe.items.map((item) => item.label);
+    assert(JSON.stringify(labels) === JSON.stringify(['alpha', '空', 'gamma（超出）']), `unexpected labels ${JSON.stringify(labels)}`);
+    assert(probe.over_limit === 1, `over_limit ${probe.over_limit}`);
+    const source = readFileSync(path.join(PROTO, 'templates', 'probe.at'), 'utf8');
+    for (const token of ['type ProbeInput', 'fn expand', 'for item in input.items', 'if index >= limit']) {
+      assert(source.includes(token), `probe.at missing ${token}`);
+    }
+    return { command: result.command, exit: result.code, labels, over_limit: probe.over_limit };
+  });
+
+  // ---------------------------------------------------------------- AC-02
+  const academicDir = path.join(OUT, 'academic');
+  const bookDir = path.join(OUT, 'office_book');
+  const academicRun = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', academicDir]);
+  const bookRun = publish([
+    '--source',
+    'samples/research.ad',
+    '--template',
+    'office_book',
+    '--out',
+    bookDir,
+    '--header-text',
+    'AutoDown 排版原型',
+  ]);
+  const academicPdf = pdfProbe(academicDir, true);
+  const bookPdf = pdfProbe(bookDir, true);
+  const academicReport = JSON.parse(readFileSync(path.join(academicDir, 'run-report.json'), 'utf8'));
+  const bookReport = JSON.parse(readFileSync(path.join(bookDir, 'run-report.json'), 'utf8'));
+  const academicIr = JSON.parse(readFileSync(path.join(academicDir, 'publication.json'), 'utf8'));
+  const bookIr = JSON.parse(readFileSync(path.join(bookDir, 'publication.json'), 'utf8'));
+
+  await check('AC-02a', '同一正文由两个模板输出两个可打开 PDF', () => {
+    assert(academicRun.code === 0, `academic publish exit ${academicRun.code}: ${academicRun.stderr.slice(-500)}`);
+    assert(bookRun.code === 0, `office_book publish exit ${bookRun.code}: ${bookRun.stderr.slice(-500)}`);
+    for (const [name, probe] of [
+      ['academic', academicPdf],
+      ['office_book', bookPdf],
+    ]) {
+      assert(probe.page_count >= 1, `${name} has no pages`);
+      assert(probe.page_sizes.length === 1 && probe.page_sizes[0][0] > 500, `${name} page geometry ${JSON.stringify(probe.page_sizes)}`);
+      assert(probe.text.length > 500, `${name} extracted text too short`);
+    }
+    return {
+      academic_pages: academicPdf.page_count,
+      office_book_pages: bookPdf.page_count,
+      sizes: academicPdf.page_sizes,
+      academic_pdf_sha: academicReport.outputs.pdf.sha256,
+      office_book_pdf_sha: bookReport.outputs.pdf.sha256,
+    };
+  });
+
+  await check('AC-02b', '正文关键内容与 NodeId 一致、页面/栏结构真实不同', () => {
+    const mustHave = ['相机与激光雷达融合的多传感器感知方法', '时间基准', '传感器', '融合流程', '结论'];
+    for (const phrase of mustHave) {
+      assert(academicPdf.text.includes(phrase), `academic PDF missing ${phrase}`);
+      assert(bookPdf.text.includes(phrase), `office_book PDF missing ${phrase}`);
+    }
+    const sourceIds = (ir) => ir.content.filter((block) => block.origin === 'source').map((block) => block.id);
+    assert(JSON.stringify(sourceIds(academicIr)) === JSON.stringify(sourceIds(bookIr)), 'source node id order differs between templates');
+    const contentById = new Map(academicIr.content.map((block) => [block.id, block]));
+    for (const entry of academicIr.outline.entries) {
+      const block = contentById.get(entry.id);
+      assert(block && block.kind === 'heading' && block.text === entry.title, `outline entry ${entry.id} does not match a heading`);
+    }
+    const academicColumns = Math.max(...academicPdf.pages.map(columnCount));
+    const bookColumns = Math.max(...bookPdf.pages.map(columnCount));
+    assert(academicColumns === 2, `academic max columns ${academicColumns}`);
+    assert(bookColumns === 1, `office_book max columns ${bookColumns}`);
+    assert(academicPdf.page_count !== bookPdf.page_count, 'page counts are equal between templates');
+    assert(academicIr.page.columns === 2 && bookIr.page.columns === 1, 'IR columns differ from expected');
+    assert(academicIr.style.chapter_pagebreak === false && bookIr.style.chapter_pagebreak === true, 'chapter pagebreak not template-specific');
+    assert(academicIr.style.first_line_indent === '0em' && bookIr.style.first_line_indent === '2em', 'first-line indent not template-specific');
+    assert(bookPdf.pages.slice(1).every((page) => page.text.includes('AutoDown 排版原型')), 'office_book header missing on body pages');
+    assert(academicPdf.pages.every((page) => !page.text.includes('AutoDown 排版原型')), 'academic PDF carries the book header');
+    return {
+      source_blocks: sourceIds(academicIr).length,
+      academic_columns: academicColumns,
+      office_book_columns: bookColumns,
+      academic_pages: academicPdf.page_count,
+      office_book_pages: bookPdf.page_count,
+    };
+  });
+
+  // ---------------------------------------------------------------- AC-03
+  const paramDir = path.join(OUT, 'academic-param');
+  const paramRun = publish([
+    '--source',
+    'samples/research.ad',
+    '--template',
+    'academic',
+    '--out',
+    paramDir,
+    '--columns',
+    '1',
+    '--font-size',
+    '12pt',
+    '--margin',
+    '3cm',
+  ]);
+  const paramPdf = pdfProbe(paramDir, false);
+  const paramReport = JSON.parse(readFileSync(path.join(paramDir, 'run-report.json'), 'utf8'));
+  await check('AC-03', '模板参数真实生效（栏数/字号/页边距改变布局与 Typst 配置）', () => {
+    assert(paramRun.code === 0, `param publish exit ${paramRun.code}: ${paramRun.stderr.slice(-500)}`);
+    const applied = paramReport.typst_config;
+    assert(applied, 'typst query produced no config');
+    assert(String(applied.font_size) === '12pt', `typst_config.font_size ${JSON.stringify(applied.font_size)}`);
+    assert(String(applied.columns) === '1', `typst_config.columns ${JSON.stringify(applied.columns)}`);
+    assert(applied.margin && applied.margin.top === '3cm', `typst_config.margin ${JSON.stringify(applied.margin)}`);
+    assert(itemChanged(paramPdf, academicPdf), 'layout did not change with parameters');
+    assert(Math.max(...paramPdf.pages.map(columnCount)) === 1, 'parameter run still renders multiple columns');
+    assert(paramReport.outputs.pdf.sha256 !== academicReport.outputs.pdf.sha256, 'PDF bytes unchanged after parameter change');
+    const paramIr = JSON.parse(readFileSync(path.join(paramDir, 'publication.json'), 'utf8'));
+    assert(
+      JSON.stringify(paramIr.content.filter((b) => b.origin === 'source').map((b) => b.id)) ===
+        JSON.stringify(academicIr.content.filter((b) => b.origin === 'source').map((b) => b.id)),
+      'source node ids changed with template parameters',
+    );
+    return {
+      applied: { font_size: applied.font_size, columns: applied.columns, margin: applied.margin },
+      pages: paramPdf.page_count,
+      chars: paramPdf.text.length,
+      baseline_pages: academicPdf.page_count,
+      baseline_chars: academicPdf.text.length,
+      pdf_sha: paramReport.outputs.pdf.sha256,
+    };
+  });
+
+  // ---------------------------------------------------------------- AC-04
+  const escapeDir = path.join(OUT, 'escape');
+  const escapeRun = publish(['--source', 'samples/escape.ad', '--template', 'academic', '--out', escapeDir]);
+  const escapePdf = pdfProbe(escapeDir, false);
+  const escapeIr = JSON.parse(readFileSync(path.join(escapeDir, 'publication.json'), 'utf8'));
+  const escapeMap = JSON.parse(readFileSync(path.join(escapeDir, 'publication.map.json'), 'utf8'));
+  const syntheticDir = path.join(OUT, 'escape-synthetic');
+  mkdirSync(syntheticDir, { recursive: true });
+
+  await check('AC-04a', '特殊字符经 parser→wire→Auto→IR→Typst→PDF 后仍是字面文字', () => {
+    assert(escapeRun.code === 0, `escape publish exit ${escapeRun.code}: ${escapeRun.stderr.slice(-500)}`);
+    const pdfFlat = stripWs(escapePdf.text);
+    const literals = ['井号#', '美元符号$', '百分号%', '星号*', '下划线_', '方括号[]', '尖括号<>', '花括号{}', '《排版原型》', 'café', '反斜线\\', '转义前缀#'];
+    const missing = literals.filter((literal) => !pdfFlat.includes(literal));
+    assert(missing.length === 0, `PDF text missing literals: ${JSON.stringify(missing)}`);
+    return { literals_checked: literals.length, pdf_chars: escapePdf.text.length };
+  });
+
+  await check('AC-04b', '文本在 IR 与 parser 输出之间零改动，块级来源映射可定位', async () => {
+    const source = await parseSource(path.join(PROTO, 'samples/escape.ad'));
+    const irSource = escapeIr.content.filter((block) => block.origin === 'source');
+    assert(irSource.length === source.blocks.length, `IR source blocks ${irSource.length} != parser blocks ${source.blocks.length}`);
+    for (let i = 0; i < source.blocks.length; i += 1) {
+      const expected = source.blocks[i];
+      const actual = irSource[i];
+      assert(actual.id === expected.id, `block id mismatch at ${i}: ${actual.id} != ${expected.id}`);
+      assert(actual.kind === expected.kind, `block kind mismatch at ${actual.id}`);
+      const canonical = (value) => JSON.stringify(Object.fromEntries(Object.entries(value).sort()));
+      assert(
+        canonical(actual) === canonical({ ...expected, origin: 'source' }),
+        `block payload changed between parser and IR at ${actual.id}`,
+      );
+    }
+    const paragraph = irSource.find((block) => block.kind === 'paragraph' && block.text.includes('井号'));
+    assert(paragraph, 'escape paragraph missing from IR');
+    assert(paragraph.text.includes('反斜线 \\'), 'backslash lost in IR text');
+    const mapped = escapeMap.blocks.find((item) => item.node_id === paragraph.id);
+    assert(mapped, `source map missing ${paragraph.id}`);
+    const typLines = readFileSync(path.join(escapeDir, 'publication.typ'), 'utf8').split('\n');
+    const range = typLines.slice(mapped.typ_start - 1, mapped.typ_end).join('\n');
+    assert(range.includes(`node: ${paragraph.id}`), `mapped typ range lacks node marker ${paragraph.id}`);
+    assert(range.includes('井号 #'), 'mapped typ range lacks the paragraph text');
+    assert(range.includes('#("'), 'text is not emitted as a Typst string literal');
+    return { block_id: paragraph.id, typ_range: [mapped.typ_start, mapped.typ_end], blocks: irSource.length };
+  });
+
+  await check('AC-04c', '序列化层独立反例：直引号/反斜线/标记字符在 Typst 中不被解释', () => {
+    const text = '直引号 " 与 \' 井号 # 星号 * 下划线 _ 美元 $ 反斜线 \\ 方括号 [ ] 尖括号 < > 花括号 { } at @ tilde ~ 反引号 ` 百分号 %';
+    const emitted = emitTypst(syntheticPublication(text));
+    writeFileSync(path.join(syntheticDir, 'publication.typ'), emitted.typ);
+    const compile = typstCompile(typstBin, {
+      input: path.join(syntheticDir, 'publication.typ'),
+      output: path.join(syntheticDir, 'publication.pdf'),
+      root: syntheticDir,
+    });
+    assert(compile.code === 0, `synthetic typst compile exit ${compile.code}: ${compile.stderr.slice(-600)}`);
+    const probe = pdfProbe(syntheticDir, false);
+    const flat = stripWs(probe.text);
+    const expected = stripWs(text);
+    assert(flat.includes(expected), `synthetic PDF text differs:\n${JSON.stringify(probe.text.slice(0, 400))}`);
+    return { synthetic_text_chars: text.length, pdf_pages: probe.page_count, typ_sha: sha256File(path.join(syntheticDir, 'publication.typ')) };
+  });
+
+  // ---------------------------------------------------------------- AC-05
+  await check('AC-05', '失败可解释：Auto 语法错误 / 未知节点 / 未知版本 / Typst 失败', () => {
+    const outcomes = [];
+
+    const broken = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-auto'), '--auto-entry', 'samples/neg/broken_entry.at']);
+    assert(broken.code === 1, `broken auto exit ${broken.code}`);
+    assert(broken.payload?.error?.code === 'E_AUTO_RUN', `broken auto code ${broken.payload?.error?.code}`);
+    outcomes.push({ case: 'auto_syntax_error', code: broken.payload.error.code, exit: broken.code, message: broken.payload.error.message.slice(0, 160) });
+
+    const unsupported = publish(['--source', 'samples/unsupported.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-node')]);
+    assert(unsupported.code === 1, `unsupported node exit ${unsupported.code}`);
+    assert(unsupported.payload?.error?.code === 'E_NODE_UNSUPPORTED', `unsupported node code ${unsupported.payload?.error?.code}`);
+    assert(unsupported.payload.error.details?.unsupported?.[0]?.id === 'block-2', 'unsupported node id not reported');
+    outcomes.push({ case: 'unknown_node', code: unsupported.payload.error.code, exit: unsupported.code, node: unsupported.payload.error.details.unsupported[0] });
+
+    const version = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-version'), '--doc-wire-version', '9']);
+    assert(version.code === 1, `wire version exit ${version.code}`);
+    assert(version.payload?.error?.code === 'E_DOC_WIRE_VERSION', `wire version code ${version.payload?.error?.code}`);
+    outcomes.push({ case: 'unknown_wire_version', code: version.payload.error.code, exit: version.code, message: version.payload.error.message });
+
+    const typstFail = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-typst'), '--inject-typst-error']);
+    assert(typstFail.code === 1, `typst failure exit ${typstFail.code}`);
+    assert(typstFail.payload?.error?.code === 'E_TYPST_COMPILE', `typst failure code ${typstFail.payload?.error?.code}`);
+    assert(/PLAN-082 injected typst failure/.test(typstFail.payload.error.message), 'typst stderr not surfaced');
+    outcomes.push({ case: 'typst_compile_failure', code: typstFail.payload.error.code, exit: typstFail.code, message: typstFail.payload.error.message.slice(0, 160) });
+
+    return outcomes;
+  });
+
+  // ---------------------------------------------------------------- AC-06
+  await check('AC-06', '现有 parser/serializer 合同未受损（限定触面）', () => {
+    const status = run('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: REPO });
+    assert(status.code === 0, `git status exit ${status.code}: ${status.stderr.slice(-400)}`);
+    const lines = status.stdout.split('\n').filter(Boolean);
+    const trackedChanges = lines.filter((line) => !line.startsWith('??'));
+    assert(trackedChanges.length === 0, `unexpected tracked changes: ${trackedChanges.join(' | ')}`);
+    const outside = lines
+      .filter((line) => line.startsWith('??'))
+      .map((line) => line.slice(3))
+      .filter((file) => !file.startsWith('autodown/prototypes/publishing/'));
+    assert(outside.length === 0, `untracked files outside the prototype: ${outside.join(' | ')}`);
+
+    const tests = run(
+      process.platform === 'win32' ? 'cmd.exe' : 'pnpm',
+      process.platform === 'win32'
+        ? ['/d', '/s', '/c', 'pnpm --filter @autodown/engine exec vitest run src/parser/__tests__/block-parser.test.ts src/parser/__tests__/serializer-roundtrip.test.ts']
+        : ['--filter', '@autodown/engine', 'exec', 'vitest', 'run', 'src/parser/__tests__/block-parser.test.ts', 'src/parser/__tests__/serializer-roundtrip.test.ts'],
+      { cwd: path.join(REPO, 'autodown') },
+    );
+    assert(tests.code === 0, `engine parser tests exit ${tests.code}: ${tests.stderr.slice(-800)}`);
+    const passed = /Tests\s+(\d+) passed/.exec(tests.stdout);
+    assert(passed && Number(passed[1]) >= 100, `unexpected parser test count: ${tests.stdout.slice(-400)}`);
+    return {
+      git_tracked_changes: 0,
+      untracked_scope: 'autodown/prototypes/publishing/**',
+      parser_tests: passed ? Number(passed[1]) : null,
+      parser_test_command: tests.command,
+    };
+  });
+
+  // ---------------------------------------------------------------- AC-07
+  await check('AC-07', '原型可重跑、可评估：README/固定样例/版本字体/冷热计时', () => {
+    const readme = path.join(PROTO, 'README.md');
+    assert(existsSync(readme), 'README.md missing');
+    const text = readFileSync(readme, 'utf8');
+    for (const section of ['运行', '固定版本', '字体', '限制', '计时']) {
+      assert(text.includes(section), `README missing section ${section}`);
+    }
+    for (const sample of ['samples/research.ad', 'samples/escape.ad']) {
+      assert(existsSync(path.join(PROTO, sample)), `sample missing ${sample}`);
+    }
+    const fonts = run(typstBin ?? 'typst', ['fonts']);
+    const families = ['Noto Serif SC', 'Noto Sans SC'];
+    const available = families.filter((family) => fonts.stdout.includes(family));
+    assert(available.length > 0, 'no CJK font visible to typst');
+
+    const warmDir = path.join(OUT, 'academic-warm');
+    const warm = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', warmDir]);
+    assert(warm.code === 0, `warm publish exit ${warm.code}`);
+    const warmReport = JSON.parse(readFileSync(path.join(warmDir, 'run-report.json'), 'utf8'));
+    assert(warmReport.outputs.typst_source.sha256 === academicReport.outputs.typst_source.sha256, 'generated .typ is not deterministic between runs');
+    return {
+      fonts_visible: available,
+      cold: academicReport.timings_ms,
+      warm: warmReport.timings_ms,
+      deterministic_typ: true,
+      typst_version: env.typst,
+    };
+  });
+
+  const failed = checks.filter((item) => !item.ok);
+  const report = {
+    schema_version: 'plan082-verify-report-v1',
+    generated_at: new Date().toISOString(),
+    repo: REPO,
+    tools: env,
+    summary: { total: checks.length, passed: checks.length - failed.length, failed: failed.length },
+    checks,
+  };
+  writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+
+  const lines = ['# PLAN-082 验收证据', '', `生成时间：${report.generated_at}`, '', '## 工具', ''];
+  for (const [key, value] of Object.entries(env)) lines.push(`- ${key}: ${value}`);
+  lines.push('', '## 检查', '', '| 检查 | 结果 | 证据 |', '| --- | --- | --- |');
+  for (const item of checks) {
+    const detail = JSON.stringify(item.detail).replace(/\|/g, '\\|').slice(0, 600);
+    lines.push(`| ${item.id} ${item.name} | ${item.ok ? 'PASS' : 'FAIL'} | ${detail} |`);
+  }
+  lines.push('', `总计：${report.summary.passed}/${report.summary.total} passed`, '');
+  writeFileSync(path.join(OUT, 'report.md'), lines.join('\n'));
+
+  process.stdout.write(`\n${report.summary.passed}/${report.summary.total} checks passed\n`);
+  process.stdout.write(`report: ${path.join(OUT, 'report.md')}\n`);
+  if (failed.length > 0) process.exit(1);
+}
+
+// 布局是否随参数改变：页数或每页文本长度分布发生变化
+function itemChanged(a, b) {
+  if (a.page_count !== b.page_count) return true;
+  const lengthsA = a.pages.map((page) => page.chars);
+  const lengthsB = b.pages.map((page) => page.chars);
+  return JSON.stringify(lengthsA) !== JSON.stringify(lengthsB);
+}
+
+main().catch((error) => {
+  process.stderr.write(String(error && error.stack ? error.stack : error) + '\n');
+  process.exit(1);
+});
+
+
+
+

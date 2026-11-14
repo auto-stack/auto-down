@@ -1,0 +1,29 @@
+// PLAN-082 — academic 模板（普通 Auto 函数）
+//
+// 页面：可选栏数（默认 2 栏，`columns` 参数可改），A4，无页眉，页脚页码。
+// 结构：标题/作者/摘要区由模板样式控制；正文使用 1.1 编号，目录深度 2。
+// 模板只做投影与样式参数，不拼 Typst 源码；发射由 host/emit-typst.mjs 完成。
+
+use ir: Doc, Options, Publication, PageConfig, StyleConfig, PubBlock, to_pub, outline_of
+
+fn build_academic(doc Doc, opts Options) Publication {
+    let page = PageConfig(
+        opts.paper,
+        opts.margin,
+        opts.margin,
+        opts.margin,
+        opts.margin,
+        opts.columns,
+        opts.font_size,
+        opts.font_family,
+        "",
+        1
+    )
+    let style = StyleConfig("1.1", "0em", 0, 1, "20pt", "boxed")
+    var content []PubBlock = []
+    for b in doc.blocks {
+        content.push(to_pub(b))
+    }
+    let outline = outline_of(content, 2)
+    return Publication("academic", doc.meta, page, style, 2, "目录", content, outline)
+}

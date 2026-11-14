@@ -44,8 +44,18 @@ node host/publish.mjs --source samples/research.ad --template academic --out out
   --columns 1 --font-size 12pt --margin 3cm
 ```
 
-参数：`--source`、`--template`、`--out`、`--font-size`、`--columns`、`--paper`、`--margin`、
-`--header-text`、`--font-path`；诊断用 `--auto-entry`、`--doc-wire-version`、`--inject-typst-error`、`--skip-pdf`。
+参数与适用性（不静默忽略：不可用组合直接报错）：
+
+| 参数 | 适用模板 | 行为 |
+| --- | --- | --- |
+| `--source` / `--out` / `--template` / `--font-size` | 两者 | 源文件、输出目录、模板名、字号（长度如 `10pt`） |
+| `--paper` | 两者 | `a4` / `a5` / `iso-b5` / `us-letter`（Typst 0.15.1 实测值）；其它值校验期 `E_IR_SCHEMA` |
+| `--columns` | academic 1..3；office_book 仅 1 | office_book 显式给出 ≠1 时返回 `E_OPTION_UNSUPPORTED` |
+| `--margin` | 两者 | academic 四边统一；office_book 未给出时保留 `3cm/2.6cm` 非对称默认，给出时四边统一 |
+| `--header-text` | 两者 | 页眉只出现在正文页（标题页保持干净） |
+
+诊断用：`--auto-entry`（替换 Auto 入口，负例用）、`--doc-wire-version`、`--inject-typst-error`（故障注入）、
+`--font-path`、`--skip-pdf`。
 
 每次运行的 `<out>/run-report.json` 记录命令、退出码、各阶段耗时、产物 sha256、Typst 查询到的实际配置与诊断。
 生成物：`doc.wire`、`request.txt`、`publication.raw.json`（Auto 原文）、`publication.json`（校验后）、
@@ -93,6 +103,7 @@ node scripts/verify.mjs       # AC-01..AC-07；产物在 out/verify/report.json 
 - frontmatter 只支持 `title/authors/abstract/lang/date`；未知键保留在元数据并给诊断。图片、公式、
   脚注、参考文献条目均未实现。
 - 页眉只出现在正文页（标题页保持干净）；页码为 `当前页 / 总页数`，目录页码由 Typst 延迟求值。
+- 模板参数按模板适用（上表）：无意义组合显式报错（如 office_book 多栏），不做静默忽略。
 - Auto 侧限制（实测，2026-11-14）：`json.encode`/`decode` 在该构建的 stdlib provider 缺 callee，
   所以 IR 由手写 JSON 序列化生成；`str.len()/sub()` 以 UTF-8 字节为单位，按字符遍历必须自己算宽度；
   `split()` 产物是 DStr，先 `.to(str)` 再取子串，否则 `sub()` 返回 None。

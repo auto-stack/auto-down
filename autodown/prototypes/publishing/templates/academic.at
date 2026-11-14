@@ -16,7 +16,7 @@ fn build_academic(doc Doc, opts Options) Publication {
         opts.columns,
         opts.font_size,
         opts.font_family,
-        "",
+        opts.header_text,
         1
     )
     let style = StyleConfig("1.1", "0em", 0, 1, "20pt", "boxed")

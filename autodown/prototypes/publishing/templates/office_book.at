@@ -8,12 +8,23 @@
 use ir: Doc, Options, Publication, PageConfig, StyleConfig, PubBlock, to_pub, outline_of
 
 fn build_office_book(doc Doc, opts Options) Publication {
+    // 默认保留书籍的非对称页边距；显式给出 --margin 时四边统一采纳该值（不静默忽略参数）。
+    var top = "3cm"
+    var bottom = "2.6cm"
+    var left = "3cm"
+    var right = "2.6cm"
+    if opts.margin_explicit == 1 {
+        top = opts.margin
+        bottom = opts.margin
+        left = opts.margin
+        right = opts.margin
+    }
     let page = PageConfig(
         opts.paper,
-        "3cm",
-        "2.6cm",
-        "3cm",
-        "2.6cm",
+        top,
+        bottom,
+        left,
+        right,
         1,
         opts.font_size,
         opts.font_family,

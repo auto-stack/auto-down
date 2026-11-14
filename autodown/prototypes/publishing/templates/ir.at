@@ -121,6 +121,8 @@ type Options {
     margin str
     header_text str
     font_family []str
+    margin_explicit int
+    columns_explicit int
 }
 
 type OptionsParse {
@@ -143,7 +145,7 @@ fn dp_ok(doc Doc) DocParse {
 }
 
 fn op_err(code str, message str) OptionsParse {
-    return OptionsParse(0, code, message, Options("", "", 0, "", "", "", []))
+    return OptionsParse(0, code, message, Options("", "", 0, "", "", "", [], 0, 0))
 }
 
 fn op_ok(options Options) OptionsParse {
@@ -403,9 +405,21 @@ fn parse_doc(wire str) DocParse {
 
 fn default_options(template str) Options {
     if template == "office_book" {
-        return Options("office_book", "11pt", 1, "a4", "2.6cm", "", ["Noto Serif SC", "Noto Sans SC"])
+        return Options("office_book", "11pt", 1, "a4", "2.6cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
     }
-    return Options("academic", "10pt", 2, "a4", "2.2cm", "", ["Noto Serif SC", "Noto Sans SC"])
+    return Options("academic", "10pt", 2, "a4", "2.2cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
+}
+
+fn has_setting(settings []str, key str) bool {
+    for line in settings {
+        let parts = line.to(str).split("=")
+        if parts.len() > 1 {
+            if parts[0].to(str) == key {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 fn setting_value(settings []str, key str, fallback str) str {
@@ -449,7 +463,15 @@ fn parse_options(request str) OptionsParse {
     if columns < 1 || columns > 3 {
         return op_err("E_OPTION_VALUE", "columns out of prototype range 1..3: " + columns_raw)
     }
-    return op_ok(Options(template, font_size, columns, paper, margin, header_text, base.font_family))
+    var margin_explicit = 0
+    if has_setting(settings, "margin") {
+        margin_explicit = 1
+    }
+    var columns_explicit = 0
+    if has_setting(settings, "columns") {
+        columns_explicit = 1
+    }
+    return op_ok(Options(template, font_size, columns, paper, margin, header_text, base.font_family, margin_explicit, columns_explicit))
 }
 
 // ---------------------------------------------------------------------------

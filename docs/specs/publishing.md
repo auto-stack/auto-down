@@ -57,7 +57,7 @@ Auto 产出 `{"ok":true,"publication":{…}}`，宿主校验后 pretty 写 `publ
 | `schema_version` | str | 必须为 `publication-ir-v0` |
 | `template` | str | `academic` 或 `office_book` |
 | `document` | obj | `title`、`authors[]`、`abstract`、`lang`（非空）、`source` |
-| `page` | obj | `paper` ∈ {a4,a5,b5,us-letter,letter}；`margin.{top,bottom,left,right}` 为长度（pt/mm/cm/in/em）；`columns` 1..3；`font_size` 长度；`font_family` 非空数组；`header_text`；`page_numbers` bool |
+| `page` | obj | `paper` ∈ {a4,a5,iso-b5,us-letter}（与 Typst 0.15.1 实测允许集一致）；`margin.{top,bottom,left,right}` 为长度（pt/mm/cm/in/em）；`columns` 1..3；`font_size` 长度；`font_family` 非空数组；`header_text`；`page_numbers` bool |
 | `style` | obj | `heading_numbering`（空串表示不编号）、`first_line_indent` 长度、`chapter_pagebreak` bool、`justify` bool、`title_size` 长度、`abstract_style` ∈ {boxed,plain} |
 | `outline` | obj | `depth` 0..3、`title`、`entries[{id,level,title}]`；entry 必须指向同 publication 中的 heading |
 | `content` | array | 非空；每项含 `id`、`kind`、`origin`（`source`\|`template`），kind 见下 |
@@ -90,6 +90,11 @@ typ_start, typ_end}]}`，行号 1 起，指向 `publication.typ` 中该块的注
 - 模板不得拼接 Typst 源码；Typst 序列化只发生在 `host/emit-typst.mjs`。
 - 参数默认值与取值范围在 `templates/ir.at:default_options` 与 `parse_options`；非法值返回
   `E_OPTION_VALUE`，未知模板返回 `E_TEMPLATE_UNKNOWN`。
+- 参数按模板适用，显式给出不可用组合要报错而不是静默忽略：academic 采纳 `--columns`（1..3）与
+  `--header-text`；office_book 固定单栏（显式 `--columns ≠ 1` 返回 `E_OPTION_UNSUPPORTED`），
+  `--margin` 未给出时保留 `3cm/2.6cm` 非对称默认、给出时四边统一；`--header-text` 两者均采纳且
+  只出现在正文页；`--paper` 两者均采纳，取值限于 `a4/a5/iso-b5/us-letter`（Typst 实测集），
+  其余值在校验期以 `E_IR_SCHEMA` 拒绝。
 
 ## 7. 后端与失败码
 
@@ -98,7 +103,8 @@ typ_start, typ_end}]}`，行号 1 起，指向 `publication.typ` 中该块的注
 - Typst 编译失败返回 `E_TYPST_COMPILE`，透传 CLI stderr；`--inject-typst-error` 是明确的故障注入，
   仅用于验证该映射。
 - 其它：`E_ENGINE_PARSER`（engine dist 未构建）、`E_FRONTMATTER`、`E_NODE_UNSUPPORTED`（带 NodeId）、
-  `E_AUTO_RUN`（Auto 非零退出，透传诊断）、`E_IR_MISSING`/`E_IR_PARSE`/`E_IR_SCHEMA`。
+  `E_AUTO_RUN`（Auto 非零退出，透传诊断）、`E_IR_MISSING`/`E_IR_PARSE`/`E_IR_SCHEMA`、
+  `E_OPTION_UNSUPPORTED`（参数对模板不适用，如 office_book 多栏）。
 
 ## 8. 正文边界（与 parser 的关系）
 
@@ -115,8 +121,10 @@ typ_start, typ_end}]}`，行号 1 起，指向 `publication.typ` 中该块的注
 ## 9. 验证
 
 `scripts/verify.mjs` 逐项产生证据：Auto 探针（fn/type/if/for）、两个模板（页数/栏位/页眉/NodeId 顺序）、
-参数变体（Typst 配置查询 + 版面变化）、特殊字符（parser→IR 零改动 + PDF 字面量 + 序列化层独立反例）、
-四个失败码、限定 parser/serializer 测试（109 例）、README/字体/冷热计时。历史测试数字不外推。
+参数变体（Typst 配置查询 + 版面变化）、参数适用性（academic 页眉、office_book 页边距、office_book 多栏拒绝）、
+纸型矩阵（四个允许值出对应页面尺寸，`b5`/`letter` 校验期拒绝）、特殊字符（parser→IR 零改动 + PDF 字面量 +
+序列化层独立反例）、失败码（AC-05 四例 + `E_OPTION_UNSUPPORTED`）、限定 parser/serializer 测试、
+README/字体/冷热计时。历史测试数字不外推。
 
 ## 10. 与目标设计的差额
 

@@ -5,7 +5,8 @@
 // `#("…")` 输出，`#` `*` `_` `$` `[` `]` `<` `>` 等不会被当成标记或代码执行。
 
 const LENGTH_RE = /^(\d+(?:\.\d+)?)(pt|mm|cm|in|em)$/;
-const PAPER = new Set(['a4', 'a5', 'b5', 'us-letter', 'letter']);
+// Typst 0.15.1 实际接受的纸型名（实测：a4/a5/iso-b5/us-letter 可编译；b5、letter 被拒绝）。
+const PAPER = new Set(['a4', 'a5', 'iso-b5', 'us-letter']);
 const TEMPLATES = new Set(['academic', 'office_book']);
 const KINDS = new Set(['heading', 'paragraph', 'list', 'table', 'callout', 'thematic_break']);
 const ABSTRACT_STYLES = new Set(['boxed', 'plain']);
@@ -216,6 +217,7 @@ export function emitTypst(pub) {
     first_line_indent: style.first_line_indent,
     abstract_style: style.abstract_style,
     font_family: page.font_family,
+    header_text: page.header_text,
   };
   push('#metadata((');
   for (const [key, value] of Object.entries(config)) {

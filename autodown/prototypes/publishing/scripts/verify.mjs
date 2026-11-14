@@ -300,6 +300,80 @@ async function main() {
     };
   });
 
+  // ---------------------------------------------------------------- AC-03b
+  const headerDir = path.join(OUT, 'academic-header');
+  const headerRun = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', headerDir, '--header-text', '页眉文字检查']);
+  const headerPdf = pdfProbe(headerDir, false);
+  const headerReport = JSON.parse(readFileSync(path.join(headerDir, 'run-report.json'), 'utf8'));
+  const bookMarginDir = path.join(OUT, 'office-margin');
+  const bookMarginRun = publish(['--source', 'samples/research.ad', '--template', 'office_book', '--out', bookMarginDir, '--margin', '1.2cm']);
+  const bookMarginReport = JSON.parse(readFileSync(path.join(bookMarginDir, 'run-report.json'), 'utf8'));
+  const bookColumns = publish(['--source', 'samples/research.ad', '--template', 'office_book', '--out', path.join(OUT, 'office-columns'), '--columns', '2']);
+
+  await check('AC-03b', '模板参数按适用性真实生效，不可用组合显式报错（不静默忽略）', () => {
+    assert(headerRun.code === 0, `academic header publish exit ${headerRun.code}: ${headerRun.stderr.slice(-500)}`);
+    assert(headerReport.typst_config.header_text === '页眉文字检查', `academic header_text in typst config: ${JSON.stringify(headerReport.typst_config.header_text)}`);
+    assert(headerPdf.pages.slice(1).every((page) => page.text.includes('页眉文字检查')), 'academic body pages missing the requested header');
+    assert(!headerPdf.pages[0].text.includes('页眉文字检查'), 'academic title page should stay header-free');
+
+    assert(bookMarginRun.code === 0, `office_book margin publish exit ${bookMarginRun.code}: ${bookMarginRun.stderr.slice(-500)}`);
+    const margin = bookMarginReport.typst_config.margin;
+    assert(
+      margin && margin.top === '1.2cm' && margin.bottom === '1.2cm' && margin.left === '1.2cm' && margin.right === '1.2cm',
+      `office_book --margin ignored, typst config margin=${JSON.stringify(margin)}`,
+    );
+    const bookIr = JSON.parse(readFileSync(path.join(bookMarginDir, 'publication.json'), 'utf8'));
+    assert(bookIr.page.margin.top === '1.2cm', `office_book IR margin not applied: ${JSON.stringify(bookIr.page.margin)}`);
+
+    assert(bookColumns.code === 1, `office_book --columns 2 should fail, exit ${bookColumns.code}`);
+    assert(bookColumns.payload?.error?.code === 'E_OPTION_UNSUPPORTED', `office_book --columns 2 code ${bookColumns.payload?.error?.code}`);
+
+    return {
+      academic_header: headerReport.typst_config.header_text,
+      academic_header_pages: headerPdf.pages.slice(1).length,
+      office_book_margin: margin,
+      office_book_columns_rejection: bookColumns.payload.error.code,
+    };
+  });
+
+  // ---------------------------------------------------------------- AC-03c
+  const paperSizes = { a4: [595.28, 841.89], a5: [419.53, 595.28], 'iso-b5': [498.9, 708.66], 'us-letter': [612, 792] };
+  const paperResults = {};
+  const paperRejects = {};
+  for (const [paper, expected] of Object.entries(paperSizes)) {
+    const dir = path.join(OUT, `paper-${paper}`);
+    const runResult = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', dir, '--paper', paper]);
+    paperResults[paper] = { run: runResult, dir };
+    if (runResult.code === 0) {
+      const probe = pdfProbe(dir, false);
+      paperResults[paper].probe = probe;
+      paperResults[paper].expected = expected;
+    }
+  }
+  for (const paper of ['b5', 'letter']) {
+    paperRejects[paper] = publish(['--source', 'samples/research.ad', '--template', 'academic', '--out', path.join(OUT, `paper-${paper}`), '--paper', paper]);
+  }
+
+  await check('AC-03c', 'paper 允许集与 Typst 一致：四个允许值出对应纸型，非法值在校验期失败', () => {
+    for (const [paper, entry] of Object.entries(paperResults)) {
+      assert(entry.run.code === 0, `paper ${paper} publish exit ${entry.run.code}: ${entry.run.stderr.slice(-400)}`);
+      const size = entry.probe.page_sizes[0];
+      const [w, h] = entry.expected;
+      assert(
+        Math.abs(size[0] - w) < 0.5 && Math.abs(size[1] - h) < 0.5,
+        `paper ${paper} page size ${JSON.stringify(size)} != expected ${JSON.stringify(entry.expected)}`,
+      );
+    }
+    for (const [paper, result] of Object.entries(paperRejects)) {
+      assert(result.code === 1, `paper ${paper} should be rejected, exit ${result.code}`);
+      assert(result.payload?.error?.code === 'E_IR_SCHEMA', `paper ${paper} error code ${result.payload?.error?.code} (should fail validation, not typst)`);
+    }
+    return {
+      allowed: Object.fromEntries(Object.entries(paperResults).map(([paper, entry]) => [paper, entry.probe.page_sizes[0]])),
+      rejected: Object.fromEntries(Object.entries(paperRejects).map(([paper, result]) => [paper, result.payload.error.code])),
+    };
+  });
+
   // ---------------------------------------------------------------- AC-04
   const escapeDir = path.join(OUT, 'escape');
   const escapeRun = publish(['--source', 'samples/escape.ad', '--template', 'academic', '--out', escapeDir]);

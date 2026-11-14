@@ -32,6 +32,19 @@ fn main() {
     }
     let opts = parsed_options.options
     let doc = parsed_doc.doc
+    // 模板参数适用性：不静默忽略显式参数。office_book 固定单栏正文，显式多栏必须报错。
+    if opts.template == "office_book" {
+        if opts.columns_explicit == 1 && opts.columns != 1 {
+            write_text(
+                dir + "/publication.json",
+                json_error(
+                    "E_OPTION_UNSUPPORTED",
+                    "office_book fixes a single-column body; --columns " + opts.columns.to(str) + " is not supported"
+                )
+            )
+            return
+        }
+    }
     if opts.template == "academic" {
         let pub = build_academic(doc, opts)
         write_text(dir + "/publication.json", json_publication(pub))

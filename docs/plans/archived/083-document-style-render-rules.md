@@ -1,6 +1,7 @@
 ---
 plan_id: PLAN-083
-status: reviewed
+status: archived
+completion_kind: delivered
 feature_name: document-style-render-rules
 author: [codex]
 created_at: 2026-11-14
@@ -17,7 +18,7 @@ affects: [auto-down]
 
 # [PLAN-083] 结构化文档样式、作用域与呈现规则
 
-> 依据：[Design 10](../designs/10-autodown-publishing.md) §4–7。硬前置：[082](082-auto-template-typst-prototype.md) 的运行原型与反馈；API 在本计划开工时重核。尚未实施。
+> 依据：[Design 10](../../designs/10-autodown-publishing.md) §4–7。硬前置：[082](082-auto-template-typst-prototype.md) 的运行原型与反馈；API 在本计划开工时重核。尚未实施。
 
 ## 0. 变更摘要
 

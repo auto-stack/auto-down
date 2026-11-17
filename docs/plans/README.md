@@ -1,13 +1,14 @@
 # AutoDown 当前实施计划
 
-> 2026-11-14：依据 [Design 10](../designs/10-autodown-publishing.md) 建立文档排版路线。082 已交付为可运行原型（归档于 [archived/082-auto-template-typst-prototype.md](archived/082-auto-template-typst-prototype.md)）；083–086 仍为 drafting，待原型评估反馈后细化执行。
+> 2026-11-14：依据 [Design 10](../designs/10-autodown-publishing.md) 建立文档排版路线。082 已交付为可运行原型（归档于 [archived/082-auto-template-typst-prototype.md](archived/082-auto-template-typst-prototype.md)）。
+> 2026-11-17：083 已交付——结构化样式（五层逐属性合成/子树作用域/选择器/呈现规则/inspect_style），publication-ir-v1（归档于 [archived/083-document-style-render-rules.md](archived/083-document-style-render-rules.md)）；084–086 仍为 drafting。
 
 ## 计划与依赖
 
 | 计划 | 范围 | 硬依赖 | 对应原型阶段 |
 | --- | --- | --- | --- |
 | [082 普通 Auto 模板与 Typst 原型](archived/082-auto-template-typst-prototype.md)（已交付） | Auto 实际求值、内容/出版 IR、两种 PDF、可复现运行入口 | 无新计划；依赖现有工具与解析器 | P0 + P1 |
-| [083 文档样式与呈现规则](083-document-style-render-rules.md) | 结构化样式、作用域、选择器、自定义呈现、来源检查 | 082 完成及反馈 | P3 样式部分，后续模板基础 |
+| [083 文档样式与呈现规则](archived/083-document-style-render-rules.md)（已交付） | 结构化样式、作用域、选择器、自定义呈现、来源检查 | 082（已满足） | 已交付 2026-11-17；样式系统/呈现规则/inspect 为 084–086 基础 |
 | [084 多形态模板与文档语义](084-publication-templates-semantics.md) | 五类输出、编号、引用、脚注、公式/资源边界 | 082、083 | P1b 与专业文档基础 |
 | [085 实时分页预览与定位](085-live-pagination-preview-source-map.md) | revision、更新调度、预览/导出一致、双向定位 | 082、083 | P2 |
 | [086 延迟布局与上下文表达](086-deferred-layout-context.md) | 普通 Auto 回调支持集、测量、查询、计数器与能力诊断 | 083、084 | P3 布局部分 |

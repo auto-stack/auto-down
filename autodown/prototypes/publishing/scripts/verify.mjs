@@ -505,7 +505,8 @@ async function main() {
       { cwd: path.join(REPO, 'autodown') },
     );
     assert(tests.code === 0, `engine parser tests exit ${tests.code}: ${tests.stderr.slice(-800)}`);
-    const passed = /Tests\s+(\d+) passed/.exec(tests.stdout);
+    const plain = tests.stdout.replace(/\[[0-9;]*m/g, '');
+    const passed = /Tests\s+(\d+) passed/.exec(plain);
     assert(passed && Number(passed[1]) >= 100, `unexpected parser test count: ${tests.stdout.slice(-400)}`);
     return {
       git_tracked_changes: 0,
@@ -549,9 +550,9 @@ async function main() {
   // ================================================================ PLAN-083 S-01..S-07
   // S-01 普通函数按参数产生 Style；非法值可定位拒绝
   await check('S-01', '样式探针：参数化 Style 工厂/校验拒绝（17 项子检查）', () => {
-    const result = run(AUTO, [path.join(PROTO, 'templates', 'style-probe.at')]);
+    const result = run(AUTO, ['style-probe.at'], { cwd: path.join(PROTO, 'templates') });
     assert(result.code === 0, `style-probe exit ${result.code}: ${result.stderr.slice(-600)}`);
-    const line = result.stdout.split('${BS}n').map((l) => l.trim()).find((l) => l.startsWith('{') && l.includes('all_pass'));
+    const line = result.stdout.split('\n').map((l) => l.trim()).find((l) => l.startsWith('{') && l.includes('all_pass'));
     assert(line, 'style-probe printed no result JSON');
     const probe = JSON.parse(line);
     assert(probe.all_pass === true, `style-probe ${probe.ok_count}/${probe.total} (need all)`);
@@ -651,9 +652,9 @@ async function main() {
       }
     }
     const bookMap = JSON.parse(readFileSync(path.join(sdBookDir, 'publication.map.json'), 'utf8'));
-    const typLines = readFileSync(path.join(sdBookDir, 'publication.typ'), 'utf8').split('${BS}n');
+    const typLines = readFileSync(path.join(sdBookDir, 'publication.typ'), 'utf8').split('\n');
     for (const entry of bookMap.blocks.slice(0, 4)) {
-      const range = typLines.slice(entry.typ_start - 1, entry.typ_end).join('${BS}n');
+      const range = typLines.slice(entry.typ_start - 1, entry.typ_end).join('\n');
       assert(range.includes('node: ' + entry.node_id), 'map range lacks node marker ' + entry.node_id);
     }
     assert(guardRun.code === 0, 'guard demo exit ' + guardRun.code);

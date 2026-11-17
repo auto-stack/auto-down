@@ -522,9 +522,12 @@ export function emitTypst(pub) {
   let firstChapterCandidate = true;
   for (const entry of pub.presentation) {
     const computed = computedById.get(entry.semantic_id) ?? { text: {}, para: {}, doc: {} };
+    const firstBlock = entry.blocks[0];
+    const isChapter =
+      firstBlock?.kind === 'heading' && firstBlock?.level === 1;
     const chapterBreak =
-      (computed.doc?.chapter_pagebreak ?? 0) === 1 && !firstChapterCandidate;
-    firstChapterCandidate = false;
+      (computed.doc?.chapter_pagebreak ?? 0) === 1 && isChapter && !firstChapterCandidate;
+    if (isChapter) firstChapterCandidate = false;
     const start = lines.length + 1;
     push(`${bodyIndent}// node: ${entry.semantic_id} (role: ${entry.role}${entry.rule ? `, render: ${entry.rule}` : ''})`);
     if (chapterBreak && entry.role === 'heading') {

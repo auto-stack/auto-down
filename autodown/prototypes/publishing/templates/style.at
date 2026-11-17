@@ -895,6 +895,23 @@ fn match_log_of(nodes []StyleNode, rules []StyleRule) []MatchLog {
     return out
 }
 
+// 显式属性条目校验：每个 xstyle 的 id 必须指向内容节点（与规则侧 E_STYLE_SCOPE
+// 对称的可定位拒绝——AC-01：非法节点属性不静默接受）。
+fn validate_explicit(explicit []ExplicitStyle, nodes []StyleNode) StyleCheck {
+    for x in explicit {
+        var found = 0
+        for n in nodes {
+            if n.id == x.id {
+                found = 1
+            }
+        }
+        if found == 0 {
+            return sc_err("E_STYLE_EXPLICIT_NODE", "explicit:" + x.id + ": node not found in document")
+        }
+    }
+    return sc_ok()
+}
+
 // 规则集整体校验（main.at 在合成前调用；失败即 E_STYLE_VALUE/E_STYLE_SCOPE 定位到规则/属性）
 fn validate_rules(rules []StyleRule, nodes []StyleNode) StyleCheck {
     let extents = scope_extents(nodes)

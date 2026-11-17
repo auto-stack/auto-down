@@ -1,0 +1,6 @@
+{
+  "rules": [],
+  "explicit": [
+    { "id": "block-99", "props": { "text.size": "18pt" }, "comment": "F-1 负例：引用不存在的节点 id，必须可定位拒绝（E_STYLE_EXPLICIT_NODE），不得静默无效果" }
+  ]
+}

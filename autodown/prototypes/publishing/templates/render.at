@@ -18,7 +18,7 @@ use academic: build_academic
 use office_book: build_office_book
 use style: Selector, RenderRule, sel_matches, node_view, StyleNode
 use style: StyleRule, ExplicitStyle, MatchLog, Computed
-use style: builtin_rules, theme_print, compose_styles, match_log_of, validate_rules, parse_styles_wire
+use style: builtin_rules, theme_print, compose_styles, match_log_of, validate_rules, validate_explicit, parse_styles_wire
 
 // ---------------------------------------------------------------------------
 // 结果与上下文
@@ -428,6 +428,10 @@ fn finalize(base Publication, styles_wire str) Finalize {
     let chk = validate_rules(all_rules, nodes)
     if chk.ok == 0 {
         return fin_err(chk.code, chk.message)
+    }
+    let xchk = validate_explicit(explicit, nodes)
+    if xchk.ok == 0 {
+        return fin_err(xchk.code, xchk.message)
     }
     let computed = compose_styles(nodes, all_rules, explicit)
     let log = match_log_of(nodes, all_rules)

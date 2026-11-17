@@ -150,7 +150,8 @@ node scripts/verify.mjs       # AC-01..AC-07 + S-01..S-07；产物在 out/verify
   (a) 入口文件 `use file` 时，被调模块中部分“字段比较/内部子函数调用”形态的函数被错误编译
   （`compose_styles` 来源链出现幻影条目、校验函数返回错值；不导入 file 则全部正确；
   最小复现 8 行，见 PLAN-083 §7）——因此 `main.at` 改为 env 输入 / stdout 输出，
-  整个 Auto 调用图不导入 `file`，I/O 由宿主承担；(b) `Length` 是内置类型名（样式长度类型改名
+  整个 Auto 调用图不导入 `file`，I/O 由宿主承担（env 通道容量上限约 32K 字符/变量——
+  research 级正文无碍，超大正文需换通道，见规范 §15）；(b) `Length` 是内置类型名（样式长度类型改名
   `StyLength`）、`view`/`pub` 为保留字；(c) float 跨模块序列化路径不稳定
   （探针 1/5 出现 4294967xxx 类乱值与空串）——样式值层全整数 milli 定标；
   (d) `bool.to(str)` 出现内存损坏——样式记录一律 int 标志（-1=未设置）。

@@ -241,7 +241,9 @@ academic：保持 Typst 原生 "1.1" 编号，输出与 082 一致。
 
 `templates/main.at` 为薄入口：输入经环境变量 `PLAN083_WIRE` / `PLAN083_REQUEST` /
 `PLAN083_STYLES`（宿主已读文件），IR 信封打印到 stdout 由宿主捕获——Auto 调用图不导入
-`file` 模块（原因见 §16a）。`--auto-entry` 负例入口遵循同一协议。
+`file` 模块（原因见 §16a）。`--auto-entry` 负例入口遵循同一协议。**边界**：env 通道有
+实际容量上限（Windows 单变量约 32K 字符）；原型样例（research 级正文 ~6KB wire）无碍，
+超大正文需要换通道（stdin/临时文件由宿主代读），属后续计划的协议调整。
 
 ## 16. 已知 VM 缺陷与规避（2026-11-17 实测，本机 auto 0.1.0+plan-890-…-t19-24；交 auto-lang owner）
 

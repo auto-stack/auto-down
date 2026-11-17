@@ -692,10 +692,16 @@ async function main() {
     assert(unsupported.length >= 1, 'no W_STYLE_UNSUPPORTED diagnostics');
     assert(comp(sdBookIr, 'block-3').doc.hanging_punctuation === 1, 'unsupported prop value dropped from IR');
     assert(b1.unsupported.some((u) => u.prop === 'doc.hanging_punctuation'), 'inspect lacks unsupported entry');
+    // F-1 负例（复审修复）：显式属性引用不存在的节点 id → E_STYLE_EXPLICIT_NODE（可定位，不静默）
+    const badXid = publish(['--source', 'samples/style-demo.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-explicit-node'), '--doc-styles', 'samples/neg/explicit-unknown-node.json', '--skip-pdf']);
+    assert(badXid.code === 1, 'unknown explicit node id should fail, exit ' + badXid.code);
+    assert(badXid.payload?.error?.code === 'E_STYLE_EXPLICIT_NODE', 'explicit-node error code: ' + badXid.payload?.error?.code);
+    assert(String(badXid.payload?.error?.message ?? '').includes('block-99'), 'explicit-node message must locate the id');
     return {
       chain_block1: sizeChain.map((c) => c.origin),
       unsupported_diags: unsupported.length,
       kept_in_ir: comp(sdBookIr, 'block-3').doc.hanging_punctuation,
+      explicit_node_rejection: badXid.payload.error.code,
     };
   });
 

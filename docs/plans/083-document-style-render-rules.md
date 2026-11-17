@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-083
-status: execution_done
+status: executing
 feature_name: document-style-render-rules
 author: [codex]
 created_at: 2026-11-14
 updated_at: 2026-11-17
 plan_revision: 1
-current_step: 7
+current_step: 6
 total_steps: 7
 depends_on: [PLAN-082]
 supersedes_spec_components: [docs/specs/publishing.md §4/§6（v0→v1 迁移）]
@@ -72,7 +72,8 @@ Style 数据及 Selector 应可序列化。RenderRule 可在排版前由普通 A
 - [x] T-02：实现逐属性合成、继承与子树作用域。证据：`style.at:compose_styles`——内置<主题<模板<文档规则<节点显式，同层作用域深度+声明序，未设置属性不覆盖；标题子树 scope_extents（含锚点、止于同级/更高级标题）离开即恢复；来源链逐属性升序（末位生效）。探针 t2a–t2f + 验收 S-02/S-03（computed + PDF 字号 13.0/15.0/11.0 分布）全过。
 - [x] T-03：实现选择器及可观察匹配结果。证据：`sel_matches`（type/attr/id/role/and/or/all，and/or 子项限终端）+ `match_log_of`（rule×node×matched 含未命中）；探针 t3sel + S-04（真实文档：doc-sub-emph 只命中 block-5，block-3/9 未命中）全过。
 - [x] T-04：实现呈现函数接入、委托与递归保护，保留语义来源。证据：`templates/render.at`——最高优先级单命中（同优先级先声明胜）、`aside-note` 显式 next 委托（`next_rule_below`→`callout-plain`，输出含"【两段提示】"）、`theorem-box`（"定理 1（一致性条件）"按内容顺序编号）、`chapter-h1`（"第N章"含模板前言=第一章）；活动 (rule, occurrence) 守卫：`render-guard-demo.at` 负例 `W_RENDER_RECURSION_GUARD`×2、presentation 有界（==content 数）、guard=1 条目回落默认；outline 全部语义标题（装饰前缀不进入，S-05 断言两模板全部条目）。
-- [x] T-05：实现样式检查接口，完成 PDF 与反例验证。证据：`host/emit-typst.mjs` v1 校验 + `backendCapabilityDiagnostics`（`doc.hanging_punctuation`→`W_STYLE_UNSUPPORTED`×5，值保留 IR 不丢弃）+ `buildStyleInspect`（style-inspect-v1：props+采用链+backend 支持标记）；`host/pdf_probe.py` 每页字号分布；`host/style-wire.mjs` 结构校验+编码。验收 S-03/S-06（PDF 字号 13/15 出现、结论页无 13pt 泄漏；block-1 链 builtin>template>explicit、block-5 末位 doc-sub-emph）全过。
+- [ ] T-05：实现样式检查接口，完成 PDF 与反例验证。证据：`host/emit-typst.mjs` v1 校验 + `backendCapabilityDiagnostics`（`doc.hanging_punctuation`→`W_STYLE_UNSUPPORTED`×5，值保留 IR 不丢弃）+ `buildStyleInspect`（style-inspect-v1：props+采用链+backend 支持标记）；`host/pdf_probe.py` 每页字号分布；`host/style-wire.mjs` 结构校验+编码。验收 S-03/S-06（PDF 字号 13/15 出现、结论页无 13pt 泄漏；block-1 链 builtin>template>explicit、block-5 末位 doc-sub-emph）全过。
+  复审 F-1 重开（2026-11-17）：显式属性引用不存在的节点 id 时被静默接受（IR 回显、合成无效果）——与同通道规则的可定位拒绝（E_STYLE_SCOPE）不一致，违反 AC-01“非法值/节点属性可定位拒绝”。修复：合成管线校验 explicit id 存在（E_STYLE_EXPLICIT_NODE）+ 负例验收；修后闭合本项。
 - [x] T-06：迁移 082 样例，复审并沉淀实际规范。证据：academic/office_book 迁移为规则声明（`publication-ir-v1`，扁平 StyleConfig 删除）；research.ad/escape.ad/style-demo.ad × 两模板 × 参数/负例全通（AC-01..AC-07 + S-01..S-07 = **19/19**，`node scripts/verify.mjs` 29.8s）；office_book 可见变化（"第N章"呈现、h2 去编号——后端嵌套计数冲突实测 "0.1."）记录于规范 §13；`docs/specs/publishing.md` 新增 §11–§16（样式系统/呈现规则/能力与诊断/入口协议/VM 缺陷规避）；README 同步。
 
 ## 7. 验证记录
@@ -128,4 +129,4 @@ verify 检查（各 0–384ms，含子断言）；render-guard-demo 出版运行
 | 日期 | 记录 |
 | --- | --- |
 | 2026-11-17 | stage: work / plan_id: PLAN-083 / plan_revision: r1 / outcome: **pass（execution_done）** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / base_commit: 5af11a3 / code_commit: bb8ff2c（线性：1c0ec92 实现 → 246b191 验证收尾 → bb8ff2c 规范/README；工作树净）/ dependency_revisions: auto `0.1.0+plan-890-verified-r7-t19-24-g54fe407-dirty`（PATH）；typst 0.15.1（tools 固定，cargo 实编）；engine `@autodown/engine` 0.5.0 同基线 worktree 构建 dist（未改源）/ task_ids: T-00..T-06 全 / evidence: `node scripts/verify.mjs` **19/19 pass**（AC-01..AC-07 基线迁移 + S-01..S-07 新验收，29.8s；`auto templates/style-probe.at` 17/17 755ms；engine 限定测试 109 passed；证据 `D:/autostack/plan-artifacts/plan-083/evidence/`：report.json sha256 567c5853…、sd-book.pdf 1f1fc1f8…、IR/inspect/guard-demo 副本、vm-repro 最小复现对）/ blockers: 无 / next: review。规范沉淀 `docs/specs/publishing.md` §11–§16（style-system-v1/render-v1/能力与 VM 缺陷）；VM 缺陷（入口 use file 错误编译、float/bool.to(str)/保留字）已规避并记录，交 auto-lang owner。 |
-| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 1 / from: drafting / to: execution_done / status: execution_done / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: review |
+| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 1 / from: drafting / to: execution_done / status: executing / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: review |

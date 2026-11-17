@@ -1,16 +1,16 @@
 ---
 plan_id: PLAN-083
-status: drafting
+status: execution_done
 feature_name: document-style-render-rules
 author: [codex]
 created_at: 2026-11-14
-updated_at: 2026-11-14
+updated_at: 2026-11-17
 plan_revision: 1
-current_step: 0
+current_step: 7
 total_steps: 7
 depends_on: [PLAN-082]
-supersedes_spec_components: []
-new_spec_components: []
+supersedes_spec_components: [docs/specs/publishing.md §4/§6（v0→v1 迁移）]
+new_spec_components: [docs/specs/publishing.md §11–§16（style-system-v1 / render-v1）]
 touched_goals: []
 affects: [auto-down]
 ---
@@ -67,17 +67,57 @@ Style 数据及 Selector 应可序列化。RenderRule 可在排版前由普通 A
 
 ## 6. 任务清单
 
-- [ ] T-00：复核 082 反馈与现有 Style/主题接口，冻结本批最小合同。
-- [ ] T-01：实现结构化样式类型、普通函数构造与边界校验。
-- [ ] T-02：实现逐属性合成、继承与子树作用域。
-- [ ] T-03：实现选择器及可观察匹配结果。
-- [ ] T-04：实现呈现函数接入、委托与递归保护，保留语义来源。
-- [ ] T-05：实现样式检查接口，完成 PDF 与反例验证。
-- [ ] T-06：迁移 082 样例，复审并沉淀实际规范。
+- [x] T-00：复核 082 反馈与现有 Style/主题接口，冻结本批最小合同。证据：082 交接（README/规范 §10 差额表）复核；Auto 能力探针 `plan-artifacts/plan-083/scratch/cap-probe1–5`（float 字面量/算术可用但跨模块序列化不稳定；`bool.to(str)` 内存损坏→int 标志；`Length` 为内置类型名；`view`/`pub` 保留字；记录字段赋值/列表替换可用）；冻结合同：整数 milli 定标长度、五层逐属性合成、标题子树作用域、终端选择器集合、呈现规则名派发、IR v1、`--doc-styles` JSON→STYLEWIRE 入口、后端能力表含 1 项不支持示例。工具：auto `0.1.0+plan-890-verified-r7-t19-24-g54fe407-dirty`；typst 0.15.1（下载分支网络重置→cargo 实编 2m16s，与 082 同版本策略）；Node v25.2.1；engine 0.5.0 worktree 内构建 dist（未改源）。
+- [x] T-01：实现结构化样式类型、普通函数构造与边界校验。证据：`templates/style.at`——StyLength(milli)/Color/TextStyle/ParagraphStyle/DocStyle、单位工厂 `pt(11,0)`/`cm(2,200)`/`em(0,640)`、`check_*` 可定位拒绝（`E_STYLE_VALUE` 带 `who/prop`）、15 项属性注册表、hex 颜色解析；`templates/style-probe.at` 17/17 子检查全过（`auto templates/style-probe.at` → `{"ok_count":17,"total":17,"all_pass":true}`，755ms）。
+- [x] T-02：实现逐属性合成、继承与子树作用域。证据：`style.at:compose_styles`——内置<主题<模板<文档规则<节点显式，同层作用域深度+声明序，未设置属性不覆盖；标题子树 scope_extents（含锚点、止于同级/更高级标题）离开即恢复；来源链逐属性升序（末位生效）。探针 t2a–t2f + 验收 S-02/S-03（computed + PDF 字号 13.0/15.0/11.0 分布）全过。
+- [x] T-03：实现选择器及可观察匹配结果。证据：`sel_matches`（type/attr/id/role/and/or/all，and/or 子项限终端）+ `match_log_of`（rule×node×matched 含未命中）；探针 t3sel + S-04（真实文档：doc-sub-emph 只命中 block-5，block-3/9 未命中）全过。
+- [x] T-04：实现呈现函数接入、委托与递归保护，保留语义来源。证据：`templates/render.at`——最高优先级单命中（同优先级先声明胜）、`aside-note` 显式 next 委托（`next_rule_below`→`callout-plain`，输出含"【两段提示】"）、`theorem-box`（"定理 1（一致性条件）"按内容顺序编号）、`chapter-h1`（"第N章"含模板前言=第一章）；活动 (rule, occurrence) 守卫：`render-guard-demo.at` 负例 `W_RENDER_RECURSION_GUARD`×2、presentation 有界（==content 数）、guard=1 条目回落默认；outline 全部语义标题（装饰前缀不进入，S-05 断言两模板全部条目）。
+- [x] T-05：实现样式检查接口，完成 PDF 与反例验证。证据：`host/emit-typst.mjs` v1 校验 + `backendCapabilityDiagnostics`（`doc.hanging_punctuation`→`W_STYLE_UNSUPPORTED`×5，值保留 IR 不丢弃）+ `buildStyleInspect`（style-inspect-v1：props+采用链+backend 支持标记）；`host/pdf_probe.py` 每页字号分布；`host/style-wire.mjs` 结构校验+编码。验收 S-03/S-06（PDF 字号 13/15 出现、结论页无 13pt 泄漏；block-1 链 builtin>template>explicit、block-5 末位 doc-sub-emph）全过。
+- [x] T-06：迁移 082 样例，复审并沉淀实际规范。证据：academic/office_book 迁移为规则声明（`publication-ir-v1`，扁平 StyleConfig 删除）；research.ad/escape.ad/style-demo.ad × 两模板 × 参数/负例全通（AC-01..AC-07 + S-01..S-07 = **19/19**，`node scripts/verify.mjs` 29.8s）；office_book 可见变化（"第N章"呈现、h2 去编号——后端嵌套计数冲突实测 "0.1."）记录于规范 §13；`docs/specs/publishing.md` 新增 §11–§16（样式系统/呈现规则/能力与诊断/入口协议/VM 缺陷规避）；README 同步。
 
 ## 7. 验证记录
 
-尚未执行；无构建、测试或排版通过结果。
+实施与验证：2026-11-17，隔离工作树 `D:/autostack/.wt/down-083/auto-down`（分支 `plan-083-dev`，基线 5af11a3），
+实现提交 `1c0ec92` + 修复 `246b191` + 文档 `bb8ff2c`。工具：auto `0.1.0+plan-890-verified-r7-t19-24-g54fe407-dirty`；
+typst `0.15.1`（tools 固定，cargo 实编同版本）；Node `v25.2.1`；`win32`。
+原始证据：`D:/autostack/plan-artifacts/plan-083/evidence/`（report.json sha256 567c5853…、report.md、
+sd-book/sd-academic PDF、sd-book IR+style-inspect、guard-demo IR、vm-repro 最小复现对）与
+`plan-artifacts/plan-083/scratch/`（cap-probe 1–5、style-smoke、编译定位探针）。
+
+| AC | 结果 | 证据（命令与关键数字） |
+| --- | --- | --- |
+| AC-01 | pass | `auto templates/style-probe.at` → 17/17（emphasis 参数影响输出：12.5pt/14pt；weight 50/未知单位/负长度/坏 hex 可定位拒绝）；S-01 |
+| AC-02 | pass | S-02：同一 style-demo.ad，academic 默认 10pt/0em vs office_book 11pt/2em（模板默认在最终环境生效）；block-1 显式 15pt 两模板均保留且链顶 explicit（先构造内容不固化默认值） |
+| AC-03 | pass | S-03：doc 规则 scope=block-4 子树内 block-5=13pt（链末位 doc-sub-emph），block-3/9 恢复模板值且链中无该规则；PDF 字号分布 13.0/15.0 出现、结论页无 13.0 |
+| AC-04 | pass | S-04：match_log doc-sub-emph 仅命中 block-5；theorem-box→"定理 1（一致性条件）"、chapter-h1→"第二章 方法"（PDF 可见）；aside-note 长正文显式 next 委托（注：+【标题】+正文） |
+| AC-05 | pass | S-05：outline 两模板全部语义标题（无"第N章/定理"污染，逐条断言 =content 标题文本）；来源映射逐条目可定位；递归负例 `render-guard-demo.at`：W_RENDER_RECURSION_GUARD×2、presentation==content 数（有界）、guard 条目回落默认 |
+| AC-06 | pass | S-06：style-inspect-v1——block-1 链 builtin>template>explicit、block-5 末位 doc-sub-emph；`doc.hanging_punctuation` → W_STYLE_UNSUPPORTED×5 且值保留 IR（capabilities 表 supported:false，不静默丢弃） |
+| AC-07 | pass | AC-01..AC-07 基线全过（19/19 中的 12 项）：research.ad/escape.ad × academic/office_book 参数变体、纸型矩阵、四负例 + E_OPTION_UNSUPPORTED；engine 限定测试 109 passed（block-parser + serializer-roundtrip，385ms）；office_book 迁移可见变化（第N章/h2 去编号）在 S-07 显式断言 |
+
+结构化 style 关键字语法（`style x = …` 声明形态）未实施——按 §1/§3.1 以普通函数/类型接口交付
+（`emphasis`/单位工厂/规则声明），报告如实区分。
+
+### 本轮测试计时（test-discipline）
+
+| 模块/范围 | 结果 | 准备 | 执行 | 总时长 |
+| --- | --- | --- | --- | --- |
+| `node scripts/verify.mjs`（AC×12 + S×7，含 ~20 次出版×Typst 编译） | 19/19 pass | engine dist 3.4s + typst fetch 2m16s（一次） | 单检查 ≤2.2s | 29.8s 墙钟 |
+| `auto templates/style-probe.at`（17 项子检查） | 17/17 | 无（源内联） | 755ms | 755ms |
+| engine vitest（block-parser + serializer-roundtrip） | 109 passed | dist 已建 | 385ms | ~1.8s（AC-06 含 git 检查） |
+| 冒烟/探针迭代（cap-probe1–5、style-smoke、编译定位） | 开发期证据 | — | — | scratch 记录 |
+
+新增用例（本计划引入，全部 ≤10s）：S-01 style-probe（755ms）；S-02/S-03/S-04/S-05/S-06/S-07
+verify 检查（各 0–384ms，含子断言）；render-guard-demo 出版运行（S-05 内）。无 >10s 新用例。
+
+### 已知边界与 VM 缺陷（详见 docs/specs/publishing.md §16）
+
+- 本机 auto VM：入口 `use file` 时部分被调函数被错误编译（8 行最小复现在
+  `plan-artifacts/plan-083/evidence/vm-repro/`：k1(file)=0 vs k2(nofile)=1；
+  compose 来源链幻影条目同理）→ **入口改 env 输入/stdout 输出，Auto 调用图不导入 file**；
+  float 跨模块不稳定→整数 milli；`bool.to(str)` 损坏→int 标志；`Length`/`view`/`pub` 保留字。
+  待交 auto-lang owner。
+- v1 样式边界（如实声明）：行内继承属 084；and/or 子项限终端；无 CSS specificity；
+  主题层为单条内置原型；office_book h2/h3 无编号（层次编号与呈现接管冲突，后续评估）。
 
 ## 8. 风险与决策点
 
@@ -85,4 +125,7 @@ Style 数据及 Selector 应可序列化。RenderRule 可在排版前由普通 A
 
 ## 9. 复审记录
 
-待实际实施后的复审；根据 082 的 API 变化修订本计划，不机械照搬草案示例。
+| 日期 | 记录 |
+| --- | --- |
+| 2026-11-17 | stage: work / plan_id: PLAN-083 / plan_revision: r1 / outcome: **pass（execution_done）** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / base_commit: 5af11a3 / code_commit: bb8ff2c（线性：1c0ec92 实现 → 246b191 验证收尾 → bb8ff2c 规范/README；工作树净）/ dependency_revisions: auto `0.1.0+plan-890-verified-r7-t19-24-g54fe407-dirty`（PATH）；typst 0.15.1（tools 固定，cargo 实编）；engine `@autodown/engine` 0.5.0 同基线 worktree 构建 dist（未改源）/ task_ids: T-00..T-06 全 / evidence: `node scripts/verify.mjs` **19/19 pass**（AC-01..AC-07 基线迁移 + S-01..S-07 新验收，29.8s；`auto templates/style-probe.at` 17/17 755ms；engine 限定测试 109 passed；证据 `D:/autostack/plan-artifacts/plan-083/evidence/`：report.json sha256 567c5853…、sd-book.pdf 1f1fc1f8…、IR/inspect/guard-demo 副本、vm-repro 最小复现对）/ blockers: 无 / next: review。规范沉淀 `docs/specs/publishing.md` §11–§16（style-system-v1/render-v1/能力与 VM 缺陷）；VM 缺陷（入口 use file 错误编译、float/bool.to(str)/保留字）已规避并记录，交 auto-lang owner。 |
+| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 1 / from: drafting / to: execution_done / status: execution_done / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: review |

@@ -1,12 +1,12 @@
 ---
 plan_id: PLAN-083
-status: executing
+status: execution_done
 feature_name: document-style-render-rules
 author: [codex]
 created_at: 2026-11-14
 updated_at: 2026-11-17
 plan_revision: 1
-current_step: 6
+current_step: 7
 total_steps: 7
 depends_on: [PLAN-082]
 supersedes_spec_components: [docs/specs/publishing.md §4/§6（v0→v1 迁移）]
@@ -72,8 +72,8 @@ Style 数据及 Selector 应可序列化。RenderRule 可在排版前由普通 A
 - [x] T-02：实现逐属性合成、继承与子树作用域。证据：`style.at:compose_styles`——内置<主题<模板<文档规则<节点显式，同层作用域深度+声明序，未设置属性不覆盖；标题子树 scope_extents（含锚点、止于同级/更高级标题）离开即恢复；来源链逐属性升序（末位生效）。探针 t2a–t2f + 验收 S-02/S-03（computed + PDF 字号 13.0/15.0/11.0 分布）全过。
 - [x] T-03：实现选择器及可观察匹配结果。证据：`sel_matches`（type/attr/id/role/and/or/all，and/or 子项限终端）+ `match_log_of`（rule×node×matched 含未命中）；探针 t3sel + S-04（真实文档：doc-sub-emph 只命中 block-5，block-3/9 未命中）全过。
 - [x] T-04：实现呈现函数接入、委托与递归保护，保留语义来源。证据：`templates/render.at`——最高优先级单命中（同优先级先声明胜）、`aside-note` 显式 next 委托（`next_rule_below`→`callout-plain`，输出含"【两段提示】"）、`theorem-box`（"定理 1（一致性条件）"按内容顺序编号）、`chapter-h1`（"第N章"含模板前言=第一章）；活动 (rule, occurrence) 守卫：`render-guard-demo.at` 负例 `W_RENDER_RECURSION_GUARD`×2、presentation 有界（==content 数）、guard=1 条目回落默认；outline 全部语义标题（装饰前缀不进入，S-05 断言两模板全部条目）。
-- [ ] T-05：实现样式检查接口，完成 PDF 与反例验证。证据：`host/emit-typst.mjs` v1 校验 + `backendCapabilityDiagnostics`（`doc.hanging_punctuation`→`W_STYLE_UNSUPPORTED`×5，值保留 IR 不丢弃）+ `buildStyleInspect`（style-inspect-v1：props+采用链+backend 支持标记）；`host/pdf_probe.py` 每页字号分布；`host/style-wire.mjs` 结构校验+编码。验收 S-03/S-06（PDF 字号 13/15 出现、结论页无 13pt 泄漏；block-1 链 builtin>template>explicit、block-5 末位 doc-sub-emph）全过。
-  复审 F-1 重开（2026-11-17）：显式属性引用不存在的节点 id 时被静默接受（IR 回显、合成无效果）——与同通道规则的可定位拒绝（E_STYLE_SCOPE）不一致，违反 AC-01“非法值/节点属性可定位拒绝”。修复：合成管线校验 explicit id 存在（E_STYLE_EXPLICIT_NODE）+ 负例验收；修后闭合本项。
+- [x] T-05：实现样式检查接口，完成 PDF 与反例验证。证据：`host/emit-typst.mjs` v1 校验 + `backendCapabilityDiagnostics`（`doc.hanging_punctuation`→`W_STYLE_UNSUPPORTED`×5，值保留 IR 不丢弃）+ `buildStyleInspect`（style-inspect-v1：props+采用链+backend 支持标记）；`host/pdf_probe.py` 每页字号分布；`host/style-wire.mjs` 结构校验+编码。验收 S-03/S-06（PDF 字号 13/15 出现、结论页无 13pt 泄漏；block-1 链 builtin>template>explicit、block-5 末位 doc-sub-emph）全过。
+  复审 F-1 重开（2026-11-17）：显式属性引用不存在的节点 id 时被静默接受（IR 回显、合成无效果）——与同通道规则的可定位拒绝（E_STYLE_SCOPE）不一致，违反 AC-01“非法值/节点属性可定位拒绝”。修复闭合（提交 7d92349）：`style.at:validate_explicit` + finalize 调用 → `E_STYLE_EXPLICIT_NODE: explicit:block-99: node not found in document`（与规则侧 E_STYLE_SCOPE 对称可定位）；verify S-06 增负例断言，复跑 **19/19**。
 - [x] T-06：迁移 082 样例，复审并沉淀实际规范。证据：academic/office_book 迁移为规则声明（`publication-ir-v1`，扁平 StyleConfig 删除）；research.ad/escape.ad/style-demo.ad × 两模板 × 参数/负例全通（AC-01..AC-07 + S-01..S-07 = **19/19**，`node scripts/verify.mjs` 29.8s）；office_book 可见变化（"第N章"呈现、h2 去编号——后端嵌套计数冲突实测 "0.1."）记录于规范 §13；`docs/specs/publishing.md` 新增 §11–§16（样式系统/呈现规则/能力与诊断/入口协议/VM 缺陷规避）；README 同步。
 
 ## 7. 验证记录
@@ -129,4 +129,8 @@ verify 检查（各 0–384ms，含子断言）；render-guard-demo 出版运行
 | 日期 | 记录 |
 | --- | --- |
 | 2026-11-17 | stage: work / plan_id: PLAN-083 / plan_revision: r1 / outcome: **pass（execution_done）** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / base_commit: 5af11a3 / code_commit: bb8ff2c（线性：1c0ec92 实现 → 246b191 验证收尾 → bb8ff2c 规范/README；工作树净）/ dependency_revisions: auto `0.1.0+plan-890-verified-r7-t19-24-g54fe407-dirty`（PATH）；typst 0.15.1（tools 固定，cargo 实编）；engine `@autodown/engine` 0.5.0 同基线 worktree 构建 dist（未改源）/ task_ids: T-00..T-06 全 / evidence: `node scripts/verify.mjs` **19/19 pass**（AC-01..AC-07 基线迁移 + S-01..S-07 新验收，29.8s；`auto templates/style-probe.at` 17/17 755ms；engine 限定测试 109 passed；证据 `D:/autostack/plan-artifacts/plan-083/evidence/`：report.json sha256 567c5853…、sd-book.pdf 1f1fc1f8…、IR/inspect/guard-demo 副本、vm-repro 最小复现对）/ blockers: 无 / next: review。规范沉淀 `docs/specs/publishing.md` §11–§16（style-system-v1/render-v1/能力与 VM 缺陷）；VM 缺陷（入口 use file 错误编译、float/bool.to(str)/保留字）已规避并记录，交 auto-lang owner。 |
-| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 1 / from: drafting / to: execution_done / status: executing / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: review |
+| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 1 / from: drafting / to: execution_done / status: execution_done / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: review |
+| 2026-11-17 | stage: review / review_scope: **final** / reviewer: lead（实现会话复审；无独立会话可用，结论按工件/代码/独立重跑重建，未采信执行叙述——独立性受限，如实记录）/ plan_id: PLAN-083 / plan_revision: r1 / outcome: **needs_fix** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / reviewed_commit: bb8ff2c（工作树净；线性 5af11a3→1c0ec92→246b191→bb8ff2c）/ base_commit: 5af11a3 / dependency_revisions: auto 0.1.0+plan-890-verified-r7-t19-24-g54fe407-dirty、typst 0.15.1（tools 固定）、engine 0.5.0 同基线 dist / spec_inputs: `docs/specs/publishing.md`（bb8ff2c 版，§11–§16 新增）、Design 10 §6–7 / acceptance_results: 复审独立重验 15/15（fresh publish rv-book：explicit 15pt/scoped 13pt/恢复 11pt/链 builtin>template>explicit、末位 doc-sub-emph/outline 语义标题/定理与章节呈现/hanging 保留 IR+5×W_STYLE_UNSUPPORTED/inspect v1 能力表）；确定性 .typ sha 两次一致（8e705ced4d03）；负例：未知作用域锚点 → E_STYLE_SCOPE（可定位）、非法单位值 → E_DOC_STYLES；`node scripts/verify.mjs` 复跑 **19/19**（29.8s）；engine 限定测试 109 passed 复用（输入未变）；规范增量与实测行为一致 / findings: **F-1（in-contract）** 显式属性（xstyle）引用不存在的节点 id：宿主结构校验通过、IR 回显该条目、合成静默无效果——同通道规则侧有 E_STYLE_SCOPE 可定位拒绝，显式侧缺失，违反 AC-01“非法值/节点属性可定位拒绝”。复现：`{"explicit":[{"id":"block-99","props":{"text.size":"18pt"}}]}` → publish ok，computed 无 18pt，styles.explicit 回显 block-99。修法：合成管线校验 explicit id（E_STYLE_EXPLICIT_NODE，带 id 定位）+ verify 负例。— info F-2：env 输入通道容量上限未记载（建议规范 §15 一句边界说明）。— info F-3：属性注册表 style.at 与 host/style-wire.mjs 双份维护（原型期接受，规范已记载注册表为源）。 / evidence: 独立重验输出（review 会话内，关键数字已录入本表）；verify 19/19 report.json sha256 567c5853… / next: **work（F-1 修复 + F-2 文档；T-05 重开）**，修复后回 review 复验受影响范围。 |
+| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 2 / from: execution_done / to: executing / status: executing / outcome: needs_fix / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: work |
+| 2026-11-17 | stage: work / plan_id: PLAN-083 / plan_revision: r1 / outcome: **pass（execution_done，F-1 修复）** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / base_commit: 5af11a3 / code_commit: 7d92349（bb8ff2c 之上：style.at validate_explicit + render.at 调用 + verify S-06 负例 + samples/neg/explicit-unknown-node.json + F-2 规范/README 边界记载）/ dependency_revisions: 同前（auto t19-24、typst 0.15.1、engine 0.5.0 dist）/ task_ids: T-05 重开并重新闭合 / evidence: F-1 复现转正例：`--doc-styles samples/neg/explicit-unknown-node.json` → exit 1 `E_STYLE_EXPLICIT_NODE`（消息含 block-99）；`node scripts/verify.mjs` **19/19**（S-06 含新负例） / blockers: 无 / next: review（F-1/F-2 复验） |
+| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 3 / from: executing / to: execution_done / status: execution_done / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: 7d92349 / next: review |

@@ -1,0 +1,25 @@
+{
+  "rules": [
+    {
+      "name": "doc-sub-emph",
+      "origin": "document",
+      "scope": "block-4",
+      "order": 1,
+      "selector": { "kind": "type", "type": "paragraph" },
+      "props": { "text.size": "13pt" },
+      "comment": "作用域锚点 = 空间标定小节标题（block-4）：子树内正文字号 13pt，离开恢复模板值"
+    },
+    {
+      "name": "doc-hanging-unsupported",
+      "origin": "document",
+      "scope": "",
+      "order": 2,
+      "selector": { "kind": "type", "type": "paragraph" },
+      "props": { "doc.hanging_punctuation": 1 },
+      "comment": "后端能力反例：注册但 Typst 后端不支持的属性 → W_STYLE_UNSUPPORTED，不静默丢弃"
+    }
+  ],
+  "explicit": [
+    { "id": "block-1", "props": { "text.size": "15pt" }, "comment": "节点显式属性：先构造的内容自带显式字号，覆盖一切模板/文档默认值" }
+  ]
+}

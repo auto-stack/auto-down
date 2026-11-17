@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url';
 
 import { parseSource, REPO_ROOT } from './doc-parse.mjs';
 import { encodeDocWire, encodeRequest } from './wire.mjs';
-import { emitTypst, validatePublication } from './emit-typst.mjs';
+import { encodeStylesWire } from './style-wire.mjs';
+import { emitTypst, validatePublication, backendCapabilityDiagnostics, buildStyleInspect } from './emit-typst.mjs';
 import { locateTypst, typstVersion, typstCompile, typstQuery, PINNED_TYPST_VERSION } from './typst.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -45,6 +46,7 @@ function parseArgs(argv) {
     '--auto-entry',
     '--doc-wire-version',
     '--font-path',
+    '--doc-styles',
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -75,6 +77,7 @@ function parseArgs(argv) {
     else if (arg === '--auto-entry') opts.autoEntry = path.resolve(value);
     else if (arg === '--doc-wire-version') opts.docWireVersion = Number(value);
     else if (arg === '--font-path') opts.fontPaths.push(path.resolve(value));
+    else if (arg === '--doc-styles') opts.docStyles = path.resolve(value);
   }
   return opts;
 }
@@ -96,14 +99,21 @@ function fail(error) {
   process.exit(1);
 }
 
-function runAuto(entry, runDir) {
+// PLAN-083：Auto 入口不经 file 模块读写（本机 VM 缺陷：入口 use file 时部分被调函数
+// 被错误编译）。输入经环境变量（PLAN083_*）传入，输出打印到 stdout 由宿主捕获。
+function runAuto(entry, runDir, inputs) {
   const autoCmd = process.env.PLAN082_AUTO || 'auto';
   const started = Date.now();
   const result = spawnSync(autoCmd, [entry], {
     cwd: PROTO_ROOT,
     encoding: 'utf8',
-    env: { ...process.env, PLAN082_RUN_DIR: runDir },
-    maxBuffer: 32 * 1024 * 1024,
+    env: {
+      ...process.env,
+      PLAN083_WIRE: inputs.wire,
+      PLAN083_REQUEST: inputs.request,
+      PLAN083_STYLES: inputs.stylesWire,
+    },
+    maxBuffer: 64 * 1024 * 1024,
   });
   return {
     command: `${autoCmd} ${entry}`,
@@ -162,12 +172,20 @@ async function main() {
     margin: opts.margin,
     header_text: opts.headerText ?? '',
   });
+  let stylesWire = 'STYLEWIRE 1\nend\n';
+  if (opts.docStyles) {
+    const raw = JSON.parse(readFileSync(opts.docStyles, 'utf8'));
+    stylesWire = encodeStylesWire(raw);
+  }
   writeFileSync(path.join(opts.out, 'doc.wire'), wire);
   writeFileSync(path.join(opts.out, 'request.txt'), request);
+  writeFileSync(path.join(opts.out, 'styles.wire'), stylesWire);
   report.outputs.doc_wire = { path: 'doc.wire', sha256: sha256(wire), bytes: Buffer.byteLength(wire) };
+  report.outputs.styles_wire = { path: 'styles.wire', sha256: sha256(stylesWire), bytes: Buffer.byteLength(stylesWire) };
 
-  // 3. Auto 求值（模板投影）
-  const auto = runAuto(opts.autoEntry, opts.out);
+  // 3. Auto 求值（模板投影 + 样式合成 + 呈现）；结果从 stdout 捕获
+  //   （Auto 入口不经 file 模块读写——本机 VM 缺陷规避，见 templates/main.at 头注）
+  const auto = runAuto(opts.autoEntry, opts.out, { wire, request, stylesWire });
   report.stages.auto = {
     ms: auto.ms,
     code: auto.code,
@@ -182,15 +200,20 @@ async function main() {
       { code: 'E_AUTO_RUN', details: { entry: path.relative(REPO_ROOT, opts.autoEntry), exit: auto.code } },
     );
   }
-  const publicationPath = path.join(opts.out, 'publication.json');
-  if (!existsSync(publicationPath)) {
-    throw Object.assign(new Error(`Auto run produced no publication.json in ${opts.out}`), {
+  const jsonLine = auto.stdout
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.startsWith('{') && l.endsWith('}'));
+  if (!jsonLine) {
+    throw Object.assign(new Error('Auto run printed no JSON envelope to stdout'), {
       code: 'E_IR_MISSING',
     });
   }
+  const publicationPath = path.join(opts.out, 'publication.json');
+  const rawText = jsonLine + '\n';
+  writeFileSync(publicationPath, rawText);
 
   // 4. 校验 IR 信封
-  const rawText = readFileSync(publicationPath, 'utf8');
   writeFileSync(path.join(opts.out, 'publication.raw.json'), rawText);
   let envelope;
   try {
@@ -233,6 +256,12 @@ async function main() {
   if (opts.injectTypstError) report.diagnostics.push({ code: 'I_FAULT_INJECTION', detail: 'typst compile error injected' });
   report.outputs.source_map = { path: 'publication.map.json', blocks: emitted.sourceMap.blocks.length };
   report.applied_config = emitted.config;
+  // PLAN-083：后端能力诊断（不支持的属性显式报告，不静默丢弃）+ inspect_style 数据接口
+  const backendDiags = emitted.backendDiags ?? backendCapabilityDiagnostics(publication);
+  report.diagnostics.push(...backendDiags.map((d) => ({ code: d.code, detail: `${d.occurrence}: ${d.prop} = ${JSON.stringify(d.value)} (${d.detail})` })));
+  const inspect = buildStyleInspect(publication, backendDiags);
+  writeFileSync(path.join(opts.out, 'style-inspect.json'), JSON.stringify(inspect, null, 2) + '\n');
+  report.outputs.style_inspect = { path: 'style-inspect.json', occurrences: inspect.occurrences.length, unsupported: backendDiags.length };
 
   // 6. Typst 编译 PDF
   const typstBin = locateTypst(PROTO_ROOT);

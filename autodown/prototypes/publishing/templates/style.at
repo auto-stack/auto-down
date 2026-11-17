@@ -1,0 +1,1770 @@
+// PLAN-083 — 结构化样式核心（普通 Auto 类型与函数；无第二套解释器）
+//
+// 本模块自包含（不 use ir），供 ir.at / render.at / 模板复用：
+//   * 值类型：StyLength / Color / TextStyle / ParagraphStyle / DocStyle
+//   * 单位工厂与边界校验（非法值可定位到 规则/显式条目/属性）
+//   * 属性注册表（适用节点、值类别；继承标记为 v1 作用域包含语义，行内继承留 084）
+//   * 选择器：type / attr / id / role / and / or / all（and/or 的子项限终端选择器）
+//   * StyleRule + 逐属性合成（内置 < 主题 < 模板 < 文档规则 < 节点显式；
+//     同层按作用域深度、后声明优先；作用域 = 标题子树，离开即恢复）
+//   * 匹配日志（规则 × 节点，可观察）
+//   * STYLEWIRE 1 行协议解析（宿主把 --doc-styles JSON 编码后传入）
+//   * 样式 JSON 序列化（ir.at 组装 publication-ir-v1 时复用）
+//
+// 语言边界（2026-11-17 实测，cap-probe 1–4d，scratch）：
+//   * Length 是本机 auto 构建的内置类型名 → 本模块长度类型命名 StyLength；
+//   * float 字面量/算术/负数、记录含 float 字段、两级链式访问、字段算术、
+//     var 记录字段赋值、列表元素整体替换与一级字段赋值、int.to(float)、bool 条件均可用；
+//   * bool.to(str) 在探针中出现内存损坏 → 样式记录一律用 int 标志（-1 = 未设置）；
+//   * 三元表达式未验证，不使用；列表元素的二级字段赋值未验证 → 用读-改-写整记录。
+
+// ---------------------------------------------------------------------------
+// 值类型（未设置约定：StyLength.unit==""；Color.r<0；int 标志 -1；font 空表）
+// ---------------------------------------------------------------------------
+
+type StyLength {
+    milli int
+    unit str
+}
+
+type Color {
+    r int
+    g int
+    b int
+}
+
+type TextStyle {
+    size StyLength
+    weight int
+    color Color
+    italic int
+    font []str
+}
+
+type ParagraphStyle {
+    justify int
+    first_line_indent StyLength
+    leading StyLength
+    spacing_above StyLength
+    spacing_below StyLength
+}
+
+// 文档/结构属性：heading_numbering 的空串是合法值（不编号），用独立 set 标志区分未设置。
+type DocStyle {
+    heading_numbering str
+    heading_numbering_set int
+    chapter_pagebreak int
+    title_size StyLength
+    abstract_style str
+    hanging_punctuation int
+}
+
+// 单位工厂：整数定标（whole + milli 千分之一），全程整数运算——本机 auto 构建的
+// float 跨模块序列化路径存在不稳定损坏（cap-probe 1/5、style-dbg，2026-11-17 实测），
+// 样式值层不用 float。例：pt(11, 0)=11pt、cm(2, 200)=2.2cm、em(0, 640)=0.64em。
+fn pt(whole int, milli int) StyLength {
+    return StyLength(whole * 1000 + milli, "pt")
+}
+
+fn mm(whole int, milli int) StyLength {
+    return StyLength(whole * 1000 + milli, "mm")
+}
+
+fn cm(whole int, milli int) StyLength {
+    return StyLength(whole * 1000 + milli, "cm")
+}
+
+fn in_len(whole int, milli int) StyLength {
+    return StyLength(whole * 1000 + milli, "in")
+}
+
+fn em(whole int, milli int) StyLength {
+    return StyLength(whole * 1000 + milli, "em")
+}
+
+fn pct(whole int, milli int) StyLength {
+    return StyLength(whole * 1000 + milli, "%")
+}
+
+fn unset_length() StyLength {
+    return StyLength(0, "")
+}
+
+fn rgb(r int, g int, b int) Color {
+    return Color(r, g, b)
+}
+
+fn unset_color() Color {
+    return Color(-1, -1, -1)
+}
+
+fn text_style(size StyLength, weight int, color Color, italic int, font []str) TextStyle {
+    return TextStyle(size, weight, color, italic, font)
+}
+
+fn empty_text() TextStyle {
+    return TextStyle(unset_length(), -1, unset_color(), -1, [])
+}
+
+fn empty_para() ParagraphStyle {
+    return ParagraphStyle(-1, unset_length(), unset_length(), unset_length(), unset_length())
+}
+
+fn empty_doc() DocStyle {
+    return DocStyle("", -1, -1, unset_length(), "", -1)
+}
+
+// 示例：普通函数按参数产生 Style（AC-01）——基准字号加增量（milli）、加粗。
+fn emphasis(base StyLength, bump_milli int) TextStyle {
+    return TextStyle(StyLength(base.milli + bump_milli, base.unit), 700, unset_color(), -1, [])
+}
+
+// ---------------------------------------------------------------------------
+// 校验（可定位：who = 规则名或显式条目 id；prop = 属性名）
+// ---------------------------------------------------------------------------
+
+type StyleCheck {
+    ok int
+    code str
+    message str
+}
+
+fn sc_ok() StyleCheck {
+    return StyleCheck(1, "", "")
+}
+
+fn sc_err(code str, message str) StyleCheck {
+    return StyleCheck(0, code, message)
+}
+
+fn is_length_unit(u str) bool {
+    if u == "pt" || u == "mm" || u == "cm" || u == "in" || u == "em" || u == "%" {
+        return true
+    }
+    return false
+}
+
+fn check_length(who str, prop str, l StyLength) StyleCheck {
+    if l.unit == "" {
+        return sc_ok()
+    }
+    if !is_length_unit(l.unit) {
+        return sc_err("E_STYLE_VALUE", who + " / " + prop + ": unknown unit '" + l.unit + "' (pt|mm|cm|in|em|%)")
+    }
+    if l.milli < 0 {
+        return sc_err("E_STYLE_VALUE", who + " / " + prop + ": negative length " + milli_str(l.milli) + l.unit)
+    }
+    return sc_ok()
+}
+
+fn hex_digit_value(c int) int {
+    if c >= 48 && c <= 57 {
+        return c - 48
+    }
+    if c >= 97 && c <= 102 {
+        return c - 87
+    }
+    if c >= 65 && c <= 70 {
+        return c - 55
+    }
+    return -1
+}
+
+fn check_color(who str, prop str, c Color) StyleCheck {
+    if c.r < 0 {
+        return sc_ok()
+    }
+    if c.r > 255 || c.g < 0 || c.g > 255 || c.b < 0 || c.b > 255 {
+        return sc_err("E_STYLE_VALUE", who + " / " + prop + ": color channel out of 0..255 (" + c.r.to(str) + "," + c.g.to(str) + "," + c.b.to(str) + ")")
+    }
+    return sc_ok()
+}
+
+fn check_text(who str, t TextStyle) StyleCheck {
+    var c = check_length(who, "text.size", t.size)
+    if c.ok == 0 {
+        return c
+    }
+    c = check_color(who, "text.color", t.color)
+    if c.ok == 0 {
+        return c
+    }
+    if t.weight != -1 {
+        if t.weight < 100 || t.weight > 900 {
+            return sc_err("E_STYLE_VALUE", who + " / text.weight: " + t.weight.to(str) + " out of 100..900")
+        }
+    }
+    if t.italic != -1 && t.italic != 0 && t.italic != 1 {
+        return sc_err("E_STYLE_VALUE", who + " / text.italic: expect 0|1, got " + t.italic.to(str))
+    }
+    return sc_ok()
+}
+
+fn check_para(who str, p ParagraphStyle) StyleCheck {
+    var c = check_length(who, "para.first_line_indent", p.first_line_indent)
+    if c.ok == 0 {
+        return c
+    }
+    c = check_length(who, "para.leading", p.leading)
+    if c.ok == 0 {
+        return c
+    }
+    c = check_length(who, "para.spacing_above", p.spacing_above)
+    if c.ok == 0 {
+        return c
+    }
+    c = check_length(who, "para.spacing_below", p.spacing_below)
+    if c.ok == 0 {
+        return c
+    }
+    if p.justify != -1 && p.justify != 0 && p.justify != 1 {
+        return sc_err("E_STYLE_VALUE", who + " / para.justify: expect 0|1, got " + p.justify.to(str))
+    }
+    return sc_ok()
+}
+
+fn check_doc(who str, d DocStyle) StyleCheck {
+    var c = check_length(who, "doc.title_size", d.title_size)
+    if c.ok == 0 {
+        return c
+    }
+    if d.abstract_style != "" && d.abstract_style != "boxed" && d.abstract_style != "plain" {
+        return sc_err("E_STYLE_VALUE", who + " / doc.abstract_style: expect boxed|plain, got '" + d.abstract_style + "'")
+    }
+    if d.chapter_pagebreak != -1 && d.chapter_pagebreak != 0 && d.chapter_pagebreak != 1 {
+        return sc_err("E_STYLE_VALUE", who + " / doc.chapter_pagebreak: expect 0|1, got " + d.chapter_pagebreak.to(str))
+    }
+    if d.hanging_punctuation != -1 && d.hanging_punctuation != 0 && d.hanging_punctuation != 1 {
+        return sc_err("E_STYLE_VALUE", who + " / doc.hanging_punctuation: expect 0|1, got " + d.hanging_punctuation.to(str))
+    }
+    return sc_ok()
+}
+
+// "#f2f4f7" / "f2f4f7" / "#333" → Color；非法返回 ok=0
+type ColorParse {
+    ok int
+    color Color
+    message str
+}
+
+fn parse_hex_color(s str) ColorParse {
+    var h = s
+    if h.len() > 0 && h.char_at(0) == 35 {
+        h = h.sub(1, h.len())
+    }
+    let n = h.len()
+    if n != 3 && n != 6 {
+        return ColorParse(0, unset_color(), "hex color expects 3 or 6 digits: " + s)
+    }
+    var digits []int = []
+    var i = 0
+    while i < n {
+        let v = hex_digit_value(h.char_at(i))
+        if v < 0 {
+            return ColorParse(0, unset_color(), "bad hex digit in color: " + s)
+        }
+        digits.push(v)
+        i = i + 1
+    }
+    if n == 3 {
+        return ColorParse(1, Color(digits[0] * 17, digits[1] * 17, digits[2] * 17), "")
+    }
+    let r = digits[0] * 16 + digits[1]
+    let g = digits[2] * 16 + digits[3]
+    let b = digits[4] * 16 + digits[5]
+    return ColorParse(1, Color(r, g, b), "")
+}
+
+fn hex2(v int) str {
+    let digits = "0123456789abcdef"
+    let hi = v / 16
+    let lo = v - hi * 16
+    return digits.sub(hi, hi + 1) + digits.sub(lo, lo + 1)
+}
+
+fn color_hex(c Color) str {
+    return "#" + hex2(c.r) + hex2(c.g) + hex2(c.b)
+}
+
+// ---------------------------------------------------------------------------
+// 属性注册表（值类别用于 STYLEWIRE 解码与宿主能力核对；inherit 标记记录 v1 语义）
+// ---------------------------------------------------------------------------
+
+type PropDef {
+    prop str
+    group str
+    kind str
+    applies str
+    inherit int
+}
+
+// v1 继承说明：块级扁平模型中，inherit=1 的文本属性经作用域包含关系获得基值
+//（外层作用域规则同样作用于内层块）；行内层（mark 继承）属 084，不在本表内实现。
+fn prop_defs() []PropDef {
+    var defs []PropDef = []
+    defs.push(PropDef("text.size", "text", "length", "block", 1))
+    defs.push(PropDef("text.weight", "text", "int", "block", 1))
+    defs.push(PropDef("text.color", "text", "color", "block", 1))
+    defs.push(PropDef("text.italic", "text", "int", "block", 1))
+    defs.push(PropDef("text.font", "text", "font", "block", 1))
+    defs.push(PropDef("para.justify", "para", "int", "block", 0))
+    defs.push(PropDef("para.first_line_indent", "para", "length", "block", 0))
+    defs.push(PropDef("para.leading", "para", "length", "block", 0))
+    defs.push(PropDef("para.spacing_above", "para", "length", "block", 0))
+    defs.push(PropDef("para.spacing_below", "para", "length", "block", 0))
+    defs.push(PropDef("doc.heading_numbering", "doc", "str", "heading", 0))
+    defs.push(PropDef("doc.chapter_pagebreak", "doc", "int", "document", 0))
+    defs.push(PropDef("doc.title_size", "doc", "length", "document", 0))
+    defs.push(PropDef("doc.abstract_style", "doc", "enum", "document", 0))
+    // 后端能力示例：注册但 Typst 后端不支持 → 宿主诊断 W_STYLE_UNSUPPORTED，不静默丢弃
+    defs.push(PropDef("doc.hanging_punctuation", "doc", "int", "document", 0))
+    return defs
+}
+
+fn find_prop(prop str) PropDef {
+    let defs = prop_defs()
+    for d in defs {
+        if d.prop == prop {
+            return d
+        }
+    }
+    return PropDef("", "", "", "", 0)
+}
+
+fn prop_exists(prop str) bool {
+    return find_prop(prop).prop != ""
+}
+
+// ---------------------------------------------------------------------------
+// 选择器（and/or 的子项限终端 kind：type/attr/id/role —— 本期不嵌套复合选择器）
+// ---------------------------------------------------------------------------
+
+type Selector {
+    kind str
+    type_name str
+    attr_key str
+    attr_value str
+    id str
+    role str
+    parts []Selector
+}
+
+fn raw_sel(kind str, a str, b str, c str, d str, e str, parts []Selector) Selector {
+    return Selector(kind, a, b, c, d, e, parts)
+}
+
+fn sel_all() Selector {
+    return raw_sel("all", "", "", "", "", "", [])
+}
+
+fn sel_type(type_name str) Selector {
+    return raw_sel("type", type_name, "", "", "", "", [])
+}
+
+fn sel_attr(key str, value str) Selector {
+    return raw_sel("attr", "", key, value, "", "", [])
+}
+
+fn sel_id(id str) Selector {
+    return raw_sel("id", "", "", "", id, "", [])
+}
+
+fn sel_role(role str) Selector {
+    return raw_sel("role", "", "", "", "", role, [])
+}
+
+fn sel_and(parts []Selector) Selector {
+    return raw_sel("and", "", "", "", "", "", parts)
+}
+
+fn sel_or(parts []Selector) Selector {
+    return raw_sel("or", "", "", "", "", "", parts)
+}
+
+// 终端匹配返回 0/1（and/or 逐子项调用；子项由构造方保证为终端）
+fn sel_matches_terminal(s Selector, n StyleNode) int {
+    if s.kind == "all" {
+        return 1
+    }
+    if s.kind == "type" {
+        if s.type_name == n.kind {
+            return 1
+        }
+        return 0
+    }
+    if s.kind == "id" {
+        if s.id == n.id {
+            return 1
+        }
+        return 0
+    }
+    if s.kind == "role" {
+        if s.role == n.role {
+            return 1
+        }
+        return 0
+    }
+    if s.kind == "attr" {
+        if s.attr_key == "kind" && n.kind == s.attr_value {
+            return 1
+        }
+        if s.attr_key == "level" && n.level.to(str) == s.attr_value {
+            return 1
+        }
+        if s.attr_key == "callout_type" && n.callout_type == s.attr_value {
+            return 1
+        }
+        return 0
+    }
+    return 0
+}
+
+// 规则选择器匹配（非递归：and/or 的子项只走终端判断）
+fn sel_matches(s Selector, n StyleNode) bool {
+    if s.kind == "and" {
+        for p in s.parts {
+            if sel_matches_terminal(p, n) == 0 {
+                return false
+            }
+        }
+        return true
+    }
+    if s.kind == "or" {
+        for p in s.parts {
+            if sel_matches_terminal(p, n) == 1 {
+                return true
+            }
+        }
+        return false
+    }
+    if sel_matches_terminal(s, n) == 1 {
+        return true
+    }
+    return false
+}
+
+// ---------------------------------------------------------------------------
+// 呈现规则（数据部分；应用逻辑在 render.at）
+// ---------------------------------------------------------------------------
+
+type RenderRule {
+    name str
+    priority int
+    selector Selector
+}
+
+fn render_rule(name str, priority int, selector Selector) RenderRule {
+    return RenderRule(name, priority, selector)
+}
+
+fn jrender_rules(rs []RenderRule) str {
+    var out = "["
+    var i = 0
+    for r in rs {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + "{\"name\":" + jstr(r.name) + ",\"priority\":" + r.priority.to(str) + ",\"selector\":" + jsel(r.selector) + "}"
+        i = i + 1
+    }
+    return out + "]"
+}
+
+// ---------------------------------------------------------------------------
+// 节点视图（样式层不依赖 PubBlock；由调用方从内容块构造）
+// ---------------------------------------------------------------------------
+
+type StyleNode {
+    id str
+    kind str
+    level int
+    callout_type str
+    role str
+    index int
+}
+
+// role 约定：heading → "heading"；callout → callout_type（如 theorem/tip）；
+// 其余块 → kind。语义 role 的完整注册属后续计划，本期按可推导 role 匹配。
+fn node_view(index int, id str, kind str, level int, callout_type str) StyleNode {
+    var role = kind
+    if kind == "callout" {
+        role = callout_type
+    }
+    return StyleNode(id, kind, level, callout_type, role, index)
+}
+
+// ---------------------------------------------------------------------------
+// 规则与逐属性合成
+// ---------------------------------------------------------------------------
+
+type StyleRule {
+    name str
+    origin str
+    scope str
+    scope_depth int
+    order int
+    selector Selector
+    text TextStyle
+    para ParagraphStyle
+    doc DocStyle
+}
+
+fn style_rule(name str, origin str, scope str, order int, selector Selector, text TextStyle, para ParagraphStyle, doc DocStyle) StyleRule {
+    return StyleRule(name, origin, scope, 0, order, selector, text, para, doc)
+}
+
+// scope_depth 由合成入口按锚点标题等级填充（文档作用域=0，标题 level 1..6）
+fn rule_with_depth(r StyleRule, depth int) StyleRule {
+    return StyleRule(r.name, r.origin, r.scope, depth, r.order, r.selector, r.text, r.para, r.doc)
+}
+
+fn layer_rank(origin str) int {
+    if origin == "builtin" {
+        return 0
+    }
+    if origin == "theme" {
+        return 1
+    }
+    if origin == "template" {
+        return 2
+    }
+    if origin == "document" {
+        return 3
+    }
+    // 节点显式属性最高
+    return 4
+}
+
+type ExplicitStyle {
+    id str
+    text TextStyle
+    para ParagraphStyle
+    doc DocStyle
+}
+
+type PropSource {
+    prop str
+    layer int
+    origin str
+    rule str
+    scope str
+    order int
+}
+
+type Computed {
+    id str
+    text TextStyle
+    para ParagraphStyle
+    doc DocStyle
+    chain []PropSource
+}
+
+type MatchLog {
+    rule str
+    origin str
+    node str
+    matched int
+}
+
+// 记录级“已设置字段”覆盖合并（over 中未设置字段保持 base 值）
+fn merge_text(base TextStyle, over TextStyle) TextStyle {
+    var t = base
+    if over.size.unit != "" {
+        t.size = over.size
+    }
+    if over.weight != -1 {
+        t.weight = over.weight
+    }
+    if over.color.r >= 0 {
+        t.color = over.color
+    }
+    if over.italic != -1 {
+        t.italic = over.italic
+    }
+    if over.font.len() > 0 {
+        t.font = over.font
+    }
+    return t
+}
+
+fn merge_para(base ParagraphStyle, over ParagraphStyle) ParagraphStyle {
+    var p = base
+    if over.justify != -1 {
+        p.justify = over.justify
+    }
+    if over.first_line_indent.unit != "" {
+        p.first_line_indent = over.first_line_indent
+    }
+    if over.leading.unit != "" {
+        p.leading = over.leading
+    }
+    if over.spacing_above.unit != "" {
+        p.spacing_above = over.spacing_above
+    }
+    if over.spacing_below.unit != "" {
+        p.spacing_below = over.spacing_below
+    }
+    return p
+}
+
+fn merge_doc(base DocStyle, over DocStyle) DocStyle {
+    var d = base
+    if over.heading_numbering_set == 1 {
+        d.heading_numbering = over.heading_numbering
+        d.heading_numbering_set = 1
+    }
+    if over.chapter_pagebreak != -1 {
+        d.chapter_pagebreak = over.chapter_pagebreak
+    }
+    if over.title_size.unit != "" {
+        d.title_size = over.title_size
+    }
+    if over.abstract_style != "" {
+        d.abstract_style = over.abstract_style
+    }
+    if over.hanging_punctuation != -1 {
+        d.hanging_punctuation = over.hanging_punctuation
+    }
+    return d
+}
+
+// 作用域包含判断：scope=="" 恒包含；否则 node 的 index 需落在锚点标题子树内
+type ScopeExtent {
+    scope str
+    start int
+    end int
+    depth int
+}
+
+// 由内容节点表计算各 heading 的子树范围（含锚点，止于下一个 level<=锚点的标题）
+fn scope_extents(nodes []StyleNode) []ScopeExtent {
+    var out []ScopeExtent = []
+    var i = 0
+    let n = nodes.len()
+    while i < n {
+        let node = nodes[i]
+        if node.kind == "heading" {
+            var end = n
+            var j = i + 1
+            while j < n {
+                if nodes[j].kind == "heading" && nodes[j].level <= node.level {
+                    end = j
+                    j = n
+                } else {
+                    j = j + 1
+                }
+            }
+            out.push(ScopeExtent(node.id, i, end, node.level))
+        }
+        i = i + 1
+    }
+    return out
+}
+
+fn extent_of(extents []ScopeExtent, scope str) ScopeExtent {
+    for e in extents {
+        if e.scope == scope {
+            return e
+        }
+    }
+    return ScopeExtent("", 0, 0, 0)
+}
+
+// 排序键：layer*10000 + depth*100 + order（同层更深的子树优先；同深度后声明优先）
+fn rule_sort_key(r StyleRule) int {
+    return layer_rank(r.origin) * 10000 + r.scope_depth * 100 + r.order
+}
+
+// 按排序键升序的插入排序（规则数小，简单实现）
+fn sort_rules(rules []StyleRule) []StyleRule {
+    var out []StyleRule = []
+    for r in rules {
+        var placed = 0
+        var i = 0
+        while i < out.len() {
+            if rule_sort_key(out[i]) > rule_sort_key(r) {
+                var j = out.len()
+                out.push(out[out.len() - 1])
+                while j > i {
+                    out[j] = out[j - 1]
+                    j = j - 1
+                }
+                out[i] = r
+                placed = 1
+                i = out.len()
+            } else {
+                i = i + 1
+            }
+        }
+        if placed == 0 {
+            out.push(r)
+        }
+    }
+    return out
+}
+
+// 按作用域锚点填充 scope_depth（文档作用域 = 0；未命中锚点保持 0 并由校验拦截）
+fn fill_depths(rules []StyleRule, nodes []StyleNode) []StyleRule {
+    let extents = scope_extents(nodes)
+    var out []StyleRule = []
+    for r in rules {
+        if r.scope == "" {
+            out.push(rule_with_depth(r, 0))
+        } else {
+            let e = extent_of(extents, r.scope)
+            if e.scope != "" {
+                out.push(rule_with_depth(r, e.depth))
+            } else {
+                out.push(rule_with_depth(r, -1))
+            }
+        }
+    }
+    return out
+}
+
+// 逐属性合成主入口：
+//   rules 含各层全部规则（内置/主题/模板由模板侧声明，文档规则来自 STYLEWIRE）；
+//   explicit 为节点显式属性（layer=4，最高）。
+// 返回每个节点的最终值 + 每属性的采用链（升序；最后一条为生效来源）。
+fn compose_styles(nodes []StyleNode, rules []StyleRule, explicit []ExplicitStyle) []Computed {
+    let extents = scope_extents(nodes)
+    let prepared = fill_depths(rules, nodes)
+    let ordered = sort_rules(prepared)
+    let props = prop_defs()
+    var out []Computed = []
+    for n in nodes {
+        var text = empty_text()
+        var para = empty_para()
+        var doc = empty_doc()
+        var chain []PropSource = []
+        for r in ordered {
+            if r.scope_depth < 0 {
+                // 作用域锚点不存在：该规则被跳过（校验层已拦截，双保险）
+            } else {
+                var applies = 0
+                if r.scope == "" {
+                    applies = 1
+                } else {
+                    let e = extent_of(extents, r.scope)
+                    if e.scope != "" && n.index >= e.start && n.index < e.end {
+                        applies = 1
+                    }
+                }
+                if applies == 1 {
+                    if sel_matches(r.selector, n) == true {
+                        text = merge_text(text, r.text)
+                        para = merge_para(para, r.para)
+                        doc = merge_doc(doc, r.doc)
+                        // 链记录：字段判断直接写在本函数体内（不调子函数——
+                        // “内部调用+字段比较”形态在导入方 use file 时被错误编译）
+                        if r.text.size.unit != "" {
+                            chain.push(PropSource("text.size", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.text.weight != -1 {
+                            chain.push(PropSource("text.weight", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.text.color.r >= 0 {
+                            chain.push(PropSource("text.color", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.text.italic != -1 {
+                            chain.push(PropSource("text.italic", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.text.font.len() > 0 {
+                            chain.push(PropSource("text.font", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.para.justify != -1 {
+                            chain.push(PropSource("para.justify", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.para.first_line_indent.unit != "" {
+                            chain.push(PropSource("para.first_line_indent", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.para.leading.unit != "" {
+                            chain.push(PropSource("para.leading", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.para.spacing_above.unit != "" {
+                            chain.push(PropSource("para.spacing_above", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.para.spacing_below.unit != "" {
+                            chain.push(PropSource("para.spacing_below", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.doc.heading_numbering_set == 1 {
+                            chain.push(PropSource("doc.heading_numbering", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.doc.chapter_pagebreak != -1 {
+                            chain.push(PropSource("doc.chapter_pagebreak", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.doc.title_size.unit != "" {
+                            chain.push(PropSource("doc.title_size", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.doc.abstract_style != "" {
+                            chain.push(PropSource("doc.abstract_style", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                        if r.doc.hanging_punctuation != -1 {
+                            chain.push(PropSource("doc.hanging_punctuation", layer_rank(r.origin), r.origin, r.name, r.scope, r.order))
+                        }
+                    }
+                }
+            }
+        }
+        for x in explicit {
+            if x.id == n.id {
+                text = merge_text(text, x.text)
+                para = merge_para(para, x.para)
+                doc = merge_doc(doc, x.doc)
+                if x.text.size.unit != "" {
+                    chain.push(PropSource("text.size", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.text.weight != -1 {
+                    chain.push(PropSource("text.weight", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.text.color.r >= 0 {
+                    chain.push(PropSource("text.color", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.text.italic != -1 {
+                    chain.push(PropSource("text.italic", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.text.font.len() > 0 {
+                    chain.push(PropSource("text.font", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.para.justify != -1 {
+                    chain.push(PropSource("para.justify", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.para.first_line_indent.unit != "" {
+                    chain.push(PropSource("para.first_line_indent", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.para.leading.unit != "" {
+                    chain.push(PropSource("para.leading", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.para.spacing_above.unit != "" {
+                    chain.push(PropSource("para.spacing_above", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.para.spacing_below.unit != "" {
+                    chain.push(PropSource("para.spacing_below", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.doc.heading_numbering_set == 1 {
+                    chain.push(PropSource("doc.heading_numbering", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.doc.chapter_pagebreak != -1 {
+                    chain.push(PropSource("doc.chapter_pagebreak", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.doc.title_size.unit != "" {
+                    chain.push(PropSource("doc.title_size", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.doc.abstract_style != "" {
+                    chain.push(PropSource("doc.abstract_style", 4, "explicit", "node:" + x.id, "", -1))
+                }
+                if x.doc.hanging_punctuation != -1 {
+                    chain.push(PropSource("doc.hanging_punctuation", 4, "explicit", "node:" + x.id, "", -1))
+                }
+            }
+        }
+        out.push(Computed(n.id, text, para, doc, chain))
+    }
+    return out
+}
+
+// 匹配日志：每规则×节点 记录 matched（含未命中，供选择器行为观察）
+fn match_log_of(nodes []StyleNode, rules []StyleRule) []MatchLog {
+    let extents = scope_extents(nodes)
+    var out []MatchLog = []
+    for raw in rules {
+        var r = raw
+        if raw.scope != "" {
+            let e = extent_of(extents, raw.scope)
+            if e.scope != "" {
+                r = rule_with_depth(raw, e.depth)
+            }
+        }
+        for n in nodes {
+            var applies = 0
+            if r.scope == "" {
+                applies = 1
+            } else {
+                let e = extent_of(extents, r.scope)
+                if e.scope != "" && n.index >= e.start && n.index < e.end {
+                    applies = 1
+                }
+            }
+            if applies == 1 && sel_matches(r.selector, n) == true {
+                out.push(MatchLog(r.name, r.origin, n.id, 1))
+            } else {
+                out.push(MatchLog(r.name, r.origin, n.id, 0))
+            }
+        }
+    }
+    return out
+}
+
+// 规则集整体校验（main.at 在合成前调用；失败即 E_STYLE_VALUE/E_STYLE_SCOPE 定位到规则/属性）
+fn validate_rules(rules []StyleRule, nodes []StyleNode) StyleCheck {
+    let extents = scope_extents(nodes)
+    for r in rules {
+        var c = check_text("rule:" + r.name, r.text)
+        if c.ok == 0 {
+            return c
+        }
+        c = check_para("rule:" + r.name, r.para)
+        if c.ok == 0 {
+            return c
+        }
+        c = check_doc("rule:" + r.name, r.doc)
+        if c.ok == 0 {
+            return c
+        }
+        if r.origin != "builtin" && r.origin != "theme" && r.origin != "template" && r.origin != "document" {
+            return sc_err("E_STYLE_ORIGIN", "rule:" + r.name + ": unknown origin '" + r.origin + "'")
+        }
+        if r.scope != "" {
+            let e = extent_of(extents, r.scope)
+            if e.scope == "" {
+                return sc_err("E_STYLE_SCOPE", "rule:" + r.name + ": scope anchor '" + r.scope + "' is not a heading in this document")
+            }
+        }
+    }
+    return sc_ok()
+}
+
+// ---------------------------------------------------------------------------
+// 计算结果标量读取辅助
+//
+// 已知 VM 缺陷（2026-11-17 实测，最小复现 8 行）：导入方同时 use file 时，
+// style.at 中“内部再调用本模块函数并比较记录字段”的函数（曾名 emphasis_check/
+// chain_check）会被错误编译（返回值错、不报错）；不导入 file 则正确。
+// 这些校验函数已删除，验证改走 JSON 序列化路径（jcomputed_all 在 use file
+// 下实测正确）。复现件与定位记录交 auto-lang owner；本节仅保留纯字段读取。
+// ---------------------------------------------------------------------------
+
+// 读取计算结果的常用字段（供外部拿标量，避免直接跨模块读记录）
+fn comp_size_milli(c Computed) int {
+    return c.text.size.milli
+}
+
+fn comp_indent_milli(c Computed) int {
+    return c.para.first_line_indent.milli
+}
+
+fn comp_color_r(c Computed) int {
+    return c.text.color.r
+}
+
+fn comp_by_id(cs []Computed, id str) Computed {
+    for c in cs {
+        if c.id == id {
+            return c
+        }
+    }
+    return Computed("", empty_text(), empty_para(), empty_doc(), [])
+}
+
+// ---------------------------------------------------------------------------
+// 内置默认与主题（层级 0/1 的数据来源；模板在其上声明层级 2）
+// ---------------------------------------------------------------------------
+
+fn builtin_rules() []StyleRule {
+    var rules []StyleRule = []
+    // 基线排版（all）：字体族回退——不设字号，标题保持后端默认字号层级
+    rules.push(
+        style_rule(
+            "builtin-typography",
+            "builtin",
+            "",
+            0,
+            sel_all(),
+            TextStyle(unset_length(), -1, unset_color(), -1, ["Noto Serif SC", "Noto Sans SC"]),
+            empty_para(),
+            empty_doc()
+        )
+    )
+    // 基线正文（paragraph）：字号 10pt；两端对齐关、行距 0.64em、首行缩进 0
+    rules.push(
+        style_rule(
+            "builtin-body",
+            "builtin",
+            "",
+            1,
+            sel_type("paragraph"),
+            TextStyle(pt(10, 0), -1, unset_color(), -1, []),
+            ParagraphStyle(0, em(0, 0), em(0, 640), em(0, 0), em(0, 0)),
+            empty_doc()
+        )
+    )
+    return rules
+}
+
+fn theme_print() []StyleRule {
+    var rules []StyleRule = []
+    // 印刷主题：正文近黑色（纯黑在纸面过于生硬）
+    rules.push(
+        style_rule(
+            "theme-print-ink",
+            "theme",
+            "",
+            0,
+            sel_type("paragraph"),
+            TextStyle(unset_length(), -1, rgb(31, 35, 40), -1, []),
+            empty_para(),
+            empty_doc()
+        )
+    )
+    return rules
+}
+
+// ---------------------------------------------------------------------------
+// STYLEWIRE 1 解析（宿主把 --doc-styles JSON 编码为行协议；字段 TAB 分隔、已转义）
+// ---------------------------------------------------------------------------
+// 行形态（value 部分按属性类别拆分，均不使用 TAB）：
+//   STYLEWIRE 1
+//   rule    <name> <origin: document|theme> <scope: heading-id 或空> <order>
+//   sel     <kind> <slot1..slot5>                  —— 规则根选择器（单行五槽）
+//   selpart <kind> <slot1..slot5>                  —— 追加到根选择器 parts（仅根为 and/or）
+//   prop    <prop> <v1> [<v2>]                     —— 归属最近的 rule / xstyle 头
+//   xstyle  <node-id>
+//   end
+// 长度：prop text.size 11 pt（数值+单位两字段）；颜色：prop text.color #1f2328
+// 整数：prop para.justify 1；字体：prop text.font Noto Serif SC|Noto Sans SC（| 分隔）
+// 枚举/字符串：prop doc.abstract_style boxed
+
+type StylesParse {
+    ok int
+    code str
+    message str
+    rules []StyleRule
+    explicit []ExplicitStyle
+}
+
+fn sp_err(code str, message str) StylesParse {
+    return StylesParse(0, code, message, [], [])
+}
+
+fn index_or_s(xs []str, i int, fallback str) str {
+    if i < xs.len() {
+        return xs[i]
+    }
+    return fallback
+}
+
+fn sel_from_fields(f []str) Selector {
+    // sel 行：kind + 五个槽位（type_name, attr_key, attr_value, id, role）
+    return Selector(
+        index_or_s(f, 0, ""),
+        index_or_s(f, 1, ""),
+        index_or_s(f, 2, ""),
+        index_or_s(f, 3, ""),
+        index_or_s(f, 4, ""),
+        index_or_s(f, 5, ""),
+        []
+    )
+}
+
+// "2.2" → 2200 milli（整数运算；小数第 4 位起截断——原型长度值精度不超过 2 位）
+fn parse_milli(s str) int {
+    let parts = s.to(str).split(".")
+    var milli = index_or_s(parts, 0, "0").to(int) * 1000
+    if parts.len() > 1 {
+        let frac = index_or_s(parts, 1, "0").to(str)
+        var scale = 100
+        var i = 0
+        while i < frac.len() && i < 3 {
+            let d = frac.char_at(i) - 48
+            milli = milli + d * scale
+            scale = scale / 10
+            i = i + 1
+        }
+    }
+    return milli
+}
+
+// "10pt" / "1.2em" → StyLength（数值部分走 parse_milli，单位为首个非数字字符起的后缀；
+// 无单位后缀时返回 unit=""，由 check_length 按需拒绝）
+fn len_of(s str) StyLength {
+    let t = s.to(str)
+    let cut = unit_start(t)
+    if cut >= t.len() {
+        return StyLength(parse_milli(t), "")
+    }
+    var number = t.sub(0, cut)
+    var unit = t.sub(cut, t.len())
+    return StyLength(parse_milli(number), unit)
+}
+
+// 首个非【数字/点】字符的位置（无则返回长度）
+fn unit_start(s str) int {
+    let n = s.len()
+    var i = 0
+    while i < n {
+        let c = s.char_at(i)
+        if (c >= 48 && c <= 57) || c == 46 {
+            i = i + 1
+        } else {
+            return i
+        }
+    }
+    return n
+}
+
+// milli → 可读十进制串（"11"、"9.5"、"0.64"）；milli>=0
+fn milli_str(m int) str {
+    let w = m / 1000
+    let r = m - w * 1000
+    if r == 0 {
+        return w.to(str)
+    }
+    var frac = r.to(str)
+    // 补齐/裁剪到实际位数：r 640 → "640" → 去尾零 "64"；r 50 → "50"（百位为 0 需补前导）
+    if r < 100 {
+        frac = "0" + frac
+    }
+    while frac.len() > 1 {
+        let last = frac.char_at(frac.len() - 1)
+        if last == 48 {
+            frac = frac.sub(0, frac.len() - 1)
+        } else {
+            return w.to(str) + "." + frac
+        }
+    }
+    return w.to(str) + "." + frac
+}
+
+fn parse_styles_wire(wire str) StylesParse {
+    let lines = wire.split("\n")
+    if lines.len() < 2 {
+        return sp_err("E_STYLE_WIRE_LINE", "styles wire is empty")
+    }
+    if lines[0].to(str) != "STYLEWIRE 1" {
+        return sp_err("E_STYLE_WIRE_VERSION", "unsupported styles wire header: " + lines[0].to(str))
+    }
+    var rules []StyleRule = []
+    var explicit []ExplicitStyle = []
+    // 当前上下文（-1 = 无）
+    var ctx_rule = -1
+    var ctx_xstyle = -1
+    var i = 1
+    let n = lines.len()
+    while i < n {
+        let line = lines[i].to(str)
+        i = i + 1
+        if line != "" {
+            let f = line.split("\t")
+            let tag = index_or_s(f, 0, "")
+            if tag == "end" {
+                // 结束标记
+            } else if tag == "rule" {
+                let name = index_or_s(f, 1, "")
+                let origin = index_or_s(f, 2, "")
+                let scope = index_or_s(f, 3, "")
+                let order = index_or_s(f, 4, "0").to(int)
+                if name == "" {
+                    return sp_err("E_STYLE_WIRE_LINE", "rule line missing name")
+                }
+                rules.push(style_rule(name, origin, scope, order, sel_all(), empty_text(), empty_para(), empty_doc()))
+                ctx_rule = rules.len() - 1
+                ctx_xstyle = -1
+            } else if tag == "xstyle" {
+                let id = index_or_s(f, 1, "")
+                if id == "" {
+                    return sp_err("E_STYLE_WIRE_LINE", "xstyle line missing node id")
+                }
+                explicit.push(ExplicitStyle(id, empty_text(), empty_para(), empty_doc()))
+                ctx_xstyle = explicit.len() - 1
+                ctx_rule = -1
+            } else if tag == "sel" || tag == "selpart" {
+                if ctx_rule < 0 {
+                    return sp_err("E_STYLE_WIRE_LINE", tag + " line outside a rule header")
+                }
+                var fields []str = []
+                var k = 1
+                while k < f.len() {
+                    fields.push(index_or_s(f, k, ""))
+                    k = k + 1
+                }
+                let sel = sel_from_fields(fields)
+                if tag == "sel" {
+                    rules[ctx_rule].selector = sel
+                } else {
+                    let root = rules[ctx_rule].selector
+                    if root.kind != "and" && root.kind != "or" {
+                        return sp_err("E_STYLE_WIRE_LINE", "selpart requires an and/or root selector")
+                    }
+                    var combined []Selector = root.parts
+                    combined.push(sel)
+                    rules[ctx_rule].selector = Selector(root.kind, root.type_name, root.attr_key, root.attr_value, root.id, root.role, combined)
+                }
+            } else if tag == "prop" {
+                let prop = index_or_s(f, 1, "")
+                if ctx_rule < 0 && ctx_xstyle < 0 {
+                    return sp_err("E_STYLE_WIRE_LINE", "prop line outside rule/xstyle header")
+                }
+                if prop_exists(prop) == false {
+                    return sp_err("E_STYLE_PROP_UNKNOWN", "unknown style property: " + prop)
+                }
+                let def = find_prop(prop)
+                var who = ""
+                if ctx_xstyle >= 0 {
+                    who = "explicit:" + explicit[ctx_xstyle].id
+                } else {
+                    who = "rule:" + rules[ctx_rule].name
+                }
+                if def.kind == "length" {
+                    let v1 = index_or_s(f, 2, "")
+                    let v2 = index_or_s(f, 3, "")
+                    if v1 == "" || v2 == "" {
+                        return sp_err("E_STYLE_VALUE", who + " / " + prop + ": length needs <value> <unit>")
+                    }
+                    let l = StyLength(parse_milli(v1), v2)
+                    let chk = check_length(who, prop, l)
+                    if chk.ok == 0 {
+                        return sp_err(chk.code, chk.message)
+                    }
+                    apply_length(rules, explicit, ctx_rule, ctx_xstyle, prop, l)
+                } else if def.kind == "color" {
+                    let parsed = parse_hex_color(index_or_s(f, 2, ""))
+                    if parsed.ok == 0 {
+                        return sp_err("E_STYLE_VALUE", who + " / " + prop + ": " + parsed.message)
+                    }
+                    apply_color(rules, explicit, ctx_rule, ctx_xstyle, parsed.color)
+                } else if def.kind == "font" {
+                    let raw = index_or_s(f, 2, "")
+                    if raw == "" {
+                        return sp_err("E_STYLE_VALUE", who + " / " + prop + ": font list is empty")
+                    }
+                    let names = raw.split("|")
+                    apply_font(rules, explicit, ctx_rule, ctx_xstyle, names)
+                } else {
+                    // int / enum / str：单字段
+                    let raw = index_or_s(f, 2, "")
+                    if def.kind == "int" {
+                        apply_int(rules, explicit, ctx_rule, ctx_xstyle, prop, raw.to(int), who)
+                    } else {
+                        apply_str(rules, explicit, ctx_rule, ctx_xstyle, prop, raw, who)
+                    }
+                }
+            } else {
+                return sp_err("E_STYLE_WIRE_LINE", "unknown styles wire tag: " + tag)
+            }
+        }
+    }
+    return StylesParse(1, "", "", rules, explicit)
+}
+
+// 注：列表元素的二级字段赋值未验证，统一“读-改-写整条记录”。
+
+fn apply_length(rules []StyleRule, explicit []ExplicitStyle, ctx_rule int, ctx_xstyle int, prop str, l StyLength) {
+    if ctx_xstyle >= 0 {
+        var x = explicit[ctx_xstyle]
+        if prop == "text.size" {
+            var t = x.text
+            t.size = l
+            x.text = t
+        } else if prop == "para.first_line_indent" {
+            var p = x.para
+            p.first_line_indent = l
+            x.para = p
+        } else if prop == "para.leading" {
+            var p2 = x.para
+            p2.leading = l
+            x.para = p2
+        } else if prop == "para.spacing_above" {
+            var p3 = x.para
+            p3.spacing_above = l
+            x.para = p3
+        } else if prop == "para.spacing_below" {
+            var p4 = x.para
+            p4.spacing_below = l
+            x.para = p4
+        } else if prop == "doc.title_size" {
+            var d = x.doc
+            d.title_size = l
+            x.doc = d
+        }
+        explicit[ctx_xstyle] = x
+    } else if ctx_rule >= 0 {
+        var r = rules[ctx_rule]
+        if prop == "text.size" {
+            var t = r.text
+            t.size = l
+            r.text = t
+        } else if prop == "para.first_line_indent" {
+            var p = r.para
+            p.first_line_indent = l
+            r.para = p
+        } else if prop == "para.leading" {
+            var p2 = r.para
+            p2.leading = l
+            r.para = p2
+        } else if prop == "para.spacing_above" {
+            var p3 = r.para
+            p3.spacing_above = l
+            r.para = p3
+        } else if prop == "para.spacing_below" {
+            var p4 = r.para
+            p4.spacing_below = l
+            r.para = p4
+        } else if prop == "doc.title_size" {
+            var d = r.doc
+            d.title_size = l
+            r.doc = d
+        }
+        rules[ctx_rule] = r
+    }
+}
+
+fn apply_color(rules []StyleRule, explicit []ExplicitStyle, ctx_rule int, ctx_xstyle int, c Color) {
+    if ctx_xstyle >= 0 {
+        var x = explicit[ctx_xstyle]
+        var t = x.text
+        t.color = c
+        x.text = t
+        explicit[ctx_xstyle] = x
+    } else if ctx_rule >= 0 {
+        var r = rules[ctx_rule]
+        var t = r.text
+        t.color = c
+        r.text = t
+        rules[ctx_rule] = r
+    }
+}
+
+fn apply_font(rules []StyleRule, explicit []ExplicitStyle, ctx_rule int, ctx_xstyle int, names []str) {
+    if ctx_xstyle >= 0 {
+        var x = explicit[ctx_xstyle]
+        var t = x.text
+        t.font = names
+        x.text = t
+        explicit[ctx_xstyle] = x
+    } else if ctx_rule >= 0 {
+        var r = rules[ctx_rule]
+        var t = r.text
+        t.font = names
+        r.text = t
+        rules[ctx_rule] = r
+    }
+}
+
+// 范围校验通过的 int 属性写入（失败静默不写：parse_styles_wire 的调用方在写后整体
+// 复核——为保持错误可定位，这里返回前已由 check_* 覆盖的值才进入本函数）。
+fn apply_int(rules []StyleRule, explicit []ExplicitStyle, ctx_rule int, ctx_xstyle int, prop str, v int, who str) {
+    if prop == "text.weight" {
+        let chk = check_text(who, TextStyle(unset_length(), v, unset_color(), -1, []))
+        if chk.ok == 0 {
+            return
+        }
+    } else if prop == "text.italic" {
+        let chk = check_text(who, TextStyle(unset_length(), -1, unset_color(), v, []))
+        if chk.ok == 0 {
+            return
+        }
+    } else if prop == "para.justify" {
+        let chk = check_para(who, ParagraphStyle(v, unset_length(), unset_length(), unset_length(), unset_length()))
+        if chk.ok == 0 {
+            return
+        }
+    } else if prop == "doc.chapter_pagebreak" || prop == "doc.hanging_punctuation" {
+        var cp = -1
+        var hp = -1
+        if prop == "doc.chapter_pagebreak" {
+            cp = v
+        } else {
+            hp = v
+        }
+        let chk = check_doc(who, DocStyle("", -1, cp, unset_length(), "", hp))
+        if chk.ok == 0 {
+            return
+        }
+    }
+    if ctx_xstyle >= 0 {
+        var x = explicit[ctx_xstyle]
+        if prop == "text.weight" {
+            var t = x.text
+            t.weight = v
+            x.text = t
+        } else if prop == "text.italic" {
+            var t2 = x.text
+            t2.italic = v
+            x.text = t2
+        } else if prop == "para.justify" {
+            var p = x.para
+            p.justify = v
+            x.para = p
+        } else if prop == "doc.chapter_pagebreak" {
+            var d = x.doc
+            d.chapter_pagebreak = v
+            x.doc = d
+        } else if prop == "doc.hanging_punctuation" {
+            var d2 = x.doc
+            d2.hanging_punctuation = v
+            x.doc = d2
+        }
+        explicit[ctx_xstyle] = x
+    } else if ctx_rule >= 0 {
+        var r = rules[ctx_rule]
+        if prop == "text.weight" {
+            var t = r.text
+            t.weight = v
+            r.text = t
+        } else if prop == "text.italic" {
+            var t2 = r.text
+            t2.italic = v
+            r.text = t2
+        } else if prop == "para.justify" {
+            var p = r.para
+            p.justify = v
+            r.para = p
+        } else if prop == "doc.chapter_pagebreak" {
+            var d = r.doc
+            d.chapter_pagebreak = v
+            r.doc = d
+        } else if prop == "doc.hanging_punctuation" {
+            var d2 = r.doc
+            d2.hanging_punctuation = v
+            r.doc = d2
+        }
+        rules[ctx_rule] = r
+    }
+}
+
+fn apply_str(rules []StyleRule, explicit []ExplicitStyle, ctx_rule int, ctx_xstyle int, prop str, v str, who str) {
+    if prop == "doc.heading_numbering" {
+        if ctx_xstyle >= 0 {
+            var x = explicit[ctx_xstyle]
+            var d = x.doc
+            d.heading_numbering = v
+            d.heading_numbering_set = 1
+            x.doc = d
+            explicit[ctx_xstyle] = x
+        } else if ctx_rule >= 0 {
+            var r = rules[ctx_rule]
+            var d = r.doc
+            d.heading_numbering = v
+            d.heading_numbering_set = 1
+            r.doc = d
+            rules[ctx_rule] = r
+        }
+    } else if prop == "doc.abstract_style" {
+        let chk = check_doc(who, DocStyle("", -1, -1, unset_length(), v, -1))
+        if chk.ok == 1 {
+            if ctx_xstyle >= 0 {
+                var x = explicit[ctx_xstyle]
+                var d = x.doc
+                d.abstract_style = v
+                x.doc = d
+                explicit[ctx_xstyle] = x
+            } else if ctx_rule >= 0 {
+                var r = rules[ctx_rule]
+                var d = r.doc
+                d.abstract_style = v
+                r.doc = d
+                rules[ctx_rule] = r
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// JSON 序列化（供 ir.at 组装 publication-ir-v1；只序列化已设置字段）
+// ---------------------------------------------------------------------------
+
+fn char_width(cp int) int {
+    if cp < 128 {
+        return 1
+    }
+    if cp < 2048 {
+        return 2
+    }
+    if cp < 65536 {
+        return 3
+    }
+    return 4
+}
+
+fn esc_json(value str) str {
+    let s = value.to(str)
+    var out = ""
+    var i = 0
+    let n = s.len()
+    while i < n {
+        let c = s.char_at(i)
+        let w = char_width(c)
+        if c == 34 {
+            out = out + "\\\""
+            i = i + w
+        } else if c == 92 {
+            out = out + "\\\\"
+            i = i + w
+        } else if c == 10 {
+            out = out + "\\n"
+            i = i + w
+        } else if c == 13 {
+            out = out + "\\r"
+            i = i + w
+        } else if c == 9 {
+            out = out + "\\t"
+            i = i + w
+        } else if c < 32 {
+            out = out + "\\u00" + hex2(c)
+            i = i + w
+        } else {
+            out = out + s.sub(i, i + w)
+            i = i + w
+        }
+    }
+    return out
+}
+
+fn jstr(s str) str {
+    return "\"" + esc_json(s) + "\""
+}
+
+fn jlength(l StyLength) str {
+    if l.unit == "" {
+        return "null"
+    }
+    return "{\"value\":" + milli_str(l.milli) + ",\"unit\":" + jstr(l.unit) + "}"
+}
+
+fn jcolor(c Color) str {
+    if c.r < 0 {
+        return "null"
+    }
+    return "{\"r\":" + c.r.to(str) + ",\"g\":" + c.g.to(str) + ",\"b\":" + c.b.to(str) + ",\"hex\":" + jstr(color_hex(c)) + "}"
+}
+
+fn jfont(names []str) str {
+    if names.len() == 0 {
+        return "null"
+    }
+    var out = "["
+    var i = 0
+    for n in names {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + jstr(n)
+        i = i + 1
+    }
+    return out + "]"
+}
+
+fn jobject(parts []str) str {
+    if parts.len() == 0 {
+        return "{}"
+    }
+    var out = "{"
+    var i = 0
+    for p in parts {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + p
+        i = i + 1
+    }
+    return out + "}"
+}
+
+fn jtext(t TextStyle) str {
+    var parts []str = []
+    if t.size.unit != "" {
+        parts.push("\"size\":" + jlength(t.size))
+    }
+    if t.weight != -1 {
+        parts.push("\"weight\":" + t.weight.to(str))
+    }
+    if t.color.r >= 0 {
+        parts.push("\"color\":" + jcolor(t.color))
+    }
+    if t.italic != -1 {
+        parts.push("\"italic\":" + t.italic.to(str))
+    }
+    if t.font.len() > 0 {
+        parts.push("\"font\":" + jfont(t.font))
+    }
+    return jobject(parts)
+}
+
+fn jpara(p ParagraphStyle) str {
+    var parts []str = []
+    if p.justify != -1 {
+        parts.push("\"justify\":" + p.justify.to(str))
+    }
+    if p.first_line_indent.unit != "" {
+        parts.push("\"first_line_indent\":" + jlength(p.first_line_indent))
+    }
+    if p.leading.unit != "" {
+        parts.push("\"leading\":" + jlength(p.leading))
+    }
+    if p.spacing_above.unit != "" {
+        parts.push("\"spacing_above\":" + jlength(p.spacing_above))
+    }
+    if p.spacing_below.unit != "" {
+        parts.push("\"spacing_below\":" + jlength(p.spacing_below))
+    }
+    return jobject(parts)
+}
+
+fn jdoc(d DocStyle) str {
+    var parts []str = []
+    if d.heading_numbering_set == 1 {
+        parts.push("\"heading_numbering\":" + jstr(d.heading_numbering))
+    }
+    if d.chapter_pagebreak != -1 {
+        parts.push("\"chapter_pagebreak\":" + d.chapter_pagebreak.to(str))
+    }
+    if d.title_size.unit != "" {
+        parts.push("\"title_size\":" + jlength(d.title_size))
+    }
+    if d.abstract_style != "" {
+        parts.push("\"abstract_style\":" + jstr(d.abstract_style))
+    }
+    if d.hanging_punctuation != -1 {
+        parts.push("\"hanging_punctuation\":" + d.hanging_punctuation.to(str))
+    }
+    return jobject(parts)
+}
+
+// 终端选择器序列化（无 parts）
+fn jsel_terminal(s Selector) str {
+    var parts []str = []
+    parts.push("\"kind\":" + jstr(s.kind))
+    if s.type_name != "" {
+        parts.push("\"type_name\":" + jstr(s.type_name))
+    }
+    if s.attr_key != "" {
+        parts.push("\"attr_key\":" + jstr(s.attr_key))
+        parts.push("\"attr_value\":" + jstr(s.attr_value))
+    }
+    if s.id != "" {
+        parts.push("\"id\":" + jstr(s.id))
+    }
+    if s.role != "" {
+        parts.push("\"role\":" + jstr(s.role))
+    }
+    return jobject(parts)
+}
+
+fn jsel(s Selector) str {
+    var parts []str = []
+    parts.push("\"kind\":" + jstr(s.kind))
+    if s.type_name != "" {
+        parts.push("\"type_name\":" + jstr(s.type_name))
+    }
+    if s.attr_key != "" {
+        parts.push("\"attr_key\":" + jstr(s.attr_key))
+        parts.push("\"attr_value\":" + jstr(s.attr_value))
+    }
+    if s.id != "" {
+        parts.push("\"id\":" + jstr(s.id))
+    }
+    if s.role != "" {
+        parts.push("\"role\":" + jstr(s.role))
+    }
+    if s.parts.len() > 0 {
+        var kids = "["
+        var i = 0
+        for p in s.parts {
+            if i > 0 {
+                kids = kids + ","
+            }
+            kids = kids + jsel_terminal(p)
+            i = i + 1
+        }
+        parts.push("\"parts\":" + kids + "]")
+    }
+    return jobject(parts)
+}
+
+fn jrule(r StyleRule) str {
+    var parts []str = []
+    parts.push("\"name\":" + jstr(r.name))
+    parts.push("\"origin\":" + jstr(r.origin))
+    parts.push("\"scope\":" + jstr(r.scope))
+    parts.push("\"scope_depth\":" + r.scope_depth.to(str))
+    parts.push("\"order\":" + r.order.to(str))
+    parts.push("\"selector\":" + jsel(r.selector))
+    parts.push("\"text\":" + jtext(r.text))
+    parts.push("\"para\":" + jpara(r.para))
+    parts.push("\"doc\":" + jdoc(r.doc))
+    return jobject(parts)
+}
+
+fn jrules(rules []StyleRule) str {
+    var out = "["
+    var i = 0
+    for r in rules {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + jrule(r)
+        i = i + 1
+    }
+    return out + "]"
+}
+
+fn jchain(chain []PropSource) str {
+    var out = "["
+    var i = 0
+    for c in chain {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + "{\"prop\":" + jstr(c.prop) + ",\"layer\":" + c.layer.to(str) + ",\"origin\":" + jstr(c.origin) + ",\"rule\":" + jstr(c.rule) + ",\"scope\":" + jstr(c.scope) + ",\"order\":" + c.order.to(str) + "}"
+        i = i + 1
+    }
+    return out + "]"
+}
+
+fn jcomputed(c Computed) str {
+    var parts []str = []
+    parts.push("\"id\":" + jstr(c.id))
+    parts.push("\"text\":" + jtext(c.text))
+    parts.push("\"para\":" + jpara(c.para))
+    parts.push("\"doc\":" + jdoc(c.doc))
+    parts.push("\"sources\":" + jchain(c.chain))
+    return jobject(parts)
+}
+
+fn jcomputed_all(cs []Computed) str {
+    var out = "["
+    var i = 0
+    for c in cs {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + jcomputed(c)
+        i = i + 1
+    }
+    return out + "]"
+}
+
+fn jexplicit(x ExplicitStyle) str {
+    var parts []str = []
+    parts.push("\"id\":" + jstr(x.id))
+    parts.push("\"text\":" + jtext(x.text))
+    parts.push("\"para\":" + jpara(x.para))
+    parts.push("\"doc\":" + jdoc(x.doc))
+    return jobject(parts)
+}
+
+fn jexplicit_all(xs []ExplicitStyle) str {
+    var out = "["
+    var i = 0
+    for x in xs {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + jexplicit(x)
+        i = i + 1
+    }
+    return out + "]"
+}
+
+fn jmatch(log []MatchLog) str {
+    var out = "["
+    var i = 0
+    for m in log {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + "{\"rule\":" + jstr(m.rule) + ",\"origin\":" + jstr(m.origin) + ",\"node\":" + jstr(m.node) + ",\"matched\":" + m.matched.to(str) + "}"
+        i = i + 1
+    }
+    return out + "]"
+}

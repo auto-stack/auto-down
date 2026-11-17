@@ -121,8 +121,9 @@ function sha256File(file) {
 }
 
 function syntheticPublication(text) {
+  const block = { id: 'syn-1', kind: 'paragraph', origin: 'template', text };
   return {
-    schema_version: 'publication-ir-v0',
+    schema_version: 'publication-ir-v1',
     template: 'academic',
     document: { title: '序列化检查', authors: ['排版原型'], abstract: '', lang: 'zh', source: 'synthetic.ad' },
     page: {
@@ -134,16 +135,30 @@ function syntheticPublication(text) {
       header_text: '',
       page_numbers: true,
     },
-    style: {
-      heading_numbering: '',
-      first_line_indent: '0em',
-      chapter_pagebreak: false,
-      justify: false,
-      title_size: '16pt',
-      abstract_style: 'plain',
+    styles: {
+      rules: [
+        {
+          name: 'builtin-typography', origin: 'builtin', scope: '', scope_depth: 0, order: 0,
+          selector: { kind: 'all' }, text: { font: ['Noto Serif SC'] }, para: {}, doc: {},
+        },
+      ],
+      explicit: [],
+      match_log: [],
+      render_rules: [],
     },
+    computed: [
+      {
+        id: 'syn-1',
+        text: { size: { value: 10, unit: 'pt' }, font: ['Noto Serif SC'] },
+        para: { justify: 0, first_line_indent: { value: 0, unit: 'em' }, leading: { value: 0.64, unit: 'em' } },
+        doc: {},
+        sources: [{ prop: 'text.size', layer: 0, origin: 'builtin', rule: 'builtin-body', scope: '', order: 0 }],
+      },
+    ],
     outline: { depth: 0, title: '', entries: [] },
-    content: [{ id: 'syn-1', kind: 'paragraph', origin: 'template', text }],
+    content: [block],
+    presentation: [{ semantic_id: 'syn-1', role: 'paragraph', rule: '', guard: 0, blocks: [block] }],
+    render_diags: [],
   };
 }
 
@@ -243,8 +258,11 @@ async function main() {
     assert(bookColumns === 1, `office_book max columns ${bookColumns}`);
     assert(academicPdf.page_count !== bookPdf.page_count, 'page counts are equal between templates');
     assert(academicIr.page.columns === 2 && bookIr.page.columns === 1, 'IR columns differ from expected');
-    assert(academicIr.style.chapter_pagebreak === false && bookIr.style.chapter_pagebreak === true, 'chapter pagebreak not template-specific');
-    assert(academicIr.style.first_line_indent === '0em' && bookIr.style.first_line_indent === '2em', 'first-line indent not template-specific');
+    // v1：扁平 style 字段迁移为逐块计算样式（同层差异经 computed 断言）
+    const docOf = (ir) => ir.computed[0]?.doc ?? {};
+    const paraOf = (ir, id) => ir.computed.find((c) => c.id === id)?.para ?? {};
+    assert(docOf(academicIr).chapter_pagebreak === 0 && docOf(bookIr).chapter_pagebreak === 1, 'chapter pagebreak not template-specific');
+    assert(paraOf(academicIr, 'block-1').first_line_indent?.value === 0 && paraOf(bookIr, 'block-1').first_line_indent?.value === 2, 'first-line indent not template-specific');
     assert(bookPdf.pages.slice(1).every((page) => page.text.includes('AutoDown 排版原型')), 'office_book header missing on body pages');
     assert(academicPdf.pages.every((page) => !page.text.includes('AutoDown 排版原型')), 'academic PDF carries the book header');
     return {
@@ -527,9 +545,184 @@ async function main() {
     };
   });
 
+
+  // ================================================================ PLAN-083 S-01..S-07
+  // S-01 普通函数按参数产生 Style；非法值可定位拒绝
+  await check('S-01', '样式探针：参数化 Style 工厂/校验拒绝（17 项子检查）', () => {
+    const result = run(AUTO, [path.join(PROTO, 'templates', 'style-probe.at')]);
+    assert(result.code === 0, `style-probe exit ${result.code}: ${result.stderr.slice(-600)}`);
+    const line = result.stdout.split('${BS}n').map((l) => l.trim()).find((l) => l.startsWith('{') && l.includes('all_pass'));
+    assert(line, 'style-probe printed no result JSON');
+    const probe = JSON.parse(line);
+    assert(probe.all_pass === true, `style-probe ${probe.ok_count}/${probe.total} (need all)`);
+    return { probe, command: result.command, exit: result.code };
+  });
+
+  // S-02 同一内容后套不同模板：默认值在最终环境生效，显式属性不丢失
+  const sdAcademicDir = path.join(OUT, 'sd-academic');
+  const sdBookDir = path.join(OUT, 'sd-book');
+  const sdAcademic = publish(['--source', 'samples/style-demo.ad', '--template', 'academic', '--out', sdAcademicDir, '--doc-styles', 'samples/style-rules.json']);
+  const sdBook = publish(['--source', 'samples/style-demo.ad', '--template', 'office_book', '--out', sdBookDir, '--doc-styles', 'samples/style-rules.json', '--header-text', '样式演示']);
+  const sdAcademicIr = sdAcademic.code === 0 ? JSON.parse(readFileSync(path.join(sdAcademicDir, 'publication.json'), 'utf8')) : null;
+  const sdBookIr = sdBook.code === 0 ? JSON.parse(readFileSync(path.join(sdBookDir, 'publication.json'), 'utf8')) : null;
+  const comp = (ir, id) => ir.computed.find((c) => c.id === id);
+  await check('S-02', '模板默认在最终环境生效；节点显式属性跨模板保留', () => {
+    assert(sdAcademic.code === 0 && sdBook.code === 0, 'style-demo publish failed');
+    assert(sdAcademicIr.schema_version === 'publication-ir-v1' && sdBookIr.schema_version === 'publication-ir-v1', 'IR v1 expected');
+    assert(comp(sdAcademicIr, 'block-3').text.size.value === 10, 'academic body default size');
+    assert(comp(sdBookIr, 'block-3').text.size.value === 11, 'office_book body default size');
+    assert(comp(sdAcademicIr, 'block-3').para.first_line_indent.value === 0, 'academic indent default');
+    assert(comp(sdBookIr, 'block-3').para.first_line_indent.value === 2, 'office_book indent default');
+    for (const [name, ir] of [['academic', sdAcademicIr], ['office_book', sdBookIr]]) {
+      const c = comp(ir, 'block-1');
+      assert(c.text.size.value === 15, name + ' explicit 15pt lost');
+      const chain = c.sources.filter((x) => x.prop === 'text.size');
+      assert(chain[chain.length - 1].origin === 'explicit', name + ' explicit not top of chain');
+    }
+    return {
+      academic_default: { size: comp(sdAcademicIr, 'block-3').text.size, indent: comp(sdAcademicIr, 'block-3').para.first_line_indent },
+      book_default: { size: comp(sdBookIr, 'block-3').text.size, indent: comp(sdBookIr, 'block-3').para.first_line_indent },
+      explicit_both: [comp(sdAcademicIr, 'block-1').text.size, comp(sdBookIr, 'block-1').text.size],
+    };
+  });
+
+  // S-03 嵌套作用域覆盖与恢复（computed + PDF 字号分布）
+  const sdBookPdf = pdfProbe(sdBookDir, false);
+  await check('S-03', '子树作用域覆盖（block-5 13pt）与离开恢复（block-9 模板值）', () => {
+    for (const [name, ir, tplSize] of [['academic', sdAcademicIr, 10], ['office_book', sdBookIr, 11]]) {
+      assert(comp(ir, 'block-5').text.size.value === 13, name + ': scoped override lost');
+      assert(comp(ir, 'block-9').text.size.value === tplSize, name + ': scope leaked past the subtree');
+      const chain5 = comp(ir, 'block-5').sources.filter((x) => x.prop === 'text.size');
+      assert(chain5[chain5.length - 1].rule === 'doc-sub-emph', name + ': scoped rule not the winning source');
+      const chain9 = comp(ir, 'block-9').sources.filter((x) => x.prop === 'text.size');
+      assert(!chain9.some((x) => x.rule === 'doc-sub-emph'), name + ': scope applied outside the subtree');
+    }
+    const allSizes = sdBookPdf.pages.flatMap((p) => p.font_sizes.map((f) => f.size));
+    assert(allSizes.includes(13.0), 'PDF lacks 13pt (scoped override)');
+    assert(allSizes.includes(15.0), 'PDF lacks 15pt (explicit attr)');
+    const conclPage = sdBookPdf.pages.find((p) => p.text.includes('结论正文'));
+    assert(conclPage, 'conclusion page not found');
+    assert(!conclPage.font_sizes.some((f) => f.size === 13.0), '13pt leaked to the conclusion page');
+    return {
+      scoped: 13,
+      restored: comp(sdBookIr, 'block-9').text.size.value,
+      pdf_sizes: [...new Set(allSizes)].sort((a, b) => a - b),
+      conclusion_page_sizes: conclPage.font_sizes.map((f) => f.size),
+    };
+  });
+
+  // S-04 选择器与呈现函数：匹配日志 + 定理框 + 章节标题
+  await check('S-04', '选择器匹配可观察；定理框/章节呈现可用（PDF 可见）', () => {
+    const log = sdBookIr.styles.match_log;
+    const hits = (rule, node) => log.find((m) => m.rule === rule && m.node === node)?.matched;
+    assert(hits('doc-sub-emph', 'block-5') === 1, 'scoped rule did not match block-5');
+    for (const outside of ['block-3', 'block-9']) {
+      assert(hits('doc-sub-emph', outside) === 0, 'scoped rule matched ' + outside + ' outside its scope');
+    }
+    const pres = (ir, id) => ir.presentation.find((e) => e.semantic_id === id);
+    const thm = pres(sdBookIr, 'block-6');
+    assert(thm.rule === 'theorem-box', 'theorem render rule not applied');
+    assert(thm.blocks[0].title === '定理 1（一致性条件）', 'theorem box title: ' + thm.blocks[0].title);
+    const ch = pres(sdBookIr, 'block-0');
+    assert(ch.rule === 'chapter-h1' && ch.blocks[0].text === '第二章 方法', 'chapter render not applied/numbered');
+    const aside = pres(sdBookIr, 'block-7');
+    assert(aside.rule === 'aside-note', 'aside render not applied');
+    assert(aside.blocks.some((b) => b.origin === 'render' && b.text === '注：两段提示'), 'aside label missing');
+    assert(aside.blocks.some((b) => b.text === '【两段提示】'), 'next-delegated plain title missing');
+    for (const phrase of ['定理 1（一致性条件）', '第一章 前言', '第二章 方法', '第三章 结论']) {
+      assert(sdBookPdf.text.includes(phrase), 'PDF missing rendered phrase: ' + phrase);
+    }
+    return {
+      theorem: thm.blocks[0].title,
+      chapters: [pres(sdBookIr, 'tpl-preface'), pres(sdBookIr, 'block-0'), pres(sdBookIr, 'block-8')].map((e) => e.blocks[0].text),
+      match_log_entries: log.length,
+    };
+  });
+
+  // S-05 来源与语义保持：outline 不含装饰、映射可追溯、递归保护有界
+  const guardDir = path.join(OUT, 'guard-demo');
+  const guardRun = publish(['--source', 'samples/style-demo.ad', '--template', 'office_book', '--out', guardDir, '--auto-entry', 'templates/render-guard-demo.at', '--skip-pdf']);
+  await check('S-05', '呈现替换保语义；无自匹配死循环（守卫有界 + 诊断）', () => {
+    for (const [name, ir] of [['academic', sdAcademicIr], ['office_book', sdBookIr]]) {
+      for (const entry of ir.outline.entries) {
+        assert(!/第[一二三]章|定理 1/.test(entry.title), name + ': outline entry polluted: ' + entry.title);
+        const src = ir.content.find((b) => b.id === entry.id);
+        assert(src && src.kind === 'heading' && src.text === entry.title, name + ': outline entry ' + entry.id + ' not a semantic heading');
+      }
+    }
+    const bookMap = JSON.parse(readFileSync(path.join(sdBookDir, 'publication.map.json'), 'utf8'));
+    const typLines = readFileSync(path.join(sdBookDir, 'publication.typ'), 'utf8').split('${BS}n');
+    for (const entry of bookMap.blocks.slice(0, 4)) {
+      const range = typLines.slice(entry.typ_start - 1, entry.typ_end).join('${BS}n');
+      assert(range.includes('node: ' + entry.node_id), 'map range lacks node marker ' + entry.node_id);
+    }
+    assert(guardRun.code === 0, 'guard demo exit ' + guardRun.code);
+    const guardIr = JSON.parse(readFileSync(path.join(guardDir, 'publication.json'), 'utf8'));
+    const guards = guardIr.render_diags.filter((d) => d.code === 'W_RENDER_RECURSION_GUARD');
+    assert(guards.length === 2, 'guard diags: ' + guards.length + ' (expected 2)');
+    assert(guards.every((d) => d.rule === 'echo-heading' && d.node.endsWith('!echo')), 'guard diag details');
+    assert(guardIr.presentation.length === guardIr.content.length, 'presentation grew unboundedly');
+    const guarded = guardIr.presentation.filter((e) => e.guard === 1);
+    assert(guarded.length === 2, 'guarded entries: ' + guarded.length);
+    const echo0 = guarded[0];
+    assert(echo0.blocks.length === 2 && echo0.blocks[1].text.endsWith('（回声）'), 'guarded fallback blocks unexpected');
+    return {
+      outline_titles: sdBookIr.outline.entries.map((e) => e.title),
+      guard_diags: guards.length,
+      presentation_entries: guardIr.presentation.length,
+    };
+  });
+
+  // S-06 inspect_style 与后端边界：来源链正确；不支持属性显式诊断
+  const sdBookInspect = JSON.parse(readFileSync(path.join(sdBookDir, 'style-inspect.json'), 'utf8'));
+  const sdBookReport = JSON.parse(readFileSync(path.join(sdBookDir, 'run-report.json'), 'utf8'));
+  await check('S-06', 'inspect_style 链路；未支持属性显式诊断且不丢失', () => {
+    assert(sdBookInspect.schema_version === 'style-inspect-v1', 'inspect schema');
+    assert(sdBookInspect.occurrences.length === sdBookIr.content.length, 'inspect occurrences mismatch');
+    const cap = sdBookInspect.capabilities.find((c) => c.prop === 'doc.hanging_punctuation');
+    assert(cap && cap.supported === false, 'capability table must mark hanging_punctuation unsupported');
+    const b1 = sdBookInspect.occurrences.find((o) => o.id === 'block-1');
+    const sizeChain = b1.props.find((p) => p.prop === 'text.size')?.chain ?? [];
+    assert(sizeChain.map((c) => c.origin).join('>') === 'builtin>template>explicit', 'block-1 chain: ' + JSON.stringify(sizeChain));
+    const b5 = sdBookInspect.occurrences.find((o) => o.id === 'block-5');
+    const b5chain = b5.props.find((p) => p.prop === 'text.size')?.chain ?? [];
+    assert(b5chain[b5chain.length - 1]?.rule === 'doc-sub-emph', 'block-5 winning source');
+    const unsupported = sdBookReport.diagnostics.filter((d) => d.code === 'W_STYLE_UNSUPPORTED');
+    assert(unsupported.length >= 1, 'no W_STYLE_UNSUPPORTED diagnostics');
+    assert(comp(sdBookIr, 'block-3').doc.hanging_punctuation === 1, 'unsupported prop value dropped from IR');
+    assert(b1.unsupported.some((u) => u.prop === 'doc.hanging_punctuation'), 'inspect lacks unsupported entry');
+    return {
+      chain_block1: sizeChain.map((c) => c.origin),
+      unsupported_diags: unsupported.length,
+      kept_in_ir: comp(sdBookIr, 'block-3').doc.hanging_punctuation,
+    };
+  });
+
+  // S-07 082 原型仍可运行：样例×模板矩阵经 v1 迁移全部可跑；旧合同触面在 AC-06 复验
+  const escapeBook = publish(['--source', 'samples/escape.ad', '--template', 'office_book', '--out', path.join(OUT, 'escape-book')]);
+  await check('S-07', '082 样例×模板矩阵仍可运行；迁移的可见变化可观察', () => {
+    assert(escapeBook.code === 0, 'escape office_book exit ' + escapeBook.code);
+    const escapeBookPdf = pdfProbe(path.join(OUT, 'escape-book'), false);
+    const flat = stripWs(escapeBookPdf.text);
+    for (const literal of ['井号#', '《排版原型》']) {
+      assert(flat.includes(stripWs(literal)), 'escape office_book PDF missing ' + literal);
+    }
+    const academicResearchPdf = pdfProbe(academicDir, false);
+    assert(academicResearchPdf.text.includes('时间基准'), 'academic research headings missing');
+    const ch1 = bookIr.presentation.find((e) => e.blocks[0]?.text === '第二章 引言');
+    assert(ch1 && ch1.rule === 'chapter-h1', 'office_book research chapter render missing');
+    const tplPreface = bookIr.presentation.find((e) => e.semantic_id === 'tpl-preface');
+    assert(tplPreface && tplPreface.blocks[0].text === '第一章 前言', 'template-origin chapter not numbered first');
+    return {
+      escape_office_book: 'ok',
+      academic_pages: academicResearchPdf.page_count,
+      office_book_chapter_render: ch1?.blocks[0]?.text,
+    };
+  });
+
   const failed = checks.filter((item) => !item.ok);
   const report = {
-    schema_version: 'plan082-verify-report-v1',
+    schema_version: 'plan083-verify-report-v1',
     generated_at: new Date().toISOString(),
     repo: REPO,
     tools: env,
@@ -538,7 +731,7 @@ async function main() {
   };
   writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 
-  const lines = ['# PLAN-082 验收证据', '', `生成时间：${report.generated_at}`, '', '## 工具', ''];
+  const lines = ['# PLAN-082/083 验收证据', '', `生成时间：${report.generated_at}`, '', '## 工具', ''];
   for (const [key, value] of Object.entries(env)) lines.push(`- ${key}: ${value}`);
   lines.push('', '## 检查', '', '| 检查 | 结果 | 证据 |', '| --- | --- | --- |');
   for (const item of checks) {

@@ -1,19 +1,25 @@
-// PLAN-082 — Publication IR v0 in plain Auto.
+// PLAN-083 — Publication IR v1（publication-ir-v1）in plain Auto.
 //
-// This module is the prototype's document/template boundary:
-//   * Doc        —正文模型（由宿主用现有 engine parser 解析 .ad 后，经 doc-wire v1 传入）
-//   * PubBlock   —模板输出的内容块（带 NodeId 与来源）
-//   * Publication—版本化出版 IR（模板参数、页面配置、结构化样式、目录）
+// 本模块是原型的文档/模板边界（082 的 v0 升级，PLAN-083 迁移）：
+//   * Doc        —正文模型（engine parser → doc-wire v1 传入，与 082 相同）
+//   * PubBlock   —内容块（NodeId 与来源）
+//   * Publication—版本化出版 IR v1：页面配置 + 内容 + 样式规则/计算结果/呈现
 //
-// 模板（academic.at / office_book.at）用普通 fn/type/if/for 把 Doc 投影成 Publication；
-// main.at 把它序列化成 publication.json，宿主只做校验与 Typst 发射，不重新实现模板逻辑。
+// v1 变化（相对 publication-ir-v0）：
+//   * 删除扁平 StyleConfig——样式成为规则系统（style.at）：内置/主题/模板/文档规则/
+//     节点显式逐属性合成（computed），呈现由 render.at 生成 presentation；
+//   * 新增 styles.rules / match_log / computed / explicit / render_rules /
+//     presentation / render_diags；document/page/outline/content 保持。
 //
-// 语言边界（2026-11-14 实测，见 README §限制）：本模块只使用普通类型、函数、if/for/while、
-// List 与字符串操作；不依赖闭包、泛型解码或 json.encode（该 auto.exe 构建的 stdlib
-// provider 缺 callee，实测不可用）。
+// 语言边界与 VM 缺陷规避见 style.at 头注（整数 milli、无 bool.to(str)、
+// 校验类函数不跨 file 导入使用）。
+
+use style: jstr, char_width
+use style: StyleRule, ExplicitStyle, MatchLog, Computed, RenderRule
+use style: jrules, jexplicit_all, jmatch, jcomputed_all, jrender_rules
 
 // ---------------------------------------------------------------------------
-// 正文模型（doc-wire v1）
+// 正文模型（doc-wire v1，与 082 相同）
 // ---------------------------------------------------------------------------
 
 type DocBlock {
@@ -52,7 +58,7 @@ type DocParse {
 }
 
 // ---------------------------------------------------------------------------
-// 出版 IR
+// 出版 IR v1
 // ---------------------------------------------------------------------------
 
 type PageConfig {
@@ -66,15 +72,6 @@ type PageConfig {
     font_family []str
     header_text str
     page_numbers int
-}
-
-type StyleConfig {
-    heading_numbering str
-    first_line_indent str
-    chapter_pagebreak int
-    justify int
-    title_size str
-    abstract_style str
 }
 
 type PubBlock {
@@ -92,6 +89,25 @@ type PubBlock {
     text str
 }
 
+// 呈现条目：一个语义 occurrence 经呈现规则（或默认呈现）产生的可见块序列。
+// semantic_id 指回内容块；rule 为命中规则名（""=默认）；decor 块不进入 outline
+//（outline 永远由语义内容块生成）；guard=1 表示该 occurrence 触发过递归保护。
+type PresEntry {
+    semantic_id str
+    role str
+    rule str
+    guard int
+    blocks []PubBlock
+}
+
+// 呈现层诊断（如 W_RENDER_RECURSION_GUARD）
+type RenderDiag {
+    code str
+    rule str
+    node str
+    detail str
+}
+
 type OutlineEntry {
     id str
     level int
@@ -102,15 +118,21 @@ type Publication {
     template str
     meta DocMeta
     page PageConfig
-    style StyleConfig
     outline_depth int
     outline_title str
     content []PubBlock
     outline []OutlineEntry
+    rules []StyleRule
+    explicit []ExplicitStyle
+    match_log []MatchLog
+    computed []Computed
+    render_rules []RenderRule
+    presentation []PresEntry
+    render_diags []RenderDiag
 }
 
 // ---------------------------------------------------------------------------
-// 模板参数
+// 模板参数（与 082 相同）
 // ---------------------------------------------------------------------------
 
 type Options {
@@ -169,21 +191,6 @@ fn is_digits(value str) bool {
     return ok
 }
 
-// 注：VM 的 str.len() 是 UTF-8 字节长度，sub(a,b) 也按字节切；char_at(i) 返回 i 处的码点。
-// 因此按字符复制时必须自己算字节宽度（2026-11-14 实测：按索引 +1 切片会把中文切成 NUL）。
-fn char_width(cp int) int {
-    if cp < 128 {
-        return 1
-    }
-    if cp < 2048 {
-        return 2
-    }
-    if cp < 65536 {
-        return 3
-    }
-    return 4
-}
-
 // `\t` `\n` `\r` `\\` 由宿主在字段内转义；其余控制字符宿主已归一为空格。
 // 注：VM 的 split() 产物是 DStr，先 .to(str) 归一，否则 sub() 可能返回 None（2026-11-14 实测）。
 fn unescape(value str) str {
@@ -238,7 +245,7 @@ fn index_or(xs []str, i int, fallback str) str {
 }
 
 // ---------------------------------------------------------------------------
-// doc-wire v1 解析
+// doc-wire v1 解析（与 082 相同）
 // ---------------------------------------------------------------------------
 
 fn parse_doc(wire str) DocParse {
@@ -400,7 +407,7 @@ fn parse_doc(wire str) DocParse {
 }
 
 // ---------------------------------------------------------------------------
-// request.txt（key=value，宿主写入）
+// request.txt（key=value，宿主写入；与 082 相同）
 // ---------------------------------------------------------------------------
 
 fn default_options(template str) Options {
@@ -495,61 +502,8 @@ fn outline_of(blocks []PubBlock, depth int) []OutlineEntry {
 }
 
 // ---------------------------------------------------------------------------
-// JSON 序列化（IR 可检查；宿主只做 JSON.parse + schema 校验）
+// JSON 序列化（v1；字符串转义复用 style.at 的 jstr/char_width）
 // ---------------------------------------------------------------------------
-
-fn hex_digit(v int) str {
-    let digits = "0123456789abcdef"
-    return digits.sub(v, v + 1)
-}
-
-fn hex4(v int) str {
-    let a = v / 4096
-    let r1 = v - a * 4096
-    let b = r1 / 256
-    let r2 = r1 - b * 256
-    let c = r2 / 16
-    let d = r2 - c * 16
-    return hex_digit(a) + hex_digit(b) + hex_digit(c) + hex_digit(d)
-}
-
-fn esc_json(value str) str {
-    let s = value.to(str)
-    var out = ""
-    var i = 0
-    let n = s.len()
-    while i < n {
-        let c = s.char_at(i)
-        let w = char_width(c)
-        if c == 34 {
-            out = out + "\\\""
-            i = i + w
-        } else if c == 92 {
-            out = out + "\\\\"
-            i = i + w
-        } else if c == 10 {
-            out = out + "\\n"
-            i = i + w
-        } else if c == 13 {
-            out = out + "\\r"
-            i = i + w
-        } else if c == 9 {
-            out = out + "\\t"
-            i = i + w
-        } else if c < 32 {
-            out = out + "\\u" + hex4(c)
-            i = i + w
-        } else {
-            out = out + s.sub(i, i + w)
-            i = i + w
-        }
-    }
-    return out
-}
-
-fn jstr(s str) str {
-    return "\"" + esc_json(s) + "\""
-}
 
 fn jstrs(xs []str) str {
     var out = "["
@@ -613,6 +567,41 @@ fn jblocks(blocks []PubBlock) str {
     return out + "]"
 }
 
+fn jpres_entry(e PresEntry) str {
+    var s = "{\"semantic_id\":" + jstr(e.semantic_id)
+    s = s + ",\"role\":" + jstr(e.role)
+    s = s + ",\"rule\":" + jstr(e.rule)
+    s = s + ",\"guard\":" + e.guard.to(str)
+    s = s + ",\"blocks\":" + jblocks(e.blocks)
+    return s + "}"
+}
+
+fn jpresentation(entries []PresEntry) str {
+    var out = "["
+    var i = 0
+    for e in entries {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + jpres_entry(e)
+        i = i + 1
+    }
+    return out + "]"
+}
+
+fn jdiags(diags []RenderDiag) str {
+    var out = "["
+    var i = 0
+    for d in diags {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + "{\"code\":" + jstr(d.code) + ",\"rule\":" + jstr(d.rule) + ",\"node\":" + jstr(d.node) + ",\"detail\":" + jstr(d.detail) + "}"
+        i = i + 1
+    }
+    return out + "]"
+}
+
 fn joutline(entries []OutlineEntry) str {
     var out = "["
     var i = 0
@@ -628,7 +617,7 @@ fn joutline(entries []OutlineEntry) str {
 
 fn json_publication(p Publication) str {
     var s = "{\"ok\":true,\"publication\":{"
-    s = s + "\"schema_version\":\"publication-ir-v0\""
+    s = s + "\"schema_version\":\"publication-ir-v1\""
     s = s + ",\"template\":" + jstr(p.template)
     s = s + ",\"document\":{\"title\":" + jstr(p.meta.title)
     s = s + ",\"authors\":" + jstrs(p.meta.authors)
@@ -645,16 +634,17 @@ fn json_publication(p Publication) str {
     s = s + ",\"font_family\":" + jstrs(p.page.font_family)
     s = s + ",\"header_text\":" + jstr(p.page.header_text)
     s = s + ",\"page_numbers\":" + jbool(p.page.page_numbers) + "}"
-    s = s + ",\"style\":{\"heading_numbering\":" + jstr(p.style.heading_numbering)
-    s = s + ",\"first_line_indent\":" + jstr(p.style.first_line_indent)
-    s = s + ",\"chapter_pagebreak\":" + jbool(p.style.chapter_pagebreak)
-    s = s + ",\"justify\":" + jbool(p.style.justify)
-    s = s + ",\"title_size\":" + jstr(p.style.title_size)
-    s = s + ",\"abstract_style\":" + jstr(p.style.abstract_style) + "}"
+    s = s + ",\"styles\":{\"rules\":" + jrules(p.rules)
+    s = s + ",\"explicit\":" + jexplicit_all(p.explicit)
+    s = s + ",\"match_log\":" + jmatch(p.match_log)
+    s = s + ",\"render_rules\":" + jrender_rules(p.render_rules) + "}"
+    s = s + ",\"computed\":" + jcomputed_all(p.computed)
     s = s + ",\"outline\":{\"depth\":" + p.outline_depth.to(str)
     s = s + ",\"title\":" + jstr(p.outline_title)
     s = s + ",\"entries\":" + joutline(p.outline) + "}"
     s = s + ",\"content\":" + jblocks(p.content)
+    s = s + ",\"presentation\":" + jpresentation(p.presentation)
+    s = s + ",\"render_diags\":" + jdiags(p.render_diags)
     s = s + "}}"
     return s
 }

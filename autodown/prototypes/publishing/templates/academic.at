@@ -1,10 +1,46 @@
-// PLAN-082 — academic 模板（普通 Auto 函数）
+// PLAN-083 — academic 模板（普通 Auto 函数；样式以规则声明，v1）
 //
-// 页面：可选栏数（默认 2 栏，`columns` 参数可改），A4，无页眉，页脚页码。
-// 结构：标题/作者/摘要区由模板样式控制；正文使用 1.1 编号，目录深度 2。
-// 模板只做投影与样式参数，不拼 Typst 源码；发射由 host/emit-typst.mjs 完成。
+// 082 的扁平 StyleConfig 迁移为模板层规则（origin=template，在 builtin/theme 之上）：
+//   * tpl-academic-body ：正文段落字号（来自 --font-size）、两端对齐、无首行缩进；
+//   * tpl-academic-doc  ：标题编号 "1.1"、标题区字号 20pt、摘要 boxed、章节不另起页；
+// 呈现规则：theorem-box（定理框）、aside-note（短提示侧注，长正文 next 委托
+// callout-plain）、callout-plain（纯段落提示）。academic 不改标题呈现（编号走
+// Typst 原生 heading numbering，与 082 输出一致）。
 
-use ir: Doc, Options, Publication, PageConfig, StyleConfig, PubBlock, to_pub, outline_of
+use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of
+use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, StyLength, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role, sel_and, sel_attr, empty_text, empty_para
+
+fn academic_body_rule(opts Options) StyleRule {
+    // 段落：字号采纳参数（默认 10pt），两端对齐，首行缩进 0
+    var text = TextStyle(len_of(opts.font_size), -1, unset_color(), -1, [])
+    var para = ParagraphStyle(1, em(0, 0), unset_length(), unset_length(), unset_length())
+    return style_rule("tpl-academic-body", "template", "", 0, sel_type("paragraph"), text, para, empty_doc_pub())
+}
+
+fn academic_doc_rule() StyleRule {
+    var doc = DocStyle("1.1", 1, 0, pt(20, 0), "boxed", -1)
+    return style_rule("tpl-academic-doc", "template", "", 1, sel_type("heading"), empty_text_pub(), empty_para_pub(), doc)
+}
+
+fn empty_doc_pub() DocStyle {
+    return DocStyle("", -1, -1, unset_length(), "", -1)
+}
+
+fn empty_text_pub() TextStyle {
+    return TextStyle(unset_length(), -1, unset_color(), -1, [])
+}
+
+fn empty_para_pub() ParagraphStyle {
+    return ParagraphStyle(-1, unset_length(), unset_length(), unset_length(), unset_length())
+}
+
+fn academic_render_rules() []RenderRule {
+    var rules []RenderRule = []
+    rules.push(render_rule("theorem-box", 20, sel_role("theorem")))
+    rules.push(render_rule("aside-note", 15, sel_role("tip")))
+    rules.push(render_rule("callout-plain", 5, sel_type("callout")))
+    return rules
+}
 
 fn build_academic(doc Doc, opts Options) Publication {
     let page = PageConfig(
@@ -19,11 +55,28 @@ fn build_academic(doc Doc, opts Options) Publication {
         opts.header_text,
         1
     )
-    let style = StyleConfig("1.1", "0em", 0, 1, "20pt", "boxed")
     var content []PubBlock = []
     for b in doc.blocks {
         content.push(to_pub(b))
     }
+    var rules = []
+    rules.push(academic_body_rule(opts))
+    rules.push(academic_doc_rule())
     let outline = outline_of(content, 2)
-    return Publication("academic", doc.meta, page, style, 2, "目录", content, outline)
+    return Publication(
+        "academic",
+        doc.meta,
+        page,
+        2,
+        "目录",
+        content,
+        outline,
+        rules,
+        [],
+        [],
+        [],
+        academic_render_rules(),
+        [],
+        []
+    )
 }

@@ -94,6 +94,23 @@ def char_x_clusters(page):
     ]
 
 
+def font_sizes(page):
+    """按 span 统计字号分布（pt）：[{size, chars}]，降序。样式变化的 PDF 级证据。"""
+    counts = {}
+    raw = page.get_text("rawdict")
+    for block in raw.get("blocks", []):
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                size = round(float(span.get("size", 0)), 1)
+                if size <= 0:
+                    continue
+                n = sum(1 for ch in span.get("chars", []) if ch.get("c", "").strip() != "")
+                if n:
+                    counts[size] = counts.get(size, 0) + n
+    out = [{"size": k, "chars": v} for k, v in sorted(counts.items(), key=lambda kv: -kv[1])]
+    return out
+
+
 def main():
     pdf_path = sys.argv[1]
     out_path = sys.argv[2]
@@ -111,6 +128,7 @@ def main():
                 "chars": len(text),
                 "x_clusters": line_start_clusters(page),
                 "char_clusters": char_x_clusters(page),
+                "font_sizes": font_sizes(page),
             }
         )
         if png_dir:

@@ -1,0 +1,44 @@
+// PLAN-083 — 递归保护负例入口（--auto-entry 专用，不参与正常出版）
+//
+// 注册自匹配呈现规则 echo-heading（selector=attr level 1，渲染函数输出一个新的
+// 一级标题并委托子块）：无守卫时会无限自匹配；apply_render 的活动 (rule, occurrence)
+// 保护应回落默认呈现并产生 W_RENDER_RECURSION_GUARD，输出有界。
+// 输入/输出协议与 main.at 相同（env 输入、stdout JSON 输出）。
+
+use env: get
+use ir: parse_doc, parse_options, json_publication, json_error, Publication, PageConfig, PubBlock, to_pub, outline_of
+use render: finalize
+use style: render_rule, sel_attr, RenderRule
+
+fn guard_demo_rules() []RenderRule {
+    var rules []RenderRule = []
+    rules.push(render_rule("echo-heading", 20, sel_attr("level", "1")))
+    return rules
+}
+
+fn main() {
+    let wire = get("PLAN083_WIRE")
+    let request = get("PLAN083_REQUEST")
+    let parsed_doc = parse_doc(wire)
+    if parsed_doc.ok == 0 {
+        print(json_error(parsed_doc.code, parsed_doc.message))
+        return
+    }
+    let opts = parse_options(request)
+    if opts.ok == 0 {
+        print(json_error(opts.code, opts.message))
+        return
+    }
+    var content []PubBlock = []
+    for b in parsed_doc.doc.blocks {
+        content.push(to_pub(b))
+    }
+    var base_page = PageConfig("a4", "2cm", "2cm", "2cm", "2cm", 1, "10pt", ["Noto Serif SC"], "", 0)
+    var base = Publication("office_book", parsed_doc.doc.meta, base_page, 0, "", content, outline_of(content, 0), [], [], [], [], guard_demo_rules(), [], [])
+    let fin = finalize(base, "")
+    if fin.ok == 0 {
+        print(json_error(fin.code, fin.message))
+        return
+    }
+    print(json_publication(fin.result))
+}

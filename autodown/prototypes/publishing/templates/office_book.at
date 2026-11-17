@@ -1,11 +1,37 @@
-// PLAN-082 — office_book 模板（普通 Auto 函数）
+// PLAN-083 — office_book 模板（普通 Auto 函数；样式以规则声明，v1）
 //
-// 页面：单栏（模板固定），A4，页眉为书籍标题，页脚页码。
-// 结构：章节（1 级标题）另起一页，正文首行缩进 2em，`1.` 编号，目录深度 2，
-// 并在正文前合成"前言"与摘要段（origin=template，与正文来源区分）。
-// 参数（font_size/margin/header_text/paper）来自宿主命令行；columns 对本书模板固定为 1。
+// 迁移说明（相对 082 可见输出）：
+//   * 一级标题改由呈现规则 chapter-h1 渲染为“第N章 标题”（编号按出版树顺序，
+//     含模板前言标题），发射器对该标题局部关闭 Typst 编号；
+//   * h2/h3 保留 Typst 原生 "1." 编号（与 082 相同）；
+//   * 首行缩进 2em、两端对齐、章节另起页、标题区 22pt、摘要 plain 等均成为
+//     模板层规则属性（来源可在 inspect_style 中追溯）。
 
-use ir: Doc, Options, Publication, PageConfig, StyleConfig, PubBlock, to_pub, outline_of
+use ir: Doc, Options, Publication, PageConfig, PubBlock, to_pub, outline_of
+use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role, sel_attr
+
+fn book_body_rule(opts Options) StyleRule {
+    var text = TextStyle(len_of(opts.font_size), -1, unset_color(), -1, [])
+    var para = ParagraphStyle(1, em(2, 0), unset_length(), unset_length(), unset_length())
+    return style_rule("tpl-book-body", "template", "", 0, sel_type("paragraph"), text, para, DocStyle("", -1, -1, unset_length(), "", -1))
+}
+
+fn book_doc_rule() StyleRule {
+    // 标题编号交由呈现规则：h1 由 chapter-h1 渲染“第N章”；h2/h3 不再使用 Typst
+    // 原生编号（编号在一个层级被渲染规则接管时，后端嵌套计数与呈现编号会冲突——
+    // 实测 h2 出现 “0.1.”；v1 以不编号为明确边界，层次编号后续计划再评估）。
+    var doc = DocStyle("", -1, 1, pt(22, 0), "plain", -1)
+    return style_rule("tpl-book-doc", "template", "", 1, sel_type("heading"), TextStyle(unset_length(), -1, unset_color(), -1, []), ParagraphStyle(-1, unset_length(), unset_length(), unset_length(), unset_length()), doc)
+}
+
+fn book_render_rules() []RenderRule {
+    var rules []RenderRule = []
+    rules.push(render_rule("chapter-h1", 20, sel_attr("level", "1")))
+    rules.push(render_rule("theorem-box", 20, sel_role("theorem")))
+    rules.push(render_rule("aside-note", 15, sel_role("tip")))
+    rules.push(render_rule("callout-plain", 5, sel_type("callout")))
+    return rules
+}
 
 fn build_office_book(doc Doc, opts Options) Publication {
     // 默认保留书籍的非对称页边距；显式给出 --margin 时四边统一采纳该值（不静默忽略参数）。
@@ -31,7 +57,6 @@ fn build_office_book(doc Doc, opts Options) Publication {
         opts.header_text,
         1
     )
-    let style = StyleConfig("1.", "2em", 1, 1, "22pt", "plain")
     var content []PubBlock = []
     content.push(PubBlock("tpl-preface", "heading", "template", 1, 0, [], 0, [], "", "", [], "前言"))
     if doc.meta.abstract != "" {
@@ -40,6 +65,24 @@ fn build_office_book(doc Doc, opts Options) Publication {
     for b in doc.blocks {
         content.push(to_pub(b))
     }
+    var rules = []
+    rules.push(book_body_rule(opts))
+    rules.push(book_doc_rule())
     let outline = outline_of(content, 2)
-    return Publication("office_book", doc.meta, page, style, 2, "目 录", content, outline)
+    return Publication(
+        "office_book",
+        doc.meta,
+        page,
+        2,
+        "目 录",
+        content,
+        outline,
+        rules,
+        [],
+        [],
+        [],
+        book_render_rules(),
+        [],
+        []
+    )
 }

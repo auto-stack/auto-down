@@ -1,42 +1,39 @@
-// PLAN-082 — prototype entry: Auto 求值 doc-wire → publication.json
+// PLAN-083 — prototype entry: Auto 求值 doc-wire + styles-wire → publication.json（v1，stdout）
 //
-// 宿主（host/publish.mjs）把解析后的正文写入 <run>/doc.wire、把模板参数写入 <run>/request.txt，
-// 通过环境变量 PLAN082_RUN_DIR 指定运行目录，然后执行：auto templates/main.at
+// 输入经环境变量（宿主已读取文件）：
+//   PLAN083_WIRE    doc.wire 内容
+//   PLAN083_REQUEST request.txt 内容
+//   PLAN083_STYLES  styles.wire 内容（文档规则/显式属性，可为空）
+// 输出：publication JSON 信封打印到 stdout（宿主捕获写盘）。
 //
-// 本文件是普通 Auto 脚本入口；模板投影在 academic.at / office_book.at，
-// 数据模型与 JSON 序列化在 ir.at。全部模板逻辑由 Auto 执行，宿主不复制这些逻辑。
+// 为什么不经 file 模块读写：本机 auto 构建存在确定性 VM 缺陷——入口文件 use file
+// 时，被调用模块中部分“字段比较/子函数调用”形态的函数被错误编译（compose_styles
+// 的来源链出现幻影条目、校验函数返回错值；不导入 file 则全部正确；最小复现在
+// PLAN-083 记录）。因此整个 Auto 调用图不导入 file，I/O 由宿主承担。
 
 use env: get
-use file: read_text, write_text
-use ir: Publication, parse_doc, parse_options, json_publication, json_error
-use academic: build_academic
-use office_book: build_office_book
+use ir: parse_doc, parse_options, json_publication, json_error
+use render: build_and_finalize
 
 fn main() {
-    let dir = get("PLAN082_RUN_DIR")
-    if dir == "" {
-        print("E_RUN_DIR: PLAN082_RUN_DIR is not set")
-        return
-    }
-    let wire = read_text(dir + "/doc.wire")
-    let request = read_text(dir + "/request.txt")
+    let wire = get("PLAN083_WIRE")
+    let request = get("PLAN083_REQUEST")
+    let styles_wire = get("PLAN083_STYLES")
     let parsed_options = parse_options(request)
     if parsed_options.ok == 0 {
-        write_text(dir + "/publication.json", json_error(parsed_options.code, parsed_options.message))
+        print(json_error(parsed_options.code, parsed_options.message))
         return
     }
     let parsed_doc = parse_doc(wire)
     if parsed_doc.ok == 0 {
-        write_text(dir + "/publication.json", json_error(parsed_doc.code, parsed_doc.message))
+        print(json_error(parsed_doc.code, parsed_doc.message))
         return
     }
     let opts = parsed_options.options
-    let doc = parsed_doc.doc
     // 模板参数适用性：不静默忽略显式参数。office_book 固定单栏正文，显式多栏必须报错。
     if opts.template == "office_book" {
         if opts.columns_explicit == 1 && opts.columns != 1 {
-            write_text(
-                dir + "/publication.json",
+            print(
                 json_error(
                     "E_OPTION_UNSUPPORTED",
                     "office_book fixes a single-column body; --columns " + opts.columns.to(str) + " is not supported"
@@ -45,15 +42,10 @@ fn main() {
             return
         }
     }
-    if opts.template == "academic" {
-        let pub = build_academic(doc, opts)
-        write_text(dir + "/publication.json", json_publication(pub))
-        print("ok template=academic blocks=" + pub.content.len().to(str))
-    } else if opts.template == "office_book" {
-        let pub = build_office_book(doc, opts)
-        write_text(dir + "/publication.json", json_publication(pub))
-        print("ok template=office_book blocks=" + pub.content.len().to(str))
-    } else {
-        write_text(dir + "/publication.json", json_error("E_TEMPLATE_UNKNOWN", "unknown template: " + opts.template))
+    let fin = build_and_finalize(opts.template, parsed_doc.doc, opts, styles_wire)
+    if fin.ok == 0 {
+        print(json_error(fin.code, fin.message))
+        return
     }
+    print(json_publication(fin.result))
 }

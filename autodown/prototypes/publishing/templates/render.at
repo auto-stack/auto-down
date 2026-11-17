@@ -1,0 +1,455 @@
+// PLAN-083 — 呈现规则应用（普通 Auto 函数；无闭包/函数值）
+//
+// 职责（Design 10 §7.2 / PLAN-083 T-04）：
+//   * 每个 occurrence 选一条最高优先级的匹配呈现规则（同优先级先声明优先）；
+//   * 渲染函数是普通 fn，按规则名 if/else 派发（当前 VM 无函数值）；
+//   * 显式委托：aside-note 对长正文调用 render_next（下一个匹配的低优先级规则），
+//     或 render_default（默认呈现）——不做隐式多次包裹；
+//   * 递归保护：活动 (rule, occurrence) 不再次匹配同一规则——echo-heading 的
+//     输出若再命中自身，回落默认呈现并记 W_RENDER_RECURSION_GUARD；
+//   * 语义保持：条目携带 semantic_id/role；编号按出版树（内容）逻辑顺序，
+//     与函数调用顺序无关；装饰块不进入 outline（outline 由语义内容生成）。
+//
+// 编号：chapter = 内容顺序中第 N 个一级标题（含模板合成前言标题）；
+//       theorem = 内容顺序中第 N 个 role=theorem 的提示块。
+
+use ir: PubBlock, PresEntry, RenderDiag, Publication, Doc, Options
+use academic: build_academic
+use office_book: build_office_book
+use style: Selector, RenderRule, sel_matches, node_view, StyleNode
+use style: StyleRule, ExplicitStyle, MatchLog, Computed
+use style: builtin_rules, theme_print, compose_styles, match_log_of, validate_rules, parse_styles_wire
+
+// ---------------------------------------------------------------------------
+// 结果与上下文
+// ---------------------------------------------------------------------------
+
+type RenderResult {
+    entries []PresEntry
+    diags []RenderDiag
+    chapters int
+    theorems int
+}
+
+// 单块渲染输出（可能带一条守卫诊断）
+type ChildOut {
+    blocks []PubBlock
+    guarded int
+    diag RenderDiag
+    has_diag int
+}
+
+// ---------------------------------------------------------------------------
+// 规则选择
+// ---------------------------------------------------------------------------
+
+fn find_rule_by_name(rules []RenderRule, name str) RenderRule {
+    for r in rules {
+        if r.name == name {
+            return r
+        }
+    }
+    return RenderRule("", -1, style_empty_sel())
+}
+
+// style.at 的空选择器需要占位；此处从 style 再导一份哨兵（kind="none" 永不匹配）
+fn style_empty_sel() Selector {
+    return Selector("none", "", "", "", "", "", [])
+}
+
+// 最高优先级匹配规则（严格大于才替换 → 同优先级先声明者胜）
+fn best_rule_for(rules []RenderRule, n StyleNode) RenderRule {
+    var best = RenderRule("", -1, style_empty_sel())
+    for r in rules {
+        if sel_matches(r.selector, n) == true {
+            if r.priority > best.priority {
+                best = r
+            }
+        }
+    }
+    return best
+}
+
+// 低于 below 的最高优先级匹配规则（显式 next 委托用）
+fn next_rule_below(rules []RenderRule, n StyleNode, below int) RenderRule {
+    var best = RenderRule("", -1, style_empty_sel())
+    for r in rules {
+        if r.priority < below {
+            if sel_matches(r.selector, n) == true {
+                if r.priority > best.priority {
+                    best = r
+                }
+            }
+        }
+    }
+    return best
+}
+
+// ---------------------------------------------------------------------------
+// 默认与各渲染函数（普通 fn；返回可见块序列）
+// ---------------------------------------------------------------------------
+
+fn default_render(b PubBlock) []PubBlock {
+    var out []PubBlock = []
+    out.push(b)
+    return out
+}
+
+// 中文数字（1..99；超出回退阿拉伯）。注意：str.sub 按字节切，中文必须用列表索引。
+fn cn_digit(n int) str {
+    var names []str = []
+    names.push("〇")
+    names.push("一")
+    names.push("二")
+    names.push("三")
+    names.push("四")
+    names.push("五")
+    names.push("六")
+    names.push("七")
+    names.push("八")
+    names.push("九")
+    if n >= 0 {
+        if n < 10 {
+            return names[n]
+        }
+    }
+    return n.to(str)
+}
+
+fn cn_num(n int) str {
+    if n <= 0 || n > 99 {
+        return n.to(str)
+    }
+    if n < 10 {
+        return cn_digit(n)
+    }
+    let tens = n / 10
+    let ones = n - tens * 10
+    var out = ""
+    if tens > 1 {
+        out = cn_digit(tens)
+    }
+    out = out + "十"
+    if ones > 0 {
+        out = out + cn_digit(ones)
+    }
+    return out
+}
+
+// chapter-h1：一级标题 → “第N章 原文”（编号按内容顺序；视觉替换保留原标题文本）
+fn render_chapter_h1(b PubBlock, number int) []PubBlock {
+    var out []PubBlock = []
+    var text = "第" + cn_num(number) + "章 " + b.text
+    out.push(PubBlock(b.id, "heading", b.origin, b.level, 0, [], 0, [], "", "", [], text))
+    return out
+}
+
+// theorem-box：定理提示块 → 编号定理框（标题“定理 N（原文标题）”，正文原样）
+fn render_theorem_box(b PubBlock, number int) []PubBlock {
+    var out []PubBlock = []
+    var title = "定理 " + number.to(str)
+    if b.title != "" {
+        title = title + "（" + b.title + "）"
+    }
+    out.push(PubBlock(b.id, "callout", b.origin, 0, 0, [], 0, [], "render:theorem", title, b.body, ""))
+    return out
+}
+
+// aside-note：短提示块 → 紧凑侧注一行；长正文 → 侧注标记 + 显式 next 委托
+//（下一个匹配的低优先级规则 callout-plain；无则默认）
+fn render_aside_note(b PubBlock, rules []RenderRule) []PubBlock {
+    var out []PubBlock = []
+    var nv = node_view(0, b.id, b.kind, b.level, b.callout_type)
+    if b.body.len() <= 1 {
+        var text = "注"
+        if b.title != "" {
+            text = text + "（" + b.title + "）"
+        }
+        text = text + "："
+        if b.body.len() == 1 {
+            text = text + b.body[0]
+        }
+        out.push(PubBlock(b.id, "paragraph", "render", 0, 0, [], 0, [], "", "", [], text))
+        return out
+    }
+    // 长正文：侧注标记行 + next 委托正文
+    var label = "注：" + b.title
+    out.push(PubBlock(b.id + "!aside", "paragraph", "render", 0, 0, [], 0, [], "", "", [], label))
+    let nxt = next_rule_below(rules, nv, 15)
+    var rest []PubBlock = []
+    if nxt.name == "" {
+        rest = default_render(b)
+    } else {
+        rest = dispatch_render(nxt.name, b, 0, rules)
+    }
+    for r in rest {
+        out.push(r)
+    }
+    return out
+}
+
+// callout-plain：提示块 → 纯段落（无框）
+fn render_callout_plain(b PubBlock) []PubBlock {
+    var out []PubBlock = []
+    if b.title != "" {
+        out.push(PubBlock(b.id + "!t", "paragraph", "render", 0, 0, [], 0, [], "", "", [], "【" + b.title + "】"))
+    }
+    for p in b.body {
+        out.push(PubBlock(b.id, "paragraph", b.origin, 0, 0, [], 0, [], "", "", [], p))
+    }
+    if out.len() == 0 {
+        out.push(b)
+    }
+    return out
+}
+
+// echo-heading：守卫演示（负例专用）——输出一个再匹配自身的新标题并委托子块，
+// 触发 (rule, occurrence) 活动保护。
+fn render_echo_heading(b PubBlock, rules []RenderRule, active str) []PubBlock {
+    var out []PubBlock = []
+    out.push(PubBlock(b.id, "heading", b.origin, b.level, 0, [], 0, [], "", "", [], b.text))
+    var echo = PubBlock(b.id + "!echo", "heading", "render", b.level, 0, [], 0, [], "", "", [], b.text + "（回声）")
+    var children []PubBlock = []
+    children.push(echo)
+    let child = render_child_guarded(children, rules, active, b.id)
+    // 守卫诊断由 apply_render 汇总；此处只展开块
+    for c in child.blocks {
+        out.push(c)
+    }
+    return out
+}
+
+// ---------------------------------------------------------------------------
+// 派发（按规则名；普通 if/else）
+// ---------------------------------------------------------------------------
+
+fn dispatch_render(name str, b PubBlock, number int, rules []RenderRule) []PubBlock {
+    if name == "chapter-h1" {
+        return render_chapter_h1(b, number)
+    }
+    if name == "theorem-box" {
+        return render_theorem_box(b, number)
+    }
+    if name == "aside-note" {
+        return render_aside_note(b, rules)
+    }
+    if name == "callout-plain" {
+        return render_callout_plain(b)
+    }
+    if name == "echo-heading" {
+        return render_echo_heading(b, rules, "echo-heading")
+    }
+    return default_render(b)
+}
+
+// 子块委托渲染：活动规则守卫（同规则不再匹配 → 默认呈现 + 诊断）
+fn render_child_guarded(children []PubBlock, rules []RenderRule, active str, parent str) ChildOut {
+    var out = ChildOut([], 0, RenderDiag("", "", "", ""), 0)
+    let active_rule = find_rule_by_name(rules, active)
+    for c in children {
+        let nv = node_view(0, c.id, c.kind, c.level, c.callout_type)
+        if active_rule.name != "" {
+            if sel_matches(active_rule.selector, nv) == true {
+                // 递归保护：回落默认呈现
+                out.guarded = 1
+                out.has_diag = 1
+                out.diag = RenderDiag("W_RENDER_RECURSION_GUARD", active, c.id, "rule re-matched its own derived node; default rendering used")
+                var fallback = default_render(c)
+                for f in fallback {
+                    out.blocks.push(f)
+                }
+            } else {
+                let best = best_rule_for(rules, nv)
+                var rendered []PubBlock = []
+                if best.name == "" {
+                    rendered = default_render(c)
+                } else {
+                    rendered = dispatch_render(best.name, c, 0, rules)
+                }
+                for r in rendered {
+                    out.blocks.push(r)
+                }
+            }
+        } else {
+            var rendered2 = default_render(c)
+            for r2 in rendered2 {
+                out.blocks.push(r2)
+            }
+        }
+    }
+    return out
+}
+
+// ---------------------------------------------------------------------------
+// 主入口
+// ---------------------------------------------------------------------------
+
+fn apply_render(rules []RenderRule, content []PubBlock) RenderResult {
+    var entries []PresEntry = []
+    var diags []RenderDiag = []
+    var chapters = 0
+    var theorems = 0
+    var idx = 0
+    for b in content {
+        let nv = node_view(idx, b.id, b.kind, b.level, b.callout_type)
+        // 编号按内容（出版树）顺序先行推进
+        var number = 0
+        if b.kind == "heading" && b.level == 1 {
+            chapters = chapters + 1
+            number = chapters
+        }
+        if nv.role == "theorem" {
+            theorems = theorems + 1
+            number = theorems
+        }
+        let best = best_rule_for(rules, nv)
+        var entry = PresEntry(b.id, nv.role, "", 0, [])
+        if best.name == "" {
+            entry.rule = ""
+            var blocks = default_render(b)
+            for x in blocks {
+                entry.blocks.push(x)
+            }
+        } else {
+            entry.rule = best.name
+            if best.name == "echo-heading" {
+                // 守卫路径：echo-heading 内部委托子块，诊断向上冒泡
+                var blocks2 = dispatch_render(best.name, b, number, rules)
+                var plain []PubBlock = []
+                for x2 in blocks2 {
+                    plain.push(x2)
+                }
+                // 守卫诊断从子块委托重建（echo 的子块在派发里已走 render_child_guarded）
+                let guarded = echo_guard_replay(rules, b)
+                entry.guard = guarded.guarded
+                if guarded.has_diag == 1 {
+                    diags.push(guarded.diag)
+                }
+                for p in plain {
+                    entry.blocks.push(p)
+                }
+            } else {
+                var blocks3 = dispatch_render(best.name, b, number, rules)
+                for x3 in blocks3 {
+                    entry.blocks.push(x3)
+                }
+            }
+        }
+        entries.push(entry)
+        idx = idx + 1
+    }
+    return RenderResult(entries, diags, chapters, theorems)
+}
+
+// echo-heading 的守卫重放（派发函数不便返回诊断时的独立求值，逻辑与
+// render_child_guarded 一致：派生标题再匹配 echo-heading → 守卫命中）
+fn echo_guard_replay(rules []RenderRule, b PubBlock) ChildOut {
+    var children []PubBlock = []
+    children.push(PubBlock(b.id + "!echo", "heading", "render", b.level, 0, [], 0, [], "", "", [], b.text + "（回声）"))
+    return render_child_guarded(children, rules, "echo-heading", b.id)
+}
+
+
+// ---------------------------------------------------------------------------
+// 组装入口（main.at 调用；保持入口文件薄——file 导入与大型文件组合有 VM 缺陷）
+// ---------------------------------------------------------------------------
+
+type Finalize {
+    ok int
+    code str
+    message str
+    result Publication
+}
+
+fn fin_err(code str, message str) Finalize {
+    return Finalize(0, code, message, empty_publication())
+}
+
+fn empty_publication() Publication {
+    return Publication(
+        "",
+        ir_empty_meta(),
+        ir_empty_page(),
+        0,
+        "",
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+    )
+}
+
+use ir: DocMeta, PageConfig
+
+fn ir_empty_meta() DocMeta {
+    return DocMeta("", [], "", "zh", "")
+}
+
+fn ir_empty_page() PageConfig {
+    return PageConfig("a4", "2cm", "2cm", "2cm", "2cm", 1, "10pt", [], "", 0)
+}
+
+// base：模板产出（含模板规则与呈现规则）；styles_wire：宿主编码的文档规则/显式属性
+//（可为空串）。流程：合并各层规则 → 校验（可定位）→ 逐属性合成 → 匹配日志 → 呈现。
+fn finalize(base Publication, styles_wire str) Finalize {
+    var all_rules = builtin_rules()
+    var theme = theme_print()
+    for t in theme {
+        all_rules.push(t)
+    }
+    for r in base.rules {
+        all_rules.push(r)
+    }
+    var explicit []ExplicitStyle = []
+    if styles_wire != "" {
+        let parsed = parse_styles_wire(styles_wire)
+        if parsed.ok == 0 {
+            return fin_err(parsed.code, parsed.message)
+        }
+        for dr in parsed.rules {
+            all_rules.push(dr)
+        }
+        for x in parsed.explicit {
+            explicit.push(x)
+        }
+    }
+    // 节点视图（内容顺序即出版树顺序）
+    var nodes []StyleNode = []
+    var idx = 0
+    for b in base.content {
+        nodes.push(node_view(idx, b.id, b.kind, b.level, b.callout_type))
+        idx = idx + 1
+    }
+    let chk = validate_rules(all_rules, nodes)
+    if chk.ok == 0 {
+        return fin_err(chk.code, chk.message)
+    }
+    let computed = compose_styles(nodes, all_rules, explicit)
+    let log = match_log_of(nodes, all_rules)
+    let rendered = apply_render(base.render_rules, base.content)
+    var out = base
+    out.rules = all_rules
+    out.explicit = explicit
+    out.match_log = log
+    out.computed = computed
+    out.presentation = rendered.entries
+    out.render_diags = rendered.diags
+    return Finalize(1, "", "", out)
+}
+
+
+// 模板派发 + 组装（main.at 的薄入口伙伴）
+fn build_and_finalize(template str, doc Doc, opts Options, styles_wire str) Finalize {
+    if template == "academic" {
+        return finalize(build_academic(doc, opts), styles_wire)
+    }
+    if template == "office_book" {
+        return finalize(build_office_book(doc, opts), styles_wire)
+    }
+    return fin_err("E_TEMPLATE_UNKNOWN", "unknown template: " + template)
+}

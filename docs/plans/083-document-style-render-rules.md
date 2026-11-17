@@ -1,6 +1,6 @@
 ---
 plan_id: PLAN-083
-status: execution_done
+status: reviewed
 feature_name: document-style-render-rules
 author: [codex]
 created_at: 2026-11-14
@@ -134,3 +134,5 @@ verify 检查（各 0–384ms，含子断言）；render-guard-demo 出版运行
 | 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 2 / from: execution_done / to: executing / status: executing / outcome: needs_fix / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: bb8ff2c / next: work |
 | 2026-11-17 | stage: work / plan_id: PLAN-083 / plan_revision: r1 / outcome: **pass（execution_done，F-1 修复）** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / base_commit: 5af11a3 / code_commit: 7d92349（bb8ff2c 之上：style.at validate_explicit + render.at 调用 + verify S-06 负例 + samples/neg/explicit-unknown-node.json + F-2 规范/README 边界记载）/ dependency_revisions: 同前（auto t19-24、typst 0.15.1、engine 0.5.0 dist）/ task_ids: T-05 重开并重新闭合 / evidence: F-1 复现转正例：`--doc-styles samples/neg/explicit-unknown-node.json` → exit 1 `E_STYLE_EXPLICIT_NODE`（消息含 block-99）；`node scripts/verify.mjs` **19/19**（S-06 含新负例） / blockers: 无 / next: review（F-1/F-2 复验） |
 | 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 3 / from: executing / to: execution_done / status: execution_done / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: 7d92349 / next: review |
+| 2026-11-17 | stage: goal / plan_id: PLAN-083 / plan_revision: r1 / round: 4 / from: execution_done / to: reviewed / status: reviewed / outcome: pass / worktree: `D:/autostack/.wt/down-083/auto-down` / commit: 7d92349 / next: merge |
+| 2026-11-17 | stage: review / review_scope: **final（F-1 修复后复验）** / reviewer: lead（实现会话复审；独立性受限同前，按工件/独立重跑重建）/ plan_id: PLAN-083 / plan_revision: r1 / outcome: **pass** / worktree_path: `D:/autostack/.wt/down-083/auto-down` / branch: `plan-083-dev` / reviewed_commit: 7d92349（工作树净；bb8ff2c 之上单提交修复）/ base_commit: 5af11a3 / dependency_revisions: 同前轮 / spec_inputs: `docs/specs/publishing.md`（7d92349 版：§11–§16 + §15 env 容量边界）/ acceptance_results: **F-1 closed**——`--doc-styles samples/neg/explicit-unknown-node.json` → exit 1 `E_STYLE_EXPLICIT_NODE`（`explicit:block-99: node not found in document`，与 E_STYLE_SCOPE 对称可定位）；`node scripts/verify.mjs` **19/19**（S-06 含新负例断言）；**F-2 closed**——env 容量上限记入规范 §15 与 README；回归面：有效输入输出零变化（同参数 .typ sha 与修复前逐字节一致 8e705ced4d038173；S-01..S-05/S-07 断言全部复过）/ pending_closeout_gates: merge 期统一回归与 landing 检查（重建/重启或显式陈旧观察）；F-3（注册表双份维护）info 级接受，规范已记载注册表为源 / findings: F-1 closed、F-2 closed、info F-3 / evidence: 本表数字 + verify 19/19 report（out/verify）；vm-repro 与证据副本 `D:/autostack/plan-artifacts/plan-083/evidence/` / next: **merge**（规范随代码已在 7d92349；归档、worktree 清理、landing 检查） |

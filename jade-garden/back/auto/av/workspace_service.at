@@ -4,25 +4,38 @@
 // 配置单一来源（C1 冻结）：
 //   - `JADE_GARDEN_CONFIG` = 显式工作区配置文件路径；**持久化值优先**——
 //     文件存在且含 `workspace_root` 时 GET/POST 都以它为准；
-//   - `JADE_GARDEN_DEFAULT_WORKSPACE` = 初始回退（无持久化值时）；
+//   - `JADE_GARDEN_DEFAULT_WORKSPACE` = 初始回退（无持久化值时；**原样**
+//     返回，不做 canonicalize——C0 语义）；
 //   - 两者都无 ⇒ GET 回 `{"root":null,"wiki_dir":null}`；POST 具名失败
 //     （无配置路径无法持久化）。
 //
 // GET /api/workspace：
 //   root = 配置值（持久化）> env 默认 > null；wiki_dir = Windows
 //   `PathBuf::join("wiki")` 语义（root 无尾分隔符时补 `\`，JSON 里 `\\`）。
-// POST /api/workspace/open（body `{"root":"<path>"}`）：
+// POST /api/workspace/open（body `{"root":"<path>"}`，r15 完整 C1）：
 //   ① 目录存在性检查（`path_attrs_w16`，不存在 ⇒ 400 + 与 legacy 同形的
 //     `{"error":"Directory does not exist: <原样路径>"}`，**零副作用**）；
-//   ② 创建 `<root>/wiki`（已存在则接受）；
-//   ③ 把 `{"workspace_root":"<root>"}` 写回 `JADE_GARDEN_CONFIG`（POST 之后
-//     GET/重启都读到新目录——防"POST 200 但仍是旧目录"）；
-//   ④ 200 + `{"root":"<root>","wiki_dir":"<root>\\wiki"}`。
+//   ② **规范化**：`canonical_w16` ⇒ Windows canonical（`\\?\` 前缀 +
+//     反斜杠），响应/配置/索引都以 canonical 为准（r14 基线）；完整
+//     Unicode 路径（UTF-8 ↔ UTF-16 全量转换，含代理对）；
+//   ③ 准备 `<canonical>/wiki`（已存在则接受）；
+//   ④ **重建目标索引**：递归枚举 `wiki/**/*.ad`，写
+//     `<root>/jade-garden-index.json`（同目录 `.tmp` + `file_replace_w16`
+//     原子替换）；失败 ⇒ 500 `workspace.index-rebuild-failed:`，旧工作区/
+//     配置/旧索引不动（目标 wiki 可保留）；
+//   ⑤ **原子提交配置**：`<config>.tmp` 写入后 `file_replace_w16` 替换；
+//     失败 ⇒ 500 `workspace.config-commit-failed:`，旧工作区与原配置保留；
+//   ⑥ 200 + `{"root":"<canonical>","wiki_dir":"<canonical>\\wiki"}`。
 //
-// 具名边界（C1 切片）：路径按**原样**返回（不做 Windows canonicalize，故无
-// `\\?\` 前缀；与 legacy 的 canonical 形态有登记差异）；POST 的 root 目前只
-// 接受 ASCII 路径（非 ASCII 具名 400）；索引重建（`jade-garden-index.json`）
-// 不在本切片（登记为后续/982 组合入口面）。
+// 索引行（与 legacy `rebuild_index_sync` 对齐的字段子集）：pages 行
+// `{path,title,frontmatter,mtime}`——path 为 wiki 相对路径（`\` 分隔）、
+// title 为文件 stem、frontmatter 为开头 `---` 块原文。
+// **具名边界**：①mtime 恒 0（AV 模块**至多声明 16 个平台操作**的 verify
+// 契约已满：mtime 的 lo/hi 双查询放不下；后续端点切片再议）；②blocks/
+// links/tags 行恒 `[]`（链接图/块解析属后续切片；C1 验收只钉 pages）；
+// ③frontmatter 只读文件头 4096 字节；④目录深度 >16 判失败（junction 环
+// 终止）；⑤目录枚举不显式 dir_close——文件通道引擎每调用 mint 新 ledger
+// 并在运行结束强制关闭全部句柄（宿主纪律，见 av_service.rs）。
 //
 // 平台面：file / file.path / env / mem intrinsics；宿主 grants 需含
 // `platform.file`、`platform.file.path`、`platform.env`、`platform.mem`。
@@ -64,7 +77,7 @@ fn int_to_str(v int) Str {
     return out
 }
 
-// ASCII 文本逐码点写入 UTF-16LE 内存（路径/名字都是 ASCII）。
+// ASCII 文本逐码点写入 UTF-16LE 内存（scratch/env 名都是 ASCII）。
 fn stage_ascii_w16(text Str, region int) int {
     let n = text.len()
     var i = 0
@@ -124,6 +137,17 @@ fn write_json_bytes(dst int, at int, src int, len int) int {
     var p = at
     var i = 0
     for i < len {
+        p = write_json_byte(dst, p, mem_read_u8(src, i))
+        i = i + 1
+    }
+    return p
+}
+
+// [from, end) 字节区间的 JSON 转义写入（frontmatter 原文用）。
+fn write_json_bytes_from(dst int, at int, src int, from int, end int) int {
+    var p = at
+    var i = from
+    for i < end {
         p = write_json_byte(dst, p, mem_read_u8(src, i))
         i = i + 1
     }
@@ -193,6 +217,72 @@ fn write_utf16_utf8(in_region int, units int, out_region int, at int) int {
     return p
 }
 
+// UTF-8 字节 → UTF-16LE units（完整 Unicode，含代理对；非法序列 -1）。
+fn utf8_to_units(src int, off int, len int, dst int) int {
+    var i = 0
+    var p = 0
+    for i < len {
+        let b0 = mem_read_u8(src, off + i)
+        if b0 < 128 {
+            let _a = mem_write_u8(dst, p * 2, b0)
+            let _b = mem_write_u8(dst, p * 2 + 1, 0)
+            p = p + 1
+            i = i + 1
+        } else {
+            if b0 < 194 { return 0 - 1 }
+            if b0 < 224 {
+                if i + 1 >= len { return 0 - 1 }
+                let b1 = mem_read_u8(src, off + i + 1)
+                if b1 < 128 { return 0 - 1 }
+                if b1 > 191 { return 0 - 1 }
+                let u = (b0 - 192) * 64 + (b1 - 128)
+                let _a = mem_write_u8(dst, p * 2, u % 256)
+                let _b = mem_write_u8(dst, p * 2 + 1, u / 256)
+                p = p + 1
+                i = i + 2
+            } else {
+                if b0 < 240 {
+                    if i + 2 >= len { return 0 - 1 }
+                    let b1 = mem_read_u8(src, off + i + 1)
+                    let b2 = mem_read_u8(src, off + i + 2)
+                    if b1 < 128 { return 0 - 1 }
+                    if b1 > 191 { return 0 - 1 }
+                    if b2 < 128 { return 0 - 1 }
+                    if b2 > 191 { return 0 - 1 }
+                    let u = (b0 - 224) * 4096 + (b1 - 128) * 64 + (b2 - 128)
+                    let _a = mem_write_u8(dst, p * 2, u % 256)
+                    let _b = mem_write_u8(dst, p * 2 + 1, u / 256)
+                    p = p + 1
+                    i = i + 3
+                } else {
+                    if b0 > 244 { return 0 - 1 }
+                    if i + 3 >= len { return 0 - 1 }
+                    let b1 = mem_read_u8(src, off + i + 1)
+                    let b2 = mem_read_u8(src, off + i + 2)
+                    let b3 = mem_read_u8(src, off + i + 3)
+                    if b1 < 128 { return 0 - 1 }
+                    if b1 > 191 { return 0 - 1 }
+                    if b2 < 128 { return 0 - 1 }
+                    if b2 > 191 { return 0 - 1 }
+                    if b3 < 128 { return 0 - 1 }
+                    if b3 > 191 { return 0 - 1 }
+                    let cp = (b0 - 240) * 262144 + (b1 - 128) * 4096 + (b2 - 128) * 64 + (b3 - 128)
+                    if cp < 65536 { return 0 - 1 }
+                    let hi = 55296 + (cp - 65536) / 1024
+                    let lo = 56320 + (cp - 65536) % 1024
+                    let _a = mem_write_u8(dst, p * 2, hi % 256)
+                    let _b = mem_write_u8(dst, p * 2 + 1, hi / 256)
+                    let _c = mem_write_u8(dst, p * 2 + 2, lo % 256)
+                    let _d = mem_write_u8(dst, p * 2 + 3, lo / 256)
+                    p = p + 2
+                    i = i + 4
+                }
+            }
+        }
+    }
+    return p
+}
+
 fn last_unit_is_sep(in_region int, units int) int {
     if units <= 0 { return 0 }
     let u = unit_at(in_region, units - 1)
@@ -201,43 +291,103 @@ fn last_unit_is_sep(in_region int, units int) int {
     return 0
 }
 
-// ASCII UTF-8 字节 → UTF-16LE units；非 ASCII 返回 -1（C1 具名边界）。
-fn utf8_ascii_to_units(src int, off int, len int, dst int) int {
+// 复制 units 到 dst（返回 units 数）。
+fn copy_units(src int, dst int, units int) int {
     var i = 0
-    for i < len {
-        let b = mem_read_u8(src, off + i)
-        if b > 127 { return 0 - 1 }
-        let _a = mem_write_u8(dst, i * 2, b)
-        let _b = mem_write_u8(dst, i * 2 + 1, 0)
-        i = i + 1
-    }
-    return len
-}
-
-// root units → root + "/wiki" units（返回 units；root 已有尾分隔符则不补）。
-fn append_wiki_units(root_region int, root_units int, dst int) int {
-    var i = 0
-    for i < root_units {
-        let u = unit_at(root_region, i)
+    for i < units {
+        let u = unit_at(src, i)
         let _a = mem_write_u8(dst, i * 2, u % 256)
         let _b = mem_write_u8(dst, i * 2 + 1, u / 256)
         i = i + 1
     }
-    var p = root_units
-    if last_unit_is_sep(root_region, root_units) == 0 {
-        let _s = mem_write_u8(dst, p * 2, 47)
-        let _z = mem_write_u8(dst, p * 2 + 1, 0)
-        p = p + 1
-    }
-    let w = "wiki"
+    return units
+}
+
+// 在 units 缓冲 at 处附加一个 `\` unit；返回新 units 数。
+fn append_backslash_unit(dst int, at int) int {
+    let _a = mem_write_u8(dst, at * 2, 92)
+    let _b = mem_write_u8(dst, at * 2 + 1, 0)
+    return at + 1
+}
+
+// 在 units 缓冲 at 处附加 ASCII 字面量；返回新 units 数。
+fn append_units_lit(dst int, at int, lit Str) int {
+    var p = at
+    let n = lit.len()
     var k = 0
-    for k < 4 {
-        let cp = w.char_at(k).to_codepoint()
-        let _a = mem_write_u8(dst, (p + k) * 2, cp)
-        let _b = mem_write_u8(dst, (p + k) * 2 + 1, 0)
+    for k < n {
+        let cp = lit.char_at(k).to_codepoint()
+        let _a = mem_write_u8(dst, p * 2, cp % 256)
+        let _b = mem_write_u8(dst, p * 2 + 1, cp / 256)
+        p = p + 1
         k = k + 1
     }
-    return p + 4
+    return p
+}
+
+// root units → root + "\wiki" units（返回 units；root 已有尾分隔符则不补）。
+// 分隔符必须用 `\`：canonical 形态是 `\\?\` verbatim 路径，Win32 对 verbatim
+// 不做 `/` 归一化（非 verbatim 路径两种分隔符都接受，故统一 92 安全）。
+fn append_wiki_units(root_region int, root_units int, dst int) int {
+    let n = copy_units(root_region, dst, root_units)
+    var p = n
+    if last_unit_is_sep(root_region, root_units) == 0 {
+        p = append_backslash_unit(dst, p)
+    }
+    p = append_units_lit(dst, p, "wiki")
+    return p
+}
+
+// UTF-16 units 解码为 UTF-8 并做 JSON 转义写入 dst；返回新偏移。
+fn write_units_json(dst int, at int, src int, units int) int {
+    var p = at
+    var i = 0
+    for i < units {
+        let u = unit_at(src, i)
+        var cp = u
+        if u >= 55296 {
+            if u < 56320 {
+                if i + 1 < units {
+                    let lo = unit_at(src, i + 1)
+                    if lo >= 56320 {
+                        if lo < 57344 {
+                            cp = 65536 + (u - 55296) * 1024 + (lo - 56320)
+                            i = i + 1
+                        } else {
+                            cp = 63
+                        }
+                    } else {
+                        cp = 63
+                    }
+                } else {
+                    cp = 63
+                }
+            } else {
+                cp = 63
+            }
+        }
+        if cp < 128 {
+            p = write_json_byte(dst, p, cp)
+        } else {
+            if cp < 2048 {
+                p = write_json_byte(dst, p, 192 + cp / 64)
+                p = write_json_byte(dst, p, 128 + cp % 64)
+            } else {
+                if cp < 65536 {
+                    p = write_json_byte(dst, p, 224 + cp / 4096)
+                    p = write_json_byte(dst, p, 128 + (cp / 64) % 64)
+                    p = write_json_byte(dst, p, 128 + cp % 64)
+                } else {
+                    p = write_json_byte(dst, p, 240 + cp / 262144)
+                    p = write_json_byte(dst, p, 128 + (cp / 4096) % 64)
+                    p = write_json_byte(dst, p, 128 + (cp / 64) % 64)
+                    p = write_json_byte(dst, p, 128 + cp % 64)
+                }
+            }
+        }
+        i = i + 1
+    }
+    return p
 }
 
 // ------------------------------------------------------ 请求/响应
@@ -253,6 +403,21 @@ fn open_read(path_region int, units int, dst int, cap int) int {
     }
     let _c = file_close(h)
     return total
+}
+
+// 把字节区 [0, len) 写到 units 路径（truncate 建/覆写；循环 write_some）。
+fn write_file_units(path_region int, units int, src int, len int) int {
+    let h = file_open_w16(path_region, 0, units, 14)
+    if h <= 0 { return h }
+    var off = 0
+    for off < len {
+        let w = file_write_some(h, src, off, len - off)
+        if w <= 0 { break }
+        off = off + w
+    }
+    let _c = file_close(h)
+    if off < len { return 0 - 4020 }
+    return 0
 }
 
 fn read_request(dst int) int {
@@ -332,6 +497,7 @@ fn respond_error(status Str, message_region int, message_len int) int {
     let _f = mem_free(body)
     return rc
 }
+
 // 键之后的 JSON 字符串值（`:` + 引号 + 反转义）→ 字节数；-1=格式不匹配。
 fn json_string_value(region int, at int, end int, out int) int {
     var i = at
@@ -412,6 +578,7 @@ fn find_config_key(region int, from int, end int) int {
     }
     return 0 - 1
 }
+
 // ------------------------------------------------------ 配置
 
 // env `name` → config path units（返回 units；0=未设置）。
@@ -441,19 +608,222 @@ fn config_root(config_units_region int, config_units int, out int) int {
     return n
 }
 
-// 把 `{"workspace_root":"<root>"}` 写入配置路径。
-fn write_config(config_units_region int, config_units int, root_region int, root_len int) int {
-    let h = file_open_w16(config_units_region, 0, config_units, 14)
-    if h <= 0 { return h }
-    let buf = mem_alloc(2048)
+// 原子提交配置（r15）：同目录 `<config>.tmp` 写入后 `file_replace_w16`
+// 替换；失败时尽力删除 tmp 并返回负值（旧配置不动）。
+fn commit_config_atomic(cfg_region int, cfg_units int, root_region int, root_len int) int {
+    let tmp = mem_alloc(2048)
+    let base = copy_units(cfg_region, tmp, cfg_units)
+    let tn = append_units_lit(tmp, base, ".tmp")
+    let h = file_open_w16(tmp, 0, tn, 14)
+    if h <= 0 {
+        let _f = mem_free(tmp)
+        return h
+    }
+    let buf = mem_alloc(4096)
     var n = write_ascii(buf, 0, "{\"workspace_root\":\"")
     n = write_json_bytes(buf, n, root_region, root_len)
     n = write_ascii(buf, n, "\"}")
-    let w = file_write_some(h, buf, 0, n)
+    var off = 0
+    for off < n {
+        let w = file_write_some(h, buf, off, n - off)
+        if w <= 0 { break }
+        off = off + w
+    }
     let _c = file_close(h)
-    let _f = mem_free(buf)
-    if w < 0 { return w }
+    let _fb = mem_free(buf)
+    if off < n {
+        let _d = file_delete_w16(tmp, 0, tn)
+        let _f = mem_free(tmp)
+        return 0 - 4030
+    }
+    let r = file_replace_w16(tmp, 0, tn, cfg_region, 0, cfg_units)
+    if r < 0 {
+        let _d = file_delete_w16(tmp, 0, tn)
+        let _f = mem_free(tmp)
+        return r
+    }
+    let _f = mem_free(tmp)
     return 0
+}
+
+// ------------------------------------------------------ 索引（r15 目标索引重建）
+
+// 名字以 ".ad" 结尾且不是恰好 ".ad"（Rust extension 语义：裸点文件无扩展）。
+fn is_ad_name(name int, n int) int {
+    if n < 4 { return 0 }
+    if unit_at(name, n - 3) != 46 { return 0 }
+    if unit_at(name, n - 2) != 97 { return 0 }
+    if unit_at(name, n - 1) != 100 { return 0 }
+    return 1
+}
+
+// frontmatter 开头 `---` 行的正文起点；0=无。
+fn frontmatter_start(region int, len int) int {
+    if len < 4 { return 0 }
+    if mem_read_u8(region, 0) != 45 { return 0 }
+    if mem_read_u8(region, 1) != 45 { return 0 }
+    if mem_read_u8(region, 2) != 45 { return 0 }
+    let b3 = mem_read_u8(region, 3)
+    if b3 == 10 { return 4 }
+    if b3 == 13 {
+        if len < 5 { return 0 }
+        if mem_read_u8(region, 4) == 10 { return 5 }
+    }
+    return 0
+}
+
+// 从 start 起找闭合 `---` 行首；返回 fm 文本终点（排除尾部换行）；-1=未闭合。
+fn frontmatter_close(region int, len int, start int) int {
+    var i = start
+    for i + 3 <= len {
+        var at_line_start = 0
+        if i == start {
+            at_line_start = 1
+        } else {
+            if mem_read_u8(region, i - 1) == 10 { at_line_start = 1 }
+        }
+        if at_line_start == 1 {
+            if mem_read_u8(region, i) == 45 {
+                if mem_read_u8(region, i + 1) == 45 {
+                    if mem_read_u8(region, i + 2) == 45 {
+                        var e = i
+                        if e > start {
+                            if mem_read_u8(region, e - 1) == 10 { e = e - 1 }
+                        }
+                        if e > start {
+                            if mem_read_u8(region, e - 1) == 13 { e = e - 1 }
+                        }
+                        return e
+                    }
+                }
+            }
+        }
+        i = i + 1
+    }
+    return 0 - 1
+}
+
+// 单个 .ad 文件 → pages 行（追加进 buf；返回 at*2+comma 或负错误）。
+// title=文件 stem；frontmatter=开头 `---` 块原文（头 4096 字节内）；
+// mtime=0（平台操作数封顶的具名缺口）；path=wiki 相对路径（`\` 分隔）。
+fn append_page_row(path_region int, path_units int, rel_region int, rel_units int, name int, name_units int, content int, buf int, at int, comma int) int {
+    let h = file_open_w16(path_region, 0, path_units, 1)
+    if h <= 0 { return 0 - 4010 }
+    var total = 0
+    for total < 4096 {
+        let n = file_read_some(h, content, total, 4096 - total)
+        if n <= 0 { break }
+        total = total + n
+    }
+    let _c = file_close(h)
+    var p = at
+    if comma == 1 {
+        p = write_ascii(buf, p, ",")
+    }
+    p = write_ascii(buf, p, "{\"path\":\"")
+    p = write_units_json(buf, p, rel_region, rel_units)
+    p = write_ascii(buf, p, "\",\"title\":\"")
+    p = write_units_json(buf, p, name, name_units - 3)
+    p = write_ascii(buf, p, "\",\"frontmatter\":\"")
+    let fs = frontmatter_start(content, total)
+    if fs > 0 {
+        let fe = frontmatter_close(content, total, fs)
+        if fe > fs {
+            p = write_json_bytes_from(buf, p, content, fs, fe)
+        }
+    }
+    p = write_ascii(buf, p, "\",\"mtime\":0}")
+    return p * 2 + 1
+}
+
+// 把 name region 的 n 个 units 追加到 dst 的 at 处。
+fn append_name_units(dst int, at int, name int, n int) int {
+    var p = at
+    var i = 0
+    for i < n {
+        let u = unit_at(name, i)
+        let _a = mem_write_u8(dst, p * 2, u % 256)
+        let _b = mem_write_u8(dst, p * 2 + 1, u / 256)
+        p = p + 1
+        i = i + 1
+    }
+    return p
+}
+
+// 递归枚举目录下的 .ad → pages 行；返回 at*2+comma（打包），负数=IO 失败
+// （4001=过深、4002=open、4003=next、4004=attrs；4010+=文件行）。
+// 深度 >16 判失败（junction 环终止；legacy walkdir 不跟符号链接，这里以
+// 深度上限保守封顶）。
+fn walk_pages(dir_region int, dir_units int, rel_region int, rel_units int, buf int, at int, comma int, depth int) int {
+    if depth > 16 { return 0 - 4001 }
+    let h = dir_open_w16(dir_region, 0, dir_units)
+    if h <= 0 { return 0 - 4002 }
+    var packed = at * 2 + comma
+    var err = 0
+    var name = mem_alloc(520)
+    var path = mem_alloc(4096)
+    var rel2 = mem_alloc(2048)
+    var content = mem_alloc(4096)
+    var going = 1
+    for going == 1 {
+        let n = dir_next_w16(h, name, 260)
+        if n < 0 {
+            err = 0 - 4003
+            break
+        }
+        if n == 0 { break }
+        var skip = 0
+        if n == 1 {
+            if unit_at(name, 0) == 46 { skip = 1 }
+        }
+        if n == 2 {
+            if unit_at(name, 0) == 46 {
+                if unit_at(name, 1) == 46 { skip = 1 }
+            }
+        }
+        if skip == 0 {
+            // path = dir + "\" + name
+            var pl = copy_units(dir_region, path, dir_units)
+            pl = append_backslash_unit(path, pl)
+            pl = append_name_units(path, pl, name, n)
+            // rel2 = rel (+ "\") + name
+            var rl = copy_units(rel_region, rel2, rel_units)
+            if rel_units > 0 {
+                rl = append_backslash_unit(rel2, rl)
+            }
+            rl = append_name_units(rel2, rl, name, n)
+            let attrs = path_attrs_w16(path, 0, pl)
+            if attrs < 0 {
+                err = 0 - 4004
+                break
+            }
+            if attrs % 2 == 1 {
+                let sub = walk_pages(path, pl, rel2, rl, buf, packed / 2, packed % 2, depth + 1)
+                if sub < 0 {
+                    err = sub
+                    break
+                }
+                packed = sub
+            } else {
+                if is_ad_name(name, n) == 1 {
+                    let row = append_page_row(path, pl, rel2, rl, name, n, content, buf, packed / 2, packed % 2)
+                    if row < 0 {
+                        err = row
+                        break
+                    }
+                    packed = row
+                }
+            }
+        }
+    }
+    // 目录句柄不显式 dir_close：ledger 每次运行结束强制关闭（宿主纪律，
+    // 见 av_service.rs 头注；这也是 16 平台操作封顶下的取舍）。
+    let _f1 = mem_free(name)
+    let _f2 = mem_free(path)
+    let _f3 = mem_free(rel2)
+    let _f4 = mem_free(content)
+    if err != 0 { return err }
+    return packed
 }
 
 // ------------------------------------------------------ 响应体
@@ -493,7 +863,7 @@ fn handle_get() int {
         root_len = config_root(cfg_units, n_cfg, root)
     }
     if root_len < 0 {
-        // 初始回退：env 默认工作区（C0 语义）。
+        // 初始回退：env 默认工作区（C0 语义，原样）。
         let env_units = mem_alloc(2048)
         let n_env = env_path_units("JADE_GARDEN_DEFAULT_WORKSPACE", env_units)
         if n_env <= 0 {
@@ -528,18 +898,19 @@ fn handle_open(req int, total int) int {
         let _fo = mem_free(out)
         return rc
     }
-    // 目录存在性（path_attrs_w16 位：1=directory）。
+    // UTF-8 → UTF-16（完整 Unicode；非法序列具名 400）。
     let units = mem_alloc(2048)
-    let n_units = utf8_ascii_to_units(out, 0, root_len, units)
+    let n_units = utf8_to_units(out, 0, root_len, units)
     if n_units < 0 {
         let msg = mem_alloc(96)
-        let n = write_ascii(msg, 0, "non-ASCII workspace paths are not supported by this service (C1 slice)")
+        let n = write_ascii(msg, 0, "workspace path is not valid UTF-8")
         let rc = respond_error("400 Bad Request", msg, n)
         let _fm = mem_free(msg)
         let _fu = mem_free(units)
         let _fo = mem_free(out)
         return rc
     }
+    // 目录存在性（path_attrs_w16 位：1=directory）。
     let attrs = path_attrs_w16(units, 0, n_units)
     if attrs < 0 {
         let msg = mem_alloc(1024)
@@ -571,45 +942,123 @@ fn handle_open(req int, total int) int {
         let _fo = mem_free(out)
         return rc
     }
-    // 创建 `<root>/wiki`（已存在则接受）。
+    // r15 ①：规范化（canonical `\\?\` 形态；响应/配置/索引全用它）。
+    let canon = mem_alloc(2048)
+    let cn = canonical_w16(units, 0, n_units, canon, 1024)
+    if cn <= 0 {
+        let _fu = mem_free(units)
+        let _fc = mem_free(canon)
+        let _fo = mem_free(out)
+        return respond_error_str("500 Internal Server Error", "workspace canonicalize failed")
+    }
+    let canon_utf8 = mem_alloc(4096)
+    let canon_len = write_utf16_utf8(canon, cn, canon_utf8, 0)
+    // r15 ②：准备 wiki（canonical + wiki；已存在则接受）。
     let wiki_units = mem_alloc(2048)
-    let wn = append_wiki_units(units, n_units, wiki_units)
+    let wn = append_wiki_units(canon, cn, wiki_units)
     let created = dir_create_w16(wiki_units, 0, wn)
     if created < 0 {
         let wattrs = path_attrs_w16(wiki_units, 0, wn)
         if wattrs < 0 {
             let _fu = mem_free(units)
+            let _fc = mem_free(canon)
+            let _f8 = mem_free(canon_utf8)
             let _fw = mem_free(wiki_units)
             let _fo = mem_free(out)
             return respond_error_str("500 Internal Server Error", "workspace open failed")
         }
     }
-    // 持久化：持久值优先 ⇒ POST 之后 GET/重启都看到新目录。
+    // r15 ③：重建目标索引（pages 行；blocks/links/tags 具名恒空）。
+    let buf = mem_alloc(131072)
+    var n = write_ascii(buf, 0, "{\"pages\":[")
+    let packed = walk_pages(wiki_units, wn, canon, 0, buf, n, 0, 0)
+    if packed < 0 {
+        let _fb = mem_free(buf)
+        let _fu = mem_free(units)
+        let _fc = mem_free(canon)
+        let _f8 = mem_free(canon_utf8)
+        let _fw = mem_free(wiki_units)
+        let _fo = mem_free(out)
+        return respond_error_str("500 Internal Server Error", "workspace.index-rebuild-failed: walk error " + int_to_str(0 - packed))
+    }
+    n = packed / 2
+    n = write_ascii(buf, n, "],\"blocks\":[],\"links\":[],\"tags\":[]}")
+    // 索引原子写：同目录 tmp + replace。
+    let idx = mem_alloc(2048)
+    var il = copy_units(canon, idx, cn)
+    il = append_backslash_unit(idx, il)
+    il = append_units_lit(idx, il, "jade-garden-index.json")
+    let itmp = mem_alloc(2048)
+    var itn = copy_units(idx, itmp, il)
+    itn = append_units_lit(itmp, itn, ".tmp")
+    let iw = write_file_units(itmp, itn, buf, n)
+    if iw < 0 {
+        let _d = file_delete_w16(itmp, 0, itn)
+        let _ft = mem_free(itmp)
+        let _fi = mem_free(idx)
+        let _fb = mem_free(buf)
+        let _fu = mem_free(units)
+        let _fc = mem_free(canon)
+        let _f8 = mem_free(canon_utf8)
+        let _fw = mem_free(wiki_units)
+        let _fo = mem_free(out)
+        return respond_error_str("500 Internal Server Error", "workspace.index-rebuild-failed: write error " + int_to_str(0 - iw))
+    }
+    let ir = file_replace_w16(itmp, 0, itn, idx, 0, il)
+    if ir < 0 {
+        let _d = file_delete_w16(itmp, 0, itn)
+        let _ft = mem_free(itmp)
+        let _fi = mem_free(idx)
+        let _fb = mem_free(buf)
+        let _fu = mem_free(units)
+        let _fc = mem_free(canon)
+        let _f8 = mem_free(canon_utf8)
+        let _fw = mem_free(wiki_units)
+        let _fo = mem_free(out)
+        return respond_error_str("500 Internal Server Error", "workspace.index-rebuild-failed: replace error " + int_to_str(0 - ir))
+    }
+    // r15 ④：原子提交配置（持久值优先 ⇒ POST 之后 GET/重启都看到新目录）。
     let cfg_units = mem_alloc(1024)
     let cfg_n = env_path_units("JADE_GARDEN_CONFIG", cfg_units)
     if cfg_n <= 0 {
         let msg = mem_alloc(96)
-        let n = write_ascii(msg, 0, "workspace config path is not set (JADE_GARDEN_CONFIG)")
-        let rc = respond_error("500 Internal Server Error", msg, n)
+        let n2 = write_ascii(msg, 0, "workspace config path is not set (JADE_GARDEN_CONFIG)")
+        let rc = respond_error("500 Internal Server Error", msg, n2)
         let _fm = mem_free(msg)
+        let _fg = mem_free(cfg_units)
+        let _ft = mem_free(itmp)
+        let _fi = mem_free(idx)
+        let _fb = mem_free(buf)
         let _fu = mem_free(units)
+        let _fc = mem_free(canon)
+        let _f8 = mem_free(canon_utf8)
         let _fw = mem_free(wiki_units)
-        let _fc = mem_free(cfg_units)
         let _fo = mem_free(out)
         return rc
     }
-    let wrote = write_config(cfg_units, cfg_n, out, root_len)
-    if wrote < 0 {
+    let cc = commit_config_atomic(cfg_units, cfg_n, canon_utf8, canon_len)
+    if cc < 0 {
+        let _fg = mem_free(cfg_units)
+        let _ft = mem_free(itmp)
+        let _fi = mem_free(idx)
+        let _fb = mem_free(buf)
         let _fu = mem_free(units)
+        let _fc = mem_free(canon)
+        let _f8 = mem_free(canon_utf8)
         let _fw = mem_free(wiki_units)
-        let _fc = mem_free(cfg_units)
         let _fo = mem_free(out)
-        return respond_error_str("500 Internal Server Error", "workspace open failed")
+        return respond_error_str("500 Internal Server Error", "workspace.config-commit-failed: replace error " + int_to_str(0 - cc))
     }
-    let rc = workspace_body(out, root_len, last_unit_is_sep(units, n_units))
+    // r15 ⑤：发布（200 + canonical root/wiki_dir）。
+    let rc = workspace_body(canon_utf8, canon_len, 0)
+    let _fg = mem_free(cfg_units)
+    let _ft = mem_free(itmp)
+    let _fi = mem_free(idx)
+    let _fb = mem_free(buf)
     let _fu = mem_free(units)
+    let _fc = mem_free(canon)
+    let _f8 = mem_free(canon_utf8)
     let _fw = mem_free(wiki_units)
-    let _fc = mem_free(cfg_units)
     let _fo = mem_free(out)
     return rc
 }
@@ -648,10 +1097,3 @@ fn main() int {
     let _fr = mem_free(req)
     return rc
 }
-
-
-
-
-
-
-

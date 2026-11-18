@@ -82,6 +82,9 @@ pub type WorkspaceOpenRequest {
 // 同款），TS 发射被 gen.mjs 剥离——TS 客户端面仍由手写 fetch 层独占
 // （Phase 1 设计）。与上方 ROUTE 注释的对应关系由
 // tests/api-contract-routes.mjs 双登记门检对拍。
+// C0-A（PLAN-983 首例）：本 fn 仍是 a2ts/Plan-340 的契约桩；**可执行实现**在
+// back/auto/av/workspace_service.at（ACE AV 服务源，env 配置 + 同字节 JSON），
+// 二者 Wire 语义须保持一致（root/wiki_dir、null 形态、Windows join 分隔符）。
 #[api(method = "GET", path = "/api/workspace")]
 pub fn get_workspace() WorkspaceInfo {
     return None

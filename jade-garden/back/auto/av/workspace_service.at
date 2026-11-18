@@ -1,29 +1,39 @@
-// jade-garden C0-A：`GET /api/workspace` 的可执行 AV 业务源（PLAN-983 首例）。
+// jade-garden C0-A/C1：`/api/workspace` 与 `/api/workspace/open` 的可执行 AV
+// 业务源（PLAN-983 首例；文件通道引擎 `auto_web::http_server::serve_av`）。
 //
-// 与 `back/auto/api.at` 的契约桩 `get_workspace()` 对应：契约/Wire 类型仍由
-// api.at（a2ts，ts-only）拥有；本文件是**ACE AV 可执行实现**，由 auto-web 的
-// AV 服务引擎（`http_server::serve_av` + `av_service::AvServiceEngine`，文件
-// 通道）加载：
-//   - 宿主按 `#[api]` 声明抽取路由；每请求把真实 HTTP 请求 staged 到
-//     `{scratch}/p983-req.txt`（本程序不需要读它——路由已在宿主侧匹配）；
-//   - 本程序读生产配置 `JADE_GARDEN_DEFAULT_WORKSPACE`（`env_get_w16`，UTF-16LE
-//     面），把响应写 `{scratch}/p983-resp.txt`；
-//   - 语义对齐 `back/server/src/workspace.rs::get_workspace_impl`：
-//       root   = 配置值（未配置 ⇒ null）；
-//       wiki_dir = root.join("wiki")——root 不以分隔符结尾时按 Windows
-//       `MAIN_SEPARATOR` 追加 `\` 再拼 `wiki`（与 Rust `PathBuf::join` 实测一致）；
-//     JSON 字符串按 serde_json 语义转义（`"`、`\`、控制字符 < 0x20）；
-//   - 只读：不写工作区、不建/改配置文件；每请求文件句柄关闭（平台台账
-//     「每调用强制关句柄」）。
+// 配置单一来源（C1 冻结）：
+//   - `JADE_GARDEN_CONFIG` = 显式工作区配置文件路径；**持久化值优先**——
+//     文件存在且含 `workspace_root` 时 GET/POST 都以它为准；
+//   - `JADE_GARDEN_DEFAULT_WORKSPACE` = 初始回退（无持久化值时）；
+//   - 两者都无 ⇒ GET 回 `{"root":null,"wiki_dir":null}`；POST 具名失败
+//     （无配置路径无法持久化）。
 //
-// 平台面：file/env/mem 内在函数（`auto.platform.*`）。宿主 grants：
-// `platform.file`、`platform.mem`、`platform.env`。
+// GET /api/workspace：
+//   root = 配置值（持久化）> env 默认 > null；wiki_dir = Windows
+//   `PathBuf::join("wiki")` 语义（root 无尾分隔符时补 `\`，JSON 里 `\\`）。
+// POST /api/workspace/open（body `{"root":"<path>"}`）：
+//   ① 目录存在性检查（`path_attrs_w16`，不存在 ⇒ 400 + 与 legacy 同形的
+//     `{"error":"Directory does not exist: <原样路径>"}`，**零副作用**）；
+//   ② 创建 `<root>/wiki`（已存在则接受）；
+//   ③ 把 `{"workspace_root":"<root>"}` 写回 `JADE_GARDEN_CONFIG`（POST 之后
+//     GET/重启都读到新目录——防"POST 200 但仍是旧目录"）；
+//   ④ 200 + `{"root":"<root>","wiki_dir":"<root>\\wiki"}`。
 //
-// 具名边界：路径已按 UTF-16 → UTF-8 编码（含代理对）；孤立代理按 `?`
-// 替换；空 env 值等同未配置（Win32 `SetEnvironmentVariableW(name,"")` 即删除）。
+// 具名边界（C1 切片）：路径按**原样**返回（不做 Windows canonicalize，故无
+// `\\?\` 前缀；与 legacy 的 canonical 形态有登记差异）；POST 的 root 目前只
+// 接受 ASCII 路径（非 ASCII 具名 400）；索引重建（`jade-garden-index.json`）
+// 不在本切片（登记为后续/982 组合入口面）。
+//
+// 平台面：file / file.path / env / mem intrinsics；宿主 grants 需含
+// `platform.file`、`platform.file.path`、`platform.env`、`platform.mem`。
 
 #[api(method = "GET", path = "/api/workspace")]
 fn api_workspace() int {
+    return 0
+}
+
+#[api(method = "POST", path = "/api/workspace/open")]
+fn api_workspace_open() int {
     return 0
 }
 
@@ -54,7 +64,7 @@ fn int_to_str(v int) Str {
     return out
 }
 
-// ASCII 文本逐码点写入内存（UTF-16 文件名/头部/JSON 骨架都是 ASCII）。
+// ASCII 文本逐码点写入 UTF-16LE 内存（路径/名字都是 ASCII）。
 fn stage_ascii_w16(text Str, region int) int {
     let n = text.len()
     var i = 0
@@ -85,7 +95,7 @@ fn hex_digit(v int) int {
     return 87 + v
 }
 
-// JSON 字符串字节转义（serde_json 语义：`"`、`\`、< 0x20 的控制字符）。
+// JSON 字符串字节转义（serde_json 语义：`"`、`\`、< 0x20）。
 fn write_json_byte(region int, at int, b int) int {
     if b == 34 {
         let _a = mem_write_u8(region, at, 92)
@@ -110,24 +120,36 @@ fn write_json_byte(region int, at int, b int) int {
     return at + 1
 }
 
+fn write_json_bytes(dst int, at int, src int, len int) int {
+    var p = at
+    var i = 0
+    for i < len {
+        p = write_json_byte(dst, p, mem_read_u8(src, i))
+        i = i + 1
+    }
+    return p
+}
+
 fn unit_at(region int, i int) int {
     let lo = mem_read_u8(region, i * 2)
     let hi = mem_read_u8(region, i * 2 + 1)
     return lo + hi * 256
 }
 
-// UTF-16LE units → JSON 转义后的 UTF-8 字节（写入 body region，返回新偏移）。
-fn write_utf16_json(in_region int, units int, out_region int, at int) int {
+// UTF-16LE units → UTF-8 字节（不转义；写 region，返回新偏移）。
+fn write_utf16_utf8(in_region int, units int, out_region int, at int) int {
     var p = at
     var i = 0
     for i < units {
         let u = unit_at(in_region, i)
         if u < 128 {
-            p = write_json_byte(out_region, p, u)
+            let _a = mem_write_u8(out_region, p, u)
+            p = p + 1
         } else {
             if u < 2048 {
-                p = write_json_byte(out_region, p, 192 + u / 64)
-                p = write_json_byte(out_region, p, 128 + u % 64)
+                let _a = mem_write_u8(out_region, p, 192 + u / 64)
+                let _b = mem_write_u8(out_region, p + 1, 128 + u % 64)
+                p = p + 2
             } else {
                 if u >= 55296 {
                     if u < 56320 {
@@ -136,27 +158,33 @@ fn write_utf16_json(in_region int, units int, out_region int, at int) int {
                             if lo >= 56320 {
                                 if lo < 57344 {
                                     let cp = 65536 + (u - 55296) * 1024 + (lo - 56320)
-                                    p = write_json_byte(out_region, p, 240 + cp / 262144)
-                                    p = write_json_byte(out_region, p, 128 + (cp / 4096) % 64)
-                                    p = write_json_byte(out_region, p, 128 + (cp / 64) % 64)
-                                    p = write_json_byte(out_region, p, 128 + cp % 64)
+                                    let _a = mem_write_u8(out_region, p, 240 + cp / 262144)
+                                    let _b = mem_write_u8(out_region, p + 1, 128 + (cp / 4096) % 64)
+                                    let _c = mem_write_u8(out_region, p + 2, 128 + (cp / 64) % 64)
+                                    let _d = mem_write_u8(out_region, p + 3, 128 + cp % 64)
+                                    p = p + 4
                                     i = i + 1
                                 } else {
-                                    p = write_json_byte(out_region, p, 63)
+                                    let _r = mem_write_u8(out_region, p, 63)
+                                    p = p + 1
                                 }
                             } else {
-                                p = write_json_byte(out_region, p, 63)
+                                let _r = mem_write_u8(out_region, p, 63)
+                                p = p + 1
                             }
                         } else {
-                            p = write_json_byte(out_region, p, 63)
+                            let _r = mem_write_u8(out_region, p, 63)
+                            p = p + 1
                         }
                     } else {
-                        p = write_json_byte(out_region, p, 63)
+                        let _r = mem_write_u8(out_region, p, 63)
+                        p = p + 1
                     }
                 } else {
-                    p = write_json_byte(out_region, p, 224 + u / 4096)
-                    p = write_json_byte(out_region, p, 128 + (u / 64) % 64)
-                    p = write_json_byte(out_region, p, 128 + u % 64)
+                    let _a = mem_write_u8(out_region, p, 224 + u / 4096)
+                    let _b = mem_write_u8(out_region, p + 1, 128 + (u / 64) % 64)
+                    let _c = mem_write_u8(out_region, p + 2, 128 + u % 64)
+                    p = p + 3
                 }
             }
         }
@@ -165,8 +193,6 @@ fn write_utf16_json(in_region int, units int, out_region int, at int) int {
     return p
 }
 
-// Rust `PathBuf::join("wiki")` 的分隔符事实：root 已以 `/` 或 `\` 结尾则直接
-// 追加；否则 Windows `MAIN_SEPARATOR`（`\`）先补一个。
 fn last_unit_is_sep(in_region int, units int) int {
     if units <= 0 { return 0 }
     let u = unit_at(in_region, units - 1)
@@ -175,50 +201,457 @@ fn last_unit_is_sep(in_region int, units int) int {
     return 0
 }
 
-fn write_header(region int, body_len int) int {
-    let head Str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
-    let tail Str = "\r\nConnection: close\r\n\r\n"
-    let text Str = head + int_to_str(body_len) + tail
-    return write_ascii(region, 0, text)
+// ASCII UTF-8 字节 → UTF-16LE units；非 ASCII 返回 -1（C1 具名边界）。
+fn utf8_ascii_to_units(src int, off int, len int, dst int) int {
+    var i = 0
+    for i < len {
+        let b = mem_read_u8(src, off + i)
+        if b > 127 { return 0 - 1 }
+        let _a = mem_write_u8(dst, i * 2, b)
+        let _b = mem_write_u8(dst, i * 2 + 1, 0)
+        i = i + 1
+    }
+    return len
 }
 
-fn write_response(header_region int, hn int, body_region int, bn int) int {
+// root units → root + "/wiki" units（返回 units；root 已有尾分隔符则不补）。
+fn append_wiki_units(root_region int, root_units int, dst int) int {
+    var i = 0
+    for i < root_units {
+        let u = unit_at(root_region, i)
+        let _a = mem_write_u8(dst, i * 2, u % 256)
+        let _b = mem_write_u8(dst, i * 2 + 1, u / 256)
+        i = i + 1
+    }
+    var p = root_units
+    if last_unit_is_sep(root_region, root_units) == 0 {
+        let _s = mem_write_u8(dst, p * 2, 47)
+        let _z = mem_write_u8(dst, p * 2 + 1, 0)
+        p = p + 1
+    }
+    let w = "wiki"
+    var k = 0
+    for k < 4 {
+        let cp = w.char_at(k).to_codepoint()
+        let _a = mem_write_u8(dst, (p + k) * 2, cp)
+        let _b = mem_write_u8(dst, (p + k) * 2 + 1, 0)
+        k = k + 1
+    }
+    return p + 4
+}
+
+// ------------------------------------------------------ 请求/响应
+
+fn open_read(path_region int, units int, dst int, cap int) int {
+    let h = file_open_w16(path_region, 0, units, 1)
+    if h <= 0 { return h }
+    var total = 0
+    for total < cap {
+        let n = file_read_some(h, dst, total, cap - total)
+        if n <= 0 { break }
+        total = total + n
+    }
+    let _c = file_close(h)
+    return total
+}
+
+fn read_request(dst int) int {
+    let pr = mem_alloc(256)
+    let units = stage_ascii_w16("{scratch}/p983-req.txt", pr)
+    let total = open_read(pr, units, dst, 8192)
+    let _f = mem_free(pr)
+    return total
+}
+
+fn lit_at(region int, at int, lit Str) int {
+    let n = lit.len()
+    var i = 0
+    for i < n {
+        let want = lit.char_at(i).to_codepoint()
+        let got = mem_read_u8(region, at + i)
+        if got != want { return 0 }
+        i = i + 1
+    }
+    return 1
+}
+
+fn header_end(region int, total int) int {
+    var i = 0
+    for i + 4 <= total {
+        if mem_read_u8(region, i) == 13 {
+            if mem_read_u8(region, i + 1) == 10 {
+                if mem_read_u8(region, i + 2) == 13 {
+                    if mem_read_u8(region, i + 3) == 10 {
+                        return i + 4
+                    }
+                }
+            }
+        }
+        i = i + 1
+    }
+    return 0 - 1
+}
+
+fn write_response(status Str, body_region int, body_len int) int {
+    let head Str = "HTTP/1.1 " + status + "\r\nContent-Type: application/json\r\nContent-Length: "
+    let tail Str = "\r\nConnection: close\r\n\r\n"
+    let header_region = mem_alloc(256)
+    var n = write_ascii(header_region, 0, head)
+    n = write_ascii(header_region, n, int_to_str(body_len))
+    n = write_ascii(header_region, n, tail)
+
     let pr = mem_alloc(256)
     let units = stage_ascii_w16("{scratch}/p983-resp.txt", pr)
     let h = file_open_w16(pr, 0, units, 14)
     let _f = mem_free(pr)
-    if h <= 0 { return h }
-    let _w1 = file_write_some(h, header_region, 0, hn)
-    let _w2 = file_write_some(h, body_region, 0, bn)
+    if h <= 0 {
+        let _f1 = mem_free(header_region)
+        return h
+    }
+    let _w1 = file_write_some(h, header_region, 0, n)
+    let _w2 = file_write_some(h, body_region, 0, body_len)
     let _c = file_close(h)
+    let _f2 = mem_free(header_region)
     return 0
 }
 
-fn main() int {
-    let out = mem_alloc(2048)
-    let body = mem_alloc(4096)
-    let header = mem_alloc(256)
-    let name = mem_alloc(64)
-    let name_units = stage_ascii_w16("JADE_GARDEN_DEFAULT_WORKSPACE", name)
-    let units = env_get_w16(name, 0, name_units, out, 1024)
-    let _f1 = mem_free(name)
-    var n = 0
-    if units <= 0 {
-        n = write_ascii(body, 0, "{\"root\":null,\"wiki_dir\":null}")
-    } else {
-        n = write_ascii(body, 0, "{\"root\":\"")
-        n = write_utf16_json(out, units, body, n)
-        n = write_ascii(body, n, "\",\"wiki_dir\":\"")
-        n = write_utf16_json(out, units, body, n)
-        if last_unit_is_sep(out, units) == 0 {
-            n = write_json_byte(body, n, 92)
-        }
-        n = write_ascii(body, n, "wiki\"}")
-    }
-    let hn = write_header(header, n)
-    let rc = write_response(header, hn, body, n)
-    let _f2 = mem_free(out)
-    let _f3 = mem_free(body)
-    let _f4 = mem_free(header)
+fn respond_error_str(status Str, message Str) int {
+    let buf = mem_alloc(256)
+    let n = write_ascii(buf, 0, message)
+    let rc = respond_error(status, buf, n)
+    let _f = mem_free(buf)
     return rc
 }
+
+fn respond_error(status Str, message_region int, message_len int) int {
+    let body = mem_alloc(512)
+    var n = write_ascii(body, 0, "{\"error\":\"")
+    n = write_json_bytes(body, n, message_region, message_len)
+    n = write_ascii(body, n, "\"}")
+    let rc = write_response(status, body, n)
+    let _f = mem_free(body)
+    return rc
+}
+// 键之后的 JSON 字符串值（`:` + 引号 + 反转义）→ 字节数；-1=格式不匹配。
+fn json_string_value(region int, at int, end int, out int) int {
+    var i = at
+    for i < end {
+        let b = mem_read_u8(region, i)
+        if b == 32 { i = i + 1 } else { break }
+    }
+    if i >= end { return 0 - 1 }
+    if mem_read_u8(region, i) != 58 { return 0 - 1 }
+    i = i + 1
+    for i < end {
+        let b = mem_read_u8(region, i)
+        if b == 32 { i = i + 1 } else { break }
+    }
+    if i >= end { return 0 - 1 }
+    if mem_read_u8(region, i) != 34 { return 0 - 1 }
+    i = i + 1
+    var p = 0
+    for i < end {
+        let b = mem_read_u8(region, i)
+        if b == 34 { return p }
+        if b == 92 {
+            if i + 1 < end {
+                let e = mem_read_u8(region, i + 1)
+                if e == 92 {
+                    let _w = mem_write_u8(out, p, 92)
+                    p = p + 1
+                    i = i + 2
+                } else {
+                    if e == 34 {
+                        let _w = mem_write_u8(out, p, 34)
+                        p = p + 1
+                        i = i + 2
+                    } else {
+                        if e == 47 {
+                            let _w = mem_write_u8(out, p, 47)
+                            p = p + 1
+                            i = i + 2
+                        } else {
+                            let _w = mem_write_u8(out, p, b)
+                            p = p + 1
+                            i = i + 1
+                        }
+                    }
+                }
+            } else {
+                return 0 - 1
+            }
+        } else {
+            let _w = mem_write_u8(out, p, b)
+            p = p + 1
+            i = i + 1
+        }
+    }
+    return 0 - 1
+}
+
+fn json_root(region int, from int, end int, out int) int {
+    var i = from
+    var found = 0 - 1
+    for i + 6 <= end {
+        if lit_at(region, i, "\"root\"") == 1 {
+            found = i
+            break
+        }
+        i = i + 1
+    }
+    if found < 0 { return 0 - 1 }
+    return json_string_value(region, found + 6, end, out)
+}
+
+// 配置键 `"workspace_root"`（16 字节）→ 位置；-1=没有。
+fn find_config_key(region int, from int, end int) int {
+    var i = from
+    for i + 16 <= end {
+        if lit_at(region, i, "\"workspace_root\"") == 1 { return i }
+        i = i + 1
+    }
+    return 0 - 1
+}
+// ------------------------------------------------------ 配置
+
+// env `name` → config path units（返回 units；0=未设置）。
+fn env_path_units(name Str, dst int) int {
+    let nr = mem_alloc(128)
+    let n = stage_ascii_w16(name, nr)
+    let units = env_get_w16(nr, 0, n, dst, 1024)
+    let _f = mem_free(nr)
+    return units
+}
+
+// 读配置文件的 `workspace_root`（JSON 反转义）→ 字节数；-1=无/不可读。
+fn config_root(config_units_region int, config_units int, out int) int {
+    let cfg = mem_alloc(4096)
+    let total = open_read(config_units_region, config_units, cfg, 4096)
+    if total <= 0 {
+        let _f = mem_free(cfg)
+        return 0 - 1
+    }
+    let key = find_config_key(cfg, 0, total)
+    if key < 0 {
+        let _f = mem_free(cfg)
+        return 0 - 1
+    }
+    let n = json_string_value(cfg, key + 16, total, out)
+    let _f = mem_free(cfg)
+    return n
+}
+
+// 把 `{"workspace_root":"<root>"}` 写入配置路径。
+fn write_config(config_units_region int, config_units int, root_region int, root_len int) int {
+    let h = file_open_w16(config_units_region, 0, config_units, 14)
+    if h <= 0 { return h }
+    let buf = mem_alloc(2048)
+    var n = write_ascii(buf, 0, "{\"workspace_root\":\"")
+    n = write_json_bytes(buf, n, root_region, root_len)
+    n = write_ascii(buf, n, "\"}")
+    let w = file_write_some(h, buf, 0, n)
+    let _c = file_close(h)
+    let _f = mem_free(buf)
+    if w < 0 { return w }
+    return 0
+}
+
+// ------------------------------------------------------ 响应体
+
+fn last_byte_is_sep(region int, len int) int {
+    if len <= 0 { return 0 }
+    let b = mem_read_u8(region, len - 1)
+    if b == 47 { return 1 }
+    if b == 92 { return 1 }
+    return 0
+}
+
+// root/wiki 响应体；返回长度。
+fn workspace_body(root_region int, root_len int, wiki_is_root_plus_wiki int) int {
+    let body = mem_alloc(root_len * 12 + 64)
+    var n = write_ascii(body, 0, "{\"root\":\"")
+    n = write_json_bytes(body, n, root_region, root_len)
+    n = write_ascii(body, n, "\",\"wiki_dir\":\"")
+    n = write_json_bytes(body, n, root_region, root_len)
+    if wiki_is_root_plus_wiki == 0 {
+        n = write_json_byte(body, n, 92)
+    }
+    n = write_ascii(body, n, "wiki\"}")
+    let rc = write_response("200 OK", body, n)
+    let _f = mem_free(body)
+    return rc
+}
+
+// ------------------------------------------------------ 处理函数
+
+fn handle_get() int {
+    let cfg_units = mem_alloc(1024)
+    let n_cfg = env_path_units("JADE_GARDEN_CONFIG", cfg_units)
+    let root = mem_alloc(2048)
+    var root_len = 0 - 1
+    if n_cfg > 0 {
+        root_len = config_root(cfg_units, n_cfg, root)
+    }
+    if root_len < 0 {
+        // 初始回退：env 默认工作区（C0 语义）。
+        let env_units = mem_alloc(2048)
+        let n_env = env_path_units("JADE_GARDEN_DEFAULT_WORKSPACE", env_units)
+        if n_env <= 0 {
+            let body = mem_alloc(64)
+            let n = write_ascii(body, 0, "{\"root\":null,\"wiki_dir\":null}")
+            let rc = write_response("200 OK", body, n)
+            let _fb = mem_free(body)
+            let _fe = mem_free(env_units)
+            let _fg = mem_free(cfg_units)
+            let _fr = mem_free(root)
+            return rc
+        }
+        root_len = write_utf16_utf8(env_units, n_env, root, 0)
+        let _fe = mem_free(env_units)
+    }
+    let rc = workspace_body(root, root_len, last_byte_is_sep(root, root_len))
+    let _fg = mem_free(cfg_units)
+    let _fr = mem_free(root)
+    return rc
+}
+
+fn handle_open(req int, total int) int {
+    let body_start = header_end(req, total)
+    if body_start < 0 { return respond_error_str("400 Bad Request", "malformed request") }
+    let out = mem_alloc(2048)
+    let root_len = json_root(req, body_start, total, out)
+    if root_len <= 0 {
+        let msg = mem_alloc(64)
+        let n = write_ascii(msg, 0, "missing root in request body")
+        let rc = respond_error("400 Bad Request", msg, n)
+        let _fm = mem_free(msg)
+        let _fo = mem_free(out)
+        return rc
+    }
+    // 目录存在性（path_attrs_w16 位：1=directory）。
+    let units = mem_alloc(2048)
+    let n_units = utf8_ascii_to_units(out, 0, root_len, units)
+    if n_units < 0 {
+        let msg = mem_alloc(96)
+        let n = write_ascii(msg, 0, "non-ASCII workspace paths are not supported by this service (C1 slice)")
+        let rc = respond_error("400 Bad Request", msg, n)
+        let _fm = mem_free(msg)
+        let _fu = mem_free(units)
+        let _fo = mem_free(out)
+        return rc
+    }
+    let attrs = path_attrs_w16(units, 0, n_units)
+    if attrs < 0 {
+        let msg = mem_alloc(1024)
+        var n = write_ascii(msg, 0, "Directory does not exist: ")
+        var k = 0
+        for k < root_len {
+            let _w = mem_write_u8(msg, n, mem_read_u8(out, k))
+            n = n + 1
+            k = k + 1
+        }
+        let rc = respond_error("400 Bad Request", msg, n)
+        let _fm = mem_free(msg)
+        let _fu = mem_free(units)
+        let _fo = mem_free(out)
+        return rc
+    }
+    if attrs % 2 == 0 {
+        let msg = mem_alloc(1024)
+        var n = write_ascii(msg, 0, "Not a directory: ")
+        var k = 0
+        for k < root_len {
+            let _w = mem_write_u8(msg, n, mem_read_u8(out, k))
+            n = n + 1
+            k = k + 1
+        }
+        let rc = respond_error("400 Bad Request", msg, n)
+        let _fm = mem_free(msg)
+        let _fu = mem_free(units)
+        let _fo = mem_free(out)
+        return rc
+    }
+    // 创建 `<root>/wiki`（已存在则接受）。
+    let wiki_units = mem_alloc(2048)
+    let wn = append_wiki_units(units, n_units, wiki_units)
+    let created = dir_create_w16(wiki_units, 0, wn)
+    if created < 0 {
+        let wattrs = path_attrs_w16(wiki_units, 0, wn)
+        if wattrs < 0 {
+            let _fu = mem_free(units)
+            let _fw = mem_free(wiki_units)
+            let _fo = mem_free(out)
+            return respond_error_str("500 Internal Server Error", "workspace open failed")
+        }
+    }
+    // 持久化：持久值优先 ⇒ POST 之后 GET/重启都看到新目录。
+    let cfg_units = mem_alloc(1024)
+    let cfg_n = env_path_units("JADE_GARDEN_CONFIG", cfg_units)
+    if cfg_n <= 0 {
+        let msg = mem_alloc(96)
+        let n = write_ascii(msg, 0, "workspace config path is not set (JADE_GARDEN_CONFIG)")
+        let rc = respond_error("500 Internal Server Error", msg, n)
+        let _fm = mem_free(msg)
+        let _fu = mem_free(units)
+        let _fw = mem_free(wiki_units)
+        let _fc = mem_free(cfg_units)
+        let _fo = mem_free(out)
+        return rc
+    }
+    let wrote = write_config(cfg_units, cfg_n, out, root_len)
+    if wrote < 0 {
+        let _fu = mem_free(units)
+        let _fw = mem_free(wiki_units)
+        let _fc = mem_free(cfg_units)
+        let _fo = mem_free(out)
+        return respond_error_str("500 Internal Server Error", "workspace open failed")
+    }
+    let rc = workspace_body(out, root_len, last_unit_is_sep(units, n_units))
+    let _fu = mem_free(units)
+    let _fw = mem_free(wiki_units)
+    let _fc = mem_free(cfg_units)
+    let _fo = mem_free(out)
+    return rc
+}
+
+fn main() int {
+    let req = mem_alloc(8192)
+    let total = read_request(req)
+    if total <= 0 {
+        let msg = mem_alloc(64)
+        let n = write_ascii(msg, 0, "missing staged request")
+        let rc = respond_error("400 Bad Request", msg, n)
+        let _fm = mem_free(msg)
+        let _fr = mem_free(req)
+        return rc
+    }
+    let is_post = lit_at(req, 0, "POST ")
+    let is_get = lit_at(req, 0, "GET ")
+    var rc = 0
+    if is_get == 1 {
+        if lit_at(req, 4, "/api/workspace ") == 1 {
+            rc = handle_get()
+        } else {
+            rc = respond_error_str("404 Not Found", "not found")
+        }
+    } else {
+        if is_post == 1 {
+            if lit_at(req, 5, "/api/workspace/open ") == 1 {
+                rc = handle_open(req, total)
+            } else {
+                rc = respond_error_str("404 Not Found", "not found")
+            }
+        } else {
+            rc = respond_error_str("405 Method Not Allowed", "method not allowed")
+        }
+    }
+    let _fr = mem_free(req)
+    return rc
+}
+
+
+
+
+
+
+

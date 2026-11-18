@@ -7,11 +7,46 @@ import {
   BACKEND_URL,
   FRONTEND_PORT,
   FRONTEND_URL,
+  MANAGED_BACKEND,
   RUNTIME_DIR,
   WORKSPACE_ROOT,
 } from './e2e/runtime'
 
 const frontDir = path.dirname(fileURLToPath(import.meta.url))
+
+// PLAN-983 C0-B：外部后端模式只起 Vite（代理到 BACKEND_URL）；后端由调用方
+// 启动（AV 直连服务或 982 `auto service --server av`），因此这里不再 spawn
+// jade-garden-back.exe，也不要求 BACKEND_EXE 存在。
+const backendServer = {
+  // Copied cargo binary (see scripts/e2e-prepare.mjs). Its config file
+  // lives next to the exe inside .runtime/, fully isolated from dev runs.
+  command: `"${BACKEND_EXE}"`,
+  cwd: RUNTIME_DIR,
+  env: {
+    JADE_GARDEN_PORT: String(BACKEND_PORT),
+    JADE_GARDEN_DEFAULT_WORKSPACE: WORKSPACE_ROOT,
+    // Plan 022 Phase 3: setting JADE_GARDEN_SERVER=vm on the
+    // playwright invocation switches the backend onto the AutoVM
+    // serve path (same binary, same routes).
+    ...(process.env.JADE_GARDEN_SERVER
+      ? { JADE_GARDEN_SERVER: process.env.JADE_GARDEN_SERVER }
+      : {}),
+  },
+  url: `${BACKEND_URL}/api/workspace`,
+  timeout: 60_000,
+  reuseExistingServer: false,
+}
+
+const frontendServer = {
+  command: `node node_modules/vite/bin/vite.js --port ${FRONTEND_PORT} --strictPort --host 127.0.0.1`,
+  cwd: frontDir,
+  env: {
+    AUTO_HTTP_PROXY: BACKEND_URL,
+  },
+  url: FRONTEND_URL,
+  timeout: 120_000,
+  reuseExistingServer: false,
+}
 
 export default defineConfig({
   testDir: './e2e',
@@ -37,35 +72,5 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: [
-    {
-      // Copied cargo binary (see scripts/e2e-prepare.mjs). Its config file
-      // lives next to the exe inside .runtime/, fully isolated from dev runs.
-      command: `"${BACKEND_EXE}"`,
-      cwd: RUNTIME_DIR,
-      env: {
-        JADE_GARDEN_PORT: String(BACKEND_PORT),
-        JADE_GARDEN_DEFAULT_WORKSPACE: WORKSPACE_ROOT,
-        // Plan 022 Phase 3: setting JADE_GARDEN_SERVER=vm on the
-        // playwright invocation switches the backend onto the AutoVM
-        // serve path (same binary, same routes).
-        ...(process.env.JADE_GARDEN_SERVER
-          ? { JADE_GARDEN_SERVER: process.env.JADE_GARDEN_SERVER }
-          : {}),
-      },
-      url: `${BACKEND_URL}/api/workspace`,
-      timeout: 60_000,
-      reuseExistingServer: false,
-    },
-    {
-      command: `node node_modules/vite/bin/vite.js --port ${FRONTEND_PORT} --strictPort --host 127.0.0.1`,
-      cwd: frontDir,
-      env: {
-        AUTO_HTTP_PROXY: BACKEND_URL,
-      },
-      url: FRONTEND_URL,
-      timeout: 120_000,
-      reuseExistingServer: false,
-    },
-  ],
+  webServer: [...(MANAGED_BACKEND ? [backendServer] : []), frontendServer],
 })

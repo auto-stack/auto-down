@@ -1,9 +1,15 @@
 import { expect, test } from '@playwright/test'
 import { openApp, treeNode } from './helpers'
-import { WORKSPACE_ROOT } from './runtime'
+import { MANAGED_BACKEND, WORKSPACE_ROOT } from './runtime'
 
 test.describe('workspace + file tree', () => {
   test('workspace auto-loads and file tree renders fixture files', async ({ page }) => {
+    // PLAN-983 C0-B：外部 AV/CLI 后端只实现 /api/workspace（C0 切片），
+    // /api/files 的消费由 managed 后端（jade-garden-back）覆盖。
+    test.skip(
+      !MANAGED_BACKEND,
+      'external C0 backend serves /api/workspace only; the file tree needs /api/files',
+    )
     await openApp(page)
 
     // Expected files from the fixture workspace (tmp/wiki-demo/wiki +
@@ -17,6 +23,12 @@ test.describe('workspace + file tree', () => {
   })
 
   test('WorkspaceOpener UI opens a workspace by path', async ({ page }) => {
+    // PLAN-983 C0-B：外部后端不实现 POST /api/workspace/open（不在 C0 切片），
+    // opener 路径继续由 managed 后端覆盖。
+    test.skip(
+      !MANAGED_BACKEND,
+      'external C0 backend has no POST /api/workspace/open; opener flow is managed-backend only',
+    )
     // Force the backend to report "no workspace" so the opener UI appears.
     // The POST /api/workspace/open call is NOT intercepted and goes to the
     // real backend (which is idempotent — it already has the fixture open).

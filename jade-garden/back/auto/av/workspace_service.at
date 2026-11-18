@@ -1,5 +1,8 @@
 // jade-garden C0-A/C1：`/api/workspace` 与 `/api/workspace/open` 的可执行 AV
-// 业务源（PLAN-983 首例；文件通道引擎 `auto_web::http_server::serve_av`）。
+// 业务源（PLAN-983 首例；引擎 `auto_web::http_server::serve_av`，r19 起请求
+// 走 982 组合文本入口：宿主把**原始 HTTP 文本**作为借用 `str` 实参传入
+// `main(request str)`；响应仍写 `{scratch}/p983-resp.txt` 由宿主读回，
+// 请求暂存文件不再存在）。
 //
 // 配置单一来源（C1 冻结）：
 //   - `JADE_GARDEN_CONFIG` = 显式工作区配置文件路径；**持久化值优先**——
@@ -420,12 +423,45 @@ fn write_file_units(path_region int, units int, src int, len int) int {
     return 0
 }
 
-fn read_request(dst int) int {
-    let pr = mem_alloc(256)
-    let units = stage_ascii_w16("{scratch}/p983-req.txt", pr)
-    let total = open_read(pr, units, dst, 8192)
-    let _f = mem_free(pr)
-    return total
+// 借用 `str` 视图 → UTF-8 字节写入 region（r19 文本入口的请求暂存）。
+// `len`/`char_at` 是 Unicode 标量域（774 语义），逐标量重编 UTF-8 字节
+// （1-4 字节/标量），与宿主传入的原始字节逐位等价；超 cap 返回 -1。
+fn stage_str_utf8(s str, region int, cap int) int {
+    let n = s.len()
+    var p = 0
+    var i = 0
+    for i < n {
+        let cp = s.char_at(i).to_codepoint()
+        if cp < 128 {
+            if p >= cap { return 0 - 1 }
+            let _w = mem_write_u8(region, p, cp)
+            p = p + 1
+        } else {
+            if cp < 2048 {
+                if p + 2 > cap { return 0 - 1 }
+                let _a = mem_write_u8(region, p, 192 + cp / 64)
+                let _b = mem_write_u8(region, p + 1, 128 + cp % 64)
+                p = p + 2
+            } else {
+                if cp < 65536 {
+                    if p + 3 > cap { return 0 - 1 }
+                    let _a = mem_write_u8(region, p, 224 + cp / 4096)
+                    let _b = mem_write_u8(region, p + 1, 128 + (cp / 64) % 64)
+                    let _c = mem_write_u8(region, p + 2, 128 + cp % 64)
+                    p = p + 3
+                } else {
+                    if p + 4 > cap { return 0 - 1 }
+                    let _a = mem_write_u8(region, p, 240 + cp / 262144)
+                    let _b = mem_write_u8(region, p + 1, 128 + (cp / 4096) % 64)
+                    let _c = mem_write_u8(region, p + 2, 128 + (cp / 64) % 64)
+                    let _d = mem_write_u8(region, p + 3, 128 + cp % 64)
+                    p = p + 4
+                }
+            }
+        }
+        i = i + 1
+    }
+    return p
 }
 
 fn lit_at(region int, at int, lit Str) int {
@@ -1063,12 +1099,12 @@ fn handle_open(req int, total int) int {
     return rc
 }
 
-fn main() int {
+fn main(request str) int {
     let req = mem_alloc(8192)
-    let total = read_request(req)
-    if total <= 0 {
-        let msg = mem_alloc(64)
-        let n = write_ascii(msg, 0, "missing staged request")
+    let total = stage_str_utf8(request, req, 8192)
+    if total < 0 {
+        let msg = mem_alloc(96)
+        let n = write_ascii(msg, 0, "request exceeds the staged buffer (8192 bytes)")
         let rc = respond_error("400 Bad Request", msg, n)
         let _fm = mem_free(msg)
         let _fr = mem_free(req)

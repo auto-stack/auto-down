@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { readFileSync, realpathSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -23,21 +23,33 @@ assert.equal(index.edition, 'pilot-03')
 const total = { chapters: 0, frontmatter: 0, cards: 0, paragraphs: 0, spans: 0, nonLearning: 0 }
 const works = index.books.filter(({ book }) => !workFilter || workFilter === book)
 assert(works.length, `unknown work ${workFilter}`)
-const started = performance.now()
-for (const summary of works) {
+const readNative = (input) => new Promise((resolve, reject) => {
+  const child = spawn(executable, ['--batch'], { windowsHide: true })
+  const chunks = []
+  const stderr = []
+  child.stdout.on('data', chunk => chunks.push(chunk))
+  child.stderr.on('data', chunk => stderr.push(chunk))
+  child.stdin.on('error', reject)
+  child.on('error', reject)
+  child.on('close', status => {
+    if (status !== 0) reject(new Error(`native book reader exited ${status}: ${Buffer.concat(stderr)}`))
+    else resolve(Buffer.concat(chunks))
+  })
+  child.stdin.end(input)
+})
+
+const verifyWork = async (summary) => {
   const t = performance.now()
   const base = join(books, 'books', summary.book)
   const { chapters, frontmatter } = json(join(base, 'book.json'))
   const entries = frontmatter ? [frontmatter, ...chapters] : chapters
   const input = entries.map(entry => `${entry.id ?? ''}\t${join(base, entry.sourceFile)}\n`).join('')
-  const native = spawnSync(executable, ['--batch'], { input, maxBuffer: 32 * 1024 * 1024 })
-  assert.ifError(native.error)
-  assert.equal(native.status, 0, native.stderr?.toString())
+  const native = await readNative(input)
   let cursor = 0
   const field = () => {
-    const end = cursor + 4 + native.stdout.readUInt32LE(cursor)
-    const bytes = native.stdout.subarray(cursor + 4, end)
-    assert(end <= native.stdout.length, 'truncated native result')
+    const end = cursor + 4 + native.readUInt32LE(cursor)
+    const bytes = native.subarray(cursor + 4, end)
+    assert(end <= native.length, 'truncated native result')
     cursor = end
     return bytes
   }
@@ -89,7 +101,7 @@ for (const summary of works) {
       sameBytes(field(), bytes, `native card text: ${description}`)
     }
   }
-  assert.equal(cursor, native.stdout.length, 'unexpected extra native output')
+  assert.equal(cursor, native.length, 'unexpected extra native output')
   assert.equal(chapters.length, summary.chapters)
   assert.equal(Number(Boolean(frontmatter)), summary.frontmatterFiles)
   assert.deepEqual(counts, {
@@ -98,10 +110,18 @@ for (const summary of works) {
     cards: summary.cards,
     nonLearning: summary.nonLearningSections,
   }, summary.book)
-  total.chapters += chapters.length
-  total.frontmatter += Number(Boolean(frontmatter))
-  for (const key of Object.keys(counts)) total[key] += counts[key]
-  console.log(summary.book, JSON.stringify(counts), `${((performance.now() - t) / 1000).toFixed(3)} s`)
+  return { ...counts, chapters: chapters.length, frontmatter: Number(Boolean(frontmatter)),
+    seconds: (performance.now() - t) / 1000 }
+}
+
+const started = performance.now()
+for (let i = 0; i < works.length; i += 3) {
+  const batch = works.slice(i, i + 3)
+  const reports = await Promise.all(batch.map(verifyWork))
+  for (const [index, { seconds, ...counts }] of reports.entries()) {
+    for (const key of Object.keys(counts)) total[key] += counts[key]
+    console.log(batch[index].book, JSON.stringify(counts), `${seconds.toFixed(3)} s`)
+  }
 }
 if (!workFilter) assert.deepEqual(total, {
   chapters: 1594, frontmatter: 11, cards: 8946, paragraphs: 26796, spans: 3697, nonLearning: 19,

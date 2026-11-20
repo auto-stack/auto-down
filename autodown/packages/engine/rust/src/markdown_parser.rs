@@ -1367,7 +1367,7 @@ fn isTableRow(line: &str) -> bool {
     if isBlank(line) {
         return false;
     }
-    return hasChar(line, 124);
+    return line.contains('|');
 }
 
 fn isAlignCell(t: &str) -> bool {
@@ -1855,10 +1855,45 @@ fn argBoolOf(args: &str, key: &str) -> Option<bool> {
     return None;
 }
 
-fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BlockRows {
+    pub kind: String,
+    pub first: i64,
+    pub end: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BlockScan {
+    pub nodes: Vec<WNode>,
+    pub rows: Vec<BlockRows>,
+}
+
+pub fn scanBlockRows(lines: Vec<String>) -> Vec<BlockRows> {
+    return scanBlocks(lines, true, true).rows;
+}
+
+fn parseBlocks(lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
+    return scanBlocks(lines, isFinal, false).nodes;
+}
+
+fn scanBlocks(mut lines: Vec<String>, isFinal: bool, withRows: bool) -> BlockScan {
     let mut nodes: Vec<WNode> = vec![];
+    let mut rows: Vec<BlockRows> = vec![];
+    let mut first: i64 = 0;
     let mut i: i64 = 0;
-    while i < (lines.len() as i64) {
+    loop {
+        if withRows {
+            if (nodes.len() as i64) > (rows.len() as i64) {
+                let node = &nodes[nodes.len() - 1];
+                let mut end: i64 = i;
+                if end > (lines.len() as i64) {
+                    end = (lines.len() as i64);
+                }                rows.push(BlockRows { kind: node.r#type.to_string(), first: first, end: end });
+            }        }
+        if i >= (lines.len() as i64) {
+            break;
+        }
+        first = i;
         let line = lines[(i) as usize].clone();
         if isBlank(line.as_str()) {
             i += 1;
@@ -1948,7 +1983,7 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
                 .trim()
                 .to_string();
             let clean = stripTrailingHashes(content.as_str());
-            let mut children = parseInline(clean.as_str(), isFinal);
+            let mut children = if withRows { noNodes() } else { parseInline(clean.as_str(), isFinal) };
             if clean == "" {
                 children = noNodes();
             }
@@ -2113,7 +2148,7 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
                     break;
                 }
             }
-            if paraBreaks(cur.as_str(), lines.clone(), j) {
+            if paraBreaks(cur.as_str(), j) {
                 break;
             }
             para.push(stripParaIndent(cur.as_str()));
@@ -2121,7 +2156,7 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
         }
         if setextLevel > 0 {
             let mut content = para.join("\n");
-            let mut children = parseInline(content.as_str(), isFinal);
+            let mut children = if withRows { noNodes() } else { parseInline(content.as_str(), isFinal) };
             nodes.push(headingNode(setextLevel, children.clone()));
             i = j;
             continue;
@@ -2168,17 +2203,17 @@ fn parseBlocks(mut lines: Vec<String>, isFinal: bool) -> Vec<WNode> {
                 }
             }
             let content = para.join("\n");
-            let mut children = parseInline(content.as_str(), isFinal);
+            let mut children = if withRows { noNodes() } else { parseInline(content.as_str(), isFinal) };
             nodes.push(paraNode(children.clone()));
             i = j;
             continue;
         }
         i += 1;
     }
-    return nodes;
+    return BlockScan { nodes: nodes, rows: rows };
 }
 
-fn paraBreaks(cur: &str, lines: Vec<String>, idx: i64) -> bool {
+fn paraBreaks(cur: &str, idx: i64) -> bool {
     if idx == 0 {
         return false;
     }
@@ -2213,7 +2248,7 @@ fn paraBreaks(cur: &str, lines: Vec<String>, idx: i64) -> bool {
 }
 
 fn isParagraphStart(line: &str) -> bool {
-    if paraBreaks(line, vec![], 0) {
+    if paraBreaks(line, 0) {
         return false;
     }
     return true;
@@ -2384,7 +2419,7 @@ fn parseList(
                 }
                 if k < (lines.len() as i64) {
                     if indentWidth(lines[(k) as usize].as_str()) >= contentStart {
-                        if paraBreaks(lines[(k) as usize].as_str(), lines.clone(), k) {
+                        if paraBreaks(lines[(k) as usize].as_str(), k) {
                         } else {
                         }
                         let mut bi: i64 = i;
@@ -2408,7 +2443,7 @@ fn parseList(
                 continue;
             }
 
-            if !(paraBreaks(cur.as_str(), lines.clone(), i)) {
+            if !(paraBreaks(cur.as_str(), i)) {
                 itemLines.push(cur.to_string());
                 i += 1;
                 continue;
@@ -3799,7 +3834,7 @@ fn scanLink(line: &str, i: i64, isFinal: bool, seenCode: bool) -> Option<LinkSca
     });
 }
 
-fn extractAnchorBlock(text: &str) -> String {
+pub fn extractAnchorBlock(text: &str) -> String {
     let t = text.trim().to_string();
     let parts = t.split(" ").map(|s| s.to_string()).collect::<Vec<String>>();
     let n: i64 = (parts.len() as i64);
@@ -3845,6 +3880,10 @@ fn extractAnchorBlock(text: &str) -> String {
         }
     }
     return body;
+}
+
+pub fn plainInlineText(markdown: &str) -> String {
+    spansText(convertInlines(parseInline(markdown, true), vec![]))
 }
 
 fn convertInlines(wnodes: Vec<WNode>, mut marks: Vec<Mark>) -> Vec<InlineSpan> {
@@ -4488,16 +4527,22 @@ pub fn stripAnchorTokens(md: &str) -> String {
 }
 
 pub fn parse_blocks(src: &str, isFinal: bool) -> BlockNode {
+    parseBlockTree(src, isFinal, true)
+}
+
+pub fn parse_projection_blocks(src: &str, isFinal: bool) -> BlockNode {
+    parseBlockTree(src, isFinal, false)
+}
+
+fn parseBlockTree(src: &str, isFinal: bool, liftAnchors: bool) -> BlockNode {
     let pre = preprocessMarkdown(src);
     let preMd = pre.md.clone();
     let weak = parseDocument(preMd.as_str(), isFinal);
     let mut kids: Vec<BlockNode> = vec![];
     for i in 0..(weak.len() as i64) {
         let fallback: String = format!("{}{}", "block-", format!("{:?}", i));
-        kids.push(applyAnchorsDeep(convertBlock(
-            weak[(i) as usize].clone(),
-            fallback.as_str(),
-        )));
+        let block = convertBlock(weak[i as usize].clone(), &fallback);
+        kids.push(if liftAnchors { applyAnchorsDeep(block) } else { block });
     }
     let withIal = attachIAL(kids.clone(), pre.tableAttrs.clone());
     return blockFull(

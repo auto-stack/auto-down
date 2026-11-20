@@ -5,50 +5,61 @@
     :class="{ 'is-sync': scrollSync, 'is-dark': isDarkActive }"
     :data-accent="accentAttr"
   >
-    <template v-for="(part, idx) in parts" :key="part.kind + '-' + idx">
-      <MarkdownRender
-        v-if="part.kind === 'markdown'"
-        :content="part.text"
-        :final="!streaming"
-        :max-live-nodes="streaming ? 0 : 320"
-        :batch-rendering="streaming"
-        :render-batch-size="16"
-        :render-batch-delay="8"
-        :typewriter="streaming && idx === lastMarkdownIndex"
-        :fade="false"
-        :code-block-props="codeBlockProps"
-      />
-      <!-- registered BlockComponent stream slots win (plan 023 P2T1); the
-           builtin branches below are the unregistered fallbacks -->
-      <component
-        v-else-if="streamSlotOf(part)"
-        :is="() => streamSlotOf(part)!(slotNodeOf(part), slotFinalOf(part))"
-      />
-      <details
-        v-else-if="part.kind === 'details'"
-        class="autodown-details"
-        data-details-wrapped
-      >
-        <summary>{{ part.summary }}</summary>
-        <div class="details-content">
-          <MarkdownRender
-            :content="part.body"
-            :final="!streaming"
-            :batch-rendering="streaming"
-            :render-batch-size="16"
-            :render-batch-delay="8"
-            :typewriter="streaming && idx === lastMarkdownIndex"
-            :fade="false"
-            :code-block-props="codeBlockProps"
-          />
-        </div>
-      </details>
-      <component
-        v-else-if="part.kind === 'component'"
-        :is="registry[part.componentType]"
-        v-bind="part.props"
-        :final="part.final"
-      />
+    <BookReadingView
+      v-if="readingMode"
+      :source="source"
+      :chapter-id="readingChapterId"
+      :card-id="readingCardId"
+      :target-id="readingTargetId"
+      :final="!streaming"
+      @bookselect="emit('bookselect', $event)"
+    />
+    <template v-else>
+      <template v-for="(part, idx) in parts" :key="part.kind + '-' + idx">
+        <MarkdownRender
+          v-if="part.kind === 'markdown'"
+          :content="part.text"
+          :final="!streaming"
+          :max-live-nodes="streaming ? 0 : 320"
+          :batch-rendering="streaming"
+          :render-batch-size="16"
+          :render-batch-delay="8"
+          :typewriter="streaming && idx === lastMarkdownIndex"
+          :fade="false"
+          :code-block-props="codeBlockProps"
+        />
+        <!-- registered BlockComponent stream slots win (plan 023 P2T1); the
+             builtin branches below are the unregistered fallbacks -->
+        <component
+          v-else-if="streamSlotOf(part)"
+          :is="() => streamSlotOf(part)!(slotNodeOf(part), slotFinalOf(part))"
+        />
+        <details
+          v-else-if="part.kind === 'details'"
+          class="autodown-details"
+          data-details-wrapped
+        >
+          <summary>{{ part.summary }}</summary>
+          <div class="details-content">
+            <MarkdownRender
+              :content="part.body"
+              :final="!streaming"
+              :batch-rendering="streaming"
+              :render-batch-size="16"
+              :render-batch-delay="8"
+              :typewriter="streaming && idx === lastMarkdownIndex"
+              :fade="false"
+              :code-block-props="codeBlockProps"
+            />
+          </div>
+        </details>
+        <component
+          v-else-if="part.kind === 'component'"
+          :is="registry[part.componentType]"
+          v-bind="part.props"
+          :final="part.final"
+        />
+      </template>
     </template>
   </div>
 </template>
@@ -72,6 +83,7 @@ registerBlockComponent('Table', { stream: tableStreamFace })
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, h } from 'vue'
 import MarkdownRender from './MarkdownRender.vue'
+import BookReadingView from './BookReadingView.vue'
 import { enableKatex, enableMermaid, enableHighlight, isCapabilityEnabled } from './optional-capabilities'
 import { common, createLowlight } from 'lowlight'
 import { toHtml } from 'hast-util-to-html'
@@ -93,6 +105,10 @@ if (!isCapabilityEnabled('highlight')) enableHighlight()
 const props = withDefaults(
   defineProps<{
     source: string
+    readingMode?: boolean
+    readingChapterId?: string
+    readingCardId?: string
+    readingTargetId?: string
     streaming?: boolean
     placeholderBlockId?: string
     placeholderHeight?: number
@@ -118,6 +134,8 @@ const props = withDefaults(
     accent: 'indigo',
   }
 )
+
+const emit = defineEmits<{ bookselect: [payload: string] }>()
 
 const ACCENTS = ['indigo', 'coral', 'ocean', 'sage', 'amber'] as const
 const accentAttr = computed(() =>
@@ -146,7 +164,7 @@ onMounted(() => {
   }
 })
 
-const { segments } = useStreamingDocument(computed(() => props.source))
+const { segments } = useStreamingDocument(computed(() => props.readingMode ? "" : props.source))
 
 // :::details blocks are NOT part of the streaming parse subset — the
 // self-hosted MarkdownRender has no raw-HTML support, so the old trick of

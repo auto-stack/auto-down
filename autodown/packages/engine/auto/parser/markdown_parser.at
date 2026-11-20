@@ -679,7 +679,7 @@ fn quoteBody(line str) str {
 // GFM table: does `line` look like a row (contains a pipe, not blank)?
 fn isTableRow(line str) bool {
     if isBlank(line) { return false }
-    return hasChar(line, 124)
+    return line.split("|").length.to(int) > 1
 }
 
 // ":?-+:?" on the trimmed cell.
@@ -1041,11 +1041,42 @@ fn argBoolOf(args str, key str) bool? {
     return None
 }
 
-// Core block-level scan over a line range (0-based, end exclusive).
+pub type BlockRows {
+    kind str
+    first int
+    end int
+}
+
+pub type BlockScan {
+    nodes List<WNode>
+    rows List<BlockRows>
+}
+
+pub fn scanBlockRows(lines List<str>) List<BlockRows> {
+    return scanBlocks(lines, true, true).rows
+}
+
 fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
+    return scanBlocks(lines, isFinal, false).nodes
+}
+
+// Core block-level scan over a line range (0-based, end exclusive).
+fn scanBlocks(lines List<str>, isFinal bool, withRows bool) BlockScan {
     var nodes List<WNode> = []
+    var rows List<BlockRows> = []
+    var first int = 0
     var i int = 0
-    while i < lines.length.to(int) {
+    while true {
+        if withRows {
+            if nodes.length.to(int) > rows.length.to(int) {
+                let node = nodes[nodes.length.to(int) - 1]
+                var end = i
+                if end > lines.length.to(int) { end = lines.length.to(int) }
+                rows.push(BlockRows(node.type, first, end))
+            }
+        }
+        if i >= lines.length.to(int) { break }
+        first = i
         let line = lines[i]
         if isBlank(line) {
             i += 1
@@ -1138,7 +1169,8 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
             let t = line.trim()
             let content = t.slice(hlevel).trim()
             let clean = stripTrailingHashes(content)
-            var children = parseInline(clean, isFinal)
+            var children = noNodes()
+            if !withRows { children = parseInline(clean, isFinal) }
             if clean == "" {
                 children = noNodes()
             }
@@ -1288,13 +1320,14 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
                     break
                 }
             }
-            if paraBreaks(cur, lines, j) { break }
+            if paraBreaks(cur, j) { break }
             para.push(stripParaIndent(cur))
             j += 1
         }
         if setextLevel > 0 {
             let content = para.join("\n")
-            let children = parseInline(content, isFinal)
+            var children = noNodes()
+            if !withRows { children = parseInline(content, isFinal) }
             nodes.push(headingNode(setextLevel, children))
             i = j
             continue
@@ -1344,18 +1377,19 @@ fn parseBlocks(lines List<str>, isFinal bool) List<WNode> {
                 }
             }
             let content = para.join("\n")
-            let children = parseInline(content, isFinal)
+            var children = noNodes()
+            if !withRows { children = parseInline(content, isFinal) }
             nodes.push(paraNode(children))
             i = j
             continue
         }
         i += 1
     }
-    return nodes
+    return BlockScan(nodes, rows)
 }
 
 // Would a paragraph starting/continuing at `idx` be broken by this line?
-fn paraBreaks(cur str, lines List<str>, idx int) bool {
+fn paraBreaks(cur str, idx int) bool {
     if idx == 0 { return false }
     if fenceMarker(cur) != "" { return true }
     if headingLevel(cur) > 0 { return true }
@@ -1372,7 +1406,7 @@ fn paraBreaks(cur str, lines List<str>, idx int) bool {
 // Whether a standalone line can start a plain paragraph (used for quote lazy
 // continuation).
 fn isParagraphStart(line str) bool {
-    if paraBreaks(line, [], 0) { return false }
+    if paraBreaks(line, 0) { return false }
     return true
 }
 
@@ -1521,7 +1555,7 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, mut nodes L
                 }
                 if k < lines.length.to(int) {
                     if indentWidth(lines[k]) >= contentStart {
-                        if paraBreaks(lines[k], lines, k) {
+                        if paraBreaks(lines[k], k) {
                             // indented block start inside item
                         } else {
                             // continuation paragraph
@@ -1544,7 +1578,7 @@ fn parseList(lines List<str>, start int, ordered bool, firstNum int, mut nodes L
                 continue
             }
             // lazy continuation: plain paragraph text continues the item
-            if !paraBreaks(cur, lines, i) {
+            if !paraBreaks(cur, i) {
                 itemLines.push(cur)
                 i += 1
                 continue
@@ -2614,7 +2648,7 @@ fn scanLink(line str, i int, isFinal bool, seenCode bool) LinkScan? {
 // whitespace-separated token of the trimmed text, must start with ^ and
 // contain only [a-zA-Z0-9_-]. Looser than the editor regex on tabs —
 // documented divergence.
-fn extractAnchorBlock(text str) str {
+pub fn extractAnchorBlock(text str) str {
     let t = text.trim()
     let parts = t.split(" ")
     let n = parts.length.to(int)
@@ -2633,6 +2667,10 @@ fn extractAnchorBlock(text str) str {
         if !ok { return "" }
     }
     return body
+}
+
+pub fn plainInlineText(markdown str) str {
+    return spansText(convertInlines(parseInline(markdown, true), []))
 }
 
 fn convertInlines(wnodes List<WNode>, marks List<Mark>) List<InlineSpan> {
@@ -2972,13 +3010,22 @@ pub fn stripAnchorTokens(md str) str {
 }
 
 pub fn parse_blocks(src str, isFinal bool) BlockNode {
+    return parseBlockTree(src, isFinal, true)
+}
+
+pub fn parse_projection_blocks(src str, isFinal bool) BlockNode {
+    return parseBlockTree(src, isFinal, false)
+}
+
+fn parseBlockTree(src str, isFinal bool, liftAnchors bool) BlockNode {
     let pre = preprocessMarkdown(src)
     let preMd = pre.md
     let weak = parseDocument(preMd, isFinal)
     var kids List<BlockNode> = []
     for i in 0..weak.length.to(int) {
         let fallback = "block-" + i.to(str)
-        kids.push(applyAnchorsDeep(convertBlock(weak[i], fallback)))
+        let block = convertBlock(weak[i], fallback)
+        if liftAnchors { kids.push(applyAnchorsDeep(block)) } else { kids.push(block) }
     }
     let withIal = attachIAL(kids, pre.tableAttrs)
     return blockFull("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0))

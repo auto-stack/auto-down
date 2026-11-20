@@ -24,6 +24,8 @@
 //                  auto-lang VM renderer's hljs theme baking)
 
 pub mod artifact_hash;
+#[allow(non_snake_case, unused_mut, unused_parens)]
+pub mod book_reading;
 pub mod block_model;
 pub mod hljs_scope_map;
 pub mod ial;

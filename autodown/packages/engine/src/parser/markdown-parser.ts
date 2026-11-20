@@ -758,7 +758,7 @@ export function isTableRow(line: string): boolean {
     if (isBlank(line)) {
         return false;
     }
-    return hasChar(line, 124);
+    return line.includes("|");
 }
 
 export function isAlignCell(t: string): boolean {
@@ -1201,10 +1201,56 @@ export function argBoolOf(args: string, key: string): boolean | null {
     return null;
 }
 
+export class BlockRows {
+    kind: string;
+    first: number;
+    end: number;
+
+    constructor(kind: string, first: number, end: number) {
+        this.kind = kind;
+        this.first = first;
+        this.end = end;
+    }
+}
+
+export class BlockScan {
+    nodes: WNode[];
+    rows: BlockRows[];
+
+    constructor(nodes: WNode[], rows: BlockRows[]) {
+        this.nodes = nodes;
+        this.rows = rows;
+    }
+}
+
+export function scanBlockRows(lines: string[]): BlockRows[] {
+    return scanBlocks(lines, true, true).rows;
+}
+
 export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
+    return scanBlocks(lines, isFinal, false).nodes;
+}
+
+export function scanBlocks(lines: string[], isFinal: boolean, withRows: boolean): BlockScan {
     let nodes: WNode[] = [];
+    let rows: BlockRows[] = [];
+    let first: number = 0;
     let i: number = 0;
-    while (i < Number(lines.length)) {
+    while (true) {
+        if (withRows) {
+            if (Number(nodes.length) > Number(rows.length)) {
+                const node = nodes[Number(nodes.length) - 1];
+                let end: number = i;
+                if (end > Number(lines.length)) {
+                    end = Number(lines.length);
+                }
+                rows.push(new BlockRows(node.type, first, end));
+            }
+        }
+        if (i >= Number(lines.length)) {
+            break;
+        }
+        first = i;
         const line = lines[i];
         if (isBlank(line)) {
             i += 1;
@@ -1305,7 +1351,7 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
             const t = line.trim();
             const content = t.slice(hlevel).trim();
             const clean = stripTrailingHashes(content);
-            let children = parseInline(clean, isFinal);
+            let children = withRows ? noNodes() : parseInline(clean, isFinal);
             if (clean == "") {
                 children = noNodes();
             }
@@ -1472,7 +1518,7 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
                     break;
                 }
             }
-            if (paraBreaks(cur, lines, j)) {
+            if (paraBreaks(cur, j)) {
                 break;
             }
             para.push(stripParaIndent(cur));
@@ -1480,7 +1526,7 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
         }
         if (setextLevel > 0) {
             const content = para.join("\n");
-            const children = parseInline(content, isFinal);
+            const children = withRows ? noNodes() : parseInline(content, isFinal);
             nodes.push(headingNode(setextLevel, children));
             i = j;
             continue;
@@ -1531,17 +1577,17 @@ export function parseBlocks(lines: string[], isFinal: boolean): WNode[] {
                 }
             }
             const content = para.join("\n");
-            const children = parseInline(content, isFinal);
+            const children = withRows ? noNodes() : parseInline(content, isFinal);
             nodes.push(paraNode(children));
             i = j;
             continue;
         }
         i += 1;
     }
-    return nodes;
+    return new BlockScan(nodes, rows);
 }
 
-export function paraBreaks(cur: string, lines: string[], idx: number): boolean {
+export function paraBreaks(cur: string, idx: number): boolean {
     if (idx == 0) {
         return false;
     }
@@ -1576,7 +1622,7 @@ export function paraBreaks(cur: string, lines: string[], idx: number): boolean {
 }
 
 export function isParagraphStart(line: string): boolean {
-    if (paraBreaks(line, [], 0)) {
+    if (paraBreaks(line, 0)) {
         return false;
     }
     return true;
@@ -1743,7 +1789,7 @@ export function parseList(lines: string[], start: number, ordered: boolean, firs
                 }
                 if (k < Number(lines.length)) {
                     if (indentWidth(lines[k]) >= contentStart) {
-                        if (paraBreaks(lines[k], lines, k)) {
+                        if (paraBreaks(lines[k], k)) {
                             
 
                         } else {
@@ -1769,7 +1815,7 @@ export function parseList(lines: string[], start: number, ordered: boolean, firs
             }
             
 
-            if (!paraBreaks(cur, lines, i)) {
+            if (!paraBreaks(cur, i)) {
                 itemLines.push(cur);
                 i += 1;
                 continue;
@@ -3020,6 +3066,10 @@ export function extractAnchorBlock(text: string): string {
     return body;
 }
 
+export function plainInlineText(markdown: string): string {
+    return spansText(convertInlines(parseInline(markdown, true), []));
+}
+
 export function convertInlines(wnodes: WNode[], marks: Mark[]): InlineSpan[] {
     let out: InlineSpan[] = [];
     for (const w of wnodes) {
@@ -3380,13 +3430,22 @@ export function stripAnchorTokens(md: string): string {
 }
 
 export function parse_blocks(src: string, isFinal: boolean): BlockNode {
+    return parseBlockTree(src, isFinal, true);
+}
+
+export function parse_projection_blocks(src: string, isFinal: boolean): BlockNode {
+    return parseBlockTree(src, isFinal, false);
+}
+
+function parseBlockTree(src: string, isFinal: boolean, liftAnchors: boolean): BlockNode {
     const pre = preprocessMarkdown(src);
     const preMd = pre.md;
     const weak = parseDocument(preMd, isFinal);
     let kids: BlockNode[] = [];
     for (let i = 0; i < Number(weak.length); i++) {
         const fallback: string = "block-" + String(i);
-        kids.push(applyAnchorsDeep(convertBlock(weak[i], fallback)));
+        const block = convertBlock(weak[i], fallback);
+        kids.push(liftAnchors ? applyAnchorsDeep(block) : block);
     }
     const withIal = attachIAL(kids, pre.tableAttrs);
     return blockFull("doc", BlockType.Paragraph, [], withIal, [], rng(0, 0));

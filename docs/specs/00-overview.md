@@ -10,6 +10,8 @@
 
 后续产品变化先核对实际代码与已批准合同，再更新对应当前规范；agent 不再写 specs.json，应用从文档和归档计划派生索引。遗留 JSON 保留为只读来源，迁移报告不充当应用手填索引。
 
+- [书籍阅读格式与只读组件](book-reading.md) 记录章、卡与持久锚的语义和双端验收入口。
+
 ## 设计中方向
 
 - [AutoDown 文档排版与 Auto 模板设计](../designs/10-autodown-publishing.md)：2026-11-14 Draft 0.1；v0.6 的普通 Auto 模板、Node 正文与 Typst 排版方向，附 P0-P3 原型范围、边界与验收场景。当前是设计输入，尚未实现，不替代已冻结的 parser/render/editor 出口合同。

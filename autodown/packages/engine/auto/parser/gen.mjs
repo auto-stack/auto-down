@@ -114,6 +114,84 @@ const headerFor = (title, src) => `/**
 
 `
 
+// M1 (shared): a2ts emits `use x:` as `import {...} from "x"` at the use
+// site (mid-file) with a bare module specifier -> rewrite the specifier per
+// the given mapping and hoist the import lines to the top of the file.
+const hoistUseImports = (label, s, mapping) =>
+  apply(label, s, (src) => {
+    let hoisted = ''
+    let stripped = src
+    for (const [from, to] of Object.entries(mapping)) {
+      const m = new RegExp(`import \\{[^}]+\\} from "${from}";`).exec(stripped)
+      if (!m) return src
+      hoisted += m[0].replace(`from "${from}"`, `from "${to}"`) + '\n'
+      stripped = stripped.replace(m[0], '')
+    }
+    return hoisted + stripped
+  })
+
+// The reading parser emits independently of legacy parser generator drift.
+const generateBookReading = () => {
+  const source = transpile('book_reading').replace(/[ \t]+$/gm, '')
+  writeFileSync(join(here, 'book_reading.raw.ts'), source)
+  let ts = hoistUseImports('book imports', source, {
+    block_model: './block-model.js',
+    markdown_parser: './markdown-parser.js',
+  })
+  ts = apply('book JS string offsets', ts, (src) => src.replace(
+    /export function bookTextUnits\([\s\S]*?(?=\nexport function bookLineOf\()/,
+    'function bookTextUnits(text: string): number { return text.length }\n' +
+      'export function sliceBookText(text: string, start: number, end: number): string {\n' +
+      '  return text.slice(start, end)\n}\n',
+  ))
+  writeFileSync(join(pkgRoot, 'src', 'parser', 'book-reading.ts'),
+    headerFor('AutoDown reading profile v1.', 'book_reading.at') + charAtFix(ts))
+  const atPath = join(here, 'book_reading.at')
+  execFileSync(autoExe, ['trans', '--path', atPath, 'rust'], { stdio: 'inherit' })
+  let rust = readFileSync(join(here, 'book_reading.a2r.rs'), 'utf8')
+  // a2r iterates borrowed records without cloning the returned payload.
+  rust = apply('book target ownership', rust, (src) => src.replaceAll('Some(target)', 'Some(target.clone())'))
+  // Borrow chapter-wide data on native lookup. The JS calls already use references.
+  rust = rust.replace(/(?:mut )?chapter: BookChapter/g, 'chapter: &BookChapter')
+    .replaceAll('locateBookTarget(chapter.clone(),', 'locateBookTarget(chapter,')
+    .replace('targets: Vec<BookTarget>, id: &str', 'targets: &[BookTarget], id: &str')
+    .replaceAll('findBookTarget(targets.clone(),', 'findBookTarget(&targets,')
+    .replace('for target in &targets {', 'for target in targets {')
+    .replace('item: BookSpan, all: BookInline', 'item: &BookSpan, all: &BookInline')
+    .replace('invalidBookSpan(item.clone(), inline.clone())', 'invalidBookSpan(item, &inline)')
+    .replace('return chapter.source;', 'return chapter.source.clone();')
+  rust = apply('book scalar scan', rust, (src) => src.replace(
+    /fn bookCharCodes\([\s\S]*?(?=\nfn bookSpans\()/,
+    'fn bookCharCodes(text: &str) -> Vec<i64> { text.chars().map(|ch| ch as i64).collect() }\n',
+  ))
+  // Native helpers traverse Unicode once. Auto strings use Unicode scalar
+  // indexing on Rust and UTF-16 units on JS; the public offsets use UTF-16.
+  rust = apply('book UTF-16 positions', rust, (src) => src.replace(
+    /fn bookTextUnits\([\s\S]*?(?=\nfn bookLineOf\()/,
+    [
+      'fn bookTextUnits(text: &str) -> i64 { text.encode_utf16().count() as i64 }',
+      'fn bookByteIndex(text: &str, offset: i64) -> usize {',
+      '    let mut units = 0;',
+      '    for (byte, ch) in text.char_indices() {',
+      '        if units >= offset { return byte; }',
+      '        units += ch.len_utf16() as i64;',
+      '    }',
+      '    text.len()',
+      '}',
+      'pub fn sliceBookText(text: &str, start: i64, end: i64) -> String {',
+      '    text.get(bookByteIndex(text, start)..bookByteIndex(text, end))',
+      '        .unwrap_or_default().to_owned()',
+      '}',
+    ].join('\n') + '\n',
+  ))
+  writeFileSync(join(pkgRoot, 'rust', 'src', 'book_reading.rs'), rust.replace(/[ \t]+$/gm, ''))
+}
+
+if (process.argv.includes('--book-only')) {
+  generateBookReading()
+  process.exit(0)
+}
+
 // ------------------------------------------------------------- ial.at
 
 let ial = transpile('ial')
@@ -143,22 +221,6 @@ console.log('[gen] auto/block_model.at -> src/block-model.ts (raw kept at auto/b
 
 // ------------------------------------------------------------- markdown_parser.at
 
-// M1 (shared): a2ts emits `use x:` as `import {...} from "x"` at the use
-// site (mid-file) with a bare module specifier -> rewrite the specifier per
-// the given mapping and hoist the import lines to the top of the file.
-const hoistUseImports = (label, s, mapping) =>
-  apply(label, s, (src) => {
-    let hoisted = ''
-    let stripped = src
-    for (const [from, to] of Object.entries(mapping)) {
-      const m = new RegExp(`import \\{[^}]+\\} from "${from}";`).exec(stripped)
-      if (!m) return src
-      hoisted += m[0].replace(`from "${from}"`, `from "${to}"`) + '\n'
-      stripped = stripped.replace(m[0], '')
-    }
-    return hoisted + stripped
-  })
-
 let md = transpile('markdown_parser')
 
 // M1: rewrite + hoist the `use` imports
@@ -185,6 +247,8 @@ writeFileSync(
   headerFor('AutoDown Core — block tree -> .ad text serializer (roundtrip-pinned).', 'serializer.at') + ser
 )
 console.log('[gen] auto/serializer.at -> src/serializer.ts (raw kept at auto/serializer.raw.ts)')
+
+generateBookReading()
 
 // ------------------------------------------------------------- barrel
 

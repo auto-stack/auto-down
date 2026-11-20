@@ -148,3 +148,10 @@ existing import sites did not change; the vue parity suite (43 cases) now
 exercises the core build through that redirect. `parse_blocks` is the new
 strong-typed entry; its invariants are pinned by
 `src/__tests__/block-parser.test.ts`.
+
+## AutoDown reading profile (PLAN-087)
+
+`book_reading.at` defines the shared chapter index, card projection, and
+selection-mapping logic for TypeScript and Rust. Run `node auto/parser/gen.mjs --book-only` from the engine package with `AUTO_EXE` set to the Auto compiler
+to regenerate the book module independently. The book module consumes
+`scanBlockRows` and `plainInlineText` from the shared Markdown parser.

@@ -9,3 +9,21 @@ export { serialize, serializeBlocks } from './parser/serializer'
 // helpers for front-side view-model assembly (all vue-free pure kernel).
 export { BlockType, anchorOf, attrGetInt, spansText } from './parser/block-model'
 export type { BlockNode } from './parser/block-model'
+export {
+  bookChapterTree,
+  locateBookSelection,
+  locateBookTarget,
+  parseBookChapter,
+  projectBookChapter,
+  serializeBookChapter,
+  sliceBookText,
+} from './parser/book-reading'
+export type {
+  BookBlock,
+  BookCard,
+  BookChapter,
+  BookDiagnostic,
+  BookProjection,
+  BookSelection,
+  BookTarget,
+} from './parser/book-reading'

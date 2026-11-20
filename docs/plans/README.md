@@ -19,7 +19,7 @@
 
 ## 书籍解析与只读组件
 
-[087 AutoDown 书籍解析、卡片与只读组件](087-autodown-book-reading-profile.md) 对接 AutoReader 的 READER-014，交付书籍语法、章内持久锚、双端只读组件和全库验收。
+[087 AutoDown 书籍解析、卡片与只读组件](archived/087-autodown-book-reading-profile.md)（已交付） 对接 AutoReader 的 READER-014，交付书籍语法、章内持久锚、双端只读组件和全库验收。
 
 ## 编号与状态
 

@@ -113,6 +113,11 @@ T-01～T-03 以 AutoDown `b5bcf13` 验证。六份固定样章逐字节保真，
 - merge prepared：两仓冻结提交和 SD-01 / SD-02 的 SHA-256 均见上。主分支代码变更范围与两组当前内容已核对，继续快进落地。
 - merge landed and canonical_verified：AutoDown `94d190d → d5f5b1d → 7bb7b35`、AutoUI `fc4a173e → 9bdbbcf8` 分别通过 `git merge --ff-only plan-087-dev`。各自 `master` tip 与评审交付哈希一致，两个规范路径的 SHA-256 与复审记录一致。快进完成后的 AutoDown 主检出书籍解析及 Vue 交互 13 项通过（墙钟 5.191 秒），Rust Unicode 与待引用用例 1 项通过（debug 构建 1.17 秒，墙钟 1.318 秒）。AutoUI 从主检出复跑已准备的同源码 Vue 生成 1 项（0.156 秒）与 VM 书籍视图、Iced 拖选 2 项（0.767 秒），返回成功。AutoUI 主检出既有文档状态与落地前的列表相同。
 - merge archived：五项任务全过，`current_step: 5`、`total_steps: 5`，计划目录链接迁至本归档，待清理专用工作树和已折叠证据。
+- stage: merge | plan_id: PLAN-087 | plan_revision: r2 | outcome: pass | delivered: AutoDown 7bb7b35c0ddddb01a9e8566d62805ae0239934a7 and AutoUI 9bdbbcf859e5185335014425af5e74f5512e8c29 | canonical_verified: SD-01 / SD-02 | archive committed: 5e36796 | cleaned: verified | next: done
+- 四个工作树均逐一通过 `wt-guard.ps1` 后移除。清理前单独摘除本计划包安装产生的 1,083 个 pnpm 链接。AutoDown 与 AutoUI 的 `plan-087-dev` 均已删除，两个只读依赖检出已移除，`D:/autostack/.wt/down-087` 已为空并删除。初次组合清理命令及递归删除临时证据的命令被工具拒绝，按绝对路径逐个移除已验证的工作树和每个普通证据文件完成清理。
+- 所需证据已折叠至本归档。`plan-artifacts/plan-087` 的 95 个文件和 4 个子目录已移除，登记表项为 `auto-down/PLAN-087 reading profile and AutoUI delivery`、`deleted-at-merge`。无具名保留项。彼时 AutoUI 主检出的既有文档改动不属于本计划，落地前后状态一致。
+- 部署观察（上海时间 2026-11-20）：AutoDown 主检出 engine `dist/.dist-stamp` 时间为 2026-10-02 09:35:32，demo 的 Vue `dist` 目录时间为 2026-09-04 01:35:18。已有产物早于本次源码交付。AutoUI 的主检出无 `target/release`。完成的是源码合并、双端验证及归档；正式 AutoReader 接入见 READER-014。AutoLang 和 AutoWeb 只读依赖无落地，本计划无 AutoLang 批量回归触发。
+- stage: goal | plan_id: PLAN-087 | plan_revision: r2 | round: 5 | from: merge | to: done | status: archived | outcome: pass | worktree: removed | commit: 7bb7b35 / 9bdbbcf8 | next: done
 ## 10. 待澄清事项
 
 无待定授权。

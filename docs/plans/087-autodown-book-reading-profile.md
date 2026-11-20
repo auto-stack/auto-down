@@ -3,10 +3,12 @@ plan_id: PLAN-087
 status: executing
 feature_name: autodown-book-reading-profile
 plan_revision: 2
-current_step: 0
+current_step: 3
 total_steps: 5
 depends_on: []
 affects: [auto-down, auto-reader, auto-ui]
+new_spec_components:
+  - docs/specs/book-reading.md
 ---
 
 # PLAN-087 · AutoDown 书籍解析、卡片与只读组件
@@ -22,6 +24,16 @@ affects: [auto-down, auto-reader, auto-ui]
 以 auto-down 的 `autodown/packages/engine` 为根。Auto 源 `auto/parser/markdown_parser.at` 中的 `parse_blocks`、`extractAnchorBlock` 和 `applyAnchorsDeep` 已能将段尾 ID 写入块。`auto/parser/serializer.at` 有对应的锚点序列化。新增书籍语义应复用 `block_model.at` 与现有生成流程，对 TypeScript 和 Rust/VM 交付相同的锚点及卡片结果。
 
 现有 AutoUI 只读入口是 `autodown { content: … }`，可从 `autodown/demo/auto/src/front/app.at` 对照运行。Vue 的 `src/render/MarkdownRender.vue` 当前先执行 `stripAnchorTokens` 再调用 `parseDocument`。阅读模式必须在移除可见标记前采集持久 ID，并让组件提供按 ID 定位与选区回传；仅隐藏标记无法满足批注回访。
+
+## 3. 技术栈
+
+Auto 源、TypeScript/Vue、Rust/AutoUI VM，内容对照采用 pilot-03 的 UTF-8 文件和清单。
+
+## 4. 需求分析与背景调查
+
+2026-11-20，用户通过 `/goal 完成计划087` 授权实施、独立复审、原合同内修复、合并和归档。草案源为 AutoDown 的独立克隆分支 `plan/087-autodown-book-reading` 提交 `ce8b8d7e72e312c07f4e41ed884ec8ffc3132b8a`，该提交仅新增草案。执行采用主仓 `72b097006f34db3a871449f10e213820d51abef6` 作为基线，工作树 `D:/autostack/.wt/down-087/auto-down`，分支 `plan-087-dev`。内容仓绑定 `f972adfad5daccb88a4808da625957e96e2837d1`，已有检出且工作区干净。
+
+2026-11-20，用户追加授权修改和合并 AutoUI 仓库。Vue 的 `StreamingRenderer` 代码生成入口和 VM 的 autodown 转换及事件都由该仓维护。AutoUI 工作树为 `D:/autostack/.wt/down-087/auto-ui`，分支 `plan-087-dev`，基线 `15fa7857a411707c44ceb6e1a37d1822808bef53`。AutoReader 仍按 READER-014 负责消费侧的正式书架接入。
 
 ## 5. 详细设计
 
@@ -50,27 +62,20 @@ affects: [auto-down, auto-reader, auto-ui]
 
 READER-014 的书包导入/目录可与 T-01～T-03 并行，Reader 的正式通读、卡片和批注回访消费 T-04 的组件合同。
 
-## 3. 技术栈
-
-Auto 源、TypeScript/Vue、Rust/AutoUI VM，内容对照采用 pilot-03 的 UTF-8 文件和清单。
-
-## 4. 需求分析与背景调查
-
-2026-11-20，用户通过 `/goal 完成计划087` 授权实施、独立复审、原合同内修复、合并和归档。草案源为 AutoDown 的独立克隆分支 `plan/087-autodown-book-reading` 提交 `ce8b8d7e72e312c07f4e41ed884ec8ffc3132b8a`，该提交仅新增草案。执行采用主仓 `72b097006f34db3a871449f10e213820d51abef6` 作为基线，工作树 `D:/autostack/.wt/down-087/auto-down`，分支 `plan-087-dev`。内容仓绑定 `f972adfad5daccb88a4808da625957e96e2837d1`，已有检出且工作区干净。
-
-2026-11-20，用户追加授权修改和合并 AutoUI 仓库。Vue 的 `StreamingRenderer` 代码生成入口和 VM 的 autodown 转换及事件都由该仓维护。AutoUI 工作树为 `D:/autostack/.wt/down-087/auto-ui`，分支 `plan-087-dev`，基线 `15fa7857a411707c44ceb6e1a37d1822808bef53`。AutoReader 仍按 READER-014 负责消费侧的正式书架接入。
-
 ## 8. 执行步骤
 
 当前会话若提供 TODO 工具，实施开始前登记下列稳定任务 ID。各项的验收见 §7。
 
-- [ ] T-01 固定真实输入与公共结果
-- [ ] T-02 扩展块与行内语法
-- [ ] T-03 全章解析、输出与校订
+- [x] T-01 固定真实输入与公共结果
+- [x] T-02 扩展块与行内语法
+- [x] T-03 全章解析、输出与校订
 - [ ] T-04 接入既有只读组件
 - [ ] T-05 全库回归与 Reader 交接
 
 当前核对路径为书包 .ad → 读书结构索引和 Markdown 投影 → 既有 AutoDown 块树 → Vue 和 VM 只读组件。以同名 .md 文件和 book.json 的学习项、字节区间校验输出。定向用例另外覆盖作者锚、防误解析、章级引用、同段五卡、跨段回访及位置诊断。
+
+
+T-01～T-03 以 AutoDown `b5bcf13` 验证。六份固定样章逐字节保真，句群、连续卡、前后向引用、修订重定位、UTF-16 非 BMP 偏移和待完成引用均有定向用例。由 `f972adf` 内容仓的 .md 和学习卡字节区间对拍。Web 组件的学而第三卡及跨段跳转、原生 VM 组件投影与 Iced 富文本拖选均已跑通，T-04 尚待 Vue 代码生成回归复跑。T-05 正等待冻结提交的最终绑定。
 
 ## 9. 复审记录
 
@@ -78,6 +83,9 @@ Auto 源、TypeScript/Vue、Rust/AutoUI VM，内容对照采用 pilot-03 的 UTF
 
 - stage: new | plan_id: PLAN-087 | plan_revision: r2 | outcome: pass | T-04 修改和合并范围经用户授权新增 auto-ui | next: work
 - stage: goal | plan_id: PLAN-087 | plan_revision: r2 | round: 1 | from: new | to: work | status: executing | outcome: pass | worktree: D:/autostack/.wt/down-087/auto-down | commit: 72b0970 | next: work
+
+
+- `stage: work checkpoint` ｜ `PLAN-087:r2` ｜ AutoDown `b5bcf13` ｜ T-01～T-03 closed ｜ Auto 生成器 `0.1.0+plan-890-verified-r7-t19-116-gc879b3e`（SHA-256 `EDDB2CCE50FD8AFE08CD26959C2FE52E090EB833B5C8B9A3F27538B28D947FCF`）｜ 全库双端 1,594 章、11 卷首、8,946 卡、26,796 段锚、3,697 句群和 19 非学习条目逐项通过，包装命令墙钟 7.015 秒。重跑前分别准备 esbuild 模块和 Rust debug 示例，无隐式编译。工作过程较慢的全库测量为 112.921、57.366、10.301 和 11.389 秒，已通过避免重复解析、将表格触发扫描降为线性，以及并行运行每组 3 部作品降到 7.015 秒。单部作品范围 0.140 至 2.518 秒。原生正常 Markdown 基线加 UTF-16 定向回归共 7 项通过，构建 0.84 秒，墙钟 1.102 秒。
 
 ## 10. 待澄清事项
 

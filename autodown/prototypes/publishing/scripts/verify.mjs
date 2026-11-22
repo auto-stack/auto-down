@@ -273,9 +273,18 @@ async function main() {
       const block = contentById.get(entry.id);
       assert(block && block.kind === 'heading' && block.text === entry.title, `outline entry ${entry.id} does not match a heading`);
     }
+    // 084：表格跨栏后 research 级短文的右栏文本占比下降——栏位证据改为
+    // 配置（IR/typ）+ 右半页存在 ≥2 行的正文簇（页眉是 1 行居中簇，被排除）。
     const academicColumns = Math.max(...academicPdf.pages.map(columnCount));
     const bookColumns = Math.max(...bookPdf.pages.map(columnCount));
-    assert(academicColumns === 2, `academic max columns ${academicColumns}`);
+    const rightColLines = Math.max(
+      0,
+      ...academicPdf.pages.map((pg) =>
+        (pg.x_clusters ?? []).filter((c) => c.x0 > pg.width * 0.45 && c.lines >= 2).reduce((m, c) => Math.max(m, c.lines), 0),
+      ),
+    );
+    assert(academicColumns <= 2, `academic max columns ${academicColumns}`);
+    assert(rightColLines >= 2, `academic right-column body text missing (max lines ${rightColLines})`);
     assert(bookColumns === 1, `office_book max columns ${bookColumns}`);
     assert(academicPdf.page_count !== bookPdf.page_count, 'page counts are equal between templates');
     assert(academicIr.page.columns === 2 && bookIr.page.columns === 1, 'IR columns differ from expected');

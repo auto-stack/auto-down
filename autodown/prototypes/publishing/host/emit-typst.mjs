@@ -689,6 +689,94 @@ export function emitTypst(pub) {
   const bodyIndent = columns > 1 ? '  ' : '';
   let firstChapterCandidate = true;
   let firstSlide = true;
+
+  // 报纸形态（h1_span_columns）：文章标题跨栏，正文按字符量近似均分到 N 栏
+  //（Typst columns() 在自动高度下只填第一栏——最小复现 coltest.typ；真实回流
+  // 均衡需要测量能力，属 086。近似分布：条目原子性保持，按累计字符贪心分格）。
+  const entryWeight = (entry) => {
+    let w = 0;
+    for (const b of entry.blocks) {
+      if (b.kind === 'paragraph') {
+        for (const seg of b.segments ?? []) w += (seg.text ?? seg.display ?? '').length;
+      } else if (b.kind === 'list') {
+        for (const item of b.items ?? []) w += item.length;
+      } else if (b.kind === 'callout') {
+        w += ((b.title ?? '') + (b.body ?? []).join('')).length + 80;
+      } else if (b.kind === 'figure' || b.kind === 'equation') {
+        w += 120;
+      } else if (b.kind === 'table') {
+        w += 200;
+      }
+    }
+    return Math.max(w, 1);
+  };
+
+  if (h1Span) {
+    // 分节：一级标题开节；节内条目流入 grid 单元
+    const sections = [];
+    let current = null;
+    for (const entry of pub.presentation) {
+      const first = entry.blocks[0];
+      const isHeadline = first?.kind === 'heading' && first.level === 1;
+      if (isHeadline) {
+        current = { headline: entry, body: [] };
+        sections.push(current);
+      } else if (current) {
+        current.body.push(entry);
+      } else {
+        current = { headline: null, body: [] };
+        sections.push(current);
+        current.body.push(entry);
+      }
+    }
+    for (const section of sections) {
+      if (section.headline) {
+        const computedH = computedByOcc.get(section.headline.occurrence_id) ?? { text: {}, para: {}, doc: {} };
+        if (!firstChapterCandidate) push('#v(1.2em)');
+        firstChapterCandidate = false;
+        push(`// node: ${section.headline.occurrence_id} (role: ${section.headline.role})`);
+        emitBlocks(push, '', section.headline, computedH, emitCtx);
+      }
+      const full = [];
+      const flowed = [];
+      for (const e of section.body) {
+        if (e.blocks[0]?.kind === 'table') full.push(e);
+        else flowed.push(e);
+      }
+      for (const e of full) {
+        const c = computedByOcc.get(e.occurrence_id) ?? { text: {}, para: {}, doc: {} };
+        push(`// node: ${e.occurrence_id} (role: ${e.role})`);
+        emitBlocks(push, '', e, c, emitCtx);
+      }
+      if (flowed.length === 0) continue;
+      const total = flowed.reduce((sum, e) => sum + entryWeight(e), 0);
+      const target = total / columns;
+      const cells = Array.from({ length: columns }, () => []);
+      let acc = 0;
+      let ci = 0;
+      for (const e of flowed) {
+        const w = entryWeight(e);
+        if (acc >= target && ci < columns - 1) {
+          ci += 1;
+          acc = 0;
+        }
+        cells[ci].push(e);
+        acc += w;
+      }
+      // grid 单元以代码模式逗号传参（标记式并列括号组不是多参数；实测逗号成字面文本）
+      push(`#grid(columns: ${columns}, gutter: 1.1em, align: top,`);
+      for (const cell of cells) {
+        push('[');
+        for (const e of cell) {
+          const c = computedByOcc.get(e.occurrence_id) ?? { text: {}, para: {}, doc: {} };
+          push(`// node: ${e.occurrence_id} (role: ${e.role})`);
+          emitBlocks(push, '', e, c, emitCtx);
+        }
+        push('],');
+      }
+      push(')');
+    }
+  } else {
   for (const entry of pub.presentation) {
     const computed = computedByOcc.get(entry.occurrence_id) ?? { text: {}, para: {}, doc: {} };
     const semantic = contentByOcc.get(entry.occurrence_id);
@@ -696,6 +784,8 @@ export function emitTypst(pub) {
     const isChapter = firstBlock?.kind === 'heading' && firstBlock?.level === 1;
     const isSlideCallout =
       pub.view === 'slides' && semantic?.kind === 'callout' && semantic.callout_type === 'slide';
+    // 多栏下表格跨栏（表格宽于栏宽不可分割，留在栏内会打断栏流——实测右半页空白）
+    const isWideTable = columns > 1 && firstBlock?.kind === 'table';
     const chapterBreak =
       (computed.doc?.chapter_pagebreak ?? 0) === 1 && isChapter && !firstChapterCandidate;
     if (isChapter) firstChapterCandidate = false;
@@ -713,7 +803,11 @@ export function emitTypst(pub) {
     }
     if (pendingOpen) openColumns();
     push(`${bodyIndent}// node: ${entry.occurrence_id} (role: ${entry.role}${entry.rule ? `, render: ${entry.rule}` : ''})`);
-    if (h1Span && isChapter && entry.role === 'heading' && !isSlideCallout) {
+    if (isWideTable) {
+      closeColumns();
+      emitBlocks(push, '', entry, computed, emitCtx);
+      wantColumns();
+    } else if (h1Span && isChapter && entry.role === 'heading' && !isSlideCallout) {
       // 跨栏标题：栏容器闭合 → 标题 → 重新开栏（正文回到栏内）
       closeColumns();
       emitBlocks(push, '', entry, computed, emitCtx);
@@ -730,6 +824,7 @@ export function emitTypst(pub) {
       typ_start: start,
       typ_end: end,
     });
+  }
   }
   closeColumns('');
 

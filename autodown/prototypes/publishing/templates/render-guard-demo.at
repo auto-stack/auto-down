@@ -6,9 +6,9 @@
 // 输入/输出协议与 main.at 相同（env 输入、stdout JSON 输出）。
 
 use env: get
-use ir: parse_doc, parse_options, json_publication, json_error, Publication, PageConfig, PubBlock, to_pub, outline_of
+use ir: parse_doc, parse_options, json_publication, json_error, PageConfig, PubBlock, to_pub, outline_of, new_publication
 use render: finalize
-use style: render_rule, sel_attr, RenderRule
+use style: render_rule, sel_attr, RenderRule, StyleRule
 
 fn guard_demo_rules() []RenderRule {
     var rules []RenderRule = []
@@ -33,8 +33,9 @@ fn main() {
     for b in parsed_doc.doc.blocks {
         content.push(to_pub(b))
     }
-    var base_page = PageConfig("a4", "2cm", "2cm", "2cm", "2cm", 1, "10pt", ["Noto Serif SC"], "", 0)
-    var base = Publication("office_book", parsed_doc.doc.meta, base_page, 0, "", content, outline_of(content, 0), [], [], [], [], guard_demo_rules(), [], [])
+    var base_page = PageConfig("a4", "2cm", "2cm", "2cm", "2cm", 1, "10pt", ["Noto Serif SC"], "", 0, 0)
+    var rules []StyleRule = []
+    var base = new_publication("office_book", opts.options.view_name, parsed_doc.doc.meta, base_page, 0, "", "", content, outline_of(content, 0), rules, guard_demo_rules())
     let fin = finalize(base, "")
     if fin.ok == 0 {
         print(json_error(fin.code, fin.message))

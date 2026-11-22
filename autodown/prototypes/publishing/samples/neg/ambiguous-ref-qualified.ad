@@ -1,0 +1,12 @@
+---
+title: 歧义消解正例（显式 #fig-x#2）
+lang: zh
+---
+
+$callout(type: "slide", title: "首帧") {
+- 分镜一
+}
+
+图表 [回看](#fig-x#2) 说明段（显式限定第二次出现）。
+
+![示意图](../assets/fusion.svg) 图题 ^fig-x

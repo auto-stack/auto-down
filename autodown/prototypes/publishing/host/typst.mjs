@@ -66,3 +66,15 @@ export function typstQuery(bin, { input, selector, root, field }) {
   args.push(input, selector);
   return runTypst(bin, args);
 }
+
+// PLAN-084：可用字体清单（资源清单/缺字诊断用）。失败返回 null（不阻塞出版）。
+export function typstFonts(bin, fontPaths) {
+  const args = ['fonts'];
+  for (const fontPath of fontPaths ?? []) args.push('--font-path', fontPath);
+  const result = runTypst(bin, args);
+  if (result.code !== 0) return null;
+  return result.stdout
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+}

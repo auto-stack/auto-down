@@ -1,8 +1,9 @@
-# 出版原型合同（PLAN-082 / PLAN-083 / publication-prototype-v1）
+# 出版原型合同（PLAN-082 / PLAN-083 / PLAN-084 / publication-prototype-v2）
 
-> 状态：原型交付（082：2026-11-14；083 样式与呈现规则：2026-11-17）。本文件记录**已交付的
-> 原型合同与边界**，不是最终产品规范；目标设计见 [Design 10](../designs/10-autodown-publishing.md)，
-> 模板语义、实时预览与延迟布局由 084–086 承接，字段与名字允许在那些计划中调整。
+> 状态：原型交付（082：2026-11-14；083 样式与呈现规则：2026-11-17；084 五类模板与
+> 编号/引用/脚注/公式/资源语义：2026-11-22）。本文件记录**已交付的原型合同与边界**，
+> 不是最终产品规范；目标设计见 [Design 10](../designs/10-autodown-publishing.md)，
+> 实时预览与延迟布局由 085–086 承接，字段与名字允许在那些计划中调整。
 
 ## 1. 范围
 
@@ -10,16 +11,19 @@
 → 版本化出版 IR → Typst 源与来源映射 → 固定版本 Typst CLI → PDF。入口在
 `autodown/prototypes/publishing/`（实验目录，不是新的 engine 出口）。
 
-不包含：行内标记（加粗/斜体/行内代码/链接）保真、图片/公式/脚注/参考文献条目、
-五类输出形态、实时预览与字符级定位、Auto 回调下沉到布局阶段。这些属于 084–086。
+084 已交付（见 §17–§21）：五类输出形态（academic / office_book / press_book / news /
+lecture）、视图（article/book/newspaper/slides）、occurrence 与文档索引、引用/脚注/
+文献/公式/图片节点、资源清单与执行端矩阵。仍不包含：行内普通标记（加粗/斜体/行内
+代码）保真（压平 + 诊断）、实时预览与字符级定位、Auto 回调下沉到布局阶段——属 085–086。
 （083 已交付样式作用域/选择器/呈现规则，见 §11–§16。）
 
 ## 2. 入口
 
 | 命令 | 作用 |
 | --- | --- |
-| `node host/publish.mjs --source <ad> --template <academic\|office_book> --out <dir>` | 一次出版运行；参数 `--font-size/--columns/--paper/--margin/--header-text` |
-| `node scripts/verify.mjs` | AC-01..AC-07 验收，产物 `out/verify/report.json` |
+| `node host/publish.mjs --source <ad> --template <academic\|office_book\|press_book\|news\|lecture> --out <dir>` | 一次出版运行；参数 `--view/--font-size/--columns/--paper/--margin/--header-text/--auto-engine` |
+| `node host/stitch-entry.mjs --mode a2r --out <entry.at>` | 多模块模板缝合为单文件薄入口（A2R 执行端适配，见 §20） |
+| `node scripts/verify.mjs` | AC-01..AC-07 + S-01..S-07 + P-01..P-08 验收，产物 `out/verify/report.json` |
 | `node scripts/fetch-typst.mjs` | 准备固定版本 Typst CLI（0.15.1，sha256 校验；失败退回 `cargo install`） |
 
 `publish.mjs` 不因模板名做特殊分支：模板选择与投影发生在 Auto（`templates/main.at` → 模板函数）。
@@ -29,26 +33,37 @@
 UTF-8 行协议，一行一条记录，`TAB` 分隔字段。字段内 `\` `\t` `\n` `\r` 转义；其余控制字符归一为
 空格（不静默改写正文，宿主给出诊断）。
 
+v2（PLAN-084，默认）在 v1 行之上追加（v1 仍被接受——082 样例兼容）：
+
 ```
-DOCWIRE 1
+DOCWIRE 2
 meta    <title|abstract|lang|source|author>  <value>
 block   heading          <id> <level> <text>
-block   paragraph        <id> <text>
-block   thematic_break   <id>
-block   list             <id> <ordered 0|1> <count>
-block   list_item        <list-id> <index> <text>
-block   table            <id> <cols> <row-count>
-block   table_row        <table-id> <row-index> <cell>...
-block   callout          <id> <type> <title> <paragraph-count>
-block   callout_paragraph<callout-id> <index> <text>
+block   paragraph        <id>                    <- 正文在随后的 inline 行
+inline   text|ref|cite|footnote|math  <pid> <index> <payload...>
+block   figure           <id> <src> <caption>
+block   equation         <id> <dialect> <source>
+block   footnote_def     <id> <label> <text>
+block   bib_entry        <id> <key> <text>
+block   thematic_break / list / list_item / table / table_row / callout / callout_paragraph
 end
 ```
 
-首个非空行不是 `DOCWIRE 1` 时，Auto 返回 `E_DOC_WIRE_VERSION`；计数与实际行数不符返回
-`E_DOC_WIRE_COUNT`；未知块类型返回 `E_NODE_UNSUPPORTED`。宿主与 Auto 各持一份实现：
-`host/wire.mjs`（编码）与 `templates/ir.at:parse_doc`（解码）。
+- `inline ref <pid> <i> <target-id> <target-occ-or-empty> <display>`：ref 的消歧出现序
+  由宿主结构化携带（`#id#N` 的 N 独立字段）——运行期不做字符串拆分（VM 误编译规避，见 §16f）。
+- 首个非空行不是 `DOCWIRE 1|2` 时，Auto 返回 `E_DOC_WIRE_VERSION`；计数与实际行数不符
+  返回 `E_DOC_WIRE_COUNT`；未知块类型返回 `E_NODE_UNSUPPORTED`；v1 线上的新块种类返回
+  `E_NODE_UNSUPPORTED`。宿主与 Auto 各持一份实现：`host/wire.mjs`（编码）与
+  `templates/ir.at:parse_doc`（解码）。
 
-## 4. publication-ir（v1，PLAN-083 起）
+## 4. publication-ir（v2，PLAN-084 起；v1 见 083 归档）
+
+v2 相对 v1：`schema_version = publication-ir-v2`；新增 `view`、`bib_title`、
+`page.h1_span_columns`、`references[]`；`content[]` 语义 id 可重复但 `occ`（occurrence）
+唯一（见 §17）；`computed/presentation` 按 `occ` 对齐（presentation 条目字段
+`occurrence_id`）；paragraph 携带 `segments[]`（行内语义段）；新增块种类
+figure/equation/footnote_def/bib_entry；origin 追加 `template-reuse`（模板复用源块，
+AC-04 的可见标记）。其余字段与 v1 相同。
 
 Auto 产出 `{"ok":true,"publication":{…}}`（v1 起打印到 stdout，宿主捕获校验后 pretty 写
 `publication.json`）；失败信封是 `{"ok":false,"error":{"code":…,"message":…}}`。宿主校验失败返回
@@ -139,14 +154,15 @@ README/字体/冷热计时。历史测试数字不外推。
 
 ## 10. 与目标设计的差额
 
-| 设计能力 | 原型现状 |
+| 设计能力 | 原型现状（084 后） |
 | --- | --- |
-| Content 一等值与行内组合 | 正文块级模型；行内 mark 未建模 |
-| 样式作用域/选择器/呈现规则 | 只有 `page`/`style` 两组显式字段，无规则与作用域 |
-| 五类输出形态 | 只有 academic / office_book 两个模板 |
-| 实时预览、revision、双向定位 | 无；只有块级来源映射 |
-| 延迟布局与 Auto 回调 | 只用 Typst 内置 `context`（页码、目录），无 LayoutExpr |
-| 可编辑 Office 格式 | 无（PDF 输出） |
+| Content 一等值与行内组合 | 块级模型 + 行内语义段（ref/cite/footnote/math/图片）；普通 mark 压平 + 诊断 |
+| 样式作用域/选择器/呈现规则 | 已交付（083 §11–§16）；显式属性按 occurrence 展开 |
+| 五类输出形态 | 已交付五模板（§21）；“办公”不宣称 DOCX、“演示”不宣称 PPTX |
+| 引用/脚注/文献/公式/图片 | 已交付标准节点（§18）；TeX dialect 具名拒绝 |
+| 实时预览、revision、双向定位 | 无；occurrence 级来源映射（085 承接） |
+| 延迟布局与 Auto 回调 | 只用 Typst 内置 `context`/计数器（页码、目录、图表式编号），无 LayoutExpr |
+| 可编辑 Office 格式 | 无（PDF 输出，边界显式声明） |
 
 ## 11. 样式系统（PLAN-083 / style-system-v1）
 
@@ -256,3 +272,109 @@ compose_styles 体内；校验类函数删除，验证走 JSON 序列化路径�
 (c) float 跨模块序列化路径不稳定（乱值/空串）→ 全整数 milli。
 (d) `bool.to(str)` 内存损坏 → int 标志。
 (e) `str.sub` 按字节：中文必须列表索引。
+
+## 17. 视图、occurrence 与引用作用域（PLAN-084）
+
+### 17.1 视图（View）
+
+`Options.view ∈ {article, book, newspaper, slides}`（默认随模板）。视图选择与组织材料，
+不改写正文（Design 10 §8）：article/book/newspaper 保结构（identity）；slides 选取
+作者标注的分镜材料——`$callout(type: "slide")` 开启一页，其后段落/列表/图表/公式附属
+该页，footnote_def/bib_entry 恒保留；首个分镜之前的内容给 `W_SLIDES_UNPLACED`
+（列出全部 id，可见丢弃）后不投影。模板决定页面与呈现（§21）。分镜分页语义只在
+slides 视图生效（其他视图里 slide 提示块按普通提示框渲染）。
+
+### 17.2 occurrence
+
+模板/视图展开后的内容树逐块唯一：同一语义 id 第 1 次出现 `occ = id`，第 N 次
+（N≥2）`occ = id#N`。`content[].occ` 唯一（校验期检查）；`computed/presentation/
+references` 全部按 occ 对齐；样式节点身份 = occ，节点显式属性按 occ 展开（同一语义
+块的每次出现都获得该属性）。模板复用源块标记 `origin = template-reuse`
+（lecture 总结分镜复用正文首个图/式）。
+
+### 17.3 文档索引与引用作用域
+
+`index_of_content`：可引用语义 occurrence——heading/figure/equation 按 id、
+footnote_def 按 label、bib_entry 按 key；同键多次出现合并进同一索引条目（occurrences
+列表）。`validate_refs` 逐行内段解析（结果进 IR `references[]`，可观察）：
+
+| 引用形态 | 正文写法 | 解析规则 | 失败码 |
+| --- | --- | --- | --- |
+| 节点引用 | `[显示](#id)` | 目标 = heading/figure/equation 的 id；单出现直解 | `E_REF_DANGLING` |
+| 节点引用（消歧） | `[显示](#id#N)` | 显式第 N 次出现（#1 = 首次，occ 为裸 id） | `E_REF_DANGLING`（缺失出现） |
+| 复用未限定 | `[显示](#id)`（id 复用≥2） | 拒绝随机选首——列出全部 occurrence | `E_REF_AMBIGUOUS` |
+| 文献引用 | `[显示](@key)` | 目标 = bib_entry 键；重复键拒绝 | `E_CITE_UNKNOWN` / `E_CITE_AMBIGUOUS` |
+| 脚注标记 | `[^label]` | 目标 = footnote_def 标签 | `E_FOOTNOTE_DANGLING` |
+| 脚注重复定义 | 两个同 label 定义 | 按内容块扫描（索引已按键合并，不能用于判重） | `E_FOOTNOTE_DUPLICATE` |
+
+消歧出现序由宿主在 wire 层结构化携带（§3）；错误消息带来源 occurrence 与段序
+（`ref from <occ>#<seg>`）。
+
+### 17.4 正文书写约定（适配层，不改 parser）
+
+parser 冻结合同之上的宿主约定（`host/doc-parse.mjs`）：链接 span href `#…`=节点引用、
+`@…`=文献引用；行内数学 span（`math_inline`，正文 `$..$` 定界符内侧**不得有空白**，
+engine 规则）dialect 恒 typst；图片段→figure（一段一图，多图 `W_FIGURE_EXTRA_IMAGES`；
+与结构化行内混排 `E_FIGURE_MIXED_INLINE`）；`[^label]: 文字`→脚注定义；
+bibliography 提示块一行一 key→文献条目（`E_BIB_ENTRY`）；锚卡——独立 `^id` 段落
+重命名紧邻前块（等式等无法承载段尾锚的节点）；容器（列表项/提示正文/表格单元）内
+标记压平 + `W_INLINE_IN_CONTAINER_FLATTENED`；外部链接压平为“文字（URL）”+
+`W_LINK_EXTERNAL_FLATTENED`。
+
+## 18. 标准节点与编号（PLAN-084）
+
+| 节点 | Typst 映射 | 编号 |
+| --- | --- | --- |
+| outline | `#outline(depth)` | 条目 = 语义标题（装饰不进入），页码延迟求值 |
+| heading | `= …` + `<h-occ>` label | 模板声明 `heading_numbering`（如 "1.1"）；chapter-h1 呈现规则渲染“第N章”时局部关闭 |
+| figure | `#figure(image(…, width: 100%), caption, numbering) <f-occ>` | Typst 图计数器（supplement 图），按内容顺序 |
+| equation | 界定符独占行的块数学 + `<eq-occ>`；`#set math.equation(numbering: "(1)")` + 行内式 show 关闭（Typst 行内/块以定界符内侧空白区分——内侧带空白的 `$ .. $` 是块数学） | 式计数器，按内容顺序 |
+| footnote | 标记处 `#footnote[定义]` | Typst 内置脚注计数 |
+| bibliography | 文末编号节（`<bib-键>` label），引用上标 `[n]` 链接 | 声明顺序 [1..n]；固定输入格式/风格，不宣称 CSL 兼容 |
+| ref | `#ref(<label>)`（display 作 supplement） | 无编号模板（news 章节、lecture 分镜）退化为 `#link(<label>)[显示]`——语义 ID 与 label 保留 |
+
+编号一律映射 Typst 内置机制并按**出版树（内容）顺序**推进（模板前言使正文编号后移，
+AC-02/P-02 断言）；任意 Auto 上下文回调不在本批（086）。
+
+## 19. 资源清单与公式 dialect（PLAN-084）
+
+`resource-manifest-v1`（每次运行落 `<out>/resource-manifest.json`）：工具链身份
+（auto 版本 + 执行端、typst、node、平台）、请求（模板/视图/源文件 sha256/wire 版本）、
+字体（请求清单 × typst fonts 可用性，缺失 `W_FONT_MISSING`——typst 自行回退渲染，
+诊断可见）、图片（src/sha256/字节数/拷贝状态）。图片从正文目录拷入输出目录；
+缺失 `W_RESOURCE_MISSING`（Typst 编译如实失败），越界路径 `W_RESOURCE_PATH_ILLEGAL`
+（不拷贝）。预览/导出复用同一清单。
+
+公式 dialect：IR 保留 `dialect` + 原始 source；唯一支持 dialect = `typst`（engine
+`$…$`/`%{ %}` 槽）。非 typst（TeX/KaTeX）在序列化层 `E_EQUATION_DIALECT` 具名拒绝；
+源含 `#`/`$`（逃出 Typst 数学模式）`E_EQUATION_SYNTAX`——未转换项必须报错，不粘贴混用。
+
+## 20. 执行端矩阵（PLAN-084 T-00，2026-11-22 实测；AC-08）
+
+出版接口 `--auto-engine legacy|ace`（默认 **legacy**）：当前 auto 构建（2026-11-19，
+`0.1.0+plan-890-verified-r7-t19-116-gc879b3e`，含 ace-candidate）脚本面默认已是 ACE sys
+车道，legacy = 显式回退钮 `AUTO_ACE_CANDIDATE=0`（082/083 已验执行形态）。
+
+| 执行端 | 入口形态 | 判定（固定三用例） | 具名缺口（owner: auto-lang） |
+| --- | --- | --- | --- |
+| 旧版 VM（显式） | 多模块 `use mod: item` + env 通道 | **3/3 通过**（独立预期 3/3：块序/页面配置/前言编号/错误信封） | — |
+| ACE AV console | 单文件、typed fn | 模板入口拒绝 | G-AV-1 无 use 导入/无 env；G-AV-2 无 record（`type`） |
+| ACE AV sys | 单文件 app::main + stdin/argv | 模板入口拒绝 | G-AV-3 无 record；G-AV-4 无 `str.split`/`.to(str)` |
+| 新版 A2R（scalar 前门） | 缝合单文件（`host/stitch-entry.mjs`，3,112 行）+ `use env: get` | transpile ✓（189 fragments）；**生成 Rust 编译 ✗** | G-A2R-1..6（str→int 裸 cast、参数/字段列表 for-in、引用后赋值、Eq derive、typed-main 返回型、E0106 lifetime） |
+
+最小复现集与原始输出在 PLAN-084 §7 T-00 收据。复验条件：AV 脚本车道支持 record
+（或 aggregates 线并入 record+str 方法）；a2x-rust 修复六类生成错误——届时
+`--auto-engine` 切换默认并复跑 `node scripts/verify.mjs` 与 T-00 信封对照。
+
+## 21. 五模板支持矩阵（PLAN-084）
+
+| 模板 | 视图 | 纸型/栏 | 编号 | 特征 | 不宣称 |
+| --- | --- | --- | --- | --- | --- |
+| academic | article | a4 默认双栏（1..3） | Typst "1.1" | 标题区+boxed 摘要+目录；图/式/文献编号 | — |
+| office_book | book | a4 单栏，3cm/2.6cm | chapter-h1“第N章”（含模板前言）；h2/h3 不编号 | 页眉默认书名（正文页）、章节另起页、2em 缩进 | DOCX 可编辑 |
+| press_book | book | a4 单栏 2.4/2.6/2.2 | 同 office_book（前言=第一章） | 封面式标题区、前言、目录、章节另起页、页眉默认书名 | 装订边/奇偶页 |
+| news | newspaper | a4 三栏 1.6cm | 标题不编号（ref 退化 link） | h1 跨栏（`h1_span_columns`，栏容器开合）、报头默认书名 | 串文/绕排/拼版 |
+| lecture | slides | 16:9（297×167.0625mm）单栏 | 分镜标题不编号 | 一页一分镜（静态）；总结分镜 template-reuse 复用图/式 | PPTX 可编辑/分步动画/播放器 |
+
+视图/模板不改正文（P-07 sha 断言）；slides 材料必须作者标注（slide 分镜卡），
+自动摘要不是模板副作用。

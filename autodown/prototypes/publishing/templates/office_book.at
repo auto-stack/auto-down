@@ -1,4 +1,4 @@
-// PLAN-083 — office_book 模板（普通 Auto 函数；样式以规则声明，v1）
+// PLAN-084 — office_book 模板（普通 Auto 函数；样式以规则声明，v2）
 //
 // 迁移说明（相对 082 可见输出）：
 //   * 一级标题改由呈现规则 chapter-h1 渲染为“第N章 标题”（编号按出版树顺序，
@@ -6,8 +6,9 @@
 //   * h2/h3 保留 Typst 原生 "1." 编号（与 082 相同）；
 //   * 首行缩进 2em、两端对齐、章节另起页、标题区 22pt、摘要 plain 等均成为
 //     模板层规则属性（来源可在 inspect_style 中追溯）。
+// v2：视图 book；文献节标题“参考文献”；正文标题不跨栏。
 
-use ir: Doc, Options, Publication, PageConfig, PubBlock, to_pub, outline_of
+use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of, new_publication
 use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role, sel_attr
 
 fn book_body_rule(opts Options) StyleRule {
@@ -45,7 +46,12 @@ fn build_office_book(doc Doc, opts Options) Publication {
         left = opts.margin
         right = opts.margin
     }
-    let page = PageConfig(
+    // 页眉默认取书名（084：书籍形态正文页默认有页眉；显式 --header-text 覆盖）
+    var header = opts.header_text
+    if header == "" {
+        header = doc.meta.title
+    }
+    var page = PageConfig(
         opts.paper,
         top,
         bottom,
@@ -54,35 +60,40 @@ fn build_office_book(doc Doc, opts Options) Publication {
         1,
         opts.font_size,
         opts.font_family,
-        opts.header_text,
-        1
+        header,
+        1,
+        0
     )
     var content []PubBlock = []
-    content.push(PubBlock("tpl-preface", "heading", "template", 1, 0, [], 0, [], "", "", [], "前言"))
+    var preface = pb_head("tpl-preface", 1, "前言")
+    content.push(preface)
     if doc.meta.abstract != "" {
-        content.push(PubBlock("tpl-abstract", "paragraph", "template", 0, 0, [], 0, [], "", "", [], doc.meta.abstract))
+        content.push(pb_tpl_paragraph("tpl-abstract", doc.meta.abstract))
     }
     for b in doc.blocks {
         content.push(to_pub(b))
     }
-    var rules = []
+    var rules []StyleRule = []
     rules.push(book_body_rule(opts))
     rules.push(book_doc_rule())
+    var render_rules = book_render_rules()
     let outline = outline_of(content, 2)
-    return Publication(
-        "office_book",
-        doc.meta,
-        page,
-        2,
-        "目 录",
-        content,
-        outline,
-        rules,
-        [],
-        [],
-        [],
-        book_render_rules(),
-        [],
-        []
-    )
+    return new_publication("office_book", opts.view_name, doc.meta, page, 2, "目 录", "参考文献", content, outline, rules, render_rules)
+}
+
+use ir: pb, empty_segments, seg_text
+
+fn pb_head(id str, level int, text str) PubBlock {
+    var out = pb("heading", id, "template")
+    out.level = level
+    out.text = text
+    return out
+}
+
+fn pb_tpl_paragraph(id str, text str) PubBlock {
+    var out = pb("paragraph", id, "template")
+    var segs = empty_segments()
+    segs.push(seg_text(text))
+    out.segments = segs
+    return out
 }

@@ -1,4 +1,4 @@
-// PLAN-083 — publication-ir-v1 校验 + 样式/呈现感知的 Typst 发射 + 能力诊断 + inspect_style
+// PLAN-084 — publication-ir-v2 校验 + 样式/呈现感知的 Typst 发射 + 能力诊断 + inspect_style
 //
 // 薄适配器原则不变：模板/样式/呈现逻辑全部在 Auto（templates/*.at）执行；宿主只做
 // IR 校验、Typst 序列化、来源映射与能力核对。逐块发射采用 presentation × computed：
@@ -7,15 +7,39 @@
 //     文档作用域计算值（computed 首个 occurrence 的 doc 块）；
 //   * 后端能力表显式列支持属性；不支持的属性（doc.hanging_punctuation）产生
 //     W_STYLE_UNSUPPORTED 诊断并保留在 IR/inspect 中——不静默丢弃。
+// v2（PLAN-084）：
+//   * occurrence 键：content[].occ 唯一（同一语义 id 可复用，AC-04）；computed/
+//     presentation 按 occ 对齐；heading/figure/equation 置 Typst label（occ 归一）；
+//   * 行内段：ref → #ref(<label>)（display 作 supplement）、cite → 上标 [n] 链接、
+//     footnote → #footnote[定义]、math → $...$（dialect=typst 且无 `#`/`$`，否则
+//     E_EQUATION_DIALECT / E_EQUATION_SYNTAX 具名拒绝——TeX 未转换项必须报错）；
+//   * figure/equation 映射 Typst 内置计数器（numbering 按内容顺序 = 出版树顺序）；
+//   * footnotes/bibliography：footnote_def 不入正文流；bib_entry 在文末汇总为
+//     编号文献节（label = bib 键；编号 = 声明顺序）；
+//   * page.h1_span_columns=1（news）：一级标题跨栏（栏容器开合）；
+//   * paper "16:9"（lecture）：297mm×167.0625mm（16:9 显式页面尺寸）；
+//   * callout(slide)：分镜框——#pagebreak 分页 + 标题（无编号）+ 项目符号正文。
 // 正文文本仍全部经 Typst 字符串字面量输出，不会被当 Typst 代码执行。
 
 const LENGTH_RE = /^(\d+(?:\.\d+)?)(pt|mm|cm|in|em)$/;
-const PAPER = new Set(['a4', 'a5', 'iso-b5', 'us-letter']);
-const TEMPLATES = new Set(['academic', 'office_book']);
-const KINDS = new Set(['heading', 'paragraph', 'list', 'table', 'callout', 'thematic_break']);
+const PAPER = new Map([
+  ['a4', null],
+  ['a5', null],
+  ['iso-b5', null],
+  ['us-letter', null],
+  ['16:9', { width: '297mm', height: '167.0625mm' }],
+]);
+const TEMPLATES = new Set(['academic', 'office_book', 'press_book', 'news', 'lecture']);
+const VIEWS = new Set(['article', 'book', 'newspaper', 'slides']);
+const KINDS = new Set([
+  'heading', 'paragraph', 'list', 'table', 'callout', 'thematic_break',
+  'figure', 'equation', 'footnote_def', 'bib_entry',
+]);
+const SEG_KINDS = new Set(['text', 'ref', 'cite', 'footnote', 'math']);
+const DIALECTS = new Set(['typst']);
 const ABSTRACT_STYLES = new Set(['boxed', 'plain']);
-const ORIGINS = new Set(['source', 'template', 'render']);
-const SCHEMA = 'publication-ir-v1';
+const ORIGINS = new Set(['source', 'template', 'render', 'template-reuse']);
+const SCHEMA = 'publication-ir-v2';
 const RULE_ORIGINS = new Set(['builtin', 'theme', 'template', 'document']);
 const SEL_KINDS = new Set(['all', 'type', 'attr', 'id', 'role', 'and', 'or']);
 const PROPS = new Set([
@@ -23,7 +47,7 @@ const PROPS = new Set([
   'para.justify', 'para.first_line_indent', 'para.leading', 'para.spacing_above', 'para.spacing_below',
   'doc.heading_numbering', 'doc.chapter_pagebreak', 'doc.title_size', 'doc.abstract_style', 'doc.hanging_punctuation',
 ]);
-// 后端能力表：Typst 发射器实际支持的属性（v1）；未列出的注册属性 → W_STYLE_UNSUPPORTED
+// 后端能力表：Typst 发射器实际支持的属性（v2）；未列出的注册属性 → W_STYLE_UNSUPPORTED
 const BACKEND_SUPPORTED = new Set(PROPS);
 BACKEND_SUPPORTED.delete('doc.hanging_punctuation');
 
@@ -98,12 +122,51 @@ function validateStyleBag(path, bag) {
   }
 }
 
+// 公式边界（§3.4：TeX 未转换项必须报错，不能粘贴混用）
+function checkMathSource(nodeId, at, dialect, source) {
+  if (!DIALECTS.has(dialect)) {
+    throw Object.assign(
+      new Error(
+        `${at} ${nodeId}: math dialect '${dialect}' has no converter; only 'typst' is emitted (TeX/KaTeX sources must be converted or rejected, never pasted)`,
+      ),
+      { code: 'E_EQUATION_DIALECT', details: { node_id: nodeId, dialect } },
+    );
+  }
+  if (/[$#]/.test(source)) {
+    throw Object.assign(
+      new Error(
+        `${at} ${nodeId}: math source contains '$' or '#' (would break out of Typst math mode); clean the source or convert the dialect`,
+      ),
+      { code: 'E_EQUATION_SYNTAX', details: { node_id: nodeId } },
+    );
+  }
+}
+
+function validateSegments(path, segs, block) {
+  if (!Array.isArray(segs) || segs.length === 0) fail(path, 'paragraph requires non-empty segments');
+  segs.forEach((seg, i) => {
+    const at = `${path}[${i}]`;
+    if (!seg || typeof seg !== 'object') fail(at, 'segment must be an object');
+    if (!SEG_KINDS.has(seg.kind)) fail(`${at}.kind`, `unsupported inline segment ${JSON.stringify(seg.kind)}`);
+    if (seg.kind === 'text') needString(`${at}.text`, seg.text, { allowEmpty: false });
+    if (seg.kind === 'ref') needString(`${at}.target`, seg.target, { allowEmpty: false });
+    if (seg.kind === 'cite') needString(`${at}.key`, seg.key, { allowEmpty: false });
+    if (seg.kind === 'footnote') needString(`${at}.label`, seg.label, { allowEmpty: false });
+    if (seg.kind === 'math') {
+      needString(`${at}.dialect`, seg.dialect, { allowEmpty: false });
+      needString(`${at}.source`, seg.source, { allowEmpty: false });
+      checkMathSource(block.id, 'inline math', seg.dialect, seg.source);
+    }
+  });
+}
+
 export function validatePublication(pub) {
   if (!pub || typeof pub !== 'object') fail('$', 'publication must be an object');
   if (pub.schema_version !== SCHEMA) {
     fail('$.schema_version', `expected ${SCHEMA}, got ${JSON.stringify(pub.schema_version)}`);
   }
   if (!TEMPLATES.has(pub.template)) fail('$.template', `unknown template ${JSON.stringify(pub.template)}`);
+  if (!VIEWS.has(pub.view)) fail('$.view', `unknown view ${JSON.stringify(pub.view)}`);
 
   const doc = pub.document;
   if (!doc || typeof doc !== 'object') fail('$.document', 'missing document metadata');
@@ -128,8 +191,9 @@ export function validatePublication(pub) {
   page.font_family.forEach((f, i) => needString(`$.page.font_family[${i}]`, f, { allowEmpty: false }));
   needString('$.page.header_text', page.header_text);
   if (typeof page.page_numbers !== 'boolean') fail('$.page.page_numbers', 'expected boolean');
+  if (typeof page.h1_span_columns !== 'boolean') fail('$.page.h1_span_columns', 'expected boolean');
 
-  // ---- v1: styles ----
+  // ---- styles ----
   const styles = pub.styles;
   if (!styles || typeof styles !== 'object') fail('$.styles', 'missing styles section');
   if (!Array.isArray(styles.rules)) fail('$.styles.rules', 'expected array');
@@ -167,7 +231,7 @@ export function validatePublication(pub) {
     validateSelector(`${at}.selector`, r.selector);
   });
 
-  // ---- v1: computed ----
+  // ---- computed（按 occurrence 对齐）----
   if (!Array.isArray(pub.computed) || pub.computed.length === 0) fail('$.computed', 'expected non-empty array');
   pub.computed.forEach((c, i) => {
     const at = `$.computed[${i}]`;
@@ -195,25 +259,29 @@ export function validatePublication(pub) {
     needInt(`$.outline.entries[${i}].level`, e.level, 1, 6);
     needString(`$.outline.entries[${i}].title`, e.title);
   });
+  needString('$.bib_title', pub.bib_title);
 
-  // ---- content / presentation ----
+  // ---- content / presentation（occurrence 唯一；语义 id 可复用）----
   if (!Array.isArray(pub.content) || pub.content.length === 0) {
     fail('$.content', 'publication has no content blocks');
   }
-  const contentIds = new Set();
+  const occs = new Set();
   pub.content.forEach((block, i) => {
     const at = `$.content[${i}]`;
     if (!block || typeof block !== 'object') fail(at, 'block must be an object');
     needString(`${at}.id`, block.id, { allowEmpty: false });
-    if (contentIds.has(block.id)) fail(`${at}.id`, `duplicate node id ${block.id}`);
-    contentIds.add(block.id);
+    needString(`${at}.occ`, block.occ, { allowEmpty: false });
+    if (occs.has(block.occ)) fail(`${at}.occ`, `duplicate occurrence ${block.occ}`);
+    occs.add(block.occ);
     if (!KINDS.has(block.kind)) fail(`${at}.kind`, `unsupported block kind ${JSON.stringify(block.kind)}`);
-    if (!ORIGINS.has(block.origin)) fail(`${at}.origin`, 'expected source|template|render');
+    if (!ORIGINS.has(block.origin)) {
+      fail(`${at}.origin`, `expected source|template|render|template-reuse, got ${JSON.stringify(block.origin)}`);
+    }
     if (block.kind === 'heading') {
       needInt(`${at}.level`, block.level, 1, 6);
       needString(`${at}.text`, block.text, { allowEmpty: false });
     } else if (block.kind === 'paragraph') {
-      needString(`${at}.text`, block.text, { allowEmpty: false });
+      validateSegments(`${at}.segments`, block.segments, block);
     } else if (block.kind === 'list') {
       if (![true, false].includes(block.ordered)) fail(`${at}.ordered`, 'expected boolean');
       if (!Array.isArray(block.items) || block.items.length === 0) fail(`${at}.items`, 'expected non-empty array');
@@ -232,21 +300,36 @@ export function validatePublication(pub) {
       needString(`${at}.title`, block.title);
       if (!Array.isArray(block.body) || block.body.length === 0) fail(`${at}.body`, 'expected non-empty array');
       block.body.forEach((p, j) => needString(`${at}.body[${j}]`, p, { allowEmpty: false }));
+    } else if (block.kind === 'figure') {
+      needString(`${at}.src`, block.src, { allowEmpty: false });
+      needString(`${at}.caption`, block.caption);
+    } else if (block.kind === 'equation') {
+      needString(`${at}.dialect`, block.dialect, { allowEmpty: false });
+      needString(`${at}.source`, block.source, { allowEmpty: false });
+      checkMathSource(block.id, 'equation', block.dialect, block.source);
+    } else if (block.kind === 'footnote_def') {
+      needString(`${at}.label`, block.label, { allowEmpty: false });
+      needString(`${at}.text`, block.text, { allowEmpty: false });
+    } else if (block.kind === 'bib_entry') {
+      needString(`${at}.key`, block.key, { allowEmpty: false });
+      needString(`${at}.text`, block.text, { allowEmpty: false });
     }
   });
   if (pub.computed.length !== pub.content.length) {
     fail('$.computed', `computed occurrences (${pub.computed.length}) must match content blocks (${pub.content.length})`);
   }
   pub.computed.forEach((c, i) => {
-    if (c.id !== pub.content[i].id) fail(`$.computed[${i}].id`, `must match content order (${pub.content[i].id})`);
+    if (c.id !== pub.content[i].occ) {
+      fail(`$.computed[${i}].id`, `must match content occurrence order (${pub.content[i].occ})`);
+    }
   });
   if (!Array.isArray(pub.presentation) || pub.presentation.length !== pub.content.length) {
     fail('$.presentation', `presentation entries (${pub.presentation?.length}) must match content blocks (${pub.content.length})`);
   }
   pub.presentation.forEach((entry, i) => {
     const at = `$.presentation[${i}]`;
-    needString(`${at}.semantic_id`, entry.semantic_id, { allowEmpty: false });
-    if (!contentIds.has(entry.semantic_id)) fail(`${at}.semantic_id`, `${entry.semantic_id} is not a content node`);
+    needString(`${at}.occurrence_id`, entry.occurrence_id, { allowEmpty: false });
+    if (!occs.has(entry.occurrence_id)) fail(`${at}.occurrence_id`, `${entry.occurrence_id} is not a content occurrence`);
     needString(`${at}.role`, entry.role);
     needString(`${at}.rule`, entry.rule);
     needInt(`${at}.guard`, entry.guard, 0, 1);
@@ -258,11 +341,11 @@ export function validatePublication(pub) {
       if (block.kind === 'heading') {
         needInt(`${bat}.level`, block.level, 1, 6);
         needString(`${bat}.text`, block.text, { allowEmpty: false });
-      } else if (block.kind === 'paragraph') {
-        needString(`${bat}.text`, block.text, { allowEmpty: false });
       } else if (block.kind === 'callout') {
         needString(`${bat}.title`, block.title);
         if (!Array.isArray(block.body) || block.body.length === 0) fail(`${bat}.body`, 'expected non-empty array');
+      } else if (block.kind === 'figure') {
+        needString(`${bat}.src`, block.src, { allowEmpty: false });
       }
     });
   });
@@ -272,19 +355,20 @@ export function validatePublication(pub) {
     needString(`$.render_diags[${i}].rule`, d.rule);
     needString(`$.render_diags[${i}].node`, d.node);
   });
+  if (!Array.isArray(pub.references)) fail('$.references', 'expected array');
+  pub.references.forEach((r, i) => {
+    needString(`$.references[${i}].from`, r.from, { allowEmpty: false });
+    needInt(`$.references[${i}].seg`, r.seg, 0, 999);
+    needString(`$.references[${i}].kind`, r.kind, { allowEmpty: false });
+    needString(`$.references[${i}].target`, r.target, { allowEmpty: false });
+    needString(`$.references[${i}].target_occ`, r.target_occ, { allowEmpty: false });
+  });
   return pub;
 }
 
 // ---------------------------------------------------------------------------
 // 能力核对 + inspect_style 数据接口（style-inspect-v1）
 // ---------------------------------------------------------------------------
-
-function renderValue(bag, prop) {
-  const [group, name] = prop.split('.');
-  if (bag?.[group] === undefined || bag?.[group] === null) return undefined;
-  const value = bag[group][name];
-  return value === undefined || value === null ? undefined : value;
-}
 
 export function backendCapabilityDiagnostics(pub) {
   const diags = [];
@@ -300,7 +384,7 @@ export function backendCapabilityDiagnostics(pub) {
             prop,
             occurrence: c.id,
             value: bag[name],
-            detail: `property '${prop}' is registered but not supported by the Typst backend (v1); kept in IR/inspect, not applied`,
+            detail: `property '${prop}' is registered but not supported by the Typst backend (v2); kept in IR/inspect, not applied`,
           });
         }
       }
@@ -331,7 +415,7 @@ export function buildStyleInspect(pub, backendDiags) {
         });
       }
     }
-    const entry = pub.presentation.find((e) => e.semantic_id === c.id);
+    const entry = pub.presentation.find((e) => e.occurrence_id === c.id);
     return {
       id: c.id,
       role: entry?.role ?? '',
@@ -344,10 +428,12 @@ export function buildStyleInspect(pub, backendDiags) {
   return {
     schema_version: 'style-inspect-v1',
     template: pub.template,
+    view: pub.view,
     source: pub.document.source,
     capabilities: [...PROPS].map((prop) => ({ prop, supported: BACKEND_SUPPORTED.has(prop) })),
     occurrences,
     render_diags: pub.render_diags,
+    references: pub.references,
   };
 }
 
@@ -389,6 +475,12 @@ function colorOf(c) {
   return `rgb("#${[c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, '0')).join('')}")`;
 }
 
+// occurrence → Typst label（`#` 等非标识字符归一为 `-`；前缀按种类区分命名空间）
+function labelOf(kind, occ) {
+  const prefix = kind === 'heading' ? 'h' : kind === 'figure' ? 'f' : kind === 'equation' ? 'eq' : 'x';
+  return `${prefix}-${String(occ).replace(/[^A-Za-z0-9_.-]/g, '-')}`;
+}
+
 // 文本属性包裹（size/weight/italic/color/font；未设置的属性不输出）
 function textWrap(text, body) {
   if (!text || Object.keys(text).length === 0) return body;
@@ -414,7 +506,7 @@ function parWrap(para, body) {
 }
 
 /**
- * @param {object} pub validated publication-ir-v1
+ * @param {object} pub validated publication-ir-v2
  * @returns {{typ: string, sourceMap: object, config: object, backendDiags: object[]}}
  */
 export function emitTypst(pub) {
@@ -429,29 +521,68 @@ export function emitTypst(pub) {
 
   const page = pub.page;
   const docComputed = pub.computed[0]?.doc ?? {};
-  const computedById = new Map(pub.computed.map((c) => [c.id, c]));
-  const presentationOf = new Map(pub.presentation.map((e) => [e.semantic_id, e]));
+  const computedByOcc = new Map(pub.computed.map((c) => [c.id, c]));
+  const kindByOcc = new Map(pub.content.map((b) => [b.occ, b.kind]));
 
-  push('// generated by autodown/prototypes/publishing — PLAN-083 prototype, do not edit');
-  push(`// template: ${pub.template} / schema: ${pub.schema_version} / source: ${pub.document.source}`);
+  // 引用解析映射：`${from}|${seg}` → target_occ（Auto 侧 validate_refs 的结果）
+  const refMap = new Map();
+  for (const r of pub.references ?? []) {
+    refMap.set(`${r.from}|${r.seg}`, r.target_occ);
+  }
+
+  // 索引：脚注定义（label → text）、文献条目（key → 编号）
+  const footnoteDefs = new Map();
+  const bibEntries = [];
+  const bibOrder = new Map();
+  for (const block of pub.content) {
+    if (block.kind === 'footnote_def') {
+      footnoteDefs.set(block.label, { text: block.text, occ: block.occ });
+    } else if (block.kind === 'bib_entry' && !bibOrder.has(block.key)) {
+      bibOrder.set(block.key, bibEntries.length + 1);
+      bibEntries.push(block);
+    }
+  }
+  const hasEquations = pub.content.some((b) => b.kind === 'equation');
+  const hasFigures = pub.content.some((b) => b.kind === 'figure');
+
+  push('// generated by autodown/prototypes/publishing — PLAN-084 prototype, do not edit');
+  push(`// template: ${pub.template} / view: ${pub.view} / schema: ${pub.schema_version} / source: ${pub.document.source}`);
   push(
     `#set document(title: ${typstString(pub.document.title)}, author: ${typstTuple(
       pub.document.authors.length > 0 ? pub.document.authors : [''],
     )})`,
   );
 
-  const margin = `(top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right})`;
-  push(`#set page(paper: ${typstString(page.paper)}, margin: ${margin}, numbering: ${page.page_numbers ? '"1 / 1"' : 'none'})`);
+  const paperSize = PAPER.get(page.paper);
+  const marginTuple = `(top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right})`;
+  if (paperSize) {
+    push(
+      `#set page(width: ${paperSize.width}, height: ${paperSize.height}, margin: ${marginTuple}, numbering: ${page.page_numbers ? '"1 / 1"' : 'none'})`,
+    );
+  } else {
+    push(`#set page(paper: ${typstString(page.paper)}, margin: ${marginTuple}, numbering: ${page.page_numbers ? '"1 / 1"' : 'none'})`);
+  }
   push(`#set text(font: ${typstTuple(page.font_family)}, lang: ${typstString(pub.document.lang)})`);
   push('#set smartquote(enabled: false)');
   const numbering = docComputed.heading_numbering ?? '';
   if (numbering !== '') {
     push(`#set heading(numbering: ${typstString(numbering)})`);
   }
+  if (hasEquations) {
+    // 块级公式经 equation figure 编号（figure 计数器与行内公式互不影响；
+    // 直接 set math.equation(numbering) 会把行内式一并计数——实测 1..6 连号）
+    // 块级公式编号（set+show 组合：行内式显式不编号——最小探针 eqtest.typ 验证）
+    push('#set math.equation(numbering: "(1)")');
+    push('#show math.equation.where(block: false): set math.equation(numbering: none)');
+  }
+  if (hasFigures) {
+    push('#set figure(supplement: [图])');
+  }
 
   const config = {
     schema: pub.schema_version,
     template: pub.template,
+    view: pub.view,
     font_size: page.font_size,
     columns: page.columns,
     paper: page.paper,
@@ -462,6 +593,9 @@ export function emitTypst(pub) {
     abstract_style: docComputed.abstract_style ?? '',
     font_family: page.font_family,
     header_text: page.header_text,
+    h1_span_columns: page.h1_span_columns,
+    footnotes: footnoteDefs.size,
+    bib_entries: bibEntries.length,
   };
   push('#metadata((');
   for (const [key, value] of Object.entries(config)) {
@@ -478,75 +612,136 @@ export function emitTypst(pub) {
   }
   push(')) <plan082-config>');
 
-  // ---- 标题 / 作者 / 摘要区（文档作用域计算样式驱动） ----
-  push('');
-  push('#align(center)[');
-  const titleSize = docComputed.title_size ? len(docComputed.title_size) : '20pt';
-  push(`  #text(size: ${titleSize}, weight: "bold")[${typstText(pub.document.title)}]`);
-  if (pub.document.authors.length > 0) {
-    push('  #v(0.5em)');
-    push(`  #text(size: 10.5pt)[${typstText(pub.document.authors.join('  ·  '))}]`);
-  }
-  push(']');
-
-  if (pub.document.abstract !== '') {
-    if ((docComputed.abstract_style ?? 'plain') === 'boxed') {
-      push('#v(0.8em)');
-      push('#block(width: 100%, inset: (x: 1em, y: 0.7em), radius: 2pt, stroke: 0.4pt + rgb("#9aa3ad"))[');
-      push('  #text(size: 9pt, weight: "bold")[摘要]');
-      push('  #v(0.3em)');
-      push(`  #par(justify: true)[${typstText(pub.document.abstract)}]`);
-      push(']');
-    } else {
-      push('#v(0.8em)');
-      push(`#par(justify: true)[#text(style: "italic")[${typstText(pub.document.abstract)}]]`);
-      push('#v(0.4em)');
+  // ---- 标题 / 作者 / 摘要区（文档作用域计算样式驱动；slides 视图跳过论文式标题区）----
+  if (pub.view !== 'slides') {
+    push('');
+    push('#align(center)[');
+    const titleSize = docComputed.title_size ? len(docComputed.title_size) : '20pt';
+    push(`  #text(size: ${titleSize}, weight: "bold")[${typstText(pub.document.title)}]`);
+    if (pub.document.authors.length > 0) {
+      push('  #v(0.5em)');
+      push(`  #text(size: 10.5pt)[${typstText(pub.document.authors.join('  ·  '))}]`);
     }
-  }
+    push(']');
 
-  if (pub.outline.depth > 0 && pub.outline.entries.length > 0) {
-    push('#v(0.8em)');
-    push(`#outline(title: [${typstText(pub.outline.title)}], depth: ${pub.outline.depth})`);
+    if (pub.document.abstract !== '') {
+      if ((docComputed.abstract_style ?? 'plain') === 'boxed') {
+        push('#v(0.8em)');
+        push('#block(width: 100%, inset: (x: 1em, y: 0.7em), radius: 2pt, stroke: 0.4pt + rgb("#9aa3ad"))[');
+        push('  #text(size: 9pt, weight: "bold")[摘要]');
+        push('  #v(0.3em)');
+        push(`  #par(justify: true)[${typstText(pub.document.abstract)}]`);
+        push(']');
+      } else {
+        push('#v(0.8em)');
+        push(`#par(justify: true)[#text(style: "italic")[${typstText(pub.document.abstract)}]]`);
+        push('#v(0.4em)');
+      }
+    }
+
+    if (pub.outline.depth > 0 && pub.outline.entries.length > 0) {
+      push('#v(0.8em)');
+      push(`#outline(title: [${typstText(pub.outline.title)}], depth: ${pub.outline.depth})`);
+    }
+    push('#pagebreak()');
   }
-  push('#pagebreak()');
   if (page.header_text !== '') {
     push(`#set page(header: [#align(center)[#text(size: 8pt)[${typstText(page.header_text)}]]])`);
   }
 
   // ---- 正文：presentation × computed 逐 occurrence 发射 ----
   const columns = page.columns;
-  if (columns > 1) {
-    push(`#columns(${columns}, gutter: 1.1em)[`);
+  const h1Span = page.h1_span_columns === true && columns > 1;
+  const contentByOcc = new Map(pub.content.map((b) => [b.occ, b]));
+  const emitCtx = {
+    footnoteDefs,
+    bibOrder,
+    refMap,
+    kindByOcc,
+    contentByOcc,
+    headingNumbered: numbering !== '',
+  };
+  let inColumns = false;
+  let pendingOpen = false;
+  const wantColumns = () => {
+    if (columns > 1 && !inColumns) pendingOpen = true;
+  };
+  const openColumns = () => {
+    if (columns > 1 && !inColumns) {
+      push(`#columns(${columns}, gutter: 1.1em)[`);
+      inColumns = true;
+      pendingOpen = false;
+    }
+  };
+  const lazyOpen = (line) => {
+    if (pendingOpen) openColumns();
+    return line;
+  };
+  const closeColumns = () => {
+    if (inColumns) {
+      push(']');
+      inColumns = false;
+    }
+  };
+  if (columns > 1 && !h1Span) {
+    wantColumns();
   }
   const bodyIndent = columns > 1 ? '  ' : '';
   let firstChapterCandidate = true;
+  let firstSlide = true;
   for (const entry of pub.presentation) {
-    const computed = computedById.get(entry.semantic_id) ?? { text: {}, para: {}, doc: {} };
+    const computed = computedByOcc.get(entry.occurrence_id) ?? { text: {}, para: {}, doc: {} };
+    const semantic = contentByOcc.get(entry.occurrence_id);
     const firstBlock = entry.blocks[0];
-    const isChapter =
-      firstBlock?.kind === 'heading' && firstBlock?.level === 1;
+    const isChapter = firstBlock?.kind === 'heading' && firstBlock?.level === 1;
+    const isSlideCallout =
+      pub.view === 'slides' && semantic?.kind === 'callout' && semantic.callout_type === 'slide';
     const chapterBreak =
       (computed.doc?.chapter_pagebreak ?? 0) === 1 && isChapter && !firstChapterCandidate;
     if (isChapter) firstChapterCandidate = false;
     const start = lines.length + 1;
-    push(`${bodyIndent}// node: ${entry.semantic_id} (role: ${entry.role}${entry.rule ? `, render: ${entry.rule}` : ''})`);
-    if (chapterBreak && entry.role === 'heading') {
-      push(`${bodyIndent}#pagebreak(weak: true)`);
+    // slides 分镜框：一分镜一页（静态；分步动画不在本批）
+    if (isSlideCallout) {
+      closeColumns();
+      if (!firstSlide) {
+        push('#pagebreak()');
+      }
+      firstSlide = false;
+    } else if (chapterBreak && entry.role === 'heading') {
+      if (h1Span) closeColumns();
+      push('#pagebreak(weak: true)');
     }
-    for (const block of entry.blocks) {
-      emitBlock(push, bodyIndent, block, computed, entry);
+    if (pendingOpen) openColumns();
+    push(`${bodyIndent}// node: ${entry.occurrence_id} (role: ${entry.role}${entry.rule ? `, render: ${entry.rule}` : ''})`);
+    if (h1Span && isChapter && entry.role === 'heading' && !isSlideCallout) {
+      // 跨栏标题：栏容器闭合 → 标题 → 重新开栏（正文回到栏内）
+      closeColumns();
+      emitBlocks(push, '', entry, computed, emitCtx);
+      wantColumns();
+    } else {
+      wantColumns();
+      emitBlocks(push, bodyIndent, entry, computed, emitCtx);
     }
     const end = lines.length;
     sourceMap.push({
-      node_id: entry.semantic_id,
+      node_id: entry.occurrence_id,
       kind: entry.role,
-      origin: entry.rule ? 'render' : 'source',
+      origin: entry.rule ? 'render' : semantic?.origin ?? 'source',
       typ_start: start,
       typ_end: end,
     });
   }
-  if (columns > 1) {
-    push(']');
+  closeColumns('');
+
+  // ---- 文献节（bib_entry 汇总；编号 = 声明顺序；label = bib 键）----
+  if (bibEntries.length > 0) {
+    push('');
+    if (pub.bib_title !== '') {
+      push(`#heading(level: 1, numbering: none)[${typstText(pub.bib_title)}]`);
+    }
+    bibEntries.forEach((b, i) => {
+      push(`#par(justify: true)[#text(size: 8.5pt)[#text(weight: "bold")[[${i + 1}] ] ${typstText(b.text)}]] <bib-${b.key}>`);
+    });
   }
 
   const typ = lines.join('\n') + '\n';
@@ -564,63 +759,147 @@ export function emitTypst(pub) {
   };
 }
 
-function emitBlock(push, bodyIndent, block, computed, entry) {
+// 行内段发射：text 转义；ref → #ref(label[, supplement])；cite → 上标 [n] 链接；
+// footnote → #footnote[定义]；math → $...$。fromOcc 用于查引用解析表。
+function emitSegments(segments, ctx, fromOcc) {
+  let out = '';
+  let idx = 0;
+  for (const seg of segments ?? []) {
+    if (seg.kind === 'text') {
+      out += typstText(seg.text);
+    } else if (seg.kind === 'ref') {
+      const resolved = ctx.refMap.get(`${fromOcc}|${idx}`) ?? seg.target;
+      const targetKind = ctx.kindByOcc.get(resolved) ?? 'heading';
+      const label = labelOf(targetKind, resolved);
+      const target = ctx.contentByOcc.get(resolved);
+      const displayText =
+        seg.display && seg.display.trim() !== ''
+          ? seg.display
+          : target?.text ?? target?.caption ?? resolved;
+      if (targetKind === 'heading' && !ctx.headingNumbered) {
+        // 无编号标题（如 office_book/press_book/news）：编号 ref 不可用，退化为
+        // 文本链接（显示 = 作者 display 或目标标题；语义 ID 与 label 保留）
+        out += `#link(<${label}>)[${typstText(displayText)}]`;
+      } else if (seg.display && seg.display.trim() !== '') {
+        out += `#ref(<${label}>, supplement: [${typstText(seg.display)}])`;
+      } else {
+        out += `#ref(<${label}>)`;
+      }
+    } else if (seg.kind === 'cite') {
+      const n = ctx.bibOrder.get(seg.key);
+      if (n !== undefined) {
+        out += `#super[#link(<bib-${seg.key}>)[#text("[${n}]")]]`;
+      } else {
+        out += typstText(`[${seg.key}]`);
+      }
+    } else if (seg.kind === 'footnote') {
+      const def = ctx.footnoteDefs.get(seg.label);
+      if (def) {
+        out += `#footnote[${typstText(def.text)}]`;
+      } else {
+        out += typstText(`[^${seg.label}]`);
+      }
+    } else if (seg.kind === 'math') {
+      // 行内公式：定界符内侧不得有空白（Typst 规则——带空白填充的 $ .. $ 是块
+      // 数学；在段内会被忽略为非法块但仍步进计数器，正文丢失且编号错位）
+      out += `$${seg.source}$`;
+    }
+    idx += 1;
+  }
+  return out;
+}
+
+function emitBlocks(push, bodyIndent, entry, computed, ctx) {
   const text = computed.text ?? {};
   const para = computed.para ?? {};
   const spacingAbove = para.spacing_above ? `#v(${len(para.spacing_above)})` : '';
   const spacingBelow = para.spacing_below ? `#v(${len(para.spacing_below)})` : '';
   if (spacingAbove) push(`${bodyIndent}${spacingAbove}`);
 
-  if (block.kind === 'heading') {
-    // 渲染规则接管编号的标题（如 chapter-h1 的“第N章”）局部关闭 Typst 编号
-    if (entry.rule !== '' && entry.role === 'heading') {
-      push(`${bodyIndent}#[#set heading(numbering: none)`);
-      push(`${bodyIndent}  ${'='.repeat(block.level)} ${textWrap(text, typstText(block.text))}`);
+  for (const block of entry.blocks) {
+    if (block.kind === 'heading') {
+      const label = labelOf('heading', ctx.semantic?.occ ?? block.id);
+      // 渲染规则接管编号的标题（如 chapter-h1 的“第N章”）局部关闭 Typst 编号
+      if (entry.rule !== '' && entry.role === 'heading') {
+        push(`${bodyIndent}#[#set heading(numbering: none)`);
+        push(`${bodyIndent}  ${'='.repeat(block.level)} ${textWrap(text, typstText(block.text))} <${label}>`);
+        push(`${bodyIndent}]`);
+      } else {
+        push(`${bodyIndent}${'='.repeat(block.level)} ${textWrap(text, typstText(block.text))} <${label}>`);
+      }
+      push('');
+    } else if (block.kind === 'paragraph') {
+      const fromOcc = ctx.semantic?.occ ?? block.occ ?? block.id;
+      const body = block.segments
+        ? emitSegments(block.segments, ctx, fromOcc)
+        : typstText(block.text ?? '');
+      push(`${bodyIndent}${parWrap(para, textWrap(text, body))}`);
+      push('');
+    } else if (block.kind === 'list') {
+      const itemWrap = (item) => parWrap(para, textWrap(text, typstText(item)));
+      for (const item of block.items) {
+        push(`${bodyIndent}${block.ordered ? '+' : '-'} ${itemWrap(item)}`);
+      }
+      push('');
+    } else if (block.kind === 'table') {
+      push(`${bodyIndent}#table(`);
+      push(`${bodyIndent}  columns: ${block.cols},`);
+      push(`${bodyIndent}  inset: 5pt,`);
+      push(`${bodyIndent}  stroke: 0.4pt + rgb("#9aa3ad"),`);
+      push(`${bodyIndent}  align: left,`);
+      block.rows.forEach((row, r) => {
+        const cells = row
+          .map((cell) =>
+            r === 0
+              ? `[#text(weight: "bold")[${textWrap(text, typstText(cell))}]]`
+              : `[${textWrap(text, typstText(cell))}]`,
+          )
+          .join(', ');
+        push(`${bodyIndent}  ${cells},`);
+      });
+      push(`${bodyIndent})`);
+      push('');
+    } else if (block.kind === 'callout' && block.callout_type === 'slide') {
+      // 分镜框：标题（无编号）+ 项目符号正文（静态一页一分镜）
+      const label = labelOf('heading', ctx.semantic?.occ ?? block.id);
+      push(`${bodyIndent}#heading(level: 1, numbering: none)[${textWrap(text, typstText(block.title || '未命名分镜'))}] <${label}>`);
+      push('');
+      for (const bullet of block.body) {
+        push(`${bodyIndent}- ${textWrap(text, typstText(bullet))}`);
+      }
+      push('');
+    } else if (block.kind === 'callout') {
+      const title = block.title !== '' ? block.title : block.callout_type;
+      push(`${bodyIndent}#block(width: 100%, inset: (x: 0.9em, y: 0.6em), radius: 2pt, fill: rgb("#f2f4f7"), stroke: 0.4pt + rgb("#c3c9d1"))[`);
+      push(`${bodyIndent}  #text(size: 9pt, weight: "bold")[${typstText(title)}]`);
+      for (const paragraph of block.body) {
+        push(`${bodyIndent}  #v(0.3em)`);
+        push(`${bodyIndent}  ${parWrap(para, textWrap(text, typstText(paragraph)))}`);
+      }
       push(`${bodyIndent}]`);
-    } else {
-      push(`${bodyIndent}${'='.repeat(block.level)} ${textWrap(text, typstText(block.text))}`);
+      push('');
+    } else if (block.kind === 'figure') {
+      const label = labelOf('figure', ctx.semantic?.occ ?? block.id);
+      push(`${bodyIndent}#figure(`);
+      push(`${bodyIndent}  image(${typstString(block.src)}, width: 100%),`);
+      push(`${bodyIndent}  caption: [${textWrap(text, typstText(block.caption))}],`);
+      push(`${bodyIndent}  numbering: "1",`);
+      push(`${bodyIndent}) <${label}>`);
+      push('');
+    } else if (block.kind === 'equation') {
+      const label = labelOf('equation', ctx.semantic?.occ ?? block.id);
+      // 块数学：界定符独占行（同行 $..$ 是行内式；无编号且不受 equation 计数）
+      push(`${bodyIndent}$
+${bodyIndent}  ${block.source}
+${bodyIndent}$ <${label}>`);
+      push('');
+    } else if (block.kind === 'footnote_def' || block.kind === 'bib_entry') {
+      // 定义类节点不入正文流（脚注在标记处展开；文献在文末汇总）
+      push(`${bodyIndent}// consumed: ${block.kind} ${block.occ ?? block.id}`);
+    } else if (block.kind === 'thematic_break') {
+      push(`${bodyIndent}#line(length: 100%, stroke: 0.5pt + rgb("#9aa3ad"))`);
+      push('');
     }
-    push('');
-  } else if (block.kind === 'paragraph') {
-    push(`${bodyIndent}${parWrap(para, textWrap(text, typstText(block.text)))}`);
-    push('');
-  } else if (block.kind === 'list') {
-    const itemWrap = (item) => parWrap(para, textWrap(text, typstText(item)));
-    for (const item of block.items) {
-      push(`${bodyIndent}${block.ordered ? '+' : '-'} ${itemWrap(item)}`);
-    }
-    push('');
-  } else if (block.kind === 'table') {
-    push(`${bodyIndent}#table(`);
-    push(`${bodyIndent}  columns: ${block.cols},`);
-    push(`${bodyIndent}  inset: 5pt,`);
-    push(`${bodyIndent}  stroke: 0.4pt + rgb("#9aa3ad"),`);
-    push(`${bodyIndent}  align: left,`);
-    block.rows.forEach((row, r) => {
-      const cells = row
-        .map((cell) =>
-          r === 0
-            ? `[#text(weight: "bold")[${textWrap(text, typstText(cell))}]]`
-            : `[${textWrap(text, typstText(cell))}]`,
-        )
-        .join(', ');
-      push(`${bodyIndent}  ${cells},`);
-    });
-    push(`${bodyIndent})`);
-    push('');
-  } else if (block.kind === 'callout') {
-    const title = block.title !== '' ? block.title : block.callout_type;
-    push(`${bodyIndent}#block(width: 100%, inset: (x: 0.9em, y: 0.6em), radius: 2pt, fill: rgb("#f2f4f7"), stroke: 0.4pt + rgb("#c3c9d1"))[`);
-    push(`${bodyIndent}  #text(size: 9pt, weight: "bold")[${typstText(title)}]`);
-    for (const paragraph of block.body) {
-      push(`${bodyIndent}  #v(0.3em)`);
-      push(`${bodyIndent}  ${parWrap(para, textWrap(text, typstText(paragraph)))}`);
-    }
-    push(`${bodyIndent}]`);
-    push('');
-  } else if (block.kind === 'thematic_break') {
-    push(`${bodyIndent}#line(length: 100%, stroke: 0.5pt + rgb("#9aa3ad"))`);
-    push('');
   }
   if (spacingBelow) push(`${bodyIndent}${spacingBelow}`);
 }

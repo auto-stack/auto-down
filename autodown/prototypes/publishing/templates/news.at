@@ -1,0 +1,57 @@
+// PLAN-084 — news 基础报纸模板（普通 Auto 函数；视图 newspaper，v2）
+//
+// 观察重点（Design 10 §14.1 / §8）：多栏正文、跨栏标题、图片与文章区域；
+// 不要求任意串文。首轮边界：正文 N 栏（默认 3）；一级标题（文章标题）跨栏
+//（page.h1_span_columns=1，发射器在标题前后开合栏容器）；其余标题在栏内。
+// 报头：header_text（默认书名）；日期行：meta.date 保留在 IR（不虚构）。
+
+use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of, new_publication
+use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role, sel_attr
+
+fn news_body_rule(opts Options) StyleRule {
+    var text = TextStyle(len_of(opts.font_size), -1, unset_color(), -1, [])
+    var para = ParagraphStyle(1, em(0, 0), unset_length(), unset_length(), unset_length())
+    return style_rule("tpl-news-body", "template", "", 0, sel_type("paragraph"), text, para, DocStyle("", -1, -1, unset_length(), "", -1))
+}
+
+fn news_doc_rule() StyleRule {
+    // 文章标题不编号（报纸文章无章节号），标题区 18pt，摘要 plain，不另起页
+    var doc = DocStyle("", -1, 0, pt(18, 0), "plain", -1)
+    return style_rule("tpl-news-doc", "template", "", 1, sel_type("heading"), TextStyle(unset_length(), -1, unset_color(), -1, []), ParagraphStyle(-1, unset_length(), unset_length(), unset_length(), unset_length()), doc)
+}
+
+fn news_render_rules() []RenderRule {
+    var rules []RenderRule = []
+    rules.push(render_rule("callout-plain", 5, sel_type("callout")))
+    return rules
+}
+
+fn build_news(doc Doc, opts Options) Publication {
+    var header = opts.header_text
+    if header == "" {
+        header = doc.meta.title
+    }
+    var page = PageConfig(
+        opts.paper,
+        opts.margin,
+        opts.margin,
+        opts.margin,
+        opts.margin,
+        opts.columns,
+        opts.font_size,
+        opts.font_family,
+        header,
+        1,
+        1
+    )
+    var content []PubBlock = []
+    for b in doc.blocks {
+        content.push(to_pub(b))
+    }
+    var rules []StyleRule = []
+    rules.push(news_body_rule(opts))
+    rules.push(news_doc_rule())
+    var render_rules = news_render_rules()
+    let outline = outline_of(content, 1)
+    return new_publication("news", opts.view_name, doc.meta, page, 0, "", "参考文献", content, outline, rules, render_rules)
+}

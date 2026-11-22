@@ -1,0 +1,91 @@
+// PLAN-084 — press_book 出版书籍模板（普通 Auto 函数；视图 book，v2）
+//
+// 观察重点（Design 10 §14.1）：封面、前置内容、目录、章节起始与页面差异。
+// 模板组装（origin=template，编号按出版树顺序）：
+//   * 封面页：书名块（大字号，发射器按 title_size 渲染标题区）+ 作者 + 出版说明；
+//   * 前置内容：“前言”（摘要作为前言正文——同一段语义材料，不复制正文）；
+//   * 正文：doc.blocks 原序；一级标题 chapter-h1 渲染“第N章”，章节另起页；
+//   * 文献节标题“参考文献”（发射器按 bib_entry 追加）。
+// 页面：2.4cm 边距、11pt、单栏、页码；h1 不跨栏。
+
+use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of, new_publication, pb, empty_segments, seg_text
+use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, StyLength, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role, sel_attr
+
+fn press_body_rule(opts Options) StyleRule {
+    var text = TextStyle(len_of(opts.font_size), -1, unset_color(), -1, [])
+    var para = ParagraphStyle(1, em(2, 0), unset_length(), unset_length(), unset_length())
+    return style_rule("tpl-press-body", "template", "", 0, sel_type("paragraph"), text, para, DocStyle("", -1, -1, unset_length(), "", -1))
+}
+
+fn press_doc_rule() StyleRule {
+    var doc = DocStyle("", -1, 1, pt(24, 0), "plain", -1)
+    return style_rule("tpl-press-doc", "template", "", 1, sel_type("heading"), TextStyle(unset_length(), -1, unset_color(), -1, []), ParagraphStyle(-1, unset_length(), unset_length(), unset_length(), unset_length()), doc)
+}
+
+fn press_render_rules() []RenderRule {
+    var rules []RenderRule = []
+    rules.push(render_rule("chapter-h1", 20, sel_attr("level", "1")))
+    rules.push(render_rule("theorem-box", 20, sel_role("theorem")))
+    rules.push(render_rule("callout-plain", 5, sel_type("callout")))
+    return rules
+}
+
+fn pb_head(id str, level int, text str) PubBlock {
+    var out = pb("heading", id, "template")
+    out.level = level
+    out.text = text
+    return out
+}
+
+fn pb_tpl_paragraph(id str, text str) PubBlock {
+    var out = pb("paragraph", id, "template")
+    var segs = empty_segments()
+    segs.push(seg_text(text))
+    out.segments = segs
+    return out
+}
+
+fn build_press_book(doc Doc, opts Options) Publication {
+    var top = "2.4cm"
+    var bottom = "2.4cm"
+    var left = "2.6cm"
+    var right = "2.2cm"
+    if opts.margin_explicit == 1 {
+        top = opts.margin
+        bottom = opts.margin
+        left = opts.margin
+        right = opts.margin
+    }
+    var header = opts.header_text
+    if header == "" {
+        header = doc.meta.title
+    }
+    var page = PageConfig(
+        opts.paper,
+        top,
+        bottom,
+        left,
+        right,
+        1,
+        opts.font_size,
+        opts.font_family,
+        header,
+        1,
+        0
+    )
+    var content []PubBlock = []
+    // 前置内容：前言（无编号章，摘要为正文——正文编号从第一章 起）
+    content.push(pb_head("tpl-preface", 1, "前言"))
+    if doc.meta.abstract != "" {
+        content.push(pb_tpl_paragraph("tpl-abstract", doc.meta.abstract))
+    }
+    for b in doc.blocks {
+        content.push(to_pub(b))
+    }
+    var rules []StyleRule = []
+    rules.push(press_body_rule(opts))
+    rules.push(press_doc_rule())
+    var render_rules = press_render_rules()
+    let outline = outline_of(content, 2)
+    return new_publication("press_book", opts.view_name, doc.meta, page, 2, "目 录", "参考文献", content, outline, rules, render_rules)
+}

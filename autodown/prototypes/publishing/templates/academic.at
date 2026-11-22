@@ -1,14 +1,16 @@
-// PLAN-083 — academic 模板（普通 Auto 函数；样式以规则声明，v1）
+// PLAN-084 — academic 模板（普通 Auto 函数；样式以规则声明，v2）
 //
-// 082 的扁平 StyleConfig 迁移为模板层规则（origin=template，在 builtin/theme 之上）：
+// 模板层规则（origin=template，在 builtin/theme 之上）：
 //   * tpl-academic-body ：正文段落字号（来自 --font-size）、两端对齐、无首行缩进；
-//   * tpl-academic-doc  ：标题编号 "1.1"、标题区字号 20pt、摘要 boxed、章节不另起页；
+//   * tpl-academic-doc  ：标题编号 "1.1"、标题区字号 20pt、摘要 boxed、章节不另起页。
 // 呈现规则：theorem-box（定理框）、aside-note（短提示侧注，长正文 next 委托
 // callout-plain）、callout-plain（纯段落提示）。academic 不改标题呈现（编号走
 // Typst 原生 heading numbering，与 082 输出一致）。
+// v2：视图 article（保结构）；figure/equation/脚注/文献由发射器映射 Typst 内置
+// 计数器与 label；文献节标题“参考文献”；正文标题不跨栏（h1_span=0）。
 
-use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of
-use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, StyLength, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role, sel_and, sel_attr, empty_text, empty_para
+use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of, new_publication
+use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type, sel_role
 
 fn academic_body_rule(opts Options) StyleRule {
     // 段落：字号采纳参数（默认 10pt），两端对齐，首行缩进 0
@@ -43,7 +45,7 @@ fn academic_render_rules() []RenderRule {
 }
 
 fn build_academic(doc Doc, opts Options) Publication {
-    let page = PageConfig(
+    var page = PageConfig(
         opts.paper,
         opts.margin,
         opts.margin,
@@ -53,30 +55,17 @@ fn build_academic(doc Doc, opts Options) Publication {
         opts.font_size,
         opts.font_family,
         opts.header_text,
-        1
+        1,
+        0
     )
     var content []PubBlock = []
     for b in doc.blocks {
         content.push(to_pub(b))
     }
-    var rules = []
+    var rules []StyleRule = []
     rules.push(academic_body_rule(opts))
     rules.push(academic_doc_rule())
+    var render_rules = academic_render_rules()
     let outline = outline_of(content, 2)
-    return Publication(
-        "academic",
-        doc.meta,
-        page,
-        2,
-        "目录",
-        content,
-        outline,
-        rules,
-        [],
-        [],
-        [],
-        academic_render_rules(),
-        [],
-        []
-    )
+    return new_publication("academic", opts.view_name, doc.meta, page, 2, "目录", "参考文献", content, outline, rules, render_rules)
 }

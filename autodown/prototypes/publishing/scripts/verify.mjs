@@ -54,7 +54,7 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? PROTO,
     encoding: 'utf8',
-    env: { ...process.env, ...(options.env ?? {}) },
+    env: { ...process.env, AUTO_ACE_CANDIDATE: '0', ...(options.env ?? {}) },
     maxBuffer: 64 * 1024 * 1024,
   });
   return {
@@ -97,12 +97,29 @@ function pdfProbe(runDir, withPng) {
   return JSON.parse(readFileSync(json, 'utf8'));
 }
 
-// 把同一页的正文行首分成栏：行首簇占比 >= 15%，且相邻簇间距 > 页宽 20% 才视为新栏。
-// 过短页（标题/前言）与目录页不作为栏位样本（它们的行首来自居中标题与目录点线）。
-function columnCount(page) {
+// 把同一页的正文行首分成栏。两种口径（2026-11-22 实测标定）：
+//  * dense（默认，share>=0.15 + 相邻簇间距 > 20% 页宽）：academic 2 栏/单栏判别；
+//    表格页的单元格簇 share 低，不会假造栏位。
+//  * anchor（share>=0.05 且 >=3 行 + 锚点跳变 > 25% 页宽）：报纸 3 栏判别——
+//    报纸每栏文本量小（share 约 0.10），dense 口径会漏；锚点跳变可跳过列表缩进。
+// 过短页（标题/前言）与目录页（点线引导）不作为栏位样本。
+function columnCount(page, mode = 'dense') {
   if (page.chars < 400) return 0;
-  if (/\.\s+\.\s+\./.test(page.text)) return 0; // 目录页（点线引导）不作为栏位样本
+  if (/\.\s+\.\s+\./.test(page.text)) return 0;
   const width = page.width;
+  if (mode === 'anchor') {
+    const clusters = page.x_clusters.filter((c) => c.share >= 0.05 && c.lines >= 3).sort((a, b) => a.x0 - b.x0);
+    if (clusters.length === 0) return 0;
+    let columns = 1;
+    let anchor = clusters[0].x0;
+    for (let i = 1; i < clusters.length; i += 1) {
+      if (clusters[i].x0 - anchor > width * 0.25) {
+        columns += 1;
+        anchor = clusters[i].x0;
+      }
+    }
+    return columns;
+  }
   const clusters = page.x_clusters.filter((c) => c.share >= 0.15).sort((a, b) => a.x0 - b.x0);
   if (clusters.length === 0) return 0;
   let columns = 1;
@@ -121,10 +138,12 @@ function sha256File(file) {
 }
 
 function syntheticPublication(text) {
-  const block = { id: 'syn-1', kind: 'paragraph', origin: 'template', text };
+  const block = { id: 'syn-1', kind: 'paragraph', origin: 'template', occ: 'syn-1', segments: [{ kind: 'text', text }] };
   return {
-    schema_version: 'publication-ir-v1',
+    schema_version: 'publication-ir-v2',
     template: 'academic',
+    view: 'article',
+    bib_title: '参考文献',
     document: { title: '序列化检查', authors: ['排版原型'], abstract: '', lang: 'zh', source: 'synthetic.ad' },
     page: {
       paper: 'a4',
@@ -134,6 +153,7 @@ function syntheticPublication(text) {
       font_family: ['Noto Serif SC'],
       header_text: '',
       page_numbers: true,
+      h1_span_columns: false,
     },
     styles: {
       rules: [
@@ -157,8 +177,9 @@ function syntheticPublication(text) {
     ],
     outline: { depth: 0, title: '', entries: [] },
     content: [block],
-    presentation: [{ semantic_id: 'syn-1', role: 'paragraph', rule: '', guard: 0, blocks: [block] }],
+    presentation: [{ occurrence_id: 'syn-1', role: 'paragraph', rule: '', guard: 0, blocks: [block] }],
     render_diags: [],
+    references: [],
   };
 }
 
@@ -419,15 +440,16 @@ async function main() {
       const actual = irSource[i];
       assert(actual.id === expected.id, `block id mismatch at ${i}: ${actual.id} != ${expected.id}`);
       assert(actual.kind === expected.kind, `block kind mismatch at ${actual.id}`);
-      const canonical = (value) => JSON.stringify(Object.fromEntries(Object.entries(value).sort()));
+      const canonical = (value) => JSON.stringify(Object.fromEntries(Object.entries(value).filter(([k]) => k !== 'occ').sort()));
       assert(
         canonical(actual) === canonical({ ...expected, origin: 'source' }),
         `block payload changed between parser and IR at ${actual.id}`,
       );
     }
-    const paragraph = irSource.find((block) => block.kind === 'paragraph' && block.text.includes('井号'));
+    const segTextOf = (block) => (block.segments ?? []).map((seg) => (seg.kind === 'text' ? seg.text : '')).join('');
+    const paragraph = irSource.find((block) => block.kind === 'paragraph' && segTextOf(block).includes('井号'));
     assert(paragraph, 'escape paragraph missing from IR');
-    assert(paragraph.text.includes('反斜线 \\'), 'backslash lost in IR text');
+    assert(segTextOf(paragraph).includes('反斜线 \\'), 'backslash lost in IR text');
     const mapped = escapeMap.blocks.find((item) => item.node_id === paragraph.id);
     assert(mapped, `source map missing ${paragraph.id}`);
     const typLines = readFileSync(path.join(escapeDir, 'publication.typ'), 'utf8').split('\n');
@@ -569,7 +591,7 @@ async function main() {
   const comp = (ir, id) => ir.computed.find((c) => c.id === id);
   await check('S-02', '模板默认在最终环境生效；节点显式属性跨模板保留', () => {
     assert(sdAcademic.code === 0 && sdBook.code === 0, 'style-demo publish failed');
-    assert(sdAcademicIr.schema_version === 'publication-ir-v1' && sdBookIr.schema_version === 'publication-ir-v1', 'IR v1 expected');
+    assert(sdAcademicIr.schema_version === 'publication-ir-v2' && sdBookIr.schema_version === 'publication-ir-v2', 'IR v2 expected');
     assert(comp(sdAcademicIr, 'block-3').text.size.value === 10, 'academic body default size');
     assert(comp(sdBookIr, 'block-3').text.size.value === 11, 'office_book body default size');
     assert(comp(sdAcademicIr, 'block-3').para.first_line_indent.value === 0, 'academic indent default');
@@ -620,7 +642,7 @@ async function main() {
     for (const outside of ['block-3', 'block-9']) {
       assert(hits('doc-sub-emph', outside) === 0, 'scoped rule matched ' + outside + ' outside its scope');
     }
-    const pres = (ir, id) => ir.presentation.find((e) => e.semantic_id === id);
+    const pres = (ir, id) => ir.presentation.find((e) => e.occurrence_id === id);
     const thm = pres(sdBookIr, 'block-6');
     assert(thm.rule === 'theorem-box', 'theorem render rule not applied');
     assert(thm.blocks[0].title === '定理 1（一致性条件）', 'theorem box title: ' + thm.blocks[0].title);
@@ -628,8 +650,9 @@ async function main() {
     assert(ch.rule === 'chapter-h1' && ch.blocks[0].text === '第二章 方法', 'chapter render not applied/numbered');
     const aside = pres(sdBookIr, 'block-7');
     assert(aside.rule === 'aside-note', 'aside render not applied');
-    assert(aside.blocks.some((b) => b.origin === 'render' && b.text === '注：两段提示'), 'aside label missing');
-    assert(aside.blocks.some((b) => b.text === '【两段提示】'), 'next-delegated plain title missing');
+    const plainOf = (b) => (b.segments ?? []).map((seg) => (seg.kind === 'text' ? seg.text : '')).join('');
+    assert(aside.blocks.some((b) => b.origin === 'render' && plainOf(b) === '注：两段提示'), 'aside label missing');
+    assert(aside.blocks.some((b) => plainOf(b) === '【两段提示】'), 'next-delegated plain title missing');
     for (const phrase of ['定理 1（一致性条件）', '第一章 前言', '第二章 方法', '第三章 结论']) {
       assert(sdBookPdf.text.includes(phrase), 'PDF missing rendered phrase: ' + phrase);
     }
@@ -718,7 +741,7 @@ async function main() {
     assert(academicResearchPdf.text.includes('时间基准'), 'academic research headings missing');
     const ch1 = bookIr.presentation.find((e) => e.blocks[0]?.text === '第二章 引言');
     assert(ch1 && ch1.rule === 'chapter-h1', 'office_book research chapter render missing');
-    const tplPreface = bookIr.presentation.find((e) => e.semantic_id === 'tpl-preface');
+    const tplPreface = bookIr.presentation.find((e) => e.occurrence_id === 'tpl-preface');
     assert(tplPreface && tplPreface.blocks[0].text === '第一章 前言', 'template-origin chapter not numbered first');
     return {
       escape_office_book: 'ok',
@@ -727,9 +750,228 @@ async function main() {
     };
   });
 
+  // ================================================================ PLAN-084 P-01..P-08
+  // P-01 五个模板消费同一材料（AC-01）：五个可打开 PDF；正文来源一致；形态区别成立
+  const fiveDirs = {};
+  const fiveRuns = {};
+  for (const template of ['academic', 'office_book', 'press_book', 'news', 'lecture']) {
+    fiveDirs[template] = path.join(OUT, `five-${template}`);
+    fiveRuns[template] = publish(['--source', 'samples/paper.ad', '--template', template, '--out', fiveDirs[template]]);
+  }
+  await check('P-01', '五个模板消费同一材料：五个 PDF、正文一致、形态区别', () => {
+    for (const template of Object.keys(fiveRuns)) {
+      assert(fiveRuns[template].code === 0, `${template} publish exit ${fiveRuns[template].code}: ${fiveRuns[template].stderr.slice(-500)}`);
+    }
+    const probes = {};
+    for (const template of Object.keys(fiveDirs)) {
+      probes[template] = pdfProbe(fiveDirs[template], true);
+      assert(probes[template].page_count >= 1, `${template} no pages`);
+    }
+    const irs = {};
+    for (const template of Object.keys(fiveDirs)) {
+      irs[template] = JSON.parse(readFileSync(path.join(fiveDirs[template], 'publication.json'), 'utf8'));
+    }
+    // 同一语义材料：source 块（article 视图未删减）在四个非 slides 模板一致
+    const sourceIds = (ir) => ir.content.filter((b) => b.origin === 'source').map((b) => b.id);
+    for (const template of ['office_book', 'press_book', 'news']) {
+      assert(
+        JSON.stringify(sourceIds(irs[template])) === JSON.stringify(sourceIds(irs.academic)),
+        `source ids differ between academic and ${template}`,
+      );
+    }
+    // 形态区别：栏数 / 纸型比例 / 页数
+    assert(Math.max(...probes.academic.pages.map(columnCount)) === 2, 'academic columns');
+    assert(Math.max(...probes.office_book.pages.map(columnCount)) === 1, 'office_book columns');
+    assert(Math.max(...probes.press_book.pages.map(columnCount)) === 1, 'press_book columns');
+    assert(Math.max(...probes.news.pages.map((p) => columnCount(p, 'anchor'))) === 3, 'news columns (3)');
+    assert(irs.news.page.h1_span_columns === true, 'news h1 span flag');
+    const lectureSize = probes.lecture.page_sizes[0];
+    assert(Math.abs(lectureSize[0] / lectureSize[1] - 16 / 9) < 0.01, `lecture aspect ${JSON.stringify(lectureSize)}`);
+    // slides 视图删减可见：未放置内容有 W_SLIDES_UNPLACED
+    assert(
+      irs.lecture.render_diags.some((d) => d.code === 'W_SLIDES_UNPLACED'),
+      'lecture missing W_SLIDES_UNPLACED',
+    );
+    // 关键内容五处一致（同一正文）
+    for (const phrase of ['多传感器融合感知', '时间基准', '特征级融合']) {
+      for (const template of Object.keys(probes)) {
+        assert(probes[template].text.includes(phrase), `${template} PDF missing ${phrase}`);
+      }
+    }
+    return {
+      pages: Object.fromEntries(Object.entries(probes).map(([t, p]) => [t, p.page_count])),
+      aspect_lecture: lectureSize,
+      source_blocks: sourceIds(irs.academic).length,
+      slides_unplaced: irs.lecture.render_diags.find((d) => d.code === 'W_SLIDES_UNPLACED')?.detail?.slice(0, 120),
+    };
+  });
+
+  // P-02 编号与目录按逻辑顺序（AC-02）：前言成为第一章；目录=最终树顺序；图/式编号
+  await check('P-02', '编号与目录按模板展开后的逻辑顺序（前言重排/图式编号）', () => {
+    const bookIr = JSON.parse(readFileSync(path.join(fiveDirs.office_book, 'publication.json'), 'utf8'));
+    const pressIr = JSON.parse(readFileSync(path.join(fiveDirs.press_book, 'publication.json'), 'utf8'));
+    const pres = (ir, id) => ir.presentation.find((e) => e.occurrence_id === id);
+    assert(pres(bookIr, 'tpl-preface')?.blocks[0]?.text === '第一章 前言', 'office_book preface not chapter 1');
+    assert(pres(bookIr, 'sec-intro')?.blocks[0]?.text === '第二章 引言 Introduction', 'office_book 引言 not chapter 2');
+    assert(pres(pressIr, 'tpl-preface')?.blocks[0]?.text === '第一章 前言', 'press_book preface not chapter 1');
+    assert(bookIr.outline.entries[0]?.id === 'tpl-preface', 'outline does not start with the template preface');
+    const acadPdfProbe = pdfProbe(fiveDirs.academic, false);
+    // Typst 图题 supplement 与编号间为不断行空格（U+00A0）；断言按任意空白归一。
+    assert(/图\s*1/.test(acadPdfProbe.text), 'academic PDF lacks numbered figure caption (图 1)');
+    assert(/\(1\)/.test(acadPdfProbe.text), 'academic PDF lacks numbered equation (1)');
+    return {
+      office_book_chapters: [pres(bookIr, 'tpl-preface'), pres(bookIr, 'sec-intro'), pres(bookIr, 'sec-related')].map((e) => e?.blocks?.[0]?.text),
+      press_book_chapter1: pres(pressIr, 'tpl-preface')?.blocks[0]?.text,
+      outline_first: bookIr.outline.entries[0],
+    };
+  });
+
+  // P-03 引用、脚注与文献（AC-03）：目标与显示正确；悬空/重复/歧义可定位
+  await check('P-03', '引用/脚注/文献真实工作；负例具名可定位', () => {
+    const acadIr = JSON.parse(readFileSync(path.join(fiveDirs.academic, 'publication.json'), 'utf8'));
+    const acadPdf = pdfProbe(fiveDirs.academic, false);
+    const refs = acadIr.references;
+    const refKinds = refs.map((r) => r.kind);
+    for (const kind of ['ref', 'cite', 'footnote']) {
+      assert(refKinds.includes(kind), `references missing ${kind}`);
+    }
+    const refSec = refs.find((r) => r.target === 'sec-time');
+    assert(refSec && refSec.target_occ === 'sec-time', 'sec-time ref unresolved');
+    assert(acadPdf.text.includes('单一传感器退化模式'), 'footnote definition text missing from PDF');
+    assert(acadPdf.text.includes('参考文献'), 'bibliography section missing');
+    for (const n of ['[1]', '[2]', '[3]']) {
+      assert(acadPdf.text.includes(n), `bibliography entry ${n} missing`);
+    }
+    assert(acadPdf.text.includes('张明远, 李慧. 多传感器融合感知综述'), 'bib entry text missing');
+    const neg = (args) => publish(args);
+    const cases = [
+      { args: ['--source', 'samples/neg/dangling-ref.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-ref-dangling'), '--skip-pdf'], code: 'E_REF_DANGLING' },
+      { args: ['--source', 'samples/neg/unknown-cite.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-cite'), '--skip-pdf'], code: 'E_CITE_UNKNOWN' },
+      { args: ['--source', 'samples/neg/dangling-footnote.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-fn-dangling'), '--skip-pdf'], code: 'E_FOOTNOTE_DANGLING' },
+      { args: ['--source', 'samples/neg/dup-footnote.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-fn-dup'), '--skip-pdf'], code: 'E_FOOTNOTE_DUPLICATE' },
+      { args: ['--source', 'samples/neg/bad-bib.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-bib'), '--skip-pdf'], code: 'E_BIB_ENTRY' },
+      { args: ['--source', 'samples/neg/mixed-figure.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-mixed-fig'), '--skip-pdf'], code: 'E_FIGURE_MIXED_INLINE' },
+      { args: ['--source', 'samples/neg/ambiguous-ref.ad', '--template', 'lecture', '--out', path.join(OUT, 'neg-ambiguous'), '--skip-pdf'], code: 'E_REF_AMBIGUOUS' },
+    ];
+    const outcomes = [];
+    for (const c of cases) {
+      const r = neg(c.args);
+      assert(r.code === 1, `${c.code}: expected exit 1, got ${r.code}`);
+      assert(r.payload?.error?.code === c.code, `${c.code}: got ${r.payload?.error?.code}`);
+      outcomes.push({ expected: c.code, message: r.payload.error.message.slice(0, 140) });
+    }
+    const qualified = neg(['--source', 'samples/neg/ambiguous-ref-qualified.ad', '--template', 'lecture', '--out', path.join(OUT, 'neg-ambiguous-ok'), '--skip-pdf']);
+    assert(qualified.code === 0, `qualified ref should pass, exit ${qualified.code}`);
+    const qIr = JSON.parse(readFileSync(path.join(OUT, 'neg-ambiguous-ok', 'publication.json'), 'utf8'));
+    const qRef = qIr.references.find((r) => r.target === 'fig-x#2');
+    assert(qRef && qRef.target_occ === 'fig-x#2', 'qualified ref not resolved to the second occurrence');
+    outcomes.push({ expected: 'E_REF_AMBIGUOUS resolved via #fig-x#2', target_occ: qRef?.target_occ });
+    return { references: refs.length, negatives: outcomes };
+  });
+
+  // P-04 Content 复用两次（AC-04）：occurrence 唯一；引用策略明确
+  await check('P-04', '同一 Content 复用两次：occurrence 唯一、显式消解不随机选首个', () => {
+    const lectureIr = JSON.parse(readFileSync(path.join(fiveDirs.lecture, 'publication.json'), 'utf8'));
+    const reuse = lectureIr.content.filter((b) => b.origin === 'template-reuse');
+    assert(reuse.length === 2, `template-reuse blocks: ${reuse.length}`);
+    for (const b of reuse) {
+      assert(/^block-\d+#2$/.test(b.occ), `reuse occurrence should be #2: ${b.occ}`);
+    }
+    const occs = lectureIr.content.map((b) => b.occ);
+    assert(new Set(occs).size === occs.length, 'occurrences not unique');
+    assert(lectureIr.computed.every((c, i) => c.id === lectureIr.content[i].occ), 'computed not aligned to occurrences');
+    assert(lectureIr.presentation.every((e, i) => e.occurrence_id === lectureIr.content[i].occ), 'presentation not aligned to occurrences');
+    const manifest = JSON.parse(readFileSync(path.join(fiveDirs.lecture, 'resource-manifest.json'), 'utf8'));
+    assert(manifest.images.length === 1 && manifest.images[0].sha256, 'resource manifest image entry missing');
+    return {
+      reuse: reuse.map((b) => `${b.id}:${b.occ}:${b.kind}`),
+      occurrences: occs.length,
+      image_sha_prefix: manifest.images[0].sha256.slice(0, 12),
+    };
+  });
+
+  // P-05 混合语言/公式/资源边界（AC-05）：dialect 受检查；缺字体/缺资源可见
+  await check('P-05', '公式 dialect 受检查；字体与资源诊断可见，未知内容不丢失', () => {
+    const hashEq = publish(['--source', 'samples/neg/hash-equation.ad', '--template', 'academic', '--out', path.join(OUT, 'neg-hash-eq'), '--skip-pdf']);
+    assert(hashEq.code === 1 && hashEq.payload?.error?.code === 'E_EQUATION_SYNTAX', `hash equation: ${hashEq.payload?.error?.code}`);
+    let dialectCode = null;
+    try {
+      const base = syntheticPublication('x');
+      const eqBlock = { id: 'eq-tex', kind: 'equation', origin: 'source', occ: 'eq-tex', dialect: 'tex', source: 'frac{a}{b}' };
+      base.content = [base.content[0], eqBlock];
+      base.computed = [...base.computed, base.computed[0]];
+      base.computed[1] = { ...base.computed[0], id: 'eq-tex' };
+      base.presentation = [
+        base.presentation[0],
+        { occurrence_id: 'eq-tex', role: 'equation', rule: '', guard: 0, blocks: [eqBlock] },
+      ];
+      emitTypst(base);
+    } catch (error) {
+      dialectCode = error.code;
+    }
+    assert(dialectCode === 'E_EQUATION_DIALECT', `tex dialect: ${dialectCode}`);
+    const manifest = JSON.parse(readFileSync(path.join(fiveDirs.academic, 'resource-manifest.json'), 'utf8'));
+    assert(manifest.fonts.missing.length === 0, `unexpected missing fonts: ${JSON.stringify(manifest.fonts.missing)}`);
+    assert(manifest.fonts.requested.includes('Noto Serif SC'), 'requested fonts not recorded');
+    assert(manifest.images.length === 1 && manifest.images[0].bytes > 0, 'image not recorded in manifest');
+    const acadReport = JSON.parse(readFileSync(path.join(fiveDirs.academic, 'run-report.json'), 'utf8'));
+    assert(Array.isArray(acadReport.diagnostics), 'diagnostics list present');
+    return {
+      equation_syntax: hashEq.payload.error.code,
+      equation_dialect: dialectCode,
+      fonts_requested: manifest.fonts.requested,
+      images: manifest.images.length,
+      diagnostics: acadReport.diagnostics.length,
+    };
+  });
+
+  // P-06 图表与长内容（AC-06）：长段/表格无无声截断；边界明确记录
+  await check('P-06', '长段落/表格无无声截断；超出本批能力明确记录', () => {
+    for (const template of ['academic', 'office_book', 'news']) {
+      const probe = pdfProbe(fiveDirs[template], false);
+      const flat = stripWs(probe.text);
+      assert(flat.includes(stripWs('累计里程 48,000 公里')), `${template}: long paragraph truncated (mileage missing)`);
+      assert(flat.includes(stripWs('12 种光照天气组合，所有原始数据、标定参数与中间结果均随文档版本入库')), `${template}: long paragraph tail missing`);
+      assert(flat.includes('毫米波雷达'), `${template}: table row missing`);
+    }
+    const readme = readFileSync(path.join(PROTO, 'README.md'), 'utf8');
+    assert(readme.includes('限制'), 'README boundary section missing');
+    return { long_paragraph: '完整出现在三个模板', table_rows: 3 };
+  });
+
+  // P-07 模板/view 与文件格式分离（AC-07）：切换视图不改原文；边界如实声明
+  await check('P-07', '切换模板/视图不修改原文；输出格式边界如实声明', () => {
+    const before = readFileSync(path.join(PROTO, 'samples/paper.ad'), 'utf8');
+    const sha = sha256File(path.join(PROTO, 'samples/paper.ad'));
+    assert(readFileSync(path.join(PROTO, 'samples/paper.ad'), 'utf8') === before, 'source mutated by publishing');
+    const readme = readFileSync(path.join(PROTO, 'README.md'), 'utf8');
+    assert(readme.includes('不宣称'), 'README must state format boundaries (不宣称 …)');
+    assert(readme.includes('PPTX') || readme.includes('DOCX'), 'README must mention PPTX/DOCX boundary');
+    return { source_sha: sha.slice(0, 12), source_unchanged: true };
+  });
+
+  // P-08 执行端选择（AC-08 的一腿）：--auto-engine 显式选择；ACE 缺口可复现
+  await check('P-08', '执行端显式选择（legacy 默认）；构建默认车道缺口具名可复现', () => {
+    const legacyRun = publish(['--source', 'samples/paper.ad', '--template', 'academic', '--out', path.join(OUT, 'engine-legacy'), '--skip-pdf']);
+    assert(legacyRun.code === 0, `legacy engine run failed: ${legacyRun.stderr.slice(-400)}`);
+    const legacyReport = JSON.parse(readFileSync(path.join(OUT, 'engine-legacy', 'run-report.json'), 'utf8'));
+    assert(legacyReport.tool.auto_engine === 'legacy', 'engine not recorded in report');
+    const aceRun = publish(['--source', 'samples/paper.ad', '--template', 'academic', '--out', path.join(OUT, 'engine-ace'), '--skip-pdf', '--auto-engine', 'ace']);
+    assert(aceRun.code === 1, 'ace engine run unexpectedly succeeded');
+    const msg = aceRun.payload?.error?.message ?? '';
+    assert(
+      /ace\.sys\//.test(msg) || /not part of this source profile/.test(msg),
+      `ace lane gap not surfaced: ${msg.slice(0, 200)}`,
+    );
+    return {
+      legacy_engine: legacyReport.tool.auto_engine,
+      ace_named_gap: msg.slice(0, 160),
+    };
+  });
+
   const failed = checks.filter((item) => !item.ok);
   const report = {
-    schema_version: 'plan083-verify-report-v1',
+    schema_version: 'plan084-verify-report-v1',
     generated_at: new Date().toISOString(),
     repo: REPO,
     tools: env,
@@ -738,7 +980,7 @@ async function main() {
   };
   writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 
-  const lines = ['# PLAN-082/083 验收证据', '', `生成时间：${report.generated_at}`, '', '## 工具', ''];
+  const lines = ['# PLAN-082/083/084 验收证据', '', `生成时间：${report.generated_at}`, '', '## 工具', ''];
   for (const [key, value] of Object.entries(env)) lines.push(`- ${key}: ${value}`);
   lines.push('', '## 检查', '', '| 检查 | 结果 | 证据 |', '| --- | --- | --- |');
   for (const item of checks) {

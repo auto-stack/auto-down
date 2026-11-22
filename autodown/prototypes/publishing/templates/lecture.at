@@ -1,0 +1,80 @@
+// PLAN-084 — lecture 静态演示模板（普通 Auto 函数；视图 slides，v2）
+//
+// 观察重点（Design 10 §14.1 / §8）：16:9、明确分镜、重点/图表布局；不自动摘要。
+// 组装：slides 视图已选取 slide 分镜材料（callout type=slide 开页，其后段落/
+// 列表/图表/公式附属）。模板补一页“总结”分镜（tpl origin）：显式复用正文首个
+// figure 与 equation（同一语义块第二次出现 → occurrence `#2`，AC-04 的正向样例；
+// 指向该 figure 的未限定引用会得到 E_REF_AMBIGUOUS，限定 `#id#2` 正常解析）。
+// 静态输出：一页一分镜；分步动画不在本批（§1 边界）。
+
+use ir: Doc, Options, Publication, PageConfig, PubBlock, OutlineEntry, to_pub, outline_of, new_publication, pb, pub_copy, empty_segments, seg_text
+use style: StyleRule, RenderRule, TextStyle, ParagraphStyle, DocStyle, pt, em, unset_length, unset_color, len_of, style_rule, render_rule, sel_type
+
+fn lecture_body_rule(opts Options) StyleRule {
+    var text = TextStyle(len_of(opts.font_size), -1, unset_color(), -1, [])
+    var para = ParagraphStyle(0, em(0, 0), unset_length(), unset_length(), unset_length())
+    return style_rule("tpl-lecture-body", "template", "", 0, sel_type("paragraph"), text, para, DocStyle("", -1, -1, unset_length(), "", -1))
+}
+
+fn lecture_doc_rule() StyleRule {
+    // 分镜标题不编号；标题区 26pt
+    var doc = DocStyle("", -1, 0, pt(26, 0), "plain", -1)
+    return style_rule("tpl-lecture-doc", "template", "", 1, sel_type("heading"), TextStyle(unset_length(), -1, unset_color(), -1, []), ParagraphStyle(-1, unset_length(), unset_length(), unset_length(), unset_length()), doc)
+}
+
+fn lecture_render_rules() []RenderRule {
+    var rules []RenderRule = []
+    return rules
+}
+
+fn build_lecture(doc Doc, opts Options) Publication {
+    var page = PageConfig(
+        opts.paper,
+        opts.margin,
+        opts.margin,
+        opts.margin,
+        opts.margin,
+        1,
+        opts.font_size,
+        opts.font_family,
+        "",
+        0,
+        0
+    )
+    var content []PubBlock = []
+    for b in doc.blocks {
+        content.push(to_pub(b))
+    }
+    // 总结分镜：显式复用首个 figure / equation（语义复用第二次 → occurrence #2）
+    var reuse []PubBlock = []
+    var i = 0
+    while i < doc.blocks.len() {
+        let b = doc.blocks[i]
+        if reuse.len() < 2 {
+            if b.kind == "figure" || b.kind == "equation" {
+                var copy = pub_copy(to_pub(b))
+                copy.origin = "template-reuse"
+                reuse.push(copy)
+            }
+        }
+        i = i + 1
+    }
+    if reuse.len() > 0 {
+        var slide = pb("callout", "tpl-summary-slide", "template")
+        slide.callout_type = "slide"
+        slide.title = "总结"
+        var body []str = []
+        body.push("本演示的关键材料回顾（同源复用，未改写正文）。")
+        slide.body = body
+        content.push(slide)
+        for r in reuse {
+            content.push(r)
+        }
+    }
+    var rules []StyleRule = []
+    rules.push(lecture_body_rule(opts))
+    rules.push(lecture_doc_rule())
+    var render_rules = lecture_render_rules()
+    let outline = outline_of(content, 1)
+    return new_publication("lecture", opts.view_name, doc.meta, page, 0, "", "", content, outline, rules, render_rules)
+}

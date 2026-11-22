@@ -11,7 +11,7 @@
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,7 +19,7 @@ import { parseSource, REPO_ROOT } from './doc-parse.mjs';
 import { encodeDocWire, encodeRequest } from './wire.mjs';
 import { encodeStylesWire } from './style-wire.mjs';
 import { emitTypst, validatePublication, backendCapabilityDiagnostics, buildStyleInspect } from './emit-typst.mjs';
-import { locateTypst, typstVersion, typstCompile, typstQuery, PINNED_TYPST_VERSION } from './typst.mjs';
+import { locateTypst, typstVersion, typstCompile, typstQuery, typstFonts, PINNED_TYPST_VERSION } from './typst.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROTO_ROOT = path.resolve(HERE, '..');
@@ -30,9 +30,11 @@ function parseArgs(argv) {
     template: 'academic',
     out: path.join(PROTO_ROOT, 'out', 'academic'),
     autoEntry: path.join(PROTO_ROOT, 'templates/main.at'),
-    docWireVersion: 1,
+    docWireVersion: 2,
+    view: undefined,
     skipPdf: false,
     fontPaths: [],
+    autoEngine: 'legacy',
   };
   const takesValue = new Set([
     '--source',
@@ -46,7 +48,9 @@ function parseArgs(argv) {
     '--auto-entry',
     '--doc-wire-version',
     '--font-path',
+    '--view',
     '--doc-styles',
+    '--auto-engine',
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -76,8 +80,15 @@ function parseArgs(argv) {
     else if (arg === '--header-text') opts.headerText = value;
     else if (arg === '--auto-entry') opts.autoEntry = path.resolve(value);
     else if (arg === '--doc-wire-version') opts.docWireVersion = Number(value);
+    else if (arg === '--view') opts.view = value;
     else if (arg === '--font-path') opts.fontPaths.push(path.resolve(value));
     else if (arg === '--doc-styles') opts.docStyles = path.resolve(value);
+    else if (arg === '--auto-engine') {
+      if (value !== 'legacy' && value !== 'ace') {
+        throw Object.assign(new Error(`--auto-engine must be legacy|ace, got ${value}`), { code: 'E_ARGS' });
+      }
+      opts.autoEngine = value;
+    }
   }
   return opts;
 }
@@ -101,14 +112,22 @@ function fail(error) {
 
 // PLAN-083：Auto 入口不经 file 模块读写（本机 VM 缺陷：入口 use file 时部分被调函数
 // 被错误编译）。输入经环境变量（PLAN083_*）传入，输出打印到 stdout 由宿主捕获。
-function runAuto(entry, runDir, inputs) {
+// PLAN-084：执行端显式选择（§2.1/AC-08）。当前 auto 构建的脚本面默认已是 ACE sys
+// 车道（该车道不支持本原型的 record/str 方法形态，见 PLAN-084 §7 T-00 矩阵）；
+// 出版接口默认显式选择**已验旧版 VM 车道**（AUTO_ACE_CANDIDATE=0），
+// `--auto-engine ace` 改用构建默认车道（当前为 ACE sys；AV/A2R 缺口与复验
+// 条件见 PLAN-084 §7）。
+function runAuto(entry, runDir, inputs, engine) {
   const autoCmd = process.env.PLAN082_AUTO || 'auto';
+  // ace = 当前构建的默认脚本车道（ACE sys）：显式置 1，抵消外层可能的回退钮环境
+  const engineEnv = engine === 'ace' ? { AUTO_ACE_CANDIDATE: '1', AUTO_ACE_SCRIPT_SYS: '1' } : { AUTO_ACE_CANDIDATE: '0' };
   const started = Date.now();
   const result = spawnSync(autoCmd, [entry], {
     cwd: PROTO_ROOT,
     encoding: 'utf8',
     env: {
       ...process.env,
+      ...engineEnv,
       PLAN083_WIRE: inputs.wire,
       PLAN083_REQUEST: inputs.request,
       PLAN083_STYLES: inputs.stylesWire,
@@ -117,6 +136,7 @@ function runAuto(entry, runDir, inputs) {
   });
   return {
     command: `${autoCmd} ${entry}`,
+    engine,
     code: result.status ?? -1,
     stdout: result.stdout ?? '',
     stderr: result.stderr ?? '',
@@ -137,7 +157,7 @@ async function main() {
 
   const report = {
     schema_version: 'plan082-run-report-v1',
-    tool: { auto: autoVersion(), typst: null, node: process.version, platform: process.platform },
+    tool: { auto: autoVersion(), auto_engine: opts.autoEngine, typst: null, node: process.version, platform: process.platform },
     request: {
       source: path.relative(REPO_ROOT, opts.source),
       template: opts.template,
@@ -162,10 +182,11 @@ async function main() {
   report.stages.parse = { ms: Date.now() - t0, blocks: doc.blocks.length, diagnostics: doc.diagnostics.length };
   report.diagnostics.push(...doc.diagnostics);
 
-  // 2. 编码 doc-wire + request
-  const wire = encodeDocWire(doc).replace('DOCWIRE 1', `DOCWIRE ${opts.docWireVersion}`);
+  // 2. 编码 doc-wire + request（v2 默认；v1 仍可用——082 样例兼容）
+  const wire = encodeDocWire(doc, { version: opts.docWireVersion });
   const request = encodeRequest({
     template: opts.template,
+    view: opts.view,
     font_size: opts.fontSize,
     columns: opts.columns,
     paper: opts.paper,
@@ -185,7 +206,7 @@ async function main() {
 
   // 3. Auto 求值（模板投影 + 样式合成 + 呈现）；结果从 stdout 捕获
   //   （Auto 入口不经 file 模块读写——本机 VM 缺陷规避，见 templates/main.at 头注）
-  const auto = runAuto(opts.autoEntry, opts.out, { wire, request, stylesWire });
+  const auto = runAuto(opts.autoEntry, opts.out, { wire, request, stylesWire }, opts.autoEngine);
   report.stages.auto = {
     ms: auto.ms,
     code: auto.code,
@@ -240,7 +261,40 @@ async function main() {
     schema_version: publication.schema_version,
   };
 
-  // 5. Typst 发射 + 来源映射
+  // 5. 资源解析（PLAN-084 T-03）：图片按 IR 清单从正文目录拷入输出目录；
+  //    缺失/越界路径给可见诊断（非法路径不拷贝；缺失不静默——Typst 编译会如实失败）
+  const sourceDir = path.dirname(opts.source);
+  const outResolved = path.resolve(opts.out);
+  const images = [];
+  const seenSrc = new Set();
+  for (const block of publication.content) {
+    if (block.kind !== 'figure' || seenSrc.has(block.src)) continue;
+    seenSrc.add(block.src);
+    const absSrc = path.resolve(sourceDir, block.src);
+    if (block.src.includes('..')) {
+      report.diagnostics.push({
+        code: 'W_RESOURCE_PATH_ILLEGAL',
+        detail: `figure source path escapes the output root and was not copied: ${block.src}`,
+      });
+      images.push({ src: block.src, sha256: null, bytes: null, copied: false, reason: 'illegal-path' });
+      continue;
+    }
+    const dest = path.join(outResolved, block.src);
+    if (!existsSync(absSrc)) {
+      report.diagnostics.push({
+        code: 'W_RESOURCE_MISSING',
+        detail: `figure source not found (Typst compile will report it): ${block.src}`,
+      });
+      images.push({ src: block.src, sha256: null, bytes: null, copied: false, reason: 'missing' });
+      continue;
+    }
+    mkdirSync(path.dirname(dest), { recursive: true });
+    copyFileSync(absSrc, dest);
+    const buf = readFileSync(dest);
+    images.push({ src: block.src, sha256: sha256(buf), bytes: buf.length, copied: true });
+  }
+
+  // 6. Typst 发射 + 来源映射
   const emitted = emitTypst(publication);
   const faultLine = opts.injectTypstError
     ? '\n// PLAN-082 fault injection: 验证 E_TYPST_COMPILE 的真实失败映射（非正常用例）\n#panic("PLAN-082 injected typst failure")\n'
@@ -263,7 +317,7 @@ async function main() {
   writeFileSync(path.join(opts.out, 'style-inspect.json'), JSON.stringify(inspect, null, 2) + '\n');
   report.outputs.style_inspect = { path: 'style-inspect.json', occurrences: inspect.occurrences.length, unsupported: backendDiags.length };
 
-  // 6. Typst 编译 PDF
+  // 7. Typst 编译 PDF
   const typstBin = locateTypst(PROTO_ROOT);
   if (!typstBin) {
     throw Object.assign(
@@ -276,6 +330,50 @@ async function main() {
   }
   report.tool.typst = typstVersion(typstBin);
   report.tool.typst_path = typstBin;
+
+  // 8. 资源清单（PLAN-084 T-03：模板/引擎版本、字体集合、图片内容哈希；预览/导出复用同一清单）
+  //    字体诊断：请求的字族不在 typst 可用清单 → W_FONT_MISSING（可见；Typst 自行回退渲染）
+  const availableFonts = typstFonts(typstBin, opts.fontPaths);
+  const fontCheck = (publication.page.font_family ?? []).map((family) => ({
+    family,
+    available: availableFonts === null ? null : availableFonts.some((f) => f === family),
+  }));
+  for (const f of fontCheck) {
+    if (f.available === false) {
+      report.diagnostics.push({
+        code: 'W_FONT_MISSING',
+        detail: `requested font family is not in the typst font list; typst will substitute: ${f.family}`,
+      });
+    }
+  }
+  const sourceBytes = readFileSync(opts.source);
+  const resourceManifest = {
+    schema_version: 'resource-manifest-v1',
+    tool: {
+      auto: report.tool.auto,
+      auto_engine: opts.autoEngine,
+      typst: report.tool.typst,
+      node: process.version,
+      platform: process.platform,
+    },
+    request: {
+      template: publication.template,
+      view: publication.view,
+      source: path.relative(REPO_ROOT, opts.source),
+      source_sha256: sha256(sourceBytes),
+      doc_wire_version: opts.docWireVersion,
+    },
+    fonts: { requested: publication.page.font_family, available_checked: availableFonts !== null, missing: fontCheck.filter((f) => f.available === false).map((f) => f.family) },
+    images,
+    bibliography_entries: publication.content.filter((b) => b.kind === 'bib_entry').length,
+    footnote_defs: publication.content.filter((b) => b.kind === 'footnote_def').length,
+  };
+  writeFileSync(path.join(opts.out, 'resource-manifest.json'), JSON.stringify(resourceManifest, null, 2) + '\n');
+  report.outputs.resource_manifest = {
+    path: 'resource-manifest.json',
+    images: images.length,
+    missing: resourceManifest.fonts.missing.length,
+  };
   if (!opts.skipPdf) {
     const compile = typstCompile(typstBin, {
       input: path.join(opts.out, 'publication.typ'),

@@ -1,0 +1,12 @@
+---
+title: 歧义引用负例（lecture 复用图）
+lang: zh
+---
+
+$callout(type: "slide", title: "首帧") {
+- 分镜一
+}
+
+图表 [回看](#fig-x) 说明段（引用目标被模板复用，未限定出现序）。
+
+![示意图](../assets/fusion.svg) 图题 ^fig-x

@@ -1,15 +1,22 @@
-// PLAN-083 — Publication IR v1（publication-ir-v1）in plain Auto.
+// PLAN-084 — Publication IR v2（publication-ir-v2）in plain Auto.
 //
-// 本模块是原型的文档/模板边界（082 的 v0 升级，PLAN-083 迁移）：
-//   * Doc        —正文模型（engine parser → doc-wire v1 传入，与 082 相同）
-//   * PubBlock   —内容块（NodeId 与来源）
-//   * Publication—版本化出版 IR v1：页面配置 + 内容 + 样式规则/计算结果/呈现
+// 本模块是原型的文档/模板边界（082 v0 → 083 v1 → 084 v2）：
+//   * Doc        —正文模型（engine parser → doc-wire v1/v2 传入）
+//   * InlineSeg  —行内语义段（text/ref/cite/footnote/math）
+//   * PubBlock   —内容块（NodeId、来源、occurrence）
+//   * Publication—版本化出版 IR v2：视图 + 页面配置 + 内容 + 样式规则/计算结果/呈现 + 引用解析
 //
-// v1 变化（相对 publication-ir-v0）：
-//   * 删除扁平 StyleConfig——样式成为规则系统（style.at）：内置/主题/模板/文档规则/
-//     节点显式逐属性合成（computed），呈现由 render.at 生成 presentation；
-//   * 新增 styles.rules / match_log / computed / explicit / render_rules /
-//     presentation / render_diags；document/page/outline/content 保持。
+// v2 变化（相对 v1）：
+//   * doc-wire v2：figure/equation/footnote_def/bib_entry 块 + 段落行内段（inline 行）；
+//     DOCWIRE 1 仍被接受（082 样例兼容：段落文本在线上、无新块种类）；
+//   * occurrence：模板/视图展开后的内容树逐块唯一 occurrence（`<id>` 首次、`<id>#N` 复用）；
+//     computed/presentation 按 occurrence 对齐；同一语义 id 允许复用两次（AC-04）；
+//   * 文档索引 index_of_content + 引用作用域 validate_refs：ref/cite/footnote 的悬空、
+//     重复、歧义具名可定位（E_REF_DANGLING/E_REF_AMBIGUOUS/E_CITE_UNKNOWN/
+//     E_FOOTNOTE_DANGLING/E_FOOTNOTE_DUPLICATE）；
+//   * 视图 project_view：article/book/newspaper 保结构；slides 选取作者标注的
+//     slide 材料（未放置内容给 W_SLIDES_UNPLACED，不静默丢弃）；
+//   * IR 追加 view/references/bib_title；schema_version = publication-ir-v2。
 //
 // 语言边界与 VM 缺陷规避见 style.at 头注（整数 milli、无 bool.to(str)、
 // 校验类函数不跨 file 导入使用）。
@@ -19,8 +26,43 @@ use style: StyleRule, ExplicitStyle, MatchLog, Computed, RenderRule
 use style: jrules, jexplicit_all, jmatch, jcomputed_all, jrender_rules
 
 // ---------------------------------------------------------------------------
-// 正文模型（doc-wire v1，与 082 相同）
+// 正文模型（doc-wire v1/v2）
 // ---------------------------------------------------------------------------
+
+// 行内语义段：kind ∈ text|ref|cite|footnote|math；仅对应字段有效。
+type InlineSeg {
+    kind str
+    text str
+    target str
+    target_occ str
+    display str
+    key str
+    label str
+    dialect str
+    source str
+}
+
+fn seg_text(text str) InlineSeg {
+    return InlineSeg("text", text, "", "", "", "", "", "", "")
+}
+
+// target_occ：显式出现序消歧（ 的 N；空 = 未限定）。宿主在 wire 编码前
+// 已拆分（VM 对嵌套循环内的字段-子函数形态存在误编译，运行期不再拆串）。
+fn seg_ref(target str, target_occ str, display str) InlineSeg {
+    return InlineSeg("ref", "", target, target_occ, display, "", "", "", "")
+}
+
+fn seg_cite(key str, display str) InlineSeg {
+    return InlineSeg("cite", "", "", "", display, key, "", "", "")
+}
+
+fn seg_footnote(label str) InlineSeg {
+    return InlineSeg("footnote", "", "", "", "", "", label, "", "")
+}
+
+fn seg_math(dialect str, source str) InlineSeg {
+    return InlineSeg("math", "", "", "", "", "", "", dialect, source)
+}
 
 type DocBlock {
     id str
@@ -34,6 +76,96 @@ type DocBlock {
     title str
     body []str
     text str
+    src str
+    source str
+    caption str
+    dialect str
+    label str
+    key str
+    segments []InlineSeg
+}
+
+fn empty_segments() []InlineSeg {
+    var out []InlineSeg = []
+    return out
+}
+
+// 块构造（各字段按 kind 只填相关项）
+fn db(kind str, id str) DocBlock {
+    return DocBlock(id, kind, 0, 0, [], 0, [], "", "", [], "", "", "", "", "", "", "", empty_segments())
+}
+
+fn db_heading(id str, level int, text str) DocBlock {
+    var b = db("heading", id)
+    b.level = level
+    b.text = text
+    return b
+}
+
+fn db_paragraph(id str, segments []InlineSeg) DocBlock {
+    var b = db("paragraph", id)
+    b.segments = segments
+    return b
+}
+
+fn db_paragraph_text(id str, text str) DocBlock {
+    var segs = empty_segments()
+    segs.push(seg_text(text))
+    return db_paragraph(id, segs)
+}
+
+fn db_thematic(id str) DocBlock {
+    return db("thematic_break", id)
+}
+
+fn db_list(id str, ordered int, items []str) DocBlock {
+    var b = db("list", id)
+    b.ordered = ordered
+    b.items = items
+    return b
+}
+
+fn db_table(id str, cols int, rows List<List<str>>) DocBlock {
+    var b = db("table", id)
+    b.cols = cols
+    b.rows = rows
+    return b
+}
+
+fn db_callout(id str, ctype str, title str, body []str) DocBlock {
+    var b = db("callout", id)
+    b.callout_type = ctype
+    b.title = title
+    b.body = body
+    return b
+}
+
+fn db_figure(id str, src str, caption str) DocBlock {
+    var b = db("figure", id)
+    b.src = src
+    b.caption = caption
+    return b
+}
+
+fn db_equation(id str, dialect str, source str) DocBlock {
+    var b = db("equation", id)
+    b.dialect = dialect
+    b.source = source
+    return b
+}
+
+fn db_footnote_def(id str, label str, text str) DocBlock {
+    var b = db("footnote_def", id)
+    b.label = label
+    b.text = text
+    return b
+}
+
+fn db_bib_entry(id str, key str, text str) DocBlock {
+    var b = db("bib_entry", id)
+    b.key = key
+    b.text = text
+    return b
 }
 
 type DocMeta {
@@ -58,7 +190,7 @@ type DocParse {
 }
 
 // ---------------------------------------------------------------------------
-// 出版 IR v1
+// 出版 IR v2
 // ---------------------------------------------------------------------------
 
 type PageConfig {
@@ -72,6 +204,7 @@ type PageConfig {
     font_family []str
     header_text str
     page_numbers int
+    h1_span_columns int
 }
 
 type PubBlock {
@@ -87,25 +220,70 @@ type PubBlock {
     title str
     body []str
     text str
+    src str
+    source str
+    caption str
+    dialect str
+    label str
+    key str
+    segments []InlineSeg
+    occ str
+}
+
+fn pb(kind str, id str, origin str) PubBlock {
+    return PubBlock(id, kind, origin, 0, 0, [], 0, [], "", "", [], "", "", "", "", "", "", "", empty_segments(), "")
+}
+
+// 深拷贝（记录为引用语义：渲染/复用必须经拷贝构造，不得原地改写内容块）
+fn pub_copy(b PubBlock) PubBlock {
+    var out = pb(b.kind, b.id, b.origin)
+    out.level = b.level
+    out.ordered = b.ordered
+    out.items = b.items
+    out.cols = b.cols
+    out.rows = b.rows
+    out.callout_type = b.callout_type
+    out.title = b.title
+    out.body = b.body
+    out.text = b.text
+    out.src = b.src
+    out.source = b.source
+    out.caption = b.caption
+    out.dialect = b.dialect
+    out.label = b.label
+    out.key = b.key
+    out.segments = b.segments
+    out.occ = b.occ
+    return out
 }
 
 // 呈现条目：一个语义 occurrence 经呈现规则（或默认呈现）产生的可见块序列。
-// semantic_id 指回内容块；rule 为命中规则名（""=默认）；decor 块不进入 outline
-//（outline 永远由语义内容块生成）；guard=1 表示该 occurrence 触发过递归保护。
+// occurrence_id 指回内容块（v2 按 occurrence 对齐）；rule 为命中规则名（""=默认）；
+// guard=1 表示该 occurrence 触发过递归保护。
 type PresEntry {
-    semantic_id str
+    occurrence_id str
     role str
     rule str
     guard int
     blocks []PubBlock
 }
 
-// 呈现层诊断（如 W_RENDER_RECURSION_GUARD）
+// 呈现层诊断（如 W_RENDER_RECURSION_GUARD / W_SLIDES_UNPLACED）
 type RenderDiag {
     code str
     rule str
     node str
     detail str
+}
+
+// 引用解析记录（可观察）：来自某 occurrence 段落第 seg_index 个行内段。
+type RefRecord {
+    from_occ str
+    seg_index int
+    kind str
+    target str
+    target_occ str
+    display str
 }
 
 type OutlineEntry {
@@ -116,10 +294,12 @@ type OutlineEntry {
 
 type Publication {
     template str
+    view_name str
     meta DocMeta
     page PageConfig
     outline_depth int
     outline_title str
+    bib_title str
     content []PubBlock
     outline []OutlineEntry
     rules []StyleRule
@@ -129,14 +309,28 @@ type Publication {
     render_rules []RenderRule
     presentation []PresEntry
     render_diags []RenderDiag
+    references []RefRecord
+}
+
+// 模板侧组装入口：finalize 填充 explicit/match_log/computed/presentation/
+// render_diags/references；模板只给结构项。
+fn new_publication(template str, view_name str, meta DocMeta, page PageConfig, outline_depth int, outline_title str, bib_title str, content []PubBlock, outline []OutlineEntry, rules []StyleRule, render_rules []RenderRule) Publication {
+    var empty_explicit []ExplicitStyle = []
+    var empty_log []MatchLog = []
+    var empty_computed []Computed = []
+    var empty_pres []PresEntry = []
+    var empty_diags []RenderDiag = []
+    var empty_refs []RefRecord = []
+    return Publication(template, view_name, meta, page, outline_depth, outline_title, bib_title, content, outline, rules, empty_explicit, empty_log, empty_computed, render_rules, empty_pres, empty_diags, empty_refs)
 }
 
 // ---------------------------------------------------------------------------
-// 模板参数（与 082 相同）
+// 模板参数（082 起；084 增 view）
 // ---------------------------------------------------------------------------
 
 type Options {
     template str
+    view_name str
     font_size str
     columns int
     paper str
@@ -167,7 +361,7 @@ fn dp_ok(doc Doc) DocParse {
 }
 
 fn op_err(code str, message str) OptionsParse {
-    return OptionsParse(0, code, message, Options("", "", 0, "", "", "", [], 0, 0))
+    return OptionsParse(0, code, message, Options("", "", "", 0, "", "", "", [], 0, 0))
 }
 
 fn op_ok(options Options) OptionsParse {
@@ -244,8 +438,29 @@ fn index_or(xs []str, i int, fallback str) str {
     return fallback
 }
 
+fn seg_of_fields(f []str) InlineSeg {
+    // inline 行：f = [inline, kind, pid, index, payload...]
+    let kind = index_or(f, 1, "")
+    if kind == "text" {
+        return seg_text(index_or(f, 4, ""))
+    }
+    if kind == "ref" {
+        return seg_ref(index_or(f, 4, ""), index_or(f, 5, ""), index_or(f, 6, ""))
+    }
+    if kind == "cite" {
+        return seg_cite(index_or(f, 4, ""), index_or(f, 5, ""))
+    }
+    if kind == "footnote" {
+        return seg_footnote(index_or(f, 4, ""))
+    }
+    if kind == "math" {
+        return seg_math(index_or(f, 4, ""), index_or(f, 5, ""))
+    }
+    return seg_text("")
+}
+
 // ---------------------------------------------------------------------------
-// doc-wire v1 解析（与 082 相同）
+// doc-wire v1/v2 解析
 // ---------------------------------------------------------------------------
 
 fn parse_doc(wire str) DocParse {
@@ -253,8 +468,14 @@ fn parse_doc(wire str) DocParse {
     if lines.len() < 2 {
         return dp_err("E_DOC_WIRE_LINE", "document wire is empty")
     }
-    if lines[0] != "DOCWIRE 1" {
-        return dp_err("E_DOC_WIRE_VERSION", "unsupported document wire header: " + lines[0])
+    let header = lines[0].to(str)
+    var version = 0
+    if header == "DOCWIRE 1" {
+        version = 1
+    } else if header == "DOCWIRE 2" {
+        version = 2
+    } else {
+        return dp_err("E_DOC_WIRE_VERSION", "unsupported document wire header: " + header)
     }
 
     var title = ""
@@ -291,6 +512,8 @@ fn parse_doc(wire str) DocParse {
                 }
             } else if tag == "end" {
                 // 终止标记：宿主已完成全部块
+            } else if tag == "inline" {
+                return dp_err("E_DOC_WIRE_LINE", "inline line outside paragraph (v1 wire or stray): " + sub)
             } else if tag == "block" {
                 let kind = sub
                 let id = index_or(f, 2, "")
@@ -302,14 +525,68 @@ fn parse_doc(wire str) DocParse {
                         return dp_err("E_DOC_WIRE_LINE", "heading block needs level+text: " + id)
                     }
                     let level = f[3].to(int)
-                    blocks.push(DocBlock(id, "heading", level, 0, [], 0, [], "", "", [], f[4]))
+                    blocks.push(db_heading(id, level, f[4]))
                 } else if kind == "paragraph" {
-                    if f.len() < 4 {
-                        return dp_err("E_DOC_WIRE_LINE", "paragraph block needs text: " + id)
+                    if version == 1 || f.len() > 3 {
+                        // v1：文本在线上（无 inline 行跟随）
+                        if f.len() < 4 {
+                            return dp_err("E_DOC_WIRE_LINE", "paragraph block needs text: " + id)
+                        }
+                        blocks.push(db_paragraph_text(id, f[3]))
+                    } else {
+                        // v2：文本在随后的 inline 行
+                        var segs = empty_segments()
+                        while i < n {
+                            let preview = lines[i].to(str)
+                            if preview == "" {
+                                break
+                            }
+                            let g = unescaped_fields(preview)
+                            if index_or(g, 0, "") != "inline" {
+                                break
+                            }
+                            segs.push(seg_of_fields(g))
+                            i = i + 1
+                        }
+                        if segs.len() == 0 {
+                            return dp_err("E_DOC_WIRE_LINE", "v2 paragraph has no inline segments: " + id)
+                        }
+                        blocks.push(db_paragraph(id, segs))
                     }
-                    blocks.push(DocBlock(id, "paragraph", 0, 0, [], 0, [], "", "", [], f[3]))
                 } else if kind == "thematic_break" {
-                    blocks.push(DocBlock(id, "thematic_break", 0, 0, [], 0, [], "", "", [], ""))
+                    blocks.push(db_thematic(id))
+                } else if kind == "figure" {
+                    if version < 2 {
+                        return dp_err("E_NODE_UNSUPPORTED", "figure block requires doc-wire v2: " + id)
+                    }
+                    if f.len() < 5 {
+                        return dp_err("E_DOC_WIRE_LINE", "figure block needs src+caption: " + id)
+                    }
+                    blocks.push(db_figure(id, f[3], f[4]))
+                } else if kind == "equation" {
+                    if version < 2 {
+                        return dp_err("E_NODE_UNSUPPORTED", "equation block requires doc-wire v2: " + id)
+                    }
+                    if f.len() < 5 {
+                        return dp_err("E_DOC_WIRE_LINE", "equation block needs dialect+source: " + id)
+                    }
+                    blocks.push(db_equation(id, f[3], f[4]))
+                } else if kind == "footnote_def" {
+                    if version < 2 {
+                        return dp_err("E_NODE_UNSUPPORTED", "footnote_def block requires doc-wire v2: " + id)
+                    }
+                    if f.len() < 5 {
+                        return dp_err("E_DOC_WIRE_LINE", "footnote_def block needs label+text: " + id)
+                    }
+                    blocks.push(db_footnote_def(id, f[3], f[4]))
+                } else if kind == "bib_entry" {
+                    if version < 2 {
+                        return dp_err("E_NODE_UNSUPPORTED", "bib_entry block requires doc-wire v2: " + id)
+                    }
+                    if f.len() < 5 {
+                        return dp_err("E_DOC_WIRE_LINE", "bib_entry block needs key+text: " + id)
+                    }
+                    blocks.push(db_bib_entry(id, f[3], f[4]))
                 } else if kind == "list" {
                     if f.len() < 5 {
                         return dp_err("E_DOC_WIRE_LINE", "list block needs ordered+count: " + id)
@@ -338,7 +615,7 @@ fn parse_doc(wire str) DocParse {
                     if items.len() != count {
                         return dp_err("E_DOC_WIRE_COUNT", "list item count mismatch: " + id)
                     }
-                    blocks.push(DocBlock(id, "list", 0, ordered, items, 0, [], "", "", [], ""))
+                    blocks.push(db_list(id, ordered, items))
                 } else if kind == "table" {
                     if f.len() < 5 {
                         return dp_err("E_DOC_WIRE_LINE", "table block needs cols+rows: " + id)
@@ -370,7 +647,7 @@ fn parse_doc(wire str) DocParse {
                     if rows.len() != row_count {
                         return dp_err("E_DOC_WIRE_COUNT", "table row count mismatch: " + id)
                     }
-                    blocks.push(DocBlock(id, "table", 0, 0, [], cols, rows, "", "", [], ""))
+                    blocks.push(db_table(id, cols, rows))
                 } else if kind == "callout" {
                     if f.len() < 6 {
                         return dp_err("E_DOC_WIRE_LINE", "callout block needs type+title+count: " + id)
@@ -394,7 +671,7 @@ fn parse_doc(wire str) DocParse {
                     if body.len() != count {
                         return dp_err("E_DOC_WIRE_COUNT", "callout paragraph count mismatch: " + id)
                     }
-                    blocks.push(DocBlock(id, "callout", 0, 0, [], 0, [], ctype, ctitle, body, ""))
+                    blocks.push(db_callout(id, ctype, ctitle, body))
                 } else {
                     return dp_err("E_NODE_UNSUPPORTED", "unsupported block kind in document wire: " + kind)
                 }
@@ -407,14 +684,23 @@ fn parse_doc(wire str) DocParse {
 }
 
 // ---------------------------------------------------------------------------
-// request.txt（key=value，宿主写入；与 082 相同）
+// request.txt（key=value，宿主写入；084 增 view）
 // ---------------------------------------------------------------------------
 
 fn default_options(template str) Options {
     if template == "office_book" {
-        return Options("office_book", "11pt", 1, "a4", "2.6cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
+        return Options("office_book", "book", "11pt", 1, "a4", "2.6cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
     }
-    return Options("academic", "10pt", 2, "a4", "2.2cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
+    if template == "press_book" {
+        return Options("press_book", "book", "11pt", 1, "a4", "2.6cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
+    }
+    if template == "news" {
+        return Options("news", "newspaper", "9.5pt", 3, "a4", "1.6cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
+    }
+    if template == "lecture" {
+        return Options("lecture", "slides", "20pt", 1, "16:9", "1.8cm", "", ["Noto Sans SC", "Noto Serif SC"], 0, 0)
+    }
+    return Options("academic", "article", "10pt", 2, "a4", "2.2cm", "", ["Noto Serif SC", "Noto Sans SC"], 0, 0)
 }
 
 fn has_setting(settings []str, key str) bool {
@@ -458,6 +744,10 @@ fn parse_options(request str) OptionsParse {
         return op_err("E_OPTION_VALUE", "template is empty")
     }
     let base = default_options(template)
+    let view_name = setting_value(settings, "view", base.view_name)
+    if view_name != "article" && view_name != "book" && view_name != "newspaper" && view_name != "slides" {
+        return op_err("E_OPTION_VALUE", "view must be article|book|newspaper|slides: " + view_name)
+    }
     let font_size = setting_value(settings, "font_size", base.font_size)
     let paper = setting_value(settings, "paper", base.paper)
     let margin = setting_value(settings, "margin", base.margin)
@@ -478,7 +768,275 @@ fn parse_options(request str) OptionsParse {
     if has_setting(settings, "columns") {
         columns_explicit = 1
     }
-    return op_ok(Options(template, font_size, columns, paper, margin, header_text, base.font_family, margin_explicit, columns_explicit))
+    return op_ok(Options(template, view_name, font_size, columns, paper, margin, header_text, base.font_family, margin_explicit, columns_explicit))
+}
+
+// ---------------------------------------------------------------------------
+// 视图投影（Design 10 §8）：选择与组织不改写正文
+// ---------------------------------------------------------------------------
+
+type ViewOut {
+    ok int
+    code str
+    message str
+    doc Doc
+    diags []RenderDiag
+}
+
+fn vo_err(code str, message str) ViewOut {
+    var diags []RenderDiag = []
+    return ViewOut(0, code, message, Doc(DocMeta("", [], "", "zh", ""), []), diags)
+}
+
+// slides：callout(type=slide) 开启一页；其后的 figure/equation/paragraph/list/
+// thematic_break/heading 附属于该页（作者分镜顺序）；footnote_def/bib_entry 恒保留。
+// 首个 slide 之前的内容给 W_SLIDES_UNPLACED（可见丢弃，不静默）。
+fn project_view(view_name str, doc Doc) ViewOut {
+    if view_name == "article" || view_name == "book" || view_name == "newspaper" {
+        var diags0 []RenderDiag = []
+        return ViewOut(1, "", "", doc, diags0)
+    }
+    if view_name != "slides" {
+        return vo_err("E_VIEW_UNKNOWN", "unknown view: " + view_name)
+    }
+    var out []DocBlock = []
+    var diags []RenderDiag = []
+    var unplaced []str = []
+    var in_slide = 0
+    for b in doc.blocks {
+        var keep = 1
+        if b.kind == "callout" && b.callout_type == "slide" {
+            in_slide = 1
+        } else if b.kind == "footnote_def" || b.kind == "bib_entry" {
+            keep = 1
+        } else if in_slide == 0 {
+            keep = 0
+            unplaced.push(b.id + "(" + b.kind + ")")
+        }
+        if keep == 1 {
+            out.push(b)
+        }
+    }
+    if unplaced.len() > 0 {
+        var detail = ""
+        var i = 0
+        for u in unplaced {
+            if i > 0 {
+                detail = detail + ", "
+            }
+            detail = detail + u
+            i = i + 1
+        }
+        diags.push(RenderDiag("W_SLIDES_UNPLACED", "view:slides", "doc", "content before the first slide callout is not projected: " + detail))
+    }
+    if out.len() == 0 {
+        return vo_err("E_VIEW_EMPTY", "slides view produced no content (no slide callouts found)")
+    }
+    return ViewOut(1, "", "", Doc(doc.meta, out), diags)
+}
+
+// ---------------------------------------------------------------------------
+// occurrence 与文档索引（§3.1/§10.2；AC-04）
+// ---------------------------------------------------------------------------
+
+// occurrence：内容树顺序内同一语义 id 的第 N 次出现。首次 = id；复用 = id#N。
+// 返回携带 occ 的新内容列表（不依赖循环变量别名语义；块其余字段共享或复制均安全）。
+fn assign_occurrences(content []PubBlock) []PubBlock {
+    var keys []str = []
+    var counts List<List<str>> = []
+    var out []PubBlock = []
+    for b in content {
+        var idx = -1
+        var i = 0
+        for k in keys {
+            if k == b.id {
+                idx = i
+            }
+            i = i + 1
+        }
+        var nb = b
+        if idx < 0 {
+            keys.push(b.id)
+            var first []str = []
+            first.push(b.id)
+            counts.push(first)
+            nb.occ = b.id
+        } else {
+            let row = counts[idx]
+            // 首次出现 occ = id（隐式 #1）；第 N 次（N≥2）occ = id#N
+            nb.occ = b.id + "#" + (row.len() + 1).to(str)
+            row.push(nb.occ)
+        }
+        out.push(nb)
+    }
+    return out
+}
+
+type IndexEntry {
+    key str
+    kind str
+    occurrences []str
+}
+
+// 文档索引：可引用语义 occurrence（heading/figure/equation 按 id；footnote_def 按
+// label；bib_entry 按 key）。同一 key 多次出现 → occurrences 多项 → 引用歧义。
+fn index_of_content(content []PubBlock) []IndexEntry {
+    var out []IndexEntry = []
+    for b in content {
+        var key = ""
+        if b.kind == "heading" || b.kind == "figure" || b.kind == "equation" {
+            key = b.id
+        } else if b.kind == "footnote_def" {
+            key = b.label
+        } else if b.kind == "bib_entry" {
+            key = b.key
+        }
+        if key != "" {
+            var found = -1
+            var i = 0
+            for e in out {
+                if e.key == key && e.kind == b.kind {
+                    found = i
+                }
+                i = i + 1
+            }
+            if found < 0 {
+                var occs []str = []
+                occs.push(b.occ)
+                out.push(IndexEntry(key, b.kind, occs))
+            } else {
+                out[found].occurrences.push(b.occ)
+            }
+        }
+    }
+    return out
+}
+
+type RefCheck {
+    ok int
+    code str
+    message str
+    refs []RefRecord
+}
+
+// 引用作用域解析（§10.2）：ref 目标 = 块 id（可用 `id#N` 消歧）；cite 目标 = 文献键；
+// footnote 标记目标 = 脚注 label。悬空/歧义/重复具名可定位。
+fn validate_refs(content []PubBlock) RefCheck {
+    var refs []RefRecord = []
+    var index []IndexEntry = []
+    index = index_of_content(content)
+    // 重复脚注定义（同 label 多个 footnote_def）——按内容块扫描；
+    // 索引条目本身已按键合并，不能用于判重。
+    var seen_labels []str = []
+    for b in content {
+        if b.kind == "footnote_def" {
+            var dup = 0
+            for s in seen_labels {
+                if s == b.label {
+                    dup = 1
+                }
+            }
+            if dup == 1 {
+                return RefCheck(0, "E_FOOTNOTE_DUPLICATE", "duplicate footnote definition label: " + b.label + " (second definition at " + b.occ + ")", refs)
+            }
+            seen_labels.push(b.label)
+        }
+    }
+    for b in content {
+        if b.kind == "paragraph" {
+            var si = 0
+            for seg in b.segments {
+                if seg.kind == "ref" {
+                    // 消歧出现序由宿主在 wire 层结构化携带（seg.target_occ），
+                    // 运行期不做字符串拆分（VM 误编译规避，见 PLAN-084 §7）。
+                    var target_id = seg.target
+                    var target_occ = seg.target_occ
+                    var occs []str = []
+                    var i3 = 0
+                    while i3 < index.len() {
+                        let e = index[i3]
+                        if e.key == target_id {
+                            if e.kind == "heading" || e.kind == "figure" || e.kind == "equation" {
+                                occs = e.occurrences
+                            }
+                        }
+                        i3 = i3 + 1
+                    }
+                    if occs.len() == 0 {
+                        return RefCheck(0, "E_REF_DANGLING", "ref from " + b.occ + "#" + si.to(str) + " targets unknown node: " + seg.target, refs)
+                    }
+                    var resolved = ""
+                    if target_occ != "" {
+                        // 显式 occurrence：id#N（#1 = 首次出现，occ 为裸 id）
+                        var want = target_id + "#" + target_occ
+                        if target_occ == "1" {
+                            want = target_id
+                        }
+                        var hit = 0
+                        for o in occs {
+                            if o == want {
+                                hit = 1
+                                resolved = o
+                            }
+                        }
+                        if hit == 0 {
+                            return RefCheck(0, "E_REF_DANGLING", "ref from " + b.occ + "#" + si.to(str) + " targets missing occurrence: " + want, refs)
+                        }
+                    } else {
+                        if occs.len() > 1 {
+                            var list = ""
+                            var i2 = 0
+                            for o in occs {
+                                if i2 > 0 {
+                                    list = list + ", "
+                                }
+                                list = list + o
+                                i2 = i2 + 1
+                            }
+                            return RefCheck(0, "E_REF_AMBIGUOUS", "ref from " + b.occ + "#" + si.to(str) + " targets duplicated node " + target_id + " (occurrences: " + list + "); qualify as id#N", refs)
+                        }
+                        resolved = occs[0]
+                    }
+                    var combined = seg.target
+                    if target_occ != "" {
+                        combined = seg.target + "#" + target_occ
+                    }
+                    refs.push(RefRecord(b.occ, si, "ref", combined, resolved, seg.display))
+                } else if seg.kind == "cite" {
+                    var found_key = 0
+                    var resolved2 = ""
+                    for e in index {
+                        if e.kind == "bib_entry" && e.key == seg.key {
+                            found_key = 1
+                            if e.occurrences.len() > 1 {
+                                return RefCheck(0, "E_CITE_AMBIGUOUS", "cite from " + b.occ + "#" + si.to(str) + " targets duplicated bibliography key: " + seg.key, refs)
+                            }
+                            resolved2 = e.occurrences[0]
+                        }
+                    }
+                    if found_key == 0 {
+                        return RefCheck(0, "E_CITE_UNKNOWN", "cite from " + b.occ + "#" + si.to(str) + " targets unknown bibliography key: " + seg.key, refs)
+                    }
+                    refs.push(RefRecord(b.occ, si, "cite", seg.key, resolved2, seg.display))
+                } else if seg.kind == "footnote" {
+                    var found_label = 0
+                    var resolved3 = ""
+                    for e in index {
+                        if e.kind == "footnote_def" && e.key == seg.label {
+                            found_label = 1
+                            resolved3 = e.occurrences[0]
+                        }
+                    }
+                    if found_label == 0 {
+                        return RefCheck(0, "E_FOOTNOTE_DANGLING", "footnote marker at " + b.occ + "#" + si.to(str) + " has no definition: " + seg.label, refs)
+                    }
+                    refs.push(RefRecord(b.occ, si, "footnote", seg.label, resolved3, ""))
+                }
+                si = si + 1
+            }
+        }
+    }
+    return RefCheck(1, "", "", refs)
 }
 
 // ---------------------------------------------------------------------------
@@ -486,7 +1044,24 @@ fn parse_options(request str) OptionsParse {
 // ---------------------------------------------------------------------------
 
 fn to_pub(b DocBlock) PubBlock {
-    return PubBlock(b.id, b.kind, "source", b.level, b.ordered, b.items, b.cols, b.rows, b.callout_type, b.title, b.body, b.text)
+    var out = pb(b.kind, b.id, "source")
+    out.level = b.level
+    out.ordered = b.ordered
+    out.items = b.items
+    out.cols = b.cols
+    out.rows = b.rows
+    out.callout_type = b.callout_type
+    out.title = b.title
+    out.body = b.body
+    out.text = b.text
+    out.src = b.src
+    out.source = b.source
+    out.caption = b.caption
+    out.dialect = b.dialect
+    out.label = b.label
+    out.key = b.key
+    out.segments = b.segments
+    return out
 }
 
 fn outline_of(blocks []PubBlock, depth int) []OutlineEntry {
@@ -501,8 +1076,25 @@ fn outline_of(blocks []PubBlock, depth int) []OutlineEntry {
     return out
 }
 
+// 段落纯文本（诊断/回显用；结构化段保留 display/target 拼接）
+fn segs_plain(segs []InlineSeg) str {
+    var out = ""
+    for s in segs {
+        if s.kind == "text" {
+            out = out + s.text
+        } else if s.kind == "ref" || s.kind == "cite" {
+            out = out + s.display
+        } else if s.kind == "footnote" {
+            out = out + "[^" + s.label + "]"
+        } else if s.kind == "math" {
+            out = out + "$" + s.source + "$"
+        }
+    }
+    return out
+}
+
 // ---------------------------------------------------------------------------
-// JSON 序列化（v1；字符串转义复用 style.at 的 jstr/char_width）
+// JSON 序列化（v2；字符串转义复用 style.at 的 jstr/char_width）
 // ---------------------------------------------------------------------------
 
 fn jstrs(xs []str) str {
@@ -538,18 +1130,55 @@ fn jbool(v int) str {
     return "false"
 }
 
+fn jseg(s InlineSeg) str {
+    var out = "{\"kind\":" + jstr(s.kind)
+    if s.kind == "text" {
+        out = out + ",\"text\":" + jstr(s.text)
+    } else if s.kind == "ref" {
+        out = out + ",\"target\":" + jstr(s.target) + ",\"display\":" + jstr(s.display)
+    } else if s.kind == "cite" {
+        out = out + ",\"key\":" + jstr(s.key) + ",\"display\":" + jstr(s.display)
+    } else if s.kind == "footnote" {
+        out = out + ",\"label\":" + jstr(s.label)
+    } else if s.kind == "math" {
+        out = out + ",\"dialect\":" + jstr(s.dialect) + ",\"source\":" + jstr(s.source)
+    }
+    return out + "}"
+}
+
+fn jsegs(segs []InlineSeg) str {
+    var out = "["
+    var i = 0
+    for s in segs {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + jseg(s)
+        i = i + 1
+    }
+    return out + "]"
+}
+
 fn jblock(b PubBlock) str {
-    var s = "{\"id\":" + jstr(b.id) + ",\"kind\":" + jstr(b.kind) + ",\"origin\":" + jstr(b.origin)
+    var s = "{\"id\":" + jstr(b.id) + ",\"kind\":" + jstr(b.kind) + ",\"origin\":" + jstr(b.origin) + ",\"occ\":" + jstr(b.occ)
     if b.kind == "heading" {
         s = s + ",\"level\":" + b.level.to(str) + ",\"text\":" + jstr(b.text)
     } else if b.kind == "paragraph" {
-        s = s + ",\"text\":" + jstr(b.text)
+        s = s + ",\"segments\":" + jsegs(b.segments)
     } else if b.kind == "list" {
         s = s + ",\"ordered\":" + jbool(b.ordered) + ",\"items\":" + jstrs(b.items)
     } else if b.kind == "table" {
         s = s + ",\"cols\":" + b.cols.to(str) + ",\"rows\":" + jrows(b.rows)
     } else if b.kind == "callout" {
         s = s + ",\"callout_type\":" + jstr(b.callout_type) + ",\"title\":" + jstr(b.title) + ",\"body\":" + jstrs(b.body)
+    } else if b.kind == "figure" {
+        s = s + ",\"src\":" + jstr(b.src) + ",\"caption\":" + jstr(b.caption)
+    } else if b.kind == "equation" {
+        s = s + ",\"dialect\":" + jstr(b.dialect) + ",\"source\":" + jstr(b.source)
+    } else if b.kind == "footnote_def" {
+        s = s + ",\"label\":" + jstr(b.label) + ",\"text\":" + jstr(b.text)
+    } else if b.kind == "bib_entry" {
+        s = s + ",\"key\":" + jstr(b.key) + ",\"text\":" + jstr(b.text)
     }
     return s + "}"
 }
@@ -568,7 +1197,7 @@ fn jblocks(blocks []PubBlock) str {
 }
 
 fn jpres_entry(e PresEntry) str {
-    var s = "{\"semantic_id\":" + jstr(e.semantic_id)
+    var s = "{\"occurrence_id\":" + jstr(e.occurrence_id)
     s = s + ",\"role\":" + jstr(e.role)
     s = s + ",\"rule\":" + jstr(e.rule)
     s = s + ",\"guard\":" + e.guard.to(str)
@@ -602,6 +1231,19 @@ fn jdiags(diags []RenderDiag) str {
     return out + "]"
 }
 
+fn jrefs(refs []RefRecord) str {
+    var out = "["
+    var i = 0
+    for r in refs {
+        if i > 0 {
+            out = out + ","
+        }
+        out = out + "{\"from\":" + jstr(r.from_occ) + ",\"seg\":" + r.seg_index.to(str) + ",\"kind\":" + jstr(r.kind) + ",\"target\":" + jstr(r.target) + ",\"target_occ\":" + jstr(r.target_occ) + ",\"display\":" + jstr(r.display) + "}"
+        i = i + 1
+    }
+    return out + "]"
+}
+
 fn joutline(entries []OutlineEntry) str {
     var out = "["
     var i = 0
@@ -617,8 +1259,9 @@ fn joutline(entries []OutlineEntry) str {
 
 fn json_publication(p Publication) str {
     var s = "{\"ok\":true,\"publication\":{"
-    s = s + "\"schema_version\":\"publication-ir-v1\""
+    s = s + "\"schema_version\":\"publication-ir-v2\""
     s = s + ",\"template\":" + jstr(p.template)
+    s = s + ",\"view\":" + jstr(p.view_name)
     s = s + ",\"document\":{\"title\":" + jstr(p.meta.title)
     s = s + ",\"authors\":" + jstrs(p.meta.authors)
     s = s + ",\"abstract\":" + jstr(p.meta.abstract)
@@ -633,7 +1276,8 @@ fn json_publication(p Publication) str {
     s = s + ",\"font_size\":" + jstr(p.page.font_size)
     s = s + ",\"font_family\":" + jstrs(p.page.font_family)
     s = s + ",\"header_text\":" + jstr(p.page.header_text)
-    s = s + ",\"page_numbers\":" + jbool(p.page.page_numbers) + "}"
+    s = s + ",\"page_numbers\":" + jbool(p.page.page_numbers)
+    s = s + ",\"h1_span_columns\":" + jbool(p.page.h1_span_columns) + "}"
     s = s + ",\"styles\":{\"rules\":" + jrules(p.rules)
     s = s + ",\"explicit\":" + jexplicit_all(p.explicit)
     s = s + ",\"match_log\":" + jmatch(p.match_log)
@@ -642,9 +1286,11 @@ fn json_publication(p Publication) str {
     s = s + ",\"outline\":{\"depth\":" + p.outline_depth.to(str)
     s = s + ",\"title\":" + jstr(p.outline_title)
     s = s + ",\"entries\":" + joutline(p.outline) + "}"
+    s = s + ",\"bib_title\":" + jstr(p.bib_title)
     s = s + ",\"content\":" + jblocks(p.content)
     s = s + ",\"presentation\":" + jpresentation(p.presentation)
     s = s + ",\"render_diags\":" + jdiags(p.render_diags)
+    s = s + ",\"references\":" + jrefs(p.references)
     s = s + "}}"
     return s
 }

@@ -1,0 +1,10 @@
+---
+title: 文献条目格式负例
+lang: zh
+---
+
+# 标题
+
+$callout(type: "bibliography", title: "参考文献") {
+这条没有键。
+}

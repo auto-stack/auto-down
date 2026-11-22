@@ -1,21 +1,30 @@
-// PLAN-083 — 呈现规则应用（普通 Auto 函数；无闭包/函数值）
+// PLAN-084 — 呈现规则应用与出版组装（普通 Auto 函数；无闭包/函数值）
 //
-// 职责（Design 10 §7.2 / PLAN-083 T-04）：
+// 职责（Design 10 §7.2/§10 + PLAN-083 T-04 + PLAN-084 T-01/T-02）：
+//   * 视图投影 project_view（slides 选取作者标注材料；其余保结构）；
 //   * 每个 occurrence 选一条最高优先级的匹配呈现规则（同优先级先声明优先）；
 //   * 渲染函数是普通 fn，按规则名 if/else 派发（当前 VM 无函数值）；
 //   * 显式委托：aside-note 对长正文调用 render_next（下一个匹配的低优先级规则），
 //     或 render_default（默认呈现）——不做隐式多次包裹；
 //   * 递归保护：活动 (rule, occurrence) 不再次匹配同一规则——echo-heading 的
 //     输出若再命中自身，回落默认呈现并记 W_RENDER_RECURSION_GUARD；
-//   * 语义保持：条目携带 semantic_id/role；编号按出版树（内容）逻辑顺序，
+//   * occurrence：模板/视图展开后的内容树顺序赋 `id` / `id#N`（assign_occurrences）；
+//     presentation/computed/引用解析全部按 occurrence 对齐（AC-04 复用两次）；
+//   * 引用作用域 validate_refs：ref/cite/footnote 悬空、重复、歧义具名可定位
+//     （解析结果进 IR references[]，可观察）；
+//   * 语义保持：条目携带 occurrence_id/role；编号按出版树（内容）逻辑顺序，
 //     与函数调用顺序无关；装饰块不进入 outline（outline 由语义内容生成）。
 //
 // 编号：chapter = 内容顺序中第 N 个一级标题（含模板合成前言标题）；
 //       theorem = 内容顺序中第 N 个 role=theorem 的提示块。
+//       figure/equation/脚注编号映射 Typst 内置计数器（发射器按内容顺序置 label）。
 
-use ir: PubBlock, PresEntry, RenderDiag, Publication, Doc, Options
+use ir: PubBlock, PresEntry, RenderDiag, Publication, Doc, Options, OutlineEntry, project_view, assign_occurrences, validate_refs, segs_plain, new_publication, PageConfig, DocMeta, empty_segments, seg_text, pb, pub_copy
 use academic: build_academic
 use office_book: build_office_book
+use press_book: build_press_book
+use news: build_news
+use lecture: build_lecture
 use style: Selector, RenderRule, sel_matches, node_view, StyleNode
 use style: StyleRule, ExplicitStyle, MatchLog, Computed
 use style: builtin_rules, theme_print, compose_styles, match_log_of, validate_rules, validate_explicit, parse_styles_wire
@@ -95,6 +104,22 @@ fn default_render(b PubBlock) []PubBlock {
     return out
 }
 
+// render 块构造助手（origin=render；不与语义 NodeId 混淆）
+fn pb_render_paragraph(id str, text str) PubBlock {
+    var out = pb("paragraph", id, "render")
+    var segs = empty_segments()
+    segs.push(seg_text(text))
+    out.segments = segs
+    return out
+}
+
+fn pb_render_heading(id str, level int, text str) PubBlock {
+    var out = pb("heading", id, "render")
+    out.level = level
+    out.text = text
+    return out
+}
+
 // 中文数字（1..99；超出回退阿拉伯）。注意：str.sub 按字节切，中文必须用列表索引。
 fn cn_digit(n int) str {
     var names []str = []
@@ -139,8 +164,9 @@ fn cn_num(n int) str {
 // chapter-h1：一级标题 → “第N章 原文”（编号按内容顺序；视觉替换保留原标题文本）
 fn render_chapter_h1(b PubBlock, number int) []PubBlock {
     var out []PubBlock = []
-    var text = "第" + cn_num(number) + "章 " + b.text
-    out.push(PubBlock(b.id, "heading", b.origin, b.level, 0, [], 0, [], "", "", [], text))
+    var nb = pub_copy(b)
+    nb.text = "第" + cn_num(number) + "章 " + b.text
+    out.push(nb)
     return out
 }
 
@@ -151,7 +177,10 @@ fn render_theorem_box(b PubBlock, number int) []PubBlock {
     if b.title != "" {
         title = title + "（" + b.title + "）"
     }
-    out.push(PubBlock(b.id, "callout", b.origin, 0, 0, [], 0, [], "render:theorem", title, b.body, ""))
+    var nb = pub_copy(b)
+    nb.callout_type = "render:theorem"
+    nb.title = title
+    out.push(nb)
     return out
 }
 
@@ -169,12 +198,13 @@ fn render_aside_note(b PubBlock, rules []RenderRule) []PubBlock {
         if b.body.len() == 1 {
             text = text + b.body[0]
         }
-        out.push(PubBlock(b.id, "paragraph", "render", 0, 0, [], 0, [], "", "", [], text))
+        var note = pb_render_paragraph(b.id, text)
+        out.push(note)
         return out
     }
     // 长正文：侧注标记行 + next 委托正文
     var label = "注：" + b.title
-    out.push(PubBlock(b.id + "!aside", "paragraph", "render", 0, 0, [], 0, [], "", "", [], label))
+    out.push(pb_render_paragraph(b.id + "!aside", label))
     let nxt = next_rule_below(rules, nv, 15)
     var rest []PubBlock = []
     if nxt.name == "" {
@@ -192,10 +222,10 @@ fn render_aside_note(b PubBlock, rules []RenderRule) []PubBlock {
 fn render_callout_plain(b PubBlock) []PubBlock {
     var out []PubBlock = []
     if b.title != "" {
-        out.push(PubBlock(b.id + "!t", "paragraph", "render", 0, 0, [], 0, [], "", "", [], "【" + b.title + "】"))
+        out.push(pb_render_paragraph(b.id + "!t", "【" + b.title + "】"))
     }
     for p in b.body {
-        out.push(PubBlock(b.id, "paragraph", b.origin, 0, 0, [], 0, [], "", "", [], p))
+        out.push(pb_render_paragraph(b.id, p))
     }
     if out.len() == 0 {
         out.push(b)
@@ -207,8 +237,8 @@ fn render_callout_plain(b PubBlock) []PubBlock {
 // 触发 (rule, occurrence) 活动保护。
 fn render_echo_heading(b PubBlock, rules []RenderRule, active str) []PubBlock {
     var out []PubBlock = []
-    out.push(PubBlock(b.id, "heading", b.origin, b.level, 0, [], 0, [], "", "", [], b.text))
-    var echo = PubBlock(b.id + "!echo", "heading", "render", b.level, 0, [], 0, [], "", "", [], b.text + "（回声）")
+    out.push(b)
+    var echo = pb_render_heading(b.id + "!echo", b.level, b.text + "（回声）")
     var children []PubBlock = []
     children.push(echo)
     let child = render_child_guarded(children, rules, active, b.id)
@@ -303,7 +333,7 @@ fn apply_render(rules []RenderRule, content []PubBlock) RenderResult {
             number = theorems
         }
         let best = best_rule_for(rules, nv)
-        var entry = PresEntry(b.id, nv.role, "", 0, [])
+        var entry = PresEntry(b.occ, nv.role, "", 0, [])
         if best.name == "" {
             entry.rule = ""
             var blocks = default_render(b)
@@ -345,7 +375,7 @@ fn apply_render(rules []RenderRule, content []PubBlock) RenderResult {
 // render_child_guarded 一致：派生标题再匹配 echo-heading → 守卫命中）
 fn echo_guard_replay(rules []RenderRule, b PubBlock) ChildOut {
     var children []PubBlock = []
-    children.push(PubBlock(b.id + "!echo", "heading", "render", b.level, 0, [], 0, [], "", "", [], b.text + "（回声）"))
+    children.push(pb_render_heading(b.id + "!echo", b.level, b.text + "（回声）"))
     return render_child_guarded(children, rules, "echo-heading", b.id)
 }
 
@@ -366,37 +396,32 @@ fn fin_err(code str, message str) Finalize {
 }
 
 fn empty_publication() Publication {
-    return Publication(
-        "",
-        ir_empty_meta(),
-        ir_empty_page(),
-        0,
-        "",
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        []
-    )
+    var page = PageConfig("a4", "2cm", "2cm", "2cm", "2cm", 1, "10pt", [], "", 0, 0)
+    var content []PubBlock = []
+    var outline []OutlineEntry = []
+    var rules []StyleRule = []
+    var render_rules []RenderRule = []
+    return new_publication("", "", ir_empty_meta(), page, 0, "", "", content, outline, rules, render_rules)
 }
-
-use ir: DocMeta, PageConfig
 
 fn ir_empty_meta() DocMeta {
     return DocMeta("", [], "", "zh", "")
 }
 
-fn ir_empty_page() PageConfig {
-    return PageConfig("a4", "2cm", "2cm", "2cm", "2cm", 1, "10pt", [], "", 0)
-}
-
 // base：模板产出（含模板规则与呈现规则）；styles_wire：宿主编码的文档规则/显式属性
-//（可为空串）。流程：合并各层规则 → 校验（可定位）→ 逐属性合成 → 匹配日志 → 呈现。
+//（可为空串）。流程：occurrence 赋值 → 引用作用域校验 → 合并各层规则 → 逐属性
+// 合成 → 匹配日志 → 呈现。
 fn finalize(base Publication, styles_wire str) Finalize {
+    // occurrence：模板/视图展开后的内容树顺序（presentation/computed/references 对齐）
+    var content []PubBlock = []
+    content = assign_occurrences(base.content)
+
+    // 引用作用域（悬空/歧义/重复可定位；解析记录进 IR）
+    let refcheck = validate_refs(content)
+    if refcheck.ok == 0 {
+        return fin_err(refcheck.code, refcheck.message)
+    }
+
     var all_rules = builtin_rules()
     var theme = theme_print()
     for t in theme {
@@ -418,42 +443,87 @@ fn finalize(base Publication, styles_wire str) Finalize {
             explicit.push(x)
         }
     }
-    // 节点视图（内容顺序即出版树顺序）
+    // 节点视图（内容顺序即出版树顺序；节点身份 = occurrence，AC-04 复用两次各得样式）
     var nodes []StyleNode = []
     var idx = 0
-    for b in base.content {
-        nodes.push(node_view(idx, b.id, b.kind, b.level, b.callout_type))
+    for b in content {
+        nodes.push(node_view(idx, b.occ, b.kind, b.level, b.callout_type))
         idx = idx + 1
+    }
+    // 显式属性按 occurrence 展开：同一语义 id 的每次出现都获得该属性
+    //（显式样式指向语义节点，复用不稀释）
+    var explicit_all []ExplicitStyle = []
+    for x in explicit {
+        var matched = 0
+        for b in content {
+            if b.id == x.id {
+                explicit_all.push(ExplicitStyle(b.occ, x.text, x.para, x.doc))
+                matched = 1
+            }
+        }
+        if matched == 0 {
+            explicit_all.push(x)
+        }
     }
     let chk = validate_rules(all_rules, nodes)
     if chk.ok == 0 {
         return fin_err(chk.code, chk.message)
     }
-    let xchk = validate_explicit(explicit, nodes)
+    let xchk = validate_explicit(explicit_all, nodes)
     if xchk.ok == 0 {
         return fin_err(xchk.code, xchk.message)
     }
-    let computed = compose_styles(nodes, all_rules, explicit)
+    let computed = compose_styles(nodes, all_rules, explicit_all)
     let log = match_log_of(nodes, all_rules)
-    let rendered = apply_render(base.render_rules, base.content)
+    let rendered = apply_render(base.render_rules, content)
+    // 视图诊断先快照（out/base 引用同体；直接遍历会与重绑后的列表互扰）
+    var view_diags []RenderDiag = []
+    for vd in base.render_diags {
+        view_diags.push(vd)
+    }
     var out = base
+    out.content = content
     out.rules = all_rules
-    out.explicit = explicit
+    out.explicit = explicit_all
     out.match_log = log
     out.computed = computed
     out.presentation = rendered.entries
     out.render_diags = rendered.diags
+    out.references = refcheck.refs
+    // 视图诊断（如 W_SLIDES_UNPLACED）已在上文快照进 view_diags——out 与 base 是
+    // 同一记录（引用语义），若此处遍历 base.render_diags 会边遍历同一列表边追加。
+    for vd in view_diags {
+        out.render_diags.push(vd)
+    }
     return Finalize(1, "", "", out)
 }
 
 
-// 模板派发 + 组装（main.at 的薄入口伙伴）
+// 模板派发 + 视图投影 + 组装（main.at 的薄入口伙伴）
 fn build_and_finalize(template str, doc Doc, opts Options, styles_wire str) Finalize {
+    // 1. 视图投影（Design 10 §8）：选择与组织，不改写正文
+    let viewed = project_view(opts.view_name, doc)
+    if viewed.ok == 0 {
+        return fin_err(viewed.code, viewed.message)
+    }
+    var base = empty_publication()
     if template == "academic" {
-        return finalize(build_academic(doc, opts), styles_wire)
+        base = build_academic(viewed.doc, opts)
+    } else if template == "office_book" {
+        base = build_office_book(viewed.doc, opts)
+    } else if template == "press_book" {
+        base = build_press_book(viewed.doc, opts)
+    } else if template == "news" {
+        base = build_news(viewed.doc, opts)
+    } else if template == "lecture" {
+        base = build_lecture(viewed.doc, opts)
+    } else {
+        return fin_err("E_TEMPLATE_UNKNOWN", "unknown template: " + template)
     }
-    if template == "office_book" {
-        return finalize(build_office_book(doc, opts), styles_wire)
+    // 视图诊断随模板产出携带（render_diags 暂存，finalize 并入）
+    var with_diags = base
+    for vd in viewed.diags {
+        with_diags.render_diags.push(vd)
     }
-    return fin_err("E_TEMPLATE_UNKNOWN", "unknown template: " + template)
+    return finalize(with_diags, styles_wire)
 }

@@ -327,8 +327,9 @@ bibliography 提示块一行一 key→文献条目（`E_BIB_ENTRY`）；锚卡�
 | --- | --- | --- |
 | outline | `#outline(depth)` | 条目 = 语义标题（装饰不进入），页码延迟求值 |
 | heading | `= …` + `<h-occ>` label | 模板声明 `heading_numbering`（如 "1.1"）；chapter-h1 呈现规则渲染“第N章”时局部关闭 |
-| figure | `#figure(image(…, width: 100%), caption, numbering) <f-occ>` | Typst 图计数器（supplement 图），按内容顺序 |
-| equation | 界定符独占行的块数学 + `<eq-occ>`；`#set math.equation(numbering: "(1)")` + 行内式 show 关闭（Typst 行内/块以定界符内侧空白区分——内侧带空白的 `$ .. $` 是块数学） | 式计数器，按内容顺序 |
+| figure | `#figure(placement: auto, image(…, width: 100%), caption, numbering) <f-occ>`（浮动到栏/页顶——在流图表不可分割会把整节推到下页留半页空栏） | Typst 图计数器（supplement 图），按内容顺序 |
+| table | `#table(columns: (1fr × cols))` 比例列宽撑满可用宽（数值列宽按内容收缩——报纸带内实测仅 ~53% 宽）；报纸视图表格跨栏带、学术视图表格留在栏内（流动栏在表格移入下一栏后回填） | — |
+| equation | 界定符独占行的块数学 + `<eq-occ>`；`#set math.equation(numbering: "(1)")` + 行内式 show 关闭（Typst 行内/块以定界符内侧空白区分——内侧带空白的 `$ .. $` 是块数学）；报纸视图（h1_span_columns）不编号（报纸惯例；窄栏内编号与公式末端叠字），此时公式引用退化 `#link` | 式计数器，按内容顺序（报纸视图无编号） |
 | footnote | 标记处 `#footnote[定义]` | Typst 内置脚注计数 |
 | bibliography | 文末编号节（`<bib-键>` label），引用上标 `[n]` 链接 | 声明顺序 [1..n]；固定输入格式/风格，不宣称 CSL 兼容 |
 | ref | `#ref(<label>)`（display 作 supplement） | 无编号模板（news 章节、lecture 分镜）退化为 `#link(<label>)[显示]`——语义 ID 与 label 保留 |

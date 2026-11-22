@@ -573,10 +573,12 @@ export function emitTypst(pub) {
   if (numbering !== '') {
     push(`#set heading(numbering: ${typstString(numbering)})`);
   }
-  if (hasEquations) {
-    // 块级公式经 equation figure 编号（figure 计数器与行内公式互不影响；
-    // 直接 set math.equation(numbering) 会把行内式一并计数——实测 1..6 连号）
-    // 块级公式编号（set+show 组合：行内式显式不编号——最小探针 eqtest.typ 验证）
+  // 报纸视图公式不编号（报纸惯例；编号靠右缘在窄栏内与公式末端叠字）。此时
+  // 公式引用退化为文本链接（与无编号标题的处理一致）。
+  const eqNumbered = hasEquations && !(page.h1_span_columns === true && page.columns > 1);
+  if (eqNumbered) {
+    // 块级公式编号（set+show 组合：行内式显式不编号——最小探针 eqtest.typ 验证；
+    // 直接 set 会把行内式一并计数——实测 1..6 连号）
     push('#set math.equation(numbering: "(1)")');
     push('#show math.equation.where(block: false): set math.equation(numbering: none)');
   }
@@ -670,6 +672,7 @@ export function emitTypst(pub) {
     kindByOcc,
     contentByOcc,
     headingNumbered: numbering !== '',
+    eqNumbered,
   };
   let inColumns = false;
   let pendingOpen = false;
@@ -784,8 +787,12 @@ export function emitTypst(pub) {
       const cells = Array.from({ length: columns }, () => []);
       let acc = 0;
       let ci = 0;
+      // 句读粘前：以句末标点开头的文本段不另起新格（栏首避头点），
+      // 分格点顺延到该段之后。
+      const stickyPunct = (u) =>
+        u.type === 'seg' && u.seg.kind === 'text' && /^[。．，、；：！？）」』]/.test(u.seg.text ?? '');
       for (const u of units) {
-        if (acc >= target && ci < columns - 1) {
+        if (acc >= target && ci < columns - 1 && !stickyPunct(u)) {
           ci += 1;
           acc = 0;
         }
@@ -833,8 +840,10 @@ export function emitTypst(pub) {
     const isChapter = firstBlock?.kind === 'heading' && firstBlock?.level === 1;
     const isSlideCallout =
       pub.view === 'slides' && semantic?.kind === 'callout' && semantic.callout_type === 'slide';
-    // 多栏下表格跨栏（表格宽于栏宽不可分割，留在栏内会打断栏流——实测右半页空白）
-    const isWideTable = columns > 1 && firstBlock?.kind === 'table';
+    // 报纸视图表格跨栏（grid 单元装不下宽表）；公式随文留在栏内不编号
+    // （报纸惯例；编号靠右缘在窄栏内与公式末端叠字）；学术视图表格留在栏内——
+    // 流动栏在放不下的表格移入下一栏后继续回填，跨栏重启容器反而造成半页空栏。
+    const isWideTable = h1Span && firstBlock?.kind === 'table';
     const chapterBreak =
       (computed.doc?.chapter_pagebreak ?? 0) === 1 && isChapter && !firstChapterCandidate;
     if (isChapter) firstChapterCandidate = false;
@@ -920,7 +929,7 @@ function emitSegments(segments, ctx, fromOcc) {
         seg.display && seg.display.trim() !== ''
           ? seg.display
           : target?.text ?? target?.caption ?? resolved;
-      if (targetKind === 'heading' && !ctx.headingNumbered) {
+      if ((targetKind === 'heading' && !ctx.headingNumbered) || (targetKind === 'equation' && !ctx.eqNumbered)) {
         // 无编号标题（如 office_book/press_book/news）：编号 ref 不可用，退化为
         // 文本链接（显示 = 作者 display 或目标标题；语义 ID 与 label 保留）
         out += `#link(<${label}>)[${typstText(displayText)}]`;
@@ -987,7 +996,9 @@ function emitBlocks(push, bodyIndent, entry, computed, ctx) {
       push('');
     } else if (block.kind === 'table') {
       push(`${bodyIndent}#table(`);
-      push(`${bodyIndent}  columns: ${block.cols},`);
+      // 比例列宽（1fr × cols）：数值列宽按内容收缩（报纸带内仅 ~53% 宽）
+      const frCols = Array.from({ length: block.cols }, () => '1fr').join(', ');
+      push(`${bodyIndent}  columns: (${frCols}),`);
       push(`${bodyIndent}  inset: 5pt,`);
       push(`${bodyIndent}  stroke: 0.4pt + rgb("#9aa3ad"),`);
       push(`${bodyIndent}  align: left,`);

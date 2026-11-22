@@ -563,6 +563,11 @@ export function emitTypst(pub) {
     push(`#set page(paper: ${typstString(page.paper)}, margin: ${marginTuple}, numbering: ${page.page_numbers ? '"1 / 1"' : 'none'})`);
   }
   push(`#set text(font: ${typstTuple(page.font_family)}, lang: ${typstString(pub.document.lang)})`);
+  // 报头页眉：文档头部一次设置（流中的 #set page 会触发分页——实测把报纸正文
+  // 整体推到第 2 页；报头页用页码条件跳过，避免与大幅题头重复）
+  if (page.header_text !== '' && pub.view === 'newspaper') {
+    push(`#set page(header: context [#if counter(page).get().first() > 1 [#align(center)[#text(size: 8pt)[${typstText(page.header_text)}]]]])`);
+  }
   push('#set smartquote(enabled: false)');
   const numbering = docComputed.heading_numbering ?? '';
   if (numbering !== '') {
@@ -643,10 +648,15 @@ export function emitTypst(pub) {
       push('#v(0.8em)');
       push(`#outline(title: [${typstText(pub.outline.title)}], depth: ${pub.outline.depth})`);
     }
-    push('#pagebreak()');
-  }
-  if (page.header_text !== '') {
-    push(`#set page(header: [#align(center)[#text(size: 8pt)[${typstText(page.header_text)}]]])`);
+    // 报纸题头区不整页占位（正文从首页题头下开始）；其余视图保持标题页
+    if (pub.view !== 'newspaper') {
+      push('#pagebreak()');
+      if (page.header_text !== '') {
+        push(`#set page(header: [#align(center)[#text(size: 8pt)[${typstText(page.header_text)}]]])`);
+      }
+    } else {
+      push('#v(1.2em)');
+    }
   }
 
   // ---- 正文：presentation × computed 逐 occurrence 发射 ----
@@ -749,29 +759,68 @@ export function emitTypst(pub) {
         emitBlocks(push, '', e, c, emitCtx);
       }
       if (flowed.length === 0) continue;
-      const total = flowed.reduce((sum, e) => sum + entryWeight(e), 0);
+      // 分配单元：段落按行内段拆分（文本跨栏续排是栏排的常规行为；语义段
+      // （ref/脚注/公式）保持原子），其余条目整块原子——保证每栏都有内容。
+      const units = [];
+      for (const e of flowed) {
+        const first = e.blocks[0];
+        if (first?.kind === 'paragraph') {
+          let si = 0;
+          for (const seg of first.segments ?? []) {
+            const w =
+              seg.kind === 'text' ? Math.max(seg.text.length, 1)
+              : seg.kind === 'ref' || seg.kind === 'cite' ? Math.max((seg.display ?? '').length + 4, 4)
+              : seg.kind === 'math' ? 12
+              : 4;
+            units.push({ type: 'seg', entry: e, seg, segIndex: si, weight: w });
+            si += 1;
+          }
+        } else {
+          units.push({ type: 'entry', entry: e, weight: entryWeight(e) });
+        }
+      }
+      const total = units.reduce((sum, u) => sum + u.weight, 0);
       const target = total / columns;
       const cells = Array.from({ length: columns }, () => []);
       let acc = 0;
       let ci = 0;
-      for (const e of flowed) {
-        const w = entryWeight(e);
+      for (const u of units) {
         if (acc >= target && ci < columns - 1) {
           ci += 1;
           acc = 0;
         }
-        cells[ci].push(e);
-        acc += w;
+        cells[ci].push(u);
+        acc += u.weight;
       }
       // grid 单元以代码模式逗号传参（标记式并列括号组不是多参数；实测逗号成字面文本）
       push(`#grid(columns: ${columns}, gutter: 1.1em, align: top,`);
       for (const cell of cells) {
         push('[');
-        for (const e of cell) {
-          const c = computedByOcc.get(e.occurrence_id) ?? { text: {}, para: {}, doc: {} };
-          push(`// node: ${e.occurrence_id} (role: ${e.role})`);
-          emitBlocks(push, '', e, c, emitCtx);
+        // 同一段落的相邻行内段在单元内合并回一个段落（跨单元的段落=栏间断行）
+        let parEntry = null;
+        let parSegs = null;
+        const flushPar = () => {
+          if (parEntry && parSegs && parSegs.length > 0) {
+            const c = computedByOcc.get(parEntry.occurrence_id) ?? { text: {}, para: {}, doc: {} };
+            const block = { ...parEntry.blocks[0], segments: parSegs };
+            emitBlocks(push, '', { ...parEntry, blocks: [block] }, c, emitCtx);
+          }
+          parEntry = null;
+          parSegs = null;
+        };
+        for (const u of cell) {
+          if (u.type === 'seg') {
+            if (parEntry !== u.entry) flushPar();
+            parEntry = u.entry;
+            if (!parSegs) parSegs = [];
+            parSegs.push(u.seg);
+          } else {
+            flushPar();
+            const c = computedByOcc.get(u.entry.occurrence_id) ?? { text: {}, para: {}, doc: {} };
+            emitBlocks(push, '', u.entry, c, emitCtx);
+          }
         }
+        flushPar();
         push('],');
       }
       push(')');
@@ -976,6 +1025,7 @@ function emitBlocks(push, bodyIndent, entry, computed, ctx) {
     } else if (block.kind === 'figure') {
       const label = labelOf('figure', ctx.semantic?.occ ?? block.id);
       push(`${bodyIndent}#figure(`);
+      push(`${bodyIndent}  placement: auto,`);
       push(`${bodyIndent}  image(${typstString(block.src)}, width: 100%),`);
       push(`${bodyIndent}  caption: [${textWrap(text, typstText(block.caption))}],`);
       push(`${bodyIndent}  numbering: "1",`);

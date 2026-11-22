@@ -4,8 +4,8 @@ status: drafting
 feature_name: live-pagination-preview-source-map
 author: [codex]
 created_at: 2026-11-14
-updated_at: 2026-11-14
-plan_revision: 1
+updated_at: 2026-11-20
+plan_revision: 2
 current_step: 0
 total_steps: 7
 depends_on: [PLAN-082, PLAN-083]
@@ -17,7 +17,7 @@ affects: [auto-down]
 
 # [PLAN-085] 实时分页预览、版本隔离与来源定位
 
-> 依据：[Design 10](../designs/10-autodown-publishing.md) §12–13、§14 的 P2。硬前置：[082](082-auto-template-typst-prototype.md)、[083](083-document-style-render-rules.md)；[084](084-publication-templates-semantics.md) 为更多内容的消费者核验，不是建立预览会话的硬前置。尚未实施。
+> 依据：[Design 10](../designs/10-autodown-publishing.md) §12–13、§14 的 P2。硬前置已满足，见 [082](archived/082-auto-template-typst-prototype.md) 和 [083](archived/083-document-style-render-rules.md)。会话与定位可先用 083 样例开发，[084](084-publication-templates-semantics.md) 用于扩展样例联验。状态为 drafting。
 
 ## 0. 变更摘要
 
@@ -36,7 +36,9 @@ affects: [auto-down]
 
 文档/参数编辑入口 → revision 调度 → Auto 求值 → 持久排版会话 → 页面资源/诊断 → 预览壳。Rust World 或现有预览部件在 T-00 比较后选定；依赖版本和许可证记录在案。
 
-预览壳优先消费现有 AutoUI 组件能力。若某显示/定位接口需要 UI owner 扩展，记录其最小依赖；宿主与会话合同不绑定某一个 Web 控件实现。
+Typst 负责排版会话。预览壳先在 Windows 用 **ACE AV + 新版 AutoUI/AGE + Iced** 验证真实消费。按公开接口实测打开文件、编辑正文或参数、滚动或翻页、缩放后点击定位、关闭后释放会话。窗口、滚动、图像与事件能力按实际用到的部分核对。参见 [AutoUI 控件投影](../../../auto-ui/docs/specs/runtime/ace-package-widgets.md) 与 [AutoUI 计划入口](../../../auto-ui/docs/plans/README.md)。
+
+以直接窗口验证首个原生路径。RQ 和新版 A2R GUI 按实际需求独立核验，不作为首个窗口或后台会话的前置。若页面显示、点击、输入或更新存在具体缺口，只替换受影响的接入层，必要时用现有 AutoUI 或 Web 壳运行同一页面数据、revision 与定位协议，记录负责方和复验条件。模板执行复用 084 §2.1 的结果。并行开发时可先用 083 已交入口提供真实 Typst 页面。
 
 ## 3. 详细设计
 
@@ -44,7 +46,7 @@ affects: [auto-down]
 2. debounce/合并输入，允许取消时取消；无法取消时在提交结果时丢弃旧版本。
 3. 分开记录解析、Auto 求值、字体/资源、排版、页面呈现的缓存依赖；模板或字体更新使相应缓存失效。
 4. 只更新变化页，优先可见页；局部修改可能重排后续页面，不承诺只计算一个块。普通缩放不重新求值文档，真实 flow 宽度变化单独处理。
-5. 映射正文 Node/范围 → 模板调用/occurrence → Typst 源范围 → 页面坐标。合成节点返回真实模板来源，不伪造正文位置。
+5. 映射正文 Node/范围 → 模板调用/occurrence → Typst 源范围 → 页面坐标。合成节点返回真实模板来源。位置绑定文档修订，明确原文 UTF-8、编辑端 UTF-16 与页面坐标的转换。可按需复用 [1058 增量编辑原型](../../../auto-lang/docs/specs/auto-syntax/autodown-mixed-editing.md) 的源范围与版本机制，Typst 页面映射仍由本计划验收。
 6. SVG 字形轮廓不能单独承担文本选择/复制；选择查看方案时明确文本/语义映射能力，不能把网页中能显示误认为全部交互已具备。
 7. 样式检查接口从 083 接入，参数面板只展示适合交互的 schema 字段。编辑仍经语义事务，不直接改输出字形。
 
@@ -59,6 +61,7 @@ affects: [auto-down]
 | AC-05 | 预览与导出 | 同 revision、字体、页数及关键几何一致；失败不能冒充新导出 |
 | AC-06 | 资源/缓存变化 | 改字体、图片、模板会失效；缩放与真实布局输入区分 |
 | AC-07 | 可用性与计时 | 一次真实编辑往返和人工观察；冷/热各阶段耗时有条件记录 |
+| AC-08 | 新版预览接入 | 实跑滚动、缩放后定位、更新与关闭重开，记录工具和呈现路径。采用旧版时单列新版缺口与复验条件 |
 
 单元验证集中在真正存在风险的 revision 竞争、缓存失效和映射歧义；集成验证必须连接真实 Auto 与 Typst。热更新小于 1 秒作为初始观察目标，先报告实测分布与文档规模，不伪造性能保证。
 
@@ -68,10 +71,10 @@ affects: [auto-down]
 
 ## 6. 任务清单
 
-- [ ] T-00：核对后端/预览复用路径、AutoUI 显示能力、版本/字体与许可。
+- [ ] T-00：核对 Typst 会话、字体与许可，按 §2 探测新版 AV/AGE 的页面显示、滚动、输入及点击接口。
 - [ ] T-01：实现请求 revision、状态、旧结果隔离与错误恢复。
 - [ ] T-02：实现持久会话、资源依赖与页面更新缓存。
-- [ ] T-03：实现正文/模板/参数编辑到分页预览的原型壳。
+- [ ] T-03：实现正文/模板/参数编辑到分页预览的原型壳，按实测选择新版接入或局部回退。
 - [ ] T-04：实现块级来源映射与双向定位，标识合成节点。
 - [ ] T-05：验证真实编辑、竞争、资源更新、预览/导出一致与计时。
 - [ ] T-06：复审并沉淀实际合同，核对 084/086 的后续集成点。

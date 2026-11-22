@@ -4,8 +4,8 @@ status: drafting
 feature_name: deferred-layout-context
 author: [codex]
 created_at: 2026-11-14
-updated_at: 2026-11-14
-plan_revision: 1
+updated_at: 2026-11-20
+plan_revision: 2
 current_step: 0
 total_steps: 7
 depends_on: [PLAN-083, PLAN-084]
@@ -17,7 +17,7 @@ affects: [auto-down]
 
 # [PLAN-086] 普通 Auto 延迟布局回调、测量与上下文查询
 
-> 依据：[Design 10](../designs/10-autodown-publishing.md) §9–10、§14 的 P3 布局部分。硬前置：[083](083-document-style-render-rules.md)、[084](084-publication-templates-semantics.md)。[085](085-live-pagination-preview-source-map.md) 供交互集成，命令行功能验证不依赖它。尚未实施。
+> 依据：[Design 10](../designs/10-autodown-publishing.md) §9–10、§14 的 P3 布局部分。硬前置为 [083](archived/083-document-style-render-rules.md)（已交）与 [084](084-publication-templates-semantics.md) 的交付。[085](085-live-pagination-preview-source-map.md) 供交互集成。状态为 drafting。
 
 ## 0. 变更摘要
 
@@ -36,6 +36,10 @@ affects: [auto-down]
 普通 Auto 函数经现有语义/类型路径检查 → 支持能力分析 → LayoutExpr 数据 IR → Typst context/layout/query/counter/measure 结构。排版前的完整 Auto 模板继续正常求值。
 
 LayoutExpr 是内部边界 IR，不要求用户书写它，不以另一个字符串 eval 解释器实现。若现有公共 AST/类型接口不足，最小反例交 AutoLang owner；本计划不在其他仓主检出临时改变编译器。
+
+优先用 ACE 受检前端获得带类型与源范围的函数表示，通过实际可消费的公共接口检查布局能力并降为 `LayoutExpr`。T-00 用一条依据可用宽度生成内容的回调和一条超出能力的回调，核实类型、捕获、调用与源位置所需数据。模板运行端复用 084 的结论。布局表达式由 Typst 在分页时执行，CLI 即可做功能验收。
+
+若公共受检接口缺项，交 AutoLang 最小回调样例和缺失字段，同时推进布局 IR、Typst 发射和内置上下文等独立工作。普通模板求值可沿用 084 验过的旧版路径。自定义回调的验收仍要求真实受检函数输入及其正反例。AGE 通过 085 消费最终页面和定位数据。
 
 ## 3. 详细设计
 
@@ -67,7 +71,7 @@ LayoutExpr 是内部边界 IR，不要求用户书写它，不以另一个字符
 
 ## 6. 任务清单
 
-- [ ] T-00：复核 083/084 合同，勘定公共 Auto 语义接口和纯回调支持集。
+- [ ] T-00：复核 083/084 合同，针对实际回调勘定 ACE 受检前端公共接口、支持集与最小缺口。
 - [ ] T-01：建立阶段/效果检查与可序列化捕获规则。
 - [ ] T-02：实现 LayoutExpr lowering 与 Typst 上下文接入。
 - [ ] T-03：实现 contextual/layout/measure 和所需位置/查询服务。

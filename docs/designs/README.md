@@ -29,4 +29,4 @@
 - 旧包退役：`@autodown/vue`/`@autodown/editor`/`@autodown/core` 自 Plan 020 起为 deprecated re-export shim（demo/jade-garden 已切 engine；musk 冻结 0.2.0 vendor 快照）；物理归档待 musk vendor 再生路径确认弃用后执行
 - v0.6 排版方向（[Design 10](./10-autodown-publishing.md)，Draft 0.1，2026-11-14）：正文使用 AutoDown/Auto Node，模板复用普通 Auto 脚本；文档库提供样式、呈现、引用和延迟上下文，首个排版后端为 Typst。按 P0-P3 先验证原型，语法与内部表示保持实验性；本文档登记不表示实现或合同冻结。
 
-- 对应[实施计划 082–086](../plans/README.md)已建立为 drafting；下一步执行 082 最小原型并评估，后续范围随反馈调整。
+- [实施计划 082–086](../plans/README.md) 中 082/083 已交付，084–086 以 ACE/AGE 新版优先，按具体缺口复用已验旧版。

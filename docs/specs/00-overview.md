@@ -14,6 +14,6 @@
 
 ## 设计中方向
 
-- [AutoDown 文档排版与 Auto 模板设计](../designs/10-autodown-publishing.md)：2026-11-14 Draft 0.1；v0.6 的普通 Auto 模板、Node 正文与 Typst 排版方向，附 P0-P3 原型范围、边界与验收场景。当前是设计输入，尚未实现，不替代已冻结的 parser/render/editor 出口合同。
+- [AutoDown 文档排版与 Auto 模板设计](../designs/10-autodown-publishing.md)：2026-11-14 Draft 0.1；v0.6 的普通 Auto 模板、Node 正文与 Typst 排版方向，附 P0-P3 原型范围、边界与验收场景。设计描述目标结构，已交付行为见出版原型规范。
 
-- [对应实施计划 082–086](../plans/README.md)：082 已交付为可运行原型（归档计划，含原型合同与边界规范 [publishing.md](publishing.md)）；083–086 仍为 drafting，待原型评估反馈后执行。
+- [实施计划 082–086](../plans/README.md) 中 082/083 已交付。已验行为见 [出版原型规范](publishing.md)。084–086 为新版优先的实施草案。
